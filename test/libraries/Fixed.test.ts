@@ -3,7 +3,6 @@ import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
-import { SLOW } from '../fixtures'
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div, shortString } from '../../common/numbers'
 import { FixedCallerMock } from '../../typechain/FixedCallerMock'

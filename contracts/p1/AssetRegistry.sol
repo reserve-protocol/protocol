@@ -28,19 +28,20 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
-    /// TODO Decide if we want reentrancy guards here
     function forceUpdates() public {
+        // nonReentrant not required: state updates are before external calls
         uint256 length = _erc20s.length();
+        lastForceUpdates = uint32(block.timestamp);
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
         }
-        lastForceUpdates = uint32(block.timestamp);
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     function register(IAsset asset) external onlyOwner returns (bool) {
+        // nonReentrant not required: only external call terminates within main's security domain
         lastForceUpdates = 0;
         return _register(asset);
     }
@@ -48,7 +49,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
     /// @return swapped If the asset was swapped for a previously-registered asset
-    function swapRegistered(IAsset asset) external onlyOwner returns (bool swapped) {
+    function swapRegistered(IAsset asset) external onlyOwner nonReentrant returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
         swapped = _registerIgnoringCollisions(asset);
@@ -59,7 +60,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Unregister an asset, requiring that it is already registered
-    function unregister(IAsset asset) external onlyOwner {
+    function unregister(IAsset asset) external onlyOwner nonReentrant {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
         _erc20s.remove(address(asset.erc20()));

@@ -12,6 +12,7 @@ import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
+/// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -38,7 +39,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
-    function settleTrade(IERC20 sell) public {
+    function settleTrade(IERC20 sell) public nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -67,7 +68,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external {
+    function claimAndSweepRewards() external nonReentrant {
         RewardableLibP1.claimAndSweepRewards();
     }
 

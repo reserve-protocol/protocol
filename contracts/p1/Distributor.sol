@@ -42,6 +42,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address from,
         uint256 amount
     ) external {
+        // nonReentrant not required: external calls occur last
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");

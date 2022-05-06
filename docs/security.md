@@ -15,3 +15,25 @@ In our P1 implementation both our RevenueTrader and BackingManager components co
 ```
 
 Note that `delegatecall` can also be dangerous for other reasons, such as transferring tokens out of the address in an unintended way. A similar argument applies in that case. It again reduces to the code contained in the implementation contract.
+
+### Reentrancy
+
+#### Problem classification
+
+Definition: Main's security domain is Main plus the Components. Collateral and Trade contracts are not considered within the security domain.
+
+```
+1. Reentrancies that terminate within main's security domain
+2. Reentrancies that terminate outside main's security domain
+    A. In a trading platform (e.g Gnosis)
+    B. In a defi protocol (e.g Compound)
+    C. In a registered ERC20 token contract
+```
+
+#### Solution
+
+Reentrancies of type (1) do not require a fix, because if a malicious contract is inside our security domain then we have other problems.
+
+For reentrancies of type (2), we have placed `nonReentrant` modifiers at all external functions that contain necessary reentrancy risk. Since `forceUpdates` _must_ exist at the top of many of our external functions, and `CTokenFiatCollateral` poses a system-level risk of type (2B), this means _most_ of our external functions contain the `nonReentrant` modifier.
+
+Contracts not within main's security domain (Collateral, Trade) do not contain `nonReentrant` modifiers because they cannot be considered trusted in the first place. We do not want to push a correctness constraint out to governance if we can.

@@ -37,13 +37,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // Give RToken max allowance over a registered token
     function grantRTokenAllowance(IERC20 erc20) external {
+        // nonReentrant not required: by inspection
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Manage backing funds: maintain the overall backing policy
     /// Collective Action
-    function manageFunds() external notPaused {
+    function manageFunds() external notPaused nonReentrant {
         if (tradesOpen > 0) return;
 
         // Call keepers

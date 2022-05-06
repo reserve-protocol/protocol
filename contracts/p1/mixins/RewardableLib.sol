@@ -69,12 +69,12 @@ library RewardableLibP1 {
         }
     }
 
-          /// @return The AssetRegistry
+    /// @return The AssetRegistry
     function assetRegistry() private view returns (IAssetRegistry) {
         return IRewardable(address(this)).main().assetRegistry();
     }
 
-      /// @return The BackingManager
+    /// @return The BackingManager
     function backingManager() private view returns (IBackingManager) {
         return IRewardable(address(this)).main().backingManager();
     }

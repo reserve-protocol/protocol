@@ -105,6 +105,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Checks the basket for default and swaps it if necessary
     function checkBasket() external {
+        // nonReentrant not required: no external calls
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -117,6 +118,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         external
         onlyOwner
     {
+        // nonReentrant not required: no external calls
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -142,6 +144,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external onlyOwner {
+        // nonReentrant not required: no external calls
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
@@ -158,7 +161,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    function switchBasket() external onlyOwner {
+    function switchBasket() external onlyOwner nonReentrant {
         main.assetRegistry().forceUpdates();
         _switchBasket();
     }
@@ -219,6 +222,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
+        // TODO gas optimize
+
         uint256 size;
         address[] memory erc20sBig = new address[](basket.erc20s.length);
         uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);

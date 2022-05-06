@@ -2,8 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "@openzeppelin/contracts/proxy/Clones.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
@@ -11,7 +12,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/p1/mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract BrokerP1 is ComponentP1, IBroker {
+contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
@@ -41,6 +42,8 @@ contract BrokerP1 is ComponentP1, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     function openTrade(TradeRequest memory req) external returns (ITrade) {
+        // nonReentrant not required: only our system components can call this function,
+        // and those that can contain nonReentrant themselves
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();

@@ -19,11 +19,11 @@ contract MainP0 is Initializable, ContextUpgradeable, Pausable, IMain {
 
     IERC20 public rsr;
 
-    function poke() external virtual notPaused {
+    function poke() external virtual {
         // We think these are totally order-independent.
         assetRegistry.forceUpdates();
         furnace.melt();
-        stRSR.payoutRewards();
+        if (!paused) stRSR.payoutRewards();
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {

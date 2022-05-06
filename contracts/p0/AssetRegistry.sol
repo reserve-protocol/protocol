@@ -27,13 +27,12 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
-    /// TODO Decide if we want reentrancy guards here
     function forceUpdates() public {
+        lastForceUpdates = uint32(block.timestamp);
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
         }
-        lastForceUpdates = uint32(block.timestamp);
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
