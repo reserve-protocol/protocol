@@ -1291,10 +1291,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Attempt to run auctions
         await backingManager.manageFunds()
-        await expect(rsrTrader.processToken(aaveToken.address)).to.be.revertedWith(
-          'broker disabled'
-        )
-        await expect(rTokenTrader.processToken(aaveToken.address)).to.be.revertedWith(
+        await expect(rsrTrader.manageToken(aaveToken.address)).to.be.revertedWith('broker disabled')
+        await expect(rTokenTrader.manageToken(aaveToken.address)).to.be.revertedWith(
           'broker disabled'
         )
 
@@ -2338,8 +2336,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Manage Funds
       await backingManager.manageFunds()
-      await snapshotGasCost(rsrTrader.processToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
 
       // Advance time till auctions ended
       await advanceTime(config.auctionLength.add(100).toString())
@@ -2369,8 +2367,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await snapshotGasCost(rsrTrader.processToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended

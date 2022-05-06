@@ -34,7 +34,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @custom:action
-    function processToken(IERC20 erc20) external notPaused {
+    function manageToken(IERC20 erc20) external notPaused {
         if (address(trades[erc20]) != address(0)) return;
 
         IAssetRegistry reg = main.assetRegistry();

@@ -291,7 +291,7 @@ The following are functions I'm thinking of as "actions":
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.manageFunds()
-- {rsrTrader,rTokenTrader}.processToken()
+- {rsrTrader,rTokenTrader}.manageToken()
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
 

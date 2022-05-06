@@ -742,8 +742,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await assetRegistry.forceUpdates()
       await basketHandler.checkBasket()
       await backingManager.manageFunds()
-      await rsrTrader.processToken(token0.address)
-      await rTokenTrader.processToken(token0.address)
+      await rsrTrader.manageToken(token0.address)
+      await rTokenTrader.manageToken(token0.address)
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
@@ -755,8 +755,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to run functions again
       await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
-      await expect(rsrTrader.processToken(token0.address)).to.be.revertedWith('paused')
-      await expect(rTokenTrader.processToken(token0.address)).to.be.revertedWith('paused')
+      await expect(rsrTrader.manageToken(token0.address)).to.be.revertedWith('paused')
+      await expect(rTokenTrader.manageToken(token0.address)).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
     })
   })
