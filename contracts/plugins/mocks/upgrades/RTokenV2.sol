@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "contracts/p1/RToken.sol";
 
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RTokenP1V2 is RTokenP1 {
     uint256 public newValue;
 

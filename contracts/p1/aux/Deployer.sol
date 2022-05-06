@@ -16,7 +16,6 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IDistributor.sol";
-import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
@@ -223,7 +222,8 @@ contract DeployerP1 is IDeployer {
         main.transferOwnership(owner);
 
         // Facade
-        IFacade facade = new FacadeP0(address(main));
+        FacadeP0 facade = FacadeP0(address(implementations.facade).clone());
+        facade.init(address(main));
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));
     }

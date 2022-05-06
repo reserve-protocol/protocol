@@ -4,22 +4,25 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "contracts/p1/mixins/Component.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 
 /**
- * @title Rewardable
- * @notice A mix-in that makes a contract able to claim rewards
+ * @title RewardableLibP1
+ * @notice An library that allows a contract to claim rewards
+ * @dev The caller must implement the IRewardable interface!
  */
-abstract contract RewardableP1 is ComponentP1, IRewardable {
+library RewardableLibP1 {
     using AddressUpgradeable for address;
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    /// Redefines event for when rewards are claimed, to be able to emit from library
+    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     function claimAndSweepRewards() external {
-        IAssetRegistry reg = main.assetRegistry();
+        IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
         uint256 numRewardTokens = 0;
@@ -53,16 +56,26 @@ abstract contract RewardableP1 is ComponentP1, IRewardable {
         }
 
         // Sweep reward tokens to the backingManager
-        if (address(this) != address(main.backingManager())) {
+        if (address(this) != address(backingManager())) {
             for (uint256 i = 0; i < numRewardTokens; ++i) {
                 uint256 bal = rewardTokens[i].balanceOf(address(this));
                 if (bal > 0) {
                     IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
-                        address(main.backingManager()),
+                        address(backingManager()),
                         bal
                     );
                 }
             }
         }
+    }
+
+          /// @return The AssetRegistry
+    function assetRegistry() private view returns (IAssetRegistry) {
+        return IRewardable(address(this)).main().assetRegistry();
+    }
+
+      /// @return The BackingManager
+    function backingManager() private view returns (IBackingManager) {
+        return IRewardable(address(this)).main().backingManager();
     }
 }

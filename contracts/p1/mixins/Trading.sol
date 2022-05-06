@@ -8,10 +8,11 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Rewardable.sol";
+import "contracts/p1/mixins/Component.sol";
+import "contracts/p1/mixins/RewardableLib.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
-abstract contract TradingP1 is Multicall, RewardableP1, ITrading {
+abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -62,6 +63,12 @@ abstract contract TradingP1 is Multicall, RewardableP1, ITrading {
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+    }
+
+    /// Claim all rewards and sweep to BackingManager
+    /// Collective Action
+    function claimAndSweepRewards() external {
+        RewardableLibP1.claimAndSweepRewards();
     }
 
     // === Setters ===

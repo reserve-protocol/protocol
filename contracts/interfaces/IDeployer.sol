@@ -56,6 +56,7 @@ struct Implementations {
     IAsset rTokenAsset;
     IAsset aavePricedAsset;
     IAsset compoundPricedAsset;
+    IFacade facade;
 }
 
 /**

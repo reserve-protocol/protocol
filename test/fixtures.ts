@@ -32,6 +32,7 @@ import {
   IBasketHandler,
   MainP1,
   RevenueTraderP1,
+  RewardableLibP1,
   RTokenAsset,
   RTokenP1,
   StaticATokenMock,
@@ -103,6 +104,7 @@ export interface IImplementations {
   rTokenAsset: string
   aavePricedAsset: string
   compoundPricedAsset: string
+  facade: string
 }
 
 interface RSRFixture {
@@ -442,12 +444,16 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
     const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
 
+    // Deploy RewardableLib external library
+    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
       'BackingManagerP1',
-      { libraries: { TradingLibP1: tradingLib.address } }
+      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
     )
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
@@ -461,7 +467,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
       'RevenueTraderP1',
-      { libraries: { TradingLibP1: tradingLib.address } }
+      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
     )
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
@@ -474,7 +480,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
+    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
+      libraries: { RewardableLibP1: rewardableLib.address },
+    })
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1')
@@ -500,6 +508,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       await CompoundPricedAssetFactory.deploy(ZERO_ADDRESS, bn(0), ZERO_ADDRESS)
     )
 
+    // Facade - Can use dummy data in constructor as only logic will be used
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP0')
+    const facadeImpl: FacadeP0 = <FacadeP0>await FacadeFactory.deploy(ZERO_ADDRESS)
+
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
@@ -519,6 +531,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rTokenAsset: rTokenAssetImpl.address,
       aavePricedAsset: aavePricedAssetImpl.address,
       compoundPricedAsset: compoundPricedAssetImpl.address,
+      facade: facadeImpl.address,
     }
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')

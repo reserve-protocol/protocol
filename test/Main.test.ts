@@ -286,6 +286,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should not allow to initialize Facade twice', async () => {
+      await expect(facade.init(main.address)).to.be.revertedWith(
+        'Initializable: contract is already initialized'
+      )
+    })
+
     it('Should not allow to initialize components twice', async () => {
       // Attempt to reinitialize - Asset Registry
       const assets = [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address]

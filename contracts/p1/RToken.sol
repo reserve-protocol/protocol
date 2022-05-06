@@ -10,15 +10,19 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Rewardable.sol";
+import "contracts/p1/mixins/Component.sol";
+import "contracts/p1/mixins/RewardableLib.sol";
 
 /**
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+
+/// @custom:oz-upgrades-unsafe-allow external-library-linking
+contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -352,6 +356,12 @@ contract RTokenP1 is RewardableP1, ERC20Upgradeable, ERC20PermitUpgradeable, IRT
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
+    }
+
+    /// Claim all rewards and sweep to BackingManager
+    /// Collective Action
+    function claimAndSweepRewards() external {
+        RewardableLibP1.claimAndSweepRewards();
     }
 
     // ==== private ====
