@@ -111,6 +111,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         main.furnace().melt();
 
         // TODO should we check that status is not disabled? probably...
+        // expose basket.disabled
 
         // Refund issuances against previous baskets
         address issuer = _msgSender();
@@ -253,8 +254,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// TODO confirm we DO NOT need notPaused here
-    function cancel(uint256 endId, bool earliest) external {
+    function cancel(uint256 endId, bool earliest) external notPaused {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -272,8 +272,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm we want to halt redemptions when paused
-    function redeem(uint256 amount) external notPaused {
+    /// TODO confirm we want to permit redemptions when paused
+    function redeem(uint256 amount) external {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
