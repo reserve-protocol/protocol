@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IFacade.sol";
@@ -18,12 +19,16 @@ import "contracts/libraries/Fixed.sol";
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Just expose a abstraction layer for getting protocol view data
  */
-contract FacadeP0 is IFacade {
+contract FacadeP0 is Initializable, IFacade {
     using FixLib for int192;
 
     MainP0 public main;
 
     constructor(address main_) {
+        init(main_);
+    }
+
+    function init(address main_) public initializer {
         main = MainP0(main_);
     }
 
