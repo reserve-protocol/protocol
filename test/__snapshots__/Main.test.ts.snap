@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`MainP1 contract Gas Reporting Asset Registry - Force Updates 1`] = `252070`;
+exports[`MainP1 contract Gas Reporting Asset Registry - Force Updates 1`] = `253641`;
 
-exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 1`] = `174865`;
+exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 1`] = `175042`;
 
-exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 2`] = `174877`;
+exports[`MainP1 contract Gas Reporting Asset Registry - Register Asset 2`] = `175042`;
