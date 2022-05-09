@@ -19,7 +19,7 @@ import "./IMain.sol";
  * monotonically increasing exchange rate with respect to RSR, meaning that over time
  * StRSR is redeemable for more RSR. It is non-rebasing.
  */
-interface IStRSR is IERC20PermitUpgradeable, IERC20MetadataUpgradeable, IComponent {
+interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, IComponent {
     /// Emitted when RSR is staked
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
