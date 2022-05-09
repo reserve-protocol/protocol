@@ -91,12 +91,26 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// @custom:action
     function stake(uint256 rsrAmount) external notPaused {
         // nonReentrant not required: no calls in this function
-        address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
-        // Process pending withdrawals
         payoutRewards();
-        _stake(account, rsrAmount);
+
+        // Compute stake amount
+        // This is not an overflow risk according to our expected ranges:
+        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
+        uint256 stakeAmount = (stakeRSR == 0)
+            ? rsrAmount
+            : mulDiv256(rsrAmount, totalStakes, stakeRSR);
+
+        address account = _msgSender();
+        // Add to stakeAmount to stakes
+        stakes[era][account] += stakeAmount;
+        totalStakes += stakeAmount;
+        stakeRSR += rsrAmount;
+
+        // Transfer RSR from account to this contract
+        emit Staked(account, rsrAmount, stakeAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -302,21 +316,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
      */
 
     /// Execute the staking of `rsrAmount` RSR for `account`
-    function _stake(address account, uint256 rsrAmount) internal {
-        // Compute stake amount
-        // This is not an overflow risk according to our expected ranges:
-        //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
-        uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
-
-        // Add to stakeAmount to stakes
-        stakes[era][account] += stakeAmount;
-        totalStakes += stakeAmount;
-        stakeRSR += rsrAmount;
-
-        // Transfer RSR from account to this contract
-        emit Staked(account, rsrAmount, stakeAmount);
-        IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
-    }
+    function _stake(address account, uint256 rsrAmount) internal {}
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
     function _unstake(address account, uint256 stakeAmount) internal {}
