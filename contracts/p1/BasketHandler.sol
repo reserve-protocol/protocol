@@ -180,37 +180,50 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return status_ The status of the basket
     function status() public view returns (CollateralStatus status_) {
-        // TODO cache this lookup, this gets called often and we want 0(1) not 0(n)
-
         if (basket.defaulted) return CollateralStatus.DISABLED;
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
+            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
+                CollateralStatus s = coll.status();
+                if (s == CollateralStatus.DISABLED) {
+                    return CollateralStatus.DISABLED;
+                }
 
-            CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
-            if (uint256(s) > uint256(status_)) {
-                status_ = s;
+                if (uint256(s) > uint256(status_)) {
+                    status_ = s;
+                }
+            } catch {
+                return CollateralStatus.DISABLED;
             }
         }
     }
 
     /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
     function quantity(IERC20 erc20) public view returns (int192) {
-        if (!goodCollateral(erc20)) return FIX_ZERO;
+        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+            if (coll.status() == CollateralStatus.DISABLED) {
+                return FIX_ZERO;
+            }
 
-        // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok(), CEIL);
+            // {tok/BU} = {ref/BU} / {ref/tok}
+            return basket.refAmts[erc20].div(coll.refPerTok(), CEIL);
+        } catch {
+            return FIX_ZERO;
+        }
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function price() external view returns (int192 p) {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            if (!goodCollateral(basket.erc20s[i])) continue;
-
-            IERC20 erc20 = basket.erc20s[i];
-            p = p.plus(main.assetRegistry().toColl(erc20).price().mul(quantity(erc20)));
+            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
+                if (coll.status() != CollateralStatus.DISABLED) {
+                    p = p.plus(coll.price().mul(quantity(basket.erc20s[i])));
+                }
+            } catch {
+                continue;
+            }
         }
     }
 
@@ -222,30 +235,17 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        // TODO gas optimize
-
-        uint256 size;
-        address[] memory erc20sBig = new address[](basket.erc20s.length);
-        uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
+        erc20s = new address[](basket.erc20s.length);
+        quantities = new uint256[](basket.erc20s.length);
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            if (!goodCollateral(basket.erc20s[i])) continue;
-            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
+            erc20s[i] = address(basket.erc20s[i]);
 
-            // {tok} = {tok/BU} * {BU}
-            int192 tok = quantity(basket.erc20s[i]).mul(amount, rounding);
-
-            // {qTok} = {tok} * {qTok/tok}
-            quantitiesBig[size] = tok.shiftl_toUint(decimals, CEIL);
-            erc20sBig[size] = address(basket.erc20s[i]);
-            size++;
-        }
-
-        erc20s = new address[](size);
-        quantities = new uint256[](size);
-        for (uint256 i = 0; i < size; ++i) {
-            erc20s[i] = erc20sBig[i];
-            quantities[i] = quantitiesBig[i];
+            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
+            quantities[i] = quantity(basket.erc20s[i]).mul(amount, rounding).shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                rounding
+            );
         }
     }
 
@@ -355,13 +355,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         emit BasketSet(basket.erc20s, refAmts, basket.defaulted);
     }
 
-    /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
+    /// Good collateral is both (i) registered, (ii) collateral, and (iii) not DISABLED
     function goodCollateral(IERC20 erc20) private view returns (bool) {
-        if (!main.assetRegistry().isRegistered(erc20)) return false;
-
-        IAsset asset = main.assetRegistry().toAsset(erc20);
-        return
-            asset.isCollateral() &&
-            ICollateral(address(asset)).status() != CollateralStatus.DISABLED;
+        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+            return coll.status() != CollateralStatus.DISABLED;
+        } catch {
+            return false;
+        }
     }
 }

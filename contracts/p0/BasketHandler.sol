@@ -211,27 +211,17 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
     {
-        uint256 size;
-        address[] memory erc20sBig = new address[](basket.erc20s.length);
-        uint256[] memory quantitiesBig = new uint256[](basket.erc20s.length);
-        for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            if (!goodCollateral(basket.erc20s[i])) continue;
-            int8 decimals = int8(IERC20Metadata(address(basket.erc20s[i])).decimals());
+        erc20s = new address[](basket.erc20s.length);
+        quantities = new uint256[](basket.erc20s.length);
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
+            erc20s[i] = address(basket.erc20s[i]);
 
-            // {tok} = {tok/BU} * {BU}
-            int192 tok = quantity(basket.erc20s[i]).mul(amount, rounding);
-
-            // {qTok} = {tok} * {qTok/tok}
-            quantitiesBig[size] = tok.shiftl_toUint(decimals, CEIL);
-            erc20sBig[size] = address(basket.erc20s[i]);
-            size++;
-        }
-
-        erc20s = new address[](size);
-        quantities = new uint256[](size);
-        for (uint256 i = 0; i < size; i++) {
-            erc20s[i] = erc20sBig[i];
-            quantities[i] = quantitiesBig[i];
+            // {qTok} = {tok/BU} * {BU} * {tok} * {qTok/tok}
+            quantities[i] = quantity(basket.erc20s[i]).mul(amount, rounding).shiftl_toUint(
+                int8(IERC20Metadata(address(basket.erc20s[i])).decimals()),
+                rounding
+            );
         }
     }
 

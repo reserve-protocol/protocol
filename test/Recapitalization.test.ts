@@ -98,7 +98,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
     for (let i = 0; i < tokens.length; i++) {
       const tok = await ethers.getContractAt('ERC20Mock', tokens[i])
       const q = backingInfo.quantities ? backingInfo.quantities[i] : 0
-
       expect(await tok.balanceOf(backingManager.address)).to.eql(q)
     }
   }
@@ -257,8 +256,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
-          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
+          tokens: initialTokens,
+          quantities: initialQuantities,
         })
 
         // Basket should switch
@@ -727,8 +726,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: [initialTokens[0]],
-          quantities: [initialQuantities[0]],
+          tokens: initialTokens,
+          quantities: initialQuantities,
         })
 
         //  Basket should switch
@@ -786,8 +785,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
-          tokens: [initialTokens[1]],
-          quantities: [initialQuantities[1]],
+          tokens: initialTokens,
+          quantities: initialQuantities,
         })
 
         //  Basket should switch to empty and defaulted

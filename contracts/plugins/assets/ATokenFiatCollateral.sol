@@ -95,6 +95,9 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         }
         uint256 cached = whenDefault;
 
+        // TODO gas optimization
+        // 1. remove fixlib
+
         // Check for hard default
         int192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {

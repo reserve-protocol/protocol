@@ -114,6 +114,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function withdraw(address account, uint256 endId) external notPaused nonReentrant {
         main.assetRegistry().forceUpdates();
 
+        // TODO gas optimize
+
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
