@@ -42,9 +42,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
-    /// Manage backing funds: maintain the overall backing policy
+    /// Mointain the overall backing policy; handout assets otherwise
     /// Collective Action
-    function manageFunds() external notPaused nonReentrant {
+    function manageTokens(IERC20[] calldata erc20s) external notPaused nonReentrant {
         if (tradesOpen > 0) return;
 
         // Call keepers
@@ -57,7 +57,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
-            handoutExcessAssets();
+            handoutExcessAssets(erc20s);
         } else {
             /*
              * Recapitalization Strategy
@@ -119,63 +119,70 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Send excess assets to the RSR and RToken traders
-    function handoutExcessAssets() private {
+    function handoutExcessAssets(IERC20[] calldata erc20s) private {
+        IBasketHandler basketHandler = main.basketHandler();
         // TODO can we get rid of this eventually?
-        assert(main.basketHandler().status() == CollateralStatus.SOUND);
+        assert(basketHandler.status() == CollateralStatus.SOUND);
+        address rsrTrader = address(main.rsrTrader());
+        address rTokenTrader = address(main.rTokenTrader());
 
-        // Special-case RSR to forward to StRSR pool
-        uint256 rsrBal = main.rsr().balanceOf(address(this));
-        if (rsrBal > 0) {
-            IERC20Upgradeable(address(main.rsr())).safeTransfer(address(main.rsrTrader()), rsrBal);
+        // Forward any RSR held to StRSR pool
+        if (main.rsr().balanceOf(address(this)) > 0) {
+            IERC20Upgradeable(address(main.rsr())).safeTransfer(
+                address(main.rsrTrader()),
+                main.rsr().balanceOf(address(this))
+            );
         }
 
         // Mint revenue RToken
-        IRToken rToken = main.rToken();
-        int192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
-        int192 needed = rToken.basketsNeeded(); // {BU}
-        if (held.gt(needed)) {
-            int8 decimals = int8(main.rToken().decimals());
-            int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
+        int192 needed; // {BU}
+        {
+            IRToken rToken = main.rToken();
+            needed = rToken.basketsNeeded(); // {BU}
+            int192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
+            if (held.gt(needed)) {
+                int8 decimals = int8(rToken.decimals());
+                int192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
-            // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
-            uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(decimals);
-            rToken.mint(address(this), rTok);
-            rToken.setBasketsNeeded(held);
-            needed = held;
+                // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
+                uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
+                    decimals
+                );
+                rToken.mint(address(this), rTok);
+                rToken.setBasketsNeeded(held);
+                needed = held;
+            }
         }
 
         // Keep a small surplus of individual collateral
         needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
-        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         // Handout excess assets above what is needed, including any newly minted RToken
         uint256 length = erc20s.length;
+        RevenueTotals memory totals = main.distributor().totals();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
-            int192 bal = asset.bal(address(this)); // {tok}
-            int192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
-
-            if (bal.gt(req)) {
+            int192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
+            if (asset.bal(address(this)).gt(req)) {
                 // delta: {qTok}
-                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()));
-                (uint256 rTokenShares, uint256 rsrShares) = main.distributor().totals();
+                uint256 delta = asset.bal(address(this)).minus(req).shiftl_toUint(
+                    int8(IERC20Metadata(address(erc20s[i])).decimals())
+                );
 
-                uint256 tokensPerShare = delta / (rTokenShares + rsrShares);
-                uint256 toRSR = tokensPerShare * rsrShares;
-                uint256 toRToken = tokensPerShare * rTokenShares;
-
-                if (toRSR > 0) {
-                    IERC20Upgradeable(address(erc20s[i])).safeTransfer(
-                        address(main.rsrTrader()),
-                        toRSR
-                    );
+                {
+                    uint256 toRSR = (delta / (totals.rTokenTotal + totals.rsrTotal)) *
+                        totals.rsrTotal;
+                    if (toRSR > 0) {
+                        IERC20Upgradeable(address(erc20s[i])).safeTransfer(rsrTrader, toRSR);
+                    }
                 }
-                if (toRToken > 0) {
-                    IERC20Upgradeable(address(erc20s[i])).safeTransfer(
-                        address(main.rTokenTrader()),
-                        toRToken
-                    );
+                {
+                    uint256 toRToken = (delta / (totals.rTokenTotal + totals.rsrTotal)) *
+                        totals.rTokenTotal;
+                    if (toRToken > 0) {
+                        IERC20Upgradeable(address(erc20s[i])).safeTransfer(rTokenTrader, toRToken);
+                    }
                 }
             }
         }

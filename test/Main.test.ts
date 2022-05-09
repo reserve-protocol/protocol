@@ -186,9 +186,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
       // Configuration
-      const totals = await distributor.totals()
-      expect(totals.rTokenTotal).to.equal(bn(40))
-      expect(totals.rsrTotal).to.equal(bn(60))
+      const [rTokenTotal, rsrTotal] = await distributor.totals()
+      expect(rTokenTotal).to.equal(bn(40))
+      expect(rsrTotal).to.equal(bn(60))
 
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -322,24 +322,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RSR Trader
       await expect(
-        rsrTrader.init(
-          main.address,
-          rsr.address,
-          config.maxTradeSlippage,
-          config.dustAmount,
-          config.maxPriceLatency
-        )
+        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage, config.dustAmount)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken Trader
       await expect(
-        rTokenTrader.init(
-          main.address,
-          rToken.address,
-          config.maxTradeSlippage,
-          config.dustAmount,
-          config.maxPriceLatency
-        )
+        rTokenTrader.init(main.address, rToken.address, config.maxTradeSlippage, config.dustAmount)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Furnace
@@ -741,9 +729,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // By default functions can be run
       await assetRegistry.forceUpdates()
       await basketHandler.checkBasket()
-      await backingManager.manageFunds()
-      await rsrTrader.processToken(token0.address)
-      await rTokenTrader.processToken(token0.address)
+      await backingManager.manageTokens([token0.address])
+      await rsrTrader.manageToken(token0.address)
+      await rTokenTrader.manageToken(token0.address)
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
@@ -754,9 +742,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Attempt to run functions again
-      await expect(backingManager.manageFunds()).to.be.revertedWith('paused')
-      await expect(rsrTrader.processToken(token0.address)).to.be.revertedWith('paused')
-      await expect(rTokenTrader.processToken(token0.address)).to.be.revertedWith('paused')
+      await expect(backingManager.manageTokens([token0.address])).to.be.revertedWith('paused')
+      await expect(rsrTrader.manageToken(token0.address)).to.be.revertedWith('paused')
+      await expect(rTokenTrader.manageToken(token0.address)).to.be.revertedWith('paused')
       await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
     })
   })

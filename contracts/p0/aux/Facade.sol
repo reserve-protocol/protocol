@@ -62,17 +62,10 @@ contract FacadeP0 is Initializable, IFacade {
             }
         }
 
-        main.backingManager().manageFunds();
+        main.backingManager().manageTokens(erc20s);
         for (uint256 i = 0; i < erc20s.length; i++) {
-            // RSRTrader
-            if (address(rsrTrader.trades(erc20s[i])) == address(0)) {
-                rsrTrader.processToken(erc20s[i]);
-            }
-
-            // RTokenTrader
-            if (address(rTokenTrader.trades(erc20s[i])) == address(0)) {
-                rTokenTrader.processToken(erc20s[i]);
-            }
+            rsrTrader.manageToken(erc20s[i]);
+            rTokenTrader.manageToken(erc20s[i]);
         }
     }
 

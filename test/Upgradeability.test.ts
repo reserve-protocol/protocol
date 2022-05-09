@@ -294,9 +294,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newDistributor.deployed()
 
-      const totals = await newDistributor.totals()
-      expect(totals.rsrTotal).equal(bn(60))
-      expect(totals.rTokenTotal).equal(bn(40))
+      const [rTokenTotal, rsrTotal] = await newDistributor.totals()
+      expect(rsrTotal).equal(bn(60))
+      expect(rTokenTotal).equal(bn(40))
       expect(await newDistributor.main()).to.equal(main.address)
     })
 
@@ -320,13 +320,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [
-          main.address,
-          rsr.address,
-          config.maxTradeSlippage,
-          config.dustAmount,
-          config.maxPriceLatency,
-        ],
+        [main.address, rsr.address, config.maxTradeSlippage, config.dustAmount],
         {
           initializer: 'init',
           kind: 'uups',
@@ -545,9 +539,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(distributorV2.address).to.equal(distributor.address)
 
       // Check state is preserved
-      const totals = await distributorV2.totals()
-      expect(totals.rsrTotal).equal(bn(60))
-      expect(totals.rTokenTotal).equal(bn(40))
+      const [rTokenTotal, rsrTotal] = await distributorV2.totals()
+      expect(rsrTotal).equal(bn(60))
+      expect(rTokenTotal).equal(bn(40))
       expect(await distributorV2.main()).to.equal(main.address)
 
       // Check new version is implemented

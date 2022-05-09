@@ -152,16 +152,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   describe('Config/Setup', function () {
     it('Should setup initial distribution correctly', async () => {
       // Configuration
-      const totals = await distributor.totals()
-      expect(totals.rsrTotal).equal(bn(60))
-      expect(totals.rTokenTotal).equal(bn(40))
+      const [rTokenTotal, rsrTotal] = await distributor.totals()
+      expect(rsrTotal).equal(bn(60))
+      expect(rTokenTotal).equal(bn(40))
     })
 
     it('Should allow to set distribution if owner', async () => {
       // Check initial status
-      let totals = await distributor.totals()
-      expect(totals.rsrTotal).equal(bn(60))
-      expect(totals.rTokenTotal).equal(bn(40))
+      const [rTokenTotal, rsrTotal] = await distributor.totals()
+      expect(rsrTotal).equal(bn(60))
+      expect(rTokenTotal).equal(bn(40))
 
       // Attempt to update with another account
       await expect(
@@ -180,9 +180,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         .withArgs(FURNACE_DEST, bn(0), bn(0))
 
       // Check updated status
-      totals = await distributor.totals()
-      expect(totals.rsrTotal).equal(bn(60))
-      expect(totals.rTokenTotal).equal(bn(0))
+      const [newRTokenTotal, newRsrTotal] = await distributor.totals()
+      expect(newRsrTotal).equal(bn(60))
+      expect(newRTokenTotal).equal(bn(0))
     })
 
     it('Should perform distribution validations', async () => {
@@ -1290,11 +1290,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
 
         // Attempt to run auctions
-        await backingManager.manageFunds()
-        await expect(rsrTrader.processToken(aaveToken.address)).to.be.revertedWith(
-          'broker disabled'
-        )
-        await expect(rTokenTrader.processToken(aaveToken.address)).to.be.revertedWith(
+        await backingManager.manageTokens([aaveToken.address])
+        await expect(rsrTrader.manageToken(aaveToken.address)).to.be.revertedWith('broker disabled')
+        await expect(rTokenTrader.manageToken(aaveToken.address)).to.be.revertedWith(
           'broker disabled'
         )
 
@@ -2337,9 +2335,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await backingManager.claimAndSweepRewards()
 
       // Manage Funds
-      await backingManager.manageFunds()
-      await snapshotGasCost(rsrTrader.processToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
+      await backingManager.manageTokens([compToken.address])
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
 
       // Advance time till auctions ended
       await advanceTime(config.auctionLength.add(100).toString())
@@ -2369,8 +2367,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(rTokenTrader.settleTrade(compToken.address))
 
       // Manage Funds
-      await snapshotGasCost(rsrTrader.processToken(compToken.address))
-      await snapshotGasCost(rTokenTrader.processToken(compToken.address))
+      await snapshotGasCost(rsrTrader.manageToken(compToken.address))
+      await snapshotGasCost(rTokenTrader.manageToken(compToken.address))
 
       // Run final auction until all funds are converted
       // Advance time till auction ended

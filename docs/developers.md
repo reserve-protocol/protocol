@@ -290,8 +290,8 @@ The following are functions I'm thinking of as "actions":
 - rToken.cancel()
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
-- backingManager.manageFunds()
-- {rsrTrader,rTokenTrader}.processToken()
+- backingManager.manageTokens()
+- {rsrTrader,rTokenTrader}.manageToken()
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
 
@@ -427,11 +427,3 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
-
-## `maxPriceLatency`
-
-{s}
-
-The max price latency is the maximum number of seconds that the RevenueTraders may allow to elapse without calling `forceUpdates`. If more time has elapsed, the RevenueTraders ought to force an update themselves.
-
-Only applies to the RevenueTraders.

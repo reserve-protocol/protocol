@@ -28,9 +28,9 @@ interface IBackingManager is IComponent, ITrading {
     /// @custom:refresher
     function grantRTokenAllowance(IERC20) external;
 
-    /// Manage backing funds: maintain the overall backing policy
+    /// Mointain the overall backing policy; handout assets otherwise
     /// @custom:action
-    function manageFunds() external;
+    function manageTokens(IERC20[] memory erc20s) external;
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

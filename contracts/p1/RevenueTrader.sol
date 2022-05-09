@@ -17,29 +17,22 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     IERC20 public tokenToBuy;
 
-    uint32 public maxPriceLatency; // {s} how out of date revenue trader permits prices to be
-
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
         int192 maxTradeSlippage_,
-        int192 dustAmount_,
-        uint32 maxPriceLatency_
+        int192 dustAmount_
     ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
         tokenToBuy = tokenToBuy_;
-        maxPriceLatency = maxPriceLatency_;
     }
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @custom:action
-    function processToken(IERC20 erc20) external notPaused nonReentrant {
+    function manageToken(IERC20 erc20) external notPaused nonReentrant {
         if (address(trades[erc20]) != address(0)) return;
-
-        IAssetRegistry reg = main.assetRegistry();
-        if (block.timestamp - reg.lastForceUpdates() > maxPriceLatency) reg.forceUpdates();
 
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
@@ -51,6 +44,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
+        IAssetRegistry reg = main.assetRegistry();
         (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
@@ -58,12 +52,5 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         );
 
         if (launch) tryTrade(trade);
-    }
-
-    // === Setter ===
-
-    function setMaxPriceLatency(uint32 maxPriceLatency_) external onlyOwner {
-        emit MaxPriceLatencySet(maxPriceLatency, maxPriceLatency_);
-        maxPriceLatency = maxPriceLatency_;
     }
 }

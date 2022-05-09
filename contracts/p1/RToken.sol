@@ -220,7 +220,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         main.assetRegistry().forceUpdates();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
-        main.furnace().melt();
         refundOldBasketIssues(account);
         vestUpTo(account, endId);
     }
