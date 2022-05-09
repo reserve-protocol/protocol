@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts/governance/compatibility/GovernorCompatibilityBravo.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
-import "@openzeppelin/contracts/governance/compatibility/GovernorCompatibilityBravo.sol";
 import "@openzeppelin/contracts/governance/Governor.sol";
 
 /*
@@ -26,7 +25,7 @@ contract Governance is
     // functionality for both GovernorVotes + GovernorVotesQuorumFraction, and intimately
     // the details of the InsurancePool.
     constructor(
-        ERC20VotesUpgradeable token_,
+        IVotes token_,
         TimelockController timelock_,
         uint256 votingDelay_, // in blocks
         uint256 votingPeriod_, // in blocks
@@ -41,48 +40,27 @@ contract Governance is
         _votingPeriod = votingPeriod_;
     }
 
-    function votingDelay() public pure override returns (uint256) {
+    function votingDelay() public view override returns (uint256) {
         return _votingDelay;
     }
 
-    function votingPeriod() public pure override returns (uint256) {
+    function votingPeriod() public view override returns (uint256) {
         return _votingPeriod;
     }
 
-    function proposalThreshold() public pure override returns (uint256) {
-        // TODO: Integrate with InsurancePoolVotes
-        return 0e18;
-    }
-
-    // The following functions are overrides required by Solidity.
-
-    function quorum(uint256 blockNumber)
-        public
-        view
-        override(IGovernor, GovernorVotesQuorumFraction)
-        returns (uint256)
-    {
-        // TODO: Integrate with InsurancePoolVotes
-        return super.quorum(blockNumber);
-    }
-
-    function getVotes(address account, uint256 blockNumber)
-        public
-        view
-        override(IGovernor, GovernorVotes)
-        returns (uint256)
-    {
-        // TODO: Integrate with InsurancePoolVotes
-        return super.getVotes(account, blockNumber);
-    }
+    // Do we want a proposal threshold?
+    // function proposalThreshold() public pure override returns (uint256) {
+    //     // TODO: Integrate with InsurancePoolVotes
+    //     return 0e18;
+    // }
 
     function state(uint256 proposalId)
         public
         view
-        override(Governor, IGovernor, GovernorTimelockControl)
+        override(IGovernor, Governor, GovernorTimelockControl)
         returns (ProposalState)
     {
-        return super.state(proposalId);
+        return GovernorTimelockControl.state(proposalId);
     }
 
     function propose(
@@ -90,14 +68,8 @@ contract Governance is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public override(Governor, GovernorCompatibilityBravo, IGovernor) returns (uint256) {
-        // TODO: Add Access Control
-        return super.propose(targets, values, calldatas, description);
-    }
-
-    function cancel(uint256 proposalId) public override {
-        // TODO: Add Access Control
-        super.cancel(proposalId);
+    ) public override(IGovernor, Governor, GovernorCompatibilityBravo) returns (uint256) {
+        return GovernorCompatibilityBravo.propose(targets, values, calldatas, description);
     }
 
     function _execute(
@@ -108,7 +80,7 @@ contract Governance is
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
         // TODO: Maybe require sufficient stake here too?
-        super._execute(proposalId, targets, values, calldatas, descriptionHash);
+        GovernorTimelockControl._execute(proposalId, targets, values, calldatas, descriptionHash);
     }
 
     function _cancel(
@@ -117,7 +89,7 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) returns (uint256) {
-        return super._cancel(targets, values, calldatas, descriptionHash);
+        return GovernorTimelockControl._cancel(targets, values, calldatas, descriptionHash);
     }
 
     function _executor()
@@ -126,7 +98,7 @@ contract Governance is
         override(Governor, GovernorTimelockControl)
         returns (address)
     {
-        return super._executor();
+        return GovernorTimelockControl._executor();
     }
 
     function supportsInterface(bytes4 interfaceId)
