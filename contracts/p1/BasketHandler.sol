@@ -357,10 +357,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
     function goodCollateral(IERC20 erc20) private view returns (bool) {
-        IAssetRegistry reg = main.assetRegistry();
+        if (!main.assetRegistry().isRegistered(erc20)) return false;
+
+        IAsset asset = main.assetRegistry().toAsset(erc20);
         return
-            reg.isRegistered(erc20) &&
-            reg.toAsset(erc20).isCollateral() &&
-            reg.toColl(erc20).status() != CollateralStatus.DISABLED;
+            asset.isCollateral() &&
+            ICollateral(address(asset)).status() != CollateralStatus.DISABLED;
     }
 }

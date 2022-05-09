@@ -56,7 +56,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
   - Baseline: [30508, 215617, 109382]
 
-- `manageFunds` (Market Makers) **Review**
+- `manageTokens` (Market Makers) **Review**
 
   - Calls also `forceUpdates()` and `settleTrades`
   - Baseline: [423404, 5719246, 2049536]
@@ -130,7 +130,7 @@ This doc serves to classify the protocol functions and define acceptable gas tar
 
   - Baseline: [30508, 199250/215417]
 
-- `manageFunds` (Market Makers) **Review**
+- `manageTokens` (Market Makers) **Review**
 
   - Calls also `main.poke` which includes `settleTrades`
   - Baseline: [545344, 2737994/2872593]

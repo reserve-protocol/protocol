@@ -43,7 +43,7 @@ contract MockBackingManager is IBackingManager, ComponentMock {
 
     function grantRTokenAllowance(IERC20) external {}
 
-    function manageFunds() external {}
+    function manageTokens(IERC20[] memory) external {}
 
     /// Settle any auctions that can be settled
     function settleTrade(IERC20) external virtual override {}
