@@ -3687,6 +3687,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       // Register Collateral
       await assetRegistry.connect(owner).register(backupCollateral1.address)
       await assetRegistry.connect(owner).register(backupCollateral2.address)
+      const registeredERC20s = await assetRegistry.erc20s()
 
       // Set backup configuration - USDT and aUSDT as backup
       await basketHandler
@@ -3715,13 +3716,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
-      await snapshotGasCost(backingManager.manageFunds())
+      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
       // Another call should not create any new auctions if still ongoing
       await expect(backingManager.settleTrade(token2.address)).to.be.revertedWith(
         'cannot settle yet'
       )
-      await snapshotGasCost(backingManager.manageFunds())
+      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Assume fair price, get 80% of tokens (20e18), which is more than what we need
@@ -3744,7 +3745,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(token2.address))
-      await snapshotGasCost(backingManager.manageFunds())
+      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
       // Perform Mock Bids for the new Token (addr1 has balance)
       // Assume fair price, get all of them
@@ -3765,7 +3766,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       // Run auctions - First Settle trades then Manage Funds
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
-      await snapshotGasCost(backingManager.manageFunds())
+      await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
       //  Perform Mock Bids for RSR (addr1 has balance)
       // Assume fair price RSR = 1 get all of them - Leave a surplus of RSR to be returned

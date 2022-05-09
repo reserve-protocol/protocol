@@ -49,14 +49,15 @@ contract DistributorP1 is ComponentP1, IDistributor {
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
         {
-            (uint256 rTokenTotal, uint256 rsrTotal) = totals();
-            uint256 totalShares = isRSR ? rsrTotal : rTokenTotal;
+            RevenueTotals memory revTotals = totals();
+            uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
             tokensPerShare = amount / totalShares;
         }
 
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
-
+        address furnace = address(main.furnace());
+        address stRSR = address(main.stRSR());
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
@@ -67,21 +68,21 @@ contract DistributorP1 is ComponentP1, IDistributor {
             uint256 transferAmt = tokensPerShare * numberOfShares;
 
             if (addrTo == FURNACE) {
-                addrTo = address(main.furnace());
+                addrTo = furnace;
             } else if (addrTo == ST_RSR) {
-                addrTo = address(main.stRSR());
+                addrTo = stRSR;
             }
             IERC20Upgradeable(address(erc20)).safeTransferFrom(from, addrTo, transferAmt);
         }
     }
 
     /// Returns the rsr + rToken shareTotals
-    function totals() public view returns (uint256 rTokenTotal, uint256 rsrTotal) {
+    function totals() public view returns (RevenueTotals memory revTotals) {
         uint256 length = destinations.length();
         for (uint256 i = 0; i < length; ++i) {
             RevenueShare storage share = distribution[destinations.at(i)];
-            rTokenTotal += share.rTokenDist;
-            rsrTotal += share.rsrDist;
+            revTotals.rTokenTotal += share.rTokenDist;
+            revTotals.rsrTotal += share.rsrDist;
         }
     }
 

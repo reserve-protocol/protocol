@@ -9,6 +9,12 @@ struct RevenueShare {
     uint16 rsrDist; // {revShare} A value between [0, 10,000]
 }
 
+/// Assumes no more than 1024 independent distributions.
+struct RevenueTotals {
+    uint24 rTokenTotal; // {revShare}
+    uint24 rsrTotal; // {revShare}
+}
+
 /**
  * @title IDistributor
  * @notice The Distributor Component maintains a revenue distribution table that dictates
@@ -34,10 +40,8 @@ interface IDistributor is IComponent {
         uint256 amount
     ) external;
 
-    /// @return rTokenTotal {revShare} The total of all RToken destinations
-    /// @return rsrTotal {revShare} The total of all RSR destinations
-    ///     These are both uint24s, assuming no more than 1024 independent distributions.
-    function totals() external view returns (uint256 rTokenTotal, uint256 rsrTotal);
+    /// @return revTotals The total of all  destinations
+    function totals() external view returns (RevenueTotals memory revTotals);
 }
 
 interface TestIDistributor is IDistributor {
