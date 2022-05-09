@@ -1663,5 +1663,28 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Transfer back
       await snapshotGasCost(stRSR.connect(addr2).transfer(addr1.address, amount))
     })
+    it('Unstake', async function () {
+      // Unstake
+      await snapshotGasCost(stRSR.connect(addr1).unstake(amount.div(2)))
+      await snapshotGasCost(stRSR.connect(addr1).unstake(amount.div(2)))
+    })
+    it('Withdraw', async function () {
+      // Unstake
+      await stRSR.connect(addr1).unstake(amount.div(2))
+      await stRSR.connect(addr1).unstake(amount.div(2))
+
+      // Check withdrawal properly registered
+      await expectWithdrawal(addr1.address, 0, { rsrAmount: amount.div(2) })
+      await expectWithdrawal(addr1.address, 1, { rsrAmount: amount.div(2) })
+
+      // Advance timestamp
+      await setNextBlockTimestamp(
+        (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
+      )
+
+      // Withdraw
+      await snapshotGasCost(stRSR.connect(addr1).withdraw(addr1.address, 1))
+      await snapshotGasCost(stRSR.connect(addr1).withdraw(addr1.address, 2))
+    })
   })
 })
