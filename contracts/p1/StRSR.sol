@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -13,12 +12,17 @@ import "contracts/p1/mixins/Component.sol";
 
 /*
  * @title StRSRP1
- * @notice The StRSR is where people can stake their RSR in order to provide insurance and
- * benefit from the supply expansion of an RToken.
+ * @notice StRSR is an ERC20 token contract that allows people to stake their RSR as insurance
+ *   behind an RToken. As compensation stakers receive a share of revenues in the form of RSR.
+ *   Balances are generally non-rebasing. As rewards are paid out StRSR becomes redeemable for
+ *   increasing quantities of RSR.
  *
- * There's an important assymetry in the StRSR. When RSR is added, it must be split only
- * across non-withdrawing stakes, while when RSR is seized, it must be seized from both
- * stakes that are in the process of being withdrawn and those that are not.
+ * The one time that StRSR will rebase is if the entirety of insurance RSR is seized. If this
+ *   happens, users balances are zereod out and StRSR is re-issued at a 1:1 exchange rate with RSR
+ *
+ * There's an important assymetry in StRSR: when RSR is added it must be split only
+ *   across non-withdrawing stakes, while when RSR is seized it is seized uniformly from both
+ *   stakes that are in the process of being withdrawn and those that are not.
  */
 // solhint-disable max-states-count
 contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
@@ -104,9 +108,41 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
-        // Process pending withdrawals
         payoutRewards();
-        _unstake(account, stakeAmount);
+
+        // Compute draft and RSR amounts
+        uint256 rsrAmount = mulDiv256(stakeAmount, stakeRSR, totalStakes);
+        uint256 draftAmount = draftRSR == 0
+            ? rsrAmount
+            : mulDiv256(rsrAmount, totalDrafts, draftRSR);
+
+        // Reduce stake balance
+        stakes[era][account] -= stakeAmount;
+        totalStakes -= stakeAmount;
+        stakeRSR -= rsrAmount;
+
+        // Increase draft balance
+        totalDrafts += draftAmount;
+        draftRSR += rsrAmount;
+
+        // Push drafts into account's draft queue
+        CumulativeDraft[] storage queue = draftQueues[era][account];
+        uint256 index = queue.length;
+
+        uint256 oldDrafts = index > 0 ? queue[index - 1].drafts : 0;
+        uint256 lastAvailableAt = index > 0 ? queue[index - 1].availableAt : 0;
+        uint256 availableAt = block.timestamp + unstakingDelay;
+        if (lastAvailableAt > availableAt) availableAt = lastAvailableAt;
+
+        queue.push(CumulativeDraft(oldDrafts + draftAmount, availableAt));
+        emit UnstakingStarted(
+            index,
+            era,
+            account,
+            rsrAmount,
+            stakeAmount,
+            draftQueues[era][account][index].availableAt
+        );
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
@@ -283,46 +319,10 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     }
 
     /// Execute the move of `stakeAmount` from stake to draft, for `account`
-    function _unstake(address account, uint256 stakeAmount) internal {
-        // Compute draft and RSR amounts
-        //    (dividing out totalStakes, before multiplying by totalDrafts, is necessary here
-        //    to avoid overflow, possibly at the cost of some precision)
-        //    (We should use uint256 muldiv here, instead!)
-        uint256 rsrAmount = (stakeAmount * stakeRSR) / totalStakes;
-        uint256 draftAmount = (draftRSR == 0) ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
-
-        // Reduce stake balance
-        stakes[era][account] -= stakeAmount;
-        totalStakes -= stakeAmount;
-        stakeRSR -= rsrAmount;
-
-        // Increase draft balance
-        totalDrafts += draftAmount;
-        draftRSR += rsrAmount;
-
-        // Push drafts into account's draft queue
-        uint256 index = draftQueues[era][account].length;
-        pushDrafts(account, draftAmount);
-        emit UnstakingStarted(
-            index,
-            era,
-            account,
-            rsrAmount,
-            stakeAmount,
-            draftQueues[era][account][index].availableAt
-        );
-    }
+    function _unstake(address account, uint256 stakeAmount) internal {}
 
     /// Add a cumulative draft to account's draft queue (from the current time).
-    function pushDrafts(address account, uint256 draftAmount) internal {
-        CumulativeDraft[] storage queue = draftQueues[era][account];
-
-        uint256 oldDrafts = queue.length > 0 ? queue[queue.length - 1].drafts : 0;
-        uint256 lastAvailableAt = queue.length > 0 ? queue[queue.length - 1].availableAt : 0;
-        uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
-
-        queue.push(CumulativeDraft(oldDrafts + draftAmount, availableAt));
-    }
+    function pushDrafts(address account, uint256 draftAmount) internal {}
 
     // ==== end Internal Functions ====
 
