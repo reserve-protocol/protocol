@@ -4,11 +4,11 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p1/mixins/Component.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p1/mixins/Component.sol";
 
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket

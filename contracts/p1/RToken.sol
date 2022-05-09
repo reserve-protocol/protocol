@@ -7,8 +7,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20Pe
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
@@ -23,7 +21,6 @@ import "contracts/p1/mixins/RewardableLib.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
-    using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 

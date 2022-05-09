@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Pausable.sol";
 
@@ -16,8 +14,6 @@ import "contracts/p0/mixins/Pausable.sol";
  */
 // solhint-disable max-states-count
 contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable, IMain {
-    using FixLib for int192;
-
     IERC20 public rsr;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

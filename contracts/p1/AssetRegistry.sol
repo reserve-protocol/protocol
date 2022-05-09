@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p1/mixins/Component.sol";
 
