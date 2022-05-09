@@ -114,18 +114,32 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function withdraw(address account, uint256 endId) external notPaused nonReentrant {
         main.assetRegistry().forceUpdates();
 
-        // TODO gas optimize
-
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
+        uint256 firstId = firstRemainingDraft[era][account];
         CumulativeDraft[] storage queue = draftQueues[era][account];
-        if (endId == 0) return;
-        require(endId <= queue.length, "index out-of-bounds");
+        if (endId == 0 || firstId >= endId) return;
 
+        require(endId <= queue.length, "index out-of-bounds");
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
-        _withdraw(account, endId);
+
+        uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint256 draftAmount = queue[endId - 1].drafts - oldDrafts;
+
+        // advance queue past withdrawal
+        firstRemainingDraft[era][account] = endId;
+
+        // Compute RSR amount and transfer it from the draft pool
+        uint256 rsrAmount = (draftAmount * draftRSR) / totalDrafts;
+        if (rsrAmount == 0) return;
+
+        totalDrafts -= draftAmount;
+        draftRSR -= rsrAmount;
+
+        emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+        IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
@@ -297,30 +311,6 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             stakeAmount,
             draftQueues[era][account][index].availableAt
         );
-    }
-
-    /// Execute the completion of all drafts,
-    /// from firstRemainingDraft[era][account] up to (but not including!) endId
-    function _withdraw(address account, uint256 endId) internal {
-        uint256 firstId = firstRemainingDraft[era][account];
-        if (firstId >= endId) return;
-
-        CumulativeDraft[] storage queue = draftQueues[era][account];
-        uint256 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
-        uint256 draftAmount = queue[endId - 1].drafts - oldDrafts;
-
-        // advance queue past withdrawal
-        firstRemainingDraft[era][account] = endId;
-
-        // Compute RSR amount and transfer it from the draft pool
-        uint256 rsrAmount = (draftAmount * draftRSR) / totalDrafts;
-        if (rsrAmount == 0) return;
-
-        totalDrafts -= draftAmount;
-        draftRSR -= rsrAmount;
-
-        emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
-        IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
     /// Add a cumulative draft to account's draft queue (from the current time).
