@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "contracts/interfaces/IMain.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBackingManager.sol";
 import "contracts/interfaces/IRewardable.sol";
 
 /**

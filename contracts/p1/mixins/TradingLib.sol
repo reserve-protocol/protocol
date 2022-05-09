@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 

@@ -2,14 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/p1/mixins/Component.sol";
+import "contracts/plugins/trading/GnosisTrade.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {

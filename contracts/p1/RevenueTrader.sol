@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
@@ -13,7 +12,6 @@ import "contracts/p1/mixins/TradingLib.sol";
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     using FixLib for int192;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IERC20 public tokenToBuy;
 
