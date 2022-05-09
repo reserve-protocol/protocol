@@ -17,8 +17,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
-    uint32 public lastForceUpdates; // {s} last time forceUpdates was called on this set of ERC20s
-
     function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
         uint256 length = assets_.length;
@@ -31,7 +29,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function forceUpdates() public {
         // nonReentrant not required: state updates are before external calls
         uint256 length = _erc20s.length();
-        lastForceUpdates = uint32(block.timestamp);
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
             if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
@@ -42,7 +39,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// @return If the asset was moved from unregistered to registered
     function register(IAsset asset) external onlyOwner returns (bool) {
         // nonReentrant not required: only external call terminates within main's security domain
-        lastForceUpdates = 0;
         return _register(asset);
     }
 

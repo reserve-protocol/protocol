@@ -320,13 +320,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [
-          main.address,
-          rsr.address,
-          config.maxTradeSlippage,
-          config.dustAmount,
-          config.maxPriceLatency,
-        ],
+        [main.address, rsr.address, config.maxTradeSlippage, config.dustAmount],
         {
           initializer: 'init',
           kind: 'uups',

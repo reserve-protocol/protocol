@@ -38,9 +38,6 @@ struct DeploymentParams {
     int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
     int192 dustAmount; // {UoA} value below which it is not worth wasting time trading
     //
-    // === RevenueTrader ===
-    uint32 maxPriceLatency; // {s} how out of date revenue trader permits prices to be
-    //
     // === RToken ===
     int192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
 }
