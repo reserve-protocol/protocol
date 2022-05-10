@@ -1,214 +1,174 @@
 # Gas Targets
 
-This doc serves to classify the protocol functions and define acceptable gas targets for each of them. It also includes the initial gas measurements before doing any optimizations (baseline), and the final measurements after performing gas optimizations on the Production version. Gas optimizations and targets are defined for the Production version (P1).
+This document serves to classify the protocol functions and define acceptable gas targets for each of them. It also includes the gas measurements for each of these functions in the Production version (P1)
 
-- Format:
-  - Baseline [min, max, average/common]
-  - Target
-  - Final Measurement [min, max, average/common]
+- Format (Gas Costs):
+  - Gas: [min, max, average]
 
 ## Classes
 
-- Refreshers/Keepers (e.g. forceUpdates)
-- Economic stabilization actions by whales (issuance, redemption, launching/settling auctions)
-- Individual user actions (transfers, approvals, staking/unstaking)
-- Governance actions (register assets, basket switching, configuring prime basket)
+- Refreshers/Keepers (e.g. `forceUpdates`)
+- Economic stabilization actions by whales (`issuance`, `redemption`, `launching/settling auctions`)
+- Individual user actions (`transfers`, `approvals`, `staking/unstaking`)
+- Governance actions (`register assets`, `basket switching`, `configuring prime basket`)
 - Deployment/Upgrade
 
-## Interfaces
+## Gas Costs
 
 ### Deployer
 
-- `deploy` (Governance) **Review**
-  - Baseline: [9284946]
+- `deploy` (Governance)
+  - Gas: [4843637]
 
 ### Collateral
 
-- `forceUpdates` (Many) **Review**
-  - Baseline:
-    - AavePricedFiatCollateral [23396, 67362, 57742]
-    - ATokenFiatCollateral [23418, 76460, 50521]
-    - CTokenFiatCollateral [23373, 63609, 47501]
+- `forceUpdates`
+  - Gas:
+    - AavePricedFiatCollateral [23395, 78546, 65227]
+    - ATokenFiatCollateral [23395, 89772, 56274]
+    - CTokenFiatCollateral [23417, 75058, 53482]
 
 ### Asset Registry
 
 - `register` (Governance)
-
-  - Baseline: [50246, 121502, 120940]
-
+  - Gas: [87190, 175504, 174773]
+  
 - `swapRegistered` (Governance)
-
-  - Baseline: [326698, 531997, 380595]
-  - Mainly depends on `basketHandler.forceUpdates`
+  - Gas: [359269, 511253, 389352]
+  - Calls `basketHandler.forceUpdates`
+  - Can trigger switch basket
 
 - `unregister` (Governance)
+  - Gas: [217296, 749472, 474155]
+  - Calls `basketHandler.forceUpdates`
+  - Can trigger switch basket
 
-  - Baseline: [264179, 698522, 433002]
-  - Mainly depends on `basketHandler.forceUpdates`
-
-- `forceUpdates` (Market Makers) **Review**
-  - Baseline: [207544] (when no action required - four assets)
+- `forceUpdates`
+  - Gas: [193810, 575750, 372563] (reference: 4 tokens in basket)
   - Aggregator of `forceUpdates` on each collateral
 
 ### BackingManager
 
-- `settleTrades` (Market Makers) **Review**
+- `settleTrade`
+  - Gas: [31257, 205038, 148871]
 
-  - Baseline: [30508, 215617, 109382]
-
-- `manageTokens` (Market Makers) **Review**
-
-  - Calls also `forceUpdates()` and `settleTrades`
-  - Baseline: [423404, 5719246, 2049536]
-
-- `grantRTokenAllowance` (Market Makers) **Review**
-
-  - Baseline: [362467]
-  - Can be done for each specific asset only when required?
-
-- `claimAndSweepRewards` (Market Makers) **Review**
-  - Baseline: [184706, 474923, 255114]
+- `manageTokens`
+  - Gas: [47495, 3196066, 1566374]
+  - Calls `forceUpdates`
+  - Triggers auctions
+ 
+- `claimAndSweepRewards`
+  - Gas: [225454, 541129, 297154]
 
 ### BasketHandler
 
-- `checkBasket` (Market Makers) **Review**
+- `checkBasket`
+  - Gas: [115120, 605216, 369841]
+  - Can trigger switch basket
 
-  - Baseline: TODO
+- `setPrimeBasket` (Governance)
+  - Gas: [57228, 590605, 266086]
 
-- `setPrimeBasket` (Governance) **Review**
-
-  - Baseline: [57570, 570395, 257586]
-
-- `switchBasket` (Governance) **Review**
-  - Baseline [301208, 1263318, 672295]
-
+- `switchBasket`
+  - Gas [331098, 1329651, 716447]
+  
 ### Broker and GnosisTrade
 
-- `openTrade` (Market Makers) **Review**
-
-  - Baseline: [2078983, 2089764, 2083742]
-  - Final Measurement [514839, 525621, 522007]
+- `openTrade`
+  - Gas: [518372, 529142, 523139]
   - Includes `trade.init`
 
-- `init` trade (Market Makers) **Review**
+- `init` trade
+  - Gas: [430587]
+  - Calls `gnosis.initiateAuction`
 
-  - Baseline: [423211, 423211, 423211]
-  - Calls `gnosis.initiateAuction` which is out of our scope
-
-- `settle` trade (Market Makers) **Review**
-  - Baseline: [116512, 133239, 123465]
+- `settle` trade
+  - Gas: [114743, 131028, 121430]
 
 ### Distributor
 
-- `distribute` (Market Makers) **Review**
-
-  - Baseline: [90235]
+- `distribute`
+  - Gas: [93924]
 
 - `setDistribution` (Governance)
-  - Baseline: [44100, 113597, 49806]
+  - Gas: [44070, 113567, 49776]
 
 ### Furnace
 
 - `init` (Governance)
-
-  - Baseline: [141965, 181885, 168570]
-  - Final Measurement [117729, 137737, 131064]
-
-- `melt` (Market Makers)
-  - Baseline: [30452, 96981, 72809-83756]
-  - Final Measurement [28396, 93267, 62627-75288]
-
-### Main
-
-- `poke` (Market Makers) **Review**
-  - Baseline: [398979]
-  - Aggregator of other functions
+  - Gas: [118982, 138990, 132317]
+ 
+- `melt`
+  - Gas [28452, 80709, 60733]
 
 ### RevenueTrader
 
-- `settleTrades` (Market Makers) **Review**
+- `manageToken`
+  - Gas: [49362, 985385, 524081]
+  - Triggers auctions
 
-  - Baseline: [30508, 199250/215417]
-
-- `manageTokens` (Market Makers) **Review**
-
-  - Calls also `main.poke` which includes `settleTrades`
-  - Baseline: [545344, 2737994/2872593]
-
-- `claimAndSweepRewards` (Market Makers) **Review**
-  - Baseline: [492814, 522568]
+- `claimAndSweepRewards`
+  - Gas: [244517, 306066]
 
 ### RToken
 
-- `claimAndSweepRewards` (Market Makers) **Review**
+- `issue`
+  - Gas: [562655, 1645260, 960430]
+  - Calls `forceUpdates` and `melt`
 
-  - Baseline: [499815, 529571]
+- `vest`
+  - Gas: [346539, 1047371, 752171]
+  - Calls `forceUpdates`
 
-- `issue` (Individuals/ Market Makers) **Review**
-
-  - Baseline: [759837, 1363502, 1155332]
-  - Calls `forceUpdates()` and `melt`
-
-- `vest` (Individuals/ Market Makers) **Review**
-
-  - Baseline: [408167, 750828, 481850]
-  - Calls `forceUpdates()` and `melt`
-
-- `redeem` (Individuals/ Market Makers) **Review**
-
-  - Baseline: [746759, 934759, 794981]
-  - Calls `forceUpdates()` and `melt`
-  - Calls `grantRTokenAllowances()`
-
-- `cancel` (Individuals/ Market Makers) **Review**
-
-  - Baseline: [34562, 130374, 110398]
+- `redeem`
+  - Gas: [512864, 541664, 516982]
+  - Calls `forceUpdates` and `checkbasket`
+ 
+- `cancel`
+  - Gas: [46523, 142921, 122828]
 
 - `transfer` (Individuals)
-  - Baseline: [33679, 56475, 45803]
+  - Gas: [34564, 56464]
 
 ### StRSR
 
-- `payoutRewards` (Market Makers) **Review**
-
-  - Baseline: [69305, 104109, 80488]
-
-- `transfer` (Individuals)
-
-  - Baseline: [35192, 57092, 52304]
-
 - `stake` (Individuals)
-
-  - Baseline: [86422, 159269, 133636]
+  - Gas: [85941, 158788, 134784]
   - Calls `payoutRewards`
 
 - `unstake` (Individuals)
-
-  - Baseline: [423144, 502301, 471425]
-  - Calls `payoutRewards` and `assetRegistry.forceUpdates()`
+  - Gas: [118022, 203689, 173293]
+  - Calls `payoutRewards`
 
 - `withdraw` (Individuals)
+  - Gas: [476325, 537233, 521004]
+  - Calls `forceUpdates`
 
-  - Baseline: [336290, 416929, 404738]
+- `payoutRewards`
+  - Gas: [69130, 98607, 81777]
+
+- `transfer` (Individuals)
+  - Baseline: [35212, 57112]
 
 - `seizeRSR` (Market Makers)
-  - Baseline: [99363, 105857, 100912]
+  - Baseline: [129593, 134440, 131261]
 
 ## Deployment Costs
 
-- Baseline:
-  - AavePricedFiatCollateral 1258480
-  - AssetRegistryP1 2347379
-  - ATokenFiatCollateral 1512175
-  - BackingManagerP1 5744015
-  - BasketHandlerP1 4125573
-  - BrokerP1 2982722
-  - CTokenFiatCollateral 1538977
-  - DeployerP1 6695861
-  - DistributorP1 1669152
-  - FurnaceP1 1630722
-  - MainP1 2228797
-  - RevenueTraderP1 3332521
-  - RTokenP1 5826929
-  - StRSRP1 4318488
-  - TradingLibP1 1992264
+- Gas:
+  - AavePricedFiatCollateral: 1647534
+  - AssetRegistryP1:          2247014
+  - ATokenFiatCollateral:     1823787
+  - BackingManagerP1:         4440543
+  - BasketHandlerP1:          3768906
+  - BrokerP1:                 1511071
+  - CTokenFiatCollateral:     1784274
+  - DeployerP1:               2620070
+  - DistributorP1:            1560163
+  - FurnaceP1:                1525569
+  - MainP1:                   1740594
+  - RevenueTraderP1:          2333403
+  - RTokenP1:                 5357520
+  - StRSRP1:                  4947202
+  - TradingLibP1:             2819880
+  - RewardableLibP1:          836069
