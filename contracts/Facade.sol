@@ -12,14 +12,14 @@ import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title FacadeP0
+ * @title Facade
  * @notice A UX-friendly layer for non-governance protocol interactions
  *
  * @dev
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Just expose a abstraction layer for getting protocol view data
  */
-contract FacadeP0 is Initializable, IFacade {
+contract Facade is Initializable, IFacade {
     using FixLib for int192;
 
     MainP0 public main;

@@ -20,7 +20,7 @@ import {
   CTokenMock,
   TestIDistributor,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   GnosisTrade,
   TestIStRSR,
   TestIMain,
@@ -63,7 +63,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let stRSR: TestIStRSR
   let rToken: TestIRToken
   let main: TestIMain
-  let facade: FacadeP0
+  let facade: Facade
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler

@@ -14,7 +14,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   GnosisMock,
   IBasketHandler,
   StaticATokenMock,
@@ -79,7 +79,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
-  let facade: FacadeP0
+  let facade: Facade
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler

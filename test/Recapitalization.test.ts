@@ -12,7 +12,7 @@ import {
   ComptrollerMock,
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   GnosisMock,
   IBasketHandler,
   StaticATokenMock,
@@ -78,7 +78,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
   let stRSR: TestIStRSR
-  let facade: FacadeP0
+  let facade: Facade
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler

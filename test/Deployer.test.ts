@@ -9,7 +9,7 @@ import {
   Asset,
   ComptrollerMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   GnosisMock,
   IBasketHandler,
   RTokenAsset,
@@ -52,7 +52,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
-  let facade: FacadeP0
+  let facade: Facade
 
   // Core contracts
   let rToken: TestIRToken

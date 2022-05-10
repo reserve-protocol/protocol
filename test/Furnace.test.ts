@@ -72,8 +72,6 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   }
 
   before('create fixture loader', async () => {
-    // Reset network for clean execution
-    await hre.network.provider.send('hardhat_reset')
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })

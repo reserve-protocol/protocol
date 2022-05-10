@@ -13,7 +13,7 @@ import {
   CTokenMock,
   ComptrollerMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   IBasketHandler,
   RTokenP0,
   RTokenP1,
@@ -80,7 +80,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
-  let facade: FacadeP0
+  let facade: Facade
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
