@@ -20,9 +20,11 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
-    // solhint-disable-next-line no-empty-blocks
     function poke() external virtual {
-        // TODO remove? only adds extra bytecode to deployment, might be okay
+        // We think these are totally order-independent.
+        assetRegistry.forceUpdates();
+        furnace.melt();
+        if (!paused) stRSR.payoutRewards();
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {

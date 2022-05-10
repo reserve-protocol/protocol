@@ -16,11 +16,6 @@ abstract contract Pausable is OwnableUpgradeable, IPausable {
         paused = true;
     }
 
-    modifier notPaused() {
-        require(!paused, "paused");
-        _;
-    }
-
     function pause() external {
         require(_msgSender() == _pauser || _msgSender() == owner(), "only pauser or owner");
         emit PausedSet(paused, true);
