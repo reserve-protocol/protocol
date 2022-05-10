@@ -9,7 +9,7 @@ import {
   AaveOracleMock,
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   IBasketHandler,
   StRSRP0,
   StRSRP1,
@@ -54,7 +54,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rToken: TestIRToken
-  let facade: FacadeP0
+  let facade: Facade
 
   // StRSR
   let stRSR: TestIStRSR

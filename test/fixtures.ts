@@ -24,7 +24,7 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
-  FacadeP0,
+  Facade,
   DistributorP1,
   FurnaceP1,
   GnosisMock,
@@ -374,7 +374,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: FacadeP0
+  facade: Facade
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -507,8 +507,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     )
 
     // Facade - Can use dummy data in constructor as only logic will be used
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP0')
-    const facadeImpl: FacadeP0 = <FacadeP0>await FacadeFactory.deploy(ZERO_ADDRESS)
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+    const facadeImpl: Facade = <Facade>await FacadeFactory.deploy(ZERO_ADDRESS)
 
     // Setup Implementation addresses
     const implementations: IImplementations = {
@@ -598,7 +598,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
-  const facade: FacadeP0 = <FacadeP0>await ethers.getContractAt('FacadeP0', facadeAddr)
+  const facade: Facade = <Facade>await ethers.getContractAt('Facade', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(

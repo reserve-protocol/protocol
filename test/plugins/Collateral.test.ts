@@ -15,7 +15,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -64,7 +64,7 @@ describe('Collateral contracts', () => {
   let backingManager: TestIBackingManager
 
   // Facade
-  let facade: FacadeP0
+  let facade: Facade
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet

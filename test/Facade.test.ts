@@ -7,7 +7,7 @@ import { bn, fp } from '../common/numbers'
 import {
   CTokenMock,
   ERC20Mock,
-  FacadeP0,
+  Facade,
   StaticATokenMock,
   TestIMain,
   TestIRToken,
@@ -18,7 +18,7 @@ import { Collateral, defaultFixture } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe('FacadeP0 contract', () => {
+describe('Facade contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -42,7 +42,7 @@ describe('FacadeP0 contract', () => {
   let cTokenAsset: Collateral
 
   // Facade
-  let facade: FacadeP0
+  let facade: Facade
 
   // Main
   let main: TestIMain
