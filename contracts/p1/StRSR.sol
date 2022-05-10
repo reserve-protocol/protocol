@@ -131,26 +131,30 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
         payoutRewards();
+        uint256 rsrAmount;
+        uint256 draftAmount;
 
         // ==== Compute changes to balances and totals
         // rsrAmount: how many RSR to move from the stake pool to the draft pool
         // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
-        uint newTotalStakes = totalStakes - stakeAmount;
-        uint newStakeRSR = toFix(newTotalStakes).div(stakeRate).toUint(); // TODO: use less gas
-        uint rsrAmount = stakeRSR - newStakeRSR;
+        totalStakes -= stakeAmount;
+        {
+            uint256 newStakeRSR = toFix(totalStakes).div(stakeRate).toUint(); // TODO: use less gas
+            rsrAmount = stakeRSR - newStakeRSR;
+            stakeRSR = newStakeRSR;
+        }
 
         // draftAmount: how many drafts to create and assign to the user
         // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
-        uint newDraftRSR = rsrAmount + draftRSR;
-        uint newTotalDrafts = draftRate.mulu(newDraftRSR).toUint(); // TODO: use less gas
-        uint draftAmount = newTotalDrafts - totalDrafts;
+        draftRSR += rsrAmount;
+        {
+            uint256 newTotalDrafts = draftRate.mulu(draftRSR).toUint(); // TODO: use less gas
+            draftAmount = newTotalDrafts - totalDrafts;
+            totalDrafts = newTotalDrafts;
+        }
 
-        // ==== Reduce stake balance and increase draft balance
+        // ==== Reduce stake balance
         stakes[era][account] -= stakeAmount;
-        totalStakes = newTotalStakes;
-        stakeRSR = newStakeRSR;
-        totalDrafts = newTotalDrafts;
-        draftRSR = newDraftRSR;
 
         // Push drafts into account's draft queue
         CumulativeDraft[] storage queue = draftQueues[era][account];
