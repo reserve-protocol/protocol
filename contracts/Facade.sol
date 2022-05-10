@@ -8,7 +8,6 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/Main.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -22,21 +21,20 @@ import "contracts/libraries/Fixed.sol";
 contract Facade is Initializable, IFacade {
     using FixLib for int192;
 
-    MainP0 public main;
+    IMain public main;
 
-    constructor(address main_) {
+    constructor(IMain main_) {
         init(main_);
     }
 
-    function init(address main_) public initializer {
-        main = MainP0(main_);
+    function init(IMain main_) public initializer {
+        main = main_;
     }
 
     /// Prompt all traders to run auctions
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
     /// @custom:action
     function runAuctionsForAllTraders() external {
-        main.poke();
         IBackingManager backingManager = main.backingManager();
         IRevenueTrader rsrTrader = main.rsrTrader();
         IRevenueTrader rTokenTrader = main.rTokenTrader();

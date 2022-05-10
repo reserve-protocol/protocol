@@ -149,7 +149,7 @@ contract DeployerP0 is IDeployer {
         main.transferOwnership(owner);
 
         // Facade
-        IFacade facade = new Facade(address(main));
+        IFacade facade = new Facade(main);
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));
     }
