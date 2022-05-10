@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Pausable.sol";
+import "contracts/Pausable.sol";
 
 /**
  * @title Main

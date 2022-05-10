@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "contracts/Facade.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
@@ -18,7 +19,6 @@ import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/assets/AavePricedAsset.sol";
 import "contracts/plugins/assets/CompoundPricedAsset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/p0/aux/Facade.sol";
 import "contracts/p1/Main.sol";
 
 /**
@@ -214,7 +214,7 @@ contract DeployerP1 is IDeployer {
         main.transferOwnership(owner);
 
         // Facade
-        FacadeP0 facade = FacadeP0(address(implementations.facade).clone());
+        Facade facade = Facade(address(implementations.facade).clone());
         facade.init(address(main));
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));
