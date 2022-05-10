@@ -98,9 +98,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
         //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
-        uint256 stakeAmount = (stakeRSR == 0)
-            ? rsrAmount
-            : mulDiv256(rsrAmount, totalStakes, stakeRSR);
+        uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
 
         address account = _msgSender();
         // Add to stakeAmount to stakes
@@ -126,9 +124,9 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
         // Compute draft and RSR amounts
         uint256 rsrAmount = mulDiv256(stakeAmount, stakeRSR, totalStakes);
-        uint256 draftAmount = draftRSR == 0
-            ? rsrAmount
-            : mulDiv256(rsrAmount, totalDrafts, draftRSR);
+
+        // This is not an overflow risk according to our expected ranges
+        uint256 draftAmount = draftRSR == 0 ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
 
         // Reduce stake balance
         stakes[era][account] -= stakeAmount;
@@ -193,9 +191,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     }
 
     /// @param rsrAmount {qRSR}
-    /// seizedRSR might be dust-larger than rsrAmount due to rounding.
-    /// seizedRSR might be smaller than rsrAmount if we're out of RSR.
-    function seizeRSR(uint256 rsrAmount) external nonReentrant {
+    /// Must always seize exactly `rsrAmount`, or revert
+    function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -204,8 +201,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         if (rsrBalance == 0) return;
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 allStakes = totalDrafts + totalStakes; // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
+        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(totalDrafts + totalStakes); // {qRSR}
 
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {
@@ -232,10 +228,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             seizedRSR += draftRSRToTake;
 
             // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            seizedRSR += rewardsToTake;
-
-            assert(rsrAmount <= seizedRSR);
+            seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
         }
 
         // Transfer RSR to caller
@@ -246,19 +239,17 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// Assign reward payouts to the staker pool
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
-    function payoutRewards() public {
+    function payoutRewards() public notPaused {
         // nonReentrant not required: no external calls in this function
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         int192 initialExchangeRate = exchangeRate();
-
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
-
         // Apply payout to RSR backing
-        stakeRSR += payout;
+        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+
+        stakeRSR += payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
@@ -292,8 +283,9 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         // Otherwise, there *are* drafts with left <= index < right and availableAt <= time.
         // Binary search, keeping true that (queue[left].availableAt <= time) and
         //   (right == queue.length or queue[right].availableAt > time)
+        uint256 test;
         while (left < right - 1) {
-            uint256 test = (left + right) / 2;
+            test = (left + right) / 2;
             if (queue[test].availableAt <= time) left = test;
             else right = test;
         }
@@ -306,25 +298,6 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function rsrRewards() internal view returns (uint256) {
         return main.rsr().balanceOf(address(this)) - stakeRSR - draftRSR;
     }
-
-    /* On staking R RSR, you get R * (totalStakes/stakeRSR) stakes
-       On unstaking S stakes, you get S * (stakeRSR/totalStakes) * (totalDrafts/draftRSR) drafts
-       On withdrawing D drafts, you get D * (draftRSR/totalDrafts) RSR
-
-       Each conversion rate is taken to be 1 if its denominator is 0 -- this is fine, because that's
-       setting the rate in the first place.
-     */
-
-    /// Execute the staking of `rsrAmount` RSR for `account`
-    function _stake(address account, uint256 rsrAmount) internal {}
-
-    /// Execute the move of `stakeAmount` from stake to draft, for `account`
-    function _unstake(address account, uint256 stakeAmount) internal {}
-
-    /// Add a cumulative draft to account's draft queue (from the current time).
-    function pushDrafts(address account, uint256 draftAmount) internal {}
-
-    // ==== end Internal Functions ====
 
     // ==== ERC20 Overrides ====
 

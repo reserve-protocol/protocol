@@ -1663,6 +1663,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Transfer back
       await snapshotGasCost(stRSR.connect(addr2).transfer(addr1.address, amount))
     })
+    it('Stake', async function () {
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stRSR.address, amount.mul(2))
+
+      await snapshotGasCost(stRSR.connect(addr1).stake(amount))
+      await snapshotGasCost(stRSR.connect(addr1).stake(amount))
+    })
     it('Unstake', async function () {
       // Unstake
       await snapshotGasCost(stRSR.connect(addr1).unstake(amount.div(2)))
