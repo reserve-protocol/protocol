@@ -36,6 +36,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 internal totalStakes; // Total of all stakes {qStakes}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
+    int192 internal stakeRate; // The exchange rate between stakes and RSR. {1}
 
     // ==== Unstaking Gov Param ====
     uint32 public unstakingDelay;
@@ -46,6 +47,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft;
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
+    int192 internal draftRate; // The exchange rate between drafts and RSR. {1}
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
@@ -83,6 +85,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         unstakingDelay = unstakingDelay_;
         rewardPeriod = rewardPeriod_;
         rewardRatio = rewardRatio_;
+        stakeRate = FIX_ONE;
+        draftRate = FIX_ONE;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
@@ -98,13 +102,19 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
         //   rsrAmount <= 1e29, totalStaked <= 1e38, 1e29 * 1e38 < 2^256.
-        uint256 stakeAmount = (stakeRSR == 0) ? rsrAmount : (rsrAmount * totalStakes) / stakeRSR;
+        // stakeAmount: how many stRSR the user shall receive.
+        // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
+        uint256 newStakeRSR = stakeRSR + rsrAmount;
+        uint256 newTotalStakes = stakeRate.mulu_toUint(newStakeRSR);
+        uint256 stakeAmount = newTotalStakes - totalStakes;
 
-        address account = _msgSender();
         // Add to stakeAmount to stakes
+        address account = _msgSender();
         stakes[era][account] += stakeAmount;
-        totalStakes += stakeAmount;
-        stakeRSR += rsrAmount;
+
+        // Update totals
+        totalStakes = newTotalStakes;
+        stakeRSR = newStakeRSR;
 
         // Transfer RSR from account to this contract
         emit Staked(account, rsrAmount, stakeAmount);
@@ -122,20 +132,25 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
         payoutRewards();
 
-        // Compute draft and RSR amounts
-        uint256 rsrAmount = mulDiv256(stakeAmount, stakeRSR, totalStakes);
+        // ==== Compute changes to balances and totals
+        // rsrAmount: how many RSR to move from the stake pool to the draft pool
+        // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
+        uint newTotalStakes = totalStakes - stakeAmount;
+        uint newStakeRSR = toFix(newTotalStakes).div(stakeRate).toUint(); // TODO: use less gas
+        uint rsrAmount = stakeRSR - newStakeRSR;
 
-        // This is not an overflow risk according to our expected ranges
-        uint256 draftAmount = draftRSR == 0 ? rsrAmount : (rsrAmount * totalDrafts) / draftRSR;
+        // draftAmount: how many drafts to create and assign to the user
+        // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
+        uint newDraftRSR = rsrAmount + draftRSR;
+        uint newTotalDrafts = draftRate.mulu(newDraftRSR).toUint(); // TODO: use less gas
+        uint draftAmount = newTotalDrafts - totalDrafts;
 
-        // Reduce stake balance
+        // ==== Reduce stake balance and increase draft balance
         stakes[era][account] -= stakeAmount;
-        totalStakes -= stakeAmount;
-        stakeRSR -= rsrAmount;
-
-        // Increase draft balance
-        totalDrafts += draftAmount;
-        draftRSR += rsrAmount;
+        totalStakes = newTotalStakes;
+        stakeRSR = newStakeRSR;
+        totalDrafts = newTotalDrafts;
+        draftRSR = newDraftRSR;
 
         // Push drafts into account's draft queue
         CumulativeDraft[] storage queue = draftQueues[era][account];
@@ -179,12 +194,16 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         // advance queue past withdrawal
         firstRemainingDraft[era][account] = endId;
 
-        // Compute RSR amount and transfer it from the draft pool
-        uint256 rsrAmount = (draftAmount * draftRSR) / totalDrafts;
+        // ==== Compute RSR amount
+        uint256 newTotalDrafts = totalDrafts - draftAmount;
+        uint256 newDraftRSR = toFix(newTotalDrafts).div(draftRate).toUint(); // TODO: less gassy
+        uint256 rsrAmount = draftRSR - newDraftRSR;
+
         if (rsrAmount == 0) return;
 
-        totalDrafts -= draftAmount;
-        draftRSR -= rsrAmount;
+        // ==== Transfer RSR from the draft pool
+        totalDrafts = newTotalDrafts;
+        draftRSR = newDraftRSR;
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
         IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
@@ -195,7 +214,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        int192 initialExchangeRate = exchangeRate();
+
+        int192 initStakeRate = stakeRate;
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
         if (rsrBalance == 0) return;
@@ -212,7 +232,11 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             stakeRSR = 0;
             draftRSR = 0;
             totalStakes = 0;
+            totalDrafts = 0;
             era++;
+
+            stakeRate = FIX_ONE;
+            draftRate = FIX_ONE;
 
             emit AllBalancesReset(era);
         } else {
@@ -222,17 +246,19 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
+            stakeRate = toFix(totalStakes).divu(stakeRSR);
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
+            draftRate = toFix(totalDrafts).divu(draftRSR);
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
         }
 
         // Transfer RSR to caller
-        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        emit ExchangeRateSet(initStakeRate, stakeRate);
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
@@ -242,7 +268,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function payoutRewards() public notPaused {
         // nonReentrant not required: no external calls in this function
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        int192 initialExchangeRate = exchangeRate();
+        int192 initStakeRate = stakeRate;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
@@ -253,16 +279,13 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
-        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+        stakeRate = toFix(totalStakes).divu(stakeRSR);
+
+        emit ExchangeRateSet(initStakeRate, stakeRate);
     }
 
     function exchangeRate() public view returns (int192) {
-        int8 d = int8(decimals());
-        uint256 numerator = draftRSR + stakeRSR;
-        uint256 denominator = totalDrafts + totalStakes;
-        if (numerator == 0 || denominator == 0) return FIX_ONE;
-
-        return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
+        return stakeRate;
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
