@@ -214,7 +214,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
-    function seizeRSR(uint256 rsrAmount) external {
+    function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -271,7 +271,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// State Keeper
     /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
-    function payoutRewards() public {
+    function payoutRewards() public notPaused {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         int192 initialExchangeRate = exchangeRate();
 
