@@ -21,6 +21,7 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         dustAmount: FixLib.divu(toFix(1), 100), // 0.01 UoA (USD)
-        issuanceRate: FixLib.divu(toFix(25), 1_000_000) // 0.025% per block or ~0.1% per minute
+        issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
+        oneshotPauseDuration: 864000 // 10 days
     });
 }

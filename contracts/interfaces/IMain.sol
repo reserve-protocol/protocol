@@ -39,17 +39,24 @@ struct Components {
 }
 
 interface IPausable {
-    /// Emitted when the paused status is set
-    /// @param oldPaused The old value of the paused state
-    /// @param newPaused The new value of the paused state
-    event PausedSet(bool oldPaused, bool newPaused);
+    /// Emitted when `unpauseAt` is changed
+    /// @param oldUnpauseAt The old value of `unpauseAt`
+    /// @param newUnpauseAt The new value of `unpauseAt`
+    event UnpauseAtSet(uint32 oldUnpauseAt, uint32 newUnpauseAt);
 
     /// Emitted when the pauser address is set
     /// @param oldPauser The address of the old pauser
     /// @param newPauser The address of the new pauser
-    event PauserSet(address oldPauser, address newPauser);
+    event OneshotPauserSet(address oldPauser, address newPauser);
+
+    /// Emitted when the oneshot pause duration governance param is changed
+    /// @param oldDuration The address of the old pauser
+    /// @param newDuration The address of the new pauser
+    event OneshotPauseDurationSet(uint32 oldDuration, uint32 newDuration);
 
     function paused() external view returns (bool);
+
+    function oneshotPauseDuration() external view returns (uint32);
 }
 
 /**
@@ -139,7 +146,11 @@ interface IMain is IPausable {
 
     event MainInitialized();
 
-    function init(Components memory components, IERC20 rsr_) external;
+    function init(
+        Components memory components,
+        IERC20 rsr_,
+        uint32 oneshotPauseDuration_
+    ) external;
 
     function owner() external view returns (address);
 }
@@ -149,9 +160,11 @@ interface TestIMain is IMain {
 
     function unpause() external;
 
-    function pauser() external view returns (address);
+    function oneshotPauser() external view returns (address);
 
-    function setPauser(address pauser_) external;
+    function setOneshotPauser(address pauser_) external;
+
+    function setOneshotPauseDuration(uint32) external;
 
     function renounceOwnership() external;
 

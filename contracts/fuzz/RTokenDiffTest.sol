@@ -176,7 +176,7 @@ contract RTokenTestSystem is MainMock {
             baseB.mint(USERS[i], 1e24);
         }
 
-        init(components, IERC20(address(0)));
+        init(components, IERC20(address(0)), 0);
 
         basketHandler = new MockBasketHandler(baseA, baseB);
         basketHandler.init(this);
