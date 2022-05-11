@@ -651,6 +651,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Unpause
   await main.connect(owner).unpause()
 
+  // Set up allowances
+  for (let i = 0; i < basket.length; i++) {
+    await backingManager.grantRTokenAllowance(await basket[i].erc20())
+  }
+
   return {
     rsr,
     rsrAsset,

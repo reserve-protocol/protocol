@@ -621,14 +621,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should perform validations on for granting allowances', async () => {
       // These should start with allowance
-      expect(await compToken.allowance(backingManager.address, rToken.address)).to.equal(
-        MAX_UINT256
-      )
-      expect(await aaveToken.allowance(backingManager.address, rToken.address)).to.equal(
-        MAX_UINT256
-      )
-      expect(await rsr.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
-      expect(await rToken.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
       expect(await token0.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
       expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
       expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
