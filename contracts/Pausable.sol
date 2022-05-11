@@ -10,7 +10,7 @@ abstract contract Pausable is OwnableUpgradeable, IPausable {
 
     uint32 public unpauseAt; // {s} 0 when not paused, uint32.max to pause indefinitely
 
-    uint32 public oneshotPauseDuration; // {s} gov param that controls length of a oneshotPauser-based pause
+    uint32 public oneshotPauseDuration; // {s} gov param that controls length of a oneshot pause
 
     // solhint-disable-next-line func-name-mixedcase
     function __Pausable_init(uint32 oneshotPauseDuration_) internal onlyInitializing {
