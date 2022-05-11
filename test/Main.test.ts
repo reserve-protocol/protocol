@@ -527,10 +527,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to renounce pausership if Owner', async () => {
       // Set Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Check Pauser updated
-      expect(await main.pauser()).to.equal(addr1.address)
+      expect(await main.oneshotPauser()).to.equal(addr1.address)
 
       // Attempt to renounce pausership with another account
       await expect(main.connect(other).renouncePausership()).to.be.revertedWith(
@@ -541,21 +541,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).renouncePausership()
 
       // Check Pauser renounced
-      expect(await main.pauser()).to.equal(ZERO_ADDRESS)
+      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should allow to renounce pausership if Pauser', async () => {
       // Set Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Check Pauser updated
-      expect(await main.pauser()).to.equal(addr1.address)
+      expect(await main.oneshotPauser()).to.equal(addr1.address)
 
       // Renounce pausership with pauser
       await main.connect(addr1).renouncePausership()
 
       // Check Pauser renounced
-      expect(await main.pauser()).to.equal(ZERO_ADDRESS)
+      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
     })
   })
 
