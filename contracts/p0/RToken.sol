@@ -139,7 +139,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// TODO confirm we DO NOT need notPaused here
-    function cancel(uint256 endId, bool earliest) external {
+    function cancel(uint256 endId, bool earliest) external notPaused {
         address account = _msgSender();
 
         SlowIssuance[] storage queue = issuances[account];
@@ -179,7 +179,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Redeem RToken for basket collateral
     /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external {
+    function redeem(uint256 amount) external notPaused {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
         // Call collective state keepers
@@ -221,20 +221,20 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
-    function mint(address recipient, uint256 amount) external {
+    function mint(address recipient, uint256 amount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amount);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    function melt(uint256 amount) external {
+    function melt(uint256 amount) external notPaused {
         _burn(_msgSender(), amount);
         emit Melted(amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(int192 basketsNeeded_) external {
+    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;

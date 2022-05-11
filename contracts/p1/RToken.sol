@@ -269,7 +269,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// TODO confirm we want to permit redemptions when paused
-    function redeem(uint256 amount) external nonReentrant {
+    function redeem(uint256 amount) external notPaused nonReentrant {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
@@ -323,7 +323,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external {
+    function mint(address recipient, uint256 amtRToken) external notPaused {
         // nonReentrant not required: no external calls in this function
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amtRToken);
@@ -331,14 +331,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external {
+    function melt(uint256 amtRToken) external notPaused {
         // nonReentrant not required: no external calls in this function
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(int192 basketsNeeded_) external {
+    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
         // nonReentrant not required
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
@@ -361,7 +361,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external nonReentrant {
+    function claimAndSweepRewards() external notPaused nonReentrant {
         RewardableLibP1.claimAndSweepRewards();
     }
 
