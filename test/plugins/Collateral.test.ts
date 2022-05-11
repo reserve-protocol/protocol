@@ -16,6 +16,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  InvalidAavePricedFiatCollateral,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -563,6 +564,46 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
+
+    it('Reverts on update status when price function fails', async () => {
+      let invalidTokenAsset: InvalidAavePricedFiatCollateral
+      let invalidATokenAsset: InvalidAavePricedFiatCollateral
+      let invalidCTokenAsset: InvalidAavePricedFiatCollateral
+
+      const AaveFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+        'InvalidAavePricedFiatCollateral'
+      )
+      invalidTokenAsset = <InvalidAavePricedFiatCollateral>(
+        await AaveFiatCollFactory.deploy(
+          token.address,
+          await tokenCollateral.maxTradeVolume(),
+          await tokenCollateral.defaultThreshold(),
+          await tokenCollateral.delayUntilDefault(),
+          compoundMock.address,
+          aaveMock.address
+        )
+      )
+
+      // Check initial state
+      expect(await invalidTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await invalidTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+
+      // Attempt to update status - assertion failed (Panic)
+      await invalidTokenAsset.setShouldFailAssert(true)
+      await expect(invalidTokenAsset.forceUpdates()).to.be.reverted
+
+      // No changes
+      expect(await invalidTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await invalidTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+
+      // Attempt to update status - Revert
+      await invalidTokenAsset.setShouldFailAssert(false)
+      await expect(invalidTokenAsset.forceUpdates()).to.be.reverted
+
+      // No changes
+      expect(await invalidTokenAsset.status()).to.equal(CollateralStatus.SOUND)
+      expect(await invalidTokenAsset.whenDefault()).to.equal(MAX_UINT256)
+    })
   })
 
   describe('Rewards', () => {
@@ -618,7 +659,7 @@ describe('Collateral contracts', () => {
           await tokenCollateral.maxTradeVolume(),
           await tokenCollateral.defaultThreshold(),
           await tokenCollateral.delayUntilDefault(),
-          await compoundMock.address
+          compoundMock.address
         )
       )
       compoundUsdcAsset = <CompoundPricedFiatCollateral>(
