@@ -150,7 +150,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup Main correctly', async () => {
       // Owner/Pauser
       expect(await main.owner()).to.equal(owner.address)
-      expect(await main.pauser()).to.equal(owner.address)
+      expect(await main.oneshotPauser()).to.equal(owner.address)
 
       // Assets
       // RSR

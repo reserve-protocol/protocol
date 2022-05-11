@@ -171,7 +171,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Owner/Pauser
       expect(await main.paused()).to.equal(false)
       expect(await main.owner()).to.equal(owner.address)
-      expect(await main.pauser()).to.equal(owner.address)
+      expect(await main.oneshotPauser()).to.equal(owner.address)
 
       // Components
       expect(await main.stRSR()).to.equal(stRSR.address)
@@ -189,6 +189,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(40))
       expect(rsrTotal).to.equal(bn(60))
+      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
 
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -281,7 +282,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to initialize Main twice', async () => {
-      await expect(main.init(components, rsr.address)).to.be.revertedWith(
+      await expect(main.init(components, rsr.address, 0)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
@@ -431,12 +432,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Pause/Unpause #fast', () => {
-    it('Should Pause/Unpause for Pauser and Owner', async () => {
+    it('Should Pause for Pauser and Owner', async () => {
       // Set different Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Check initial status
-      expect(await main.pauser()).to.equal(addr1.address)
+      expect(await main.oneshotPauser()).to.equal(addr1.address)
       expect(await main.paused()).to.equal(false)
 
       // Pause with Pauser
@@ -444,9 +445,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check if Paused
       expect(await main.paused()).to.equal(true)
+      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
 
-      // Unpause with Pauser
-      await main.connect(addr1).unpause()
+      // Try to unpause with original pauser
+      await expect(main.connect(addr1).unpause()).to.be.revertedWith('only pauser or owner')
+
+      // Unpause
+      await main.connect(owner).unpause()
 
       expect(await main.paused()).to.equal(false)
 
@@ -455,16 +460,31 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check if Paused
       expect(await main.paused()).to.equal(true)
+    })
 
-      // Unpause with Owner
-      await main.connect(owner).unpause()
+    it('Pausing by owner should last indefinitely', async () => {
+      // Pause with Owner
+      await main.connect(owner).pause()
+      expect(await main.paused()).to.equal(true)
+      await advanceTime((await config.oneshotPauseDuration).toString())
+
+      expect(await main.paused()).to.equal(true)
+    })
+
+    it('Pausing by pauser should be temporary', async () => {
+      await main.connect(owner).setOneshotPauser(addr1.address)
+
+      // Pause with pauser
+      await main.connect(addr1).pause()
+      expect(await main.paused()).to.equal(true)
+      await advanceTime((await config.oneshotPauseDuration).toString())
 
       expect(await main.paused()).to.equal(false)
     })
 
     it('Should not allow to Pause/Unpause if not Pauser or Owner', async () => {
       // Set different Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       await expect(main.connect(other).pause()).to.be.revertedWith('only pauser or owner')
 
@@ -480,29 +500,29 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to set Pauser if Owner or Pauser', async () => {
       // Set Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Check Pauser updated
-      expect(await main.pauser()).to.equal(addr1.address)
+      expect(await main.oneshotPauser()).to.equal(addr1.address)
 
       // Now update it with Pauser
-      await main.connect(addr1).setPauser(owner.address)
+      await main.connect(addr1).setOneshotPauser(owner.address)
 
       // Check Pauser updated
-      expect(await main.pauser()).to.equal(owner.address)
+      expect(await main.oneshotPauser()).to.equal(owner.address)
     })
 
     it('Should not allow to set Pauser if not Owner', async () => {
       // Set Pauser
-      await main.connect(owner).setPauser(addr1.address)
+      await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Set Pauser
-      await expect(main.connect(other).setPauser(other.address)).to.be.revertedWith(
+      await expect(main.connect(other).setOneshotPauser(other.address)).to.be.revertedWith(
         'only pauser or owner'
       )
 
       // Check Pauser not updated
-      expect(await main.pauser()).to.equal(addr1.address)
+      expect(await main.oneshotPauser()).to.equal(addr1.address)
     })
   })
 
@@ -717,6 +737,29 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await main.furnace()).to.equal(newFurnace.address)
+    })
+    it('Should allow to update oneshotPauseDuration if Owner', async () => {
+      const newValue: BigNumber = bn(1)
+      await main.connect(owner).setOneshotPauser(addr1.address)
+
+      // Check existing value
+      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+
+      // If not owner cannot update
+      await expect(main.connect(addr1).setOneshotPauseDuration(newValue)).to.be.revertedWith(
+        'only owner'
+      )
+
+      // Check value did not change
+      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+
+      // Update with owner
+      await expect(main.connect(owner).setOneshotPauseDuration(newValue))
+        .to.emit(main, 'OneshotPauseDurationSet')
+        .withArgs(config.oneshotPauseDuration, newValue)
+
+      // Check value was updated
+      expect(await main.oneshotPauseDuration()).to.equal(newValue)
     })
   })
 
