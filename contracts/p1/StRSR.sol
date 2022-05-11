@@ -140,6 +140,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         totalStakes -= stakeAmount;
         {
             uint256 newStakeRSR = toFix(totalStakes).div(stakeRate).toUint(); // TODO: use less gas
+            // equivalently, here: newStakeRSR = totalStakes * 1e18 / uint(stakeRate);
             rsrAmount = stakeRSR - newStakeRSR;
             stakeRSR = newStakeRSR;
         }
@@ -149,6 +150,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         draftRSR += rsrAmount;
         {
             uint256 newTotalDrafts = draftRate.mulu(draftRSR).toUint(); // TODO: use less gas
+            // equivalently, here: uint(draftRate) * draftRSR / 1e18
             draftAmount = newTotalDrafts - totalDrafts;
             totalDrafts = newTotalDrafts;
         }
@@ -218,8 +220,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
+        int192 initRate = exchangeRate();
 
-        int192 initStakeRate = stakeRate;
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
         if (rsrBalance == 0) return;
@@ -250,19 +252,19 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
-            stakeRate = toFix(totalStakes).divu(stakeRSR);
+            stakeRate = stakeRSR == 0 ? FIX_ONE : toFix(totalStakes).divu(stakeRSR);
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
-            draftRate = toFix(totalDrafts).divu(draftRSR);
+            draftRate = draftRSR == 0 ? FIX_ONE : toFix(totalDrafts).divu(draftRSR);
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
         }
 
         // Transfer RSR to caller
-        emit ExchangeRateSet(initStakeRate, stakeRate);
+        emit ExchangeRateSet(initRate, exchangeRate());
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
@@ -272,8 +274,9 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     function payoutRewards() public notPaused {
         // nonReentrant not required: no external calls in this function
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        int192 initStakeRate = stakeRate;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
+
+        int192 initRate = exchangeRate();
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing
@@ -283,13 +286,21 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
-        stakeRate = toFix(totalStakes).divu(stakeRSR);
+        stakeRate = (stakeRSR == 0 || totalStakes == 0)
+            ? FIX_ONE
+            : toFix(totalStakes).divu(stakeRSR);
 
-        emit ExchangeRateSet(initStakeRate, stakeRate);
+        emit ExchangeRateSet(initRate, exchangeRate());
     }
 
+    // TODO: gonna be honest, I don't think this is useful at all!
+    // But it's in the Facade and our tests need it, so here it is.
     function exchangeRate() public view returns (int192) {
-        return stakeRate;
+        int8 d = int8(decimals());
+        uint256 numerator = draftRSR + stakeRSR;
+        uint256 denominator = totalDrafts + totalStakes;
+        if (numerator == 0 || denominator == 0) return FIX_ONE;
+        else return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
