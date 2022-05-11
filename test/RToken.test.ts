@@ -1058,15 +1058,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
-      it('Should redeem if paused', async function () {
+      it('Should not redeem if paused', async function () {
         // Pause Main
         await main.connect(owner).pause()
 
         // Try to redeem
-        await rToken.connect(addr1).redeem(issueAmount)
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
 
         // Check values
-        expect(await rToken.totalSupply()).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })
   })

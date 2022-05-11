@@ -13,8 +13,12 @@ contract MainMock is MainP0 {
         sender = sender_;
     }
 
-    function init(Components memory, IERC20) public virtual override(MainP0) initializer {
-        __Pausable_init();
+    function init(
+        Components memory,
+        IERC20,
+        uint32
+    ) public virtual override(MainP0) initializer {
+        __Pausable_init(0);
         emit MainInitialized();
     }
 

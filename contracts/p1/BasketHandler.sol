@@ -104,7 +104,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    function checkBasket() external {
+    function checkBasket() external notPaused {
         // nonReentrant not required: no external calls
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();

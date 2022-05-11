@@ -20,11 +20,13 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
+    /// @dev This should not need to be used from anywhere other than the Facade
     function poke() external virtual {
-        // We think these are totally order-independent.
         assetRegistry.forceUpdates();
-        furnace.melt();
-        if (!paused) stRSR.payoutRewards();
+        if (!paused()) {
+            furnace.melt();
+            stRSR.payoutRewards();
+        }
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
@@ -32,8 +34,12 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     }
 
     /// Initializer
-    function init(Components memory components, IERC20 rsr_) public virtual initializer {
-        __Pausable_init();
+    function init(
+        Components memory components,
+        IERC20 rsr_,
+        uint32 oneshotPauseDuration_
+    ) public virtual initializer {
+        __Pausable_init(oneshotPauseDuration_);
         __UUPSUpgradeable_init();
 
         setBackingManager(components.backingManager);

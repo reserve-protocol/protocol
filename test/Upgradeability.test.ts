@@ -193,7 +193,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Owner/Pauser - Paused by default
       expect(await newMain.paused()).to.equal(true)
       expect(await newMain.owner()).to.equal(owner.address)
-      expect(await newMain.pauser()).to.equal(owner.address)
+      expect(await newMain.oneshotPauser()).to.equal(owner.address)
 
       // Components
       expect(await newMain.stRSR()).to.equal(stRSR.address)
@@ -396,7 +396,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Check state is preserved
       expect(await mainV2.paused()).to.equal(false)
       expect(await mainV2.owner()).to.equal(owner.address)
-      expect(await mainV2.pauser()).to.equal(owner.address)
+      expect(await mainV2.oneshotPauser()).to.equal(owner.address)
 
       // Components
       expect(await mainV2.stRSR()).to.equal(stRSR.address)

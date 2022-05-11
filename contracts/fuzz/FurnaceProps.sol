@@ -41,7 +41,7 @@ contract FurnaceP0TestProps {
         Components memory components;
 
         main = new MainMock();
-        main.init(components, IERC20(address(0))); // this be main.owner
+        main.init(components, IERC20(address(0)), 0); // this be main.owner
         furn1 = new FurnaceP0();
         furn2 = new FurnaceP0();
         token = new RTokenMock();

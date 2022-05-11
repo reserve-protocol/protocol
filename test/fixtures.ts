@@ -76,6 +76,7 @@ export interface IConfig {
   maxTradeSlippage: BigNumber
   dustAmount: BigNumber
   issuanceRate: BigNumber
+  oneshotPauseDuration: BigNumber
 }
 
 export interface IRevenueShare {
@@ -412,6 +413,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     maxTradeSlippage: fp('0.01'), // 1%
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+    oneshotPauseDuration: bn('864000'), // 10 days
   }
 
   // Deploy TradingLib external library
@@ -648,6 +650,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Unpause
   await main.connect(owner).unpause()
+
+  // Set up allowances
+  for (let i = 0; i < basket.length; i++) {
+    await backingManager.grantRTokenAllowance(await basket[i].erc20())
+  }
 
   return {
     rsr,

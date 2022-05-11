@@ -106,7 +106,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             "duplicate ERC20 detected"
         );
         registered = _registerIgnoringCollisions(asset);
-        main.backingManager().grantRTokenAllowance(IERC20(address(asset.erc20())));
     }
 
     /// Register an asset, unregistering any previous asset with the same ERC20.

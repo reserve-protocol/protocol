@@ -18,6 +18,9 @@ import "./ITrade.sol";
  * meaning that after deployment there is freedom to allow parametrizations to deviate.
  */
 struct DeploymentParams {
+    // === Pausing ===
+    uint32 oneshotPauseDuration; // {s} how long a oneshot pause lasts
+    //
     // === RSR/RToken/AAVE/COMP ===
     int192 maxTradeVolume; // {UoA}
     //

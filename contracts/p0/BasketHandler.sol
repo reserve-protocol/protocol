@@ -103,7 +103,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    function checkBasket() external {
+    function checkBasket() external notPaused {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
