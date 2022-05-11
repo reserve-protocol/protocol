@@ -205,7 +205,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
 
-    it('Should not allow to initialize Collareral twice', async () => {
+    it('Should not allow to initialize Collateral twice', async () => {
       await expect(
         tokenCollateral.init(
           token.address,
@@ -508,6 +508,58 @@ describe('Collateral contracts', () => {
       await expect(cTokenCollateral.forceUpdates())
         .to.emit(cTokenCollateral, 'DefaultStatusChanged')
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
+    it('Updates status when price is zero', async () => {
+      // Check initial state
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Set price of tokens to 0
+      await aaveOracleInternal.setPrice(token.address, bn('0'))
+      await compoundOracleInternal.setPrice(await token.symbol(), bn(0))
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      let expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
+
+      await expect(tokenCollateral.forceUpdates())
+        .to.emit(tokenCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await tokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+
+      // AToken
+      await expect(aTokenCollateral.forceUpdates())
+        .to.emit(aTokenCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await aTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+
+      // CToken
+      await expect(cTokenCollateral.forceUpdates())
+        .to.emit(cTokenCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
