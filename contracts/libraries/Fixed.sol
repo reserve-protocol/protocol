@@ -115,6 +115,12 @@ function divFix(uint256 x, int192 y) pure returns (int192) {
     }
 }
 
+/// Divide a uint by a uint, yielding a fix
+function divuu(uint256 x, uint256 y) pure returns (int192) {
+    return _safeWrapu(mulDiv256(FIX_SCALE_U, x, y));
+}
+
+
 function fixMin(int192 x, int192 y) pure returns (int192) {
     return x < y ? x : y;
 }
