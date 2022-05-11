@@ -252,12 +252,12 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
-            stakeRate = stakeRSR == 0 ? FIX_ONE : divuu(totalStakes,stakeRSR);
+            stakeRate = stakeRSR == 0 ? FIX_ONE : divuu(totalStakes, stakeRSR);
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
-            draftRate = draftRSR == 0 ? FIX_ONE : divuu(totalDrafts,draftRSR);
+            draftRate = draftRSR == 0 ? FIX_ONE : divuu(totalDrafts, draftRSR);
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -286,9 +286,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
-        stakeRate = (stakeRSR == 0 || totalStakes == 0)
-            ? FIX_ONE
-            : divuu(totalStakes, stakeRSR);
+        stakeRate = (stakeRSR == 0 || totalStakes == 0) ? FIX_ONE : divuu(totalStakes, stakeRSR);
 
         emit ExchangeRateSet(initRate, exchangeRate());
     }
