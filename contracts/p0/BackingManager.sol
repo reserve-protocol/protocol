@@ -36,7 +36,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
-    function grantRTokenAllowance(IERC20 erc20) external {
+    function grantRTokenAllowance(IERC20 erc20) external notPaused {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }

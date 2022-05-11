@@ -42,7 +42,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external {
+    ) external notPaused {
         // nonReentrant not required: external calls occur last
         IERC20 rsr = main.rsr();
 
