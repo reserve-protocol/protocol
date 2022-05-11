@@ -5,6 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
+  AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
   AaveOracleMock,
   AavePricedFiatCollateral,
@@ -16,6 +17,8 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  InvalidAaveOracleMock,
+  InvalidCompoundOracleMock,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -205,7 +208,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
 
-    it('Should not allow to initialize Collareral twice', async () => {
+    it('Should not allow to initialize Collateral twice', async () => {
       await expect(
         tokenCollateral.init(
           token.address,
@@ -389,19 +392,6 @@ describe('Collateral contracts', () => {
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
 
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
-        .add(1)
-        .add(delayUntilDefault)
-
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      await expect(tokenCollateral.forceUpdates())
-        .to.emit(tokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await tokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
       await expect(usdcCollateral.forceUpdates()).to.not.emit(
         usdcCollateral,
         'DefaultStatusChanged'
@@ -409,29 +399,21 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      const softDefaultCollaterals = [tokenCollateral, aTokenCollateral, cTokenCollateral]
+      for (const coll of softDefaultCollaterals) {
+        // Set next block timestamp - for deterministic result
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
-        .add(1)
-        .add(delayUntilDefault)
-      await expect(aTokenCollateral.forceUpdates())
-        .to.emit(aTokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await aTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
+          .add(1)
+          .add(delayUntilDefault)
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp())
-        .add(1)
-        .add(delayUntilDefault)
-      await expect(cTokenCollateral.forceUpdates())
-        .to.emit(cTokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        await expect(coll.forceUpdates())
+          .to.emit(coll, 'DefaultStatusChanged')
+          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
+        expect(await coll.status()).to.equal(CollateralStatus.IFFY)
+        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+      }
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
@@ -491,25 +473,159 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      const hardDefaultCollaterals = [aTokenCollateral, cTokenCollateral]
+      for (const coll of hardDefaultCollaterals) {
+        // Set next block timestamp - for deterministic result
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      let expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(aTokenCollateral.forceUpdates())
-        .to.emit(aTokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await aTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
+        await expect(coll.forceUpdates())
+          .to.emit(coll, 'DefaultStatusChanged')
+          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+        expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+      }
+    })
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+    it('Updates status when price is zero', async () => {
+      // Check initial state
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(cTokenCollateral.forceUpdates())
-        .to.emit(cTokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await cTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Set price of tokens to 0
+      await aaveOracleInternal.setPrice(token.address, bn('0'))
+      await compoundOracleInternal.setPrice(await token.symbol(), bn(0))
+
+      const priceZeroCollaterals = [tokenCollateral, aTokenCollateral, cTokenCollateral]
+      for (const coll of priceZeroCollaterals) {
+        // Set next block timestamp - for deterministic result
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
+
+        await expect(coll.forceUpdates())
+          .to.emit(coll, 'DefaultStatusChanged')
+          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
+        expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+      }
+    })
+
+    it('Reverts on update status when price function fails', async () => {
+      // Deploy invalid Compound Oracle
+      const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
+        'InvalidCompoundOracleMock'
+      )
+      const invalidCompoundOracle: InvalidCompoundOracleMock = <InvalidCompoundOracleMock>(
+        await InvalidCompoundOracleFactory.deploy()
+      )
+
+      const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory(
+        'ComptrollerMock'
+      )
+      const invalidCompoundMock: ComptrollerMock = <ComptrollerMock>(
+        await ComptrollerMockFactory.deploy(invalidCompoundOracle.address)
+      )
+
+      // Deply invalid  AaveOracle
+      const InvalidAaveOracleFactory: ContractFactory = await ethers.getContractFactory(
+        'InvalidAaveOracleMock'
+      )
+      const invalidAaveOracle: InvalidAaveOracleMock = <InvalidAaveOracleMock>(
+        await InvalidAaveOracleFactory.deploy(ZERO_ADDRESS)
+      )
+
+      const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
+        'AaveLendingAddrProviderMock'
+      )
+      const invalidAaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
+        await AaveAddrProviderFactory.deploy(invalidAaveOracle.address)
+      )
+
+      const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
+        'AaveLendingPoolMock'
+      )
+      const invalidAaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
+        await AaveLendingPoolMockFactory.deploy(invalidAaveAddrProvider.address)
+      )
+
+      // Deploy invalid collaterals to revert/fail
+      const AaveFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+        'AavePricedFiatCollateral'
+      )
+      const invalidTokenAsset: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
+        await AaveFiatCollFactory.deploy(
+          token.address,
+          await tokenCollateral.maxTradeVolume(),
+          await tokenCollateral.defaultThreshold(),
+          await tokenCollateral.delayUntilDefault(),
+          compoundMock.address,
+          invalidAaveMock.address
+        )
+      )
+
+      const ATokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+        'ATokenFiatCollateral'
+      )
+      const invalidATokenAsset: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await ATokenFiatCollFactory.deploy(
+          aToken.address,
+          await aTokenCollateral.maxTradeVolume(),
+          await aTokenCollateral.defaultThreshold(),
+          await aTokenCollateral.delayUntilDefault(),
+          await aTokenCollateral.referenceERC20(),
+          compoundMock.address,
+          invalidAaveMock.address,
+          await aTokenCollateral.rewardERC20()
+        )
+      )
+
+      const CTokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+        'CTokenFiatCollateral'
+      )
+      const invalidCTokenAsset: CTokenFiatCollateral = <CTokenFiatCollateral>(
+        await CTokenFiatCollFactory.deploy(
+          cToken.address,
+          await cTokenCollateral.maxTradeVolume(),
+          await cTokenCollateral.defaultThreshold(),
+          await cTokenCollateral.delayUntilDefault(),
+          await cTokenCollateral.referenceERC20(),
+          invalidCompoundMock.address,
+          await cTokenCollateral.rewardERC20()
+        )
+      )
+
+      const invalidCollaterals = [invalidTokenAsset, invalidATokenAsset, invalidCTokenAsset]
+      for (const coll of invalidCollaterals) {
+        // Check initial state
+        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+
+        // Attempt to update status - assertion failed (Panic)
+        await invalidAaveOracle.setShouldFailAssert(true)
+        await invalidCompoundOracle.setShouldFailAssert(true)
+        await expect(coll.forceUpdates()).to.be.reverted
+
+        // No changes
+        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+
+        // Attempt to update status - Revert
+        await invalidAaveOracle.setShouldFailAssert(false)
+        await invalidCompoundOracle.setShouldFailAssert(false)
+        await expect(coll.forceUpdates()).to.be.reverted
+
+        // No changes
+        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+      }
     })
   })
 
@@ -566,7 +682,7 @@ describe('Collateral contracts', () => {
           await tokenCollateral.maxTradeVolume(),
           await tokenCollateral.defaultThreshold(),
           await tokenCollateral.delayUntilDefault(),
-          await compoundMock.address
+          compoundMock.address
         )
       )
       compoundUsdcAsset = <CompoundPricedFiatCollateral>(
