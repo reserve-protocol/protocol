@@ -155,5 +155,7 @@ interface TestIMain is IMain {
 
     function renounceOwnership() external;
 
+    function renouncePausership() external;
+
     function transferOwnership(address newOwner) external;
 }
