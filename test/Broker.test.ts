@@ -89,7 +89,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
 
       // Check value did not change
@@ -110,7 +110,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
 
       // Check value did not change

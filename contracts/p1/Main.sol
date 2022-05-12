@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "contracts/p1/mixins/Lockable.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/mixins/GlobalLock.sol";
 import "contracts/mixins/ComponentRegistry.sol";
 import "contracts/mixins/Pausable.sol";
 
@@ -17,10 +17,10 @@ import "contracts/mixins/Pausable.sol";
 // solhint-disable max-states-count
 contract MainP1 is
     Initializable,
-    ContextUpgradeable,
+    OwnableUpgradeable,
     ComponentRegistry,
     Pausable,
-    GlobalLock,
+    Lockable,
     UUPSUpgradeable,
     IMain
 {
@@ -30,19 +30,6 @@ contract MainP1 is
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
 
-    /// @dev This should not need to be used from anywhere other than the Facade
-    function poke() external virtual {
-        assetRegistry.forceUpdates();
-        if (!paused()) {
-            furnace.melt();
-            stRSR.payoutRewards();
-        }
-    }
-
-    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
-        return OwnableUpgradeable.owner();
-    }
-
     /// Initializer
     function init(
         Components memory components,
@@ -51,7 +38,7 @@ contract MainP1 is
     ) public virtual initializer {
         __Pausable_init(oneshotPauseDuration_);
         __ComponentRegistry_init(components);
-        __GlobalLock_init();
+        __Lockable_init();
         __UUPSUpgradeable_init();
 
         rsr = rsr_;
@@ -59,20 +46,30 @@ contract MainP1 is
         emit MainInitialized();
     }
 
-    // solhint-disable-next-line func-name-mixedcase
-    function lock_notPaused() external virtual {
-        // We can lock without ensuring the caller is a component
+    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
+        return OwnableUpgradeable.owner();
+    }
+
+    // === See docs/security.md ===
+
+    function beginActionTx() external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
         require(!paused(), "paused");
         _lock();
     }
 
-    function lock() external virtual {
-        // We can lock without ensuring the caller is a component
+    function beginGovernanceTx(address txCaller) external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
+        require(OwnableUpgradeable.owner() == txCaller, "tx caller is not the owner");
         _lock();
     }
 
-    function unlock() external virtual onlyComponent {
-        _unlock();
+    function beginSubroutine() external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
+    }
+
+    function endTx() external virtual {
+        _unlock(); // ensures the caller is the original lock-er
     }
 
     // === Upgradeability ===

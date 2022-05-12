@@ -103,7 +103,17 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    function checkBasket() external notPaused {
+    /// @custom:action
+    function checkBasket() external action {
+        if (status() == CollateralStatus.DISABLED) {
+            _switchBasket();
+        }
+    }
+
+    /// Checks the basket for default and swaps it if necessary
+    /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
+    function checkBasket_sub() external subroutine {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -112,7 +122,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
-    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts) external onlyOwner {
+    /// @custom:governance
+    function setPrimeBasket(IERC20[] memory erc20s, int192[] memory targetAmts)
+        external
+        governance
+    {
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -133,11 +147,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Set the backup configuration for some target name
+    /// @custom:governance
     function setBackupConfig(
         bytes32 targetName,
         uint256 max,
         IERC20[] memory erc20s
-    ) external onlyOwner {
+    ) external governance {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
@@ -154,7 +169,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    function switchBasket() external onlyOwner {
+    /// @custom:governance
+    function switchBasket() external governance {
         main.assetRegistry().forceUpdates();
         _switchBasket();
     }

@@ -168,7 +168,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('Component: caller is not the owner')
+      ).to.be.revertedWith('previous caller is not the owner')
 
       // Update with owner - Set f = 1
       await expect(

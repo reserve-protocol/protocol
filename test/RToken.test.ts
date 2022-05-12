@@ -241,7 +241,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
 
       // Check value did not change

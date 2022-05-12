@@ -17,13 +17,33 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
         main = main_;
     }
 
+    modifier onlyOwner() {
+        require(main.owner() == _msgSender(), "previous caller is not the owner");
+        _;
+    }
+
     modifier notPaused() {
         require(!main.paused(), "paused");
         _;
     }
 
-    modifier onlyOwner() {
-        require(main.owner() == _msgSender(), "Component: caller is not the owner");
+    // === See docs/security.md ===
+    // In P0 we do not apply locks
+
+    modifier action() {
+        main.beginActionTx();
+        _;
+        main.endTx();
+    }
+
+    modifier governance() {
+        main.beginGovernanceTx(_msgSender());
+        _;
+        main.endTx();
+    }
+
+    modifier subroutine() {
+        main.beginSubroutine();
         _;
     }
 }

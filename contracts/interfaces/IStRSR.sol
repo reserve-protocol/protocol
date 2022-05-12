@@ -79,6 +79,14 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         int192 rewardRatio_
     ) external;
 
+    /// Gather and payout rewards from rsrTrader
+    /// @custom:action
+    function payoutRewards() external;
+
+    /// Gather and payout rewards from rsrTrader
+    /// @custom:subroutine
+    function payoutRewards_sub() external;
+
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
     /// @custom:action
@@ -89,19 +97,16 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// @custom:action
     function unstake(uint256 amount) external;
 
-    /// Complete delayed unstaking for the account, up to (but not including!) `endId`.
-    /// @custom:completion
+    /// Complete delayed unstaking for the account, up to (but not including!) `endId`
+    /// @custom:action
     function withdraw(address account, uint256 endId) external;
+
+    /// Seize RSR, only callable by main.backingManager()
+    /// @custom:subroutine
+    function seizeRSR(uint256 amount) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
-
-    /// Seize RSR, only callable by main.backingManager()
-    function seizeRSR(uint256 amount) external;
-
-    /// Gather and payout rewards from rsrTrader. State Keeper.
-    /// @custom:refresher
-    function payoutRewards() external;
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() external view returns (int192);

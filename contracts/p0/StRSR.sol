@@ -108,16 +108,29 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
+    /// Assign reward payouts to the staker pool
+    /// @custom:action
+    function payoutRewards() external action {
+        _payoutRewards();
+    }
+
+    /// Assign reward payouts to the staker pool
+    /// @custom:subroutine
+    function payoutRewards_sub() external subroutine {
+        _payoutRewards();
+    }
+
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:action
-    function stake(uint256 rsrAmount) external notPaused {
+    function stake(uint256 rsrAmount) external action {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
         // Run state keepers
-        main.poke();
-        payoutRewards();
+        main.assetRegistry().forceUpdates();
+        _payoutRewards();
+        main.furnace().melt();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -139,14 +152,15 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:action
-    function unstake(uint256 stakeAmount) external notPaused {
+    function unstake(uint256 stakeAmount) external action {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
 
         // Call state keepers
-        main.poke();
-        payoutRewards();
+        main.assetRegistry().forceUpdates();
+        _payoutRewards();
+        main.furnace().melt();
 
         // The next line is not an overflow risk:
         // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
@@ -171,7 +185,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:action
-    function withdraw(address account, uint256 endId) external notPaused {
+    function withdraw(address account, uint256 endId) external action {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
@@ -182,8 +196,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Call state keepers
-        main.poke();
-        payoutRewards();
+        main.assetRegistry().forceUpdates();
+        _payoutRewards();
+        main.furnace().melt();
 
         // Skip executed withdrawals
         uint256 start = 0;
@@ -214,7 +229,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
-    function seizeRSR(uint256 rsrAmount) external notPaused {
+    /// @custom:subroutine
+    function seizeRSR(uint256 rsrAmount) external subroutine {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -265,29 +281,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
-    }
-
-    /// Assign reward payouts to the staker pool
-    /// State Keeper
-    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
-    /// value of rsrRewards()
-    function payoutRewards() public notPaused {
-        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        int192 initialExchangeRate = exchangeRate();
-
-        uint32 numPeriods = (uint32(block.timestamp) - uint32(payoutLastPaid)) /
-            uint32(rewardPeriod);
-
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
-
-        // Apply payout to RSR backing
-        rsrBacking += payout;
-        payoutLastPaid += numPeriods * rewardPeriod;
-        rsrRewardsAtLastPayout = rsrRewards();
-
-        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
     }
 
     function exchangeRate() public view returns (int192) {
@@ -411,6 +404,29 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // ==== end ERC20 Interface ====
 
     // ==== Internal Functions ====
+
+    /// Assign reward payouts to the staker pool
+    /// @dev do this by effecting rsrBacking and payoutLastPaid as appropriate, given the current
+    /// value of rsrRewards()
+    function _payoutRewards() internal {
+        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+        int192 initialExchangeRate = exchangeRate();
+
+        uint32 numPeriods = (uint32(block.timestamp) - uint32(payoutLastPaid)) /
+            uint32(rewardPeriod);
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+        uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
+
+        // Apply payout to RSR backing
+        rsrBacking += payout;
+        payoutLastPaid += numPeriods * rewardPeriod;
+        rsrRewardsAtLastPayout = rsrRewards();
+
+        emit ExchangeRateSet(initialExchangeRate, exchangeRate());
+    }
+
     /// @return total {qStakes} Total amount of qStRSR being withdrawn
     function stakeBeingWithdrawn() internal view returns (uint256 total) {
         for (uint256 i = 0; i < accounts.length(); i++) {

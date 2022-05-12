@@ -76,12 +76,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// @custom:action
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external notPaused {
+    /// @custom:action
+    function issue(uint256 amount) external action {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
-        main.poke();
+        main.assetRegistry().forceUpdates();
+        main.stRSR().payoutRewards();
+        main.furnace().melt();
 
         IBasketHandler basketHandler = main.basketHandler();
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
@@ -140,8 +142,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// TODO confirm we DO NOT need notPaused here
-    function cancel(uint256 endId, bool earliest) external notPaused {
+    /// @custom:action
+    function cancel(uint256 endId, bool earliest) external action {
+        // Call collective state keepers.
+        main.assetRegistry().forceUpdates();
+        main.stRSR().payoutRewards();
+        main.furnace().melt();
+
         address account = _msgSender();
 
         SlowIssuance[] storage queue = issuances[account];
@@ -161,8 +168,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
-    function vest(address account, uint256 endId) external notPaused {
-        main.poke();
+    /// @custom:action
+    function vest(address account, uint256 endId) external action {
+        // Call collective state keepers.
+        main.assetRegistry().forceUpdates();
+        main.stRSR().payoutRewards();
+        main.furnace().melt();
+
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         for (uint256 i = 0; i < endId; i++) tryVestIssuance(account, i);
@@ -179,15 +191,18 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Redeem RToken for basket collateral
-    /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external notPaused {
+    /// @custom:action
+    function redeem(uint256 amount) external action {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
-        // Call collective state keepers
-        main.poke();
-        IBasketHandler basketHandler = main.basketHandler();
 
+        // Call collective state keepers.
+        main.assetRegistry().forceUpdates();
+        main.stRSR().payoutRewards();
+        main.furnace().melt();
+
+        IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
@@ -223,7 +238,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
-    function mint(address recipient, uint256 amount) external notPaused {
+    /// @custom:subroutine
+    function mint(address recipient, uint256 amount) external subroutine {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amount);
     }
@@ -236,7 +252,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
+    /// @custom:subroutine
+    function setBasketsNeeded(int192 basketsNeeded_) external subroutine {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;

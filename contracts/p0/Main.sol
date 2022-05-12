@@ -20,19 +20,6 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
 
     IERC20 public rsr;
 
-    function poke() external virtual {
-        // We think these are totally order-independent.
-        assetRegistry.forceUpdates();
-        if (!paused()) {
-            furnace.melt();
-            stRSR.payoutRewards();
-        }
-    }
-
-    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
-        return OwnableUpgradeable.owner();
-    }
-
     /// Initializer
     function init(
         Components memory components,
@@ -47,14 +34,26 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
         emit MainInitialized();
     }
 
-    // solhint-disable-next-line func-name-mixedcase
-    function lock_notPaused() external virtual onlyComponent {
+    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
+        return OwnableUpgradeable.owner();
+    }
+
+    // === See docs/security.md ===
+
+    function beginActionTx() external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
         require(!paused(), "paused");
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function lock() external virtual onlyComponent {}
+    function beginGovernanceTx(address txCaller) external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
+        require(OwnableUpgradeable.owner() == txCaller, "tx caller is not the owner");
+    }
+
+    function beginSubroutine() external virtual {
+        require(isComponent(_msgSender()), "caller is not a component");
+    }
 
     // solhint-disable-next-line no-empty-blocks
-    function unlock() external virtual onlyComponent {}
+    function endTx() external virtual {}
 }

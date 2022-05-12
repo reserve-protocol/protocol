@@ -41,32 +41,24 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
-        // withLock not required: only our system components can call this function,
-        // and those that can contain withLock themselves
+    /// @custom:subroutine
+    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
         require(!disabled, "broker disabled");
-
-        address caller = _msgSender();
-        require(
-            caller == address(main.backingManager()) ||
-                caller == address(main.rsrTrader()) ||
-                caller == address(main.rTokenTrader()),
-            "only traders"
-        );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            caller,
+            _msgSender(),
             address(trade),
             req.sellAmount
         );
-        trade.init(this, caller, gnosis, auctionLength, req);
+        trade.init(this, _msgSender(), gnosis, auctionLength, req);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
+    /// @custom:special-cased
     function reportViolation() external notPaused {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
@@ -75,12 +67,14 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint32 newAuctionLength) external onlyOwner withLock {
+    /// @custom:governance
+    function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }
 
-    function setDisabled(bool disabled_) external onlyOwner withLock {
+    /// @custom:governance
+    function setDisabled(bool disabled_) external governance {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }

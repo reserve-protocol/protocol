@@ -217,7 +217,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
 
       // Cannot update with invalid unstaking delay
@@ -238,7 +238,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
 
       // Cannot update with invalid reward period
@@ -259,7 +259,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'previous caller is not the owner'
       )
     })
   })

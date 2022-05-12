@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
-import "contracts/p0/RToken.sol";
+impogrt "contracts/p0/RToken.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p1/RToken.sol";
 import "contracts/interfaces/IBackingManager.sol";
@@ -104,6 +104,9 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     /// Check that the current basket is valid, causing underlying updates
     function checkBasket() external {}
 
+    /// Check that the current basket is valid, causing underlying updates
+    function checkBasket_sub() external {}
+
     /// Governance-controlled setter to cause a basket switch explicitly
     function switchBasket() external {
         // TODO: modeA = !modeA, and we do all the needed trades and handle capitalization
@@ -192,12 +195,6 @@ contract RTokenTestSystem is MainMock {
 
         rToken = rToken_;
         rToken.init(this, "RToken", "RTK", "rtoken://1", params.issuanceRate);
-    }
-
-    function poke() public virtual override {
-        assetRegistry.forceUpdates();
-        basketHandler.checkBasket(); // maaaaaaybe
-        // sometimes tokens
     }
 }
 

@@ -27,17 +27,22 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
-    function forceUpdates() public {
-        lastForceUpdates = uint32(block.timestamp);
-        for (uint256 i = 0; i < _erc20s.length(); i++) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
-        }
+    /// @custom:action
+    function forceUpdates() external action {
+        _forceUpdates();
+    }
+
+    /// Force updates in all collateral assets
+    /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
+    function forceUpdates_sub() external subroutine {
+        _forceUpdates();
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
-    function register(IAsset asset) external onlyOwner returns (bool) {
+    /// @custom:governance
+    function register(IAsset asset) external governance returns (bool) {
         lastForceUpdates = 0;
         return _register(asset);
     }
@@ -45,18 +50,20 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
     /// @return swapped If the asset was swapped for a previously-registered asset
-    function swapRegistered(IAsset asset) external onlyOwner returns (bool swapped) {
+    /// @custom:governance
+    function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
         swapped = _registerIgnoringCollisions(asset);
 
         // Ensure valid basket after swap
-        forceUpdates();
-        main.basketHandler().checkBasket();
+        _forceUpdates();
+        main.basketHandler().checkBasket_sub();
     }
 
     /// Unregister an asset, requiring that it is already registered
-    function unregister(IAsset asset) external onlyOwner {
+    /// @custom:governance
+    function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
         _erc20s.remove(address(asset.erc20()));
@@ -64,8 +71,8 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         emit AssetUnregistered(asset.erc20(), asset);
 
         // Ensure valid basket after deregistration
-        forceUpdates();
-        main.basketHandler().checkBasket();
+        _forceUpdates();
+        main.basketHandler().checkBasket_sub();
     }
 
     /// Return the Asset modelling this ERC20, or revert
@@ -95,6 +102,15 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     }
 
     //
+
+    /// Force updates in all collateral assets
+    function _forceUpdates() internal {
+        lastForceUpdates = uint32(block.timestamp);
+        for (uint256 i = 0; i < _erc20s.length(); i++) {
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
+        }
+    }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered

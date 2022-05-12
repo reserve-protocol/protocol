@@ -93,15 +93,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    function setIssuanceRate(int192 val) external onlyOwner {
-        emit IssuanceRateSet(issuanceRate, val);
-        issuanceRate = val;
-    }
-
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:action
-    function issue(uint256 amtRToken) external asAction {
+    function issue(uint256 amtRToken) external action {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
         main.assetRegistry().forceUpdates(); // no need to checkBasket
@@ -207,8 +202,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Vest all available issuance for the account
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
-    /// @custom:completion
-    function vest(address account, uint256 endId) external asAction {
+    /// @custom:action
+    function vest(address account, uint256 endId) external action {
         main.assetRegistry().forceUpdates();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
@@ -245,7 +240,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancel(uint256 endId, bool earliest) external asAction {
+    /// @custom:action
+    function cancel(uint256 endId, bool earliest) external action {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -263,7 +259,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    function redeem(uint256 amount) external asAction {
+    function redeem(uint256 amount) external action {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
@@ -317,7 +313,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
-    function mint(address recipient, uint256 amtRToken) external notPaused {
+    /// @custom:subroutine
+    function mint(address recipient, uint256 amtRToken) external subroutine {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amtRToken);
     }
@@ -330,10 +327,23 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
-    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
+    /// @custom:subroutine
+    function setBasketsNeeded(int192 basketsNeeded_) external subroutine {
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+    }
+
+    /// Claim all rewards and sweep to BackingManager
+    /// @custom:action
+    function claimAndSweepRewards() external action {
+        RewardableLibP1.claimAndSweepRewards();
+    }
+
+    /// @custom:governance
+    function setIssuanceRate(int192 val) external governance {
+        emit IssuanceRateSet(issuanceRate, val);
+        issuanceRate = val;
     }
 
     /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
@@ -348,12 +358,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
-    }
-
-    /// Claim all rewards and sweep to BackingManager
-    /// Collective Action
-    function claimAndSweepRewards() external asAction {
-        RewardableLibP1.claimAndSweepRewards();
     }
 
     // ==== private ====

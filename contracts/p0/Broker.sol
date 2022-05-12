@@ -36,16 +36,10 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
+    /// @custom:subroutine
+    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
-
-        require(
-            _msgSender() == address(main.backingManager()) ||
-                _msgSender() == address(main.rsrTrader()) ||
-                _msgSender() == address(main.rTokenTrader()),
-            "only traders"
-        );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
@@ -64,12 +58,14 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {
+    /// @custom:governance
+    function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }
 
-    function setDisabled(bool disabled_) external onlyOwner {
+    /// @custom:governance
+    function setDisabled(bool disabled_) external governance {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }

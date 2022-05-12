@@ -138,13 +138,7 @@ interface IComponentRegistry {
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
 interface IMain is IComponentRegistry, IPausable {
-    /// Call all collective state keepers -- only necessary for P0
-    /// @custom:action
-    function poke() external;
-
-    function rsr() external view returns (IERC20);
-
-    // === Initialization/ownership ===
+    // === Initialization ===
 
     event MainInitialized();
 
@@ -154,16 +148,19 @@ interface IMain is IComponentRegistry, IPausable {
         uint32 oneshotPauseDuration_
     ) external;
 
+    // === Control flow ===
+
+    function beginActionTx() external;
+
+    function beginGovernanceTx(address txCaller) external;
+
+    function beginSubroutine() external;
+
+    function endTx() external;
+
+    function rsr() external view returns (IERC20);
+
     function owner() external view returns (address);
-
-    // === Only callable by Components
-
-    // solhint-disable-next-line func-name-mixedcase
-    function lock_notPaused() external;
-
-    function lock() external;
-
-    function unlock() external;
 }
 
 interface TestIMain is IMain {
