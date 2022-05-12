@@ -59,7 +59,7 @@ contract MainP1 is
         emit MainInitialized();
     }
 
-    // solhint-disable-next-line func-mixed-case
+    // solhint-disable-next-line func-name-mixedcase
     function lock_notPaused() external virtual {
         // We can lock without ensuring the caller is a component
         require(!paused(), "paused");

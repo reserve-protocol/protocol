@@ -158,6 +158,7 @@ interface IMain is IComponentRegistry, IPausable {
 
     // === Only callable by Components
 
+    // solhint-disable-next-line func-name-mixedcase
     function lock_notPaused() external;
 
     function lock() external;

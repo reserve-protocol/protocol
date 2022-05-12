@@ -47,6 +47,7 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
         emit MainInitialized();
     }
 
+    // solhint-disable-next-line func-name-mixedcase
     function lock_notPaused() external virtual onlyComponent {
         require(!paused(), "paused");
     }
