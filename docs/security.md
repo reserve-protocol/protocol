@@ -6,7 +6,7 @@ TODO
 
 ## Function Ontology
 
-All functions can be classified into the following 3 types:
+Contract-external functions can be classified into the following 3 types:
 
 1. `@custom:action` - Action. Disallowed while paused.
 2. `@custom:governance` - Governance change. Allowed while paused.
@@ -16,9 +16,9 @@ All execution flows through the protocol should contain AT MOST a single (1) act
 
 Functions of type (1) or (2) may call functions of type (3), but not the other way around.
 
-Functions of type (3) may call functions of type (3).
+There is nothing prohibiting functions of type (3) from calling functions of type (3), but it should not happen due to the way the contract architecture is structured.
 
-Subroutines (3) cannot be called from outside the system. In situations where they must be exposed, we create an additional action (1) function for that purpose.
+Subroutines (3) cannot be called from outside the system. In situations where they must be exposed, we create an additional action (1) function for that purpose, and suffix the subroutine version with "\_sub".
 
 ### `@custom:action`
 
