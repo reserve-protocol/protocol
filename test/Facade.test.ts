@@ -155,12 +155,6 @@ describe('Facade contract', () => {
       expect(quantities.slice(4, 8)).to.eql(initialQuantities)
     })
 
-    it('Should return stRSRExchangeRate correctly', async () => {
-      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(fp('1'))
-
-      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(await stRSR.exchangeRate())
-    })
-
     it('Should return totalAssetValue correctly', async () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
