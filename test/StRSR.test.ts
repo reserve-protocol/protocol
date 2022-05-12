@@ -755,8 +755,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Calculate payout amount
-      const expAmt = decayFn(amountAdded, 1) // 1 round
-      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+      const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
+      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
       await expect(stRSR.payoutRewards())
@@ -795,8 +795,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Calculate payout amount
-      const expAmt = decayFn(amountAdded, 1) // 1 round
-      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+      const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
+      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
       await expect(stRSR.payoutRewards())
@@ -827,9 +827,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Advance to get 1 round of rewards
         await advanceTime(Number(config.rewardPeriod) + 1)
 
-        // Calculate payout amount as if it were a closed form calculation from start
-        const expAmt = decayFn(amountAdded, i + 1)
-        const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+        // Calculate payout amount, as if closed-form from the beginning
+        const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1 + i)) // 1+i rounds
+        const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
         // Payout rewards
         await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
@@ -853,19 +853,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
 
-      // Advance to get 1 round of rewards
+      // Advance to get 100 rounds of rewards
       await advanceTime(100 * Number(config.rewardPeriod) + 1)
 
       // Calculate payout amount as if it were a closed form calculation from start
-      const expAmt = decayFn(amountAdded, 100)
-      const newRate: BigNumber = initialRate.add(amountAdded.sub(expAmt))
+      const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 100))
+      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       const error = calcErr(100)
 
       // Check exchange rate is lower by at-most half
-      expect(await stRSR.exchangeRate()).to.equal(newRate.add(error)) // exact check!
+      expect((await stRSR.exchangeRate()).sub(newRate).abs()).to.be.lte(error)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -925,7 +925,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
-      const newRate = fp(amount.sub(amount2)).div(amount)
+      // new rate: new strsr supply / RSR backing that strsr supply
+      const newRate = fp(amount).div(amount.sub(amount2))
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -960,7 +961,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
-      const newRate = fp(amount.mul(2).sub(amount2)).div(amount.mul(2))
+      const newRate = fp(amount.mul(2)).div(amount.mul(2).sub(amount2))
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -1003,7 +1004,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
-      const newRate = fp(amount.mul(3).sub(amount2)).div(amount.mul(3))
+      const newRate = fp(amount.mul(3)).div(amount.mul(3).sub(amount2))
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -1126,7 +1127,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(toSeize))
           .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('1e-9'))
+          .withArgs(fp('1'), fp('1e9'))
       })
 
       // Check balances and stakes
@@ -1136,8 +1137,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
-      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount.div(1e9) })
-      expect(await stRSR.exchangeRate()).to.equal(fp('1e-9'))
+      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount.mul(1e9) })
+      expect(await stRSR.exchangeRate()).to.equal(fp('1e9'))
     })
 
     it('Should remove RSR from Withdrawers', async () => {
@@ -1179,7 +1180,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.totalSupply()).to.equal(0)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-      expect(await stRSR.exchangeRate()).to.equal(amount.sub(amount2).mul(bn('1e18')).div(amount))
+      expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
     it('Should remove RSR proportionally from Stakers and Withdrawers', async () => {
@@ -1232,7 +1233,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
-      expect(await stRSR.exchangeRate()).to.equal(double.sub(amount2).mul(bn('1e18')).div(double))
+      expect(await stRSR.exchangeRate()).to.equal(fp(double).div(double.sub(amount2)))
     })
   })
 
@@ -1568,8 +1569,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // To register the reward amount
       await advanceTime(rewardPeriod.add(1).toString())
-      const rate = await stRSR.exchangeRate()
-      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet').withArgs(rate, rate)
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
       // Payout over 1000 periods
       await advanceTime(rewardPeriod.mul(1000).add(1).toString())
