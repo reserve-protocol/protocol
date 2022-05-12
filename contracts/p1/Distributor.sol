@@ -39,12 +39,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    /// @custom:subroutine
     function distribute(
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external subroutine {
+    ) external notPaused {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");

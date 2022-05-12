@@ -128,9 +128,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(rsrAmount > 0, "Cannot stake zero");
 
         // Run state keepers
-        main.assetRegistry().forceUpdates();
-        _payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -158,9 +156,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(balances[account] >= stakeAmount, "Not enough balance");
 
         // Call state keepers
-        main.assetRegistry().forceUpdates();
-        _payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         // The next line is not an overflow risk:
         // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
@@ -196,9 +192,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Call state keepers
-        main.assetRegistry().forceUpdates();
-        _payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         // Skip executed withdrawals
         uint256 start = 0;

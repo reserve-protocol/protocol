@@ -46,6 +46,16 @@ contract MainP1 is
         emit MainInitialized();
     }
 
+    /// @custom:action
+    function poke() external {
+        assetRegistry.forceUpdates();
+        furnace.melt();
+        stRSR.payoutRewards();
+    }
+
+    // solhint-disable-next-line no-empty-blocks
+    function poke_sub() external {}
+
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
         return OwnableUpgradeable.owner();
     }
@@ -58,14 +68,14 @@ contract MainP1 is
         _lock();
     }
 
-    function beginGovernanceTx(address txCaller) external virtual {
+    function beginGovernanceTx(address prevCaller) external virtual {
         require(isComponent(_msgSender()), "caller is not a component");
-        require(OwnableUpgradeable.owner() == txCaller, "tx caller is not the owner");
+        require(OwnableUpgradeable.owner() == prevCaller, "prev caller is not the owner");
         _lock();
     }
 
-    function beginSubroutine() external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
+    function beginSubroutine(address prevCaller) external virtual {
+        require(isComponent(prevCaller), "tx caller is not a component");
     }
 
     function endTx() external virtual {

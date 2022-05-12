@@ -35,8 +35,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:refresher
-    function settleTrade(IERC20 sell) public notPaused {
+    /// @custom:action
+    function settleTrade(IERC20 sell) public action {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -64,11 +64,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     // === Setters ===
 
+    /// @custom:governance
     function setMaxTradeSlippage(int192 val) external onlyOwner {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
+    /// @custom:governance
     function setDustAmount(int192 val) external onlyOwner {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;

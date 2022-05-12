@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
-impogrt "contracts/p0/RToken.sol";
+import "contracts/p0/RToken.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p1/RToken.sol";
 import "contracts/interfaces/IBackingManager.sol";

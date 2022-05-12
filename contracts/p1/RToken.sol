@@ -99,8 +99,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     function issue(uint256 amtRToken) external action {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
-        main.assetRegistry().forceUpdates(); // no need to checkBasket
-        main.furnace().melt();
+        main.assetRegistry().forceUpdates_sub(); // no need to checkBasket
+        main.furnace().melt_sub();
 
         IBasketHandler bh = main.basketHandler();
         CollateralStatus status = bh.status();
@@ -204,7 +204,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// @param account The address of the account to vest issuances for
     /// @custom:action
     function vest(address account, uint256 endId) external action {
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().forceUpdates_sub();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         refundOldBasketIssues(account);
@@ -265,15 +265,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().forceUpdates_sub();
 
         IBasketHandler bh = main.basketHandler();
-        bh.checkBasket();
+        bh.checkBasket_sub();
 
         // Allow redemption during IFFY
         require(bh.status() != CollateralStatus.DISABLED, "collateral default");
 
-        main.furnace().melt();
+        main.furnace().melt_sub();
         int192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // {BU} = {BU} * {qRTok} / {qRTok}
@@ -315,7 +315,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:subroutine
     function mint(address recipient, uint256 amtRToken) external subroutine {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amtRToken);
     }
 
@@ -329,7 +329,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:subroutine
     function setBasketsNeeded(int192 basketsNeeded_) external subroutine {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

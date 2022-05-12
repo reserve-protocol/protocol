@@ -35,15 +35,8 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req) external view returns (ITrade) {
+    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
         require(!disabled, "broker disabled");
-        require(
-            _msgSender() == address(main.backingManager()) ||
-                _msgSender() == address(main.rsrTrader()) ||
-                _msgSender() == address(main.rTokenTrader()),
-            "only traders"
-        );
-
         req;
 
         // Revert when opening trades

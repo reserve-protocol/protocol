@@ -138,6 +138,10 @@ interface IComponentRegistry {
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
 interface IMain is IComponentRegistry, IPausable {
+    function poke() external; // not used in p1
+
+    function poke_sub() external; // not used in p1
+
     // === Initialization ===
 
     event MainInitialized();
@@ -152,9 +156,9 @@ interface IMain is IComponentRegistry, IPausable {
 
     function beginActionTx() external;
 
-    function beginGovernanceTx(address txCaller) external;
+    function beginGovernanceTx(address prevCaller) external;
 
-    function beginSubroutine() external;
+    function beginSubroutine(address prevCaller) external;
 
     function endTx() external;
 

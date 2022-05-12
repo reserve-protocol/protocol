@@ -18,7 +18,7 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     }
 
     modifier onlyOwner() {
-        require(main.owner() == _msgSender(), "previous caller is not the owner");
+        require(main.owner() == _msgSender(), "prev caller is not the owner");
         _;
     }
 
@@ -43,7 +43,7 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     }
 
     modifier subroutine() {
-        main.beginSubroutine();
+        main.beginSubroutine(_msgSender());
         _;
     }
 }

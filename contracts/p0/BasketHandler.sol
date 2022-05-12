@@ -171,7 +171,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// Switch the basket, only callable directly by governance
     /// @custom:governance
     function switchBasket() external governance {
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().forceUpdates_sub();
         _switchBasket();
     }
 

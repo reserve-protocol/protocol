@@ -568,7 +568,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setTradingDelay(newValue)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -591,7 +591,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -614,7 +614,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -637,7 +637,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -852,7 +852,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot add asset if not owner
       await expect(assetRegistry.connect(other).register(newAsset.address)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Reverts if attempting to add an existing ERC20 with different asset
@@ -913,7 +913,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot remove asset if not owner
       await expect(assetRegistry.connect(other).unregister(compAsset.address)).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Cannot remove asset that does not exist
@@ -969,7 +969,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Cannot swap asset if not owner
       await expect(
         assetRegistry.connect(other).swapRegistered(newAsset.address)
-      ).to.be.revertedWith('previous caller is not the owner')
+      ).to.be.revertedWith('prev caller is not the owner')
 
       // Cannot swap asset if ERC20 is not registered
       await expect(
@@ -1046,7 +1046,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket if not Owner', async () => {
       await expect(
         basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('previous caller is not the owner')
+      ).to.be.revertedWith('prev caller is not the owner')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
@@ -1073,7 +1073,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(other)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
-      ).to.be.revertedWith('previous caller is not the owner')
+      ).to.be.revertedWith('prev caller is not the owner')
     })
 
     it('Should not allow to set backup Config with non-collateral tokens', async () => {
@@ -1097,7 +1097,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow to switch basket if not Owner', async () => {
       await expect(basketHandler.connect(other).switchBasket()).to.be.revertedWith(
-        'previous caller is not the owner'
+        'prev caller is not the owner'
       )
     })
 

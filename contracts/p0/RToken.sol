@@ -81,9 +81,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function issue(uint256 amount) external action {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
-        main.assetRegistry().forceUpdates();
-        main.stRSR().payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         IBasketHandler basketHandler = main.basketHandler();
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
@@ -145,9 +143,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @custom:action
     function cancel(uint256 endId, bool earliest) external action {
         // Call collective state keepers.
-        main.assetRegistry().forceUpdates();
-        main.stRSR().payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         address account = _msgSender();
 
@@ -171,9 +167,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @custom:action
     function vest(address account, uint256 endId) external action {
         // Call collective state keepers.
-        main.assetRegistry().forceUpdates();
-        main.stRSR().payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
@@ -198,9 +192,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
-        main.assetRegistry().forceUpdates();
-        main.stRSR().payoutRewards();
-        main.furnace().melt();
+        main.poke_sub();
 
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
@@ -240,7 +232,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qRTok} The amount to be minted
     /// @custom:subroutine
     function mint(address recipient, uint256 amount) external subroutine {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
     }
 
@@ -254,7 +246,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:subroutine
     function setBasketsNeeded(int192 basketsNeeded_) external subroutine {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
