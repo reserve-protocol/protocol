@@ -506,9 +506,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith(
-          'collateral not sound'
-        )
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket disabled')
       })
 
       it('Should handle having invalid tokens in the backup configuration', async () => {
@@ -805,9 +803,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Cannot issue because collateral is not sound
-        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith(
-          'collateral not sound'
-        )
+        await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket disabled')
       })
     })
   })

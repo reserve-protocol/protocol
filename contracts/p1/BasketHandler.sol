@@ -104,8 +104,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    function checkBasket() external notPaused {
-        // nonReentrant not required: no external calls
+    function checkBasket() external {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -117,8 +116,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function setPrimeBasket(IERC20[] calldata erc20s, int192[] calldata targetAmts)
         external
         onlyOwner
+        withLock
     {
-        // nonReentrant not required: no external calls
+        // withLock not required: no external calls
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -143,8 +143,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
-    ) external onlyOwner {
-        // nonReentrant not required: no external calls
+    ) external onlyOwner withLock {
+        // withLock not required: no external calls
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
@@ -161,7 +161,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    function switchBasket() external onlyOwner nonReentrant {
+    function switchBasket() external onlyOwner withLock {
         main.assetRegistry().forceUpdates();
         _switchBasket();
     }

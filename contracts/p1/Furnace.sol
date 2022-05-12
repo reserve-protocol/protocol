@@ -31,9 +31,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     }
 
     /// Performs any melting that has vested since last call.
-    function melt() external {
-        // as a gas optimization we have removed notPaused here, as it is checked in RToken.melt
-        // nonReentrant not required: rToken.melt terminates within main's security domain
+    function melt() external notPaused {
         if (uint32(block.timestamp) < uint64(lastPayout) + period) return;
 
         // # of whole periods that have passed since lastPayout
@@ -51,14 +49,14 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     }
 
     /// Period setting
-    function setPeriod(uint32 period_) external onlyOwner {
+    function setPeriod(uint32 period_) external onlyOwner withLock {
         require(period_ != 0, "period cannot be zero");
         emit PeriodSet(period, period_);
         period = period_;
     }
 
     /// Ratio setting
-    function setRatio(int192 ratio_) external onlyOwner {
+    function setRatio(int192 ratio_) external onlyOwner withLock {
         // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;

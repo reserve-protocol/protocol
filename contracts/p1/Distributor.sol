@@ -31,7 +31,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
-    function setDistribution(address dest, RevenueShare memory share) external onlyOwner {
+    function setDistribution(address dest, RevenueShare memory share) external onlyOwner withLock {
         _setDistribution(dest, share);
     }
 
@@ -43,7 +43,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address from,
         uint256 amount
     ) external notPaused {
-        // nonReentrant not required: external calls occur last
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");

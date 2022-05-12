@@ -286,14 +286,19 @@ The following are functions I'm thinking of as "actions":
 
 - stRSR.stake()
 - stRSR.unstake()
+- stRSR.withdraw()
 - rToken.issue()
+- rToken.vest()
 - rToken.cancel()
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.manageTokens()
 - {rsrTrader,rTokenTrader}.manageToken()
+- \*.claimAndSweepRewards()
 
 The actions on stRSR and rToken are _User Actions_; the actions on the traders are _Collective Actions_ which may launch new auctions. All of these may cause economically significant state changes; the exact time and sequence in which these functions are called can cause substantial differences in the resulting state.
+
+All actions should be protected from reentrancy and revert when paused. Notably, actions are entirely disconnected from each other; their execution graph contains no edges.
 
 ## Refreshers
 
@@ -315,21 +320,6 @@ Why does this matter? In a strong sense, refreshers are always _safe_ to call. F
 - If an Action can lead to different results depending on whether or not a refresher is called just before, then the Action is currently incorrect. That Action can be made correct by first calling any such refresher when it's first called.
 
 We get this easily in P0 -- since we aren't worrying about gas optimization there, we just call every refresher at the start of every action. Main.poke() is around, in P0, to call every function that's always correct to call, which includes `checkBasket` and all of the refreshers
-
-## Completions
-
-Annotation: `@custom:completion`
-
-The following are _completions_, function calls that complete delayed transactions:
-
-- stRSR.withdraw(acct, id)
-- rToken.vest(acct, id)
-
-It's a little odd to think of them this way, but both stRSR.withdraw(acct, id) and rToken.vest(acct, id) satisfy the refresher properties, so long as each call being considered uses the same `acct` and `id` parameters. In fact, something a little stronger is true:
-
-- If rToken.vest(acct, x) is called arbitrarily many times in a row, with each x < id, and then rToken.vest(acct, id) is called at time t, the result is identical to if rToken.vest(acct, id) was just called once at time t. (Ditto for stRSR.withdraw)
-
-Both are similar to refreshers, in that it's always "safe" to call them on anyone's behalf. However, since there are aribtrarily many values of `acct` for which they might be called, it's impractical to call every instance of it at the start of every action, even in P0. In particular, if stRSR.seizeRSR() is called, it will seize RSR even from ongoing drafts that _could_ be withdrawn, but for which stRSR.withdraw() has not yet been called. (We could define this otherwise, but it'd cost a lot of gas.)
 
 ## `checkBasket`
 

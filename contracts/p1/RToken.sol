@@ -101,14 +101,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:action
-    function issue(uint256 amtRToken) external notPaused nonReentrant {
+    function issue(uint256 amtRToken) external asAction {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
         main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
-        // TODO should we check that status is not disabled? probably...
-        // expose basket.disabled
+        IBasketHandler bh = main.basketHandler();
+        CollateralStatus status = bh.status();
+        require(status != CollateralStatus.DISABLED, "basket disabled");
 
         // Refund issuances against previous baskets
         address issuer = _msgSender();
@@ -119,11 +120,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        (address[] memory erc20s, uint256[] memory deposits) = main.basketHandler().quote(
-            amtBaskets,
-            CEIL
-        );
+        (uint256 basketNonce, ) = bh.lastSet();
+        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
         IssueQueue storage queue = issueQueues[issuer];
         assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
@@ -133,10 +131,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
-            require(
-                main.basketHandler().status() == CollateralStatus.SOUND,
-                "collateral not sound"
-            );
+            require(status == CollateralStatus.SOUND, "collateral not sound");
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -213,7 +208,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
-    function vest(address account, uint256 endId) external notPaused nonReentrant {
+    function vest(address account, uint256 endId) external asAction {
         main.assetRegistry().forceUpdates();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
@@ -250,7 +245,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    function cancel(uint256 endId, bool earliest) external notPaused nonReentrant {
+    function cancel(uint256 endId, bool earliest) external asAction {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -268,8 +263,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm we want to permit redemptions when paused
-    function redeem(uint256 amount) external notPaused nonReentrant {
+    function redeem(uint256 amount) external asAction {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
@@ -324,7 +318,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     function mint(address recipient, uint256 amtRToken) external notPaused {
-        // nonReentrant not required: no external calls in this function
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         _mint(recipient, amtRToken);
     }
@@ -332,14 +325,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
     function melt(uint256 amtRToken) external notPaused {
-        // nonReentrant not required: no external calls in this function
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
-        // nonReentrant not required
         require(_msgSender() == address(main.backingManager()), "backing manager only");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -361,7 +352,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external notPaused nonReentrant {
+    function claimAndSweepRewards() external asAction {
         RewardableLibP1.claimAndSweepRewards();
     }
 

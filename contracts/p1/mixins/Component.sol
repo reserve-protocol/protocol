@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IComponent.sol";
 import "contracts/interfaces/IMain.sol";
@@ -10,12 +9,7 @@ import "contracts/interfaces/IMain.sol";
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract ComponentP1 is
-    ContextUpgradeable,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable,
-    IComponent
-{
+abstract contract ComponentP1 is ContextUpgradeable, UUPSUpgradeable, IComponent {
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -29,14 +23,27 @@ abstract contract ComponentP1 is
         main = main_;
     }
 
+    modifier onlyOwner() {
+        require(main.owner() == _msgSender(), "Component: caller is not the owner");
+        _;
+    }
+
     modifier notPaused() {
         require(!main.paused(), "paused");
         _;
     }
 
-    modifier onlyOwner() {
-        require(main.owner() == _msgSender(), "Component: caller is not the owner");
+    modifier withLock() {
+        main.lock();
         _;
+        main.unlock();
+    }
+
+    /// action = withLock + notPaused
+    modifier asAction() {
+        main.lock_notPaused();
+        _;
+        main.unlock();
     }
 
     // solhint-disable-next-line no-empty-blocks

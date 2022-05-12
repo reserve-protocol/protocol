@@ -82,8 +82,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
+
         IBasketHandler basketHandler = main.basketHandler();
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
 
         address issuer = _msgSender();
 

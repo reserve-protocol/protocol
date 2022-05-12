@@ -38,7 +38,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
-    function settleTrade(IERC20 sell) public notPaused nonReentrant {
+    function settleTrade(IERC20 sell) public asAction {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -67,18 +67,18 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    function claimAndSweepRewards() external notPaused nonReentrant {
+    function claimAndSweepRewards() external asAction {
         RewardableLibP1.claimAndSweepRewards();
     }
 
     // === Setters ===
 
-    function setMaxTradeSlippage(int192 val) external onlyOwner {
+    function setMaxTradeSlippage(int192 val) external onlyOwner withLock {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
-    function setDustAmount(int192 val) external onlyOwner {
+    function setDustAmount(int192 val) external onlyOwner withLock {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

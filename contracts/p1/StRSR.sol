@@ -93,8 +93,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:action
-    function stake(uint256 rsrAmount) external notPaused {
-        // nonReentrant not required: no calls in this function
+    function stake(uint256 rsrAmount) external asAction {
         require(rsrAmount > 0, "Cannot stake zero");
 
         payoutRewards();
@@ -124,8 +123,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:action
-    function unstake(uint256 stakeAmount) external notPaused {
-        // nonReentrant not required: no external calls in this function
+    function unstake(uint256 stakeAmount) external asAction {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -180,7 +178,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:completion
-    function withdraw(address account, uint256 endId) external notPaused nonReentrant {
+    function withdraw(address account, uint256 endId) external asAction {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
@@ -217,7 +215,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
     /// @param rsrAmount {qRSR}
     /// Must always seize exactly `rsrAmount`, or revert
-    function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
+    function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initRate = exchangeRate();
@@ -272,7 +270,6 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     function payoutRewards() public notPaused {
-        // nonReentrant not required: no external calls in this function
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
@@ -380,19 +377,19 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint32 val) external onlyOwner {
+    function setUnstakingDelay(uint32 val) external onlyOwner withLock {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) external onlyOwner {
+    function setRewardPeriod(uint32 val) external onlyOwner withLock {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(int192 val) external onlyOwner {
+    function setRewardRatio(int192 val) external onlyOwner withLock {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

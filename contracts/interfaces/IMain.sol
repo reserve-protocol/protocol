@@ -59,15 +59,7 @@ interface IPausable {
     function oneshotPauseDuration() external view returns (uint32);
 }
 
-/**
- * @title IMain
- * @notice The central hub for the entire system. Maintains components and an owner singleton role
- */
-interface IMain is IPausable {
-    /// Call all collective state keepers -- only necessary for P0
-    /// @custom:action
-    function poke() external;
-
+interface IComponentRegistry {
     // === Component setters/getters ===
 
     event RTokenSet(IRToken indexed oldVal, IRToken indexed newVal);
@@ -139,6 +131,16 @@ interface IMain is IPausable {
 
     /// @custom:governance
     function setBroker(IBroker broker) external;
+}
+
+/**
+ * @title IMain
+ * @notice The central hub for the entire system. Maintains components and an owner singleton role
+ */
+interface IMain is IComponentRegistry, IPausable {
+    /// Call all collective state keepers -- only necessary for P0
+    /// @custom:action
+    function poke() external;
 
     function rsr() external view returns (IERC20);
 
@@ -153,6 +155,14 @@ interface IMain is IPausable {
     ) external;
 
     function owner() external view returns (address);
+
+    // === Only callable by Components
+
+    function lock_notPaused() external;
+
+    function lock() external;
+
+    function unlock() external;
 }
 
 interface TestIMain is IMain {
