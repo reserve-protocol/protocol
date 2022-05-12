@@ -36,7 +36,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 internal totalStakes; // Total of all stakes {qStakes}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    int192 internal stakeRate; // The exchange rate between stakes and RSR. {1}
+    int192 internal stakeRate; // The exchange rate between stakes and RSR. {stRSR/RSR}
 
     // ==== Unstaking Gov Param ====
     uint32 public unstakingDelay;
@@ -47,7 +47,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft;
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
-    int192 internal draftRate; // The exchange rate between drafts and RSR. {1}
+    int192 internal draftRate; // The exchange rate between drafts and RSR. {drafts/RSR}
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
@@ -291,14 +291,9 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         emit ExchangeRateSet(initRate, exchangeRate());
     }
 
-    // TODO: gonna be honest, I don't think this is useful at all!
-    // But it's in the Facade and our tests need it, so here it is.
-    function exchangeRate() public view returns (int192) {
-        int8 d = int8(decimals());
-        uint256 numerator = draftRSR + stakeRSR;
-        uint256 denominator = totalDrafts + totalStakes;
-        if (numerator == 0 || denominator == 0) return FIX_ONE;
-        else return shiftl_toFix(numerator, -d).div(shiftl_toFix(denominator, -d));
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() public view returns (int192) { // TODO: eliminate internal calls
+        return stakeRate;
     }
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
