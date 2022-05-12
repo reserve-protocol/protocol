@@ -292,7 +292,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() public view returns (int192) {
-        return divuu(totalStaked, rsrBacking);
+        return (rsrBacking == 0 || totalStaked == 0) ? FIX_ONE : divuu(totalStaked, rsrBacking);
     }
 
     // ==== ERC20 Interface ====
