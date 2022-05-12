@@ -53,8 +53,10 @@ contract MainP1 is
         stRSR.payoutRewards();
     }
 
-    // solhint-disable-next-line no-empty-blocks
+    // solhint-disable
     function poke_sub() external {}
+
+    // solhint-enable
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
         return OwnableUpgradeable.owner();

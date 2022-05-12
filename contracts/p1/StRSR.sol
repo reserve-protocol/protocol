@@ -98,6 +98,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
     /// Assign reward payouts to the staker pool
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function payoutRewards_sub() external subroutine {
         _payoutRewards();
     }

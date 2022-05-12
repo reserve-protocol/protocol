@@ -85,6 +85,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
 
     /// Gather and payout rewards from rsrTrader
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function payoutRewards_sub() external;
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system

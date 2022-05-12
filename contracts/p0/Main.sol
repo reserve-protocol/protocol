@@ -41,6 +41,7 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
     }
 
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function poke_sub() external {
         require(isComponent(_msgSender()), "caller is not a component");
         _poke();

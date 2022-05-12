@@ -140,6 +140,7 @@ interface IComponentRegistry {
 interface IMain is IComponentRegistry, IPausable {
     function poke() external; // not used in p1
 
+    // solhint-disable-next-line func-name-mixedcase
     function poke_sub() external; // not used in p1
 
     // === Initialization ===

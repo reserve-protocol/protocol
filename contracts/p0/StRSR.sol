@@ -116,6 +116,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function payoutRewards_sub() external subroutine {
         _payoutRewards();
     }

@@ -43,6 +43,7 @@ interface IFurnace is IComponent {
 
     /// Performs any RToken melting that has vested since the last payout.
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function melt_sub() external;
 }
 

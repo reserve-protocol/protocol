@@ -38,6 +38,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
 
     /// Performs any melting that has vested since last call.
     /// @custom:subroutine
+    // solhint-disable-next-line func-name-mixedcase
     function melt_sub() external subroutine {
         _melt();
     }
