@@ -292,7 +292,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     }
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
-    function exchangeRate() public view returns (int192) { // TODO: eliminate internal calls
+    function exchangeRate() public view returns (int192) {
+        // TODO: eliminate internal calls
         return stakeRate;
     }
 
