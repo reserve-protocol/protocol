@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IMain.sol";
@@ -65,7 +66,7 @@ abstract contract Collateral is ICollateral, Asset, Context {
 
             // If the price is below the default-threshold price, default eventually
             if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
-                whenDefault = block.timestamp + delayUntilDefault;
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
         } catch Panic(uint256) {
             // This indicates a problem in the price function!

@@ -378,7 +378,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, rightItem.deposits[i]);
             }
         } else {
-            IssueItem storage leftItem = queue.items[queue.left];
+            IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                     account,

@@ -229,12 +229,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function price() external view returns (int192 p) {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
-                if (coll.status() != CollateralStatus.DISABLED) {
-                    p = p.plus(coll.price().mul(quantity(basket.erc20s[i])));
-                }
-            } catch {
-                continue;
+            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
+            if (coll.status() != CollateralStatus.DISABLED) {
+                p = p.plus(coll.price().mul(quantity(basket.erc20s[i])));
             }
         }
     }

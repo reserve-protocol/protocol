@@ -775,12 +775,19 @@ describe('Collateral contracts', () => {
       await snapshotGasCost(tokenCollateral.forceUpdates())
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
+      // Adance half the delay
+      await advanceTime(Number(delayUntilDefault.div(2)) + 1)
+
       // Force updates - Nothing occurs
+      await snapshotGasCost(tokenCollateral.forceUpdates())
       await snapshotGasCost(usdcCollateral.forceUpdates())
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Adance the other half
+      await advanceTime(Number(delayUntilDefault.div(2)) + 1)
 
       // Move time forward past delayUntilDefault
-      await advanceTime(Number(delayUntilDefault))
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
     })

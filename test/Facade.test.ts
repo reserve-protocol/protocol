@@ -11,7 +11,6 @@ import {
   StaticATokenMock,
   TestIMain,
   TestIRToken,
-  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { Collateral, defaultFixture } from './fixtures'
@@ -47,7 +46,6 @@ describe('Facade contract', () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
-  let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -61,7 +59,7 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, compToken, aaveToken, basket, facade, main, rToken, stRSR } = await loadFixture(
+    ;({ rsr, compToken, aaveToken, basket, facade, main, rToken } = await loadFixture(
       defaultFixture
     ))
 
@@ -153,12 +151,6 @@ describe('Facade contract', () => {
       // Backing tokens
       expect(tokens.slice(4, 8)).to.eql(backingERC20Addrs)
       expect(quantities.slice(4, 8)).to.eql(initialQuantities)
-    })
-
-    it('Should return stRSRExchangeRate correctly', async () => {
-      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(fp('1'))
-
-      expect(await facade.callStatic.stRSRExchangeRate()).to.equal(await stRSR.exchangeRate())
     })
 
     it('Should return totalAssetValue correctly', async () => {

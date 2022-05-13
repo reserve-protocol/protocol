@@ -129,4 +129,7 @@ interface TestIStRSR is IStRSR {
     function increaseAllowance(address, uint256) external returns (bool);
 
     function decreaseAllowance(address, uint256) external returns (bool);
+
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() external view returns (int192);
 }

@@ -109,13 +109,6 @@ contract Facade is Initializable, IFacade {
         }
     }
 
-    /// @return The exchange rate between StRSR and RSR as a Fix
-    /// @custom:static-call
-    function stRSRExchangeRate() external returns (int192) {
-        main.poke();
-        return main.stRSR().exchangeRate();
-    }
-
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
     function totalAssetValue() external returns (int192 total) {

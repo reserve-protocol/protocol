@@ -113,7 +113,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
 
                 // If the price is below the default-threshold price, default eventually
                 if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
-                    whenDefault = block.timestamp + delayUntilDefault;
+                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
                 } else whenDefault = NEVER;
             } catch Panic(uint256) {
                 // This indicates a problem in the price function!
