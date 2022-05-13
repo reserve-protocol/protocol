@@ -280,7 +280,6 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
-
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() public view returns (int192) {
         return stakeRate;
