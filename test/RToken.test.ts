@@ -737,6 +737,68 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should calculate available vesting correctly', async function () {
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issuance - Will be processed in 5 blocks
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Check vestings - Nothing available yet
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+
+      // Create three additional issuances of 3 blocks each
+      const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+      await rToken.connect(addr1).issue(newIssueAmount)
+      await rToken.connect(addr1).issue(newIssueAmount)
+      await rToken.connect(addr1).issue(newIssueAmount)
+
+      // Check vestings - Nothing available yet, need two more blocks
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+
+      //  Advance 2 blocks
+      await advanceBlocks(2)
+
+      // Check vestings - We can vest the first issuance only
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(1)
+
+      // Advance 3 blocks, should be able to vest second issuance
+      await advanceBlocks(3)
+
+      // Check vestings - Can vest issuances #1 and #2
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+
+      // Advance 1 block
+      await advanceBlocks(1)
+
+      // Check vestings - Nothing changed
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+
+      // Advance 3 more blocks, will unlock third issuance
+      await advanceBlocks(3)
+
+      // Check vestings - Can vest issuances #1, #2, and #3
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(3)
+
+      // Advance 10 blocks will unlock all issuances
+      await advanceBlocks(10)
+
+      // Check vestings - Can vest all issuances
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(4)
+
+      // Vest all issuances
+      await rToken.vest(addr1.address, 4)
+
+      // Check slow mintings are all confirmed
+      const totalValue: BigNumber = issueAmount.add(newIssueAmount.mul(3))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(totalValue)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(totalValue)
+    })
+
     it('Should allow multiple issuances in the same block', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -863,6 +925,81 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Another call will not do anything, will not revert
       await rToken.connect(addr1).cancel(1, true)
+    })
+
+    it('Should allow the issuer to rollback specific set of mintings', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      const quotes: BigNumber[] = await facade.connect(addr1).callStatic.issue(issueAmount)
+      const expectedTkn0: BigNumber = quotes[0]
+      const expectedTkn1: BigNumber = quotes[1]
+      const expectedTkn2: BigNumber = quotes[2]
+      const expectedTkn3: BigNumber = quotes[3]
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Check if minting was registered
+      await expectIssuance(addr1.address, 0, {
+        processed: false,
+      })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+
+      // Vest minting
+      await advanceBlocks(1)
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+
+      // Check previous minting was processed and funds sent to minter
+      await expectIssuance(addr1.address, 0, {
+        processed: true,
+      })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Create another issuance
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Check initial state
+      await expectIssuance(addr1.address, 1, {
+        processed: false,
+      })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0.mul(2)))
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1.mul(2)))
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2.mul(2)))
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3.mul(2)))
+
+      // Cancel with issuer
+      await expect(rToken.connect(addr1).cancel(2, true))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 1, 2)
+
+      // Check minting was cancelled and not tokens minted
+      await expectIssuance(addr1.address, 1, {
+        processed: true,
+      })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Check balances returned to user
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
+      expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
+      expect(await token2.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn2))
+      expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
+
+      // Check total asset value did not change
+      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
+
+      // Another call will not do anything, will not revert
+      await rToken.connect(addr1).cancel(2, true)
     })
 
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
