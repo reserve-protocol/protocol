@@ -11,6 +11,10 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFractio
 /*
  * @title Governance
  * @dev Decentralized Governance for the Reserve Protocol.
+ *
+ * Note that due to the elastic supply of StRSR, proposalThreshold is handled
+ *   very differently than the typical approach. It is in terms of micro %,
+ *   as is _getVotes().
  */
 contract Governance is
     Governor,
@@ -20,20 +24,23 @@ contract Governance is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
+    // solhint-disable no-empty-blocks
     constructor(
         IVotes token_,
         TimelockController timelock_,
         uint256 votingDelay_, // in blocks
         uint256 votingPeriod_, // in blocks
-        uint256 proposalThreshold_, // minimum votes required e.g 1000e18
+        uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
         Governor("MyGovernor")
-        GovernorSettings(votingDelay_, votingPeriod_, proposalThreshold_)
+        GovernorSettings(votingDelay_, votingPeriod_, proposalThresholdAsMicroPercent_)
         GovernorVotes(token_)
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelock_)
     {}
+
+    // solhint-enable no-empty-blocks
 
     function votingDelay() public view override(IGovernor, GovernorSettings) returns (uint256) {
         return super.votingDelay();
@@ -43,6 +50,7 @@ contract Governance is
         return super.votingPeriod();
     }
 
+    /// @return The proposal threshold in units of micro %, e.g 1e6 for 1% of the supply
     function proposalThreshold()
         public
         view
@@ -105,6 +113,17 @@ contract Governance is
         returns (address)
     {
         return super._executor();
+    }
+
+    /// @return The percent of the StRSR supply the account has in terms of micro %: 1e5 = 0.1%
+    function _getVotes(
+        address account,
+        uint256 blockNumber,
+        bytes memory /*params*/
+    ) internal view override(Governor, GovernorVotes) returns (uint256) {
+        uint256 bal = token.getPastVotes(account, blockNumber);
+        uint256 totalSupply = token.getPastTotalSupply(blockNumber);
+        return (bal * 1e8) / totalSupply;
     }
 
     function supportsInterface(bytes4 interfaceId)
