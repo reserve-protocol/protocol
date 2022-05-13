@@ -104,9 +104,13 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
                 int192 delta = peg.mul(defaultThreshold);
 
                 // If the price is below the default-threshold price, default eventually
-                if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
-                    whenDefault = block.timestamp + delayUntilDefault;
-                } else whenDefault = NEVER;
+                if (whenDefault == NEVER) {
+                    if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
+                        whenDefault = block.timestamp + delayUntilDefault;
+                    } else whenDefault = NEVER;
+                } else if (p.gt(peg.minus(delta)) && p.lt(peg.plus(delta))) {
+                    whenDefault = NEVER;
+                }
             } catch Panic(uint256) {
                 // This indicates a problem in the price function!
                 assert(false); // To confirm: there is no way to maintain the error code here
