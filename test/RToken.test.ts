@@ -134,7 +134,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       if (issuance.blockAvailableAt) {
         expect(when.toString()).to.eql(issuance.blockAvailableAt.toString())
       }
-      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gt(index)
+      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gte(index)
       if (issuance.processed !== undefined && !issuance.processed) expect(left).to.lte(index)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
@@ -519,14 +519,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should return maxIssuable correctly', async () => {
       const issueAmount = initialBal.div(2)
-      console.log('1')
 
       // Check values, with no issued tokens
       expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(initialBal.mul(4))
-      console.log('1.5')
       expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(initialBal.mul(4))
       expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
-      console.log('2')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, issueAmount)

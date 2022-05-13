@@ -150,6 +150,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
+        uint256 left;
         for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
@@ -157,9 +158,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                 }
                 iss.processed = true;
+
+                if (left == 0) {
+                    left = n;
+                }
             }
         }
-        emit IssuancesCanceled(account, first, last);
+        emit IssuancesCanceled(account, left, last);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone

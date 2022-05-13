@@ -249,7 +249,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         if (earliest) {
             refundSpan(account, queue.left, endId);
-            queue.left = endId;
         } else {
             refundSpan(account, endId, queue.right);
             queue.right = endId;
