@@ -737,6 +737,68 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should calculate available vesting correctly', async function () {
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issuance - Will be processed in 5 blocks
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Check vestings - Nothing available yet
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+
+      // Create three additional issuances of 3 blocks each
+      const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+      await rToken.connect(addr1).issue(newIssueAmount)
+      await rToken.connect(addr1).issue(newIssueAmount)
+      await rToken.connect(addr1).issue(newIssueAmount)
+
+      // Check vestings - Nothing available yet, need two more blocks
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+
+      //  Advance 2 blocks
+      await advanceBlocks(2)
+
+      // Check vestings - We can vest the first issuance only
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(1)
+
+      // Advance 3 blocks, should be able to vest second issuance
+      await advanceBlocks(3)
+
+      // Check vestings - Can vest issuances #1 and #2
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+
+      // Advance 1 block
+      await advanceBlocks(1)
+
+      // Check vestings - Nothing changed
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+
+      // Advance 3 more blocks, will unlock third issuance
+      await advanceBlocks(3)
+
+      // Check vestings - Can vest issuances #1, #2, and #3
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(3)
+
+      // Advance 10 blocks will unlock all issuances
+      await advanceBlocks(10)
+
+      // Check vestings - Can vest all issuances
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(4)
+
+      // Vest all issuances
+      await rToken.vest(addr1.address, 4)
+
+      // Check slow mintings are all confirmed
+      const totalValue: BigNumber = issueAmount.add(newIssueAmount.mul(3))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(totalValue)
+      expect(await facade.callStatic.totalAssetValue()).to.equal(totalValue)
+    })
+    
     it('Should allow multiple issuances in the same block', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
