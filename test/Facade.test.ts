@@ -11,7 +11,6 @@ import {
   StaticATokenMock,
   TestIMain,
   TestIRToken,
-  TestIStRSR,
   USDCMock,
 } from '../typechain'
 import { Collateral, defaultFixture } from './fixtures'
@@ -47,7 +46,6 @@ describe('Facade contract', () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
-  let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
