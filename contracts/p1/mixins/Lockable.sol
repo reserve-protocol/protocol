@@ -11,8 +11,8 @@ import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
  */
 abstract contract Lockable is Initializable, ContextUpgradeable {
     // Storage approach inspired by OZ
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
+    uint256 public constant _NOT_ENTERED = 1;
+    uint256 public constant _ENTERED = 2;
 
     uint256 private _status;
 
@@ -21,6 +21,10 @@ abstract contract Lockable is Initializable, ContextUpgradeable {
     // solhint-disable-next-line func-name-mixedcase
     function __Lockable_init() internal onlyInitializing {
         _status = _NOT_ENTERED;
+    }
+
+    function status() public view returns (uint256) {
+        return _status;
     }
 
     /// Obtain a lock on the system until `exit` is called

@@ -2,10 +2,10 @@
 
 exports[`BrokerP1 contract #fast Gas Reporting Initialize Trade  1`] = `430587`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  1`] = `529237`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  1`] = `529259`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  2`] = `514937`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  2`] = `514959`;
 
-exports[`BrokerP1 contract #fast Gas Reporting Open Trade  3`] = `514937`;
+exports[`BrokerP1 contract #fast Gas Reporting Open Trade  3`] = `514959`;
 
 exports[`BrokerP1 contract #fast Gas Reporting Settle Trade  1`] = `114743`;

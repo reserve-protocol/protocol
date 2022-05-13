@@ -78,6 +78,8 @@ contract MainP1 is
 
     function beginSubroutine(address prevCaller) external virtual {
         require(isComponent(prevCaller), "tx caller is not a component");
+        // TODO do we need to require a lock is open here? one downside is it would make it harder
+        //  to execute subroutines from tests where we impersonate a component
     }
 
     function endTx() external virtual {
