@@ -4,6 +4,8 @@ exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - AToke
 
 exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 2`] = `50432`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 1`] = `78546`;
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 1`] = `78715`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 2`] = `71558`;
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 2`] = `73614`;
+
+exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 3`] = `71558`;

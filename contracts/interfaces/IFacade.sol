@@ -29,10 +29,6 @@ interface IFacade {
     /// @custom:static-call
     function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts);
 
-    /// @return The exchange rate between StRSR and RSR as a Fix
-    /// @custom:static-call
-    function stRSRExchangeRate() external returns (int192);
-
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
     function totalAssetValue() external returns (int192 total);

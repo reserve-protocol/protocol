@@ -182,7 +182,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newMain: MainP1 = <MainP1>await upgrades.deployProxy(
         MainFactory,
-        [components, rsr.address],
+        [components, rsr.address, 0],
         {
           initializer: 'init',
           kind: 'uups',
