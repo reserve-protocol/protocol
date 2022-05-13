@@ -798,7 +798,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(totalValue)
       expect(await facade.callStatic.totalAssetValue()).to.equal(totalValue)
     })
-    
+
     it('Should allow multiple issuances in the same block', async function () {
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
