@@ -109,17 +109,15 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       }
     } else if (IMPLEMENTATION == Implementation.P1) {
       const stRSRP1 = <StRSRP1>await ethers.getContractAt('StRSRP1', stRSR.address)
-      const [drafts, availableAt] = await stRSRP1.draftQueues(0, address, index)
-      let rsrAmount = drafts
+      const [draftsCurr, availableAt] = await stRSRP1.draftQueues(0, address, index)
+      const [draftsPrev] = index == 0 ? [0] : await stRSRP1.draftQueues(0, address, index - 1)
+      const drafts = draftsCurr.sub(draftsPrev)
 
-      if (index > 0) {
-        const [draftsPrev] = await stRSRP1.draftQueues(0, address, index - 1)
-        rsrAmount = drafts.sub(draftsPrev)
+      if (withdrawal.rsrAmount) {
+        const rsrAmount = fp(drafts).div(await stRSRP1.draftRate())
+        expect(rsrAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
       }
 
-      const stakeAmount = (await stRSRP1.exchangeRate()).mul(rsrAmount).div(fp('1'))
-      if (withdrawal.rsrAmount)
-        expect(stakeAmount.toString()).to.eql(withdrawal.rsrAmount.toString())
       if (withdrawal.availableAt) {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
@@ -1102,11 +1100,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     it('Should not round down above MIN_EXCHANGE_RATE - Hyperinflation scenario', async () => {
       const amount: BigNumber = bn('10e18')
 
-      // Stake
+      // Stake 10 RSR
       await rsr.connect(addr1).approve(stRSR.address, amount)
       await stRSR.connect(addr1).stake(amount)
 
-      // Stake + Withdraw
+      // Stake 10 RSR + Withdraw 10 RSR
       await rsr.connect(addr2).approve(stRSR.address, amount)
       await stRSR.connect(addr2).stake(amount)
       await stRSR.connect(addr2).unstake(amount)
@@ -1123,7 +1121,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const dustAmt = bn('20e9')
       const toSeize = amount.mul(2).sub(dustAmt).sub(1)
 
-      // Seize RSR
+      // Seize all but dustAmt qRSR
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(toSeize))
           .to.emit(stRSR, 'ExchangeRateSet')
@@ -1137,7 +1135,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
-      await expectWithdrawal(addr2.address, 0, { rsrAmount: amount.mul(1e9) })
+      await expectWithdrawal(addr2.address, 0, { rsrAmount: dustAmt.div(2) })
       expect(await stRSR.exchangeRate()).to.equal(fp('1e9'))
     })
 

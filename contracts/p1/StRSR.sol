@@ -36,7 +36,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 internal totalStakes; // Total of all stakes {qStakes}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    int192 internal stakeRate; // The exchange rate between stakes and RSR. {stRSR/RSR}
+    int192 public stakeRate; // The exchange rate between stakes and RSR. {stRSR/RSR}
 
     // ==== Unstaking Gov Param ====
     uint32 public unstakingDelay;
@@ -47,7 +47,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft;
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
-    int192 internal draftRate; // The exchange rate between drafts and RSR. {drafts/RSR}
+    int192 public draftRate; // The exchange rate between drafts and RSR. {drafts/RSR}
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
