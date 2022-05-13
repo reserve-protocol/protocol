@@ -102,9 +102,6 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Gather and payout rewards from rsrTrader. State Keeper.
     /// @custom:refresher
     function payoutRewards() external;
-
-    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
-    function exchangeRate() external view returns (int192);
 }
 
 interface TestIStRSR is IStRSR {
@@ -123,4 +120,7 @@ interface TestIStRSR is IStRSR {
     function increaseAllowance(address, uint256) external returns (bool);
 
     function decreaseAllowance(address, uint256) external returns (bool);
+
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() external view returns (int192);
 }
