@@ -21,10 +21,16 @@ import "./IMain.sol";
  */
 interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, IComponent {
     /// Emitted when RSR is staked
+    /// @param era The era at time of staking
     /// @param staker The address of the staker
     /// @param rsrAmount {qRSR} How much RSR was staked
     /// @param stRSRAmount {qStRSR} How much stRSR was minted by this staking
-    event Staked(address indexed staker, uint256 indexed rsrAmount, uint256 indexed stRSRAmount);
+    event Staked(
+        uint256 indexed era,
+        address indexed staker,
+        uint256 rsrAmount,
+        uint256 indexed stRSRAmount
+    );
 
     /// Emitted when an unstaking is started
     /// @param draftId The id of the draft.

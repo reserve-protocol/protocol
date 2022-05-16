@@ -29,8 +29,8 @@ import {
   RTokenAsset,
   RTokenP1,
   RTokenP1V2,
-  StRSRP1,
-  StRSRP1V2,
+  StRSRP1Votes,
+  StRSRP1VotesV2,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
@@ -149,7 +149,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     TradeFactory = await ethers.getContractFactory('GnosisTrade')
-    StRSRFactory = await ethers.getContractFactory('StRSRP1')
+    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
 
     // Import deployed proxies
     await upgrades.forceImport(main.address, MainFactory)
@@ -356,7 +356,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should deploy valid implementation - StRSR', async () => {
-      const newStRSR: StRSRP1 = <StRSRP1>await upgrades.deployProxy(
+      const newStRSR: StRSRP1Votes = <StRSRP1Votes>await upgrades.deployProxy(
         StRSRFactory,
         [
           main.address,
@@ -656,8 +656,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - StRSR', async () => {
       // Upgrading
-      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1V2')
-      const stRSRV2: StRSRP1V2 = <StRSRP1V2>(
+      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2')
+      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
         await upgrades.upgradeProxy(stRSR.address, StRSRV2Factory)
       )
 

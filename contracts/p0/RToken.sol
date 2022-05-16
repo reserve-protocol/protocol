@@ -84,9 +84,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
 
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         address issuer = _msgSender();
 
         // Compute # of baskets to create `amount` qRTok
@@ -159,9 +159,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 iss.processed = true;
 
-                if (left == 0) {
-                    left = n;
-                }
+                if (left == 0) left = n;
             }
         }
         emit IssuancesCanceled(account, left, last);
