@@ -123,8 +123,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         IssueQueue storage queue = issueQueues[issuer];
 
-        // TODO commented out to investigate contract size
-        // assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
+        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
 
         // Add amtRToken's worth of issuance delay to allVestAt
         int192 vestingEnd = whenFinished(amtRToken);
@@ -147,7 +146,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
-            emit IssuancesCompleted(issuer, queue.left, queue.right); // TODO: Breaks Explorer?
+            emit IssuancesCompleted(issuer, queue.left, queue.right);
             return;
         }
 
@@ -285,13 +284,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         int192 baskets = basketsNeeded_.muluDivu(amount, totalSupply());
         emit Redemption(redeemer, amount, baskets);
 
-        // TODO commented out to investigate contract size
-        // assert(baskets.lte(basketsNeeded_));
+        assert(baskets.lte(basketsNeeded_));
 
         (address[] memory erc20s, uint256[] memory amounts) = bh.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
-        int192 prorate = toFix(amount).divu(totalSupply());
+        int192 prorate = divuu(amount, totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
@@ -375,8 +373,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     ) private {
         IssueQueue storage queue = issueQueues[account];
 
-        // TODO commented out to investigate contract size
-        // assert(queue.left <= left && right <= queue.right);
+        assert(queue.left <= left && right <= queue.right);
 
         if (left >= right) return;
 
