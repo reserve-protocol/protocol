@@ -22,6 +22,7 @@ library RewardableLibP1 {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
+    /// @custom:interaction
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();

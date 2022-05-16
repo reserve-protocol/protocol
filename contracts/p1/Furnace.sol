@@ -31,6 +31,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     }
 
     /// Performs any melting that has vested since last call.
+    /// @custom:interaction
     function melt() external {
         // as a gas optimization we have removed notPaused here, as it is checked in RToken.melt
         // nonReentrant not required: rToken.melt terminates within main's security domain

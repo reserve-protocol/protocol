@@ -88,6 +88,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
     /// @custom:action
+    /// @custom:interaction
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
@@ -97,12 +98,14 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
 
     /// Complete delayed unstaking for the account, up to (but not including!) `endId`.
     /// @custom:completion
+    /// @custom:interaction
     function withdraw(address account, uint256 endId) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
 
     /// Seize RSR, only callable by main.backingManager()
+    /// @custom:interaction
     function seizeRSR(uint256 amount) external;
 
     /// Gather and payout rewards from rsrTrader. State Keeper.

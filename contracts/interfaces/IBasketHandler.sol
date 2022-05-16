@@ -58,10 +58,12 @@ interface IBasketHandler is IComponent {
 
     /// Checks the basket for default and swaps it if necessary
     /// @custom:action
+    /// @custom:interaction
     function checkBasket() external;
 
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance
+    /// @custom:interaction
     function switchBasket() external;
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply

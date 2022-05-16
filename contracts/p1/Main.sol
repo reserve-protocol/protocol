@@ -21,6 +21,7 @@ contract MainP1 is Initializable, ContextUpgradeable, Pausable, UUPSUpgradeable,
     constructor() initializer {}
 
     /// @dev This should not need to be used from anywhere other than the Facade
+    /// @custom:interaction
     function poke() external virtual {
         assetRegistry.forceUpdates();
         if (!paused()) {

@@ -37,6 +37,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
+    /// @custom:interaction
     function grantRTokenAllowance(IERC20 erc20) external notPaused {
         // nonReentrant not required: by inspection
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
@@ -45,6 +46,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Mointain the overall backing policy; handout assets otherwise
     /// Collective Action
+    /// @custom:interaction
     function manageTokens(IERC20[] calldata erc20s) external notPaused nonReentrant {
         if (tradesOpen > 0) return;
 
@@ -120,6 +122,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Send excess assets to the RSR and RToken traders
+    /// @custom:interaction
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         IBasketHandler basketHandler = main.basketHandler();
         // TODO can we get rid of this eventually?
@@ -190,6 +193,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// @custom:interaction
     function compromiseBasketsNeeded() private {
         // TODO this might be the one assert we actually keep
         assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());

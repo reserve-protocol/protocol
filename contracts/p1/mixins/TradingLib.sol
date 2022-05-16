@@ -188,6 +188,7 @@ library TradingLibP1 {
     /// Prepare a trade with seized RSR to buy for missing collateral
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
+    /// @custom:interaction
     function rsrTrade() external returns (bool doTrade, TradeRequest memory req) {
         IERC20 rsr_ = rsr();
         require(assetRegistry().isRegistered(rsr_), "rsr unregistered");

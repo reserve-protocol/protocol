@@ -39,6 +39,7 @@ interface IFurnace is IComponent {
 
     /// Performs any RToken melting that has vested since the last payout.
     /// @custom:refresher
+    /// @custom:interaction
     function melt() external;
 }
 

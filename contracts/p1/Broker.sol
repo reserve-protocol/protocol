@@ -41,6 +41,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
+    /// @custom:interaction
     function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
         // nonReentrant not required: only our system components can call this function,
         // and those that can contain nonReentrant themselves

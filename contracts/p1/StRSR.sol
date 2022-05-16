@@ -128,6 +128,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:action
+    /// @custom:interaction
     function stake(uint256 rsrAmount) external notPaused {
         // nonReentrant not required: external call last
         require(rsrAmount > 0, "Cannot stake zero");
@@ -179,6 +180,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:action
+    /// @custom:interaction
     function withdraw(address account, uint256 endId) external notPaused nonReentrant {
         main.assetRegistry().forceUpdates();
 
@@ -216,6 +218,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @param rsrAmount {qRSR}
     /// Must always seize exactly `rsrAmount`, or revert
+    /// @custom:interaction
     function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");

@@ -66,6 +66,7 @@ interface IPausable {
 interface IMain is IPausable {
     /// Call all collective state keepers -- only necessary for P0
     /// @custom:action
+    /// @custom:interaction
     function poke() external;
 
     // === Component setters/getters ===

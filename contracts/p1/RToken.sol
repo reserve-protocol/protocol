@@ -98,6 +98,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amtRToken) external notPaused nonReentrant {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
@@ -245,6 +246,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external notPaused nonReentrant {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
@@ -263,6 +265,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external notPaused nonReentrant {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
@@ -360,12 +363,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
+    /// @custom:interaction
     function claimAndSweepRewards() external notPaused nonReentrant {
         RewardableLibP1.claimAndSweepRewards();
     }
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
+    /// @custom:interaction
     function refundSpan(
         address account,
         uint256 left,
@@ -400,6 +405,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Vest all RToken issuance in queue = queues[account], from queue.left to < endId
     /// This *does* fixup queue.left and queue.right!
+    /// @custom:interaction
     function vestUpTo(address account, uint256 endId) private {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
@@ -443,6 +449,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// If account's queue models an old basket, refund those issuances.
+    /// @custom:interaction
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();

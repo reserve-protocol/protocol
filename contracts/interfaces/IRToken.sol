@@ -79,6 +79,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
     /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amount) external;
 
     /// Cancels a vesting slow issuance of _msgSender

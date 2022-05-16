@@ -38,6 +38,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:refresher
+    /// @custom:interaction
     function settleTrade(IERC20 sell) public notPaused nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
@@ -50,6 +51,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
+    /// @custom:interaction
     function tryTrade(TradeRequest memory req) internal {
         require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
 
@@ -67,6 +69,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
+    /// @custom:interaction
     function claimAndSweepRewards() external notPaused nonReentrant {
         RewardableLibP1.claimAndSweepRewards();
     }

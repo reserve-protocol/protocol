@@ -38,6 +38,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
+    /// @custom:interaction
     function distribute(
         IERC20 erc20,
         address from,
