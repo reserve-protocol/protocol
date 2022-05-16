@@ -78,7 +78,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amount) external;
 
     /// Cancels a vesting slow issuance of _msgSender
@@ -86,12 +86,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:action
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external;
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
-    /// @custom:action
+    /// @custom:interaction
     function vest(address account, uint256 endId) external;
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -100,7 +100,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager

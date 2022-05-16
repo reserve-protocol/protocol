@@ -29,7 +29,7 @@ interface IBackingManager is IComponent, ITrading {
     function grantRTokenAllowance(IERC20) external;
 
     /// Mointain the overall backing policy; handout assets otherwise
-    /// @custom:action
+    /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s) external;
 }
 

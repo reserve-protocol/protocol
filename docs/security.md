@@ -8,7 +8,7 @@ TODO
 
 All system-external functions are classified into one of the following 3 categories:
 
-1. `@custom:action` - Action. Disallowed while paused. Per-contract reentrant lock applied.
+1. `@custom:interaction` - Action. Disallowed while paused. Per-contract reentrant lock applied.
 2. `@custom:governance` - Governance change. Allowed while paused.
 3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `forceUpdates`.
 
@@ -16,7 +16,7 @@ All execution flows through the protocol should contain AT MOST a single (1) act
 
 Functions that are not system-external, but merely contract-external, are tagged with `@custom:protected`. It is governance's job to ensure a malicious contract is never allowed to masquerade as a component and call one of these. They do not execute when paused.
 
-### `@custom:action`
+### `@custom:interaction`
 
 - stRSR.stake()
 - stRSR.unstake()

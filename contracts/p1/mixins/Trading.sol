@@ -37,7 +37,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:action
+    /// @custom:interaction
     function settleTrade(IERC20 sell) external action {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
@@ -51,7 +51,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:action
+    /// @custom:interaction
     function claimAndSweepRewards() external action {
         RewardableLibP1.claimAndSweepRewards();
     }

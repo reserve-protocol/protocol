@@ -29,7 +29,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
-    /// @custom:action
+    /// @custom:interaction
     function manageToken(IERC20 erc20) external action {
         if (address(trades[erc20]) != address(0)) return;
 

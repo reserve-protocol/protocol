@@ -86,21 +86,21 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     ) external;
 
     /// Gather and payout rewards from rsrTrader
-    /// @custom:action
+    /// @custom:interaction
     function payoutRewards() external;
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
-    /// @custom:action
+    /// @custom:interaction
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qStRSR}
-    /// @custom:action
+    /// @custom:interaction
     function unstake(uint256 amount) external;
 
     /// Complete delayed unstaking for the account, up to (but not including!) `endId`
-    /// @custom:action
+    /// @custom:interaction
     function withdraw(address account, uint256 endId) external;
 
     /// Seize RSR, only callable by main.backingManager()

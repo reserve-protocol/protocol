@@ -77,7 +77,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
-    /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amount) external action {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
@@ -135,12 +135,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Cancels a vesting slow issuance
-    /// @custom:action
+    /// @custom:interaction
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:action
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external action {
         // Call collective state keepers.
         main.poke();
@@ -167,7 +167,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
-    /// @custom:action
+    /// @custom:interaction
     function vest(address account, uint256 endId) external action {
         // Call collective state keepers.
         main.poke();
@@ -189,7 +189,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external action {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");

@@ -57,7 +57,7 @@ interface IBasketHandler is IComponent {
     ) external;
 
     /// Checks the basket for default and swaps it if necessary
-    /// @custom:action
+    /// @custom:interaction
     function checkBasket() external;
 
     /// Governance-controlled setter to cause a basket switch explicitly

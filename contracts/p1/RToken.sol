@@ -92,7 +92,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amtRToken) external action {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
@@ -204,7 +204,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Vest all available issuance for the account
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
-    /// @custom:action
+    /// @custom:interaction
     function vest(address account, uint256 endId) external action {
         main.assetRegistry().forceUpdates();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
@@ -250,7 +250,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:action
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external action {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
@@ -267,7 +267,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external action {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
@@ -348,7 +348,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Claim all rewards and sweep to BackingManager
-    /// @custom:action
+    /// @custom:interaction
     function claimAndSweepRewards() external action {
         RewardableLibP1.claimAndSweepRewards();
     }
