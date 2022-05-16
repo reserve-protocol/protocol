@@ -36,7 +36,7 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
 
     // === See docs/security.md ===
 
-    modifier action() {
+    modifier interaction() {
         require(!main.paused(), "paused");
         require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
         _status = _ENTERED;

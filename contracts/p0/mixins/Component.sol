@@ -30,7 +30,7 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     // === See docs/security.md ===
     // In P0 we do not apply locks
 
-    modifier action() {
+    modifier interaction() {
         require(!main.paused(), "paused");
         _;
     }

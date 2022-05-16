@@ -122,7 +122,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external action {
+    function stake(uint256 rsrAmount) external interaction {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -149,7 +149,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external action {
+    function unstake(uint256 stakeAmount) external interaction {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -180,7 +180,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external action {
+    function withdraw(address account, uint256 endId) external interaction {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");

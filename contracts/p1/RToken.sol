@@ -93,7 +93,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amtRToken) external action {
+    function issue(uint256 amtRToken) external interaction {
         require(amtRToken > 0, "Cannot issue zero");
         // ==== Basic Setup ====
         main.assetRegistry().forceUpdates();
@@ -205,7 +205,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @custom:interaction
-    function vest(address account, uint256 endId) external action {
+    function vest(address account, uint256 endId) external interaction {
         main.assetRegistry().forceUpdates();
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
@@ -251,7 +251,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction
-    function cancel(uint256 endId, bool earliest) external action {
+    function cancel(uint256 endId, bool earliest) external interaction {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -268,7 +268,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
-    function redeem(uint256 amount) external action {
+    function redeem(uint256 amount) external interaction {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
@@ -349,7 +349,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external action {
+    function claimAndSweepRewards() external interaction {
         RewardableLibP1.claimAndSweepRewards();
     }
 

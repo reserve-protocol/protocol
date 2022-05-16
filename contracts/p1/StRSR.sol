@@ -94,17 +94,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     int192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
     // === Cache ===
-<<<<<<< HEAD
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
 
-=======
-
-    // {qRSR} How much reward RSR was held the last time rewards were paid out
-    uint256 internal rsrRewardsAtLastPayout;
-
->>>>>>> master
     // {seconds} The last tim rewards were paid out
     uint32 internal payoutLastPaid;
 
@@ -141,7 +134,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external action {
+    function stake(uint256 rsrAmount) external interaction {
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
@@ -168,7 +161,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external action {
+    function unstake(uint256 stakeAmount) external interaction {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -190,7 +183,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external action {
+    function withdraw(address account, uint256 endId) external interaction {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
