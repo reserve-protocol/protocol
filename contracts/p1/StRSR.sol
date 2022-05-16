@@ -94,10 +94,17 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     int192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
     // === Cache ===
+<<<<<<< HEAD
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
 
+=======
+
+    // {qRSR} How much reward RSR was held the last time rewards were paid out
+    uint256 internal rsrRewardsAtLastPayout;
+
+>>>>>>> master
     // {seconds} The last tim rewards were paid out
     uint32 internal payoutLastPaid;
 
