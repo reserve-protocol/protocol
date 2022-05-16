@@ -66,13 +66,13 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
 
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 era_ = _checkpointsLookup(_eras, blockNumber);
+        uint256 era_ = _eras.length > 0 ? _checkpointsLookup(_eras, blockNumber) : 0;
         return _checkpointsLookup(_checkpoints[era_][account], blockNumber);
     }
 
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 era_ = _checkpointsLookup(_eras, blockNumber);
+        uint256 era_ = _eras.length > 0 ? _checkpointsLookup(_eras, blockNumber) : 0;
         return _checkpointsLookup(_totalSupplyCheckpoints[era_], blockNumber);
     }
 

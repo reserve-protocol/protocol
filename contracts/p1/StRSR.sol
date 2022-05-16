@@ -195,8 +195,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(endId <= queue.length, "index out-of-bounds");
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
-        uint224 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
-        uint224 draftAmount = queue[endId - 1].drafts - oldDrafts;
+        uint192 oldDrafts = firstId > 0 ? queue[firstId - 1].drafts : 0;
+        uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
         firstRemainingDraft[era][account] = endId;
