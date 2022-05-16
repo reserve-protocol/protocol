@@ -83,11 +83,6 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// @custom:action
     function payoutRewards() external;
 
-    /// Gather and payout rewards from rsrTrader
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function payoutRewards_sub() external;
-
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
     /// @custom:action
@@ -103,7 +98,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     function withdraw(address account, uint256 endId) external;
 
     /// Seize RSR, only callable by main.backingManager()
-    /// @custom:subroutine
+    /// @custom:protected
     function seizeRSR(uint256 amount) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work

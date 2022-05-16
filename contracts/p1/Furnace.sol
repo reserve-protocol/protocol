@@ -31,20 +31,8 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     }
 
     /// Performs any melting that has vested since last call.
-    /// @custom:action
-    function melt() external action {
-        _melt();
-    }
-
-    /// Performs any melting that has vested since last call.
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function melt_sub() external subroutine {
-        _melt();
-    }
-
-    /// Performs any melting that has vested since last call.
-    function _melt() internal {
+    /// @custom:refresher
+    function melt() external notPaused {
         if (uint32(block.timestamp) < uint64(lastPayout) + period) return;
 
         // # of whole periods that have passed since lastPayout

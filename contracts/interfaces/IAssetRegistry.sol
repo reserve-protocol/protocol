@@ -31,11 +31,6 @@ interface IAssetRegistry is IComponent {
     /// @custom:action
     function forceUpdates() external;
 
-    /// Force an update of all exchange rates and prices for all assets
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function forceUpdates_sub() external;
-
     /// @return The corresponding asset for ERC20, or reverts if not registered
     function toAsset(IERC20 erc20) external view returns (IAsset);
 

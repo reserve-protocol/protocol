@@ -65,13 +65,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === Setters ===
 
     /// @custom:governance
-    function setMaxTradeSlippage(int192 val) external onlyOwner {
+    function setMaxTradeSlippage(int192 val) external governance {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setDustAmount(int192 val) external onlyOwner {
+    function setDustAmount(int192 val) external governance {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

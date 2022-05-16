@@ -36,20 +36,29 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    /// @custom:subroutine
-    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
+    /// @custom:protected
+    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
+
+        address caller = _msgSender();
+        require(
+            caller == address(main.backingManager()) ||
+                caller == address(main.rsrTrader()) ||
+                caller == address(main.rTokenTrader()),
+            "only traders"
+        );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
-        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
-        trade.init(this, _msgSender(), gnosis, auctionLength, req);
+        req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
+        trade.init(this, caller, gnosis, auctionLength, req);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
+    /// @custom:protected
     function reportViolation() external notPaused {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);

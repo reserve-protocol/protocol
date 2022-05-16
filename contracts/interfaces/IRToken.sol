@@ -91,7 +91,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
-    /// @custom:completion
+    /// @custom:action
     function vest(address account, uint256 endId) external;
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -106,6 +106,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
+    /// @custom:protected
     function mint(address recipient, uint256 amount) external;
 
     /// Melt a quantity of RToken from the caller's account
@@ -115,6 +116,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
     ///                      needed range: pretty interesting
+    /// @custom:protected
     function setBasketsNeeded(int192 basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted

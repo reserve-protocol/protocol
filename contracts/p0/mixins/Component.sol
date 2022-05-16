@@ -31,19 +31,17 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
     // In P0 we do not apply locks
 
     modifier action() {
-        main.beginActionTx();
+        require(!main.paused(), "paused");
         _;
-        main.endTx();
     }
 
     modifier governance() {
-        main.beginGovernanceTx(_msgSender());
+        require(main.owner() == _msgSender(), "prev caller is not the owner");
         _;
-        main.endTx();
     }
 
-    modifier subroutine() {
-        main.beginSubroutine(_msgSender());
+    modifier refresher() {
+        require(!main.paused(), "paused");
         _;
     }
 }

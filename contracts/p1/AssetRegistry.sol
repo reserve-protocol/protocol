@@ -27,15 +27,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Force updates in all collateral assets
-    /// @custom:action
-    function forceUpdates() external action {
-        _forceUpdates();
-    }
-
-    /// Force updates in all collateral assets
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function forceUpdates_sub() external subroutine {
+    /// @custom:refresher
+    function forceUpdates() external {
+        // It's a waste of gas to require notPaused because assets can be updated directly
         _forceUpdates();
     }
 
@@ -55,9 +49,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         assert(assets[asset.erc20()] != IAsset(address(0)));
         swapped = _registerIgnoringCollisions(asset);
 
+        // TODO delete
         // Ensure valid basket after swap
         _forceUpdates();
-        main.basketHandler().checkBasket_sub();
+        main.basketHandler().checkBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -69,9 +64,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
+        // TODO delete
         // Ensure valid basket after deregistration
         _forceUpdates();
-        main.basketHandler().checkBasket_sub();
+        main.basketHandler().checkBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert

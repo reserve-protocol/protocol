@@ -211,7 +211,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Try to update value if not BackingManager
       await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-        'tx caller is not a component'
+        'not backing manager'
       )
 
       await whileImpersonating(assetRegistry.address, async (bhSigner) => {
@@ -1257,7 +1257,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'tx caller is not a component'
+        'not backing manager'
       )
 
       // Trying to mint from a non-backing manager component should fail

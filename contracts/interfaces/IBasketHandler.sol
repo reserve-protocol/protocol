@@ -60,11 +60,6 @@ interface IBasketHandler is IComponent {
     /// @custom:action
     function checkBasket() external;
 
-    /// Checks the basket for default and swaps it if necessary
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function checkBasket_sub() external;
-
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance
     function switchBasket() external;

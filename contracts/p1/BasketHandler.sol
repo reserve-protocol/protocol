@@ -104,17 +104,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    /// @custom:action
-    function checkBasket() external action {
-        if (status() == CollateralStatus.DISABLED) {
-            _switchBasket();
-        }
-    }
-
-    /// Checks the basket for default and swaps it if necessary
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function checkBasket_sub() external subroutine {
+    /// @custom:refresher
+    function checkBasket() external notPaused {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -174,7 +165,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Switch the basket, only callable directly by governance
     /// @custom:governance
     function switchBasket() external governance {
-        main.assetRegistry().forceUpdates_sub();
+        main.assetRegistry().forceUpdates();
         _switchBasket();
     }
 
@@ -198,13 +189,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < length; ++i) {
             try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 CollateralStatus s = coll.status();
-                if (s == CollateralStatus.DISABLED) {
-                    return CollateralStatus.DISABLED;
-                }
+                if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
 
-                if (uint256(s) > uint256(status_)) {
-                    status_ = s;
-                }
+                if (uint256(s) > uint256(status_)) status_ = s;
             } catch {
                 return CollateralStatus.DISABLED;
             }
@@ -214,9 +201,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
     function quantity(IERC20 erc20) public view returns (int192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            if (coll.status() == CollateralStatus.DISABLED) {
-                return FIX_ZERO;
-            }
+            if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
             // {tok/BU} = {ref/BU} / {ref/tok}
             return basket.refAmts[erc20].div(coll.refPerTok(), CEIL);

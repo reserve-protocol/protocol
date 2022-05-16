@@ -109,15 +109,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     /// Assign reward payouts to the staker pool
-    /// @custom:action
-    function payoutRewards() external action {
-        _payoutRewards();
-    }
-
-    /// Assign reward payouts to the staker pool
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function payoutRewards_sub() external subroutine {
+    /// @custom:refresher
+    function payoutRewards() external notPaused {
         _payoutRewards();
     }
 
@@ -129,7 +122,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(rsrAmount > 0, "Cannot stake zero");
 
         // Run state keepers
-        main.poke_sub();
+        main.poke();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:
@@ -157,7 +150,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(balances[account] >= stakeAmount, "Not enough balance");
 
         // Call state keepers
-        main.poke_sub();
+        main.poke();
 
         // The next line is not an overflow risk:
         // stakeAmount = rsrAmount * (totalStaked / rsrBacking) <= 1e29 * 1e9 = 1e38
@@ -193,7 +186,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(queue[endId - 1].availableAt <= block.timestamp, "withdrawal unavailable");
 
         // Call state keepers
-        main.poke_sub();
+        main.poke();
 
         // Skip executed withdrawals
         uint256 start = 0;
@@ -224,8 +217,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @param rsrAmount {qRSR}
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
-    /// @custom:subroutine
-    function seizeRSR(uint256 rsrAmount) external subroutine {
+    /// @custom:protected
+    function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initialExchangeRate = exchangeRate();
@@ -486,19 +479,19 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint32 val) external onlyOwner {
+    function setUnstakingDelay(uint32 val) external governance {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) external onlyOwner {
+    function setRewardPeriod(uint32 val) external governance {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(int192 val) external onlyOwner {
+    function setRewardRatio(int192 val) external governance {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

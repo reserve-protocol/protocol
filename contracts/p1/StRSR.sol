@@ -91,15 +91,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     }
 
     /// Assign reward payouts to the staker pool
-    /// @custom:action
-    function payoutRewards() external action {
-        _payoutRewards();
-    }
-
-    /// Assign reward payouts to the staker pool
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function payoutRewards_sub() external subroutine {
+    /// @custom:refresher
+    function payoutRewards() external notPaused {
         _payoutRewards();
     }
 
@@ -192,7 +185,7 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:action
     function withdraw(address account, uint256 endId) external action {
-        main.assetRegistry().forceUpdates_sub();
+        main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
@@ -228,8 +221,8 @@ contract StRSRP1 is IStRSR, ERC20VotesUpgradeable, ComponentP1 {
 
     /// @param rsrAmount {qRSR}
     /// Must always seize exactly `rsrAmount`, or revert
-    /// @custom:subroutine
-    function seizeRSR(uint256 rsrAmount) external subroutine {
+    /// @custom:protected
+    function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initRate = exchangeRate();

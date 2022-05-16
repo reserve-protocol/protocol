@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/p1/mixins/Lockable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
 import "contracts/mixins/Pausable.sol";
@@ -20,7 +20,7 @@ contract MainP1 is
     OwnableUpgradeable,
     ComponentRegistry,
     Pausable,
-    Lockable,
+    ReentrancyGuardUpgradeable,
     UUPSUpgradeable,
     IMain
 {
@@ -38,7 +38,6 @@ contract MainP1 is
     ) public virtual initializer {
         __Pausable_init(oneshotPauseDuration_);
         __ComponentRegistry_init(components);
-        __Lockable_init();
         __UUPSUpgradeable_init();
 
         rsr = rsr_;
@@ -46,44 +45,16 @@ contract MainP1 is
         emit MainInitialized();
     }
 
-    /// @custom:action
+    /// @custom:refresher
     function poke() external {
+        require(!paused(), "paused");
         assetRegistry.forceUpdates();
         furnace.melt();
         stRSR.payoutRewards();
     }
 
-    // solhint-disable
-    function poke_sub() external {}
-
-    // solhint-enable
-
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
         return OwnableUpgradeable.owner();
-    }
-
-    // === See docs/security.md ===
-
-    function beginActionTx() external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
-        require(!paused(), "paused");
-        _lock();
-    }
-
-    function beginGovernanceTx(address prevCaller) external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
-        require(OwnableUpgradeable.owner() == prevCaller, "prev caller is not the owner");
-        _lock();
-    }
-
-    function beginSubroutine(address prevCaller) external virtual {
-        require(isComponent(prevCaller), "tx caller is not a component");
-        // TODO do we need to require a lock is open here? one downside is it would make it harder
-        //  to execute subroutines from tests where we impersonate a component
-    }
-
-    function endTx() external virtual {
-        _unlock(); // ensures the caller is the original lock-er
     }
 
     // === Upgradeability ===

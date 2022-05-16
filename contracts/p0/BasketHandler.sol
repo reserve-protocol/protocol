@@ -103,17 +103,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    /// @custom:action
-    function checkBasket() external action {
-        if (status() == CollateralStatus.DISABLED) {
-            _switchBasket();
-        }
-    }
-
-    /// Checks the basket for default and swaps it if necessary
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function checkBasket_sub() external subroutine {
+    /// @custom:refresher
+    function checkBasket() external notPaused {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -171,7 +162,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// Switch the basket, only callable directly by governance
     /// @custom:governance
     function switchBasket() external governance {
-        main.assetRegistry().forceUpdates_sub();
+        main.assetRegistry().forceUpdates();
         _switchBasket();
     }
 

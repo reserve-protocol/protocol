@@ -46,7 +46,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:action
     function manageTokens(IERC20[] calldata erc20s) external action {
         // Call keepers before
-        main.poke_sub();
+        main.poke();
 
         if (tradesOpen > 0) return;
 

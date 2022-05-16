@@ -104,9 +104,6 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     /// Check that the current basket is valid, causing underlying updates
     function checkBasket() external {}
 
-    /// Check that the current basket is valid, causing underlying updates
-    function checkBasket_sub() external {}
-
     /// Governance-controlled setter to cause a basket switch explicitly
     function switchBasket() external {
         // TODO: modeA = !modeA, and we do all the needed trades and handle capitalization

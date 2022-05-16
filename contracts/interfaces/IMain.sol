@@ -140,9 +140,6 @@ interface IComponentRegistry {
 interface IMain is IComponentRegistry, IPausable {
     function poke() external; // not used in p1
 
-    // solhint-disable-next-line func-name-mixedcase
-    function poke_sub() external; // not used in p1
-
     // === Initialization ===
 
     event MainInitialized();
@@ -152,16 +149,6 @@ interface IMain is IComponentRegistry, IPausable {
         IERC20 rsr_,
         uint32 oneshotPauseDuration_
     ) external;
-
-    // === Control flow ===
-
-    function beginActionTx() external;
-
-    function beginGovernanceTx(address prevCaller) external;
-
-    function beginSubroutine(address prevCaller) external;
-
-    function endTx() external;
 
     function rsr() external view returns (IERC20);
 

@@ -35,7 +35,7 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
     }
 
     /// Invalid implementation - Reverts
-    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
+    function openTrade(TradeRequest memory req) external view notPaused returns (ITrade) {
         require(!disabled, "broker disabled");
         req;
 
@@ -49,9 +49,9 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {}
+    function setAuctionLength(uint32 newAuctionLength) external governance {}
 
     /// Dummy implementation
     /* solhint-disable no-empty-blocks */
-    function setDisabled(bool disabled_) external onlyOwner {}
+    function setDisabled(bool disabled_) external governance {}
 }

@@ -34,46 +34,15 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
         emit MainInitialized();
     }
 
-    /// @custom:action
+    /// @custom:refresher
     function poke() external {
         require(!paused(), "paused");
-        _poke();
-    }
-
-    /// @custom:subroutine
-    // solhint-disable-next-line func-name-mixedcase
-    function poke_sub() external {
-        require(isComponent(_msgSender()), "caller is not a component");
-        _poke();
+        assetRegistry.forceUpdates();
+        furnace.melt();
+        stRSR.payoutRewards();
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
         return OwnableUpgradeable.owner();
-    }
-
-    // === See docs/security.md ===
-
-    function beginActionTx() external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
-        require(!paused(), "paused");
-    }
-
-    function beginGovernanceTx(address prevCaller) external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
-        require(OwnableUpgradeable.owner() == prevCaller, "prev caller is not the owner");
-    }
-
-    function beginSubroutine(address prevCaller) external virtual {
-        require(isComponent(_msgSender()), "caller is not a component");
-        require(isComponent(prevCaller), "tx caller is not a component");
-    }
-
-    // solhint-disable-next-line no-empty-blocks
-    function endTx() external virtual {}
-
-    function _poke() internal {
-        assetRegistry.forceUpdates();
-        furnace.melt();
-        stRSR.payoutRewards();
     }
 }

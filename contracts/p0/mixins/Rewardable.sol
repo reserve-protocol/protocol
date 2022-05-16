@@ -19,7 +19,7 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     function claimAndSweepRewards() external notPaused {
-        main.poke_sub();
+        main.poke();
 
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();

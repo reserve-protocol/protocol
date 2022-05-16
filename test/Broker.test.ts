@@ -174,9 +174,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Attempt to open trade from non-trader
       await token0.connect(addr1).approve(broker.address, amount)
-      await expect(broker.connect(addr1).openTrade(tradeRequest)).to.be.revertedWith(
-        'tx caller is not a component'
-      )
+      await expect(broker.connect(addr1).openTrade(tradeRequest)).to.be.revertedWith('only traders')
 
       // Open from traders - Should work
       // Backing Manager

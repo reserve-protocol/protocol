@@ -48,7 +48,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function manageTokens(IERC20[] calldata erc20s) external action {
         if (tradesOpen > 0) return;
 
-        main.assetRegistry().forceUpdates_sub();
+        main.assetRegistry().forceUpdates();
 
         // Do not trade when DISABLED or IFFY
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");

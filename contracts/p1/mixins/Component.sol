@@ -11,6 +11,15 @@ import "contracts/interfaces/IMain.sol";
  * Abstract superclass for system contracts registered in Main
  */
 abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
+    // === ReentrancyGuard ===
+
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    // ===
+
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -22,9 +31,20 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     function __Component_init(IMain main_) internal onlyInitializing {
         __UUPSUpgradeable_init();
         main = main_;
+        _status = _NOT_ENTERED;
     }
 
-    modifier onlyOwner() {
+    // === See docs/security.md ===
+
+    modifier action() {
+        require(!main.paused(), "paused");
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+
+    modifier governance() {
         require(main.owner() == _msgSender(), "prev caller is not the owner");
         _;
     }
@@ -34,25 +54,6 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
         _;
     }
 
-    // === See docs/security.md ===
-
-    modifier action() {
-        main.beginActionTx();
-        _;
-        main.endTx();
-    }
-
-    modifier governance() {
-        main.beginGovernanceTx(_msgSender());
-        _;
-        main.endTx();
-    }
-
-    modifier subroutine() {
-        main.beginSubroutine(_msgSender());
-        _;
-    }
-
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal view override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal view override governance {}
 }

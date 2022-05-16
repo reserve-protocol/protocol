@@ -41,24 +41,32 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    /// @custom:subroutine
-    function openTrade(TradeRequest memory req) external subroutine returns (ITrade) {
+    /// @custom:protected
+    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
         require(!disabled, "broker disabled");
+
+        address caller = _msgSender();
+        require(
+            caller == address(main.backingManager()) ||
+                caller == address(main.rsrTrader()) ||
+                caller == address(main.rTokenTrader()),
+            "only traders"
+        );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            _msgSender(),
+            caller,
             address(trade),
             req.sellAmount
         );
-        trade.init(this, _msgSender(), gnosis, auctionLength, req);
+        trade.init(this, caller, gnosis, auctionLength, req);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
-    /// @custom:special-cased
+    /// @custom:protected
     function reportViolation() external notPaused {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);

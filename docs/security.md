@@ -6,19 +6,15 @@ TODO
 
 ## Function Ontology
 
-Contract-external functions can be classified into the following 3 types:
+All system-external functions are classified into one of the following 3 categories:
 
-1. `@custom:action` - Action. Disallowed while paused.
+1. `@custom:action` - Action. Disallowed while paused. Per-contract reentrant lock applied.
 2. `@custom:governance` - Governance change. Allowed while paused.
-3. `@custom:subroutine` - Can only be called by Components. Allowed while paused.
+3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `forceUpdates`.
 
-All execution flows through the protocol should contain AT MOST a single (1) action or (2) governance change. This is enforced via a global lock that is acquired at the start of function execution.
+All execution flows through the protocol should contain AT MOST a single (1) action or (2) governance change.
 
-Functions of type (1) or (2) may call functions of type (3), but not the other way around.
-
-There is nothing prohibiting functions of type (3) from calling functions of type (3), but it should not happen due to the way the contract architecture is structured.
-
-Subroutines (3) cannot be called from outside the system. In situations where they must be exposed, we create an additional action (1) function for that purpose, and suffix the subroutine version with "\_sub".
+Functions that are not system-external, but merely contract-external, are tagged with `@custom:protected`. It is governance's job to ensure a malicious contract is never allowed to masquerade as a component and call one of these. They do not execute when paused.
 
 ### `@custom:action`
 
@@ -35,31 +31,24 @@ Subroutines (3) cannot be called from outside the system. In situations where th
 - {rsrTrader,rTokenTrader}.manageToken()
 - \*.claimAndSweepRewards()
 
-The below functions exist as BOTH actions AND subroutines.
+### `@custom:governance`
 
-Subroutine duplicates:
+- set\*()
+  ...there are many and they are not worth naming individually
+
+Governance functions acquire a lock at the beginning of execution, and can be executed while paused.
+
+### `@custom:refresher`
 
 - furnace.melt()
 - stRSR.payoutRewards()
 - assetRegistry.forceUpdates()
 - basketHandler.checkBasket()
 
-### `@custom:governance`
+Note:
 
-- set\*()
-  ...there are many and they are not worth naming individually
-
-Governance functions acquire a lock at the beginning of execution, and can be executed while paused. They may call subroutines.
-
-### `@custom:subroutine`
-
-These cannot be called from outside the system and do not require the system to be unpaused.
-
-- broker.openTrade()
-- furnace.melt_sub()
-- stRSR.payoutRewards_sub()
-- assetRegistry.forceUpdates_sub()
-- basketHandler.checkBasket_sub()
+- `forceUpdates` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
+- `checkBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
 
 ## Specific areas of concern
 
