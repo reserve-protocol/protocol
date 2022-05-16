@@ -29,7 +29,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
-    function setDistribution(address dest, RevenueShare memory share) external onlyOwner {
+    function setDistribution(address dest, RevenueShare memory share) external governance {
         _setDistribution(dest, share);
     }
 

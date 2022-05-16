@@ -215,7 +215,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Cannot update with invalid unstaking delay
@@ -236,7 +236,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Cannot update with invalid reward period
@@ -257,7 +257,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
     })
   })
@@ -948,6 +948,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
 
       await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+    })
+
+    it('Should not allow to remove RSR if caller is not backing manager', async () => {
+      const amount: BigNumber = bn('1e18')
+      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
+
+      await whileImpersonating(basketHandler.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(amount)).to.be.revertedWith(
+          'not backing manager'
+        )
+      })
+
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
     })
 

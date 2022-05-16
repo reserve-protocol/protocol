@@ -21,7 +21,7 @@ interface IRevenueTrader is IComponent, ITrading {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
-    /// @custom:action
+    /// @custom:interaction
     function manageToken(IERC20 sell) external;
 }
 

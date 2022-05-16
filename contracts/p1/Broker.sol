@@ -41,9 +41,8 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
+    /// @custom:protected
     function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
-        // nonReentrant not required: only our system components can call this function,
-        // and those that can contain nonReentrant themselves
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -67,6 +66,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     }
 
     /// Disable the broker until re-enabled by governance
+    /// @custom:protected
     function reportViolation() external notPaused {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
@@ -75,12 +75,14 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {
+    /// @custom:governance
+    function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }
 
-    function setDisabled(bool disabled_) external onlyOwner {
+    /// @custom:governance
+    function setDisabled(bool disabled_) external governance {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }

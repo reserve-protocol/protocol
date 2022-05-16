@@ -37,18 +37,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
-    function grantRTokenAllowance(IERC20 erc20) external notPaused {
-        // nonReentrant not required: by inspection
+    /// @custom:interaction
+    function grantRTokenAllowance(IERC20 erc20) external interaction {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
-    /// Mointain the overall backing policy; handout assets otherwise
-    /// Collective Action
-    function manageTokens(IERC20[] calldata erc20s) external notPaused nonReentrant {
+    /// Maintain the overall backing policy; handout assets otherwise
+    /// @custom:interaction
+    function manageTokens(IERC20[] calldata erc20s) external interaction {
         if (tradesOpen > 0) return;
 
-        // Call keepers
         main.assetRegistry().forceUpdates();
 
         // Do not trade when DISABLED or IFFY
@@ -199,12 +198,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // === Setters ===
 
-    function setTradingDelay(uint32 val) external onlyOwner {
+    /// @custom:governance
+    function setTradingDelay(uint32 val) external governance {
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
-    function setBackingBuffer(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setBackingBuffer(int192 val) external governance {
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }

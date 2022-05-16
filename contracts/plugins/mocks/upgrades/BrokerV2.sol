@@ -6,7 +6,7 @@ import "contracts/p1/Broker.sol";
 contract BrokerP1V2 is BrokerP1 {
     uint256 public newValue;
 
-    function setNewValue(uint256 newValue_) external onlyOwner {
+    function setNewValue(uint256 newValue_) external governance {
         newValue = newValue_;
     }
 

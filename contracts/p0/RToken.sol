@@ -70,18 +70,19 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    function setIssuanceRate(int192 val) external onlyOwner {
+    function setIssuanceRate(int192 val) external governance {
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
-    /// @custom:action
     /// @param amount {qTok} The quantity of RToken to issue
-    function issue(uint256 amount) external notPaused {
+    /// @custom:interaction
+    function issue(uint256 amount) external interaction {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
+
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
 
@@ -134,13 +135,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Cancels a vesting slow issuance
-    /// @custom:action
+    /// @custom:interaction
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// TODO confirm we DO NOT need notPaused here
-    function cancel(uint256 endId, bool earliest) external notPaused {
+    /// @custom:interaction
+    function cancel(uint256 endId, bool earliest) external interaction {
+        // Call collective state keepers.
+        main.poke();
+
         address account = _msgSender();
 
         SlowIssuance[] storage queue = issuances[account];
@@ -154,9 +158,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                 }
                 iss.processed = true;
-                if (left == 0) {
-                    left = n;
-                }
+
+                if (left == 0) left = n;
             }
         }
         emit IssuancesCanceled(account, left, last);
@@ -164,8 +167,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
-    function vest(address account, uint256 endId) external notPaused {
+    /// @custom:interaction
+    function vest(address account, uint256 endId) external interaction {
+        // Call collective state keepers.
         main.poke();
+
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
         for (uint256 i = 0; i < endId; i++) tryVestIssuance(account, i);
@@ -182,15 +188,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Redeem RToken for basket collateral
-    /// @custom:action
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
-    function redeem(uint256 amount) external notPaused {
+    /// @custom:interaction
+    function redeem(uint256 amount) external interaction {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
-        // Call collective state keepers
-        main.poke();
-        IBasketHandler basketHandler = main.basketHandler();
 
+        // Call collective state keepers.
+        main.poke();
+
+        IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
@@ -226,8 +233,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
+    /// @custom:protected
     function mint(address recipient, uint256 amount) external notPaused {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
     }
 
@@ -239,8 +247,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
+    /// @custom:protected
     function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
-        require(_msgSender() == address(main.backingManager()), "backing manager only");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

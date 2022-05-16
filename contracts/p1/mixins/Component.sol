@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IComponent.sol";
 import "contracts/interfaces/IMain.sol";
@@ -10,12 +10,16 @@ import "contracts/interfaces/IMain.sol";
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract ComponentP1 is
-    ContextUpgradeable,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable,
-    IComponent
-{
+abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
+    // === ReentrancyGuard ===
+
+    uint256 private constant _NOT_ENTERED = 1;
+    uint256 private constant _ENTERED = 2;
+
+    uint256 private _status;
+
+    // ===
+
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -27,6 +31,22 @@ abstract contract ComponentP1 is
     function __Component_init(IMain main_) internal onlyInitializing {
         __UUPSUpgradeable_init();
         main = main_;
+        _status = _NOT_ENTERED;
+    }
+
+    // === See docs/security.md ===
+
+    modifier interaction() {
+        require(!main.paused(), "paused");
+        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+        _status = _ENTERED;
+        _;
+        _status = _NOT_ENTERED;
+    }
+
+    modifier governance() {
+        require(main.owner() == _msgSender(), "prev caller is not the owner");
+        _;
     }
 
     modifier notPaused() {
@@ -34,11 +54,6 @@ abstract contract ComponentP1 is
         _;
     }
 
-    modifier onlyOwner() {
-        require(main.owner() == _msgSender(), "Component: caller is not the owner");
-        _;
-    }
-
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal view override governance {}
 }

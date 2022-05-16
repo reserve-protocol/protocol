@@ -7,7 +7,7 @@ import "contracts/p1/BackingManager.sol";
 contract BackingManagerP1V2 is BackingManagerP1 {
     uint256 public newValue;
 
-    function setNewValue(uint256 newValue_) external onlyOwner {
+    function setNewValue(uint256 newValue_) external governance {
         newValue = newValue_;
     }
 
