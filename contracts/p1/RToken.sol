@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
@@ -20,7 +17,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
  */
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
-contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using FixLib for int192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -107,8 +104,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
-        // TODO should we check that status is not disabled? probably...
-        // expose basket.disabled
+        IBasketHandler bh = main.basketHandler();
+
+        CollateralStatus status = bh.status();
+        require(status != CollateralStatus.DISABLED, "basket disabled");
 
         // Refund issuances against previous baskets
         address issuer = _msgSender();
@@ -119,13 +118,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        (address[] memory erc20s, uint256[] memory deposits) = main.basketHandler().quote(
-            amtBaskets,
-            CEIL
-        );
+        (uint256 basketNonce, ) = bh.lastSet();
+        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
         IssueQueue storage queue = issueQueues[issuer];
+
         assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
 
         // Add amtRToken's worth of issuance delay to allVestAt
@@ -133,10 +130,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
-            require(
-                main.basketHandler().status() == CollateralStatus.SOUND,
-                "collateral not sound"
-            );
+            require(status == CollateralStatus.SOUND, "collateral not sound");
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -152,7 +146,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
             basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
-            emit IssuancesCompleted(issuer, queue.left, queue.right); // TODO: Breaks Explorer?
+            emit IssuancesCompleted(issuer, queue.left, queue.right);
             return;
         }
 
@@ -200,7 +194,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = Math.max(MIN_ISS_RATE, issuanceRate.mulu_toUint(totalSupply()));
+            lastIssRate = issuanceRate.mulu_toUint(totalSupply());
+            if (lastIssRate < MIN_ISS_RATE) lastIssRate = MIN_ISS_RATE;
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
@@ -268,7 +263,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// TODO confirm we want to permit redemptions when paused
     function redeem(uint256 amount) external notPaused nonReentrant {
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
@@ -288,13 +282,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         int192 baskets = basketsNeeded_.muluDivu(amount, totalSupply());
-        assert(baskets.lte(basketsNeeded_));
         emit Redemption(redeemer, amount, baskets);
+
+        assert(baskets.lte(basketsNeeded_));
 
         (address[] memory erc20s, uint256[] memory amounts) = bh.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
-        int192 prorate = toFix(amount).divu(totalSupply());
+        int192 prorate = divuu(amount, totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
@@ -305,12 +300,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
         uint256 erc20length = erc20s.length;
-        for (uint256 i = 0; i < erc20length; ++i) {
-            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
 
+        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+        for (uint256 i = 0; i < erc20length; ++i) {
             // {qTok} = {1} * {qTok}
-            uint256 prorata = prorate.mulu_toUint(IERC20(erc20s[i]).balanceOf(address(backingMgr)));
-            amounts[i] = Math.min(amounts[i], prorata);
+            uint256 prorata = prorate.mulu_toUint(
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))
+            );
+            if (prorata < amounts[i]) amounts[i] = prorata;
+
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                 address(backingMgr),
@@ -351,9 +349,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        return main.basketHandler().price().mul(basketsNeeded).div(supply);
+        return main.basketHandler().price().mulDiv(basketsNeeded, supply);
     }
 
+    // TODO this is only required for testing, can be commented out for contract size
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
@@ -373,7 +372,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         uint256 right
     ) private {
         IssueQueue storage queue = issueQueues[account];
+
         assert(queue.left <= left && right <= queue.right);
+
         if (left >= right) return;
 
         // compute total deposits
@@ -402,7 +403,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
     function vestUpTo(address account, uint256 endId) private {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
-        assert(queue.left < endId && endId <= queue.right); // out- of-bounds error
+
+        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRTokenToMint;
