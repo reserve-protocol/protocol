@@ -109,8 +109,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       }
     } else if (IMPLEMENTATION == Implementation.P1) {
       const stRSRP1 = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
-      const [draftsCurr, availableAt] = await stRSRP1.draftQueues(0, address, index)
-      const [draftsPrev] = index == 0 ? [0] : await stRSRP1.draftQueues(0, address, index - 1)
+      const [draftsCurr, availableAt] = await stRSRP1.draftQueues(1, address, index)
+      const [draftsPrev] = index == 0 ? [0] : await stRSRP1.draftQueues(1, address, index - 1)
       const drafts = draftsCurr.sub(draftsPrev)
 
       if (withdrawal.rsrAmount) {

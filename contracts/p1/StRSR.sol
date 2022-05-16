@@ -351,6 +351,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         draftRSR = 0;
         totalStakes = 0;
         totalDrafts = 0;
+        stakeRate = FIX_ONE;
+        draftRate = FIX_ONE;
         era++;
 
         emit AllBalancesReset(era);
