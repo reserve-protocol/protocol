@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+// solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -35,6 +36,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     string public name; // mutable
     string public symbol; // mutable
+    // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
     mapping(address => mapping(address => uint256)) public allowance; // not wiped on rebase
@@ -491,6 +493,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Used by StRSRVotes to track voting
+    // solhint-disable no-empty-blocks
     function _afterTokenTransfer(
         address from,
         address to,

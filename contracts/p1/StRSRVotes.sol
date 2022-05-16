@@ -14,7 +14,7 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
         uint224 val;
     }
 
-    bytes32 private constant _DELEGATION_TYPEHASH =
+    bytes32 private constant _DELEGATE_TYPEHASH =
         keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
     mapping(address => address) private _delegates;
@@ -64,27 +64,12 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
         return pos == 0 ? 0 : _checkpoints[era][account][pos - 1].val;
     }
 
-    /**
-     * @dev Retrieve the number of votes for `account` at the end of `blockNumber`.
-     *
-     * Requirements:
-     *
-     * - `blockNumber` must have been already mined
-     */
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
         uint256 era_ = _checkpointsLookup(_eras, blockNumber);
         return _checkpointsLookup(_checkpoints[era_][account], blockNumber);
     }
 
-    /**
-     * @dev Retrieve the `totalSupply` at the end of `blockNumber`. Note, this value is the sum of all balances.
-     * It is but NOT the sum of all the delegated votes!
-     *
-     * Requirements:
-     *
-     * - `blockNumber` must have been already mined
-     */
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
         uint256 era_ = _checkpointsLookup(_eras, blockNumber);
@@ -100,16 +85,6 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
         returns (uint256)
     {
         // We run a binary search to look for the earliest checkpoint taken after `blockNumber`.
-        //
-        // During the loop, the index of the wanted checkpoint remains in the range [low-1, high).
-        // With each iteration, either `low` or `high` is moved towards the middle of the range to maintain the invariant.
-        // - If the middle checkpoint is after `blockNumber`, we look in [low, mid)
-        // - If the middle checkpoint is before or equal to `blockNumber`, we look in [mid+1, high)
-        // Once we reach a single value (when low == high), we've found the right checkpoint at the index high-1, if not
-        // out of bounds (in which case we're looking too far in the past and the result is 0).
-        // Note that if the latest checkpoint available is exactly for `blockNumber`, we end up with an index that is
-        // past the end of the array, so we technically don't find a checkpoint after `blockNumber`, but it works out
-        // the same.
         uint256 high = ckpts.length;
         uint256 low = 0;
         while (low < high) {
@@ -144,7 +119,7 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
     ) public {
         require(block.timestamp <= expiry, "ERC20Votes: signature expired");
         address signer = ECDSAUpgradeable.recover(
-            _hashTypedDataV4(keccak256(abi.encode(_DELEGATION_TYPEHASH, delegatee, nonce, expiry))),
+            _hashTypedDataV4(keccak256(abi.encode(_DELEGATE_TYPEHASH, delegatee, nonce, expiry))),
             v,
             r,
             s
