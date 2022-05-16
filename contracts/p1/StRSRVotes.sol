@@ -7,6 +7,7 @@ import "contracts/p1/StRSR.sol";
 /*
  * @title StRSRP1Votes
  * @notice StRSRP1Votes is an extension of StRSRP1 that makes it IVotesUpgradeable.
+ *   It is heavily based on OZ's ERC20VotesUpgradeable
  */
 contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
     struct Checkpoint {
@@ -25,40 +26,27 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
 
-    // === Hook into the rebase mechanism ===
+    // ===
 
-    function newEra() internal override {
-        super.newEra();
+    /// Rebase hook
+    function beginEra() internal override {
+        super.beginEra();
 
         _writeCheckpoint(_eras, _add, 1);
     }
 
-    // === ERC20VotesUpgradeable ===
-
-    /**
-     * @dev Get the `pos`-th checkpoint for `account`.
-     */
     function checkpoints(address account, uint32 pos) public view returns (Checkpoint memory) {
         return _checkpoints[era][account][pos];
     }
 
-    /**
-     * @dev Get number of checkpoints for `account`.
-     */
     function numCheckpoints(address account) public view returns (uint32) {
         return SafeCastUpgradeable.toUint32(_checkpoints[era][account].length);
     }
 
-    /**
-     * @dev Get the address `account` is currently delegating to.
-     */
     function delegates(address account) public view returns (address) {
         return _delegates[account];
     }
 
-    /**
-     * @dev Gets the current votes balance for `account`
-     */
     function getVotes(address account) public view returns (uint256) {
         uint256 pos = _checkpoints[era][account].length;
         return pos == 0 ? 0 : _checkpoints[era][account][pos - 1].val;
@@ -66,19 +54,16 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
 
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 era_ = _eras.length > 0 ? _checkpointsLookup(_eras, blockNumber) : 0;
-        return _checkpointsLookup(_checkpoints[era_][account], blockNumber);
+        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
+        return _checkpointsLookup(_checkpoints[pastEra][account], blockNumber);
     }
 
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 era_ = _eras.length > 0 ? _checkpointsLookup(_eras, blockNumber) : 0;
-        return _checkpointsLookup(_totalSupplyCheckpoints[era_], blockNumber);
+        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
+        return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], blockNumber);
     }
 
-    /**
-     * @dev Lookup a value in a list of (sorted) checkpoints.
-     */
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)
         private
         view
@@ -99,16 +84,10 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
         return high == 0 ? 0 : ckpts[high - 1].val;
     }
 
-    /**
-     * @dev Delegate votes from the sender to `delegatee`.
-     */
     function delegate(address delegatee) public {
         _delegate(_msgSender(), delegatee);
     }
 
-    /**
-     * @dev Delegates votes from signer to `delegatee`
-     */
     function delegateBySig(
         address delegatee,
         uint256 nonce,

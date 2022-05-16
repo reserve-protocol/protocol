@@ -66,6 +66,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
 
+    // Era. If ever there's a total RSR wipeout, this is incremented
+    // This is only really here for equivalence with P1, which requires it
+    uint256 internal era;
+
     // The momentary stake/unstake rate is rsrBacking/totalStaked {RSR/stRSR}
     // That rate is locked in when slow unstaking *begins*
 
@@ -105,6 +109,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         unstakingDelay = unstakingDelay_;
         rewardPeriod = rewardPeriod_;
         rewardRatio = rewardRatio_;
+        era = 1;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
@@ -132,7 +137,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         // Move deposited RSR to backing
         rsrBacking += rsrAmount;
 
-        emit Staked(account, rsrAmount, stakeAmount);
+        emit Staked(era, account, rsrAmount, stakeAmount);
         main.rsr().safeTransferFrom(account, address(this), rsrAmount);
     }
 
@@ -166,7 +171,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 lastAvailableAt = index > 0 ? withdrawals[account][index - 1].availableAt : 0;
         uint256 availableAt = Math.max(block.timestamp + unstakingDelay, lastAvailableAt);
         withdrawals[account].push(Withdrawal(account, rsrAmount, stakeAmount, availableAt));
-        emit UnstakingStarted(index, 0, account, rsrAmount, stakeAmount, availableAt);
+        emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
     }
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
@@ -199,7 +204,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         }
 
         // Execute accumulated withdrawals
-        emit UnstakingCompleted(start, i, 0, account, total);
+        emit UnstakingCompleted(start, i, era, account, total);
         main.rsr().safeTransfer(account, total);
     }
 
@@ -238,6 +243,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
                 balances[account] = 0;
             }
             totalStaked = 0;
+            era++;
+            emit AllBalancesReset(era);
         } else {
             // Remove RSR evenly from stakers, withdrawals, and the reward pool
             uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;

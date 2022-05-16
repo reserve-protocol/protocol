@@ -305,7 +305,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(addr1).approve(stRSR.address, amount)
       await expect(stRSR.connect(addr1).stake(amount))
         .to.emit(stRSR, 'Staked')
-        .withArgs(addr1.address, amount, amount)
+        .withArgs(1, addr1.address, amount, amount)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
@@ -327,16 +327,16 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await rsr.connect(addr1).approve(stRSR.address, amount1.add(amount2))
       await expect(stRSR.connect(addr1).stake(amount1))
         .to.emit(stRSR, 'Staked')
-        .withArgs(addr1.address, amount1, amount1)
+        .withArgs(1, addr1.address, amount1, amount1)
       await expect(stRSR.connect(addr1).stake(amount2))
         .to.emit(stRSR, 'Staked')
-        .withArgs(addr1.address, amount2, amount2)
+        .withArgs(1, addr1.address, amount2, amount2)
 
       // New stake from different account
       await rsr.connect(addr2).approve(stRSR.address, amount3)
       await expect(stRSR.connect(addr2).stake(amount3))
         .to.emit(stRSR, 'Staked')
-        .withArgs(addr2.address, amount3, amount3)
+        .withArgs(1, addr2.address, amount3, amount3)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount1.add(amount2).add(amount3))
@@ -380,7 +380,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Unstake
       await expect(stRSR.connect(addr1).unstake(amount))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr1.address, amount, amount, availableAt)
+        .withArgs(0, 1, addr1.address, amount, amount, availableAt)
 
       // Check withdrawal properly registered
       await expectWithdrawal(addr1.address, 0, { rsrAmount: amount })
@@ -420,7 +420,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Unstake - Create withdrawal
       await expect(stRSR.connect(addr1).unstake(amount1))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr1.address, amount1, amount1, availableAt)
+        .withArgs(0, 1, addr1.address, amount1, amount1, availableAt)
 
       await expectWithdrawal(addr1.address, 0, { rsrAmount: amount1 })
 
@@ -435,7 +435,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Unstake again
       await expect(stRSR.connect(addr1).unstake(amount2))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(1, 0, addr1.address, amount2, amount2, availableAt)
+        .withArgs(1, 1, addr1.address, amount2, amount2, availableAt)
 
       await expectWithdrawal(addr1.address, 1, { rsrAmount: amount2 })
 
@@ -450,7 +450,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Unstake again with different user
       await expect(stRSR.connect(addr2).unstake(amount3))
         .emit(stRSR, 'UnstakingStarted')
-        .withArgs(0, 0, addr2.address, amount3, amount3, availableAt)
+        .withArgs(0, 1, addr2.address, amount3, amount3, availableAt)
 
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount3 })
 
