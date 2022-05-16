@@ -36,7 +36,7 @@ import {
   RTokenAsset,
   RTokenP1,
   StaticATokenMock,
-  StRSRP1,
+  StRSRP1Votes,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
@@ -485,8 +485,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     })
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1')
-    const stRSRImpl: StRSRP1 = <StRSRP1>await StRSRImplFactory.deploy()
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
+    const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
     // Assets - Can use dummy data in constructor as only logic will be used
     const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')

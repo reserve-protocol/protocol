@@ -107,8 +107,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
         main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
-        // TODO should we check that status is not disabled? probably...
-        // expose basket.disabled
+        IBasketHandler bh = main.basketHandler();
+
+        CollateralStatus status = bh.status();
+        require(status != CollateralStatus.DISABLED, "basket disabled");
 
         // Refund issuances against previous baskets
         address issuer = _msgSender();
@@ -119,11 +121,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
             ? basketsNeeded.muluDivu(amtRToken, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amtRToken, -int8(decimals())); // {qRTok / qRTok}
 
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        (address[] memory erc20s, uint256[] memory deposits) = main.basketHandler().quote(
-            amtBaskets,
-            CEIL
-        );
+        (uint256 basketNonce, ) = bh.lastSet();
+        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
         IssueQueue storage queue = issueQueues[issuer];
         assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
@@ -133,10 +132,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20Upgradeable, ERC20PermitUpgr
 
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
-            require(
-                main.basketHandler().status() == CollateralStatus.SOUND,
-                "collateral not sound"
-            );
+            require(status == CollateralStatus.SOUND, "collateral not sound");
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,

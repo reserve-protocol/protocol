@@ -24,20 +24,23 @@ contract Governance is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
+    // solhint-disable no-empty-blocks
     constructor(
         IVotes token_,
         TimelockController timelock_,
         uint256 votingDelay_, // in blocks
         uint256 votingPeriod_, // in blocks
-        uint256 proposalThreshold_, // minimum votes required e.g 1000e18
+        uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
         Governor("MyGovernor")
-        GovernorSettings(votingDelay_, votingPeriod_, proposalThreshold_)
+        GovernorSettings(votingDelay_, votingPeriod_, proposalThresholdAsMicroPercent_)
         GovernorVotes(token_)
         GovernorVotesQuorumFraction(quorumPercent)
         GovernorTimelockControl(timelock_)
     {}
+
+    // solhint-enable no-empty-blocks
 
     function votingDelay() public view override(IGovernor, GovernorSettings) returns (uint256) {
         return super.votingDelay();

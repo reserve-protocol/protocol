@@ -12,7 +12,7 @@ import {
   Facade,
   IBasketHandler,
   StRSRP0,
-  StRSRP1,
+  StRSRP1Votes,
   StaticATokenMock,
   TestIBackingManager,
   TestIMain,
@@ -108,7 +108,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(availableAt.toString()).to.eql(withdrawal.availableAt.toString())
       }
     } else if (IMPLEMENTATION == Implementation.P1) {
-      const stRSRP1 = <StRSRP1>await ethers.getContractAt('StRSRP1', stRSR.address)
+      const stRSRP1 = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
       const [draftsCurr, availableAt] = await stRSRP1.draftQueues(0, address, index)
       const [draftsPrev] = index == 0 ? [0] : await stRSRP1.draftQueues(0, address, index - 1)
       const drafts = draftsCurr.sub(draftsPrev)
