@@ -49,7 +49,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             reg.toAsset(erc20),
             reg.toAsset(tokenToBuy),
             reg.toAsset(erc20).bal(address(this))
-            );
+        );
 
         // == Interactions then return ==
         if (launch) tryTrade(trade);

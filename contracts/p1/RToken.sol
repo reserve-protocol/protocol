@@ -147,11 +147,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // == Interactions then return: transfer tokens ==
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                    issuer,
-                    backingMgr,
-                    deposits[i]
-                    );
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, backingMgr, deposits[i]);
             }
             return;
         }
@@ -427,7 +423,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         emit IssuancesCanceled(account, left, right);
 
         // == Interactions ==
-        for (uint i = 0; i < queue.tokens.length; ++i) {
+        for (uint256 i = 0; i < queue.tokens.length; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, amt[i]);
         }
     }
@@ -447,7 +443,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[endId - 1];
         uint256 queueLength = queue.tokens.length;
 
-        uint256[] amtDeposits = new uint256[](queueLength);
+        uint256[] memory amtDeposits = new uint256[](queueLength);
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
@@ -457,7 +453,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
-                amtDeposit[i] = rightItem.deposits[i] - leftItem.deposits[i];
+                amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);
@@ -470,11 +466,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;
 
-        for (uint256 i = 0; i <queueLength; ++i) {
+        for (uint256 i = 0; i < queueLength; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                 address(main.backingManager()),
                 amtDeposits[i]
-                );
+            );
         }
     }
 
