@@ -104,9 +104,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
-    /// @custom:interaction
     function checkBasket() external notPaused {
-        // nonReentrant not required: no external calls
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -162,9 +160,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    /// @custom:interaction
+    /// @custom:interaction , GCEI
     function switchBasket() external onlyOwner nonReentrant {
+        // forceUpdates
         main.assetRegistry().forceUpdates();
+        // then maybe lots of state changes
         _switchBasket();
     }
 
