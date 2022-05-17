@@ -23,7 +23,7 @@ import { RTokenAsset } from '@typechain/RTokenAsset'
 import { ZERO_ADDRESS } from '../common/constants'
 import { AavePricedAsset } from '@typechain/AavePricedAsset'
 import { CompoundPricedAsset } from '@typechain/CompoundPricedAsset'
-import { Facade } from '@typechain/Facade'
+import { FacadeP1 } from '@typechain/FacadeP1'
 
 export const defaultThreshold = fp('0.05') // 5%
 export const delayUntilDefault = bn('86400') // 24h
@@ -219,8 +219,8 @@ export const deployImplementations = async (
   await compoundPricedAssetImpl.deployed()
 
   // Facade - Can use dummy data in constructor as only logic will be used
-  const FacadeFactory: ContractFactory = await hre.ethers.getContractFactory('Facade')
-  const facadeImpl = <Facade>await FacadeFactory.deploy(ZERO_ADDRESS)
+  const FacadeFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeP1')
+  const facadeImpl = <FacadeP1>await FacadeFactory.deploy(ZERO_ADDRESS)
 
   return {
     main: mainImpl.address,
