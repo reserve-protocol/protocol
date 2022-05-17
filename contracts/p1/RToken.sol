@@ -98,13 +98,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:action
-    /// @custom:interaction
+    /// @custom:interaction , KCEI
     function issue(uint256 amtRToken) external notPaused nonReentrant {
-        require(amtRToken > 0, "Cannot issue zero");
-        // ==== Basic Setup ====
+        // == Keepers ==
         main.assetRegistry().forceUpdates(); // no need to checkBasket
         main.furnace().melt();
 
+        // == Checks-effects block ==
+        require(amtRToken > 0, "Cannot issue zero");
         IBasketHandler bh = main.basketHandler();
 
         CollateralStatus status = bh.status();
@@ -132,15 +133,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Bypass queue entirely if the issuance can fit in this block
         if (vestingEnd.lte(toFix(block.number)) && queue.left == queue.right) {
             require(status == CollateralStatus.SOUND, "collateral not sound");
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                    issuer,
-                    address(main.backingManager()),
-                    deposits[i]
-                );
-            }
 
-            // Complete issuance now
+            // Complete issuance
             _mint(issuer, amtRToken);
             int192 newBasketsNeeded = basketsNeeded.plus(amtBaskets);
             emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
@@ -148,12 +142,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
             emit IssuancesCompleted(issuer, queue.left, queue.right);
-            return;
-        }
 
-        // Accept collateral
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
+            address backingMgr = address(main.backingManager());
+
+            // == Interactions then return: transfer tokens ==
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    backingMgr,
+                    deposits[i]
+                    );
+            }
+            return;
         }
 
         // Push issuance onto queue
@@ -187,6 +187,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             deposits,
             vestingEnd
         );
+
+        // == Interactions: accept collateral ==
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
+        }
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -209,10 +214,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
+    /// @custom:interaction , KCEI
     function vest(address account, uint256 endId) external notPaused nonReentrant {
+        // == Keepers ==
         main.assetRegistry().forceUpdates();
+
+        // == Checks ==
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
+        // == Interactions ==
         refundOldBasketIssues(account);
         vestUpTo(account, endId);
     }
@@ -246,33 +256,33 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function cancel(uint256 endId, bool earliest) external notPaused nonReentrant {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
         require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
+        // == Interactions ==
         if (earliest) {
             refundSpan(account, queue.left, endId);
-            queue.left = endId;
         } else {
             refundSpan(account, endId, queue.right);
-            queue.right = endId;
         }
     }
 
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// @custom:interaction
+    /// @custom:interaction , KCEI
     function redeem(uint256 amount) external notPaused nonReentrant {
+        // == Keepers ==
+        main.assetRegistry().forceUpdates();
+
+        // == Checks and Effects ==
         address redeemer = _msgSender();
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
-
-        // Call collective state keepers
-        main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
         bh.checkBasket();
@@ -311,7 +321,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))
             );
             if (prorata < amounts[i]) amounts[i] = prorata;
+        }
 
+        // == Interactions ==
+        for (uint256 i = 0; i < erc20length; ++i) {
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                 address(backingMgr),
@@ -363,14 +376,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function claimAndSweepRewards() external notPaused nonReentrant {
+        // Interaction
         RewardableLibP1.claimAndSweepRewards();
     }
 
     // ==== private ====
-    /// Refund all deposits in the span [left, right)
-    /// @custom:interaction
+    /// Refund all deposits in the span [left, right); fixes up queue.left and queue.right
+    /// @custom:interaction , CEI
     function refundSpan(
         address account,
         uint256 left,
@@ -378,33 +392,48 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     ) private {
         IssueQueue storage queue = issueQueues[account];
 
-        assert(queue.left <= left && right <= queue.right);
+        if (left >= right) return; // refund an empty span
+        // Check the relationships of these intervals, and set queue.{left, right} to final values.
+        if (queue.left == left && queue.right == right) {
+            // clear queue
+            queue.left = 0;
+            queue.right = 0;
+        } else if (queue.left == left && right < queue.right) {
+            // refund from beginning of queue
+            queue.left = right;
+        } else if (queue.left < left && right == queue.right) {
+            // refund from end of queue
+            queue.right = left;
+        } else {
+            // error: can't remove [left,right) from the queue, and leave just one interval
+            revert("Bad refundspan");
+        }
 
-        if (left >= right) return;
-
-        // compute total deposits
+        // compute total deposits to refund
+        uint256[] memory amt = new uint256[](right - left);
         IssueItem storage rightItem = queue.items[right - 1];
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
-                IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, rightItem.deposits[i]);
+                amt[i] = rightItem.deposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
-                IERC20Upgradeable(queue.tokens[i]).safeTransfer(
-                    account,
-                    rightItem.deposits[i] - leftItem.deposits[i]
-                );
+                amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
         }
-        queue.left = right;
 
         // emit issuancesCanceled
         emit IssuancesCanceled(account, left, right);
+
+        // == Interactions ==
+        for (uint i = 0; i < queue.tokens.length; ++i) {
+            IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, amt[i]);
+        }
     }
 
     /// Vest all RToken issuance in queue = queues[account], from queue.left to < endId
-    /// This *does* fixup queue.left and queue.right!
+    /// Fixes up queue.left and queue.right
     /// @custom:interaction
     function vestUpTo(address account, uint256 endId) private {
         IssueQueue storage queue = issueQueues[account];
@@ -417,24 +446,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         int192 newBasketsNeeded;
         IssueItem storage rightItem = queue.items[endId - 1];
         uint256 queueLength = queue.tokens.length;
+
+        uint256[] amtDeposits = new uint256[](queueLength);
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
-                uint256 amtDeposit = rightItem.deposits[i];
-                IERC20Upgradeable(queue.tokens[i]).safeTransfer(
-                    address(main.backingManager()),
-                    amtDeposit
-                );
+                amtDeposits[i] = rightItem.deposits[i];
             }
             amtRTokenToMint = rightItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets);
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
-                uint256 amtDeposit = rightItem.deposits[i] - leftItem.deposits[i];
-                IERC20Upgradeable(queue.tokens[i]).safeTransfer(
-                    address(main.backingManager()),
-                    amtDeposit
-                );
+                amtDeposit[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
             newBasketsNeeded = basketsNeeded.plus(rightItem.amtBaskets).minus(leftItem.amtBaskets);
@@ -446,18 +469,24 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;
+
+        for (uint256 i = 0; i <queueLength; ++i) {
+            IERC20Upgradeable(queue.tokens[i]).safeTransfer(
+                address(main.backingManager()),
+                amtDeposits[i]
+                );
+        }
     }
 
     /// If account's queue models an old basket, refund those issuances.
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function refundOldBasketIssues(address account) private {
         IssueQueue storage queue = issueQueues[account];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
+            // == Interaction ==
             refundSpan(account, queue.left, queue.right);
-            queue.left = 0;
-            queue.right = 0;
         }
     }
 }
