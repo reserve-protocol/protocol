@@ -44,7 +44,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function manageTokens(IERC20[] calldata erc20s) external interaction {
         main.assetRegistry().forceUpdates();
 
@@ -56,64 +56,49 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
+            // == Interaction ==
             handoutExcessAssets(erc20s);
+            return;
         } else {
             /*
              * Recapitalization Strategy
              *
-             * Trading one at a time...
+             * Trading one at a time:
              *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
              *     a. Sell non-RSR assets first
-             *     b. Sell RSR when no asset has a surplus > dust amount
-             *   2. When RSR holdings < dust:
+             *     b. Seize and sell RSR when no asset has a surplus > dust amount
+             *   2. If rToken.basketsNeeded() can't be reached after seizing all RSR,
              *     -  Sell non-RSR surplus assets towards the Fallen Target
-             *   3. When this produces trade sizes < dust:
+             *   3. If all trades are less than the dust amount,
              *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
              *
              * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
              *   Note that the Fallen Target is freshly calculated during each pass
              */
 
-            ///                       Baskets Needed
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             1a               |            1b
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///  non-RSR ------------------------------------------ RSR
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             2                |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                        Fallen Target
+            //                  | non-RSR | RSR |
+            // |----------------|---------|-----|
+            // | Baskets Needed | 1a      | 1b  |
+            // | Fallen Target  | 2       |     |
+
+            bool doTrade;
+            TradeRequest memory req;
 
             // 1a
-            (bool doTrade, TradeRequest memory req) = TradingLibP1.nonRSRTrade(false);
+            (doTrade, req) = TradingLibP1.nonRSRTrade(false);
+            // 1b
+            if (!doTrade) (doTrade, req) = TradingLibP1.rsrTrade();
+            // 2
+            if (!doTrade) (doTrade, req) = TradingLibP1.nonRSRTrade(true);
 
+            // 3
             if (!doTrade) {
-                // 1b
-                (doTrade, req) = TradingLibP1.rsrTrade(); // interaction! (Rework here)
-            }
-
-            if (!doTrade) {
-                // 2
-                (doTrade, req) = TradingLibP1.nonRSRTrade(true);
-            }
-
-            if (doTrade) {
-                tryTrade(req);
-            } else {
-                // 3
                 compromiseBasketsNeeded();
+                return;
             }
+
+            // == Interaction
+            if (doTrade) tryTrade(req);
         }
     }
 
