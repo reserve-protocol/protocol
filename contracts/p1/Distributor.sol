@@ -39,7 +39,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function distribute(
         IERC20 erc20,
         address from,
@@ -55,6 +55,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
             tokensPerShare = amount / totalShares;
         }
+
+        // == Interactions ==
+        // This is safe if it's actually safe to _read_ contract state during interactions.
+        // I'm... not yet entirely convinced of this assertion! -me
 
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!

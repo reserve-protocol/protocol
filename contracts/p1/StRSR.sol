@@ -133,7 +133,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function stake(uint256 rsrAmount) external interaction {
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -155,6 +155,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR from account to this contract
         emit Staked(era, account, rsrAmount, stakeAmount);
+
+        // == Interactions ==
         IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
     }
 
@@ -182,10 +184,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
-    /// @custom:interaction
+    /// @custom:interaction , KCE
     function withdraw(address account, uint256 endId) external interaction {
+        // == Keepers ==
         main.assetRegistry().forceUpdates();
 
+        // == Checks + Effects ==
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
@@ -298,6 +302,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Assign reward payouts to the staker pool
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
+    /// @dev perhaps astonishingly, this _isn't_ a refresher
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;

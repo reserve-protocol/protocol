@@ -37,7 +37,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function settleTrade(IERC20 sell) external interaction {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
@@ -45,19 +45,22 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
         delete trades[sell];
         tradesOpen--;
+
+        // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function claimAndSweepRewards() external interaction {
+        // == Interaction ==
         RewardableLibP1.claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @custom:interaction
+    /// @custom:interaction , current chaos because openTrade()
     function tryTrade(TradeRequest memory req) internal {
         require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
 

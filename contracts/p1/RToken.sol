@@ -471,6 +471,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;
 
+        // == Interactions ==
+
         for (uint256 i = 0; i < queueLength; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(
                 address(main.backingManager()),

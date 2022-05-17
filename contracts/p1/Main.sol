@@ -46,8 +46,10 @@ contract MainP1 is
     }
 
     /// @custom:refresher
+    /// @custom:interaction , KCEI
     function poke() external {
         require(!paused(), "paused");
+        // == Interactions ==
         assetRegistry.forceUpdates();
         furnace.melt();
         stRSR.payoutRewards();
