@@ -113,8 +113,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // ==== Compute and accept collateral ====
+        // {BU * qRTok / qRTok}
         uint256 amtBaskets = (totalSupply() > 0) // D18{BU}
-            ? mulDiv256(uint256(int256(basketsNeeded)), amtRToken, totalSupply()) // {BU * qRTok / qRTok}
+            ? mulDiv256(uint256(int256(basketsNeeded)), amtRToken, totalSupply())
             : amtRToken; // D18{rTok}
 
         (address[] memory erc20s, uint256[] memory deposits) = bh.quote(
