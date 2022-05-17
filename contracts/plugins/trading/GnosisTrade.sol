@@ -85,6 +85,7 @@ contract GnosisTrade is ITrade {
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
+    /// @custom:interaction
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
         assert(status == TradeStatus.OPEN);
@@ -119,6 +120,7 @@ contract GnosisTrade is ITrade {
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
     /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
+    /// @custom:interaction , CEI
     function transferToOriginAfterTradeComplete(IERC20 erc20) external {
         require(status == TradeStatus.CLOSED, "only after trade is closed");
         IERC20Upgradeable(address(erc20)).safeTransfer(origin, erc20.balanceOf(address(this)));
