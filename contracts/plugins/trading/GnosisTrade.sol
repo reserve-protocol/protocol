@@ -9,9 +9,10 @@ import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
 enum TradeStatus {
-    NOT_STARTED,
-    OPEN,
-    CLOSED
+    NOT_STARTED, // before init()
+    OPEN, // after init() and before settle()
+    CLOSED, // after settle()
+    PENDING // during init() or settle() (reentrancy protection)
 }
 
 /// Trade contract against the Gnosis EasyAuction mechanism
@@ -37,6 +38,10 @@ contract GnosisTrade is ITrade {
 
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
+    /// @custom:interaction , Does NOT follow CEI!
+    /// @dev Instead, this interaction is not at risk of rentrancy attacks
+    ///      because it locks state while pending, and only calls interactions
+    ///      of outer contracts
     function init(
         IBroker broker_,
         address origin_,
@@ -47,7 +52,7 @@ contract GnosisTrade is ITrade {
         require(status == TradeStatus.NOT_STARTED, "trade already started");
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
         assert(origin_ != address(0));
-        status = TradeStatus.OPEN;
+        status = TradeStatus.PENDING;
 
         broker = broker_;
         origin = origin_;
@@ -64,6 +69,7 @@ contract GnosisTrade is ITrade {
         );
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
@@ -77,6 +83,8 @@ contract GnosisTrade is ITrade {
             address(0),
             new bytes(0)
         );
+
+        status = TradeStatus.OPEN;
     }
 
     /// @return True if the trade can be settled; should be guaranteed to be true eventually
@@ -85,11 +93,14 @@ contract GnosisTrade is ITrade {
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
-    /// @custom:interaction
+    /// @custom:interaction , Does NOT follow CEI
+    /// @dev Instead, this interaction is not at risk of reentrancy attacks
+    ///      because it locks state while pending, and only calls interactions
+    ///      of outer contracts
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
         assert(status == TradeStatus.OPEN);
-        status = TradeStatus.CLOSED;
+        status = TradeStatus.PENDING;
 
         // Optionally process settlement of the auction in Gnosis
         if (atStageSolutionSubmission()) {
@@ -101,6 +112,7 @@ contract GnosisTrade is ITrade {
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
         boughtAmt = buy.balanceOf(address(this));
+
         if (sellBal > 0) IERC20Upgradeable(address(sell)).safeTransfer(origin, sellBal);
         if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
 
@@ -116,6 +128,7 @@ contract GnosisTrade is ITrade {
                 broker.reportViolation();
             }
         }
+        status = TradeStatus.CLOSED;
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
