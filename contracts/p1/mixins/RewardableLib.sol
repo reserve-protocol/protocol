@@ -22,7 +22,7 @@ library RewardableLibP1 {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction
+    /// @custom:interaction , !CEI
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
@@ -50,6 +50,7 @@ library RewardableLibP1 {
             // Claim reward
             uint256 oldBal = rewardToken.balanceOf(address(this));
 
+            // Interaction!
             _to.functionCall(_calldata, "rewards claim failed");
 
             uint256 bal = rewardToken.balanceOf(address(this));
@@ -59,12 +60,18 @@ library RewardableLibP1 {
 
         // Sweep reward tokens to the backingManager
         if (address(this) != address(backingManager())) {
+            uint256[] memory bals = new uint256[](numRewardTokens);
+
             for (uint256 i = 0; i < numRewardTokens; ++i) {
-                uint256 bal = rewardTokens[i].balanceOf(address(this));
-                if (bal > 0) {
+                bals[i] = rewardTokens[i].balanceOf(address(this));
+            }
+
+            // == Begin interactions ==
+            for (uint256 i = 0; i < numRewardTokens; ++i) {
+                if (bals[i] > 0) {
                     IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
                         address(backingManager()),
-                        bal
+                        bals[i]
                     );
                 }
             }
