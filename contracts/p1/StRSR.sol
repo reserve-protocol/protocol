@@ -42,7 +42,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
 
     // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
-    uint256 internal era;
+    uint256 public era;
 
     // === ERC20 ===
 
@@ -291,6 +291,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             else right = test;
         }
         return right;
+    }
+
+    /// Used by FacadeP1
+    /// @return The length of the draft queue for an account in an era
+    function draftQueueLen(uint256 era_, address account) external view returns (uint256) {
+        return draftQueues[era_][account].length;
     }
 
     // ==== Internal Functions ====

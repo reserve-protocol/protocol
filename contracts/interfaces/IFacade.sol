@@ -41,3 +41,23 @@ interface IFacade {
     /// @custom:view
     function basketTokens() external view returns (address[] memory tokens);
 }
+
+interface IFacadeP1 is IFacade {
+    struct Pending {
+        uint256 index;
+        uint256 availableAt;
+        uint256 amount;
+    }
+
+    // ===
+
+    /// @param account The account for the query
+    /// @return All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(address account) external view returns (Pending[] memory);
+
+    /// @param account The account for the query
+    /// @return All the pending StRSR unstakings for an account
+    /// @custom:view
+    function pendingUnstakings(address account) external view returns (Pending[] memory);
+}

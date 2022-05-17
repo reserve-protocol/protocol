@@ -9,6 +9,8 @@ import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p1/RToken.sol";
+import "contracts/p1/StRSR.sol";
 
 /**
  * @title Facade
@@ -147,5 +149,57 @@ contract Facade is Initializable, IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     function basketTokens() external view returns (address[] memory tokens) {
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+    }
+}
+
+/**
+ * @title Facade
+ * @notice An extension of the Facade specific to P1
+ */
+contract FacadeP1 is Facade, IFacadeP1 {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IMain main_) Facade(main_) {}
+
+    /// @param account The account for the query
+    /// @return issuances All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(address account) external view returns (Pending[] memory issuances) {
+        RTokenP1 rTok = RTokenP1(address(main.rToken()));
+        (, uint256 left, uint256 right) = rTok.issueQueues(account);
+        issuances = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            RTokenP1.IssueItem memory issueItem = rTok.issueItem(account, i + left);
+            uint256 diff = i + left == 0
+                ? issueItem.amtRToken
+                : issueItem.amtRToken - rTok.issueItem(account, i + left - 1).amtRToken;
+            issuances[i] = Pending(i + left, issueItem.when, diff);
+        }
+    }
+
+    /// @param account The account for the query
+    /// @return unstakings All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingUnstakings(address account)
+        external
+        view
+        returns (Pending[] memory unstakings)
+    {
+        StRSRP1 stRSR = StRSRP1(address(main.stRSR()));
+        uint256 era = stRSR.era();
+        uint256 left = stRSR.firstRemainingDraft(era, account);
+        uint256 right = stRSR.draftQueueLen(era, account);
+
+        unstakings = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+
+            uint192 diff = drafts;
+            if (i + left > 0) {
+                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
+                diff = drafts - prevDrafts;
+            }
+
+            unstakings[i] = Pending(i + left, availableAt, diff);
+        }
     }
 }
