@@ -94,7 +94,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction , KCEI
     function issue(uint256 amtRToken) external interaction {
-
         // ==== Basic Setup ====
         main.assetRegistry().forceUpdates();
         require(amtRToken > 0, "Cannot issue zero");
@@ -224,6 +223,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) refundSpan(account, queue.left, queue.right);
         vestUpTo(account, endId);
+    }
 
     /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
