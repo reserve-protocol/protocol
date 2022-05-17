@@ -40,7 +40,7 @@ abstract contract CompoundOracleMixin is Initializable {
             revert PriceIsZero();
         }
 
-        // {UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
-        return shiftl_toFix(p, -6);
+        // D18{UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
+        return int192(uint192(p * 1e12));
     }
 }

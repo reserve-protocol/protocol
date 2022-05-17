@@ -61,11 +61,11 @@ abstract contract Collateral is ICollateral, Asset, Context {
 
         try this.price() returns (int192 p) {
             // {UoA/ref} = {UoA/target} * {target/ref}
-            int192 peg = pricePerTarget().mul(targetPerRef());
-            int192 delta = peg.mul(defaultThreshold);
+            int192 peg = (pricePerTarget() * targetPerRef()) / 1e18;
+            int192 delta = (peg * defaultThreshold) / 1e18; // D18{UoA/ref}
 
             // If the price is below the default-threshold price, default eventually
-            if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
+            if (p < peg - delta || p > peg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
         } catch Panic(uint256) {

@@ -27,8 +27,6 @@ interface IAaveOracle {
 // ==== End External Interfaces ====
 
 abstract contract AaveOracleMixin is CompoundOracleMixin {
-    using FixLib for int192;
-
     IAaveLendingPool public aaveLendingPool;
 
     // solhint-disable-next-line func-name-mixedcase
@@ -53,7 +51,7 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
         uint256 ethPrice = comptroller.oracle().price("ETH"); // {microUoA/ETH}
         uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH()); // {qETH/ETH}
 
-        // {UoA/erc20} = {qETH/erc20} * {microUoA/ETH} / {qETH/ETH} / {microUoA/UoA}
-        return shiftl_toFix(mulDiv256(p, ethPrice, ethNorm), -6);
+        // D18{UoA/erc20} = {qETH/erc20} * {microUoA/ETH} / {qETH/ETH} / {microUoA/UoA}
+        return int192(uint192(mulDiv256(p, 1e18 * ethPrice, ethNorm) / 1e6));
     }
 }
