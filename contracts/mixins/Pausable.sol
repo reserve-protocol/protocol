@@ -4,7 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
 
-/// Only Main is Pausable
+/**
+ * @title Pausable
+ * @notice Abstract class that makes a contract pausable, used by Main.
+ */
 abstract contract Pausable is OwnableUpgradeable, IPausable {
     address public oneshotPauser;
 

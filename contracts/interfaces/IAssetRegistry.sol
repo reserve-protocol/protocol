@@ -28,7 +28,6 @@ interface IAssetRegistry is IComponent {
     function init(IMain main_, IAsset[] memory assets_) external;
 
     /// Force an update of all exchange rates and prices for all assets
-    /// @custom:refresher
     /// @custom:interaction
     function forceUpdates() external;
 

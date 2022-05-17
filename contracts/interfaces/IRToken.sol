@@ -78,7 +78,6 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:action
     /// @custom:interaction
     function issue(uint256 amount) external;
 
@@ -87,12 +86,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:action
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external;
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
-    /// @custom:completion
+    /// @custom:interaction
     function vest(address account, uint256 endId) external;
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -101,12 +100,13 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
+    /// @custom:protected
     function mint(address recipient, uint256 amount) external;
 
     /// Melt a quantity of RToken from the caller's account
@@ -116,6 +116,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
     ///                      needed range: pretty interesting
+    /// @custom:protected
     function setBasketsNeeded(int192 basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted

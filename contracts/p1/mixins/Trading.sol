@@ -37,9 +37,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:refresher
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public notPaused nonReentrant {
+    function settleTrade(IERC20 sell) external interaction {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -48,6 +47,13 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
         tradesOpen--;
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
+    }
+
+    /// Claim all rewards and sweep to BackingManager
+    /// Collective Action
+    /// @custom:interaction
+    function claimAndSweepRewards() external interaction {
+        RewardableLibP1.claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
@@ -67,21 +73,16 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
         emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
-    /// Claim all rewards and sweep to BackingManager
-    /// Collective Action
-    /// @custom:interaction
-    function claimAndSweepRewards() external notPaused nonReentrant {
-        RewardableLibP1.claimAndSweepRewards();
-    }
-
     // === Setters ===
 
-    function setMaxTradeSlippage(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setMaxTradeSlippage(int192 val) external governance {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
-    function setDustAmount(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setDustAmount(int192 val) external governance {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

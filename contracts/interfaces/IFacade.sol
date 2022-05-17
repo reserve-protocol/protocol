@@ -13,11 +13,11 @@ import "./IRToken.sol";
  */
 interface IFacade {
     /// Prompt all traders to run auctions
-    /// @custom:action
+    /// @custom:interaction
     function runAuctionsForAllTraders() external;
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:action
+    /// @custom:interaction
     function claimRewards() external;
 
     /// @return How many RToken `account` can issue given current holdings

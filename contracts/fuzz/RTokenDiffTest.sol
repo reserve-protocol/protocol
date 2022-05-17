@@ -193,12 +193,6 @@ contract RTokenTestSystem is MainMock {
         rToken = rToken_;
         rToken.init(this, "RToken", "RTK", "rtoken://1", params.issuanceRate);
     }
-
-    function poke() public virtual override {
-        assetRegistry.forceUpdates();
-        basketHandler.checkBasket(); // maaaaaaybe
-        // sometimes tokens
-    }
 }
 
 contract RTokenP0Test is RTokenP0 {

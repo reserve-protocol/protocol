@@ -104,6 +104,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Checks the basket for default and swaps it if necessary
+    /// @custom:refresher
     function checkBasket() external notPaused {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
@@ -113,11 +114,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
     /// @param erc20s The collateral for the new prime basket
     /// @param targetAmts The target amounts (in) {target/BU} for the new prime basket
+    /// @custom:governance
     function setPrimeBasket(IERC20[] calldata erc20s, int192[] calldata targetAmts)
         external
-        onlyOwner
+        governance
     {
-        // nonReentrant not required: no external calls
+        // withLockable not required: no external calls
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -138,12 +140,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Set the backup configuration for some target name
+    /// @custom:governance
     function setBackupConfig(
         bytes32 targetName,
         uint256 max,
         IERC20[] calldata erc20s
-    ) external onlyOwner {
-        // nonReentrant not required: no external calls
+    ) external governance {
+        // withLockable not required: no external calls
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
@@ -160,9 +163,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    /// @custom:interaction , GCEI
-    function switchBasket() external onlyOwner nonReentrant {
-        // forceUpdates
+    /// @custom:interaction , KCEI
+    /// @custom:governance
+    function switchBasket() external governance {
+        // == Keeper ==
         main.assetRegistry().forceUpdates();
         // then maybe lots of state changes
         _switchBasket();
@@ -188,13 +192,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < length; ++i) {
             try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
                 CollateralStatus s = coll.status();
-                if (s == CollateralStatus.DISABLED) {
-                    return CollateralStatus.DISABLED;
-                }
+                if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
 
-                if (uint256(s) > uint256(status_)) {
-                    status_ = s;
-                }
+                if (uint256(s) > uint256(status_)) status_ = s;
             } catch {
                 return CollateralStatus.DISABLED;
             }
@@ -204,9 +204,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
     function quantity(IERC20 erc20) public view returns (int192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            if (coll.status() == CollateralStatus.DISABLED) {
-                return FIX_ZERO;
-            }
+            if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
             // {tok/BU} = {ref/BU} / {ref/tok}
             return basket.refAmts[erc20].div(coll.refPerTok(), CEIL);

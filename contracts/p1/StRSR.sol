@@ -125,15 +125,19 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         beginEra();
     }
 
+    /// Assign reward payouts to the staker pool
+    /// @custom:refresher
+    function payoutRewards() external notPaused {
+        _payoutRewards();
+    }
+
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
-    /// @custom:action
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external notPaused {
-        // nonReentrant not required: external call last
+    function stake(uint256 rsrAmount) external interaction {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        payoutRewards();
+        _payoutRewards();
 
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
@@ -156,14 +160,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
-    /// @custom:action
-    function unstake(uint256 stakeAmount) external notPaused {
-        // nonReentrant not required: no external calls in this function
+    /// @custom:interaction
+    function unstake(uint256 stakeAmount) external interaction {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
 
-        payoutRewards();
+        _payoutRewards();
 
         // ==== Compute changes to stakes and RSR accounting
         // rsrAmount: how many RSR to move from the stake pool to the draft pool
@@ -179,9 +182,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
-    /// @custom:action
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external notPaused nonReentrant {
+    function withdraw(address account, uint256 endId) external interaction {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
@@ -218,8 +220,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @param rsrAmount {qRSR}
     /// Must always seize exactly `rsrAmount`, or revert
-    /// @custom:interaction
-    function seizeRSR(uint256 rsrAmount) external notPaused nonReentrant {
+    /// @custom:protected
+    function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         int192 initRate = exchangeRate();
@@ -259,29 +261,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
-    /// Assign reward payouts to the staker pool
-    /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
-    /// value of rsrRewards()
-    function payoutRewards() public notPaused {
-        // nonReentrant not required: no external calls in this function
-        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
-
-        int192 initRate = exchangeRate();
-
-        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        // Apply payout to RSR backing
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
-
-        stakeRSR += payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
-        payoutLastPaid += numPeriods * rewardPeriod;
-        rsrRewardsAtLastPayout = rsrRewards();
-
-        stakeRate = (stakeRSR == 0 || totalStakes == 0) ? FIX_ONE : divuu(totalStakes, stakeRSR);
-
-        emit ExchangeRateSet(initRate, exchangeRate());
-    }
-
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
     function exchangeRate() public view returns (int192) {
         return stakeRate;
@@ -315,6 +294,30 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     // ==== Internal Functions ====
+
+    /// Assign reward payouts to the staker pool
+    /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
+    /// value of rsrRewards()
+    function _payoutRewards() internal {
+        if (block.timestamp < payoutLastPaid + rewardPeriod) return;
+        uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
+
+        int192 initRate = exchangeRate();
+
+        // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
+        // Apply payout to RSR backing
+        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+
+        stakeRSR += payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
+        payoutLastPaid += numPeriods * rewardPeriod;
+        rsrRewardsAtLastPayout = rsrRewards();
+
+        stakeRate = (stakeRSR == 0 || totalStakes == 0)
+            ? FIX_ONE
+            : toFix(totalStakes).divu(stakeRSR);
+
+        emit ExchangeRateSet(initRate, exchangeRate());
+    }
 
     /// @return index The index of the draft
     /// @return availableAt {s} The timestamp the cumulative draft vests
@@ -558,27 +561,30 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // ==== Gov Param Setters ====
 
-    function setName(string calldata name_) external onlyOwner {
+    function setName(string calldata name_) external governance {
         name = name_;
     }
 
-    function setSymbol(string calldata symbol_) external onlyOwner {
+    function setSymbol(string calldata symbol_) external governance {
         symbol = symbol_;
     }
 
-    function setUnstakingDelay(uint32 val) external onlyOwner {
+    /// @custom:governance
+    function setUnstakingDelay(uint32 val) external governance {
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) external onlyOwner {
+    /// @custom:governance
+    function setRewardPeriod(uint32 val) external governance {
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setRewardRatio(int192 val) external governance {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

@@ -19,7 +19,6 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     function claimAndSweepRewards() external notPaused {
-        // Call state keepers before collective actions
         main.poke();
 
         IAssetRegistry reg = main.assetRegistry();

@@ -6,7 +6,7 @@ import "contracts/p1/StRSRVotes.sol";
 contract StRSRP1VotesV2 is StRSRP1Votes {
     uint256 public newValue;
 
-    function setNewValue(uint256 newValue_) external onlyOwner {
+    function setNewValue(uint256 newValue_) external governance {
         newValue = newValue_;
     }
 

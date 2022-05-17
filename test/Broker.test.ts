@@ -89,7 +89,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -110,7 +110,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -149,10 +149,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         minBuyAmount: bn('0'),
       }
 
-      await expect(broker.openTrade(tradeRequest)).to.be.revertedWith('broker disabled')
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
+          'broker disabled'
+        )
+      })
     })
 
-    it('Should not allow to open trade if not from trader', async () => {
+    it('Should not allow to open trade if not a component', async () => {
       const amount: BigNumber = bn('100e18')
 
       const tradeRequest: ITradeRequest = {

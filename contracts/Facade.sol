@@ -13,10 +13,7 @@ import "contracts/libraries/Fixed.sol";
 /**
  * @title Facade
  * @notice A UX-friendly layer for non-governance protocol interactions
- *
- * @dev
- * - @custom:static-call - Use ethers callStatic() in order to get result after update
- * - @custom:view - Just expose a abstraction layer for getting protocol view data
+ * @custom:static-call - Use ethers callStatic() in order to get result after update
  */
 contract Facade is Initializable, IFacade {
     using FixLib for int192;
@@ -33,7 +30,6 @@ contract Facade is Initializable, IFacade {
 
     /// Prompt all traders to run auctions
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
-    /// @custom:action
     function runAuctionsForAllTraders() external {
         IBackingManager backingManager = main.backingManager();
         IRevenueTrader rsrTrader = main.rsrTrader();
@@ -68,7 +64,6 @@ contract Facade is Initializable, IFacade {
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:action
     function claimRewards() external {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
@@ -80,8 +75,8 @@ contract Facade is Initializable, IFacade {
     /// @custom:static-call
     function maxIssuable(address account) external returns (uint256) {
         main.poke();
-
         // {BU}
+
         int192 held = main.basketHandler().basketsHeldBy(account);
         int192 needed = main.rToken().basketsNeeded();
 
@@ -101,6 +96,7 @@ contract Facade is Initializable, IFacade {
     /// @custom:static-call
     function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts) {
         main.poke();
+
         IAssetRegistry reg = main.assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
 
@@ -149,7 +145,6 @@ contract Facade is Initializable, IFacade {
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
-    /// @custom:view
     function basketTokens() external view returns (address[] memory tokens) {
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
     }
