@@ -1,3 +1,4 @@
+/* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { networkConfig } from '../../common/configuration'
