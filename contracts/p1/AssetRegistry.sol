@@ -28,8 +28,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
     /// Force updates in all collateral assets
     /// @custom:interaction
+    // This is not quite CEI-compliant, but it _is_ safe:
+    // Interactions are interleaved with contract state reads (assets and erc20s),
+    // but all changes to the read state are onlyOwner
     function forceUpdates() public {
-        // nonReentrant not required: state updates are before external calls
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
@@ -47,19 +49,20 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
     /// @return swapped If the asset was swapped for a previously-registered asset
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function swapRegistered(IAsset asset) external onlyOwner nonReentrant returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
         swapped = _registerIgnoringCollisions(asset);
 
+        // == Begin interactions ==
         // Ensure valid basket after swap
         forceUpdates();
         main.basketHandler().checkBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
-    /// @custom:interaction
+    /// @custom:interaction , CEI
     function unregister(IAsset asset) external onlyOwner nonReentrant {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
@@ -67,6 +70,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
+        // == Begin interactions ==
         // Ensure valid basket after deregistration
         forceUpdates();
         main.basketHandler().checkBasket();
