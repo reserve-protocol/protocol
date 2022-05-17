@@ -19,6 +19,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     // All trades
     mapping(IERC20 => ITrade) public trades;
     uint32 public tradesOpen;
+    // tradesOpen is correct iff then tradesOpen is the number of values in `trades`
+    // that aren't set to address(0) or address(1).
 
     // === Governance params ===
     int192 public maxTradeSlippage; // {%}
@@ -40,7 +42,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     /// @custom:interaction , CEI
     function settleTrade(IERC20 sell) external interaction {
         ITrade trade = trades[sell];
-        if (address(trade) == address(0)) return;
+        if (address(trade) == address(0) || address(trade) == address(1)) return;
         require(trade.canSettle(), "cannot settle yet");
 
         delete trades[sell];
@@ -60,20 +62,27 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @custom:interaction , current chaos because openTrade()
-    function tryTrade(TradeRequest memory req) internal {
-        require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
+    /// @custom:interaction , Not CEI pattern. Instead, we carefully avoid reentrancy attacks...
+    /// via magic, apparently? TODO
 
-        IERC20Upgradeable(address(req.sell.erc20())).approve(
+    function tryTrade(TradeRequest memory req) internal {
+        // == Checks-Effects block 1 ==
+        IERC20 sell = req.sell.erc20()
+        require(address(trades[sell]) == address(0), "trade already open");
+        trades[sell] = address(1); // Prevent reentrant writes trades[req.sell.erc20()]
+
+        // == Interactions ==
+        IERC20Upgradeable(address(sell)).approve(
             address(main.broker()),
             req.sellAmount
         );
         ITrade trade = main.broker().openTrade(req);
 
+        // == Checks-Effects block 2 ==
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
-        trades[req.sell.erc20()] = trade;
+        trades[sell] = trade;
         tradesOpen++;
-        emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+        emit TradeStarted(sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
     // === Setters ===

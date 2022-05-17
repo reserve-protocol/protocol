@@ -56,12 +56,14 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
+
+        // == Interactions ==
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             caller,
             address(trade),
             req.sellAmount
         );
-        trade.init(this, caller, gnosis, auctionLength, req);
+        trade.init(this, caller, gnosis, auctionLength, req); // complex interaction
         return trade;
     }
 
