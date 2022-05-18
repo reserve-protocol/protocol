@@ -3,9 +3,9 @@ import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import fc from 'fast-check'
 
-import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div, shortString } from '../../common/numbers'
-import { FixedCallerMock } from '../../typechain/FixedCallerMock'
+import { BN_SCALE_FACTOR } from '../common/constants'
+import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div, shortString } from '../common/numbers'
+import { FixedCallerMock } from '../typechain/FixedCallerMock'
 
 enum RoundingMode {
   FLOOR,
@@ -29,22 +29,21 @@ describe('In FixLib,', () => {
   const neg = (x: BigNumber) => x.mul(-1)
 
   const SCALE = BN_SCALE_FACTOR
-  const MAX_INT192 = BigNumber.from(2).pow(191).sub(1)
-  const MIN_INT192 = neg(BigNumber.from(2).pow(191))
   const MAX_UINT192 = BigNumber.from(2).pow(192).sub(1)
-  const MAX_FIX_INT = MAX_INT192.div(pow10(18)) // biggest integer N st toFix(N) exists
-  const MIN_FIX_INT = MIN_INT192.div(pow10(18)) // smallest integer N st toFix(N) exists
+  const MIN_UINT192 = bn(0)
+  const MAX_FIX_UINT = MAX_UINT192.div(pow10(18)) // biggest integer N st toFix(N) exists
+  const MIN_FIX_UINT = bn(0) // smallest integer N st toFix(N) exists
 
   // prettier-ignore
   const positive_int192s: BigNumber[] = [
-    bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_INT192.sub(1), MAX_INT192
+    bn(1), fp(0.9999), fp(1), fp(1.0001), MAX_UINT192.sub(1), MAX_UINT192
   ]
-  const negative_int192s = positive_int192s.map(neg)
-  negative_int192s.reverse()
 
-  const int192s: BigNumber[] = [MIN_INT192, ...negative_int192s, bn(0), ...positive_int192s]
+  const uint192s: BigNumber[] = [MIN_UINT192, ...positive_int192s]
 
-  const int192Pairs: [BigNumber, BigNumber][] = int192s.slice(1).map((val, i) => [int192s[i], val])
+  const uint192Pairs: [BigNumber, BigNumber][] = uint192s
+    .slice(1)
+    .map((val, i) => [uint192s[i], val])
 
   // This is before() instead of beforeEach():
   // All of these functions are pure, so the contract state can be reused.
@@ -55,21 +54,22 @@ describe('In FixLib,', () => {
 
   describe('toFix(uint)', () => {
     it('correctly converts uint values', async () => {
-      const table = [0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT].map(bn)
+      const table = [0, 1, 2, '38326665875765560393', MAX_FIX_UINT.sub(1), MAX_FIX_UINT].map(bn)
       for (const x of table) {
         expect(await caller.toFix_(x), `${x}`).to.equal(fp(x))
       }
     })
 
     it('fails on inputs outside its domain', async () => {
-      await expect(caller.toFix_(MAX_FIX_INT.add(1))).to.be.revertedWith('UIntOutOfBounds')
-      await expect(caller.toFix_(MAX_FIX_INT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix_(MAX_FIX_UINT.add(1))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix_(MAX_FIX_UINT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
+      await expect(caller.toFix_(MIN_FIX_UINT.mul(17))).to.be.revertedWith('UIntOutOfBounds')
     })
   })
 
   describe('shiftl_toFix', () => {
     it('correctly converts uint values with 0 shifting', async () => {
-      const table = [0, 1, 2, '38326665875765560393', MAX_FIX_INT.sub(1), MAX_FIX_INT].map(bn)
+      const table = [0, 1, 2, '38326665875765560393', MAX_FIX_UINT.sub(1), MAX_FIX_UINT].map(bn)
       for (const x of table) {
         expect(await caller.shiftl_toFix_(x, bn(0)), `${x}`).to.equal(fp(x))
         expect(await caller.shiftl_toFix_Rnd(x, bn(0), FLOOR), `${x}`).to.equal(fp(x))
@@ -87,11 +87,11 @@ describe('In FixLib,', () => {
         [2, -3],
         ['38326665875765560393', -10],
         ['38326665875', 9],
-        [MAX_FIX_INT.sub(1), -2],
-        [MAX_FIX_INT.sub(1), -1],
-        [MAX_FIX_INT.sub(1), 0],
-        [MAX_FIX_INT, -9],
-        [MAX_FIX_INT, -1],
+        [MAX_FIX_UINT.sub(1), -2],
+        [MAX_FIX_UINT.sub(1), -1],
+        [MAX_FIX_UINT.sub(1), 0],
+        [MAX_FIX_UINT, -9],
+        [MAX_FIX_UINT, -1],
       ].map(([x, s]) => [bn(x), bn(s)])
 
       for (const [x, s] of table) {
@@ -103,10 +103,10 @@ describe('In FixLib,', () => {
 
     it('fails on inputs outside its domain', async () => {
       const table = [
-        [MAX_FIX_INT, 1],
-        [MAX_FIX_INT.add(1), 0],
-        [MIN_FIX_INT, 1],
-        [MIN_FIX_INT.sub(1), 0],
+        [MAX_FIX_UINT, 1],
+        [MAX_FIX_UINT.add(1), 0],
+        [MIN_FIX_UINT, 1],
+        [MIN_FIX_UINT.sub(1), 0],
         [1, 58],
         [-1, 58],
         [bn('1e8'), 50],
@@ -128,11 +128,11 @@ describe('In FixLib,', () => {
         [1, -19],
         ['38326665875765560393', -19],
         ['38326665875', -10],
-        [MAX_FIX_INT.sub(1), -1],
-        [MAX_FIX_INT.sub(1), -19],
-        [MAX_FIX_INT.sub(1), 0],
-        [MAX_FIX_INT, -1],
-        [MAX_FIX_INT, -19],
+        [MAX_FIX_UINT.sub(1), -1],
+        [MAX_FIX_UINT.sub(1), -19],
+        [MAX_FIX_UINT.sub(1), 0],
+        [MAX_FIX_UINT, -1],
+        [MAX_FIX_UINT, -19],
       ].map(([x, s]) => [bn(x), bn(s)])
 
       for (const [x, s] of table) {
@@ -161,9 +161,7 @@ describe('In FixLib,', () => {
       const table = [[10, 1, 10], [10, 2, 5], [20, 2.5, 8], [1, 5, 0.2], [256, 256, 1]]
           .flatMap(([x, y, z]) => [
             [x, y, z],
-            [x, -y, -z],
             [x, z, y],
-            [x, -z, -y],
           ])
           .concat([
             [0, 1, 0],
@@ -181,11 +179,11 @@ describe('In FixLib,', () => {
       // For cases that exercise the complicated path, we need:
       // 5.8e40 <= x < 5.8e76, fp(-3.14e39) <= y, result <= fp(3.14e39)
       const table = [
-        [MAX_FIX_INT, fp(1), fp(MAX_FIX_INT)],
-        [MAX_FIX_INT.sub(51), fp(1), fp(MAX_FIX_INT.sub(51))],
-        [MAX_FIX_INT.mul(173), fp(173), fp(MAX_FIX_INT)],
-        [MAX_INT192, fp('1e18'), MAX_INT192],
-        [MAX_INT192, fp('-1e18'), neg(MAX_INT192)],
+        [MAX_FIX_UINT, fp(1), fp(MAX_FIX_UINT)],
+        [MAX_FIX_UINT.sub(51), fp(1), fp(MAX_FIX_UINT.sub(51))],
+        [MAX_FIX_UINT.mul(173), fp(173), fp(MAX_FIX_UINT)],
+        [MAX_UINT192, fp('1e18'), MAX_UINT192],
+        [MAX_UINT192, fp('-1e18'), neg(MAX_UINT192)],
         [bn('8e60'), fp('2e30'), fp('4e30')],
         [bn('5e75'), fp('2.5e39'), fp('2e36')],
         [bn('8e60'), fp('-2e30'), fp('-4e30')],
@@ -199,45 +197,26 @@ describe('In FixLib,', () => {
     })
 
     it('fails when results fall outside its range', async () => {
-      await expect(caller.divFix_(MAX_INT192.add(1), fp(1))).to.be.reverted
-      await expect(caller.divFix_(MAX_INT192.div(5), fp('0.199'))).to.be.reverted
+      await expect(caller.divFix_(MAX_UINT192.add(1), fp(1))).to.be.reverted
+      await expect(caller.divFix_(MAX_UINT192.div(5), fp('0.199'))).to.be.reverted
     })
     it('fails on division by zero', async () => {
       await expect(caller.divFix_(17, fp(0))).to.be.reverted
       await expect(caller.divFix_(0, fp(0))).to.be.reverted
-      await expect(caller.divFix_(MAX_INT192, fp(0))).to.be.reverted
+      await expect(caller.divFix_(MAX_UINT192, fp(0))).to.be.reverted
       // we specifically expect panic code 0x12, but ethers seems to be choking on it
     })
   })
   describe('fixMin', () => {
     it('correctly evaluates min', async () => {
-      for (const [a, b] of int192Pairs)
+      for (const [a, b] of uint192Pairs)
         expect(await caller.fixMin_(a, b), `fixMin(${a}, ${b})`).to.equal(a.lt(b) ? a : b)
     })
   })
   describe('fixMax', () => {
     it('correctly evaluates max', async () => {
-      for (const [a, b] of int192Pairs)
+      for (const [a, b] of uint192Pairs)
         expect(await caller.fixMax_(a, b), `fixMax(${a}, ${b})`).to.equal(a.gt(b) ? a : b)
-    })
-  })
-  describe('signOf', () => {
-    it('correctly takes signOf', async () => {
-      // prettier-ignore
-      const table = [
-        [bn(0), 1],
-        [bn(1), 1],
-        [bn(-1), -1],
-        [MAX_FIX_INT, 1],
-        [MIN_FIX_INT, -1],
-        [MAX_FIX_INT.sub(1), 1],
-        [MIN_FIX_INT.add(1), -1],
-        [bn('38326665875765560393'), 1],
-        [bn('-01942957121544002253'), -1],
-      ]
-      for (const [input, result] of table) {
-        expect(await caller.signOf_(input), `signOf(${input})`).to.equal(result)
-      }
     })
   })
   describe('abs', () => {
@@ -247,51 +226,16 @@ describe('In FixLib,', () => {
         [bn(0), 0],
         [bn(1), 1],
         [bn(-1), 1],
-        [MAX_FIX_INT, MAX_FIX_INT],
-        [MIN_FIX_INT, MAX_FIX_INT],
-        [MAX_FIX_INT.sub(1), MAX_FIX_INT.sub(1)],
-        [MIN_FIX_INT.add(1), MAX_FIX_INT.sub(1)],
+        [MAX_FIX_UINT, MAX_FIX_UINT],
+        [MIN_FIX_UINT, MAX_FIX_UINT],
+        [MAX_FIX_UINT.sub(1), MAX_FIX_UINT.sub(1)],
+        [MIN_FIX_UINT.add(1), MAX_FIX_UINT.sub(1)],
         [bn('38326665875765560393'), bn('38326665875765560393')],
         [bn('-01942957121544002253'), bn('01942957121544002253')],
       ]
       for (const [input, result] of table) {
         expect(await caller.abs_(input), `abs(${input})`).to.equal(result)
       }
-    })
-  })
-  describe('_divrnd(int, int, RoundingMode)', () => {
-    it('correctly rounds', async () => {
-      const table = [
-        [fp(5), fp(2)],
-        [fp(-5), fp(2)],
-        [fp(29), fp(10)],
-        [fp(-29), fp(10)],
-        [fp(19), fp(10)],
-        [fp(-19), fp(10)],
-      ]
-
-      for (const [a, b] of table) {
-        const floor = fpFloor(a.mul(SCALE).div(b)).div(SCALE)
-        const round = fpRound(a.mul(SCALE).div(b)).div(SCALE)
-        const ceil = fpCeil(a.mul(SCALE).div(b)).div(SCALE)
-        expect(await caller.divrnd_(a, b, FLOOR), `divrnd_((${a}, ${b}, FLOOR)`).to.equal(floor)
-        expect(await caller.divrnd_(a, b, ROUND), `divrnd_((${a}, ${b}, ROUND)`).to.equal(round)
-        expect(await caller.divrnd_(a, b, CEIL), `divrnd_((${a}, ${b}, CEIL)`).to.equal(ceil)
-      }
-    })
-    describe('does what I expect with signs', () => {
-      function item(n: string, d: string, rnd: RoundingMode, result: string) {
-        it(`_divrnd(${n},${d},${RoundingMode[rnd]}) = ${result}`, async () => {
-          expect(await caller.divrnd_(bn(n), bn(d), rnd)).to.equal(bn(result))
-        })
-      }
-      item('1e18', '-1', RoundingMode.FLOOR, '-1e18')
-      item('1e18', '-1', RoundingMode.ROUND, '-1e18')
-      item('1e18', '-1', RoundingMode.CEIL, '-1e18')
-      item('1e18', '-2', RoundingMode.FLOOR, '-0.5e18')
-      item('1e18', '-2', RoundingMode.ROUND, '-0.5e18')
-      item('1e18', '-2', RoundingMode.CEIL, '-0.5e18')
-      item('-5e17', '1e18', RoundingMode.ROUND, '-1')
     })
   })
   describe('_divrnd(uint, uint, RoundingMode)', () => {
@@ -306,9 +250,9 @@ describe('In FixLib,', () => {
         const floor = fpFloor(a.mul(SCALE).div(b)).div(SCALE)
         const round = fpRound(a.mul(SCALE).div(b)).div(SCALE)
         const ceil = fpCeil(a.mul(SCALE).div(b)).div(SCALE)
-        expect(await caller.divrnd_u(a, b, FLOOR), `divrnd_u((${a}, ${b}, FLOOR)`).to.equal(floor)
-        expect(await caller.divrnd_u(a, b, ROUND), `divrnd_u((${a}, ${b}, ROUND)`).to.equal(round)
-        expect(await caller.divrnd_u(a, b, CEIL), `divrnd_u((${a}, ${b}, CEIL)`).to.equal(ceil)
+        expect(await caller.divrnd_(a, b, FLOOR), `divrnd_((${a}, ${b}, FLOOR)`).to.equal(floor)
+        expect(await caller.divrnd_(a, b, ROUND), `divrnd_((${a}, ${b}, ROUND)`).to.equal(round)
+        expect(await caller.divrnd_(a, b, CEIL), `divrnd_((${a}, ${b}, CEIL)`).to.equal(ceil)
       }
     })
   })
@@ -325,7 +269,7 @@ describe('In FixLib,', () => {
         705811305.207,
         3.4999,
         3.50001,
-        MAX_FIX_INT,
+        MAX_FIX_UINT,
         9.99999,
         6.5,
         5.5,
@@ -343,7 +287,7 @@ describe('In FixLib,', () => {
       }
     })
     it('fails on negative Fixes', async () => {
-      const table = [-1, fp(MIN_FIX_INT), MIN_INT192, fp(-986349)]
+      const table = [-1, fp(MIN_FIX_UINT), MIN_UINT192, fp(-986349)]
       for (const val of table) {
         await expect(caller.toUint(val), `${val}`).to.be.revertedWith('IntOutOfBounds')
         await expect(caller.toUintRnd(val, FLOOR), `${val}`).to.be.revertedWith('IntOutOfBounds')
@@ -363,11 +307,11 @@ describe('In FixLib,', () => {
         [2, -3],
         ['38326665875765560393', -10],
         ['38326665875', 9],
-        [MAX_FIX_INT.sub(1), -2],
-        [MAX_FIX_INT.sub(1), -1],
-        [MAX_FIX_INT.sub(1), 0],
-        [MAX_FIX_INT, -9],
-        [MAX_FIX_INT, -1],
+        [MAX_FIX_UINT.sub(1), -2],
+        [MAX_FIX_UINT.sub(1), -1],
+        [MAX_FIX_UINT.sub(1), 0],
+        [MAX_FIX_UINT, -9],
+        [MAX_FIX_UINT, -1],
       ].map(([x, s]) => [bn(x), bn(s)])
 
       for (const [x, s] of table) {
@@ -387,11 +331,11 @@ describe('In FixLib,', () => {
           [2, -3],
           ['38326665875765560393', -10],
           ['38326665875', 9],
-          [MAX_FIX_INT.sub(1), -2],
-          [MAX_FIX_INT.sub(1), -1],
-          [MAX_FIX_INT.sub(1), 0],
-          [MAX_FIX_INT, -9],
-          [MAX_FIX_INT, -1],
+          [MAX_FIX_UINT.sub(1), -2],
+          [MAX_FIX_UINT.sub(1), -1],
+          [MAX_FIX_UINT.sub(1), 0],
+          [MAX_FIX_UINT, -9],
+          [MAX_FIX_UINT, -1],
         ].map(([x, s]) => [bn(x), bn(s)])
 
         for (const [x, s] of table) {
@@ -409,48 +353,39 @@ describe('In FixLib,', () => {
       const table_init = [
         [13, 25, 38],
         [0.1, 0.2, 0.3],
-        [1, -1, 0],
+        [1, 1, 2],
         [5040, 301, 5341],
         [0, 0, 0],
-        [0.1, -0.1, 0],
+        [0.1, 0.1, 0.2],
       ]
       const table = []
       for (const [a, b, c] of table_init) {
-        table.push(
-          [a, b, c],
-          [-a, -b, -c],
-          [b, a, c],
-          [-b, -a, -c],
-          [c, -a, b],
-          [c, -b, a],
-          [-c, a, -b],
-          [-c, b, -a]
-        )
+        table.push([a, b, c], [b, a, c])
       }
       table.push(
         ['1e-18', '2e-18', '3e-18'],
-        [MAX_FIX_INT, 0, MAX_FIX_INT],
-        [MAX_FIX_INT, MAX_FIX_INT.mul(-1), 0],
-        [MAX_FIX_INT.div(8).mul(3), MAX_FIX_INT.div(8).mul(5), MAX_FIX_INT.div(8).mul(8)]
+        [MAX_FIX_UINT, 0, MAX_FIX_UINT],
+        [MAX_FIX_UINT, MAX_FIX_UINT.mul(-1), 0],
+        [MAX_FIX_UINT.div(8).mul(3), MAX_FIX_UINT.div(8).mul(5), MAX_FIX_UINT.div(8).mul(8)]
       )
       for (const [a, b, c] of table) {
         expect(await caller.plus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c))
       }
     })
     it('correctly adds at the extremes of its range', async () => {
-      expect(await caller.plus(MAX_INT192, -1)).to.equal(MAX_INT192.sub(1))
-      expect(await caller.plus(MAX_INT192.sub(1), 1)).to.equal(MAX_INT192)
-      expect(await caller.plus(MIN_INT192.add(1), -1)).to.equal(MIN_INT192)
-      expect(await caller.plus(MIN_INT192.div(2), MIN_INT192.div(2))).to.equal(MIN_INT192)
-      expect(await caller.plus(MAX_INT192, MIN_INT192)).to.equal(-1)
+      expect(await caller.plus(MAX_UINT192, -1)).to.equal(MAX_UINT192.sub(1))
+      expect(await caller.plus(MAX_UINT192.sub(1), 1)).to.equal(MAX_UINT192)
+      expect(await caller.plus(MIN_UINT192.add(1), -1)).to.equal(MIN_UINT192)
+      expect(await caller.plus(MIN_UINT192.div(2), MIN_UINT192.div(2))).to.equal(MIN_UINT192)
+      expect(await caller.plus(MAX_UINT192, MIN_UINT192)).to.equal(-1)
     })
     it('fails outside its range', async () => {
-      await expect(caller.plus(MAX_INT192, 1), 'plus(MAX, 1)').to.be.reverted
-      const half_max = MAX_INT192.add(1).div(2)
+      await expect(caller.plus(MAX_UINT192, 1), 'plus(MAX, 1)').to.be.reverted
+      const half_max = MAX_UINT192.add(1).div(2)
       await expect(caller.plus(half_max, half_max), 'plus((MAX+1)/2, (MAX+1)/2)').to.be.reverted
-      await expect(caller.plus(MIN_INT192, -1), 'plus(MIN, -1)').to.be.reverted
+      await expect(caller.plus(MIN_UINT192, -1), 'plus(MIN, -1)').to.be.reverted
       await expect(
-        caller.plus(MIN_INT192.div(2), MIN_INT192.div(2).sub(1)),
+        caller.plus(MIN_UINT192.div(2), MIN_UINT192.div(2).sub(1)),
         'plus(MIN/2, MIN/2 -1)'
       ).to.be.reverted
     })
@@ -466,7 +401,7 @@ describe('In FixLib,', () => {
         [22, 96, 118],
         [0, 0, 0],
         [0.1, 3, 3.1],
-        [-999.8, 999, -0.8],
+        [999.8, 999, 1998.8],
       ]
       for (const [a, b, c] of table) {
         expect(await caller.plusu(fp(a), b), `plusu(${a}, ${b})`).to.equal(fp(c))
@@ -474,23 +409,23 @@ describe('In FixLib,', () => {
     })
 
     it('correctly adds at the extremes of its range', async () => {
-      expect(await caller.plusu(MAX_INT192.sub(SCALE.mul(3)), 3), 'plusu(MAX-3, 3)').to.equal(
-        MAX_INT192
+      expect(await caller.plusu(MAX_UINT192.sub(SCALE.mul(3)), 3), 'plusu(MAX-3, 3)').to.equal(
+        MAX_UINT192
       )
-      const max_mantissa = MAX_INT192.mod(SCALE)
+      const max_mantissa = MAX_UINT192.mod(SCALE)
       expect(
-        await caller.plusu(max_mantissa.sub(fp(12345)), MAX_FIX_INT.add(12345)),
-        'plusu(max_mantissa - 12345, MAX_FIX_INT + 12345)'
-      ).to.equal(MAX_INT192)
+        await caller.plusu(max_mantissa.sub(fp(12345)), MAX_FIX_UINT.add(12345)),
+        'plusu(max_mantissa - 12345, MAX_FIX_UINT + 12345)'
+      ).to.equal(MAX_UINT192)
 
-      expect(await caller.plusu(MIN_INT192, 0), 'plusu(MIN, 0)').to.equal(MIN_INT192)
+      expect(await caller.plusu(MIN_UINT192, 0), 'plusu(MIN, 0)').to.equal(MIN_UINT192)
     })
 
     it('fails outside its range', async () => {
-      await expect(caller.plusu(MAX_INT192.sub(SCALE.mul(3)).add(1), 3), 'plusu(MAX-3+eps, 3)').to
+      await expect(caller.plusu(MAX_UINT192.sub(SCALE.mul(3)).add(1), 3), 'plusu(MAX-3+eps, 3)').to
         .be.reverted
-      await expect(caller.plusu(MAX_INT192.sub(SCALE.mul(3)), 4), 'plusu(MAX-3, 4)').to.be.reverted
-      await expect(caller.plusu(0, MAX_FIX_INT.add(1)), 'plusu(0, MAX_FIX + 1)').to.be.reverted
+      await expect(caller.plusu(MAX_UINT192.sub(SCALE.mul(3)), 4), 'plusu(MAX-3, 4)').to.be.reverted
+      await expect(caller.plusu(0, MAX_FIX_UINT.add(1)), 'plusu(0, MAX_FIX + 1)').to.be.reverted
       await expect(caller.plusu(0, MAX_UINT192), 'plusu(0, MAX_UINT)').to.be.reverted
     })
   })
@@ -498,51 +433,44 @@ describe('In FixLib,', () => {
   describe('minus', () => {
     it('correctly subtracts in its range', async () => {
       const table_init = [
-        [13, -25, 38],
-        [0.1, -0.2, 0.3],
+        [25, 13, 12],
+        [0.2, 0.1, 0.1],
         [1, 1, 0],
-        [5040, -301, 5341],
+        [5040, 301, 4739],
         [0, 0, 0],
         [0.1, 0.1, 0],
       ]
       const table = []
       for (const [a, b, c] of table_init) {
-        table.push(
-          [a, b, c],
-          [-a, -b, -c],
-          [b, a, -c],
-          [-b, -a, c],
-          [a, c, b],
-          [-a, -c, -b],
-          [c, a, -b],
-          [-c, -a, b]
-        )
+        table.push([a, b, c], [a, c, b])
       }
       table.push(
         ['3e-18', '2e-18', '1e-18'],
-        [MAX_FIX_INT, 0, MAX_FIX_INT],
-        [MAX_FIX_INT, MAX_FIX_INT, 0],
-        [MAX_FIX_INT.div(8).mul(5), MAX_FIX_INT.div(8).mul(-3), MAX_FIX_INT.div(8).mul(8)]
+        [MAX_FIX_UINT, 0, MAX_FIX_UINT],
+        [MAX_FIX_UINT, MAX_FIX_UINT, 0],
+        [MAX_FIX_UINT.div(8).mul(5), MAX_FIX_UINT.div(8).mul(-3), MAX_FIX_UINT.div(8).mul(8)]
       )
       for (const [a, b, c] of table) {
         expect(await caller.minus(fp(a), fp(b)), `${a} + ${b}`).to.equal(fp(c))
       }
     })
     it('correctly subtracts at the extremes of its range', async () => {
-      expect(await caller.minus(MAX_INT192, 1)).to.equal(MAX_INT192.sub(1))
-      expect(await caller.minus(MAX_INT192.sub(1), -1)).to.equal(MAX_INT192)
-      expect(await caller.minus(MIN_INT192.add(1), 1)).to.equal(MIN_INT192)
-      expect(await caller.minus(MIN_INT192.div(2), MIN_INT192.div(2).mul(-1))).to.equal(MIN_INT192)
-      expect(await caller.minus(MAX_INT192, MAX_INT192)).to.equal(0)
-      expect(await caller.minus(MIN_INT192, MIN_INT192)).to.equal(0)
+      expect(await caller.minus(MAX_UINT192, 1)).to.equal(MAX_UINT192.sub(1))
+      expect(await caller.minus(MAX_UINT192.sub(1), -1)).to.equal(MAX_UINT192)
+      expect(await caller.minus(MIN_UINT192.add(1), 1)).to.equal(MIN_UINT192)
+      expect(await caller.minus(MIN_UINT192.div(2), MIN_UINT192.div(2).mul(-1))).to.equal(
+        MIN_UINT192
+      )
+      expect(await caller.minus(MAX_UINT192, MAX_UINT192)).to.equal(0)
+      expect(await caller.minus(MIN_UINT192, MIN_UINT192)).to.equal(0)
     })
     it('fails outside its range', async () => {
-      await expect(caller.minus(MAX_INT192, -1), 'minus(MAX, -1)').to.be.reverted
-      const half_max = MAX_INT192.add(1).div(2)
+      await expect(caller.minus(MAX_UINT192, -1), 'minus(MAX, -1)').to.be.reverted
+      const half_max = MAX_UINT192.add(1).div(2)
       await expect(caller.minus(half_max, half_max.mul(-1)), 'minus((MAX+1)/2, -(MAX+1)/2)').to.be
         .reverted
-      await expect(caller.minus(MIN_INT192, 1), 'minus(MIN, 1)').to.be.reverted
-      const half_min = MIN_INT192.div(2)
+      await expect(caller.minus(MIN_UINT192, 1), 'minus(MIN, 1)').to.be.reverted
+      const half_min = MIN_UINT192.div(2)
       await expect(caller.minus(half_min, half_min.sub(1).mul(-1)), 'minus(MIN/2, -MIN/2 +1)').to.be
         .reverted
     })
@@ -558,8 +486,8 @@ describe('In FixLib,', () => {
         [118, 96, 22],
         [0, 0, 0],
         [999.8, 999, 0.8],
-        [-1000, 234, -1234],
-        [5, 12, -7],
+        [1000, 234, 776],
+        [12, 5, 7],
       ]
       for (const [a, b, c] of table) {
         expect(await caller.minusu(fp(a), b), `minusu(${a}, ${b})`).to.equal(fp(c))
@@ -567,18 +495,20 @@ describe('In FixLib,', () => {
     })
     it('correctly subtracts at the extremes of its range', async () => {
       expect(
-        await caller.minusu(MIN_INT192.add(SCALE.mul(81)), 81),
+        await caller.minusu(MIN_UINT192.add(SCALE.mul(81)), 81),
         'minusu(MIN + 81, 81)'
-      ).to.equal(MIN_INT192)
-      expect(await caller.minusu(MAX_INT192, 0), 'minusu(MAX, 0)').to.equal(MAX_INT192)
-      expect(await caller.minusu(MIN_INT192, 0), 'minusu(MIN, 0)').to.equal(MIN_INT192)
+      ).to.equal(MIN_UINT192)
+      expect(await caller.minusu(MAX_UINT192, 0), 'minusu(MAX, 0)').to.equal(MAX_UINT192)
+      expect(await caller.minusu(MIN_UINT192, 0), 'minusu(MIN, 0)').to.equal(MIN_UINT192)
     })
 
     it('fails outside its range', async () => {
-      await expect(caller.minusu(MAX_INT192, MAX_FIX_INT.mul(2).add(3)), 'minusu(MAX, MAX_FIX*2+3)')
-        .to.be.reverted
-      await expect(caller.minusu(MIN_INT192, 1), 'minusu(MIN, 1)').to.be.reverted
-      await expect(caller.minusu(0, MAX_FIX_INT.add(1)), 'minusu(0, MAX_FIX + 1)').to.be.reverted
+      await expect(
+        caller.minusu(MAX_UINT192, MAX_FIX_UINT.mul(2).add(3)),
+        'minusu(MAX, MAX_FIX*2+3)'
+      ).to.be.reverted
+      await expect(caller.minusu(MIN_UINT192, 1), 'minusu(MIN, 1)').to.be.reverted
+      await expect(caller.minusu(0, MAX_FIX_UINT.add(1)), 'minusu(0, MAX_FIX + 1)').to.be.reverted
       await expect(caller.minusu(0, MAX_UINT192), 'minusu(0, MAX_UINT)').to.be.reverted
     })
   })
@@ -598,12 +528,7 @@ describe('In FixLib,', () => {
         [a, b, c],
         [b, a, c],
       ])
-      const table = commutes.flatMap(([a, b, c]) => [
-        [a, b, c],
-        [-a, b, -c],
-        [a, -b, -c],
-        [-a, -b, c],
-      ])
+      const table = commutes.flatMap(([a, b, c]) => [[a, b, c]])
       for (const [a, b, c] of table) {
         expect(await caller.mul(fp(a), fp(b)), `mul(fp(${a}), fp(${b}))`).to.equal(fp(c))
       }
@@ -615,24 +540,17 @@ describe('In FixLib,', () => {
       })
     }
 
-    mulTest('1e-9', '-1e-9', '-1e-18')
     mulTest('0.5e-9', '1e-9', '1e-18')
-    mulTest('-0.5e-9', '1e-9', '-1e-18')
-    mulTest('0.5e-9', '-1e-9', '-1e-18')
-    mulTest('-0.5e-9', '-1e-9', '1e-18')
     mulTest('0.49e-9', '1e-9', '0')
-    mulTest('-0.49e-9', '1e-9', '0')
-    mulTest('0.49e-9', '-1e-9', '0')
-    mulTest('-0.49e-9', '-1e-9', '0')
     mulTest('1.5e-9', '4.5e-8', '68e-18')
 
     it('correctly multiplies at the extremes of its range', async () => {
       const table = [
-        [MAX_INT192, fp(1), MAX_INT192],
-        [MIN_INT192, fp(1), MIN_INT192],
-        [MIN_INT192.div(256), fp(256), MIN_INT192],
-        [MAX_INT192.sub(1).div(2), fp(2), MAX_INT192.sub(1)],
-        [MAX_INT192, fp(-1), MIN_INT192.add(1)],
+        [MAX_UINT192, fp(1), MAX_UINT192],
+        [MIN_UINT192, fp(1), MIN_UINT192],
+        [MIN_UINT192.div(256), fp(256), MIN_UINT192],
+        [MAX_UINT192.sub(1).div(2), fp(2), MAX_UINT192.sub(1)],
+        [MAX_UINT192, fp(-1), MIN_UINT192.add(1)],
       ]
       for (const [a, b, c] of table) {
         expect(await caller.mul(a, b), `mul(${a}, ${b})`).to.equal(c)
@@ -640,12 +558,7 @@ describe('In FixLib,', () => {
       }
     })
     it('correctly rounds', async () => {
-      const table = mulu_table.flatMap(([a, b]) => [
-        [fp(a), fp(b)],
-        [fp(a), fp(-b)],
-        [fp(-a), fp(b)],
-        [fp(-a), fp(-b)],
-      ])
+      const table = mulu_table.flatMap(([a, b]) => [[fp(a), fp(b)]])
 
       for (const [a, b] of table) {
         const floor = fpFloor(a.mul(b)).div(SCALE)
@@ -658,8 +571,8 @@ describe('In FixLib,', () => {
       }
     })
     it('fails outside its range', async () => {
-      await expect(caller.mul(MIN_INT192, fp(-1)), 'mul(MIN, -1)').to.be.reverted
-      await expect(caller.mul(MAX_INT192.div(2).add(1), fp(2)), 'mul(MAX/2 + 2, 2)').to.be.reverted
+      await expect(caller.mul(MIN_UINT192, fp(-1)), 'mul(MIN, -1)').to.be.reverted
+      await expect(caller.mul(MAX_UINT192.div(2).add(1), fp(2)), 'mul(MAX/2 + 2, 2)').to.be.reverted
       await expect(caller.mul(fp(bn(2).pow(81)), fp(bn(2).pow(81))), 'mul(2^81, 2^81)').to.be
         .reverted
       await expect(caller.mul(fp(bn(2).pow(81).mul(-1)), fp(bn(2).pow(81))), 'mul(-2^81, 2^81)').to
@@ -669,31 +582,28 @@ describe('In FixLib,', () => {
 
   describe('mulu', () => {
     it('correctly multiplies inside its range', async () => {
-      const table = mulu_table.flatMap(([a, b, c]) => [
-        [a, b, c],
-        [-a, b, -c],
-      ])
+      const table = mulu_table.flatMap(([a, b, c]) => [[a, b, c]])
       for (const [a, b, c] of table) {
         expect(await caller.mulu(fp(a), b), `mulu(fp(${a}), ${b})`).to.equal(fp(c))
       }
     })
     it('correctly multiplies at the extremes of its range', async () => {
       const table = [
-        [MAX_INT192, 1, MAX_INT192],
-        [MIN_INT192, 1, MIN_INT192],
-        [fp(1), MAX_FIX_INT, fp(MAX_FIX_INT)],
-        [MIN_INT192.div(256), 256, MIN_INT192],
-        [MAX_INT192.sub(1).div(2), 2, MAX_INT192.sub(1)],
+        [MAX_UINT192, 1, MAX_UINT192],
+        [MIN_UINT192, 1, MIN_UINT192],
+        [fp(1), MAX_FIX_UINT, fp(MAX_FIX_UINT)],
+        [MIN_UINT192.div(256), 256, MIN_UINT192],
+        [MAX_UINT192.sub(1).div(2), 2, MAX_UINT192.sub(1)],
         [fp(0.25), bn(2).pow(69), fp(bn(2).pow(67))],
       ]
       for (const [a, b, c] of table) expect(await caller.mulu(a, b), `mulu(${a}, ${b})`).to.equal(c)
     })
     it('fails outside its range', async () => {
       const table = [
-        [MAX_INT192.div(2).add(1), 2],
+        [MAX_UINT192.div(2).add(1), 2],
         [fp(bn(2).pow(68)), bn(2).pow(68)],
-        [MAX_INT192, MAX_INT192],
-        [MIN_INT192, MAX_INT192],
+        [MAX_UINT192, MAX_UINT192],
+        [MIN_UINT192, MAX_UINT192],
         [fp(1), MAX_UINT192],
         [fp(0.25), bn(2).pow(195)],
       ]
@@ -714,8 +624,6 @@ describe('In FixLib,', () => {
         [fp(1), bn(1), fp('1e18')],
         [bn(1), fp(1), bn(1)]
       ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b]])
-        .flatMap(([a, b, c]) => [[a, b, c], [neg(a), b, neg(c)]])
-        .flatMap(([a, b, c]) => [[a, b, c], [a, neg(b), neg(c)]])
 
       for (const [a, b, c] of table) {
         expect(await caller.div(a, b), `div(${a}, ${b})`).to.equal(c)
@@ -724,9 +632,8 @@ describe('In FixLib,', () => {
     it('correctly divides at the extremes of its range', async () => {
       // prettier-ignore
       const table: BigNumber[][] = [
-        [MAX_INT192, fp(1), MAX_INT192],
-        [MAX_INT192, fp(-1), neg(MAX_INT192)],
-        [MIN_INT192, fp(2), MIN_INT192.div(2)]
+        [MAX_UINT192, fp(1), MAX_UINT192],
+        [MIN_UINT192, fp(2), MIN_UINT192.div(2)]
       ].flatMap(([a, b, c]) => [[a, b, c], [a, c, b]])
 
       for (const [a, b, c] of table) {
@@ -736,11 +643,8 @@ describe('In FixLib,', () => {
     it('correctly rounds', async () => {
       const table = [
         [bn(5), fp(2)],
-        [bn(-5), fp(2)],
         [bn(29), fp(10)],
-        [bn(-29), fp(10)],
         [bn(19), fp(10)],
-        [bn(-19), fp(10)],
       ]
 
       for (const [a, b] of table) {
@@ -756,12 +660,12 @@ describe('In FixLib,', () => {
     it('fails outside its range', async () => {
       // prettier-ignore
       const table: BigNumber[][] = [
-        [MAX_INT192, fp(0.99)],
-        [MAX_INT192.div(5), fp(0.19)],
-        [MAX_INT192.div(pow10(16)), bn(1)],
-        [MIN_INT192, fp(0.99)],
-        [MIN_INT192.div(5), fp(0.19)],
-        [MIN_INT192.div(pow10(16)), bn(1)]
+        [MAX_UINT192, fp(0.99)],
+        [MAX_UINT192.div(5), fp(0.19)],
+        [MAX_UINT192.div(pow10(16)), bn(1)],
+        [MIN_UINT192, fp(0.99)],
+        [MIN_UINT192.div(5), fp(0.19)],
+        [MIN_UINT192.div(pow10(16)), bn(1)]
       ].flatMap(([a, b]) => [[a, b], [a, neg(b)]])
 
       for (const [a, b] of table) {
@@ -771,7 +675,7 @@ describe('In FixLib,', () => {
     it('fails to divide by zero', async () => {
       // prettier-ignore
       const table =
-        [fp(1), fp(MAX_INT192), fp(MIN_INT192), fp(0), fp(-1), bn(1), bn(-1), bn(987162349587)]
+        [fp(1), fp(MAX_UINT192), fp(MIN_UINT192), fp(0), bn(1), bn(987162349587)]
 
       for (const x of table) {
         await expect(caller.div(x, bn(0)), `div(${x}, 0`).to.be.reverted
@@ -798,9 +702,9 @@ describe('In FixLib,', () => {
     it('correctly divides at the extremes of its range', async () => {
       // prettier-ignore
       const table = [
-        [MAX_INT192, bn(1), MAX_INT192],
-        [MIN_INT192, bn(1), MIN_INT192],
-        [MIN_INT192, bn(2), MIN_INT192.div(2)]
+        [MAX_UINT192, bn(1), MAX_UINT192],
+        [MIN_UINT192, bn(1), MIN_UINT192],
+        [MIN_UINT192, bn(2), MIN_UINT192.div(2)]
       ]
 
       for (const [a, b, c] of table) {
@@ -810,11 +714,8 @@ describe('In FixLib,', () => {
     it('correctly rounds', async () => {
       const table = [
         [bn(5), bn(2)],
-        [bn(-5), bn(2)],
         [bn(29), bn(10)],
-        [bn(-29), bn(10)],
         [bn(19), bn(10)],
-        [bn(-19), bn(10)],
       ]
 
       for (const [a, b] of table) {
@@ -830,7 +731,7 @@ describe('In FixLib,', () => {
     it('fails to divide by zero', async () => {
       // prettier-ignore
       const table = [fp(1), fp(0), fp(-1), bn(1), bn(-1),
-                     bn(987162349587), fp(MAX_INT192), fp(MIN_INT192),]
+                     bn(987162349587), fp(MAX_UINT192), fp(MIN_UINT192),]
 
       for (const x of table) {
         await expect(caller.divu(x, bn(0)), `divu(${x}, 0`).to.be.reverted
@@ -847,9 +748,6 @@ describe('In FixLib,', () => {
         [fp(2), bn(63), fp('9223372036854775808')],
         [fp(2), bn(64), fp('18446744073709551616')],
         [fp(1.5), bn(7), fp(17.0859375)],
-        [fp(-1), bn(2), fp(1)],
-        [fp(-1), bn(2).pow(32).sub(1), fp(-1)],
-        [fp(-1), bn(2).pow(32).sub(2), fp(1)],
         [fp(1.1), bn(4), fp('1.4641')],
         [fp(1.1), bn(5), fp('1.61051')],
         [fp(0.23), bn(3), fp('0.012167')],
@@ -868,13 +766,12 @@ describe('In FixLib,', () => {
 
     describe('correctly exponentiates at the extremes of its range', () => {
       const table = [
-        [MAX_INT192, bn(1), MAX_INT192],
-        [MIN_INT192, bn(1), MIN_INT192],
-        [MIN_INT192, bn(0), fp(1)],
+        [MAX_UINT192, bn(1), MAX_UINT192],
+        [MIN_UINT192, bn(1), MIN_UINT192],
+        [MIN_UINT192, bn(0), fp(1)],
         [fp(0), bn(0), fp(1.0)],
         [fp(987.0), bn(0), fp(1.0)],
         [fp(1.0), bn(2).pow(32).sub(1), fp(1.0)],
-        [fp(-1.0), bn(2).pow(32).sub(1), fp(-1.0)],
         [fp(2), bn(131), fp(bn(2).pow(131))],
       ]
 
@@ -888,8 +785,8 @@ describe('In FixLib,', () => {
       const table = [
         [fp(10), bn(40)],
         [fp(-10), bn(40)],
-        [MAX_INT192, bn(2)],
-        [MIN_INT192, bn(2)],
+        [MAX_UINT192, bn(2)],
+        [MIN_UINT192, bn(2)],
         [fp('8e19'), bn(2)],
         [fp('1.9e13'), bn(3)],
         [fp('9e9'), bn(4)],
@@ -907,35 +804,35 @@ describe('In FixLib,', () => {
 
   describe('lt', () => {
     it('correctly evaluates <', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.lt(a, b), `lt(${a}, ${b})`).to.equal(a.lt(b))
       }
     })
   })
   describe('lte', () => {
     it('correctly evaluates <=', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.lte(a, b), `lte(${a}, ${b})`).to.equal(a.lte(b))
       }
     })
   })
   describe('gt', () => {
     it('correctly evaluates >', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.gt(a, b), `lte(${a}, ${b})`).to.equal(a.gt(b))
       }
     })
   })
   describe('gte', () => {
     it('correctly evaluates >=', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.gte(a, b), `gte(${a}, ${b})`).to.equal(a.gte(b))
       }
     })
   })
   describe('eq', () => {
     it('correctly evaluates ==', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.eq(a, b), `lte(${a}, ${b})`).to.equal(a.eq(b))
         expect(await caller.eq(a, a), `lte(${a}, ${b})`).to.equal(true)
       }
@@ -943,7 +840,7 @@ describe('In FixLib,', () => {
   })
   describe('neq', () => {
     it('correctly evaluates !=', async () => {
-      for (const [a, b] of int192Pairs) {
+      for (const [a, b] of uint192Pairs) {
         expect(await caller.neq(a, b), `neq(${a}, ${b})`).to.equal(!a.eq(b))
         expect(await caller.neq(a, a), `neq(${a}, ${b})`).to.equal(false)
       }
@@ -965,8 +862,6 @@ describe('In FixLib,', () => {
       ].flatMap(([a, b, c]) => [
         [a, b, c],
         [b, a, c],
-        [neg(a), neg(b), c],
-        [neg(b), neg(a), c],
       ])
 
       for (const [a, b, c] of table) {
@@ -976,17 +871,16 @@ describe('In FixLib,', () => {
 
     it('correctly evaluates approximate equality at the extremes of its range', async () => {
       const table = [
-        [MAX_INT192, MAX_INT192, bn(1)],
-        [MAX_INT192, MIN_INT192, bn(1)],
-        [MIN_INT192, MAX_INT192, bn(1)],
-        [MIN_INT192, MIN_INT192, bn(1)],
+        [MAX_UINT192, MAX_UINT192, bn(1)],
+        [MAX_UINT192, MIN_UINT192, bn(1)],
+        [MIN_UINT192, MAX_UINT192, bn(1)],
+        [MIN_UINT192, MIN_UINT192, bn(1)],
 
-        [MAX_INT192, MAX_INT192.sub(1), bn(1)],
-        [MAX_INT192, MAX_INT192.sub(1), bn(2)],
-        [MIN_INT192, MIN_INT192.add(1), bn(1)],
-        [MIN_INT192, MIN_INT192.add(1), bn(2)],
-        [bn(-1000), MIN_INT192, MAX_INT192],
-        [bn(1000), MAX_INT192, MAX_INT192],
+        [MAX_UINT192, MAX_UINT192.sub(1), bn(1)],
+        [MAX_UINT192, MAX_UINT192.sub(1), bn(2)],
+        [MIN_UINT192, MIN_UINT192.add(1), bn(1)],
+        [MIN_UINT192, MIN_UINT192.add(1), bn(2)],
+        [bn(1000), MAX_UINT192, MAX_UINT192],
       ].flatMap(([a, b, c]) => [
         [a, b, c],
         [b, a, c],
@@ -1007,11 +901,11 @@ describe('In FixLib,', () => {
         [fp(1), -1],
         [fp(1), -19],
         [fp('38326665875'), -10],
-        [MAX_INT192.sub(1), -1],
-        [MAX_INT192.sub(1), -19],
-        [MAX_INT192.sub(1), 0],
-        [MAX_INT192, -1],
-        [MAX_INT192, -19],
+        [MAX_UINT192.sub(1), -1],
+        [MAX_UINT192.sub(1), -19],
+        [MAX_UINT192.sub(1), 0],
+        [MAX_UINT192, -1],
+        [MAX_UINT192, -19],
       ]
 
       function expected(x: BigNumber, s: number, rnd: RoundingMode) {
@@ -1063,10 +957,7 @@ describe('In FixLib,', () => {
   })
   describe('mul_toUint + mul_toUintRnd', () => {
     it('correctly rounds', async () => {
-      const table = mulu_table.flatMap(([a, b]) => [
-        [fp(a), fp(b)],
-        [fp(-a), fp(-b)],
-      ])
+      const table = mulu_table.flatMap(([a, b]) => [[fp(a), fp(b)]])
 
       for (const [a, b] of table) {
         const floor = fpFloor(a.mul(b).div(SCALE)).div(SCALE)
@@ -1095,8 +986,8 @@ describe('In FixLib,', () => {
   const roundDiv = (x: bigint, y: bigint) =>
     x >= 0 ? (x + abs(y) / 2n) / y : (x - abs(y) / 2n) / y
   const WORD = 2n ** 256n
-  const INTMIN = -(2n ** 191n)
-  const INTMAX = 2n ** 191n - 1n
+  const UINTMIN = 0n
+  const UINTMAX = 2n ** 192n - 1n
 
   describe('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {
@@ -1111,7 +1002,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = (x * y) / z
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.muluDivu(bn(x), bn(y), bn(z))).to.equal(bn(expected))
             expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), FLOOR)).to.equal(bn(expected))
           } else {
@@ -1127,7 +1018,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = ceilDiv(x * y, z)
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), CEIL)).to.equal(bn(expected))
           } else {
             await expect(caller.muluDivuRnd(bn(x), bn(y), bn(z), CEIL)).to.be.reverted
@@ -1141,7 +1032,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = roundDiv(x * y, z)
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), ROUND)).to.equal(bn(expected))
           } else {
             await expect(caller.muluDivuRnd(bn(x), bn(y), bn(z), ROUND)).to.be.reverted
@@ -1169,7 +1060,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigIntN(192), fc.bigIntN(192), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = (x * y) / z
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.mulDiv(bn(x), bn(y), bn(z))).to.equal(bn(expected))
             expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), FLOOR)).to.equal(bn(expected))
           } else {
@@ -1184,7 +1075,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigIntN(192), fc.bigIntN(192), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = ceilDiv(x * y, z)
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), CEIL)).to.equal(bn(expected))
           } else {
             await expect(caller.mulDivRnd(bn(x), bn(y), bn(z), CEIL)).to.be.reverted
@@ -1197,7 +1088,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigIntN(192), fc.bigIntN(192), fc.bigIntN(192), async (x, y, z) => {
           if (z == 0n) return
           const expected: bigint = roundDiv(x * y, z)
-          if (INTMIN <= expected && expected <= INTMAX) {
+          if (UINTMIN <= expected && expected <= UINTMAX) {
             expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), ROUND)).to.equal(bn(expected))
           } else {
             await expect(caller.mulDivRnd(bn(x), bn(y), bn(z), ROUND)).to.be.reverted
