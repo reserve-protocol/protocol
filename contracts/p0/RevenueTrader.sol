@@ -11,7 +11,7 @@ import "contracts/p0/mixins/TradingLib.sol";
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
 contract RevenueTraderP0 is TradingP0, IRevenueTrader {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20 for IERC20;
 
     IERC20 public tokenToBuy;
@@ -19,8 +19,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) public initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);

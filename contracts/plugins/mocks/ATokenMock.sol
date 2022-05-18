@@ -25,7 +25,7 @@ contract ATokenMock is ERC20Mock {
 
 // This is the non-rebasing wrapper, which is what we care about.
 contract StaticATokenMock is ERC20Mock {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     ATokenMock internal immutable aToken;
 
@@ -55,7 +55,7 @@ contract StaticATokenMock is ERC20Mock {
         return _exchangeRate;
     }
 
-    function setExchangeRate(int192 fiatcoinRedemptionRate) external {
+    function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
         _exchangeRate = _toExchangeRate(fiatcoinRedemptionRate);
     }
 
@@ -83,7 +83,7 @@ contract StaticATokenMock is ERC20Mock {
         return aaveBalances[user];
     }
 
-    function _toExchangeRate(int192 fiatcoinRedemptionRate) internal pure returns (uint256) {
+    function _toExchangeRate(uint192 fiatcoinRedemptionRate) internal pure returns (uint256) {
         return fiatcoinRedemptionRate.mulu_toUint(1e27, ROUND);
     }
 }

@@ -254,8 +254,9 @@ library FixLib {
         if (x_ == FIX_ONE || y == 0) return FIX_ONE;
         uint256 x = uint256(x_);
         uint256 result = FIX_SCALE;
-        {
+        while (true) {
             if (y & 1 == 1) result = (result * x + FIX_HALF) / FIX_SCALE;
+            if (y <= 1) break;
             y = y >> 1;
             x = (x * x + FIX_HALF) / FIX_SCALE;
         }

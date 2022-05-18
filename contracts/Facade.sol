@@ -18,7 +18,7 @@ import "contracts/p1/StRSR.sol";
  * @custom:static-call - Use ethers callStatic() in order to get result after update
  */
 contract Facade is Initializable, IFacade {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IMain public main;
 
@@ -79,15 +79,15 @@ contract Facade is Initializable, IFacade {
         main.poke();
         // {BU}
 
-        int192 held = main.basketHandler().basketsHeldBy(account);
-        int192 needed = main.rToken().basketsNeeded();
+        uint192 held = main.basketHandler().basketsHeldBy(account);
+        uint192 needed = main.rToken().basketsNeeded();
 
         int8 decimals = int8(main.rToken().decimals());
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
         if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
 
-        int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
+        uint192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
 
         // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
         return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
@@ -113,7 +113,7 @@ contract Facade is Initializable, IFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (int192 total) {
+    function totalAssetValue() external returns (uint192 total) {
         main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
@@ -139,7 +139,7 @@ contract Facade is Initializable, IFacade {
         IBasketHandler bh = main.basketHandler();
 
         // Compute # of baskets to create `amount` qRTok
-        int192 baskets = (rTok.totalSupply() > 0) // {BU}
+        uint192 baskets = (rTok.totalSupply() > 0) // {BU}
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 

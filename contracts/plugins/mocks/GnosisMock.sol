@@ -43,7 +43,7 @@ struct Bid {
 
 /// A very simple trading partner that only supports 1 bid per auction
 contract GnosisMock is IGnosis, IBiddable {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20 for IERC20;
 
     Mauction[] public auctions;

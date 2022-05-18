@@ -31,7 +31,7 @@ interface IFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (int192 total);
+    function totalAssetValue() external returns (uint192 total);
 
     /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call

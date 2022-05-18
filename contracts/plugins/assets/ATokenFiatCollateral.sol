@@ -31,16 +31,16 @@ interface AToken {
 // ==== End External ====
 
 contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
-    int192 public prevReferencePrice; // previous rate, {collateral/reference}
+    uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -61,8 +61,8 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -83,7 +83,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (int192) {
+    function price() public view virtual returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return consultOracle(referenceERC20).mul(refPerTok());
     }
@@ -96,15 +96,15 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         uint256 cached = whenDefault;
 
         // Check for hard default
-        int192 referencePrice = refPerTok();
+        uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
             // Check for soft default of underlying reference token
-            try this.consultOracle(referenceERC20) returns (int192 p) {
+            try this.consultOracle(referenceERC20) returns (uint192 p) {
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-                int192 peg = (pricePerTarget() * targetPerRef()) / 1e18;
-                int192 delta = (peg * defaultThreshold) / 1e18; // D18{UoA/ref}
+                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
 
                 // If the price is below the default-threshold price, default eventually
                 if (p < peg - delta || p > peg + delta) {
@@ -128,7 +128,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (int192) {
+    function refPerTok() public view override returns (uint192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
         return shiftl_toFix(rateInRAYs, -27);
     }

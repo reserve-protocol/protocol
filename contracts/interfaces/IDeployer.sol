@@ -22,14 +22,14 @@ struct DeploymentParams {
     uint32 oneshotPauseDuration; // {s} how long a oneshot pause lasts
     //
     // === RSR/RToken/AAVE/COMP ===
-    int192 maxTradeVolume; // {UoA}
+    uint192 maxTradeVolume; // {UoA}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
     //
     // === Rewards (Furnace + StRSR) ===
     uint32 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
-    int192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
+    uint192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
     //
     // === StRSR ===
     uint32 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
@@ -37,12 +37,12 @@ struct DeploymentParams {
     // === BackingManager ===
     uint32 tradingDelay; // {s} how long to wait until starting auctions after switching basket
     uint32 auctionLength; // {s} the length of an auction
-    int192 backingBuffer; // {%} how much extra backing collateral to keep
-    int192 maxTradeSlippage; // {%} max slippage acceptable in a trade
-    int192 dustAmount; // {UoA} value below which it is not worth wasting time trading
+    uint192 backingBuffer; // {%} how much extra backing collateral to keep
+    uint192 maxTradeSlippage; // {%} max slippage acceptable in a trade
+    uint192 dustAmount; // {UoA} value below which it is not worth wasting time trading
     //
     // === RToken ===
-    int192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+    uint192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
 }
 
 /**
