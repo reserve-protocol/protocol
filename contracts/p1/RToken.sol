@@ -178,10 +178,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             issuer,
             queue.right - 1,
             amtRToken,
-            uint192(uint192(amtBaskets)),
+            amtBaskets,
             erc20s,
             deposits,
-            uint192(uint192(vestingEnd))
+            vestingEnd
         );
     }
 
@@ -299,16 +299,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         );
 
         // D18{1} = D18({qRTok} / {qRTok})
-        uint256 prorate = (amount * FIX_ONE) / totalSupply();
+        uint192 prorate = uint192((amount * FIX_ONE) / totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
 
-        basketsNeeded = uint192(uint192(basketsNeeded_ - baskets));
-        emit BasketsNeededChanged(
-            uint192(uint192(basketsNeeded_)),
-            uint192(uint192(basketsNeeded))
-        );
+        basketsNeeded = basketsNeeded_ - baskets;
+        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
