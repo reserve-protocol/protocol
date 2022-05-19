@@ -15,6 +15,8 @@ enum TradeStatus {
     PENDING // during init() or settle() (reentrancy protection)
 }
 
+// Modifications to this contract's state must only ever be made when status=PENDING!
+
 /// Trade contract against the Gnosis EasyAuction mechanism
 contract GnosisTrade is ITrade {
     using FixLib for int192;
@@ -36,23 +38,26 @@ contract GnosisTrade is ITrade {
     uint32 public endTime;
     int192 public worstCasePrice; // {buyTok/sellTok}
 
+    modifier stateTransition(TradeStatus begin, TradeStatus end) {
+        require(status == begin, "Invalid state");
+        status = TradeStatus.PENDING;
+        _;
+        require(status == TradeStatus.PENDING, "Reentrant trade");
+        status = end;
+    }
+
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
-    /// @custom:interaction , Does NOT follow CEI!
-    /// @dev Instead, this interaction is not at risk of rentrancy attacks
-    ///      because it locks state while pending, and only calls interactions
-    ///      of outer contracts
+    /// @custom:interaction , reentrancy-safe b/c state-locking
     function init(
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
         uint32 auctionLength,
         TradeRequest memory req
-    ) external {
-        require(status == TradeStatus.NOT_STARTED, "trade already started");
+    ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
         assert(origin_ != address(0));
-        status = TradeStatus.PENDING;
 
         broker = broker_;
         origin = origin_;
@@ -68,8 +73,9 @@ contract GnosisTrade is ITrade {
             shiftl_toFix(sellAmount, -int8(sell.decimals()))
         );
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+        // == Interactions ==
 
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
@@ -83,23 +89,16 @@ contract GnosisTrade is ITrade {
             address(0),
             new bytes(0)
         );
-
-        status = TradeStatus.OPEN;
-    }
-
-    /// @return True if the trade can be settled; should be guaranteed to be true eventually
-    function canSettle() public view returns (bool) {
-        return status == TradeStatus.OPEN && endTime <= block.timestamp;
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
-    /// @custom:interaction , Does NOT follow CEI
-    /// @dev Instead, this interaction is not at risk of reentrancy attacks
-    ///      because it locks state while pending, and only calls interactions
-    ///      of outer contracts
-    function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
+    /// @custom:interaction , reentrancy-safe b/c state-locking
+    function settle()
+        external
+        stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
+        returns (uint256 soldAmt, uint256 boughtAmt)
+    {
         require(msg.sender == origin, "only origin can settle");
-        assert(status == TradeStatus.OPEN);
         status = TradeStatus.PENDING;
 
         // Optionally process settlement of the auction in Gnosis
@@ -128,15 +127,19 @@ contract GnosisTrade is ITrade {
                 broker.reportViolation();
             }
         }
-        status = TradeStatus.CLOSED;
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
     /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
-    /// @custom:interaction , CEI
+    /// @custom:interaction , CEI (and respects the state lock)
     function transferToOriginAfterTradeComplete(IERC20 erc20) external {
         require(status == TradeStatus.CLOSED, "only after trade is closed");
         IERC20Upgradeable(address(erc20)).safeTransfer(origin, erc20.balanceOf(address(this)));
+    }
+
+    /// @return True if the trade can be settled; should be guaranteed to be true eventually
+    function canSettle() public view returns (bool) {
+        return status == TradeStatus.OPEN && endTime <= block.timestamp;
     }
 
     // === Private ===
