@@ -20,15 +20,26 @@ library RewardableLibP1 {
     /// Redefines event for when rewards are claimed, to be able to emit from library
     event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
+    struct Claim {
+        IERC20 reward;
+        address callTo;
+        bytes memory _calldata;
+    }
+
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction , !CEI
+    /// @custom:interaction , CEI
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
+
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
         uint256 numRewardTokens = 0;
 
+        Claim[] memory claims = new Claim[](erc20s.length);
+        uint256 numClaims = 0;
+
+        // Compute the interactions to have...
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // Does erc20s[i] _have_ a reward function and reward token?
             IAsset asset = reg.toAsset(erc20s[i]);
@@ -39,6 +50,10 @@ library RewardableLibP1 {
             (address _to, bytes memory _calldata) = asset.getClaimCalldata();
             if (_to == address(0)) continue;
 
+            // Save Claim
+            claims[numClaims] = Claim({ reward: rewardToken, callTo: _to, _calldata: _calldata });
+            ++numClaims;
+
             // Save rewardToken address, if new
             uint256 rtIndex = 0;
             while (rtIndex < numRewardTokens && rewardToken != rewardTokens[rtIndex]) rtIndex++;
@@ -46,32 +61,28 @@ library RewardableLibP1 {
                 rewardTokens[rtIndex] = rewardToken;
                 numRewardTokens++;
             }
+        }
 
-            // Claim reward
-            uint256 oldBal = rewardToken.balanceOf(address(this));
+        // == Interaction block ==
+        // (no state changes to *this* contract, only view calls and interactions)
+        // Claim rewards
+        for (uint256 i = 0; i < numClaims; i++) {
+            uint256 oldBal = claims[i].reward.balanceOf(address(this));
 
-            // Interaction!
-            _to.functionCall(_calldata, "rewards claim failed");
+            claims[i]._to.functionCall(claims[i]._calldata, "rewards claim failed");
+            uint256 newBal = claims[i].reward.balanceOf(address(this));
 
-            uint256 bal = rewardToken.balanceOf(address(this));
-
-            emit RewardsClaimed(address(rewardToken), bal - oldBal);
+            emit RewardsClaimed(address(rewardToken), oldBal - newBal);
         }
 
         // Sweep reward tokens to the backingManager
         if (address(this) != address(backingManager())) {
-            uint256[] memory bals = new uint256[](numRewardTokens);
-
             for (uint256 i = 0; i < numRewardTokens; ++i) {
-                bals[i] = rewardTokens[i].balanceOf(address(this));
-            }
-
-            // == Begin interactions ==
-            for (uint256 i = 0; i < numRewardTokens; ++i) {
-                if (bals[i] > 0) {
+                uint256 bal = rewardTokens[i].balanceOf(address(this));
+                if (bal > 0) {
                     IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
                         address(backingManager()),
-                        bals[i]
+                        bal
                     );
                 }
             }
