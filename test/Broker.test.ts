@@ -272,7 +272,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await broker.auctionLength(),
           tradeRequest
         )
-      ).to.be.revertedWith('trade already started')
+      ).to.be.revertedWith('Invalid trade state')
     })
 
     it('Should not allow to initialize an unfunded trade', async () => {
@@ -324,9 +324,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         minBuyAmount: bn('0'),
       }
 
-      // Attempt to settle - will fail as origin is not set
+      // Attempt to settle (will fail)
       await whileImpersonating(backingManager.address, async (bmSigner) => {
-        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('only origin can settle')
+        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('Invalid trade state')
       })
 
       // Fund trade and initialize
