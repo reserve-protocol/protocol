@@ -23,7 +23,7 @@ library RewardableLibP1 {
     struct Claim {
         IERC20 reward;
         address callTo;
-        bytes memory _calldata;
+        bytes _calldata;
     }
 
     /// Claim all rewards and sweep to BackingManager
@@ -69,10 +69,10 @@ library RewardableLibP1 {
         for (uint256 i = 0; i < numClaims; i++) {
             uint256 oldBal = claims[i].reward.balanceOf(address(this));
 
-            claims[i]._to.functionCall(claims[i]._calldata, "rewards claim failed");
+            claims[i].callTo.functionCall(claims[i]._calldata, "rewards claim failed");
             uint256 newBal = claims[i].reward.balanceOf(address(this));
 
-            emit RewardsClaimed(address(rewardToken), oldBal - newBal);
+            emit RewardsClaimed(address(claims[i].reward), oldBal - newBal);
         }
 
         // Sweep reward tokens to the backingManager

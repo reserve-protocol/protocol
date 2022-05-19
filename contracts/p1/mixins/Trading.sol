@@ -62,20 +62,18 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @custom:interaction , Not CEI pattern. Instead, we carefully avoid reentrancy attacks...
-    /// via magic, apparently? TODO
-
+    /// @custom:interaction , Not CEI pattern. Instead, we avoid reentrancy attacks by:
+    /// - using a lock value (address(1)) in trades[sell]
+    /// - honoring that lock everywhere else that trades[sell] may be written
+    ///   (i.e, in settleTrade())
     function tryTrade(TradeRequest memory req) internal {
         // == Checks-Effects block 1 ==
-        IERC20 sell = req.sell.erc20()
+        IERC20 sell = req.sell.erc20();
         require(address(trades[sell]) == address(0), "trade already open");
-        trades[sell] = address(1); // Prevent reentrant writes trades[req.sell.erc20()]
+        trades[sell] = ITrade(address(1)); // Prevent reentrant writes trades[req.sell.erc20()]
 
         // == Interactions ==
-        IERC20Upgradeable(address(sell)).approve(
-            address(main.broker()),
-            req.sellAmount
-        );
+        IERC20Upgradeable(address(sell)).approve(address(main.broker()), req.sellAmount);
         ITrade trade = main.broker().openTrade(req);
 
         // == Checks-Effects block 2 ==
