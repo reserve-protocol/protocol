@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/compatibility/GovernorCompatibilityBravo.sol";
+import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
@@ -19,7 +19,7 @@ import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFractio
 contract Governance is
     Governor,
     GovernorSettings,
-    GovernorCompatibilityBravo,
+    GovernorCountingSimple,
     GovernorVotes,
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
@@ -72,7 +72,7 @@ contract Governance is
     function state(uint256 proposalId)
         public
         view
-        override(IGovernor, Governor, GovernorTimelockControl)
+        override(Governor, GovernorTimelockControl)
         returns (ProposalState)
     {
         return GovernorTimelockControl.state(proposalId);
@@ -83,7 +83,7 @@ contract Governance is
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public override(IGovernor, Governor, GovernorCompatibilityBravo) returns (uint256) {
+    ) public override(Governor, IGovernor) returns (uint256) {
         return super.propose(targets, values, calldatas, description);
     }
 
@@ -123,13 +123,17 @@ contract Governance is
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
         uint256 bal = token.getPastVotes(account, blockNumber);
         uint256 totalSupply = token.getPastTotalSupply(blockNumber);
-        return (bal * 1e8) / totalSupply;
+        if (totalSupply > 0) {
+            return (bal * 1e8) / totalSupply;
+        } else {
+            return 0;
+        }
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(Governor, IERC165, GovernorTimelockControl)
+        override(Governor, GovernorTimelockControl)
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
