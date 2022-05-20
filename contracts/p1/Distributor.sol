@@ -11,7 +11,7 @@ import "contracts/p1/mixins/Component.sol";
 
 contract DistributorP1 is ComponentP1, IDistributor {
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using FixLib for int192;
+    using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;

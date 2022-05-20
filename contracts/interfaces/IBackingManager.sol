@@ -13,15 +13,15 @@ import "./ITrading.sol";
  */
 interface IBackingManager is IComponent, ITrading {
     event TradingDelaySet(uint32 indexed oldVal, uint32 indexed newVal);
-    event BackingBufferSet(int192 indexed oldVal, int192 indexed newVal);
+    event BackingBufferSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization
     function init(
         IMain main_,
         uint32 tradingDelay_,
-        int192 backingBuffer_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 backingBuffer_,
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) external;
 
     // Give RToken max allowance over a registered token
@@ -37,9 +37,9 @@ interface IBackingManager is IComponent, ITrading {
 interface TestIBackingManager is IBackingManager, TestITrading {
     function tradingDelay() external view returns (uint32);
 
-    function backingBuffer() external view returns (int192);
+    function backingBuffer() external view returns (uint192);
 
     function setTradingDelay(uint32 val) external;
 
-    function setBackingBuffer(int192 val) external;
+    function setBackingBuffer(uint192 val) external;
 }

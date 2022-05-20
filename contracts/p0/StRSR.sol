@@ -27,7 +27,7 @@ import "contracts/p0/mixins/Component.sol";
 contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-    using FixLib for int192;
+    using FixLib for uint192;
 
     // ==== ERC20Permit ====
 
@@ -85,12 +85,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     mapping(address => Withdrawal[]) public withdrawals;
 
     // Min exchange rate {qRSR/qStRSR} (compile-time constant)
-    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+    uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
     // ==== Gov Params ====
     uint32 public unstakingDelay;
     uint32 public rewardPeriod;
-    int192 public rewardRatio;
+    uint192 public rewardRatio;
 
     function init(
         IMain main_,
@@ -98,7 +98,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         string memory symbol_,
         uint32 unstakingDelay_,
         uint32 rewardPeriod_,
-        int192 rewardRatio_
+        uint192 rewardRatio_
     ) public initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
@@ -226,7 +226,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        int192 initialExchangeRate = exchangeRate();
+        uint192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
@@ -278,7 +278,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
     }
 
-    function exchangeRate() public view returns (int192) {
+    function exchangeRate() public view returns (uint192) {
         return (rsrBacking == 0 || totalStaked == 0) ? FIX_ONE : divuu(totalStaked, rsrBacking);
     }
 
@@ -400,13 +400,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// value of rsrRewards()
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        int192 initialExchangeRate = exchangeRate();
+        uint192 initialExchangeRate = exchangeRate();
 
         uint32 numPeriods = (uint32(block.timestamp) - uint32(payoutLastPaid)) /
             uint32(rewardPeriod);
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+        uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
         uint256 payout = payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
 
         // Apply payout to RSR backing
@@ -498,7 +498,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(int192 val) external governance {
+    function setRewardRatio(uint192 val) external governance {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

@@ -16,10 +16,10 @@ error UnknownError(bytes);
  */
 interface IAsset {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in the UoA
-    function price() external view returns (int192);
+    function price() external view returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (int192);
+    function bal(address account) external view returns (uint192);
 
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
@@ -28,7 +28,7 @@ interface IAsset {
     function isCollateral() external view returns (bool);
 
     /// @return {UoA}
-    function maxTradeVolume() external view returns (int192);
+    function maxTradeVolume() external view returns (uint192);
 
     // ==== Rewards ====
 
@@ -77,11 +77,11 @@ interface ICollateral is IAsset {
     // ==== Exchange Rates ====
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() external view returns (int192);
+    function refPerTok() external view returns (uint192);
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() external view returns (int192);
+    function targetPerRef() external view returns (uint192);
 
     /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
-    function pricePerTarget() external view returns (int192);
+    function pricePerTarget() external view returns (uint192);
 }

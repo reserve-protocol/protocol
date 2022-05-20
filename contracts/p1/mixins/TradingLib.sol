@@ -16,7 +16,7 @@ uint256 constant GNOSIS_MAX_TOKENS = 7e28;
  * @dev The caller must implement the ITrading interface!
  */
 library TradingLibP1 {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     /// Prepare an trade to sell `sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
@@ -26,7 +26,7 @@ library TradingLibP1 {
     function prepareTradeSell(
         IAsset sell,
         IAsset buy,
-        int192 sellAmount
+        uint192 sellAmount
     ) public view returns (bool notDust, TradeRequest memory trade) {
         trade.sell = sell;
         trade.buy = buy;
@@ -35,7 +35,7 @@ library TradingLibP1 {
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
-        int192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
+        uint192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
 
         // Do not consider 1 qTok a viable sell amount
@@ -48,12 +48,16 @@ library TradingLibP1 {
         }
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        int192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(sell.price(), buy.price(), CEIL);
+        uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
+            sell.price(),
+            buy.price(),
+            CEIL
+        );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
 
         // Do not overflow auction mechanism - buy side
         if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
-            int192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
+            uint192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
             trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
             trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
@@ -69,8 +73,8 @@ library TradingLibP1 {
     function prepareTradeToCoverDeficit(
         IAsset sell,
         IAsset buy,
-        int192 maxSellAmount,
-        int192 deficitAmount
+        uint192 maxSellAmount,
+        uint192 deficitAmount
     ) public view returns (bool notDust, TradeRequest memory trade) {
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
@@ -79,13 +83,13 @@ library TradingLibP1 {
         deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        int192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
+        uint192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
-        int192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), CEIL);
+        uint192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), CEIL);
 
-        int192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
+        uint192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
         return prepareTradeSell(sell, buy, sellAmount);
     }
 
@@ -101,8 +105,8 @@ library TradingLibP1 {
         returns (
             IAsset surplus,
             ICollateral deficit,
-            int192 sellAmount,
-            int192 buyAmount
+            uint192 sellAmount,
+            uint192 buyAmount
         )
     {
         IERC20[] memory erc20s = assetRegistry().erc20s();
@@ -110,17 +114,17 @@ library TradingLibP1 {
         // Compute basketTop and basketBottom
         // basketTop is the lowest number of BUs to which we'll try to sell surplus assets
         // basketBottom is the greatest number of BUs to which we'll try to buy deficit assets
-        int192 basketTop = rToken().basketsNeeded(); // {BU}
-        int192 basketBottom = basketTop; // {BU}
+        uint192 basketTop = rToken().basketsNeeded(); // {BU}
+        uint192 basketBottom = basketTop; // {BU}
 
         if (useFallenTarget) {
-            int192 tradeVolume; // {UoA}
-            int192 totalValue; // {UoA}
+            uint192 tradeVolume; // {UoA}
+            uint192 totalValue; // {UoA}
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
 
                 // Ignore dust amounts for assets not in the basket
-                int192 bal = asset.bal(address(this)); // {tok}
+                uint192 bal = asset.bal(address(this)); // {tok}
                 if (basket().quantity(erc20s[i]).gt(FIX_ZERO) || bal.gt(dustThreshold(asset))) {
                     // {UoA} = {UoA} + {UoA/tok} * {tok}
                     totalValue = totalValue.plus(asset.price().mul(bal, FLOOR));
@@ -131,8 +135,8 @@ library TradingLibP1 {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IAsset asset = assetRegistry().toAsset(erc20s[i]);
                 if (!asset.isCollateral()) continue;
-                int192 needed = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
-                int192 held = asset.bal(address(this)); // {tok}
+                uint192 needed = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
+                uint192 held = asset.bal(address(this)); // {tok}
 
                 if (held.lt(needed)) {
                     // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
@@ -147,40 +151,42 @@ library TradingLibP1 {
             );
         }
 
-        int192 max; // {UoA}
-        int192 min; // {UoA}
+        uint192 maxSurplus; // {UoA}
+        uint192 maxDeficit; // {UoA}
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             if (erc20s[i] == rsr()) continue; // do not consider RSR
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
+            uint192 bal = asset.bal(address(this));
 
-            // Recall that FLOOR and CEIL round toward/away from 0, regardless of sign
+            // Token Threshold - top
+            uint192 tokenThreshold = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok};
+            if (bal.gt(tokenThreshold)) {
+                // {UoA} = ({tok} - {tok}) * {UoA/tok}
+                uint192 deltaTop = bal.minus(tokenThreshold).mul(asset.price(), FLOOR);
+                if (deltaTop.gt(maxSurplus)) {
+                    surplus = asset;
+                    maxSurplus = deltaTop;
 
-            // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
-            int192 deltaTop = asset
-                .bal(address(this))
-                .minus(basketTop.mul(basket().quantity(erc20s[i]), CEIL))
-                .mul(asset.price(), FLOOR);
+                    // {tok} = {UoA} / {UoA/tok}
+                    sellAmount = maxSurplus.div(surplus.price());
+                    if (bal.lt(sellAmount)) sellAmount = bal;
+                }
+            } else {
+                // Token Threshold - bottom
+                tokenThreshold = basketBottom.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
+                if (bal.lt(tokenThreshold)) {
+                    // {UoA} = ({tok} - {tok}) * {UoA/tok}
+                    uint192 deltaBottom = tokenThreshold.minus(bal).mul(asset.price(), CEIL);
+                    if (deltaBottom.gt(maxDeficit)) {
+                        deficit = ICollateral(address(asset));
+                        maxDeficit = deltaBottom;
 
-            // {UoA} = ({tok} - {BU} * {tok/BU}) * {UoA/tok}
-            int192 deltaBottom = asset
-                .bal(address(this))
-                .minus(basketBottom.mul(basket().quantity(erc20s[i]), CEIL))
-                .mul(asset.price(), CEIL);
-
-            if (deltaTop.gt(max)) {
-                surplus = asset;
-                max = deltaTop;
-
-                // {tok} = {UoA} / {UoA/tok}
-                sellAmount = fixMin(asset.bal(address(this)), max.div(surplus.price()));
-            } else if (deltaBottom.lt(min)) {
-                deficit = ICollateral(address(asset));
-                min = deltaBottom;
-
-                // {tok} = {UoA} / {UoA/tok}
-                buyAmount = min.minus(min).minus(min).div(deficit.price(), CEIL);
+                        // {tok} = {UoA} / {UoA/tok}
+                        buyAmount = maxDeficit.div(deficit.price(), CEIL);
+                    }
+                }
             }
         }
     }
@@ -195,7 +201,7 @@ library TradingLibP1 {
         IStRSR stRSR_ = stRSR();
         IAsset rsrAsset = assetRegistry().toAsset(rsr_);
 
-        (, ICollateral deficit, , int192 deficitAmount) = largestSurplusAndDeficit(false);
+        (, ICollateral deficit, , uint192 deficitAmount) = largestSurplusAndDeficit(false);
         if (address(deficit) == address(0)) return (false, req);
 
         (doTrade, req) = prepareTradeToCoverDeficit(
@@ -228,8 +234,8 @@ library TradingLibP1 {
         (
             IAsset surplus,
             ICollateral deficit,
-            int192 surplusAmount,
-            int192 deficitAmount
+            uint192 surplusAmount,
+            uint192 deficitAmount
         ) = largestSurplusAndDeficit(useFallenTarget);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
@@ -260,12 +266,12 @@ library TradingLibP1 {
     // === Getters ===
 
     /// @return {%}
-    function maxTradeSlippage() private view returns (int192) {
+    function maxTradeSlippage() private view returns (uint192) {
         return ITrading(address(this)).maxTradeSlippage();
     }
 
     /// @return {tok} The least amount of whole tokens ever worth trying to sell
-    function dustThreshold(IAsset asset) private view returns (int192) {
+    function dustThreshold(IAsset asset) private view returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
         return ITrading(address(this)).dustAmount().div(asset.price());
     }

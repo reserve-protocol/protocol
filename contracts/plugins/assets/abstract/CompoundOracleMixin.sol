@@ -22,7 +22,7 @@ interface ICompoundOracle {
 // ==== End External Interfaces ====
 
 abstract contract CompoundOracleMixin is Initializable {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IComptroller public comptroller;
 
@@ -32,7 +32,7 @@ abstract contract CompoundOracleMixin is Initializable {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20) public view virtual returns (int192) {
+    function consultOracle(IERC20Metadata erc20) public view virtual returns (uint192) {
         // Compound stores prices with 6 decimals of precision
 
         uint256 p = comptroller.oracle().price(erc20.symbol());
@@ -40,7 +40,7 @@ abstract contract CompoundOracleMixin is Initializable {
             revert PriceIsZero();
         }
 
-        // {UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
-        return shiftl_toFix(p, -6);
+        // D18{UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
+        return uint192(uint192(p * 1e12));
     }
 }

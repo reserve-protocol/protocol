@@ -9,6 +9,8 @@ import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p1/RToken.sol";
+import "contracts/p1/StRSR.sol";
 
 /**
  * @title Facade
@@ -16,7 +18,7 @@ import "contracts/libraries/Fixed.sol";
  * @custom:static-call - Use ethers callStatic() in order to get result after update
  */
 contract Facade is Initializable, IFacade {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IMain public main;
 
@@ -77,15 +79,15 @@ contract Facade is Initializable, IFacade {
         main.poke();
         // {BU}
 
-        int192 held = main.basketHandler().basketsHeldBy(account);
-        int192 needed = main.rToken().basketsNeeded();
+        uint192 held = main.basketHandler().basketsHeldBy(account);
+        uint192 needed = main.rToken().basketsNeeded();
 
         int8 decimals = int8(main.rToken().decimals());
 
         // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
         if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
 
-        int192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
+        uint192 totalSupply = shiftl_toFix(main.rToken().totalSupply(), -decimals); // {rTok}
 
         // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
         return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
@@ -111,7 +113,7 @@ contract Facade is Initializable, IFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (int192 total) {
+    function totalAssetValue() external returns (uint192 total) {
         main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
@@ -137,7 +139,7 @@ contract Facade is Initializable, IFacade {
         IBasketHandler bh = main.basketHandler();
 
         // Compute # of baskets to create `amount` qRTok
-        int192 baskets = (rTok.totalSupply() > 0) // {BU}
+        uint192 baskets = (rTok.totalSupply() > 0) // {BU}
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
@@ -147,5 +149,57 @@ contract Facade is Initializable, IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     function basketTokens() external view returns (address[] memory tokens) {
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+    }
+}
+
+/**
+ * @title Facade
+ * @notice An extension of the Facade specific to P1
+ */
+contract FacadeP1 is Facade, IFacadeP1 {
+    // solhint-disable-next-line no-empty-blocks
+    constructor(IMain main_) Facade(main_) {}
+
+    /// @param account The account for the query
+    /// @return issuances All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(address account) external view returns (Pending[] memory issuances) {
+        RTokenP1 rTok = RTokenP1(address(main.rToken()));
+        (, uint256 left, uint256 right) = rTok.issueQueues(account);
+        issuances = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            RTokenP1.IssueItem memory issueItem = rTok.issueItem(account, i + left);
+            uint256 diff = i + left == 0
+                ? issueItem.amtRToken
+                : issueItem.amtRToken - rTok.issueItem(account, i + left - 1).amtRToken;
+            issuances[i] = Pending(i + left, issueItem.when, diff);
+        }
+    }
+
+    /// @param account The account for the query
+    /// @return unstakings All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingUnstakings(address account)
+        external
+        view
+        returns (Pending[] memory unstakings)
+    {
+        StRSRP1 stRSR = StRSRP1(address(main.stRSR()));
+        uint256 era = stRSR.era();
+        uint256 left = stRSR.firstRemainingDraft(era, account);
+        uint256 right = stRSR.draftQueueLen(era, account);
+
+        unstakings = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+
+            uint192 diff = drafts;
+            if (i + left > 0) {
+                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
+                diff = drafts - prevDrafts;
+            }
+
+            unstakings[i] = Pending(i + left, availableAt, diff);
+        }
     }
 }

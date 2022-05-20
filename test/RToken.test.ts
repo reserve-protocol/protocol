@@ -517,6 +517,27 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(main.address)).to.equal(0)
     })
 
+    it('Should not vest RTokens early', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('issuance not ready')
+
+      await advanceBlocks(1)
+
+      // Should vest now
+      await rToken.vest(addr1.address, 1)
+    })
+
     it('Should return maxIssuable correctly', async () => {
       const issueAmount = initialBal.div(2)
 

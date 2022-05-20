@@ -14,7 +14,7 @@ import "./Asset.sol";
  * @notice A general non-appreciating collateral type to be extended.
  */
 abstract contract Collateral is ICollateral, Asset, Context {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -29,15 +29,15 @@ abstract contract Collateral is ICollateral, Asset, Context {
 
     IERC20Metadata public referenceERC20;
 
-    int192 public defaultThreshold; // {%} e.g. 0.05
+    uint192 public defaultThreshold; // {%} e.g. 0.05
 
     uint256 public delayUntilDefault; // {s} e.g 86400
 
     // solhint-disable-next-line func-name-mixedcase
     function __Collateral_init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
@@ -59,13 +59,13 @@ abstract contract Collateral is ICollateral, Asset, Context {
         }
         uint256 cached = whenDefault;
 
-        try this.price() returns (int192 p) {
+        try this.price() returns (uint192 p) {
             // {UoA/ref} = {UoA/target} * {target/ref}
-            int192 peg = pricePerTarget().mul(targetPerRef());
-            int192 delta = peg.mul(defaultThreshold);
+            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
 
             // If the price is below the default-threshold price, default eventually
-            if (p.lt(peg.minus(delta)) || p.gt(peg.plus(delta))) {
+            if (p < peg - delta || p > peg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
         } catch Panic(uint256) {
@@ -100,17 +100,17 @@ abstract contract Collateral is ICollateral, Asset, Context {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view virtual returns (int192) {
+    function refPerTok() public view virtual returns (uint192) {
         return FIX_ONE;
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() public view virtual returns (int192) {
+    function targetPerRef() public view virtual returns (uint192) {
         return FIX_ONE;
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (int192) {
+    function pricePerTarget() public view virtual returns (uint192) {
         return FIX_ONE;
     }
 }

@@ -214,7 +214,7 @@ contract DeployerP1 is IDeployer {
         main.transferOwnership(owner);
 
         // Facade
-        Facade facade = Facade(address(implementations.facade).clone());
+        Facade facade = FacadeP1(address(implementations.facade).clone());
         facade.init(main);
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));

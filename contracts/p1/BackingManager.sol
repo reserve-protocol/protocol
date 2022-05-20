@@ -17,18 +17,18 @@ import "contracts/p1/mixins/TradingLib.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
-    int192 public backingBuffer; // {%} how much extra backing collateral to keep
+    uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
         uint32 tradingDelay_,
-        int192 backingBuffer_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 backingBuffer_,
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
@@ -120,14 +120,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // Mint revenue RToken
-        int192 needed; // {BU}
+        uint192 needed; // {BU}
         {
             IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
-            int192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
+            uint192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
             if (held.gt(needed)) {
                 int8 decimals = int8(rToken.decimals());
-                int192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
+                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
                 // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
                 uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
@@ -150,7 +150,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
-            int192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
+            uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             if (asset.bal(address(this)).gt(req)) {
                 // delta: {qTok}
                 uint256 delta = asset.bal(address(this)).minus(req).shiftl_toUint(
@@ -187,7 +187,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// @custom:governance
-    function setBackingBuffer(int192 val) external governance {
+    function setBackingBuffer(uint192 val) external governance {
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }

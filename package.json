@@ -10,7 +10,7 @@
     },
     "scripts": {
         "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
-        "deploy:p0": "TASKS=true hardhat run scripts/proto0/deploy_all.ts --network localhost",
+        "deploy": "TASKS=true hardhat run scripts/deploy_all.ts --network localhost",
         "devchain": "hardhat node",
         "test": "yarn test:p0 && yarn test:p1",
         "test:fast": "bash tools/fast-test.sh",
@@ -52,8 +52,6 @@
         "@types/node": "^12.20.37",
         "@typescript-eslint/eslint-plugin": "^5.17.0",
         "@typescript-eslint/parser": "^5.17.0",
-        "@uniswap/v3-core": "1.0.0",
-        "@uniswap/v3-periphery": "^1.1.1",
         "axios": "^0.24.0",
         "big.js": "^6.1.1",
         "chai": "^4.3.4",
@@ -69,7 +67,7 @@
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.5.2",
         "fast-check": "^2.24.0",
-        "hardhat": "^2.9.1",
+        "hardhat": "^2.9.5",
         "hardhat-contract-sizer": "^2.4.0",
         "hardhat-gas-reporter": "^1.0.8",
         "husky": "^7.0.0",
@@ -86,5 +84,5 @@
     "resolutions": {
         "@solidity-parser/parser": "^0.13.2"
     },
-    "packageManager": "yarn@3.1.0-rc.2"
+    "packageManager": "yarn@3.2.0"
 }

@@ -19,7 +19,7 @@ enum TradeStatus {
 
 /// Trade contract against the Gnosis EasyAuction mechanism
 contract GnosisTrade is ITrade {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IGnosis public gnosis;
@@ -36,7 +36,7 @@ contract GnosisTrade is ITrade {
     IERC20Metadata public buy;
     uint256 public sellAmount; // {qTok}
     uint32 public endTime;
-    int192 public worstCasePrice; // {buyTok/sellTok}
+    uint192 public worstCasePrice; // {buyTok/sellTok}
 
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
         require(status == begin, "Invalid trade state");
@@ -120,7 +120,7 @@ contract GnosisTrade is ITrade {
             soldAmt = sellAmount - sellBal;
 
             // {buyTok/sellTok}
-            int192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
+            uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
                 shiftl_toFix(soldAmt, -int8(sell.decimals()))
             );
             if (clearingPrice.lt(worstCasePrice)) {

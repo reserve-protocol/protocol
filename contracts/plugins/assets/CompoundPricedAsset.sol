@@ -8,7 +8,7 @@ import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 contract CompoundPricedAsset is CompoundOracleMixin, Asset {
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IComptroller comptroller_
     ) {
         init(erc20_, maxTradeVolume_, comptroller_);
@@ -16,7 +16,7 @@ contract CompoundPricedAsset is CompoundOracleMixin, Asset {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IComptroller comptroller_
     ) public initializer {
         __Asset_init(erc20_, maxTradeVolume_);
@@ -24,7 +24,7 @@ contract CompoundPricedAsset is CompoundOracleMixin, Asset {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (int192) {
+    function price() public view virtual override returns (uint192) {
         return consultOracle(erc20);
     }
 }
