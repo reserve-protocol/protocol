@@ -50,10 +50,21 @@ abstract contract Collateral is ICollateral, Asset, Context {
     }
 
     /// Refresh exchange rates and update default status.
+    function refresh() external virtual {
+        _refresh();
+    }
+
+    /// Update any collateral state that can change due to reentrancy.
+    function refreshVolatiles() external virtual {
+        // price() might be volatile, so all of refresh() might need to happen again
+        _refresh();
+    }
+
+    /// Refresh exchange rates and update default status.
     /// @dev This default check assumes that the collateral's price() value is expected
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
-    /// collateral you're defining, you MUST redefine this function!
-    function refresh() public virtual {
+    /// collateral you're defining, you MUST redefine refresh() and refreshVolatiles()!
+    function _refresh() internal {
         if (whenDefault <= block.timestamp) {
             return;
         }
@@ -81,12 +92,6 @@ abstract contract Collateral is ICollateral, Asset, Context {
         if (whenDefault != oldWhenDefault) {
             emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
         }
-    }
-
-    /// Update any collateral state that can change due to reentrancy.
-    function refreshVolatiles() public virtual {
-        // price() might be volatile, so all of refresh() might need to happen again
-        refresh();
     }
 
     /// @return The collateral's status

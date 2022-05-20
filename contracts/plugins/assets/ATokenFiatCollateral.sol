@@ -126,7 +126,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// Update any collateral state that can change due to reentrancy.
-    function refreshVolatiles() public virtual override {
+    function refreshVolatiles() external virtual override {
         // refPrice might have changed
         if (whenDefault <= block.timestamp) return;
 
