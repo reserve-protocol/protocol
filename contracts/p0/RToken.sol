@@ -86,8 +86,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
 
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         address issuer = _msgSender();
+        refundAndClearStaleIssuances(issuer);
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (totalSupply() > 0) // {BU}
@@ -101,6 +101,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         }
 
         // Add a new SlowIssuance ticket to the queue
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         SlowIssuance memory iss = SlowIssuance({
             issuer: issuer,
             amount: amount,
@@ -174,7 +175,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
-        for (uint256 i = 0; i < endId; i++) tryVestIssuance(account, i);
+        refundAndClearStaleIssuances(account);
+
+        for (uint256 i = 0; i < endId && i < issuances[account].length; i++)
+            tryVestIssuance(account, i);
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -268,11 +272,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        if (
-            !iss.processed &&
-            iss.basketNonce == basketNonce &&
-            iss.blockAvailableAt.lte(toFix(block.number))
-        ) {
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
+        assert(iss.basketNonce == basketNonce); // this should always be true at this point
+
+        if (!iss.processed) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
@@ -307,5 +310,22 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             }
         }
         return before.plus(FIX_ONE.muluDivu(amount, perBlock));
+    }
+
+    function refundAndClearStaleIssuances(address account) private {
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        bool clearQueue = false;
+        for (uint256 i = 0; i < issuances[account].length; i++) {
+            SlowIssuance storage iss = issuances[account][i];
+            if (!iss.processed && iss.basketNonce != basketNonce) {
+                for (uint256 j = 0; j < iss.erc20s.length; j++) {
+                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
+                }
+                iss.processed = true;
+            }
+            if (iss.basketNonce != basketNonce) clearQueue = true;
+        }
+
+        if (clearQueue) delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
     }
 }
