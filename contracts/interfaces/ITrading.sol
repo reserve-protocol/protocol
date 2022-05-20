@@ -12,8 +12,8 @@ import "./IRewardable.sol";
  * @notice Common events and refresher function for all Trading contracts
  */
 interface ITrading is IRewardable {
-    event MaxTradeSlippageSet(int192 indexed oldVal, int192 indexed newVal);
-    event DustAmountSet(int192 indexed oldVal, int192 indexed newVal);
+    event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event DustAmountSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted when a trade is started
     /// @param sell The token to sell
@@ -44,19 +44,19 @@ interface ITrading is IRewardable {
     function settleTrade(IERC20 sell) external;
 
     /// @return {%} The maximum trade slippage acceptable
-    function maxTradeSlippage() external view returns (int192);
+    function maxTradeSlippage() external view returns (uint192);
 
     /// @return {UoA} The smallest amount of value worth trading
-    function dustAmount() external view returns (int192);
+    function dustAmount() external view returns (uint192);
 
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
 }
 
 interface TestITrading is ITrading {
-    function setMaxTradeSlippage(int192 val) external;
+    function setMaxTradeSlippage(uint192 val) external;
 
-    function setDustAmount(int192 val) external;
+    function setDustAmount(uint192 val) external;
 
     /// @return The number of ongoing trades open
     function tradesOpen() external view returns (uint32);

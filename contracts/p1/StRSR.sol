@@ -30,7 +30,6 @@ import "contracts/p1/mixins/Component.sol";
 abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeable {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-    using FixLib for int192;
 
     // === Eras ===
     /*
@@ -39,7 +38,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      */
 
     // Min exchange rate {qRSR/qStRSR}
-    int192 private constant MIN_EXCHANGE_RATE = int192(1e9); // 1e-9
+    uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9 D18{1}
 
     // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
     uint256 public era;
@@ -61,21 +60,22 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 internal totalStakes; // Total of all stakes {qStRSR}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    int192 public stakeRate; // The exchange rate between stakes and RSR. {qStRSR/qRSR}
+    uint192 public stakeRate; // The exchange rate between stakes and RSR. {qStRSR/qRSR}
 
     // === Drafts ===
 
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
-        uint192 drafts; // Total amount of drafts that will become available
+        // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
+        uint176 drafts; // Total amount of drafts that will become available // {qDraft}
         uint64 availableAt; // When the last of the drafts will become available
     }
-    // era => ({account} => {qDrafts})
-    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {qDrafts}
+    // era => ({account} => {drafts})
+    mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
-    int192 public draftRate; // The exchange rate between drafts and RSR. {qDrafts/qRSR}
+    uint192 public draftRate; // The exchange rate between drafts and RSR. {qDrafts/qRSR}
 
     // === ERC20Permit ===
 
@@ -91,7 +91,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     uint32 public unstakingDelay; // {s} The minimum loength of time spent in the draft queue
     uint32 public rewardPeriod; // {s} The number of seconds between revenue payout events
-    int192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
+    uint192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
     // === Cache ===
 
@@ -109,7 +109,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         string calldata symbol_,
         uint32 unstakingDelay_,
         uint32 rewardPeriod_,
-        int192 rewardRatio_
+        uint192 rewardRatio_
     ) external initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
@@ -145,7 +145,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // stakeAmount: how many stRSR the user shall receive.
         // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         uint256 newStakeRSR = stakeRSR + rsrAmount;
-        uint256 newTotalStakes = stakeRate.mulu_toUint(newStakeRSR);
+        uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
         uint256 stakeAmount = newTotalStakes - totalStakes;
 
         // Update staked
@@ -172,7 +172,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // rsrAmount: how many RSR to move from the stake pool to the draft pool
         // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         _burn(account, stakeAmount);
-        uint256 newStakeRSR = toFix(totalStakes).div(stakeRate).toUint(); // TODO: use less gas
+
+        // {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
+        uint256 newStakeRSR = (FIX_ONE * totalStakes) / stakeRate;
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
 
@@ -205,7 +207,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
-        uint256 newDraftRSR = toFix(newTotalDrafts).div(draftRate).toUint(); // TODO: less gassy
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
@@ -224,15 +226,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        int192 initRate = exchangeRate();
+        uint192 initRate = exchangeRate();
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
         if (rsrBalance == 0) return;
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(totalDrafts + totalStakes); // {qRSR}
-
+        uint256 dustRSRAmt = (MIN_EXCHANGE_RATE * (totalDrafts + totalStakes)) / FIX_ONE; // {qRSR}
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Rebase event: total RSR stake wipeout
@@ -245,12 +246,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
-            stakeRate = stakeRSR == 0 ? FIX_ONE : divuu(totalStakes, stakeRSR);
+            stakeRate = stakeRSR == 0 ? FIX_ONE : uint192((FIX_ONE * totalStakes) / stakeRSR);
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
-            draftRate = draftRSR == 0 ? FIX_ONE : divuu(totalDrafts, draftRSR);
+            draftRate = draftRSR == 0 ? FIX_ONE : uint192((FIX_ONE * totalDrafts) / draftRSR);
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -262,7 +263,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
-    function exchangeRate() public view returns (int192) {
+    function exchangeRate() public view returns (uint192) {
         return stakeRate;
     }
 
@@ -308,23 +309,24 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
-        int192 initRate = exchangeRate();
+        uint192 initRate = exchangeRate();
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
+        uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
 
-        stakeRSR += payoutRatio.mulu_toUint(rsrRewardsAtLastPayout);
+        stakeRSR += (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
-            : toFix(totalStakes).divu(stakeRSR);
+            : uint192((totalStakes * FIX_ONE) / stakeRSR);
 
-        emit ExchangeRateSet(initRate, exchangeRate());
+        emit ExchangeRateSet(initRate, stakeRate);
     }
 
+    /// @param rsrAmount {qRSR}
     /// @return index The index of the draft
     /// @return availableAt {s} The timestamp the cumulative draft vests
     function pushDraft(address account, uint256 rsrAmount)
@@ -334,9 +336,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // draftAmount: how many drafts to create and assign to the user
         // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
         draftRSR += rsrAmount;
-        uint256 newTotalDrafts = draftRate.mulu(draftRSR).toUint(); // TODO: use less gas
+        uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
 
-        // equivalently, here: uint(draftRate) * draftRSR / 1e18
+        // equivalently, here: uint(draftRate) * draftRSR / FIX_ONE
         uint256 draftAmount = newTotalDrafts - totalDrafts;
         totalDrafts = newTotalDrafts;
 
@@ -351,9 +353,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             availableAt = lastAvailableAt;
         }
 
-        // TODO delete assert
-        assert(draftAmount < type(uint192).max);
-        queue.push(CumulativeDraft(oldDrafts + uint192(draftAmount), availableAt));
+        queue.push(CumulativeDraft(uint176(oldDrafts + draftAmount), availableAt));
     }
 
     /// Zero all stakes and withdrawals
@@ -590,7 +590,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// @custom:governance
-    function setRewardRatio(int192 val) external governance {
+    function setRewardRatio(uint192 val) external governance {
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

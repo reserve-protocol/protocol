@@ -7,23 +7,26 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 
 abstract contract Asset is Initializable, IAsset {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IERC20Metadata public erc20;
 
-    int192 public maxTradeVolume; // {UoA}
+    uint192 public maxTradeVolume; // {UoA}
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Asset_init(IERC20Metadata erc20_, int192 maxTradeVolume_) internal onlyInitializing {
+    function __Asset_init(IERC20Metadata erc20_, uint192 maxTradeVolume_)
+        internal
+        onlyInitializing
+    {
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (int192);
+    function price() public view virtual returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (int192) {
+    function bal(address account) external view returns (uint192) {
         return shiftl_toFix(erc20.balanceOf(account), -int8(erc20.decimals()));
     }
 
