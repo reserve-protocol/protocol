@@ -94,7 +94,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction , KCEI
     function issue(uint256 amtRToken) external interaction {
         // ==== Basic Setup ====
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
         require(amtRToken > 0, "Cannot issue zero");
         main.furnace().melt();
 
@@ -212,7 +212,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction , KCEI
     function vest(address account, uint256 endId) external interaction {
         // == Keepers ==
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
 
         // == Checks ==
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
@@ -277,7 +277,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction , KCEI
     function redeem(uint256 amount) external interaction {
         // == Keepers ==
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();

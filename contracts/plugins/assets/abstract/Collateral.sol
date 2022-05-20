@@ -86,7 +86,7 @@ abstract contract Collateral is ICollateral, Asset, Context {
     /// Update any collateral state that can change due to reentrancy.
     function refreshVolatiles() public virtual {
         // price() might be volatile, so all of refresh() might need to happen again
-        refresh()
+        refresh();
     }
 
     /// @return The collateral's status

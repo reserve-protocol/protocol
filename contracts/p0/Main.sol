@@ -37,7 +37,7 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
     /// @custom:refresher
     function poke() external {
         require(!paused(), "paused");
-        assetRegistry.forceUpdates();
+        assetRegistry.refresh();
         furnace.melt();
         stRSR.payoutRewards();
     }

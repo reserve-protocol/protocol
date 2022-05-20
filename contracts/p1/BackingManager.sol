@@ -46,7 +46,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction , CEI
     function manageTokens(IERC20[] calldata erc20s) external interaction {
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
         // Do not trade when DISABLED or IFFY

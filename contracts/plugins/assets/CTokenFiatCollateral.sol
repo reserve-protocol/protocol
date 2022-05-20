@@ -83,7 +83,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     }
 
     /// Refresh exchange rates and update default status.
-    function forceUpdates() external virtual override {
+    function refresh() external virtual override {
         if (whenDefault <= block.timestamp) return;
         uint256 oldWhenDefault = whenDefault;
 

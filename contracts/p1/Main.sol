@@ -50,7 +50,7 @@ contract MainP1 is
     function poke() external {
         require(!paused(), "paused");
         // == Interactions ==
-        assetRegistry.forceUpdates();
+        assetRegistry.refresh();
         furnace.melt();
         stRSR.payoutRewards();
     }

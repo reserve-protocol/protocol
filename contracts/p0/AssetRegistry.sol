@@ -17,7 +17,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     // Registered Assets
     mapping(IERC20 => IAsset) private assets;
 
-    uint32 public lastForceUpdates; // {s} last time forceUpdates was called on this set of ERC20s
+    uint32 public lastForceUpdates; // {s} last time refresh was called on this set of ERC20s
 
     function init(IMain main_, IAsset[] memory assets_) public initializer {
         __Component_init(main_);
@@ -28,9 +28,18 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Force updates in all collateral assets
     /// @custom:refresher
-    function forceUpdates() external {
+    function refresh() external {
         // It's a waste of gas to require notPaused because assets can be updated directly
-        _forceUpdates();
+        _refresh();
+    }
+
+    /// Refresh all volatile collateral state
+    function refreshVolatiles() external {
+        uint256 length = _erc20s.length();
+        for (uint256 i = 0; i < length; ++i) {
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).refreshVolatiles();
+        }
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -51,7 +60,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         swapped = _registerIgnoringCollisions(asset);
 
         // Ensure valid basket after swap
-        _forceUpdates();
+        _refresh();
         main.basketHandler().checkBasket();
     }
 
@@ -65,7 +74,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         emit AssetUnregistered(asset.erc20(), asset);
 
         // Ensure valid basket after deregistration
-        _forceUpdates();
+        _refresh();
         main.basketHandler().checkBasket();
     }
 
@@ -98,11 +107,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     //
 
     /// Force updates in all collateral assets
-    function _forceUpdates() internal {
+    function _refresh() internal {
         lastForceUpdates = uint32(block.timestamp);
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
         }
     }
 

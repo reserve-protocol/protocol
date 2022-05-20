@@ -189,7 +189,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @custom:interaction , KCE
     function withdraw(address account, uint256 endId) external interaction {
         // == Keepers ==
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
 
         // == Checks + Effects ==
         IBasketHandler bh = main.basketHandler();

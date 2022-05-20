@@ -26,11 +26,20 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Force updates in all collateral assets
+    /// Update the state of all collateral
     /// @custom:refresher
-    function forceUpdates() external {
+    function refresh() external {
         // It's a waste of gas to require notPaused because assets can be updated directly
-        _forceUpdates();
+        _refresh();
+    }
+
+    /// Refresh all volatile collateral state
+    function refreshVolatiles() external {
+        uint256 length = _erc20s.length();
+        for (uint256 i = 0; i < length; ++i) {
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).refreshVolatiles();
+        }
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -53,7 +62,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         // == Begin interactions ==
         // TODO delete
         // Ensure valid basket after swap
-        _forceUpdates();
+        _refresh();
         main.basketHandler().checkBasket();
     }
 
@@ -70,7 +79,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         // == Begin interactions ==
         // TODO delete
         // Ensure valid basket after deregistration
-        _forceUpdates();
+        _refresh();
         main.basketHandler().checkBasket();
     }
 
@@ -105,11 +114,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // This is not quite CEI-compliant, but it _is_ safe:
     // Interactions are interleaved with contract state reads (assets and erc20s),
     // but all changes to the read state are onlyOwner
-    function _forceUpdates() internal {
+    function _refresh() internal {
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
         }
     }
 
