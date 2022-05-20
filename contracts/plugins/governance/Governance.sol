@@ -60,13 +60,14 @@ contract Governance is
         return super.proposalThreshold();
     }
 
-    function quorum(uint256 blockNumber)
+    /// @return Returns the quorum required, in units of micro %, e.g 4e6 for 4%
+    function quorum(uint256)
         public
         view
         override(IGovernor, GovernorVotesQuorumFraction)
         returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return quorumNumerator() * 1e6;
     }
 
     function state(uint256 proposalId)
@@ -123,6 +124,7 @@ contract Governance is
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
         uint256 bal = token.getPastVotes(account, blockNumber);
         uint256 totalSupply = token.getPastTotalSupply(blockNumber);
+
         if (totalSupply > 0) {
             return (bal * 1e8) / totalSupply;
         } else {
