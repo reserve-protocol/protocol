@@ -93,10 +93,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction , KCEI
     function issue(uint256 amtRToken) external interaction {
-        // ==== Basic Setup ====
+        // ==== Refreshers ====
         main.assetRegistry().refresh();
-        require(amtRToken > 0, "Cannot issue zero");
-        main.furnace().melt();
+
+        // Refund issuances against old baskets
+        IssueQueue storage queue = issueQueues[issuer];
+        (uint256 basketNonce, ) = bh.lastSet();
+        if (queue.basketNonce != basketNonce) {
+            // == Interaction ==
+            refundSpan(issuer, queue.left, queue.right);
+        }
+
+        main.assetRegistry().refreshVolatiles();
 
         // == Checks-effects block ==
         require(amtRToken > 0, "Cannot issue zero");
@@ -105,14 +113,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(status != CollateralStatus.DISABLED, "basket disabled");
         address issuer = _msgSender();
 
-        // Refund issuances against previous baskets
-        IssueQueue storage queue = issueQueues[issuer];
-        (uint256 basketNonce, ) = bh.lastSet();
-        if (queue.basketNonce != basketNonce) {
-            refundSpan(issuer, queue.left, queue.right);
-            queue.left = 0;
-            queue.right = 0;
-        }
+        main.furnace().melt();
 
         // ==== Compute and accept collateral ====
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
@@ -223,8 +224,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets
-        if (queue.basketNonce != basketNonce) refundSpan(account, queue.left, queue.right);
+        if (queue.basketNonce != basketNonce) {
+            refundSpan(account, queue.left, queue.right);
+            main.assetRegistry().refreshVolatiles();
+        }
         vestUpTo(account, endId);
+
     }
 
     /// @return A non-inclusive ending index
@@ -274,9 +279,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// @custom:interaction , KCEI
+    /// @custom:interaction , RCEI
     function redeem(uint256 amount) external interaction {
-        // == Keepers ==
+        // == Refreshers ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==

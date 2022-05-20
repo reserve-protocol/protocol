@@ -166,7 +166,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @custom:interaction , KCEI
     /// @custom:governance
     function switchBasket() external governance {
-        // == Keeper ==
+        // == Refresher ==
         main.assetRegistry().refresh();
         // then maybe lots of state changes
         _switchBasket();

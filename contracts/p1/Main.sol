@@ -46,10 +46,10 @@ contract MainP1 is
     }
 
     /// @custom:refresher
-    /// @custom:interaction , KCEI
+    /// @custom:interaction , RCEI
     function poke() external {
         require(!paused(), "paused");
-        // == Interactions ==
+        // == Refresher ==
         assetRegistry.refresh();
         furnace.melt();
         stRSR.payoutRewards();

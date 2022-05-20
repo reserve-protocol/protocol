@@ -162,8 +162,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
-    /// @custom:interaction
-    function unstake(uint256 stakeAmount) external interaction {
+    function unstake(uint256 stakeAmount) external notPaused {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -186,9 +185,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
-    /// @custom:interaction , KCE
+    /// @custom:interaction , RCE
     function withdraw(address account, uint256 endId) external interaction {
-        // == Keepers ==
+        // == Refresh collateral ==
         main.assetRegistry().refresh();
 
         // == Checks + Effects ==
