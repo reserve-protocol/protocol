@@ -49,15 +49,15 @@ abstract contract Collateral is ICollateral, Asset, Context {
         targetName = targetName_;
     }
 
-    /// Default checks
+    /// Refresh exchange rates and update default status.
     /// @dev This default check assumes that the collateral's price() value is expected
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
-    /// collateral you're defining, you MUST  this function!
-    function forceUpdates() external virtual {
+    /// collateral you're defining, you MUST redefine this function!
+    function refresh() public virtual {
         if (whenDefault <= block.timestamp) {
             return;
         }
-        uint256 cached = whenDefault;
+        uint256 oldWhenDefault = whenDefault;
 
         try this.price() returns (uint192 p) {
             // {UoA/ref} = {UoA/target} * {target/ref}
@@ -73,14 +73,20 @@ abstract contract Collateral is ICollateral, Asset, Context {
             assert(false); // To confirm: there is no way to maintain the error code here
         } catch (bytes memory lowLevelData) {
             if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
-                // This means the oracle has broken on us and we should default immediately
+                // The oracle has broken on us and we should default immediately
                 whenDefault = block.timestamp;
             } else revert UnknownError(lowLevelData);
         }
 
-        if (whenDefault != cached) {
-            emit DefaultStatusChanged(cached, whenDefault, status());
+        if (whenDefault != oldWhenDefault) {
+            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
         }
+    }
+
+    /// Update any collateral state that can change due to reentrancy.
+    function refreshVolatiles() public virtual {
+        // price() might be volatile, so all of refresh() might need to happen again
+        refresh()
     }
 
     /// @return The collateral's status

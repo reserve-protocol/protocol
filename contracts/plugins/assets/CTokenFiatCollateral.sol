@@ -82,12 +82,10 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         return consultOracle(referenceERC20).mul(refPerTok());
     }
 
-    /// Default checks
+    /// Refresh exchange rates and update default status.
     function forceUpdates() external virtual override {
-        if (whenDefault <= block.timestamp) {
-            return;
-        }
-        uint256 cached = whenDefault;
+        if (whenDefault <= block.timestamp) return;
+        uint256 oldWhenDefault = whenDefault;
 
         // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
@@ -119,9 +117,22 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         }
         prevReferencePrice = referencePrice;
 
-        if (whenDefault != cached) {
-            emit DefaultStatusChanged(cached, whenDefault, status());
+        if (whenDefault != oldWhenDefault) {
+            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
         }
+    }
+
+    /// Update any collateral state that can change due to reentrancy.
+    function refreshVolatiles() public virtual override {
+        // refPrice might have changed
+        if (whenDefault <= block.timestamp) return;
+
+        uint192 referencePrice = refPerTok();
+        if (referencePrice.lt(prevReferencePrice)) {
+            emit DefaultStatusChanged(whenDefault, block.timestamp, status());
+            whenDefault = block.timestamp;
+        }
+        prevReferencePrice = referencePrice;
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
