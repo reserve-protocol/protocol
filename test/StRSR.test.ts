@@ -574,7 +574,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Set Token1 to default - 50% price reduction and mark default as probable
         await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-        await collateral1.forceUpdates()
+        await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
 

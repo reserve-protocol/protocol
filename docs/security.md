@@ -10,7 +10,7 @@ All system-external functions are classified into one of the following 3 categor
 
 1. `@custom:interaction` - Action. Disallowed while paused. Per-contract reentrant lock applied.
 2. `@custom:governance` - Governance change. Allowed while paused.
-3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `forceUpdates`.
+3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `refresh`.
 
 All execution flows through the protocol should contain AT MOST a single (1) action or (2) governance change.
 
@@ -42,12 +42,12 @@ Governance functions acquire a lock at the beginning of execution, and can be ex
 
 - furnace.melt()
 - stRSR.payoutRewards()
-- assetRegistry.forceUpdates()
+- assetRegistry.refresh()
 - basketHandler.checkBasket()
 
 Note:
 
-- `forceUpdates` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
+- `refresh` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
 - `checkBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
 
 ## Specific areas of concern

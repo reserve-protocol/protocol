@@ -232,7 +232,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
 
         // Mark default as probable
-        await collateral1.forceUpdates()
+        await collateral1.refresh()
 
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
@@ -249,7 +249,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime((await collateral1.delayUntilDefault()).toString())
 
         // Confirm default
-        await collateral1.forceUpdates()
+        await collateral1.refresh()
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -337,7 +337,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           fp('0.125'),
           fp('0.125'),
         ]
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -383,7 +383,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
 
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
@@ -404,7 +404,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newQuantities = [initialQuantities[1], bn('0')]
         const newRefAmounts = [basketsNeededAmts[1], fp('0.75')]
 
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -450,7 +450,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           basketsNeededAmts[1],
           basketsNeededAmts[2],
         ]
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -482,13 +482,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
 
         // Mark default as probable
-        await collateral1.forceUpdates()
+        await collateral1.refresh()
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral1.delayUntilDefault()).toString())
 
         // Confirm default
-        await collateral1.forceUpdates()
+        await collateral1.refresh()
 
         // Basket switches to empty basket
         await expect(basketHandler.checkBasket())
@@ -559,7 +559,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           basketsNeededAmts[3],
           fp('0.25'),
         ]
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -711,13 +711,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
 
         // Mark default as probable
-        await newEURCollateral.forceUpdates()
+        await newEURCollateral.refresh()
 
         // Advance time post delayUntilDefault
         await advanceTime((await newEURCollateral.delayUntilDefault()).toString())
 
         // Confirm default
-        await newEURCollateral.forceUpdates()
+        await newEURCollateral.refresh()
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -770,13 +770,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await collateral0.forceUpdates()
+        await collateral0.refresh()
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default
-        await collateral0.forceUpdates()
+        await collateral0.refresh()
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -1276,14 +1276,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await expect(facade.runAuctionsForAllTraders()).to.be.revertedWith('basket not sound')
 
         // Mark default as probable
-        await collateral0.forceUpdates()
+        await collateral0.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default
-        await collateral0.forceUpdates()
+        await collateral0.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
         // Ensure valid basket
@@ -1424,14 +1424,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
         await advanceTime((await newCollateral0.delayUntilDefault()).toString())
 
         // Confirm default and trigger basket switch
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await basketHandler.checkBasket()
 
         // Check new state after basket switch
@@ -1675,7 +1675,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
@@ -1691,7 +1691,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const bkpTokenRefAmt: BigNumber = bn('0.25e18')
         const newRefAmounts = [bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt]
 
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -2041,14 +2041,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post collateral's default delay
         await advanceTime((await collateral0.delayUntilDefault()).toString())
 
         // Confirm default and trigger basket switch
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await basketHandler.checkBasket()
 
         // Running auctions will trigger recapitalization - All balance can be redeemed
@@ -2301,7 +2301,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ]
 
         // Mark Default - Perform basket switch
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -2557,7 +2557,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ]
 
         // Mark Default - Perform basket switch
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         await expect(basketHandler.checkBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
@@ -2854,7 +2854,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.8e6'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
@@ -3222,7 +3222,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
 
         // Mark default as probable
-        await assetRegistry.forceUpdates()
+        await assetRegistry.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
 
         // Advance time post delayUntilDefault
@@ -3703,7 +3703,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       const bkpTokenRefAmt: BigNumber = bn('0.125e18')
 
       // Mark Default - Perform basket switch
-      await assetRegistry.forceUpdates()
+      await assetRegistry.refresh()
       await expect(basketHandler.checkBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Running auctions will trigger recapitalization - All balance will be redeemed
