@@ -221,9 +221,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(account, queue.left, queue.right);
             queue.left = 0;
             queue.right = 0;
+        } else {
+            vestUpTo(account, endId);
         }
-
-        vestUpTo(account, endId);
     }
 
     /// @return A non-inclusive ending index
@@ -433,6 +433,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 amtRTokenToMint;
         uint256 newBasketsNeeded;
         IssueItem storage rightItem = queue.items[endId - 1];
+        require(rightItem.when <= 1e18 * block.number, "issuance not ready");
+
         uint256 queueLength = queue.tokens.length;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
