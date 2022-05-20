@@ -229,7 +229,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             main.assetRegistry().refreshVolatiles();
         }
         vestUpTo(account, endId);
-
     }
 
     /// @return A non-inclusive ending index
