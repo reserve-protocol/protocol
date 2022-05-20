@@ -178,8 +178,7 @@ library FixLib {
 
     /// Add a uint to this uint192 .
     function plusu(uint192 x, uint256 y) internal pure returns (uint192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-        return _safeWrap(x + uint256(y) * FIX_SCALE);
+        return _safeWrap(x + y * FIX_SCALE);
     }
 
     /// Subtract a uint192  from this uint192 .
@@ -189,7 +188,6 @@ library FixLib {
 
     /// Subtract a uint from this uint192 .
     function minusu(uint192 x, uint256 y) internal pure returns (uint192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
         return _safeWrap(uint256(x) - uint256(y * FIX_SCALE));
     }
 
@@ -209,8 +207,8 @@ library FixLib {
 
     /// Multiply this uint192  by a uint.
     function mulu(uint192 x, uint256 y) internal pure returns (uint192) {
-        if (y > type(uint256).max / 2) revert UIntOutOfBounds();
-        return _safeWrap(x * uint256(y));
+        if (y > type(uint256).max) revert UIntOutOfBounds();
+        return _safeWrap(x * y);
     }
 
     /// Divide this uint192  by a uint192 ; round the fractional part towards zero.
@@ -238,8 +236,7 @@ library FixLib {
         uint256 y,
         RoundingMode rounding
     ) internal pure returns (uint192) {
-        if (y > uint256(type(uint256).max)) return FIX_ZERO;
-        return _safeWrap(_divrnd(x, uint256(y), rounding));
+        return _safeWrap(_divrnd(x, y, rounding));
     }
 
     uint64 constant FIX_HALF = uint64(FIX_SCALE) / 2;
