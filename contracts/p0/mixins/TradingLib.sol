@@ -172,39 +172,39 @@ library TradingLibP0 {
             uint192 buyAmount
         )
     {
-        uint192 surplusAmt;
-        uint192 deficitAmt;
+        uint192 maxSurplus;
+        uint192 maxDeficit;
         for (uint256 i = 0; i < erc20s.length; i++) {
             if (erc20s[i] == rsr()) continue; // do not consider RSR
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
-            uint192 bal = toFix(asset.bal(address(this)));
+            uint192 bal = asset.bal(address(this));
 
             // Token Threshold - top
             uint192 tokenThreshold = basketTop.mul(basket().quantity(erc20s[i]), CEIL); // {tok};
             if (bal.gt(tokenThreshold)) {
                 // {UoA} = ({tok} - {tok}) * {UoA/tok}
                 uint192 deltaTop = bal.minus(tokenThreshold).mul(asset.price(), FLOOR);
-                if (deltaTop.gt(surplusAmt)) {
+                if (deltaTop.gt(maxSurplus)) {
                     surplus = asset;
-                    surplusAmt = deltaTop;
+                    maxSurplus = deltaTop;
 
                     // {tok} = {UoA} / {UoA/tok}
-                    sellAmount = fixMin(bal, surplusAmt.div(surplus.price()));
+                    sellAmount = fixMin(bal, maxSurplus.div(surplus.price()));
                 }
-            }
+            } else {
+                // Token Threshold - bottom
+                tokenThreshold = basketBottom.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
+                if (bal.lt(tokenThreshold)) {
+                    // {UoA} = ({tok} - {tok}) * {UoA/tok}
+                    uint192 deltaBottom = tokenThreshold.minus(bal).mul(asset.price(), CEIL);
+                    if (deltaBottom.gt(maxDeficit)) {
+                        deficit = ICollateral(address(asset));
+                        maxDeficit = deltaBottom;
 
-            // Token Threshold - bottom
-            tokenThreshold = basketBottom.mul(basket().quantity(erc20s[i]), CEIL); // {tok}
-            if (bal.lt(tokenThreshold)) {
-                // {UoA} = ({tok} - {tok}) * {UoA/tok}
-                uint192 deltaBottom = tokenThreshold.minus(bal).mul(asset.price(), CEIL);
-                if (deltaBottom.gt(deficitAmt)) {
-                    deficit = ICollateral(address(asset));
-                    deficitAmt = deltaBottom;
-
-                    // {tok} = {UoA} / {UoA/tok}
-                    buyAmount = deficitAmt.div(deficit.price(), CEIL);
+                        // {tok} = {UoA} / {UoA/tok}
+                        buyAmount = maxDeficit.div(deficit.price(), CEIL);
+                    }
                 }
             }
         }

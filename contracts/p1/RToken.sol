@@ -368,7 +368,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
-        return uint192((main.basketHandler().price() * basketsNeeded) / totalSupply());
+        return uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply()));
     }
 
     // TODO this is only required for testing, can be commented out for contract size
