@@ -173,7 +173,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         _burn(account, stakeAmount);
 
-        // {qRSR} = D18 * {qStRSR} / {qStRSR/qRSR}
+        // {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
         uint256 newStakeRSR = (FIX_ONE * totalStakes) / stakeRate;
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
@@ -233,7 +233,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (rsrBalance == 0) return;
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE * (totalDrafts + totalStakes); // {qRSR}
+        uint256 dustRSRAmt = (MIN_EXCHANGE_RATE * (totalDrafts + totalStakes)) / FIX_ONE; // {qRSR}
         uint256 seizedRSR;
         if (rsrBalance <= rsrAmount + dustRSRAmt) {
             // Rebase event: total RSR stake wipeout
@@ -315,7 +315,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // Apply payout to RSR backing
         uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
 
-        stakeRSR += payoutRatio * rsrRewardsAtLastPayout;
+        stakeRSR += (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
@@ -323,9 +323,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             ? FIX_ONE
             : uint192((totalStakes * FIX_ONE) / stakeRSR);
 
-        emit ExchangeRateSet(initRate, exchangeRate());
+        emit ExchangeRateSet(initRate, stakeRate);
     }
 
+    /// @param rsrAmount {qRSR}
     /// @return index The index of the draft
     /// @return availableAt {s} The timestamp the cumulative draft vests
     function pushDraft(address account, uint256 rsrAmount)
@@ -335,7 +336,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // draftAmount: how many drafts to create and assign to the user
         // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
         draftRSR += rsrAmount;
-        uint256 newTotalDrafts = (draftRate * FIX_ONE) / draftRSR;
+        uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
 
         // equivalently, here: uint(draftRate) * draftRSR / FIX_ONE
         uint256 draftAmount = newTotalDrafts - totalDrafts;

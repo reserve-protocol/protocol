@@ -196,7 +196,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        uint192 before = allVestAt; // }D18{block number}
+        uint192 before = allVestAt; // D18{block number}
         uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
         finished = before + uint192((FIX_ONE * amtRToken) / lastIssRate);
