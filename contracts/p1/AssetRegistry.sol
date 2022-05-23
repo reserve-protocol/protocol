@@ -37,12 +37,12 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Refresh all volatile collateral state
-    function refreshVolatiles() external {
+    /// Refresh all transient collateral state
+    function refreshTransients() external {
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refreshVolatiles();
+            if (asset.isCollateral()) ICollateral(address(asset)).refreshTransients();
         }
     }
 
@@ -126,6 +126,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         swapped = _erc20s.add(address(erc20));
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
-        if (asset.isCollateral()) ICollateral(address(asset)).refreshVolatiles();
+        if (asset.isCollateral()) ICollateral(address(asset)).refreshTransients();
     }
 }

@@ -31,8 +31,8 @@ interface IAssetRegistry is IComponent {
     /// @custom:interaction
     function refresh() external;
 
-    /// Refresh all volatile collateral state
-    function refreshVolatiles() external;
+    /// Refresh all transient collateral state
+    function refreshTransients() external;
 
     /// @return The corresponding asset for ERC20, or reverts if not registered
     function toAsset(IERC20 erc20) external view returns (IAsset);

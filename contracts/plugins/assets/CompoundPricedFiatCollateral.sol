@@ -41,8 +41,8 @@ contract CompoundPricedFiatCollateral is CompoundOracleMixin, Collateral {
 
     // solhint-disable no-empty-blocks
     /// Update any collateral state that can change due to reentrancy.
-    function refreshVolatiles() public virtual override {
+    function refreshTransients() public virtual override {
         // no action here; the price is just an oracle value, which we expect
-        // not to be volatile under reentrancy.
+        // not to be transient under reentrancy.
     }
 }

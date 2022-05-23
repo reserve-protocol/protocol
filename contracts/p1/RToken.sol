@@ -106,7 +106,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(issuer, queue.left, queue.right);
         }
 
-        main.assetRegistry().refreshVolatiles();
+        main.assetRegistry().refreshTransients();
 
         // == Checks-effects block ==
         require(amtRToken > 0, "Cannot issue zero");
@@ -226,7 +226,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);
-            main.assetRegistry().refreshVolatiles();
+            main.assetRegistry().refreshTransients();
         }
         vestUpTo(account, endId);
     }

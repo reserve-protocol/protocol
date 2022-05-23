@@ -123,7 +123,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     }
 
     /// Update any collateral state that can change due to reentrancy.
-    function refreshVolatiles() public virtual override {
+    function refreshTransients() public virtual override {
         // refPrice might have changed
         if (whenDefault <= block.timestamp) return;
 
