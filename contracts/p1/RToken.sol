@@ -91,7 +91,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @custom:interaction KCEI
+    /// @custom:interaction CEI
     function issue(uint256 amtRToken) external interaction {
         // ==== Refreshers ====
         main.assetRegistry().refresh();
@@ -210,7 +210,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
-    /// @custom:interaction KCEI
+    /// @custom:interaction CEI
     function vest(address account, uint256 endId) external interaction {
         // == Keepers ==
         main.assetRegistry().refresh();

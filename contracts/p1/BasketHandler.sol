@@ -172,7 +172,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Switch the basket, only callable directly by governance
-    /// @custom:interaction KCEI
+    /// @custom:interaction CEI
     /// @custom:governance
     function switchBasket() external governance {
         // == Refresher ==
