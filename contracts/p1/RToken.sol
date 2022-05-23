@@ -378,6 +378,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
+    /// after: queue.left == queue.right
     function refundSpan(
         address account,
         uint256 left,
@@ -391,6 +392,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // compute total deposits
         IssueItem storage rightItem = queue.items[right - 1];
+
+        // we could dedup this logic but it would take more SLOADS, so I think this is best
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, rightItem.deposits[i]);
@@ -424,6 +427,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[endId - 1];
         require(rightItem.when <= 1e18 * block.number, "issuance not ready");
 
+        // we could dedup this logic but it would take more SLOADS, so this seems best
         uint256 queueLength = queue.tokens.length;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
