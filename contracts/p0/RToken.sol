@@ -37,7 +37,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     using SafeERC20 for IERC20;
 
     /// Expected to be an IPFS hash
-    string public constitutionURI;
+    string public manifestoURI;
 
     // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
@@ -62,13 +62,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory constitutionURI_,
+        string memory manifestoURI_,
         uint192 issuanceRate_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
+        manifestoURI = manifestoURI_;
         issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }

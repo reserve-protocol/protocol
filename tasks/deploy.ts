@@ -50,7 +50,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
     await rtokenDeployer.deploy(
       'Reserve Dollar Plus',
       'RSDP',
-      'constitution',
+      'manifesto',
       deployer.address,
       config
     )

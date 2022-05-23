@@ -345,7 +345,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RToken
       await expect(
-        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'constitution', config.issuanceRate)
+        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'manifesto', config.issuanceRate)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - StRSR
@@ -368,14 +368,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, newConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, newConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main

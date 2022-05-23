@@ -55,14 +55,14 @@ contract DeployerP0 is IDeployer {
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
-    /// @param constitutionURI An IPFS URI for the immutable constitution the RToken adheres to
+    /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string memory name,
         string memory symbol,
-        string memory constitutionURI,
+        string memory manifestoURI,
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
@@ -142,7 +142,7 @@ contract DeployerP0 is IDeployer {
             params.rewardRatio
         );
 
-        main.rToken().init(main, name, symbol, constitutionURI, params.issuanceRate);
+        main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
         main.setOneshotPauser(owner);
