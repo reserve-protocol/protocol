@@ -292,10 +292,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
-            uint192(uint192(baskets)),
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(uint192(baskets), FLOOR);
 
         // D18{1} = D18 * {qRTok} / {qRTok}
         uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());

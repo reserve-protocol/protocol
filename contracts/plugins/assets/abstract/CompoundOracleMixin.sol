@@ -41,6 +41,6 @@ abstract contract CompoundOracleMixin is Initializable {
         }
 
         // D18{UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
-        return uint192(uint192(p * 1e12));
+        return uint192(p * 1e12);
     }
 }
