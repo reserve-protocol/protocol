@@ -70,7 +70,7 @@ let config: any = {
       },
       'contracts/p1/RToken.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 500 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 400 } },
       },
       'contracts/p1/StRSRVotes.sol': {
         version: '0.8.9',
