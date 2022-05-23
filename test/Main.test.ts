@@ -345,7 +345,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RToken
       await expect(
-        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'constitution', config.issuanceRate)
+        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'manifesto', config.issuanceRate)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - StRSR
@@ -368,14 +368,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, newConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, newConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'constitution', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -796,7 +796,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // By default functions can be run
       await assetRegistry.refresh()
-      await basketHandler.checkBasket()
+      await basketHandler.refreshBasket()
       await backingManager.manageTokens([token0.address])
       await rsrTrader.manageToken(token0.address)
       await rTokenTrader.manageToken(token0.address)
@@ -1101,6 +1101,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should not allow to disable basket if not AssetRegistry', async () => {
+      await expect(basketHandler.connect(owner).disableBasket()).to.be.revertedWith(
+        'asset registry only'
+      )
+    })
+
     it('Should allow to call switch Basket if Owner - No changes', async () => {
       // Switch basket - No backup nor default
       await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
@@ -1133,17 +1139,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Unregister the basket collaterals, skipping collateral0
       await expect(assetRegistry.connect(owner).unregister(collateral1.address)).to.emit(
-        basketHandler,
-        'BasketSet'
+        assetRegistry,
+        'AssetUnregistered'
       )
       await expect(assetRegistry.connect(owner).unregister(collateral2.address)).to.emit(
-        basketHandler,
-        'BasketSet'
+        assetRegistry,
+        'AssetUnregistered'
       )
       await expect(assetRegistry.connect(owner).unregister(collateral3.address)).to.emit(
-        basketHandler,
-        'BasketSet'
+        assetRegistry,
+        'AssetUnregistered'
       )
+
+      await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket should be 100% collateral0
       let toks = await facade.basketTokens()
@@ -1151,7 +1159,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(toks[0]).to.equal(token0.address)
 
       // Basket should be set to the empty basket, and be defaulted
-      await expect(assetRegistry.connect(owner).unregister(collateral0.address))
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
+        assetRegistry,
+        'AssetUnregistered'
+      )
+
+      await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
 
@@ -1186,7 +1199,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.price()).to.equal(fp('0.75')) // disabled collateral is ignored
     })
 
-    it('Should return baskets held by an account and quantity correctly', async () => {
+    it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
@@ -1218,9 +1231,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true },
       ])
 
-      // Check values - No changes
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
+      // Check values - All zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
       // Check quantities for non-collateral asset
@@ -1229,49 +1242,86 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
       expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
 
-      // Unregister a token from the basket
+      // Swap basket should not find valid basket because no backup config
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], true)
+
+      // Set basket config
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            token0.address,
+            token2.address,
+            token3.address,
+          ])
+      ).to.emit(basketHandler, 'BackupConfigSet')
+
+      // Swap basket should now find valid basket
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], false)
+
+      // Check values - Should no longer be zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.not.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.not.equal(0)
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      // Unregister 2 tokens from the basket
       await expect(assetRegistry.connect(owner).unregister(newAsset.address))
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
-
-      // Check values - No changes
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4))
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
-
-      // Check quantities for non-collateral asset
-      expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
-      expect(await basketHandler.quantity(token1.address)).to.equal(0)
-      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
-      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
-
-      // Set new prime basket
-      await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
-        .to.emit(basketHandler, 'PrimeBasketSet')
-        .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
-
-      // Switch basket
-      await expect(basketHandler.connect(owner).switchBasket())
-        .to.emit(basketHandler, 'BasketSet')
-        .withArgs([token0.address], [fp('1')], false)
-
-      // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal) // a full unit is required
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal) // a full unit is required
-      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
-
-      expect(await basketHandler.quantity(token0.address)).to.equal(fp('1'))
-      expect(await basketHandler.quantity(token1.address)).to.equal(0)
-      expect(await basketHandler.quantity(token2.address)).to.equal(0)
-      expect(await basketHandler.quantity(token3.address)).to.equal(0)
-
-      // Force empty basket
-      await expect(assetRegistry.connect(owner).unregister(collateral0.address))
+      await expect(assetRegistry.connect(owner).unregister(collateral3.address))
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
 
-      // Should revert
-      await expect(basketHandler.basketsHeldBy(addr1.address)).to.be.revertedWith('EmptyBasket()')
+      // Check values - All zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      expect(await basketHandler.quantity(token3.address)).to.equal(0)
+
+      // Swap basket should now find valid basket
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], false)
+
+      // Check values
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(2)) // 0.5 of each
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(2)) // 0.5 of each
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0].mul(2))
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[0].mul(2))
+      expect(await basketHandler.quantity(token3.address)).to.equal(0)
+
+      // Finish emptying basket
+      await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
+        assetRegistry,
+        'AssetUnregistered'
+      )
+      await expect(assetRegistry.connect(owner).unregister(collateral2.address)).to.emit(
+        assetRegistry,
+        'AssetUnregistered'
+      )
+
+      // Should be empty basket
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([], [], true)
+
+      // Check values - All zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+
+      expect(await basketHandler.quantity(token0.address)).to.equal(0)
+      expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      expect(await basketHandler.quantity(token2.address)).to.equal(0)
+      expect(await basketHandler.quantity(token3.address)).to.equal(0)
     })
   })
 

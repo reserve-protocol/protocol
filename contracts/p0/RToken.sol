@@ -37,10 +37,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     using SafeERC20 for IERC20;
 
     /// Expected to be an IPFS hash
-    string public constitutionURI;
+    string public manifestoURI;
 
     // To enforce a fixed issuanceRate throughout the entire block
-    // TODO: simplify
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
     // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
@@ -51,6 +50,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     mapping(address => SlowIssuance[]) public issuances;
 
+    // When all pending issuances will have vested.
+    // This is fractional so that we can represent partial progress through a block.
+    uint192 public allVestAt; // {fractional block number}
+
     uint192 public basketsNeeded; //  {BU}
 
     uint192 public issuanceRate; // {1/block} of RToken supply to issue per block
@@ -59,13 +62,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory constitutionURI_,
+        string memory manifestoURI_,
         uint192 issuanceRate_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
+        manifestoURI = manifestoURI_;
         issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
@@ -125,13 +128,15 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             iss.blockAvailableAt
         );
 
-        // Complete issuance instantly if it fits into this block
-        if (iss.blockAvailableAt.lte(toFix(block.number))) {
-            require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
-
+        // Complete issuance instantly if it fits into this block and basket is sound
+        if (
+            iss.blockAvailableAt.lte(toFix(block.number)) &&
+            basketHandler.status() == CollateralStatus.SOUND
+        ) {
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, issuances[issuer].length - 1);
             assert(vestedAmount == iss.amount);
+            delete issuances[issuer][issuances[issuer].length - 1];
         }
     }
 
@@ -177,8 +182,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         refundAndClearStaleIssuances(account);
 
-        for (uint256 i = 0; i < endId && i < issuances[account].length; i++)
+        for (uint256 i = 0; i < endId && i < issuances[account].length; i++) {
             tryVestIssuance(account, i);
+        }
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -292,7 +298,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Returns the block number at which an issuance for *amount* now can complete
     function nextIssuanceBlockAvailable(uint256 amount) private returns (uint192) {
-        uint192 before = toFix(block.number - 1);
+        uint192 before = fixMax(toFix(block.number - 1), allVestAt);
 
         // Calculate the issuance rate if this is the first issue in the block
         if (blockIssuanceRates[block.number] == 0) {
@@ -302,14 +308,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
-
-        for (uint256 i = 0; i < accounts.length(); i++) {
-            SlowIssuance[] storage queue = issuances[accounts.at(i)];
-            if (queue.length > 0 && queue[queue.length - 1].blockAvailableAt.gt(before)) {
-                before = queue[queue.length - 1].blockAvailableAt;
-            }
-        }
-        return before.plus(FIX_ONE.muluDivu(amount, perBlock));
+        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock));
+        return allVestAt;
     }
 
     function refundAndClearStaleIssuances(address account) private {

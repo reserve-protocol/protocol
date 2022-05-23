@@ -6,8 +6,6 @@ import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 
-error EmptyBasket();
-
 /**
  * @title IBasketHandler
  * @notice The BasketHandler aims to maintain a reference basket of constant target unit amounts.
@@ -25,8 +23,8 @@ interface IBasketHandler is IComponent {
     /// Emitted when the reference basket is set
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
-    /// @param defaulted True when there is no more backup collateral for a target
-    event BasketSet(IERC20[] erc20s, uint192[] refAmts, bool defaulted);
+    /// @param disabled True when the list of erc20s + refAmts may not be correct
+    event BasketSet(IERC20[] erc20s, uint192[] refAmts, bool disabled);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
@@ -56,9 +54,13 @@ interface IBasketHandler is IComponent {
         IERC20[] calldata erc20s
     ) external;
 
+    /// Default the basket in order to schedule a basket refresh
+    /// @custom:protected
+    function disableBasket() external;
+
     /// Checks the basket for default and swaps it if necessary
     /// @custom:interaction
-    function checkBasket() external;
+    function refreshBasket() external;
 
     /// Governance-controlled setter to cause a basket switch explicitly
     /// @custom:governance

@@ -20,6 +20,10 @@ pragma solidity ^0.8.9;
 // A uint value passed to this library was out of bounds for uint192  operations
 error UIntOutOfBounds();
 
+// Used by P1 implementation for easier casting
+uint256 constant FIX_ONE_256 = 1e18;
+uint8 constant FIX_DECIMALS = 18;
+
 // If a particular uint192  is represented by the uint192  n, then the uint192  represents the
 // value n/FIX_SCALE.
 uint64 constant FIX_SCALE = 1e18;

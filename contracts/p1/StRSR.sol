@@ -175,7 +175,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _burn(account, stakeAmount);
 
         // {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
-        uint256 newStakeRSR = (FIX_ONE * totalStakes) / stakeRate;
+        uint256 newStakeRSR = (FIX_ONE_256 * totalStakes) / stakeRate;
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
 
@@ -210,7 +210,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
-        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE) / draftRate;
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
@@ -249,12 +249,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
-            stakeRate = stakeRSR == 0 ? FIX_ONE : uint192((FIX_ONE * totalStakes) / stakeRSR);
+            stakeRate = stakeRSR == 0 ? FIX_ONE : uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
-            draftRate = draftRSR == 0 ? FIX_ONE : uint192((FIX_ONE * totalDrafts) / draftRSR);
+            draftRate = draftRSR == 0 ? FIX_ONE : uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -325,7 +325,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
-            : uint192((totalStakes * FIX_ONE) / stakeRSR);
+            : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
 
         emit ExchangeRateSet(initRate, stakeRate);
     }

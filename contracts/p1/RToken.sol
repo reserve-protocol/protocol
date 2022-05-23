@@ -21,7 +21,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Immutable: expected to be an IPFS link but could be anything
-    string public constitutionURI;
+    string public manifestoURI;
 
     // MIN_ISS_RATE: {rTok/block} 10k whole RTok
     uint192 public constant MIN_ISS_RATE = 10_000 * FIX_ONE;
@@ -30,7 +30,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     uint192 public lastIssRate; // D18{rTok/block}
     uint256 public lastIssRateBlock; // {block number}
 
-    // When the all pending issuances will have vested.
+    // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
     uint192 public allVestAt; // D18{fractional block number}
 
@@ -78,13 +78,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata constitutionURI_,
+        string calldata manifestoURI_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
+        manifestoURI = manifestoURI_;
         issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate_);
     }
@@ -123,14 +123,22 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
-        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
-
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
 
-        // Bypass queue entirely if the issuance can fit in this block
-        if (vestingEnd <= FIX_ONE * block.number && queue.left == queue.right) {
-            require(status == CollateralStatus.SOUND, "collateral not sound");
+        // Bypass queue entirely if the issuance can fit in this block and nothing blocking
+        if (
+            vestingEnd <= FIX_ONE_256 * block.number &&
+            queue.left == queue.right &&
+            status == CollateralStatus.SOUND
+        ) {
+            for (uint256 i = 0; i < erc20s.length; ++i) {
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    address(main.backingManager()),
+                    deposits[i]
+                );
+            }
 
             // Complete issuance
             _mint(issuer, amtRToken);
@@ -202,7 +210,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 before = allVestAt; // D18{block number}
         uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
-        finished = before + uint192((FIX_ONE * amtRToken) / lastIssRate);
+        finished = before + uint192((FIX_ONE_256 * amtRToken) / lastIssRate);
         allVestAt = finished;
     }
 
@@ -234,7 +242,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
-        uint256 blockNumber = FIX_ONE * block.number; // D18{block number}
+        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block number}
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
@@ -289,7 +297,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         IBasketHandler bh = main.basketHandler();
-        bh.checkBasket();
+        bh.refreshBasket();
 
         // Allow redemption during IFFY
         require(bh.status() != CollateralStatus.DISABLED, "collateral default");
@@ -301,15 +309,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
 
-        assert(baskets <= basketsNeeded_);
-
         (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
             uint192(uint192(baskets)),
             FLOOR
         );
 
-        // D18{1} = D18({qRTok} / {qRTok})
-        uint192 prorate = uint192((amount * FIX_ONE) / totalSupply());
+        // D18{1} = D18 * {qRTok} / {qRTok}
+        uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
@@ -381,18 +387,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
-        return uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply()));
+        return
+            uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
     }
 
-    // TODO this is only required for testing, can be commented out for contract size
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
     }
 
     // ==== private ====
-    /// Refund all deposits in the span [left, right); fixes up queue.left and queue.right
-    /// @custom:interaction , CEI
+    /// Refund all deposits in the span [left, right)
+    /// after: queue.left == queue.right
     function refundSpan(
         address account,
         uint256 left,
@@ -420,6 +426,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // compute total deposits to refund
         uint256[] memory amt = new uint256[](right - left);
         IssueItem storage rightItem = queue.items[right - 1];
+
+        // we could dedup this logic but it would take more SLOADS, so I think this is best
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 amt[i] = rightItem.deposits[i];
@@ -455,6 +463,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[endId - 1];
         require(rightItem.when <= 1e18 * block.number, "issuance not ready");
 
+        // we could dedup this logic but it would take more SLOADS, so this seems best
         uint256 queueLength = queue.tokens.length;
 
         uint256[] memory amtDeposits = new uint256[](queueLength);

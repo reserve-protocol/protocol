@@ -43,12 +43,12 @@ Governance functions acquire a lock at the beginning of execution, and can be ex
 - furnace.melt()
 - stRSR.payoutRewards()
 - assetRegistry.refresh()
-- basketHandler.checkBasket()
+- basketHandler.refreshBasket()
 
 Note:
 
 - `refresh` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
-- `checkBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
+- `refreshBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
 
 ## Specific areas of concern
 
@@ -59,7 +59,6 @@ In our P1 implementation both our RevenueTrader and BackingManager components co
 > The danger of containing a `delegatecall` in the code of a proxy implementation contract (among others) is that the `delegatecall` can self-destruct the proxy if the executed code contains `selfdestruct`. In this case `Multicall` executes `delegatecall` on `address(this)`, which resolves to the address of the caller contract, ie the proxy. This causes the `fallback` function to execute, which results in another `delegatecall` to the implementation contract. So we are left in a situation where the only way for a `selfdestruct` to happen is if the implementation contract itself contains a `selfdestruct`, which it does not.
 
 Note that `delegatecall` can also be dangerous for other reasons, such as transferring tokens out of the address in an unintended way. A similar argument applies in that case. It again reduces to the code contained in the implementation contract.
-
 
 ### Reentrancy Problems
 
@@ -77,6 +76,6 @@ A potential attack runs as follows:
 1. Eve subverts contract E so that E.baz() calls B.bar()
 2. Eve calls A.foo(), which calls E.baz(), which calls B.bar()
 3. B.bar() changes B's state in a way that violates A.foo()'s expectations
-4. 
+4.
 
 Main's security domain is Main plus the Components. Collateral and Trade contracts are not considered within the security domain.

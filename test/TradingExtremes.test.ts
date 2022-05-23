@@ -643,7 +643,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       }
 
       await assetRegistry.refresh()
-      await basketHandler.checkBasket()
+      await basketHandler.refreshBasket()
       await runRecapitalizationAuctions(rTokenSupply, basketSize)
     }
 

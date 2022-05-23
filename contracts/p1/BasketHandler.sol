@@ -29,12 +29,12 @@ struct BasketConfig {
 /// A reference basket that provides a dynamic definition of a basket unit (BU)
 /// Can be empty if all collateral defaults
 struct Basket {
-    IERC20[] erc20s; // Weak Invariant: after `checkBasket`, no bad collateral
+    IERC20[] erc20s; // Weak Invariant: after `refreshBasket`, no bad collateral || disabled
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
     uint32 nonce;
     uint32 timestamp;
-    bool defaulted;
-    // Invariant: defaulted XOR targetAmts == refAmts.map(amt => amt * coll.targetPerRef())
+    bool disabled;
+    // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
 }
 
 /*
@@ -53,7 +53,7 @@ library BasketLib {
         delete self.erc20s;
         self.nonce++;
         self.timestamp = uint32(block.timestamp);
-        self.defaulted = false;
+        self.disabled = false;
     }
 
     /// Set `self` equal to `other`
@@ -66,7 +66,7 @@ library BasketLib {
         }
         self.nonce++;
         self.timestamp = uint32(block.timestamp);
-        self.defaulted = other.defaulted;
+        self.disabled = other.disabled;
     }
 
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
@@ -103,9 +103,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         __Component_init(main_);
     }
 
-    /// Checks the basket for default and swaps it if necessary
+    /// Disable the basket in order to schedule a basket refresh
+    /// @custom:protected
+    function disableBasket() external {
+        require(_msgSender() == address(main.assetRegistry()), "asset registry only");
+        uint192[] memory refAmts = new uint192[](basket.erc20s.length);
+        emit BasketSet(basket.erc20s, refAmts, true);
+        basket.disabled = true;
+    }
+
+    /// Check the basket for default and swaps it if necessary
     /// @custom:refresher
-    function checkBasket() external notPaused {
+    function refreshBasket() external notPaused {
         if (status() == CollateralStatus.DISABLED) {
             _switchBasket();
         }
@@ -154,7 +163,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
-            // an ERC20 in the backup config to have its asset unregistered.
+            // an ERC20 in the backup config to have its asset altered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
@@ -174,7 +183,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() external view returns (bool) {
-        return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
+        return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
     }
 
     /// @return nonce The current basket nonce
@@ -186,7 +195,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return status_ The status of the basket
     function status() public view returns (CollateralStatus status_) {
-        if (basket.defaulted) return CollateralStatus.DISABLED;
+        if (basket.disabled) return CollateralStatus.DISABLED;
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
@@ -249,16 +258,26 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return baskets {BU} The balance of basket units held by `account`
     /// @dev Returns FIX_MAX for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
+        if (basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
+
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            uint192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account); // {tok}
-            uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
+            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
+                if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-            // {BU} = {tok} / {tok/BU}
-            if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
+                uint192 bal = coll.bal(account); // {tok}
+
+                // {tok/BU} = {ref/BU} / {ref/tok}
+                uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
+
+                // {BU} = {tok} / {tok/BU}
+                baskets = fixMin(baskets, bal.div(q));
+            } catch {
+                return FIX_ZERO;
+            }
         }
-        if (baskets == FIX_MAX) revert EmptyBasket();
+        if (baskets == FIX_MAX) return FIX_ZERO;
     }
 
     // These are effectively local variables of _switchBasket. Nothing should use its value
@@ -278,7 +297,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             targetNames.add(config.targetNames[config.erc20s[i]]);
         }
 
-        // Here, "good" collateral is non-defaulted collateral; any status other than DISABLED
+        // Here, "good" collateral is non-disabled collateral; any status other than DISABLED
         // goodWeights and totalWeights are in index-correspondence with targetNames
 
         // {target/BU} total target weight of good, prime collateral with target i
@@ -322,9 +341,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 if (goodCollateral(backup.erc20s[j])) size++;
             }
 
-            // If we need backup collateral, but there's no good backup collateral, basket default!
-            // Remove bad collateral and mark basket defaulted; pauses most protocol functions
-            if (size == 0) newBasket.defaulted = true;
+            // Remove bad collateral and mark basket disabled; pauses most protocol functions
+            if (size == 0) newBasket.disabled = true;
 
             // Set backup basket weights
             uint256 assigned = 0;
@@ -349,7 +367,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
-        emit BasketSet(basket.erc20s, refAmts, basket.defaulted);
+        emit BasketSet(basket.erc20s, refAmts, basket.disabled);
     }
 
     /// Good collateral is both (i) registered, (ii) collateral, and (iii) not DISABLED

@@ -72,7 +72,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory constitutionURI_,
+        string memory manifestoURI_,
         uint192 issuanceRate_
     ) external;
 
