@@ -1,30 +1,30 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `228369`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `226689`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `230927`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `229247`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `230927`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `229247`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `231053`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `229373`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `309818`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `308138`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `263310`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `261630`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `263310`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `261630`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `263524`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `261844`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `745262`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `744632`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `952532`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `950222`;
 
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `213275`;
 
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `197639`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `743245`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `742615`;
 
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `49284`;
 
