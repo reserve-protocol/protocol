@@ -16,18 +16,18 @@ import "contracts/libraries/Fixed.sol";
  * @notice The backing manager holds + manages the backing for an RToken
  */
 contract BackingManagerP0 is TradingP0, IBackingManager {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20 for IERC20;
 
     uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
-    int192 public backingBuffer; // {%} how much extra backing collateral to keep
+    uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
         uint32 tradingDelay_,
-        int192 backingBuffer_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 backingBuffer_,
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) public initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
@@ -36,14 +36,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
-    function grantRTokenAllowance(IERC20 erc20) external notPaused {
+    /// @custom:interaction
+    function grantRTokenAllowance(IERC20 erc20) external interaction {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Mointain the overall backing policy; handout assets otherwise
-    /// Collective Action
-    function manageTokens(IERC20[] calldata erc20s) external notPaused {
+    /// @custom:interaction
+    function manageTokens(IERC20[] calldata erc20s) external interaction {
         // Call keepers before
         main.poke();
 
@@ -128,14 +129,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
 
         // Mint revenue RToken
-        int192 needed; // {BU}
+        uint192 needed; // {BU}
         {
             IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
-            int192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
+            uint192 held = main.basketHandler().basketsHeldBy(address(this)); // {BU}
             if (held.gt(needed)) {
                 int8 decimals = int8(rToken.decimals());
-                int192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
+                uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
                 // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
                 uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
@@ -154,8 +155,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         for (uint256 i = 0; i < erc20s.length; i++) {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
-            int192 bal = asset.bal(address(this)); // {tok}
-            int192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
+            uint192 bal = asset.bal(address(this)); // {tok}
+            uint192 req = needed.mul(main.basketHandler().quantity(erc20s[i]), CEIL);
 
             if (bal.gt(req)) {
                 // delta: {qTok}
@@ -189,8 +190,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         (
             IAsset surplus,
             ICollateral deficit,
-            int192 surplusAmount,
-            int192 deficitAmount
+            uint192 surplusAmount,
+            uint192 deficitAmount
         ) = TradingLibP0.largestSurplusAndDeficit(useFallenTarget);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
@@ -228,12 +229,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IStRSR stRSR = main.stRSR();
         IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
 
-        (, ICollateral deficit, , int192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
+        (, ICollateral deficit, , uint192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
             false
         );
         if (address(deficit) == address(0)) return (false, req);
 
-        int192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
+        uint192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
 
         (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
             rsrAsset,
@@ -261,12 +262,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     // === Setters ===
 
-    function setTradingDelay(uint32 val) external onlyOwner {
+    /// @custom:governance
+    function setTradingDelay(uint32 val) external governance {
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
-    function setBackingBuffer(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setBackingBuffer(uint192 val) external governance {
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }

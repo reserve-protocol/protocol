@@ -66,14 +66,14 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     );
 
     /// Emitted whenever the exchange rate changes
-    event ExchangeRateSet(int192 indexed oldVal, int192 indexed newVal);
+    event ExchangeRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
     event AllBalancesReset(uint256 indexed newEra);
 
     event UnstakingDelaySet(uint32 indexed oldVal, uint32 indexed newVal);
     event RewardPeriodSet(uint32 indexed oldVal, uint32 indexed newVal);
-    event RewardRatioSet(int192 indexed oldVal, int192 indexed newVal);
+    event RewardRatioSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization
     function init(
@@ -82,32 +82,36 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         string memory symbol_,
         uint32 unstakingDelay_,
         uint32 rewardPeriod_,
-        int192 rewardRatio_
+        uint192 rewardRatio_
     ) external;
+
+    /// Gather and payout rewards from rsrTrader
+    /// @custom:interaction
+    function payoutRewards() external;
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param amount {qRSR}
-    /// @custom:action
+    /// @custom:interaction
     function stake(uint256 amount) external;
 
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param amount {qStRSR}
-    /// @custom:action
+    /// @custom:interaction
     function unstake(uint256 amount) external;
 
-    /// Complete delayed unstaking for the account, up to (but not including!) `endId`.
-    /// @custom:completion
+    /// Complete delayed unstaking for the account, up to (but not including!) `endId`
+    /// @custom:interaction
     function withdraw(address account, uint256 endId) external;
+
+    /// Seize RSR, only callable by main.backingManager()
+    /// @custom:protected
+    function seizeRSR(uint256 amount) external;
 
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
 
-    /// Seize RSR, only callable by main.backingManager()
-    function seizeRSR(uint256 amount) external;
-
-    /// Gather and payout rewards from rsrTrader. State Keeper.
-    /// @custom:refresher
-    function payoutRewards() external;
+    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    function exchangeRate() external view returns (uint192);
 }
 
 interface TestIStRSR is IStRSR {
@@ -115,9 +119,9 @@ interface TestIStRSR is IStRSR {
 
     function setRewardPeriod(uint32) external;
 
-    function rewardRatio() external view returns (int192);
+    function rewardRatio() external view returns (uint192);
 
-    function setRewardRatio(int192) external;
+    function setRewardRatio(uint192) external;
 
     function unstakingDelay() external view returns (uint32);
 
@@ -128,5 +132,5 @@ interface TestIStRSR is IStRSR {
     function decreaseAllowance(address, uint256) external returns (bool);
 
     /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
-    function exchangeRate() external view returns (int192);
+    function exchangeRate() external view returns (uint192);
 }

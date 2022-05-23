@@ -27,10 +27,10 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         address indexed issuer,
         uint256 indexed index,
         uint256 indexed amount,
-        int192 baskets,
+        uint192 baskets,
         address[] erc20s,
         uint256[] quantities,
-        int192 blockAvailableAt
+        uint192 blockAvailableAt
     );
 
     /// Emitted when an RToken issuance is canceled, such as during a default
@@ -53,19 +53,19 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
     /// @param baskets The corresponding number of baskets
-    event Redemption(address indexed redeemer, uint256 indexed amount, int192 indexed baskets);
+    event Redemption(address indexed redeemer, uint256 indexed amount, uint192 indexed baskets);
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed
     /// @param newBasketsNeeded New number of basket units needed
-    event BasketsNeededChanged(int192 oldBasketsNeeded, int192 newBasketsNeeded);
+    event BasketsNeededChanged(uint192 oldBasketsNeeded, uint192 newBasketsNeeded);
 
     /// Emitted when RToken is melted, i.e the RToken supply is decreased but basketsNeeded is not
     /// @param amount {qRTok}
     event Melted(uint256 amount);
 
     /// Emitted when the IssuanceRate is set
-    event IssuanceRateSet(int192 indexed oldVal, int192 indexed newVal);
+    event IssuanceRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization
     function init(
@@ -73,12 +73,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         string memory name_,
         string memory symbol_,
         string memory constitutionURI_,
-        int192 issuanceRate_
+        uint192 issuanceRate_
     ) external;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qRTok} The quantity of RToken to issue
-    /// @custom:action
+    /// @custom:interaction
     function issue(uint256 amount) external;
 
     /// Cancels a vesting slow issuance of _msgSender
@@ -86,12 +86,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// If earliest == false, cancel id if endId <= id
     /// @param endId One edge of the issuance range to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:action
+    /// @custom:interaction
     function cancel(uint256 endId, bool earliest) external;
 
     /// Completes vested slow issuances for the account, up to endId.
     /// @param account The address of the account to vest issuances for
-    /// @custom:completion
+    /// @custom:interaction
     function vest(address account, uint256 endId) external;
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -100,12 +100,13 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
-    /// @custom:action
+    /// @custom:interaction
     function redeem(uint256 amount) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
+    /// @custom:protected
     function mint(address recipient, uint256 amount) external;
 
     /// Melt a quantity of RToken from the caller's account
@@ -115,19 +116,20 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Set the number of baskets needed directly, callable only by the BackingManager
     /// @param basketsNeeded {BU} The number of baskets to target
     ///                      needed range: pretty interesting
-    function setBasketsNeeded(int192 basketsNeeded) external;
+    /// @custom:protected
+    function setBasketsNeeded(uint192 basketsNeeded) external;
 
     /// @return {BU} How many baskets are being targeted
-    function basketsNeeded() external view returns (int192);
+    function basketsNeeded() external view returns (uint192);
 
     /// @return p {UoA/rTok} The price of 1 whole RToken in the unit of account
-    function price() external view returns (int192 p);
+    function price() external view returns (uint192 p);
 }
 
 interface TestIRToken is IRToken {
     /// Set the issuance rate as a % of RToken supply
-    function setIssuanceRate(int192) external;
+    function setIssuanceRate(uint192) external;
 
     /// @return {%} The issuance rate as a percentage of the RToken supply
-    function issuanceRate() external view returns (int192);
+    function issuanceRate() external view returns (uint192);
 }

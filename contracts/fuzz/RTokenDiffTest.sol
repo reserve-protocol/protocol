@@ -36,9 +36,9 @@ contract MockBackingManager is IBackingManager, ComponentMock {
     function init(
         IMain,
         uint32,
-        int192,
-        int192,
-        int192
+        uint192,
+        uint192,
+        uint192
     ) external {}
 
     function grantRTokenAllowance(IERC20) external {}
@@ -55,18 +55,18 @@ contract MockBackingManager is IBackingManager, ComponentMock {
     }
 
     /// @return {%} The maximum trade slippage acceptable
-    function maxTradeSlippage() external view virtual override returns (int192) {
+    function maxTradeSlippage() external view virtual override returns (uint192) {
         return 1e16;
     }
 
     /// @return {UoA} The smallest amount of value worth trading
-    function dustAmount() external view virtual override returns (int192) {
+    function dustAmount() external view virtual override returns (uint192) {
         return 2e20;
     }
 }
 
 contract MockBasketHandler is IBasketHandler, ComponentMock {
-    using FixLib for int192;
+    using FixLib for uint192;
     /* The mock basket we're running with, here, is always either 100% A or 100% B.
      * Each is always assumed to have a price of 1 UoA.
      * We can (and maybe should) build something with wider behavior
@@ -92,7 +92,7 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// Set the prime basket
-    function setPrimeBasket(IERC20[] memory, int192[] memory) external {}
+    function setPrimeBasket(IERC20[] memory, uint192[] memory) external {}
 
     /// Set the backup configuration for a given target
     function setBackupConfig(
@@ -122,14 +122,14 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// @return {tok/BU} The whole token quantity of token in the reference basket
-    function quantity(IERC20 erc20) external view returns (int192) {
+    function quantity(IERC20 erc20) external view returns (uint192) {
         return token() == erc20 ? FIX_ONE : FIX_ZERO;
     }
 
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(int192 amount, RoundingMode rounding)
+    function quote(uint192 amount, RoundingMode rounding)
         external
         view
         returns (address[] memory erc20s, uint256[] memory quantities)
@@ -141,13 +141,13 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     }
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
-    function basketsHeldBy(address acct) external view returns (int192 baskets) {
+    function basketsHeldBy(address acct) external view returns (uint192 baskets) {
         int8 decimals = int8(IERC20Metadata(address(token())).decimals());
         baskets = shiftl_toFix(token().balanceOf(acct), -decimals);
     }
 
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price() external pure returns (int192 p) {
+    function price() external pure returns (uint192 p) {
         return FIX_ONE;
     }
 
@@ -160,7 +160,7 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
 }
 
 contract RTokenTestSystem is MainMock {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     ERC20Mock public baseA;
     ERC20Mock public baseB;
@@ -193,12 +193,6 @@ contract RTokenTestSystem is MainMock {
         rToken = rToken_;
         rToken.init(this, "RToken", "RTK", "rtoken://1", params.issuanceRate);
     }
-
-    function poke() public virtual override {
-        assetRegistry.forceUpdates();
-        basketHandler.checkBasket(); // maaaaaaybe
-        // sometimes tokens
-    }
 }
 
 contract RTokenP0Test is RTokenP0 {
@@ -214,7 +208,7 @@ contract RTokenP1Test is RTokenP1 {
 }
 
 contract RTokenDiffTest {
-    using FixLib for int192;
+    using FixLib for uint192;
     address[] public USERS = [address(0x10000), address(0x20000), address(0x30000)];
 
     RTokenTestSystem public p0;
@@ -283,14 +277,14 @@ contract RTokenDiffTest {
         p1.rToken().mint(recipient, amount);
     }
 
-    function setBasketsNeeded(int192 basketsNeeded) external fromBackingMgr {
+    function setBasketsNeeded(uint192 basketsNeeded) external fromBackingMgr {
         basketsNeeded %= 1e36;
         p0.rToken().setBasketsNeeded(basketsNeeded);
         p1.rToken().setBasketsNeeded(basketsNeeded);
     }
 
     // Auth on these is that the caller needs to be main.owner. That... should be this contract?
-    function setIssuanceRate(int192 val) external {
+    function setIssuanceRate(uint192 val) external {
         val %= 1e24;
         assert(p0.owner() == address(this)); // hope but verify
         assert(p1.owner() == address(this));

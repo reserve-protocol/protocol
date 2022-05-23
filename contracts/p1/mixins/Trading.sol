@@ -13,7 +13,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 /// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // All trades
@@ -21,14 +21,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     uint32 public tradesOpen;
 
     // === Governance params ===
-    int192 public maxTradeSlippage; // {%}
-    int192 public dustAmount; // {UoA}
+    uint192 public maxTradeSlippage; // {%}
+    uint192 public dustAmount; // {UoA}
 
     // The latest end time for any trade in `trades`.
     uint32 private latestEndtime;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
+    function __Trading_init(uint192 maxTradeSlippage_, uint192 dustAmount_)
         internal
         onlyInitializing
     {
@@ -37,8 +37,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:refresher
-    function settleTrade(IERC20 sell) public notPaused nonReentrant {
+    /// @custom:interaction
+    function settleTrade(IERC20 sell) external interaction {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -47,6 +47,13 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
         tradesOpen--;
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
+    }
+
+    /// Claim all rewards and sweep to BackingManager
+    /// Collective Action
+    /// @custom:interaction
+    function claimAndSweepRewards() external interaction {
+        RewardableLibP1.claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
@@ -65,20 +72,16 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
         emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
-    /// Claim all rewards and sweep to BackingManager
-    /// Collective Action
-    function claimAndSweepRewards() external notPaused nonReentrant {
-        RewardableLibP1.claimAndSweepRewards();
-    }
-
     // === Setters ===
 
-    function setMaxTradeSlippage(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setMaxTradeSlippage(uint192 val) external governance {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
-    function setDustAmount(int192 val) external onlyOwner {
+    /// @custom:governance
+    function setDustAmount(uint192 val) external governance {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

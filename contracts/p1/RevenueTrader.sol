@@ -11,15 +11,15 @@ import "contracts/p1/mixins/TradingLib.sol";
 /// single target asset and sends this asset to the Distributor.
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTraderP1 is TradingP1, IRevenueTrader {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IERC20 public tokenToBuy;
 
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
@@ -28,8 +28,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
-    /// @custom:action
-    function manageToken(IERC20 erc20) external notPaused nonReentrant {
+    /// @custom:interaction
+    function manageToken(IERC20 erc20) external interaction {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));

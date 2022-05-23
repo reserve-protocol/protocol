@@ -8,12 +8,15 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeP1,
   StaticATokenMock,
+  StRSRP1,
+  TestIStRSR,
   TestIMain,
   TestIRToken,
   USDCMock,
 } from '../typechain'
-import { Collateral, defaultFixture } from './fixtures'
+import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -46,6 +49,7 @@ describe('Facade contract', () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
+  let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -59,7 +63,7 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, compToken, aaveToken, basket, facade, main, rToken } = await loadFixture(
+    ;({ stRSR, rsr, compToken, aaveToken, basket, facade, main, rToken } = await loadFixture(
       defaultFixture
     ))
 
@@ -90,7 +94,7 @@ describe('Facade contract', () => {
       initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
 
       // Mint Tokens
-      initialBal = bn('1000e18')
+      initialBal = bn('10000000000e18')
       await token.connect(owner).mint(addr1.address, initialBal)
       await usdc.connect(owner).mint(addr1.address, initialBal)
       await aToken.connect(owner).mint(addr1.address, initialBal)
@@ -116,8 +120,8 @@ describe('Facade contract', () => {
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(bn('3900e18'))
-      expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(bn('4000e18'))
+      expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(bn('39999999900e18'))
+      expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(bn('40000000000e18'))
       expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
     })
 
@@ -156,5 +160,51 @@ describe('Facade contract', () => {
     it('Should return totalAssetValue correctly', async () => {
       expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
     })
+
+    // P1 only
+    if (IMPLEMENTATION == Implementation.P1) {
+      let facadeP1: FacadeP1
+      let stRSRP1: StRSRP1
+
+      beforeEach(async () => {
+        facadeP1 = await ethers.getContractAt('FacadeP1', facade.address)
+        stRSRP1 = await ethers.getContractAt('StRSRP1', stRSR.address)
+      })
+
+      it('Should return pending issuances', async () => {
+        const largeIssueAmount = initialBal.div(10)
+
+        // Issue rTokens
+        await rToken.connect(addr1).issue(largeIssueAmount)
+        await rToken.connect(addr1).issue(largeIssueAmount.add(1))
+        const pendings = await facadeP1.pendingIssuances(addr1.address)
+
+        expect(pendings.length).to.eql(2)
+        expect(pendings[0][0]).to.eql(bn(0)) // index
+        expect(pendings[0][2]).to.eql(largeIssueAmount) // amount
+
+        expect(pendings[1][0]).to.eql(bn(1)) // index
+        expect(pendings[1][2]).to.eql(largeIssueAmount.add(1)) // amount
+      })
+
+      it('Should return pending unstakings', async () => {
+        const unstakeAmount = bn('10000e18')
+        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
+
+        // Stake
+        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(10))
+        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(10))
+        await stRSRP1.connect(addr1).unstake(unstakeAmount)
+        await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
+
+        const pendings = await facadeP1.pendingUnstakings(addr1.address)
+        expect(pendings.length).to.eql(2)
+        expect(pendings[0][0]).to.eql(bn(0)) // index
+        expect(pendings[0][2]).to.eql(unstakeAmount) // amount
+
+        expect(pendings[1][0]).to.eql(bn(1)) // index
+        expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
+      })
+    }
   })
 })

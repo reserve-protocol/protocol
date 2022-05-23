@@ -13,11 +13,11 @@ import "./IRToken.sol";
  */
 interface IFacade {
     /// Prompt all traders to run auctions
-    /// @custom:action
+    /// @custom:interaction
     function runAuctionsForAllTraders() external;
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:action
+    /// @custom:interaction
     function claimRewards() external;
 
     /// @return How many RToken `account` can issue given current holdings
@@ -31,7 +31,7 @@ interface IFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (int192 total);
+    function totalAssetValue() external returns (uint192 total);
 
     /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
@@ -40,4 +40,24 @@ interface IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens() external view returns (address[] memory tokens);
+}
+
+interface IFacadeP1 is IFacade {
+    struct Pending {
+        uint256 index;
+        uint256 availableAt;
+        uint256 amount;
+    }
+
+    // ===
+
+    /// @param account The account for the query
+    /// @return All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(address account) external view returns (Pending[] memory);
+
+    /// @param account The account for the query
+    /// @return All the pending StRSR unstakings for an account
+    /// @custom:view
+    function pendingUnstakings(address account) external view returns (Pending[] memory);
 }

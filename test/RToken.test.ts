@@ -134,7 +134,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       if (issuance.blockAvailableAt) {
         expect(when.toString()).to.eql(issuance.blockAvailableAt.toString())
       }
-      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gt(index)
+      if (issuance.processed !== undefined && issuance.processed) expect(left).to.gte(index)
       if (issuance.processed !== undefined && !issuance.processed) expect(left).to.lte(index)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
@@ -211,12 +211,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Try to update value if not BackingManager
       await expect(rToken.connect(owner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-        'backing manager only'
+        'not backing manager'
       )
 
-      await whileImpersonating(main.address, async (bhSigner) => {
+      await whileImpersonating(assetRegistry.address, async (bhSigner) => {
         await expect(rToken.connect(bhSigner).setBasketsNeeded(fp('1'))).to.be.revertedWith(
-          'backing manager only'
+          'not backing manager'
         )
       })
 
@@ -241,7 +241,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'Component: caller is not the owner'
+        'prev caller is not the owner'
       )
 
       // Check value did not change
@@ -515,6 +515,27 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
+    })
+
+    it('Should not vest RTokens early', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('issuance not ready')
+
+      await advanceBlocks(1)
+
+      // Should vest now
+      await rToken.vest(addr1.address, 1)
     })
 
     it('Should return maxIssuable correctly', async () => {
@@ -1241,15 +1262,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount))
     })
 
-    it('Should allow to mint tokens when called by Auctioneer', async () => {
+    it('Should allow to mint tokens when called by backing manager', async () => {
       // Mint tokens
       const mintAmount: BigNumber = bn('10e18')
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-      await whileImpersonating(backingManager.address, async (auctioneerSigner) => {
-        await rToken.connect(auctioneerSigner).mint(addr1.address, mintAmount)
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await rToken.connect(signer).mint(addr1.address, mintAmount)
       })
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(mintAmount))
@@ -1257,8 +1278,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Trying to mint with another account will fail
       await expect(rToken.connect(other).mint(addr1.address, mintAmount)).to.be.revertedWith(
-        'backing manager only'
+        'not backing manager'
       )
+
+      // Trying to mint from a non-backing manager component should fail
+      await whileImpersonating(basketHandler.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(addr1.address, mintAmount)).to.be.revertedWith(
+          'not backing manager'
+        )
+      })
     })
   })
   context(`Extreme Values`, () => {

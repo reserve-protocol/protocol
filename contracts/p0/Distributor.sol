@@ -9,7 +9,7 @@ import "contracts/p0/mixins/Component.sol";
 
 contract DistributorP0 is ComponentP0, IDistributor {
     using SafeERC20 for IERC20;
-    using FixLib for int192;
+    using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;
@@ -29,7 +29,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
-    function setDistribution(address dest, RevenueShare memory share) external onlyOwner {
+    function setDistribution(address dest, RevenueShare memory share) external governance {
         _setDistribution(dest, share);
     }
 

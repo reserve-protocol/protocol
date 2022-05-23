@@ -15,13 +15,13 @@ interface IRevenueTrader is IComponent, ITrading {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        int192 maxTradeSlippage_,
-        int192 dustAmount_
+        uint192 maxTradeSlippage_,
+        uint192 dustAmount_
     ) external;
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
-    /// @custom:action
+    /// @custom:interaction
     function manageToken(IERC20 sell) external;
 }
 

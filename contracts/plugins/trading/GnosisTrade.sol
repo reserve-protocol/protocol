@@ -16,7 +16,7 @@ enum TradeStatus {
 
 /// Trade contract against the Gnosis EasyAuction mechanism
 contract GnosisTrade is ITrade {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     IGnosis public gnosis;
@@ -33,7 +33,7 @@ contract GnosisTrade is ITrade {
     IERC20Metadata public buy;
     uint256 public sellAmount; // {qTok}
     uint32 public endTime;
-    int192 public worstCasePrice; // {buyTok/sellTok}
+    uint192 public worstCasePrice; // {buyTok/sellTok}
 
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
@@ -108,7 +108,7 @@ contract GnosisTrade is ITrade {
             soldAmt = sellAmount - sellBal;
 
             // {buyTok/sellTok}
-            int192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
+            uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
                 shiftl_toFix(soldAmt, -int8(sell.decimals()))
             );
             if (clearingPrice.lt(worstCasePrice)) {

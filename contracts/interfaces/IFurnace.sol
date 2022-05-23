@@ -13,7 +13,7 @@ interface IFurnace is IComponent {
     function init(
         IMain main_,
         uint32 period_,
-        int192 ratio_
+        uint192 ratio_
     ) external;
 
     /// Emitted when the melting period is changed
@@ -29,16 +29,16 @@ interface IFurnace is IComponent {
     /// Emitted when the melting ratio is changed
     /// @param oldRatio The old ratio
     /// @param newRatio The new ratio
-    event RatioSet(int192 indexed oldRatio, int192 indexed newRatio);
+    event RatioSet(uint192 indexed oldRatio, uint192 indexed newRatio);
 
-    function ratio() external view returns (int192);
+    function ratio() external view returns (uint192);
 
-    /// @custom:governance
     ///    Needed value range: [0, 1], granularity 1e-9
-    function setRatio(int192) external;
+    /// @custom:governance
+    function setRatio(uint192) external;
 
     /// Performs any RToken melting that has vested since the last payout.
-    /// @custom:refresher
+    /// @custom:interaction
     function melt() external;
 }
 

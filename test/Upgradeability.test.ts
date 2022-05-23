@@ -416,10 +416,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await mainV2.newValue()).to.equal(0)
       await mainV2.connect(owner).setNewValue(bn(1000))
       expect(await mainV2.newValue()).to.equal(bn(1000))
-
-      // Call new poke - even if paused
-      await mainV2.connect(owner).pause()
-      await expect(mainV2.poke()).to.emit(mainV2, 'PokedV2')
     })
 
     it('Should upgrade correctly - AssetRegistry', async () => {

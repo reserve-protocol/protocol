@@ -4,6 +4,52 @@
 
 TODO
 
+## Function Ontology
+
+All system-external functions are classified into one of the following 3 categories:
+
+1. `@custom:interaction` - Action. Disallowed while paused. Per-contract reentrant lock applied.
+2. `@custom:governance` - Governance change. Allowed while paused.
+3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `forceUpdates`.
+
+All execution flows through the protocol should contain AT MOST a single (1) action or (2) governance change.
+
+Functions that are not system-external, but merely contract-external, are tagged with `@custom:protected`. It is governance's job to ensure a malicious contract is never allowed to masquerade as a component and call one of these. They do not execute when paused.
+
+### `@custom:interaction`
+
+- stRSR.stake()
+- stRSR.unstake()
+- stRSR.withdraw()
+- rToken.issue()
+- rToken.vest()
+- rToken.cancel()
+- rToken.redeem()
+- {rsrTrader,rTokenTrader,backingManager}.settleTrade()
+- backingManager.grantRTokenAllowances()
+- backingManager.manageTokens()
+- {rsrTrader,rTokenTrader}.manageToken()
+- \*.claimAndSweepRewards()
+
+### `@custom:governance`
+
+- set\*()
+  ...there are many and they are not worth naming individually
+
+Governance functions acquire a lock at the beginning of execution, and can be executed while paused.
+
+### `@custom:refresher`
+
+- furnace.melt()
+- stRSR.payoutRewards()
+- assetRegistry.forceUpdates()
+- basketHandler.checkBasket()
+
+Note:
+
+- `forceUpdates` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
+- `checkBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
+
 ## Specific areas of concern
 
 ### Multicall: delegateCall from proxy implementation
@@ -15,25 +61,3 @@ In our P1 implementation both our RevenueTrader and BackingManager components co
 ```
 
 Note that `delegatecall` can also be dangerous for other reasons, such as transferring tokens out of the address in an unintended way. A similar argument applies in that case. It again reduces to the code contained in the implementation contract.
-
-### Reentrancy
-
-#### Problem classification
-
-Definition: Main's security domain is Main plus the Components. Collateral and Trade contracts are not considered within the security domain.
-
-```
-1. Reentrancies that terminate within main's security domain
-2. Reentrancies that terminate outside main's security domain
-    A. In a trading platform (e.g Gnosis)
-    B. In a defi protocol (e.g Compound)
-    C. In a registered ERC20 token contract
-```
-
-#### Solution
-
-Reentrancies of type (1) do not require a fix, because if a malicious contract is inside our security domain then we have other problems.
-
-For reentrancies of type (2), we have placed `nonReentrant` modifiers at all external functions that contain necessary reentrancy risk. Since `forceUpdates` _must_ exist at the top of many of our external functions, and `CTokenFiatCollateral` poses a system-level risk of type (2B), this means _most_ of our external functions contain the `nonReentrant` modifier.
-
-Contracts not within main's security domain (Collateral, Trade) do not contain `nonReentrant` modifiers because they cannot be considered trusted in the first place. We do not want to push a correctness constraint out to governance if we can.

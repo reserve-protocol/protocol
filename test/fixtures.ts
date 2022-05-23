@@ -509,7 +509,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     )
 
     // Facade - Can use dummy data in constructor as only logic will be used
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP1')
     const facadeImpl: Facade = <Facade>await FacadeFactory.deploy(ZERO_ADDRESS)
 
     // Setup Implementation addresses

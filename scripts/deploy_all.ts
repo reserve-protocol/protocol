@@ -1,6 +1,7 @@
+/* eslint-disable no-process-exit */
 import hre from 'hardhat'
-import { getChainId } from '../../common/blockchain-utils'
-import { networkConfig } from '../../common/configuration'
+import { getChainId } from '../common/blockchain-utils'
+import { networkConfig } from '../common/configuration'
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners()
@@ -14,7 +15,7 @@ async function main() {
   console.log(`Starting full deployment on network ${hre.network.name} (${chainId})`)
   console.log(`Deployer account: ${deployer.address}\n`)
 
-  await hre.run('P0-deploy')
+  await hre.run('deploy')
 }
 
 main()

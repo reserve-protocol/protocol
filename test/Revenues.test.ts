@@ -168,7 +168,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('Component: caller is not the owner')
+      ).to.be.revertedWith('prev caller is not the owner')
 
       // Update with owner - Set f = 1
       await expect(
@@ -1333,10 +1333,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Attempt to distribute COMP token
-        await expect(
-          distributor.distribute(compToken.address, backingManager.address, rewardAmountCOMP)
-        ).to.be.revertedWith('RSR or RToken')
-
+        await whileImpersonating(basketHandler.address, async (signer) => {
+          await expect(
+            distributor
+              .connect(signer)
+              .distribute(compToken.address, backingManager.address, rewardAmountCOMP)
+          ).to.be.revertedWith('RSR or RToken')
+        })
         //  Check nothing changed
         expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)

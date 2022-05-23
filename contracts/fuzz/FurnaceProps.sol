@@ -24,7 +24,7 @@ contract RTokenMock is ERC20Mock {
 }
 
 contract FurnaceP0TestProps {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     MainMock public main;
     FurnaceP0 public furn1;
@@ -50,7 +50,7 @@ contract FurnaceP0TestProps {
         furn1.init(IMain(address(main)), params.rewardPeriod, params.rewardRatio);
         furn2.init(IMain(address(main)), params.rewardPeriod, params.rewardRatio);
 
-        setFunds(1e18);
+        setFunds(FIX_ONE);
         furn1.melt();
         furn2.melt();
     }
@@ -64,7 +64,7 @@ contract FurnaceP0TestProps {
         furn2.setPeriod(period);
     }
 
-    function setRatio(int192 ratio) public {
+    function setRatio(uint192 ratio) public {
         // restrict fix values to (0, 1)
         furn1.melt();
         furn2.melt();

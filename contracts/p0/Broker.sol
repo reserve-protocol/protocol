@@ -36,26 +36,29 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
+    /// @custom:protected
     function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
+        address caller = _msgSender();
         require(
-            _msgSender() == address(main.backingManager()) ||
-                _msgSender() == address(main.rsrTrader()) ||
-                _msgSender() == address(main.rTokenTrader()),
+            caller == address(main.backingManager()) ||
+                caller == address(main.rsrTrader()) ||
+                caller == address(main.rTokenTrader()),
             "only traders"
         );
 
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
-        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
-        trade.init(this, _msgSender(), gnosis, auctionLength, req);
+        req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
+        trade.init(this, caller, gnosis, auctionLength, req);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
+    /// @custom:protected
     function reportViolation() external notPaused {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
@@ -64,12 +67,14 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // === Setters ===
 
-    function setAuctionLength(uint32 newAuctionLength) external onlyOwner {
+    /// @custom:governance
+    function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }
 
-    function setDisabled(bool disabled_) external onlyOwner {
+    /// @custom:governance
+    function setDisabled(bool disabled_) external governance {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }

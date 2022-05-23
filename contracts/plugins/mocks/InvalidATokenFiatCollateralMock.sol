@@ -7,14 +7,14 @@ import "contracts/plugins/assets/abstract/Collateral.sol";
 import "contracts/libraries/Fixed.sol";
 
 contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IERC20 public override rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -35,8 +35,8 @@ contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
@@ -57,7 +57,7 @@ contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
     }
 
     /// Dummy implementation
-    function price() public view virtual returns (int192) {
+    function price() public view virtual returns (uint192) {
         return FIX_ONE;
     }
 
