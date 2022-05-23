@@ -180,7 +180,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return Whether it holds enough basket units of collateral
     function fullyCapitalized() external view returns (bool) {
-        return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
+        return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
     }
 
     /// @return nonce The current basket nonce

@@ -125,7 +125,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // Bypass queue entirely if the issuance can fit in this block and nothing blocking
         if (
-            vestingEnd <= FIX_ONE * block.number &&
+            vestingEnd <= FIX_ONE_256 * block.number &&
             queue.left == queue.right &&
             status == CollateralStatus.SOUND
         ) {
@@ -200,7 +200,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 before = allVestAt; // D18{block number}
         uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
-        finished = before + uint192((FIX_ONE * amtRToken) / lastIssRate);
+        finished = before + uint192((FIX_ONE_256 * amtRToken) / lastIssRate);
         allVestAt = finished;
     }
 
@@ -227,7 +227,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
-        uint256 blockNumber = FIX_ONE * block.number; // D18{block number}
+        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block number}
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
@@ -297,8 +297,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             FLOOR
         );
 
-        // D18{1} = D18({qRTok} / {qRTok})
-        uint192 prorate = uint192((amount * FIX_ONE) / totalSupply());
+        // D18{1} = D18 * {qRTok} / {qRTok}
+        uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
@@ -367,7 +367,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
-        return uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply()));
+        return
+            uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
     }
 
     // TODO this is only required for testing, can be commented out for contract size
