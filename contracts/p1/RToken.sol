@@ -30,7 +30,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     uint192 public lastIssRate; // D18{rTok/block}
     uint256 public lastIssRateBlock; // {block number}
 
-    // When the all pending issuances will have vested.
+    // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
     uint192 public allVestAt; // D18{fractional block number}
 
@@ -123,9 +123,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
 
-        // Bypass queue entirely if the issuance can fit in this block
-        if (vestingEnd <= FIX_ONE * block.number && queue.left == queue.right) {
-            require(status == CollateralStatus.SOUND, "collateral not sound");
+        // Bypass queue entirely if the issuance can fit in this block and nothing blocking
+        if (
+            vestingEnd <= FIX_ONE * block.number &&
+            queue.left == queue.right &&
+            status == CollateralStatus.SOUND
+        ) {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,

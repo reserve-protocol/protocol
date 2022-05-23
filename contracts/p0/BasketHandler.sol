@@ -251,7 +251,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
                 // {BU} = {tok} / {tok/BU}
-                if (q.gt(FIX_ZERO)) baskets = fixMin(baskets, bal.div(q));
+                if (q.eq(FIX_ZERO)) return FIX_ZERO;
+                else baskets = fixMin(baskets, bal.div(q));
             } catch {
                 return FIX_ZERO;
             }
