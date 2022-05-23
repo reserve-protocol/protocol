@@ -43,12 +43,12 @@ Governance functions acquire a lock at the beginning of execution, and can be ex
 - furnace.melt()
 - stRSR.payoutRewards()
 - assetRegistry.forceUpdates()
-- basketHandler.checkBasket()
+- basketHandler.refreshBasket()
 
 Note:
 
 - `forceUpdates` is a _strong_ refresher; we can even perform it while the system is paused. It's a refresher outside our system in some sense.
-- `checkBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
+- `refreshBasket` is not _quite_ a refresher as it can cause other actions to cause differently depending on when it is called. It's pretty close though. Other functions should simply revert if they require a valid basket to perform their function.
 
 ## Specific areas of concern
 
