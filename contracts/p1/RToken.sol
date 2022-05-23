@@ -93,7 +93,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction CEI
     function issue(uint256 amtRToken) external interaction {
-        // ==== Refreshers ====
+        // == Refresh ==
         main.assetRegistry().refresh();
 
         // Refund issuances against old baskets
@@ -278,9 +278,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// @custom:interaction RCEI
+    /// @custom:interaction CEI
     function redeem(uint256 amount) external interaction {
-        // == Refreshers ==
+        // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==
