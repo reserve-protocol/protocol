@@ -121,8 +121,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Send excess assets to the RSR and RToken traders
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         IBasketHandler basketHandler = main.basketHandler();
-        // TODO can we get rid of this eventually?
-        assert(basketHandler.status() == CollateralStatus.SOUND);
         address rsrTrader = address(main.rsrTrader());
         address rTokenTrader = address(main.rTokenTrader());
 
@@ -193,7 +191,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // TODO this might be the one assert we actually keep
         assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
-        assert(main.basketHandler().fullyCapitalized()); // TODO can be deleted after testing
     }
 
     // === Setters ===

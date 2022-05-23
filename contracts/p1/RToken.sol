@@ -371,7 +371,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
     }
 
-    // TODO this is only required for testing, can be commented out for contract size
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
