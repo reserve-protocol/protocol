@@ -37,14 +37,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function grantRTokenAllowance(IERC20 erc20) external interaction {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function manageTokens(IERC20[] calldata erc20s) external interaction {
         main.assetRegistry().refresh();
 
@@ -103,7 +103,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Send excess assets to the RSR and RToken traders
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         IBasketHandler basketHandler = main.basketHandler();
         address rsrTrader = address(main.rsrTrader());

@@ -39,7 +39,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function settleTrade(IERC20 sell) external interaction {
         ITrade trade = trades[sell];
         if (address(trade) == address(0) || address(trade) == address(1)) return;
@@ -55,14 +55,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function claimAndSweepRewards() external interaction {
         // == Interaction ==
         RewardableLibP1.claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
-    /// @custom:interaction , Not CEI pattern. Instead, we avoid reentrancy attacks by:
+    /// @custom:interaction Not CEI pattern. Instead, we avoid reentrancy attacks by:
     /// - using a lock value (address(1)) in trades[sell]
     /// - honoring that lock everywhere else that trades[sell] may be written
     ///   (i.e, in settleTrade())

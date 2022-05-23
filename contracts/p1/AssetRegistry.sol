@@ -56,7 +56,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// Swap an asset that shares an ERC20 with a presently-registered asset, de-registering it
     /// Fails if there is not an asset already registered for the ERC20
     /// @return swapped If the asset was swapped for a previously-registered asset
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
@@ -66,7 +66,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     }
 
     /// Unregister an asset, requiring that it is already registered
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     /// @custom:governance
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
@@ -126,6 +126,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         swapped = _erc20s.add(address(erc20));
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
-        if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+        if (asset.isCollateral()) ICollateral(address(asset)).refreshVolatiles();
     }
 }

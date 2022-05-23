@@ -28,7 +28,7 @@ library RewardableLibP1 {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
@@ -72,7 +72,7 @@ library RewardableLibP1 {
             claims[i].callTo.functionCall(claims[i]._calldata, "rewards claim failed");
             uint256 newBal = claims[i].reward.balanceOf(address(this));
 
-            emit RewardsClaimed(address(claims[i].reward), oldBal - newBal);
+            emit RewardsClaimed(address(claims[i].reward), newBal - oldBal);
         }
 
         // Sweep reward tokens to the backingManager

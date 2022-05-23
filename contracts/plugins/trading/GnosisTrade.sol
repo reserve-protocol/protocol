@@ -48,7 +48,7 @@ contract GnosisTrade is ITrade {
 
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
-    /// @custom:interaction , reentrancy-safe b/c state-locking
+    /// @custom:interaction reentrancy-safe b/c state-locking
     function init(
         IBroker broker_,
         address origin_,
@@ -92,7 +92,7 @@ contract GnosisTrade is ITrade {
     }
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
-    /// @custom:interaction , reentrancy-safe b/c state-locking
+    /// @custom:interaction reentrancy-safe b/c state-locking
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
@@ -131,7 +131,7 @@ contract GnosisTrade is ITrade {
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
     /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
-    /// @custom:interaction , CEI (and respects the state lock)
+    /// @custom:interaction CEI (and respects the state lock)
     function transferToOriginAfterTradeComplete(IERC20 erc20) external {
         require(status == TradeStatus.CLOSED, "only after trade is closed");
         IERC20Upgradeable(address(erc20)).safeTransfer(origin, erc20.balanceOf(address(this)));

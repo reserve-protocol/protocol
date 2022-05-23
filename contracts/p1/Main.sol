@@ -46,7 +46,7 @@ contract MainP1 is
     }
 
     /// @custom:refresher
-    /// @custom:interaction , RCEI
+    /// @custom:interaction RCEI
     function poke() external {
         require(!paused(), "paused");
         // == Refresher ==

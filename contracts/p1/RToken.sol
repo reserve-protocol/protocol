@@ -91,13 +91,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @custom:interaction , KCEI
+    /// @custom:interaction KCEI
     function issue(uint256 amtRToken) external interaction {
         // ==== Refreshers ====
         main.assetRegistry().refresh();
 
         // Refund issuances against old baskets
+        address issuer = _msgSender();
         IssueQueue storage queue = issueQueues[issuer];
+        IBasketHandler bh = main.basketHandler();
         (uint256 basketNonce, ) = bh.lastSet();
         if (queue.basketNonce != basketNonce) {
             // == Interaction ==
@@ -108,10 +110,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         require(amtRToken > 0, "Cannot issue zero");
-        IBasketHandler bh = main.basketHandler();
         CollateralStatus status = bh.status();
         require(status != CollateralStatus.DISABLED, "basket disabled");
-        address issuer = _msgSender();
 
         main.furnace().melt();
 
@@ -132,14 +132,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             queue.left == queue.right &&
             status == CollateralStatus.SOUND
         ) {
-            for (uint256 i = 0; i < erc20s.length; ++i) {
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                    issuer,
-                    address(main.backingManager()),
-                    deposits[i]
-                );
-            }
-
             // Complete issuance
             _mint(issuer, amtRToken);
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -218,7 +210,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Callable by anyone!
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
-    /// @custom:interaction , KCEI
+    /// @custom:interaction KCEI
     function vest(address account, uint256 endId) external interaction {
         // == Keepers ==
         main.assetRegistry().refresh();
@@ -268,7 +260,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// If earliest == false, cancel id if endId <= id
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
-    /// @custom:interaction , CEI
+    /// @custom:interaction CEI
     function cancel(uint256 endId, bool earliest) external interaction {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
@@ -286,7 +278,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
-    /// @custom:interaction , RCEI
+    /// @custom:interaction RCEI
     function redeem(uint256 amount) external interaction {
         // == Refreshers ==
         main.assetRegistry().refresh();
@@ -399,20 +391,35 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // ==== private ====
     /// Refund all deposits in the span [left, right)
     /// after: queue.left == queue.right
+    /// @custom:interaction
     function refundSpan(
         address account,
         uint256 left,
         uint256 right
     ) private {
+        if (left >= right) return; // refund an empty span
+
         IssueQueue storage queue = issueQueues[account];
 
-        if (left >= right) return; // refund an empty span
+        // compute total deposits to refund
+        uint256 tokensLen = queue.tokens.length;
+        uint256[] memory amt = new uint256[](tokensLen);
+        IssueItem storage rightItem = queue.items[right - 1];
+
+        // we could dedup this logic but it would take more SLOADS, so I think this is best
+        if (queue.left == 0) {
+            for (uint256 i = 0; i < tokensLen; ++i) {
+                amt[i] = rightItem.deposits[i];
+            }
+        } else {
+            IssueItem storage leftItem = queue.items[queue.left - 1];
+            for (uint256 i = 0; i < tokensLen; ++i) {
+                amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
+            }
+        }
+
         // Check the relationships of these intervals, and set queue.{left, right} to final values.
-        if (queue.left == left && queue.right == right) {
-            // clear queue
-            queue.left = 0;
-            queue.right = 0;
-        } else if (queue.left == left && right < queue.right) {
+        if (queue.left == left && right <= queue.right) {
             // refund from beginning of queue
             queue.left = right;
         } else if (queue.left < left && right == queue.right) {
@@ -420,26 +427,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             queue.right = left;
         } else {
             // error: can't remove [left,right) from the queue, and leave just one interval
-            revert("Bad refundspan");
+            revert("Bad refundSpan");
         }
 
-        // compute total deposits to refund
-        uint256[] memory amt = new uint256[](right - left);
-        IssueItem storage rightItem = queue.items[right - 1];
-
-        // we could dedup this logic but it would take more SLOADS, so I think this is best
-        if (queue.left == 0) {
-            for (uint256 i = 0; i < queue.tokens.length; ++i) {
-                amt[i] = rightItem.deposits[i];
-            }
-        } else {
-            IssueItem storage leftItem = queue.items[queue.left - 1];
-            for (uint256 i = 0; i < queue.tokens.length; ++i) {
-                amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
-            }
-        }
-
-        // emit issuancesCanceled
         emit IssuancesCanceled(account, left, right);
 
         // == Interactions ==
@@ -463,10 +453,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[endId - 1];
         require(rightItem.when <= 1e18 * block.number, "issuance not ready");
 
-        // we could dedup this logic but it would take more SLOADS, so this seems best
         uint256 queueLength = queue.tokens.length;
-
         uint256[] memory amtDeposits = new uint256[](queueLength);
+
+        // we could dedup this logic but it would take more SLOADS, so this seems best
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
