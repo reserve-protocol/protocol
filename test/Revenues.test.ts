@@ -488,6 +488,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+        await basketHandler.refreshBasket()
 
         // Set f = 1
         await expect(
@@ -676,6 +677,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
+        await basketHandler.refreshBasket()
 
         // Set f = 0, avoid dropping tokens
         await expect(
@@ -846,6 +848,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+        await basketHandler.refreshBasket()
 
         // Set f = 0.8 (0.2 for Rtoken)
         await expect(
@@ -2311,6 +2314,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+      await basketHandler.refreshBasket()
 
       // Set f = 0.8 (0.2 for Rtoken)
       await distributor

@@ -120,8 +120,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
-        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
-
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
 
@@ -279,7 +277,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
-        bh.checkBasket();
+        bh.refreshBasket();
 
         // Allow redemption during IFFY
         require(bh.status() != CollateralStatus.DISABLED, "collateral default");
@@ -290,8 +288,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
-
-        assert(baskets <= basketsNeeded_);
 
         (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
             uint192(uint192(baskets)),

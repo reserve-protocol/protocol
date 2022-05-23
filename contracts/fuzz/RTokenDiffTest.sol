@@ -101,8 +101,11 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
         IERC20[] calldata
     ) external {}
 
+    /// Default the basket in order to schedule a basket refresh
+    function disableBasket() external {}
+
     /// Check that the current basket is valid, causing underlying updates
-    function checkBasket() external {}
+    function refreshBasket() external {}
 
     /// Governance-controlled setter to cause a basket switch explicitly
     function switchBasket() external {
