@@ -21,7 +21,7 @@ const MNEMONIC = process.env.MNEMONIC || ''
 const TIMEOUT = !!process.env.SLOW ? 3_000_000 : 300_000
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
-const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } }
+const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
 
 let config: any = {
   defaultNetwork: 'hardhat',
@@ -67,6 +67,14 @@ let config: any = {
       'contracts/p1/aux/Deployer.sol': {
         version: '0.8.9',
         settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 10 } },
+      },
+      'contracts/p1/RToken.sol': {
+        version: '0.8.9',
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 500 } },
+      },
+      'contracts/p1/StRSRVotes.sol': {
+        version: '0.8.9',
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 1000 } },
       },
     },
   },
