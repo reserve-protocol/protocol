@@ -237,9 +237,6 @@ export const deployImplementations = async (
       rTokenTrader: revTraderImpl.address,
     },
     trade: tradeImpl.address,
-    rTokenAsset: rTokenAssetImpl.address,
-    aavePricedAsset: aavePricedAssetImpl.address,
-    compoundPricedAsset: compoundPricedAssetImpl.address,
     facade: facadeImpl.address,
   }
 }

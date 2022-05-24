@@ -30,11 +30,9 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
     IAaveLendingPool public aaveLendingPool;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __AaveOracleMixin_init(IComptroller comptroller_, IAaveLendingPool aaveLendingPool_)
-        internal
-        onlyInitializing
+    constructor(IComptroller comptroller_, IAaveLendingPool aaveLendingPool_)
+        CompoundOracleMixin(comptroller_)
     {
-        __CompoundOracleMixin_init(comptroller_);
         aaveLendingPool = aaveLendingPool_;
     }
 

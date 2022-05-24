@@ -26,8 +26,7 @@ abstract contract CompoundOracleMixin is Initializable {
 
     IComptroller public comptroller;
 
-    // solhint-disable-next-line func-name-mixedcase
-    function __CompoundOracleMixin_init(IComptroller comptroller_) internal onlyInitializing {
+    constructor(IComptroller comptroller_) {
         comptroller = comptroller_;
     }
 

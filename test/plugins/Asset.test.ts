@@ -140,34 +140,6 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
-
-    it('Should not allow to initialize Assets twice', async () => {
-      await expect(
-        (rsrAsset as AavePricedAsset).init(
-          rsr.address,
-          bn(0),
-          compoundMock.address,
-          aaveMock.address
-        )
-      ).to.be.revertedWith('Initializable: contract is already initialized')
-
-      await expect(
-        (compAsset as CompoundPricedAsset).init(compToken.address, bn(0), compoundMock.address)
-      ).to.be.revertedWith('Initializable: contract is already initialized')
-
-      await expect(
-        (aaveAsset as AavePricedAsset).init(
-          aaveToken.address,
-          bn(0),
-          compoundMock.address,
-          aaveMock.address
-        )
-      ).to.be.revertedWith('Initializable: contract is already initialized')
-
-      await expect(
-        (rTokenAsset as RTokenAsset).init(rToken.address, bn(0), main.address)
-      ).to.be.revertedWith('Initializable: contract is already initialized')
-    })
   })
 
   describe('Prices', () => {
