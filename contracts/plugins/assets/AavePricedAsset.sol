@@ -8,7 +8,7 @@ import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
 contract AavePricedAsset is AaveOracleMixin, Asset {
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
     ) {
@@ -17,7 +17,7 @@ contract AavePricedAsset is AaveOracleMixin, Asset {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
     ) public initializer {
@@ -26,7 +26,7 @@ contract AavePricedAsset is AaveOracleMixin, Asset {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (int192) {
+    function price() public view virtual override returns (uint192) {
         return consultOracle(erc20);
     }
 }

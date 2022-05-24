@@ -8,8 +8,8 @@ import "contracts/plugins/assets/abstract/Collateral.sol";
 contract EURAavePricedFiatCollateral is AaveOracleMixin, Collateral {
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
@@ -26,8 +26,8 @@ contract EURAavePricedFiatCollateral is AaveOracleMixin, Collateral {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
-        int192 defaultThreshold_,
+        uint192 maxTradeVolume_,
+        uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_
@@ -44,7 +44,7 @@ contract EURAavePricedFiatCollateral is AaveOracleMixin, Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (int192) {
+    function price() public view virtual returns (uint192) {
         return consultOracle(erc20);
     }
 }

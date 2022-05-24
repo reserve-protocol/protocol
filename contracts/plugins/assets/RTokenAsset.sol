@@ -10,7 +10,7 @@ contract RTokenAsset is Asset {
 
     constructor(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IMain main_
     ) {
         init(erc20_, maxTradeVolume_, main_);
@@ -18,7 +18,7 @@ contract RTokenAsset is Asset {
 
     function init(
         IERC20Metadata erc20_,
-        int192 maxTradeVolume_,
+        uint192 maxTradeVolume_,
         IMain main_
     ) public initializer {
         __Asset_init(erc20_, maxTradeVolume_);
@@ -26,7 +26,7 @@ contract RTokenAsset is Asset {
     }
 
     /// @return {UoA/rTok}
-    function price() public view override returns (int192) {
+    function price() public view override returns (uint192) {
         return main.rToken().price();
     }
 }

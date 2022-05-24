@@ -10,9 +10,9 @@ import "contracts/p1/mixins/Component.sol";
  * @notice A helper to melt RTokens slowly and permisionlessly.
  */
 contract FurnaceP1 is ComponentP1, IFurnace {
-    using FixLib for int192;
+    using FixLib for uint192;
 
-    int192 public ratio; // {1} What fraction of balance to melt each period
+    uint192 public ratio; // {1} What fraction of balance to melt each period
     uint32 public period; // {seconds} How often to melt
     uint32 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
@@ -20,7 +20,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     function init(
         IMain main_,
         uint32 period_,
-        int192 ratio_
+        uint192 ratio_
     ) external initializer {
         __Component_init(main_);
         period = period_;
@@ -39,7 +39,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         uint32 numPeriods = (uint32(block.timestamp) - lastPayout) / period;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
-        int192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
+        uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
         IRToken rToken = main.rToken();
         uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
@@ -59,7 +59,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
 
     /// Ratio setting
     /// @custom:governance
-    function setRatio(int192 ratio_) external governance {
+    function setRatio(uint192 ratio_) external governance {
         // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;

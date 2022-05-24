@@ -16,7 +16,7 @@ import "contracts/mixins/Pausable.sol";
  */
 // solhint-disable max-states-count
 contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausable, IMain {
-    using FixLib for int192;
+    using FixLib for uint192;
 
     IERC20 public rsr;
 

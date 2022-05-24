@@ -21,24 +21,24 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Immutable: expected to be an IPFS link but could be anything
-    string public constitutionURI;
+    string public manifestoURI;
 
-    // MIN_ISS_RATE: {qRTok/block} 10k whole RTok
-    uint256 public constant MIN_ISS_RATE = 10_000 * 1e18;
+    // MIN_ISS_RATE: {rTok/block} 10k whole RTok
+    uint192 public constant MIN_ISS_RATE = 10_000 * FIX_ONE;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint256 public lastIssRate; // {qRTok/block}
+    uint192 public lastIssRate; // D18{rTok/block}
     uint256 public lastIssRateBlock; // {block number}
 
-    // When the all pending issuances will have vested.
+    // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
-    uint256 public allVestAt; // D18{fractional block number}
+    uint192 public allVestAt; // D18{fractional block number}
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
-        uint256 when; // D18{block number} fractional
+        uint192 when; // D18{block number} fractional
         uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
-        uint256 amtBaskets; // D18{BU} Total amount of baskets that should back those RTokens
+        uint192 amtBaskets; // D18{BU} Total amount of baskets that should back those RTokens
         uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
     }
 
@@ -70,22 +70,22 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
-    int192 public basketsNeeded; // {BU}
+    uint192 public basketsNeeded; // D18{BU}
 
-    uint256 public issuanceRate; // D18{%} of RToken supply to issue per block
+    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
 
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata constitutionURI_,
-        int192 issuanceRate_
+        string calldata manifestoURI_,
+        uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
-        issuanceRate = uint256(uint192(issuanceRate_));
+        manifestoURI = manifestoURI_;
+        issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate_);
     }
 
@@ -113,24 +113,22 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // ==== Compute and accept collateral ====
-        // {BU * qRTok / qRTok}
-        uint256 amtBaskets = (totalSupply() > 0) // D18{BU}
-            ? mulDiv256(uint256(int256(basketsNeeded)), amtRToken, totalSupply())
-            : amtRToken; // D18{rTok}
-
-        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(
-            int192(uint192(amtBaskets)),
-            CEIL
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        uint192 amtBaskets = uint192(
+            totalSupply() > 0 ? mulDiv256(basketsNeeded, amtRToken, totalSupply()) : amtRToken
         );
 
-        assert(queue.basketNonce == basketNonce || (queue.left == 0 && queue.right == 0));
+        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        uint256 vestingEnd = whenFinished(amtRToken); // D18{block number}
+        uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
 
-        // Bypass queue entirely if the issuance can fit in this block
-        if (vestingEnd <= 1e18 * block.number && queue.left == queue.right) {
-            require(status == CollateralStatus.SOUND, "collateral not sound");
+        // Bypass queue entirely if the issuance can fit in this block and nothing blocking
+        if (
+            vestingEnd <= FIX_ONE_256 * block.number &&
+            queue.left == queue.right &&
+            status == CollateralStatus.SOUND
+        ) {
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(
                     issuer,
@@ -141,9 +139,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // Complete issuance now
             _mint(issuer, amtRToken);
-            uint256 newBasketsNeeded = uint256(int256(basketsNeeded)) + amtBaskets;
-            emit BasketsNeededChanged(basketsNeeded, int192(uint192(newBasketsNeeded)));
-            basketsNeeded = int192(uint192(newBasketsNeeded));
+            uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
+            emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+            basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
             emit IssuancesCompleted(issuer, queue.left, queue.right);
@@ -181,28 +179,28 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             issuer,
             queue.right - 1,
             amtRToken,
-            int192(uint192(amtBaskets)),
+            amtBaskets,
             erc20s,
             deposits,
-            int192(uint192(vestingEnd))
+            vestingEnd
         );
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
     /// @return finished D18{bloick number} The new value of allVestAt
-    function whenFinished(uint256 amtRToken) private returns (uint256 finished) {
+    function whenFinished(uint256 amtRToken) private returns (uint192 finished) {
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
-            lastIssRate = (issuanceRate * totalSupply()) / 1e18;
+            lastIssRate = uint192((issuanceRate * totalSupply()) / FIX_ONE);
             if (lastIssRate < MIN_ISS_RATE) lastIssRate = MIN_ISS_RATE;
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
-        uint256 before = allVestAt; // } D18{block number}
-        uint256 worst = 1e18 * (block.number - 1); // D18{block number}
+        uint192 before = allVestAt; // D18{block number}
+        uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
-        finished = before + (1e18 * amtRToken) / lastIssRate;
+        finished = before + uint192((FIX_ONE_256 * amtRToken) / lastIssRate);
         allVestAt = finished;
     }
 
@@ -221,15 +219,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(account, queue.left, queue.right);
             queue.left = 0;
             queue.right = 0;
+        } else {
+            vestUpTo(account, endId);
         }
-
-        vestUpTo(account, endId);
     }
 
     /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
-        uint256 blockNumber = 1e18 * block.number; // D18{block number}
+        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block number}
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
@@ -282,33 +280,28 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().forceUpdates();
 
         IBasketHandler bh = main.basketHandler();
-        bh.checkBasket();
+        bh.refreshBasket();
 
         // Allow redemption during IFFY
         require(bh.status() != CollateralStatus.DISABLED, "collateral default");
 
         main.furnace().melt();
-        uint256 basketsNeeded_ = uint256(int256(basketsNeeded)); // gas optimization
+        uint192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
-        uint256 baskets = (basketsNeeded_ * amount) / totalSupply();
-        emit Redemption(redeemer, amount, int192(uint192(baskets)));
+        uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
+        emit Redemption(redeemer, amount, baskets);
 
-        assert(baskets <= basketsNeeded_);
+        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(uint192(baskets), FLOOR);
 
-        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
-            int192(uint192(baskets)),
-            FLOOR
-        );
-
-        // D18{1} = D18({qRTok} / {qRTok})
-        uint256 prorate = (amount * 1e18) / totalSupply();
+        // D18{1} = D18 * {qRTok} / {qRTok}
+        uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
 
         // Accept and burn RToken
         _burn(redeemer, amount);
 
-        basketsNeeded = int192(uint192(basketsNeeded_ - baskets));
-        emit BasketsNeededChanged(int192(uint192(basketsNeeded_)), int192(uint192(basketsNeeded)));
+        basketsNeeded = basketsNeeded_ - baskets;
+        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
@@ -318,7 +311,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         for (uint256 i = 0; i < erc20length; ++i) {
             // {qTok} = D18{1} * {qTok} / D18
             uint256 prorata = (prorate *
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))) / 1e18;
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))) / FIX_ONE;
             if (prorata < amounts[i]) amounts[i] = prorata;
 
             // Send withdrawal
@@ -348,7 +341,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -361,27 +354,20 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setIssuanceRate(int192 val) external governance {
-        emit IssuanceRateSet(int192(uint192(issuanceRate)), val);
-        issuanceRate = uint256(int256(val));
+    function setIssuanceRate(uint192 val) external governance {
+        emit IssuanceRateSet(issuanceRate, val);
+        issuanceRate = val;
     }
 
     /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (int192) {
+    function price() external view returns (uint192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
-        // TODO lol
         return
-            int192(
-                uint192(
-                    (uint256(int256(main.basketHandler().price())) *
-                        uint256(int256(basketsNeeded))) / totalSupply()
-                )
-            );
+            uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
     }
 
-    // TODO this is only required for testing, can be commented out for contract size
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
@@ -389,6 +375,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
+    /// after: queue.left == queue.right
     function refundSpan(
         address account,
         uint256 left,
@@ -402,6 +389,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // compute total deposits
         IssueItem storage rightItem = queue.items[right - 1];
+
+        // we could dedup this logic but it would take more SLOADS, so I think this is best
         if (queue.left == 0) {
             for (uint256 i = 0; i < queue.tokens.length; ++i) {
                 IERC20Upgradeable(queue.tokens[i]).safeTransfer(account, rightItem.deposits[i]);
@@ -431,8 +420,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // Vest the span up to `endId`.
         uint256 amtRTokenToMint;
-        uint256 newBasketsNeeded;
+        uint192 newBasketsNeeded;
         IssueItem storage rightItem = queue.items[endId - 1];
+        require(rightItem.when <= 1e18 * block.number, "issuance not ready");
+
+        // we could dedup this logic but it would take more SLOADS, so this seems best
         uint256 queueLength = queue.tokens.length;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
@@ -443,7 +435,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 );
             }
             amtRTokenToMint = rightItem.amtRToken;
-            newBasketsNeeded = uint256(int256(basketsNeeded)) + rightItem.amtBaskets;
+            newBasketsNeeded = basketsNeeded + rightItem.amtBaskets;
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
@@ -454,15 +446,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 );
             }
             amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
-            newBasketsNeeded =
-                uint256(int256(basketsNeeded)) +
-                rightItem.amtBaskets -
-                leftItem.amtBaskets;
+            newBasketsNeeded = basketsNeeded + rightItem.amtBaskets - leftItem.amtBaskets;
         }
 
         _mint(account, amtRTokenToMint);
-        emit BasketsNeededChanged(basketsNeeded, int192(uint192(newBasketsNeeded)));
-        basketsNeeded = int192(uint192(newBasketsNeeded));
+        emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
+        basketsNeeded = newBasketsNeeded;
 
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;

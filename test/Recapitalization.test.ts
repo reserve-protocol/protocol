@@ -243,7 +243,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.checkBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.refreshBasket()).to.not.emit(basketHandler, 'BasketSet')
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral1.delayUntilDefault()).toString())
@@ -253,7 +253,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -273,7 +273,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           initialQuantities[3],
           bn('0'),
         ]
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, basketsNeededAmts, false)
 
@@ -338,7 +338,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           fp('0.125'),
         ]
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -394,7 +394,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.checkBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.refreshBasket()).to.not.emit(basketHandler, 'BasketSet')
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
@@ -405,7 +405,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newRefAmounts = [basketsNeededAmts[1], fp('0.75')]
 
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -451,7 +451,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           basketsNeededAmts[2],
         ]
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -491,13 +491,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await collateral1.forceUpdates()
 
         // Basket switches to empty basket
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([], [], true)
 
         // Check state - Basket is disabled even though fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
         // Should exclude bad token
         await expectCurrentBacking({
@@ -524,6 +524,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Unregister one of the tokens
         await assetRegistry.connect(owner).unregister(backupCollateral1.address)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        await basketHandler.refreshBasket()
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -560,7 +562,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           fp('0.25'),
         ]
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -573,55 +575,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql([initialQuotes[0], initialQuotes[1], initialQuotes[3], bn('0.25e18')])
-      })
-
-      it('Should switch basket if collateral in basket is unregistered', async () => {
-        // Register Collateral
-        await assetRegistry.connect(owner).register(backupCollateral1.address)
-
-        // Set backup configuration - USDT as backup
-        await basketHandler
-          .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
-
-        // Check initial state
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        await expectCurrentBacking({
-          tokens: initialTokens,
-          quantities: initialQuantities,
-        })
-        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
-        expect(quotes).to.eql(initialQuotes)
-
-        // Basket should switch
-        const newTokens = [
-          initialTokens[0],
-          initialTokens[2],
-          initialTokens[3],
-          backupToken1.address,
-        ]
-        const newQuantities = [
-          initialQuantities[0],
-          initialQuantities[2],
-          initialQuantities[3],
-          bn('0'),
-        ]
-
-        // Unregister an asset in basket
-        await expect(assetRegistry.connect(owner).unregister(collateral1.address))
-          .to.emit(basketHandler, 'BasketSet')
-          .withArgs(newTokens, basketsNeededAmts, false)
-
-        // Check state - Basket switch
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
-        await expectCurrentBacking({
-          tokens: newTokens,
-          quantities: newQuantities,
-        })
-        quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
-        expect(quotes).to.eql([initialQuotes[0], initialQuotes[2], initialQuotes[3], bn('0.25e18')])
       })
     })
 
@@ -721,7 +674,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -732,7 +685,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newTokens = [initialTokens[0], backupToken1.address]
         const newQuantities = [initialQuantities[0], bn('0')]
         const newRefAmounts = [fp('0.5'), fp('0.5')]
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -780,7 +733,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -788,13 +741,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         //  Basket should switch to empty and defaulted
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([], [], true)
 
         // Check state - Basket is disabled but fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
         // Should exclude bad token
         await expectCurrentBacking({
@@ -1287,7 +1240,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
         // Ensure valid basket
-        await basketHandler.checkBasket()
+        await basketHandler.refreshBasket()
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1399,6 +1352,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Perform swap
         await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        await basketHandler.refreshBasket()
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1432,7 +1387,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Confirm default and trigger basket switch
         await assetRegistry.forceUpdates()
-        await basketHandler.checkBasket()
+        await basketHandler.refreshBasket()
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1692,7 +1647,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newRefAmounts = [bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt, bkpTokenRefAmt]
 
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -2049,7 +2004,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Confirm default and trigger basket switch
         await assetRegistry.forceUpdates()
-        await basketHandler.checkBasket()
+        await basketHandler.refreshBasket()
 
         // Running auctions will trigger recapitalization - All balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -2302,7 +2257,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Mark Default - Perform basket switch
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -2558,7 +2513,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Mark Default - Perform basket switch
         await assetRegistry.forceUpdates()
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -2867,7 +2822,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newRefAmounts = [basketsNeededAmts[1], bn('0.75e18')]
 
         // Perform basket switch
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -3235,7 +3190,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newRefAmounts = [basketsNeededAmts[1], bn('0.375e18'), bn('0.375e18')]
 
         // Perform basket switch
-        await expect(basketHandler.checkBasket())
+        await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
@@ -3704,7 +3659,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       // Mark Default - Perform basket switch
       await assetRegistry.forceUpdates()
-      await expect(basketHandler.checkBasket()).to.emit(basketHandler, 'BasketSet')
+      await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Running auctions will trigger recapitalization - All balance will be redeemed
       const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)

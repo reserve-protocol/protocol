@@ -13,7 +13,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 /// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     // All trades
@@ -21,14 +21,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     uint32 public tradesOpen;
 
     // === Governance params ===
-    int192 public maxTradeSlippage; // {%}
-    int192 public dustAmount; // {UoA}
+    uint192 public maxTradeSlippage; // {%}
+    uint192 public dustAmount; // {UoA}
 
     // The latest end time for any trade in `trades`.
     uint32 private latestEndtime;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(int192 maxTradeSlippage_, int192 dustAmount_)
+    function __Trading_init(uint192 maxTradeSlippage_, uint192 dustAmount_)
         internal
         onlyInitializing
     {
@@ -75,13 +75,13 @@ abstract contract TradingP1 is Multicall, ComponentP1, ITrading {
     // === Setters ===
 
     /// @custom:governance
-    function setMaxTradeSlippage(int192 val) external governance {
+    function setMaxTradeSlippage(uint192 val) external governance {
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setDustAmount(int192 val) external governance {
+    function setDustAmount(uint192 val) external governance {
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

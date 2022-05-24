@@ -19,11 +19,11 @@ import "contracts/p0/mixins/Rewardable.sol";
 struct SlowIssuance {
     address issuer;
     uint256 amount; // {qRTok}
-    int192 baskets; // {BU}
+    uint192 baskets; // {BU}
     address[] erc20s;
     uint256[] deposits;
     uint256 basketNonce;
-    int192 blockAvailableAt; // {block.number} fractional
+    uint192 blockAvailableAt; // {block.number} fractional
     bool processed;
 }
 
@@ -33,44 +33,47 @@ struct SlowIssuance {
  */
 contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using FixLib for int192;
+    using FixLib for uint192;
     using SafeERC20 for IERC20;
 
     /// Expected to be an IPFS hash
-    string public constitutionURI;
+    string public manifestoURI;
 
     // To enforce a fixed issuanceRate throughout the entire block
-    // TODO: simplify
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
     // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
-    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * 1e18;
+    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * FIX_ONE;
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
 
     mapping(address => SlowIssuance[]) public issuances;
 
-    int192 public basketsNeeded; //  {BU}
+    // When all pending issuances will have vested.
+    // This is fractional so that we can represent partial progress through a block.
+    uint192 public allVestAt; // {fractional block number}
 
-    int192 public issuanceRate; // {1/block} of RToken supply to issue per block
+    uint192 public basketsNeeded; //  {BU}
+
+    uint192 public issuanceRate; // {1/block} of RToken supply to issue per block
 
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory constitutionURI_,
-        int192 issuanceRate_
+        string memory manifestoURI_,
+        uint192 issuanceRate_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
+        manifestoURI = manifestoURI_;
         issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate);
     }
 
-    function setIssuanceRate(int192 val) external governance {
+    function setIssuanceRate(uint192 val) external governance {
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
@@ -86,11 +89,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
 
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         address issuer = _msgSender();
+        refundAndClearStaleIssuances(issuer);
 
         // Compute # of baskets to create `amount` qRTok
-        int192 baskets = (totalSupply() > 0) // {BU}
+        uint192 baskets = (totalSupply() > 0) // {BU}
             ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
 
@@ -101,6 +104,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         }
 
         // Add a new SlowIssuance ticket to the queue
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
         SlowIssuance memory iss = SlowIssuance({
             issuer: issuer,
             amount: amount,
@@ -124,13 +128,15 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             iss.blockAvailableAt
         );
 
-        // Complete issuance instantly if it fits into this block
-        if (iss.blockAvailableAt.lte(toFix(block.number))) {
-            require(basketHandler.status() == CollateralStatus.SOUND, "collateral not sound");
-
+        // Complete issuance instantly if it fits into this block and basket is sound
+        if (
+            iss.blockAvailableAt.lte(toFix(block.number)) &&
+            basketHandler.status() == CollateralStatus.SOUND
+        ) {
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, issuances[issuer].length - 1);
             assert(vestedAmount == iss.amount);
+            delete issuances[issuer][issuances[issuer].length - 1];
         }
     }
 
@@ -174,13 +180,17 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
 
-        for (uint256 i = 0; i < endId; i++) tryVestIssuance(account, i);
+        refundAndClearStaleIssuances(account);
+
+        for (uint256 i = 0; i < endId && i < issuances[account].length; i++) {
+            tryVestIssuance(account, i);
+        }
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
     function endIdForVest(address account) external view returns (uint256) {
         uint256 i = 0;
-        int192 currBlock = toFix(block.number);
+        uint192 currBlock = toFix(block.number);
         SlowIssuance[] storage queue = issuances[account];
 
         while (i < queue.length && queue[i].blockAvailableAt.lte(currBlock)) i++;
@@ -201,14 +211,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
-        int192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
+        uint192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
         assert(baskets.lte(basketsNeeded));
         emit Redemption(_msgSender(), amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
         // {1} = {qRTok} / {qRTok}
-        int192 prorate = toFix(amount).divu(totalSupply());
+        uint192 prorate = toFix(amount).divu(totalSupply());
 
         // Accept and burn RToken
         _burn(_msgSender(), amount);
@@ -248,18 +258,18 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(int192 basketsNeeded_) external notPaused {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
     /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (int192) {
+    function price() external view returns (uint192) {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        int192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
+        uint192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
         return main.basketHandler().price().mulDiv(basketsNeeded, supply);
     }
 
@@ -268,11 +278,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        if (
-            !iss.processed &&
-            iss.basketNonce == basketNonce &&
-            iss.blockAvailableAt.lte(toFix(block.number))
-        ) {
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
+        assert(iss.basketNonce == basketNonce); // this should always be true at this point
+
+        if (!iss.processed) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
@@ -288,8 +297,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Returns the block number at which an issuance for *amount* now can complete
-    function nextIssuanceBlockAvailable(uint256 amount) private returns (int192) {
-        int192 before = toFix(block.number - 1);
+    function nextIssuanceBlockAvailable(uint256 amount) private returns (uint192) {
+        uint192 before = fixMax(toFix(block.number - 1), allVestAt);
 
         // Calculate the issuance rate if this is the first issue in the block
         if (blockIssuanceRates[block.number] == 0) {
@@ -299,13 +308,24 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
+        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock));
+        return allVestAt;
+    }
 
-        for (uint256 i = 0; i < accounts.length(); i++) {
-            SlowIssuance[] storage queue = issuances[accounts.at(i)];
-            if (queue.length > 0 && queue[queue.length - 1].blockAvailableAt.gt(before)) {
-                before = queue[queue.length - 1].blockAvailableAt;
+    function refundAndClearStaleIssuances(address account) private {
+        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        bool clearQueue = false;
+        for (uint256 i = 0; i < issuances[account].length; i++) {
+            SlowIssuance storage iss = issuances[account][i];
+            if (!iss.processed && iss.basketNonce != basketNonce) {
+                for (uint256 j = 0; j < iss.erc20s.length; j++) {
+                    IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
+                }
+                iss.processed = true;
             }
+            if (iss.basketNonce != basketNonce) clearQueue = true;
         }
-        return before.plus(FIX_ONE.muluDivu(amount, perBlock));
+
+        if (clearQueue) delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
     }
 }
