@@ -185,6 +185,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.rsrTrader()).to.equal(rsrTrader.address)
       expect(await main.rTokenTrader()).to.equal(rTokenTrader.address)
 
+      if (IMPLEMENTATION == Implementation.P1) {
+        expect(await main.isComponent(stRSR.address)).to.equal(true)
+        expect(await main.isComponent(rToken.address)).to.equal(true)
+        expect(await main.isComponent(assetRegistry.address)).to.equal(true)
+        expect(await main.isComponent(basketHandler.address)).to.equal(true)
+        expect(await main.isComponent(backingManager.address)).to.equal(true)
+        expect(await main.isComponent(distributor.address)).to.equal(true)
+        expect(await main.isComponent(furnace.address)).to.equal(true)
+        expect(await main.isComponent(broker.address)).to.equal(true)
+        expect(await main.isComponent(rsrTrader.address)).to.equal(true)
+        expect(await main.isComponent(rTokenTrader.address)).to.equal(true)
+      }
+
       // Configuration
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(40))
