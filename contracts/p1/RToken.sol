@@ -21,7 +21,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Immutable: expected to be an IPFS link but could be anything
-    string public constitutionURI;
+    string public manifestoURI;
 
     // MIN_ISS_RATE: {rTok/block} 10k whole RTok
     uint192 public constant MIN_ISS_RATE = 10_000 * FIX_ONE;
@@ -78,13 +78,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata constitutionURI_,
+        string calldata manifestoURI_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        constitutionURI = constitutionURI_;
+        manifestoURI = manifestoURI_;
         issuanceRate = issuanceRate_;
         emit IssuanceRateSet(FIX_ZERO, issuanceRate_);
     }
@@ -292,10 +292,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
-            uint192(uint192(baskets)),
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(uint192(baskets), FLOOR);
 
         // D18{1} = D18 * {qRTok} / {qRTok}
         uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
