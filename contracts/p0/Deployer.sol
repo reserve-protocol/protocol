@@ -83,7 +83,7 @@ contract DeployerP0 is IDeployer {
             broker: new BrokerP0()
         });
 
-        IAsset[] memory assets = new IAsset[](4);
+        IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
             IERC20Metadata(address(components.rToken)),
             params.maxTradeVolume,
@@ -91,10 +91,6 @@ contract DeployerP0 is IDeployer {
         );
 
         assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
-
-        assets[2] = new AavePricedAsset(aave, params.maxTradeVolume, comptroller, aaveLendingPool);
-
-        assets[3] = new CompoundPricedAsset(comp, params.maxTradeVolume, comptroller);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);

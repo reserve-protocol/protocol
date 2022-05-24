@@ -13,11 +13,7 @@ abstract contract Asset is Initializable, IAsset {
 
     uint192 public maxTradeVolume; // {UoA}
 
-    // solhint-disable-next-line func-name-mixedcase
-    function __Asset_init(IERC20Metadata erc20_, uint192 maxTradeVolume_)
-        internal
-        onlyInitializing
-    {
+    constructor(IERC20Metadata erc20_, uint192 maxTradeVolume_) {
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }

@@ -34,15 +34,14 @@ abstract contract Collateral is ICollateral, Asset, Context {
     uint256 public delayUntilDefault; // {s} e.g 86400
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Collateral_init(
+    constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_
-    ) internal onlyInitializing {
-        __Asset_init(erc20_, maxTradeVolume_);
+    ) Asset(erc20_, maxTradeVolume_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
