@@ -67,7 +67,7 @@ const config: any = {
     overrides: {
       'contracts/p1/aux/Deployer.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 10 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
       },
       'contracts/p1/RToken.sol': {
         version: '0.8.9',

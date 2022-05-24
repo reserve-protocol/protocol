@@ -41,7 +41,6 @@ contract MainP1 is
         __UUPSUpgradeable_init();
 
         rsr = rsr_;
-
         emit MainInitialized();
     }
 
