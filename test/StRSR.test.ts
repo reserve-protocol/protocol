@@ -1642,6 +1642,45 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRVotes.delegates(addr3.address)).to.equal(addr3.address)
     })
 
+    it('Should allow to delegate by signature', async function () {
+      // Check no delegate
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+
+      const Delegation = [
+        { name: 'delegatee', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+      ]
+
+      const nonce = await stRSRVotes.nonces(addr1.address)
+      const expiry = MAX_UINT256
+      const chainId = await getChainId(hre)
+      const name = await stRSRVotes.name()
+      const version = '1'
+      const verifyingContract = stRSRVotes.address
+
+      // Get data
+      const buildData = {
+        types: { Delegation },
+        domain: { name, version, chainId, verifyingContract },
+        message: {
+          delegatee: addr1.address,
+          nonce,
+          expiry,
+        },
+      }
+
+      // Get data
+      const sig = await addr1._signTypedData(buildData.domain, buildData.types, buildData.message)
+      const { v, r, s } = ethers.utils.splitSignature(sig)
+
+      // Change delegate for addr1 using signature
+      await stRSRVotes.connect(other).delegateBySig(addr1.address, nonce, expiry, v, r, s)
+
+      // Check result
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr1.address)
+    })
+
     it('Should count votes properly when staking', async function () {
       // Perform some stakes
       const amount1: BigNumber = bn('50e18')
