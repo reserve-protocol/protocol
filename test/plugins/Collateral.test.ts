@@ -57,7 +57,6 @@ describe('Collateral contracts', () => {
   // Aave / Compound
   let compoundMock: ComptrollerMock
   let compoundOracleInternal: CompoundOracleMock
-  let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
 
   // Config
@@ -89,7 +88,6 @@ describe('Collateral contracts', () => {
       compToken,
       compoundMock,
       compoundOracleInternal,
-      aaveMock,
       aaveToken,
       aaveOracleInternal,
       basket,

@@ -8,7 +8,6 @@ import {
   AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
   AaveOracleMock,
-  AavePricedAsset,
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,

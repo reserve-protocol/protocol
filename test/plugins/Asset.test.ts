@@ -4,15 +4,10 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMock,
   AaveOracleMock,
-  AavePricedAsset,
   Asset,
   CompoundOracleMock,
-  CompoundPricedAsset,
-  ComptrollerMock,
   ERC20Mock,
-  IMain,
   RTokenAsset,
   TestIRToken,
   USDCMock,
@@ -39,10 +34,6 @@ describe('Assets contracts #fast', () => {
   let rTokenAsset: RTokenAsset
   let basket: Collateral[]
 
-  // Aave / Compound
-  let compoundMock: ComptrollerMock
-  let aaveMock: AaveLendingPoolMock
-
   // Oracles
   let compoundOracleInternal: CompoundOracleMock
   let aaveOracleInternal: AaveOracleMock
@@ -51,7 +42,6 @@ describe('Assets contracts #fast', () => {
   let config: IConfig
 
   // Main
-  let main: IMain
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -69,15 +59,12 @@ describe('Assets contracts #fast', () => {
       rsrAsset,
       compToken,
       compAsset,
-      compoundMock,
       compoundOracleInternal,
       aaveToken,
       aaveAsset,
-      aaveMock,
       aaveOracleInternal,
       basket,
       config,
-      main,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
