@@ -1,4 +1,5 @@
 import { AssetRegistryP1 } from '@typechain/AssetRegistryP1'
+import { BackingManagerP1 } from '@typechain/BackingManagerP1'
 import { BasketHandlerP1 } from '@typechain/BasketHandlerP1'
 import { DeployerP1 } from '@typechain/DeployerP1'
 import { MainP1 } from '@typechain/MainP1'
@@ -69,6 +70,9 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
   const basketHandler = <BasketHandlerP1>(
     await hre.ethers.getContractAt('BasketHandlerP1', await main.basketHandler())
   )
+  const backingManager = <BackingManagerP1>(
+    await hre.ethers.getContractAt('BackingManagerP1', await main.backingManager())
+  )
 
   console.log('Deploying basket collaterals...')
   const basketCollaterals = await deployCollaterals(hre)
@@ -90,6 +94,11 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
 
   console.log('Unpausing...')
   await main.connect(deployer).unpause()
+
+  // Grant allowances
+  for (let i = 0; i < basketCollaterals.length; i++) {
+    await backingManager.grantRTokenAllowance(await basketCollaterals[i][0])
+  }
 
   // TODO: Test remove
   console.log('RSR Funding')

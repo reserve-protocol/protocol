@@ -1,3 +1,4 @@
+import { ONE_ETH } from './../common/constants'
 import { IImplementations } from './../test/fixtures'
 import { GnosisMock } from '@typechain/GnosisMock'
 import { ContractFactory } from 'ethers'
@@ -57,6 +58,7 @@ const createATokenCollateral = async (
   symbol: string,
   underlyingAddress: string
 ): Promise<[string, string]> => {
+  const [deployer] = await hre.ethers.getSigners()
   // Factory contracts
   const ATokenMockFactory = await hre.ethers.getContractFactory('StaticATokenMock')
   const ATokenCollateralFactory = await hre.ethers.getContractFactory('ATokenFiatCollateral')
@@ -80,6 +82,7 @@ const createATokenCollateral = async (
     AAVE_ADDRESS
   )
   await collateral.deployed()
+  await erc20.connect(deployer).mint(deployer.address, ONE_ETH.mul(100000000000))
 
   return [erc20.address, collateral.address]
 }
@@ -90,6 +93,7 @@ const createCTokenCollateral = async (
   underlyingAddress: string
 ): Promise<[string, string]> => {
   // Factory contracts
+  const [deployer] = await hre.ethers.getSigners()
   const CTokenMockFactory = await hre.ethers.getContractFactory('CTokenMock')
   const CTokenCollateralFactory = await hre.ethers.getContractFactory('CTokenFiatCollateral')
 
@@ -109,7 +113,8 @@ const createCTokenCollateral = async (
     COMPTROLLER_ADDRESS,
     COMP_ADDRESS
   )
-  await collateral.deployed()
+  await erc20.deployed()
+  await erc20.connect(deployer).mint(deployer.address, ONE_ETH.mul(100000000000))
 
   return [erc20.address, collateral.address]
 }
