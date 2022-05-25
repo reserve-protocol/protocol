@@ -28,10 +28,6 @@ contract Governance is
     struct ProposalDetails {
         address proposer;
         uint256 blockNumber;
-        address[] targets;
-        uint256[] values;
-        bytes[] calldatas;
-        bytes32 descriptionHash;
     }
 
     mapping(uint256 => ProposalDetails) private _proposalDetails;
@@ -102,17 +98,19 @@ contract Governance is
         ProposalDetails storage proposalDetails = _proposalDetails[proposalId];
         proposalDetails.proposer = _msgSender();
         proposalDetails.blockNumber = block.number;
-        proposalDetails.targets = targets;
-        proposalDetails.values = values;
-        proposalDetails.calldatas = calldatas;
-        proposalDetails.descriptionHash = keccak256(bytes(description));
     }
 
     /// Three ways to cancel
     /// 1. Be the proposer
     /// 2. The proposer doesn't have votes anymore
     /// 3. The StRSR era has changed
-    function cancel(uint256 proposalId) public virtual {
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public {
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         ProposalDetails storage details = _proposalDetails[proposalId];
         IStRSRVotes token_ = IStRSRVotes(address(token));
 
@@ -123,7 +121,7 @@ contract Governance is
             "Governor: proposer above threshold and same era"
         );
 
-        _cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
+        _cancel(targets, values, calldatas, descriptionHash);
     }
 
     /// An alternate way to cancel: anyone can cancel a proposal if the StRSR exchange rate has
@@ -131,12 +129,16 @@ contract Governance is
     /// @param startIndex The index of the `IStRSRVotes.getPastExchangeRate` that begins the span
     /// @param endIndex The index of the `IStRSRVotes.getPastExchangeRate` that ends the span
     function alternativeCancel(
-        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash,
         uint256 startIndex,
         uint256 endIndex
     ) public {
         require(endIndex > startIndex, "Governor: invalid indices");
 
+        uint256 proposalId = hashProposal(targets, values, calldatas, descriptionHash);
         ProposalDetails storage details = _proposalDetails[proposalId];
 
         // rates are in {qStRSR/qRSR}
@@ -155,7 +157,7 @@ contract Governance is
 
         require(endRate > (startRate * 3) / 2, "Governor: rate not inflated");
 
-        _cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
+        _cancel(targets, values, calldatas, descriptionHash);
     }
 
     function _execute(
