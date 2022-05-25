@@ -624,7 +624,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Set non-empty basket
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
-  await basketHandler.connect(owner).switchBasket()
+  await basketHandler.connect(owner).refreshBasket()
 
   // Unpause
   await main.connect(owner).unpause()
