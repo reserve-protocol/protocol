@@ -132,6 +132,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         rewardRatio = rewardRatio_;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
 
+        // Add initial exchange rate
+        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), FIX_ONE));
+
         beginEra();
     }
 

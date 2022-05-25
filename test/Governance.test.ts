@@ -302,36 +302,199 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
     })
 
-    // it('Should allow to cancel a proposal if proposer', async () => {
-    //   // Propose
-    //   const proposeTx = await governor
-    //     .connect(addr1)
-    //     ['propose(address[],uint256[],bytes[],string)'](
-    //       [backingManager.address],
-    //       [0],
-    //       [encodedFunctionCall],
-    //       proposalDescription
-    //     )
+    it('Should allow to cancel a proposal if proposer', async () => {
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
 
-    //   const proposeReceipt = await proposeTx.wait(1)
-    //   const proposalId = proposeReceipt.events![0].args!.proposalId
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
 
-    //   // Check proposal state
-    //   expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
 
-    //   // Cannot cancel with other user
-    //   await expect(governor.connect(other).cancel(proposalId)).to.be.revertedWith(
-    //     'GovernorBravo: proposer above threshold'
-    //   )
+      // Cannot cancel with other user
+      const descriptionHash = ethers.utils.id(proposalDescription)
 
-    //   // Proposer can cancel
-    //   await expect(governor.connect(addr1).cancel(proposalId))
-    //     .to.emit(governor, 'ProposalCanceled')
-    //     .withArgs(proposalId)
+      await expect(
+        governor
+          .connect(other)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      ).to.be.revertedWith('Governor: proposer above threshold and same era')
 
-    //   // Check proposal state
-    //   expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
-    // })
+      // Proposer can cancel
+      await expect(
+        governor
+          .connect(addr1)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      )
+        .to.emit(governor, 'ProposalCanceled')
+        .withArgs(proposalId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+    })
+
+    it('Should allow to cancel a proposal if era changes', async () => {
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Force change of era - Perform wipeout
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSRVotes.connect(signer).seizeRSR(stkAmt1.mul(2)))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1'))
+      })
+
+      // Anyone can cancel if era changed
+      const descriptionHash = ethers.utils.id(proposalDescription)
+      await expect(
+        governor
+          .connect(other)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      )
+        .to.emit(governor, 'ProposalCanceled')
+        .withArgs(proposalId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+    })
+
+    it('Should allow to cancel if proposer is below threshold', async () => {
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Unstake with proposer
+      const unstakeDelay: number = await stRSRVotes.unstakingDelay()
+      await stRSRVotes.connect(addr1).unstake(stkAmt1)
+      await advanceTime(unstakeDelay + 1)
+      await stRSRVotes.connect(addr1).withdraw(addr1.address, 1)
+
+      // Check votes
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Anyone can cancel if proposer is below threshold
+      const descriptionHash = ethers.utils.id(proposalDescription)
+      await expect(
+        governor
+          .connect(other)
+          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      )
+        .to.emit(governor, 'ProposalCanceled')
+        .withArgs(proposalId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+    })
+
+    it('Should allow to cancel if there is a significant rate change', async () => {
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Change Rate (small increase by 25%)
+      const seizeAmt1 = bn('400e18')
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSRVotes.connect(signer).seizeRSR(seizeAmt1))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1'), fp('1.25'))
+      })
+
+      // Change Rate (increase by additinal 35%)
+      const seizeAmt2 = bn('350e18')
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSRVotes.connect(signer).seizeRSR(seizeAmt2))
+          .to.emit(stRSR, 'ExchangeRateSet')
+          .withArgs(fp('1.25'), fp('1.6'))
+      })
+
+      // An attacker can stake here (will have double weight)
+      // Stake RSR with addr3 - And delegate
+      await rsr.connect(addr3).approve(stRSRVotes.address, stkAmt1)
+      await stRSRVotes.connect(addr3).stake(stkAmt1)
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // First exchange rate change does not trigger cancel
+      const descriptionHash = ethers.utils.id(proposalDescription)
+      await expect(
+        governor
+          .connect(other)
+          .alternativeCancel(
+            [backingManager.address],
+            [0],
+            [encodedFunctionCall],
+            descriptionHash,
+            0,
+            1
+          )
+      ).to.be.revertedWith('Governor: rate not inflated')
+
+      // Second exchange rate change does not trigger cancel
+      await expect(
+        governor
+          .connect(other)
+          .alternativeCancel(
+            [backingManager.address],
+            [0],
+            [encodedFunctionCall],
+            descriptionHash,
+            1,
+            2
+          )
+      ).to.be.revertedWith('Governor: rate not inflated')
+
+      // By comparing the initial and final checkpoints, anyone can cancel
+      await expect(
+        governor
+          .connect(other)
+          .alternativeCancel(
+            [backingManager.address],
+            [0],
+            [encodedFunctionCall],
+            descriptionHash,
+            0,
+            2
+          )
+      )
+        .to.emit(governor, 'ProposalCanceled')
+        .withArgs(proposalId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+    })
 
     it('Should complete full cycle', async () => {
       // Check current value
@@ -394,7 +557,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await backingManager.tradingDelay()).to.equal(newValue)
     })
 
-    it('Should ignore change of rate/era if voting is ongoing', async () => {
+    it('Should handle change of era properly - prevents execution', async () => {
       // Check current value
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
@@ -412,7 +575,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting
       await advanceBlocks(VOTING_DELAY + 1)
 
-      //let [, , , snapshotBlock, , , , , ,] = await governor.proposals(proposalId)
       let snapshotBlock = (await getLatestBlockNumber()) - 1
 
       const voteWay = 1 // for
@@ -427,8 +589,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Vote with addr1
       await governor.connect(addr1).castVote(proposalId, voteWay)
       await advanceBlocks(1)
-      //   let [, , , , , forVotes, , , ,] = await governor.proposals(proposalId)
-      //   expect(forVotes).to.equal(5e7) // 50%
 
       // Perform wipeout
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -451,8 +611,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Vote with addr2
       await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I vote for')
       await advanceBlocks(1)
-      //   ;[, , , , , forVotes, , , ,] = await governor.proposals(proposalId)
-      //   expect(forVotes).to.equal(1e8) // 100%
 
       // Advance time to finish voting
       await advanceBlocks(VOTING_PERIOD + 1)
@@ -468,13 +626,16 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time required by timelock
       await advanceTime(MIN_DELAY + 1)
 
-      // Execute
-      await governor.execute([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      // Execute - Will fail if era changed
+      await expect(
+        governor.execute([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      ).to.be.revertedWith('new era')
 
-      expect(await governor.state(proposalId)).to.equal(ProposalState.Executed)
+      // Check proposal, remains queued until expired
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
 
-      // Check value was updated
-      expect(await backingManager.tradingDelay()).to.equal(newValue)
+      // Check value was not updated
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
     })
 
     it('Should handle multiple proposals with different rates', async () => {
@@ -533,10 +694,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Active)
 
-      // Get snapshots
-      //   let [, , , snapshotBlock1, , , , , ,] = await governor.proposals(proposalId)
-      //   let [, , , snapshotBlock2, , , , , ,] = await governor.proposals(proposalId2)
-
       // Check votes being used for each proposal
       // Proposal 1
       expect(await governor.getVotes(addr1.address, snapshotBlock1)).to.equal(5e7) // 50%
@@ -566,15 +723,9 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(VOTING_PERIOD + 1)
 
       // Proposal #1 - Final results
-      //   let [, , , , , forVotes, againstVotes, , ,] = await governor.proposals(proposalId)
-      //   expect(forVotes).to.equal(5e7) // 50%
-      //   expect(againstVotes).to.equal(5e7) // 50%
       expect(await governor.state(proposalId)).to.equal(ProposalState.Defeated)
 
       // Proposal #2 - Final results
-      //   ;[, , , , , forVotes, againstVotes, , ,] = await governor.proposals(proposalId2)
-      //   expect(forVotes).to.equal(5e7) // 50%
-      //   expect(againstVotes).to.equal(2.5e7) // 25%
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Succeeded)
 
       // Queue
