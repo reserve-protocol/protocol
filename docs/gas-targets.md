@@ -74,7 +74,7 @@ This document serves to classify the protocol functions and define acceptable ga
 
   - Gas: [57228, 590605, 266086]
 
-- `switchBasket`
+- `refreshBasket`
   - Gas [331098, 1329651, 716447]
 
 ### Broker and GnosisTrade

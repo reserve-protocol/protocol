@@ -333,7 +333,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         primeBasket.map((c) => c.address),
         targetAmts
       )
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Issue rTokens
       await issueMany(rToken, rTokenSupply, addr1)
@@ -455,7 +455,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         primeBasket.map((token) => token.address),
         targetAmts
       )
-      await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
+      await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Issue rTokens
       await issueMany(rToken, rTokenSupply, addr1)
@@ -624,7 +624,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         basketSize,
         primeBasket.map((c) => c.address)
       )
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Insure with RSR
       await rsr.connect(owner).mint(addr1.address, fp('1e29'))
@@ -764,7 +764,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Set prime basket with all collateral
       await basketHandler.setPrimeBasket(primeERC20s, targetAmts)
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Unregister collateral and switch basket
       if (firstCollateral !== undefined) {

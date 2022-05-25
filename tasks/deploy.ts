@@ -90,7 +90,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
     basketCollaterals.map(([erc20Address]) => erc20Address),
     basketsNeededAmts
   )
-  await basketHandler.connect(deployer).switchBasket()
+  await basketHandler.connect(deployer).refreshBasket()
 
   console.log('Unpausing...')
   await main.connect(deployer).unpause()

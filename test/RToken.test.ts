@@ -242,7 +242,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -312,7 +312,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Set basket
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Check RToken price
       expect(await rToken.price()).to.equal(fp('1'))
@@ -1090,7 +1090,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Cancel slow issuances
       await expect(rToken.connect(addr1).cancel(0, false))
@@ -1384,7 +1384,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
       await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
       expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
 
       for (let i = 0; i < basketAddresses.length; i++) {
