@@ -111,8 +111,9 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
 
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
-            emit DefaultStatusChanged(whenDefault, block.timestamp, status());
+            uint256 oldWhenDefault = whenDefault;
             whenDefault = block.timestamp;
+            emit DefaultStatusChanged(oldWhenDefault, block.timestamp, status());
         }
         prevReferencePrice = referencePrice;
     }

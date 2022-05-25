@@ -57,11 +57,11 @@ interface ICollateral is IAsset {
     /// Emitted whenever `whenDefault` is changed
     /// @param oldWhenDefault The old value of `whenDefault`
     /// @param newWhenDefault The new value of `whenDefault`
-    /// @param status The updated CollateralStatus
+    /// @param newStatus The updated CollateralStatus
     event DefaultStatusChanged(
         uint256 indexed oldWhenDefault,
         uint256 indexed newWhenDefault,
-        CollateralStatus indexed status
+        CollateralStatus indexed newStatus
     );
 
     /// Refresh exchange rates and update default status.
