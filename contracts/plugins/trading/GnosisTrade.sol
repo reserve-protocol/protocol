@@ -38,6 +38,7 @@ contract GnosisTrade is ITrade {
     uint32 public endTime;
     uint192 public worstCasePrice; // {buyTok/sellTok}
 
+    // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
         require(status == begin, "Invalid trade state");
         status = TradeStatus.PENDING;
