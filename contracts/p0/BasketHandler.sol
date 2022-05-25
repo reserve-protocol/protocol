@@ -111,12 +111,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         basket.disabled = true;
     }
 
-    /// Check the basket for default and swaps it if necessary
-    /// @custom:refresher
-    function refreshBasket() external notPaused {
-        if (status() == CollateralStatus.DISABLED) {
-            _switchBasket();
-        }
+    /// Switch the basket, only callable directly by governance
+    /// @custom:interaction OR @custom:governance
+    function refreshBasket() external {
+        require(!main.paused() || main.owner() == _msgSender(), "unpaused or by owner");
+
+        main.assetRegistry().forceUpdates();
+        _switchBasket();
     }
 
     /// Set the prime basket in the basket configuration, in terms of erc20s and target amounts
@@ -161,18 +162,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; i++) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
+            // In that case the basket is set to disabled.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
-    }
-
-    /// Switch the basket, only callable directly by governance
-    /// @custom:governance
-    function switchBasket() external governance {
-        main.assetRegistry().refresh();
-        _switchBasket();
     }
 
     /// @return Whether it holds enough basket units of collateral

@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/Facade.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
@@ -12,12 +11,12 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IDistributor.sol";
+import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/assets/AavePricedAsset.sol";
-import "contracts/plugins/assets/CompoundPricedAsset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p1/Main.sol";
 
@@ -132,32 +131,14 @@ contract DeployerP1 is IDeployer {
             )
         });
 
-        IAsset[] memory assets = new IAsset[](4);
-        assets[0] = IAsset(address(implementations.rTokenAsset).clone());
-        RTokenAsset(address(assets[0])).init(
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = new RTokenAsset(
             IERC20Metadata(address(components.rToken)),
             params.maxTradeVolume,
             main
         );
 
-        assets[1] = IAsset(address(implementations.aavePricedAsset).clone());
-        AavePricedAsset(address(assets[1])).init(
-            rsr,
-            params.maxTradeVolume,
-            comptroller,
-            aaveLendingPool
-        );
-
-        assets[2] = IAsset(address(implementations.aavePricedAsset).clone());
-        AavePricedAsset(address(assets[2])).init(
-            aave,
-            params.maxTradeVolume,
-            comptroller,
-            aaveLendingPool
-        );
-
-        assets[3] = IAsset(address(implementations.compoundPricedAsset).clone());
-        CompoundPricedAsset(address(assets[3])).init(comp, params.maxTradeVolume, comptroller);
+        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
@@ -214,7 +195,7 @@ contract DeployerP1 is IDeployer {
         main.transferOwnership(owner);
 
         // Facade
-        Facade facade = FacadeP1(address(implementations.facade).clone());
+        IFacade facade = IFacade(address(implementations.facade).clone());
         facade.init(main);
         emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
         return (address(main));

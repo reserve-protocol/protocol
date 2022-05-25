@@ -215,7 +215,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Cannot update with invalid unstaking delay
@@ -236,7 +236,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Cannot update with invalid reward period
@@ -257,7 +257,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
     })
   })
@@ -543,7 +543,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
         // Withdraw
@@ -553,7 +553,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // If fully capitalized should withdraw OK  - Set back original basket
         await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
 

@@ -568,7 +568,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setTradingDelay(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -591,7 +591,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -614,7 +614,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -637,7 +637,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(backingManager.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -852,7 +852,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot add asset if not owner
       await expect(assetRegistry.connect(other).register(newAsset.address)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Reverts if attempting to add an existing ERC20 with different asset
@@ -913,7 +913,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot remove asset if not owner
       await expect(assetRegistry.connect(other).unregister(compAsset.address)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Cannot remove asset that does not exist
@@ -969,7 +969,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Cannot swap asset if not owner
       await expect(
         assetRegistry.connect(other).swapRegistered(newAsset.address)
-      ).to.be.revertedWith('prev caller is not the owner')
+      ).to.be.revertedWith('unpaused or by owner')
 
       // Cannot swap asset if ERC20 is not registered
       await expect(
@@ -1046,7 +1046,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket if not Owner', async () => {
       await expect(
         basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('prev caller is not the owner')
+      ).to.be.revertedWith('unpaused or by owner')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
@@ -1073,7 +1073,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(other)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
-      ).to.be.revertedWith('prev caller is not the owner')
+      ).to.be.revertedWith('unpaused or by owner')
     })
 
     it('Should not allow to set backup Config with non-collateral tokens', async () => {
@@ -1095,9 +1095,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
     })
 
-    it('Should not allow to switch basket if not Owner', async () => {
-      await expect(basketHandler.connect(other).switchBasket()).to.be.revertedWith(
-        'prev caller is not the owner'
+    it('Should not allow to refresh basket if not Owner when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
+        'unpaused or by owner'
       )
     })
 
@@ -1107,9 +1108,31 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it('Should allow to call switch Basket if Owner - No changes', async () => {
+    it('Should allow to call refresh Basket if Owner and paused - No changes', async () => {
+      await main.connect(owner).pause()
       // Switch basket - No backup nor default
-      await expect(basketHandler.connect(owner).switchBasket()).to.emit(basketHandler, 'BasketSet')
+      await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
+
+      // Basket remains the same in this case
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      const backing = await facade.basketTokens()
+      expect(backing[0]).to.equal(token0.address)
+      expect(backing[1]).to.equal(token1.address)
+      expect(backing[2]).to.equal(token2.address)
+      expect(backing[3]).to.equal(token3.address)
+
+      expect(backing.length).to.equal(4)
+
+      // Not updated so basket last changed is not set
+      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      await main.connect(owner).unpause()
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+    })
+
+    it('Should allow to call refresh Basket if not paused - No changes', async () => {
+      // Switch basket - No backup nor default
+      await expect(basketHandler.connect(other).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
@@ -1204,6 +1227,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
       expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
@@ -1230,6 +1254,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         },
         { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true },
       ])
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check values - All zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
@@ -1269,9 +1294,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
       // Unregister 2 tokens from the basket
-      await expect(assetRegistry.connect(owner).unregister(newAsset.address))
-        .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], true)
+      await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.not.emit(
+        basketHandler,
+        'BasketSet'
+      )
       await expect(assetRegistry.connect(owner).unregister(collateral3.address))
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)

@@ -17,38 +17,17 @@ contract AavePricedFiatCollateralMock is AaveOracleMixin, Collateral {
         IAaveLendingPool aaveLendingPool_,
         bytes32 targetName_,
         uint192 targetPerRef_
-    ) {
-        init(
-            erc20_,
-            maxTradeVolume_,
-            defaultThreshold_,
-            delayUntilDefault_,
-            comptroller_,
-            aaveLendingPool_,
-            targetName_,
-            targetPerRef_
-        );
-    }
-
-    function init(
-        IERC20Metadata erc20_,
-        uint192 maxTradeVolume_,
-        uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
-        bytes32 targetName_,
-        uint192 targetPerRef_
-    ) public initializer {
-        __Collateral_init(
+    )
+        Collateral(
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             erc20_,
             targetName_
-        );
-        __AaveOracleMixin_init(comptroller_, aaveLendingPool_);
+        )
+        AaveOracleMixin(comptroller_, aaveLendingPool_)
+    {
         _targetPerRef = targetPerRef_;
     }
 

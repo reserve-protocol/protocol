@@ -147,7 +147,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
-            emit IssuancesCompleted(issuer, queue.left, queue.right);
+            emit Issuance(issuer, amtRToken, amtBaskets);
 
             address backingMgr = address(main.backingManager());
 
@@ -296,11 +296,16 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
+<<<<<<< HEAD
         IBasketHandler bh = main.basketHandler();
         bh.refreshBasket();
+=======
+        // Call collective state keepers
+        main.assetRegistry().forceUpdates();
+>>>>>>> master
 
         // Allow redemption during IFFY
-        require(bh.status() != CollateralStatus.DISABLED, "collateral default");
+        require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
         main.furnace().melt();
         uint192 basketsNeeded_ = basketsNeeded; // gas optimization
@@ -309,8 +314,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = bh.quote(
-            uint192(uint192(baskets)),
+        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
+            uint192(baskets),
             FLOOR
         );
 
@@ -456,8 +461,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         // Vest the span up to `endId`.
-        uint256 amtRTokenToMint;
-        uint192 newBasketsNeeded;
+        uint256 amtRToken;
+        uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
         require(rightItem.when <= 1e18 * block.number, "issuance not ready");
 
@@ -469,21 +474,22 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
             }
-            amtRTokenToMint = rightItem.amtRToken;
-            newBasketsNeeded = basketsNeeded + rightItem.amtBaskets;
+            amtRToken = rightItem.amtRToken;
+            amtBaskets = rightItem.amtBaskets;
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
-            amtRTokenToMint = rightItem.amtRToken - leftItem.amtRToken;
-            newBasketsNeeded = basketsNeeded + rightItem.amtBaskets - leftItem.amtBaskets;
+            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
         }
 
-        _mint(account, amtRTokenToMint);
-        emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
-        basketsNeeded = newBasketsNeeded;
+        _mint(account, amtRToken);
+        emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
+        basketsNeeded = basketsNeeded + amtBaskets;
 
+        emit Issuance(account, amtRToken, amtBaskets);
         emit IssuancesCompleted(account, queue.left, endId);
         queue.left = endId;
 

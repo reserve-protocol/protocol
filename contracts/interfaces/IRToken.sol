@@ -49,6 +49,12 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         uint256 indexed endId
     );
 
+    /// Emitted when an issuance of RToken occurs, whether it occurs via slow minting or not
+    /// @param issuer The address of the account issuing RTokens
+    /// @param amount The quantity of RToken being issued
+    /// @param baskets The corresponding number of baskets
+    event Issuance(address indexed issuer, uint256 indexed amount, uint192 indexed baskets);
+
     /// Emitted when a redemption of RToken occurs
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed

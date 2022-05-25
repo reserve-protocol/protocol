@@ -243,7 +243,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.refreshBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.refreshBasket())
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral1.delayUntilDefault()).toString())
@@ -394,7 +394,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Basket should not switch yet
-        await expect(basketHandler.refreshBasket()).to.not.emit(basketHandler, 'BasketSet')
+        await expect(basketHandler.refreshBasket())
 
         // Advance time post delayUntilDefault
         await advanceTime((await collateral0.delayUntilDefault()).toString())
@@ -524,7 +524,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Unregister one of the tokens
         await assetRegistry.connect(owner).unregister(backupCollateral1.address)
-        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         await basketHandler.refreshBasket()
 
         // Check initial state
@@ -624,7 +623,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Setup new basket with two tokens with different targets
         initialTokens = [token0.address, token1.address]
         await basketHandler.connect(owner).setPrimeBasket(initialTokens, [fp('0.5'), fp('0.5')])
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         // Set initial values
         initialQuotes = [bn('0.5e18'), bn('0.5e6')]
@@ -771,7 +770,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Setup new basket with single token
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         // Provide approvals
         await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -792,7 +791,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket())
+        await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([token1.address], [fp('1')], false)
 
@@ -839,7 +838,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket())
+        await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([token1.address], [fp('1')], false)
 
@@ -943,7 +942,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket())
+        await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([token1.address], [fp('1')], false)
 
@@ -1053,7 +1052,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
         // Switch Basket
-        await expect(basketHandler.connect(owner).switchBasket())
+        await expect(basketHandler.connect(owner).refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([token1.address], [fp('1')], false)
 
