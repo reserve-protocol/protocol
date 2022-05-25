@@ -28,7 +28,7 @@ library RewardableLibP1 {
 
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
-    /// @custom:interaction CEI
+    /// @custom:interaction mostly CEI but see comments
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
@@ -63,12 +63,13 @@ library RewardableLibP1 {
             }
         }
 
-        // == Interaction block ==
-        // (no state changes to *this* contract, only view calls and interactions)
+        // == Interactions ==
         // Claim rewards
         for (uint256 i = 0; i < numClaims; i++) {
+            // Safe violation of strict CEI: we're reading balanceOf() here, but oldBal and newBal
+            // are only used here to emit the right event. Their definitions don't leave the inner
+            // block of this loop.
             uint256 oldBal = claims[i].reward.balanceOf(address(this));
-
             claims[i].callTo.functionCall(claims[i]._calldata, "rewards claim failed");
             uint256 newBal = claims[i].reward.balanceOf(address(this));
 
@@ -78,6 +79,9 @@ library RewardableLibP1 {
         // Sweep reward tokens to the backingManager
         if (address(this) != address(backingManager())) {
             for (uint256 i = 0; i < numRewardTokens; ++i) {
+                // Safe violation of strict CEI: we're reading balanceOf() here, too, but it's
+                // actually our intention to sweep all of rewardTokens[i] at this point, regardless
+                // of whatever else we may have computed in the function above.
                 uint256 bal = rewardTokens[i].balanceOf(address(this));
                 if (bal > 0) {
                     IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(

@@ -40,12 +40,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction CEI
     function grantRTokenAllowance(IERC20 erc20) external interaction {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        // == Interaction ==
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction CEI
+    /// @custom:interaction RCEI
     function manageTokens(IERC20[] calldata erc20s) external interaction {
+        // == Refresh ==
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
@@ -56,7 +58,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
-            // == Interaction ==
+            // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
             return;
         } else {
@@ -97,7 +99,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 return;
             }
 
-            // == Interaction
+            // == Interaction ==
             if (doTrade) tryTrade(req);
         }
     }
@@ -159,7 +161,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             }
         }
 
-        // == Begin Interactions ==
+        // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
             IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
             if (toRToken[i] > 0) erc20.safeTransfer(rTokenTrader, toRToken[i]);
@@ -168,7 +170,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
-    /// @custom:interaction
     function compromiseBasketsNeeded() private {
         // TODO this might be the one assert we actually keep
         assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
