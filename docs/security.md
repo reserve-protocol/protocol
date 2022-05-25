@@ -62,20 +62,4 @@ Note that `delegatecall` can also be dangerous for other reasons, such as transf
 
 ### Reentrancy Problems
 
-Since universal and consistent usage of the [Check-Effects-Interactions](https://docs.soliditylang.org/en/develop/security-considerations.html#use-the-checks-effects-interactions-pattern) pattern is not practical for a system whose behavior critically depends on the current state of external contracts when that state can only be read through non-view functions, we need to use a system of reentrancy guards.
-
-Moreover, the per-contract reentrancy guard mechanism provided by OpenZepplin does not work cleanly for our multi-contract system, because it leaves open the possibility that an attacker will launch a full-system reentrancy attack. A schematic example might look like:
-
-- A and B are system contracts; E is an external contract.
-- A.foo() is a user-callable function that depends on the state of B
-- A.foo() typically calls E.baz()
-- B.bar() is a user-callable function that changes the state of B
-
-A potential attack runs as follows:
-
-1. Eve subverts contract E so that E.baz() calls B.bar()
-2. Eve calls A.foo(), which calls E.baz(), which calls B.bar()
-3. B.bar() changes B's state in a way that violates A.foo()'s expectations
-4.
-
-Main's security domain is Main plus the Components. Collateral and Trade contracts are not considered within the security domain.
+This is, unavoidably, a whole developer discipline. See [handling reentrancy](handling-reentrancy.md) in our docs.
