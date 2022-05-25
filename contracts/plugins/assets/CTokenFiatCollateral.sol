@@ -73,7 +73,6 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         if (whenDefault <= block.timestamp) return;
         uint256 oldWhenDefault = whenDefault;
 
-
         // Check for hard default
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
