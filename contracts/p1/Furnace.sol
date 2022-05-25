@@ -33,7 +33,7 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
     function melt() external notPaused {
-        if (uint32(block.timestamp) < uint64(lastPayout) + period) return;
+        if (block.timestamp < uint64(lastPayout) + period) return;
 
         // # of whole periods that have passed since lastPayout
         uint32 numPeriods = (uint32(block.timestamp) - lastPayout) / period;
