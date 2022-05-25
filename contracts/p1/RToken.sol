@@ -97,7 +97,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().refresh();
 
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
-        IBasketHandler bh =  main.basketHandler(); // OK to save: can only be changed by gov
+        IBasketHandler bh = main.basketHandler(); // OK to save: can only be changed by gov
 
         (uint256 basketNonce, ) = bh.lastSet();
         IssueQueue storage queue = issueQueues[issuer];
@@ -296,13 +296,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
-<<<<<<< HEAD
-        IBasketHandler bh = main.basketHandler();
-        bh.refreshBasket();
-=======
         // Call collective state keepers
-        main.assetRegistry().forceUpdates();
->>>>>>> master
+        main.assetRegistry().refresh();
 
         // Allow redemption during IFFY
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
