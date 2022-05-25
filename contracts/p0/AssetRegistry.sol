@@ -9,6 +9,7 @@ import "contracts/p0/mixins/Component.sol";
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
 contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
+    using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Registered ERC20s
@@ -45,9 +46,11 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
         assert(assets[asset.erc20()] != IAsset(address(0)));
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         swapped = _registerIgnoringCollisions(asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity.gt(FIX_ZERO)) main.basketHandler().disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -55,11 +58,13 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity.gt(FIX_ZERO)) main.basketHandler().disableBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert
@@ -121,6 +126,5 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         swapped = _erc20s.add(address(asset.erc20()));
         assets[asset.erc20()] = asset;
         emit AssetRegistered(asset.erc20(), asset);
-        if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
     }
 }

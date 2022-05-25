@@ -40,6 +40,7 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
         assetRegistry.forceUpdates();
         furnace.melt();
         stRSR.payoutRewards();
+        // NOT basketHandler.refreshBasket
     }
 
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
