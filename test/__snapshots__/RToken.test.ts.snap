@@ -4,9 +4,9 @@ exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 1`] = `994236`;
 
 exports[`RTokenP1 contract Gas Reporting Issuance: across blocks 2`] = `733780`;
 
-exports[`RTokenP1 contract Gas Reporting Issuance: within block 1`] = `714883`;
+exports[`RTokenP1 contract Gas Reporting Issuance: within block 1`] = `714698`;
 
-exports[`RTokenP1 contract Gas Reporting Issuance: within block 2`] = `541942`;
+exports[`RTokenP1 contract Gas Reporting Issuance: within block 2`] = `541757`;
 
 exports[`RTokenP1 contract Gas Reporting Redemption 1`] = `489913`;
 

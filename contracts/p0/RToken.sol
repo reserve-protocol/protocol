@@ -118,9 +118,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         issuances[issuer].push(iss);
         accounts.add(issuer);
 
+        uint256 index = issuances[issuer].length - 1;
         emit IssuanceStarted(
             iss.issuer,
-            issuances[issuer].length - 1,
+            index,
             iss.amount,
             iss.baskets,
             iss.erc20s,
@@ -134,9 +135,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             basketHandler.status() == CollateralStatus.SOUND
         ) {
             // At this point all checks have been done to ensure the issuance should vest
-            uint256 vestedAmount = tryVestIssuance(issuer, issuances[issuer].length - 1);
+            uint256 vestedAmount = tryVestIssuance(issuer, index);
+            emit IssuancesCompleted(issuer, index, index);
             assert(vestedAmount == iss.amount);
-            delete issuances[issuer][issuances[issuer].length - 1];
+            delete issuances[issuer][index];
         }
     }
 
@@ -182,9 +184,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         refundAndClearStaleIssuances(account);
 
+        uint256 first;
+        uint256 totalVested;
         for (uint256 i = 0; i < endId && i < issuances[account].length; i++) {
-            tryVestIssuance(account, i);
+            uint256 vestedAmount = tryVestIssuance(account, i);
+            totalVested += vestedAmount;
+            if (first == 0 && vestedAmount > 0) first = i;
         }
+        if (totalVested > 0) emit IssuancesCompleted(account, first, endId);
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -292,7 +299,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             basketsNeeded = basketsNeeded.plus(iss.baskets);
 
             iss.processed = true;
-            emit IssuancesCompleted(issuer, index, index);
+            emit Issuance(issuer, iss.amount, iss.baskets);
         }
     }
 
