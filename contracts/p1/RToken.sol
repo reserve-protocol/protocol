@@ -91,22 +91,30 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
-    /// @custom:interaction CEI
+    /// @custom:interaction almost but not quite CEI
     function issue(uint256 amtRToken) external interaction {
         // == Refresh ==
         main.assetRegistry().refresh();
 
-        // Refund issuances against old baskets
-        address issuer = _msgSender();
-        IssueQueue storage queue = issueQueues[issuer];
-        IBasketHandler bh = main.basketHandler();
+        address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
+        IBasketHandler bh =  main.basketHandler(); // OK to save: can only be changed by gov
+
         (uint256 basketNonce, ) = bh.lastSet();
+        IssueQueue storage queue = issueQueues[issuer];
+
+        // Refund issuances against old baskets
         if (queue.basketNonce != basketNonce) {
             // == Interaction ==
+            // This violates simple CEI, so we have to renew any potential transient state!
             refundSpan(issuer, queue.left, queue.right);
-        }
 
-        main.assetRegistry().refreshTransients();
+            // Refresh collateral after interaction
+            main.assetRegistry().refreshTransients();
+
+            // Refresh local values after potential reentrant changes to contract state.
+            (basketNonce, ) = bh.lastSet();
+            queue = issueQueues[issuer];
+        }
 
         // == Checks-effects block ==
         require(amtRToken > 0, "Cannot issue zero");

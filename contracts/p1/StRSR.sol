@@ -185,9 +185,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
-    /// @custom:interaction RCE
+    /// @custom:interaction RCEI
     function withdraw(address account, uint256 endId) external interaction {
-        // == Refresh collateral ==
+        // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks + Effects ==
@@ -220,6 +220,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         draftRSR = newDraftRSR;
 
         emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+
+        // == Interaction ==
         IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
