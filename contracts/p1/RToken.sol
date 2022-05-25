@@ -234,9 +234,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);
-            main.assetRegistry().refreshTransients();
+        } else {
+            vestUpTo(account, endId);
         }
-        vestUpTo(account, endId);
     }
 
     /// @return A non-inclusive ending index
