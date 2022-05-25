@@ -31,7 +31,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    // === Eras ===
+    // === History ===
     /*
      * When the stakeRate falls below the MIN_EXCHANGE_RATE, all balances are wiped and
      * a new era begins.
@@ -41,7 +41,17 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9 D18{1}
 
     // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
-    uint256 public era;
+    uint256 internal era;
+
+    /// @param fromBlock The block number at which the exchange rate was first reached
+    /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
+    struct HistoricalExchangeRate {
+        uint32 fromBlock;
+        uint192 rate;
+    }
+
+    // History of all past exchange rates, recorded on each payoutRewards + seizeRSR
+    HistoricalExchangeRate[] internal exchangeRateHistory;
 
     // === ERC20 ===
 
@@ -226,7 +236,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        uint192 initRate = exchangeRate();
+        uint192 initRate = stakeRate;
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
@@ -258,7 +268,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         }
 
         // Transfer RSR to caller
-        emit ExchangeRateSet(initRate, exchangeRate());
+        emit ExchangeRateSet(initRate, stakeRate);
+        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), stakeRate));
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
@@ -309,7 +320,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
-        uint192 initRate = exchangeRate();
+        uint192 initRate = stakeRate;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing
@@ -324,6 +335,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
 
         emit ExchangeRateSet(initRate, stakeRate);
+        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), stakeRate));
     }
 
     /// @param rsrAmount {qRSR}
