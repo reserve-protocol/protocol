@@ -1,2 +1,2 @@
-((nil . ((column-enforce-column . 100)
-         (mode . column-enforce))))
+((prog-mode . ((column-enforce-column . 100)
+               (mode . column-enforce))))

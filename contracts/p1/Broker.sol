@@ -41,7 +41,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    /// @custom:protected
+    /// @custom:interaction CEI
     function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
         require(!disabled, "broker disabled");
 
@@ -56,6 +56,8 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
+
+        // == Interactions ==
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             caller,
             address(trade),

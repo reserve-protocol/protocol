@@ -104,11 +104,8 @@ contract MockBasketHandler is IBasketHandler, ComponentMock {
     /// Default the basket in order to schedule a basket refresh
     function disableBasket() external {}
 
-    /// Check that the current basket is valid, causing underlying updates
-    function refreshBasket() external {}
-
     /// Governance-controlled setter to cause a basket switch explicitly
-    function switchBasket() external {
+    function refreshBasket() external {
         // TODO: modeA = !modeA, and we do all the needed trades and handle capitalization
         ++nonce;
         timestamp = block.timestamp;

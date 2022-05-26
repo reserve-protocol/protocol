@@ -28,7 +28,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
-    /// @custom:interaction
+    /// @custom:interaction CEI
     function manageToken(IERC20 erc20) external interaction {
         if (address(trades[erc20]) != address(0)) return;
 
@@ -36,6 +36,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         if (bal == 0) return;
 
         if (erc20 == tokenToBuy) {
+            // == Interactions then return ==
             IERC20Upgradeable(address(erc20)).approve(address(main.distributor()), bal);
             main.distributor().distribute(erc20, address(this), bal);
             return;
@@ -49,6 +50,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             reg.toAsset(erc20).bal(address(this))
         );
 
+        // == Interactions then return ==
         if (launch) tryTrade(trade);
     }
 }

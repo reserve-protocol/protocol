@@ -11,15 +11,6 @@ import "contracts/interfaces/IMain.sol";
  * Abstract superclass for system contracts registered in Main
  */
 abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
-    // === ReentrancyGuard ===
-
-    uint256 private constant _NOT_ENTERED = 1;
-    uint256 private constant _ENTERED = 2;
-
-    uint256 private _status;
-
-    // ===
-
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
@@ -31,21 +22,16 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     function __Component_init(IMain main_) internal onlyInitializing {
         __UUPSUpgradeable_init();
         main = main_;
-        _status = _NOT_ENTERED;
     }
 
     // === See docs/security.md ===
-
     modifier interaction() {
         require(!main.paused(), "paused");
-        require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
-        _status = _ENTERED;
         _;
-        _status = _NOT_ENTERED;
     }
 
     modifier governance() {
-        require(main.owner() == _msgSender(), "prev caller is not the owner");
+        require(main.owner() == _msgSender(), "unpaused or by owner");
         _;
     }
 

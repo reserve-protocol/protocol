@@ -26,14 +26,14 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Force updates in all collateral assets
+    /// Update the state of all collateral
     /// @custom:refresher
-    function forceUpdates() external {
+    function refresh() external {
         // It's a waste of gas to require notPaused because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
         }
     }
 
@@ -50,9 +50,12 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         swapped = _registerIgnoringCollisions(asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity > 0) main.basketHandler().disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -60,11 +63,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity > 0) main.basketHandler().disableBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert
@@ -92,8 +97,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    //
-
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered
     function _register(IAsset asset) internal returns (bool registered) {
@@ -101,6 +104,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
             !_erc20s.contains(address(asset.erc20())) || assets[asset.erc20()] == asset,
             "duplicate ERC20 detected"
         );
+
         registered = _registerIgnoringCollisions(asset);
     }
 
@@ -117,6 +121,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         swapped = _erc20s.add(address(erc20));
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
-        if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
     }
 }

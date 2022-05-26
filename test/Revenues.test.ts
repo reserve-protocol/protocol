@@ -168,7 +168,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('prev caller is not the owner')
+      ).to.be.revertedWith('unpaused or by owner')
 
       // Update with owner - Set f = 1
       await expect(
@@ -1528,7 +1528,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .setPrimeBasket([token2.address, newToken.address], [fp('0.5'), fp('0.5')])
 
         // Switch basket
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         rewardAmountAAVE = bn('0.5e18')
 
@@ -1589,7 +1589,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await basketHandler.connect(owner).setPrimeBasket([token2.address], [fp('1')])
 
         // Switch basket
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         rewardAmountAAVE = bn('0.5e18')
 
@@ -1616,7 +1616,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await basketHandler
           .connect(owner)
           .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
-        await basketHandler.connect(owner).switchBasket()
+        await basketHandler.connect(owner).refreshBasket()
 
         // Provide approvals
         await token2.connect(addr1).approve(rToken.address, initialBal)

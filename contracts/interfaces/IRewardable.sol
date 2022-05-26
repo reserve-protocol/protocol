@@ -13,5 +13,6 @@ interface IRewardable is IComponent {
     event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
     /// Claim reward tokens from integrated defi protocols such as Compound/Aave
+    /// @custom:interaction
     function claimAndSweepRewards() external;
 }

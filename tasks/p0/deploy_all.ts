@@ -81,7 +81,7 @@ task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
       basketCollaterals.map(([erc20Address]) => erc20Address),
       basketsNeededAmts
     )
-    await basketHandler.connect(deployer).switchBasket()
+    await basketHandler.connect(deployer).refreshBasket()
 
     console.log('Unpausing...')
     await main.connect(deployer).unpause()

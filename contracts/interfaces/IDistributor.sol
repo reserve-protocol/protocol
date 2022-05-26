@@ -34,6 +34,7 @@ interface IDistributor is IComponent {
     function setDistribution(address dest, RevenueShare memory share) external;
 
     /// Distribute the `erc20` token across all revenue destinations
+    /// @custom:interaction
     function distribute(
         IERC20 erc20,
         address from,

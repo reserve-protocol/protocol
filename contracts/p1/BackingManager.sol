@@ -37,19 +37,20 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
-    /// @custom:interaction
+    /// @custom:interaction CEI
     function grantRTokenAllowance(IERC20 erc20) external interaction {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        // == Interaction ==
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction
+    /// @custom:interaction RCEI
     function manageTokens(IERC20[] calldata erc20s) external interaction {
+        // == Refresh ==
+        main.assetRegistry().refresh();
+
         if (tradesOpen > 0) return;
-
-        main.assetRegistry().forceUpdates();
-
         // Do not trade when DISABLED or IFFY
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
@@ -57,68 +58,54 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCapitalized()) {
+            // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
+            return;
         } else {
             /*
              * Recapitalization Strategy
              *
-             * Trading one at a time...
+             * Trading one at a time:
              *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
              *     a. Sell non-RSR assets first
-             *     b. Sell RSR when no asset has a surplus > dust amount
-             *   2. When RSR holdings < dust:
+             *     b. Seize and sell RSR when no asset has a surplus > dust amount
+             *   2. If rToken.basketsNeeded() can't be reached after seizing all RSR,
              *     -  Sell non-RSR surplus assets towards the Fallen Target
-             *   3. When this produces trade sizes < dust:
+             *   3. If all trades are less than the dust amount,
              *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
              *
              * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
              *   Note that the Fallen Target is freshly calculated during each pass
              */
 
-            ///                       Baskets Needed
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             1a               |            1b
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///  non-RSR ------------------------------------------ RSR
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             2                |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                        Fallen Target
+            //                  | non-RSR | RSR |
+            // |----------------|---------|-----|
+            // | Baskets Needed | 1a      | 1b  |
+            // | Fallen Target  | 2       |     |
+
+            bool doTrade;
+            TradeRequest memory req;
 
             // 1a
-            (bool doTrade, TradeRequest memory req) = TradingLibP1.nonRSRTrade(false);
+            (doTrade, req) = TradingLibP1.nonRSRTrade(false);
+            // 1b
+            if (!doTrade) (doTrade, req) = TradingLibP1.rsrTrade();
+            // 2
+            if (!doTrade) (doTrade, req) = TradingLibP1.nonRSRTrade(true);
 
+            // 3
             if (!doTrade) {
-                // 1b
-                (doTrade, req) = TradingLibP1.rsrTrade();
-            }
-
-            if (!doTrade) {
-                // 2
-                (doTrade, req) = TradingLibP1.nonRSRTrade(true);
-            }
-
-            if (doTrade) {
-                tryTrade(req);
-            } else {
-                // 3
                 compromiseBasketsNeeded();
+                return;
             }
+
+            // == Interaction ==
+            if (doTrade) tryTrade(req);
         }
     }
 
     /// Send excess assets to the RSR and RToken traders
+    /// @custom:interaction CEI
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         IBasketHandler basketHandler = main.basketHandler();
         address rsrTrader = address(main.rsrTrader());
@@ -126,6 +113,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Forward any RSR held to StRSR pool
         if (main.rsr().balanceOf(address(this)) > 0) {
+            // We consider this an interaction "within our system" even though RSR is already live
             IERC20Upgradeable(address(main.rsr())).safeTransfer(
                 address(main.rsrTrader()),
                 main.rsr().balanceOf(address(this))
@@ -158,6 +146,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // Handout excess assets above what is needed, including any newly minted RToken
         uint256 length = erc20s.length;
         RevenueTotals memory totals = main.distributor().totals();
+        uint256[] memory toRSR = new uint256[](length);
+        uint256[] memory toRToken = new uint256[](length);
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
 
@@ -167,22 +157,16 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 uint256 delta = asset.bal(address(this)).minus(req).shiftl_toUint(
                     int8(IERC20Metadata(address(erc20s[i])).decimals())
                 );
-
-                {
-                    uint256 toRSR = (delta / (totals.rTokenTotal + totals.rsrTotal)) *
-                        totals.rsrTotal;
-                    if (toRSR > 0) {
-                        IERC20Upgradeable(address(erc20s[i])).safeTransfer(rsrTrader, toRSR);
-                    }
-                }
-                {
-                    uint256 toRToken = (delta / (totals.rTokenTotal + totals.rsrTotal)) *
-                        totals.rTokenTotal;
-                    if (toRToken > 0) {
-                        IERC20Upgradeable(address(erc20s[i])).safeTransfer(rTokenTrader, toRToken);
-                    }
-                }
+                toRSR[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rsrTotal;
+                toRToken[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rTokenTotal;
             }
+        }
+
+        // == Interactions ==
+        for (uint256 i = 0; i < length; ++i) {
+            IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
+            if (toRToken[i] > 0) erc20.safeTransfer(rTokenTrader, toRToken[i]);
+            if (toRSR[i] > 0) erc20.safeTransfer(rsrTrader, toRSR[i]);
         }
     }
 

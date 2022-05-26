@@ -67,14 +67,12 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         return consultOracle(referenceERC20).mul(refPerTok());
     }
 
-    /// Default checks
-    function forceUpdates() external virtual override {
-        if (whenDefault <= block.timestamp) {
-            return;
-        }
-        uint256 cached = whenDefault;
+    /// Refresh exchange rates and update default status.
+    function refresh() external virtual override {
+        if (whenDefault <= block.timestamp) return;
 
-        // Check for hard default
+        uint256 oldWhenDefault = whenDefault;
+
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
@@ -101,8 +99,8 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         }
         prevReferencePrice = referencePrice;
 
-        if (whenDefault != cached) {
-            emit DefaultStatusChanged(cached, whenDefault, status());
+        if (whenDefault != oldWhenDefault) {
+            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
         }
     }
 
