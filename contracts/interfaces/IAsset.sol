@@ -69,11 +69,6 @@ interface ICollateral is IAsset {
     /// this collateral's prices or default status.
     function refresh() external;
 
-    /// Update any collateral state that can change due to reentrancy.
-    /// To avoid reentrancy bugs, the Reserve protocol calls this before relying on prices or
-    /// default status, if it's had an interaction since it or refresh() was previously called.
-    function refreshTransients() external;
-
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);
 

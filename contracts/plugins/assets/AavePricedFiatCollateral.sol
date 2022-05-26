@@ -32,11 +32,4 @@ contract AavePricedFiatCollateral is AaveOracleMixin, Collateral {
     function price() public view virtual returns (uint192) {
         return consultOracle(erc20);
     }
-
-    // solhint-disable no-empty-blocks
-    /// Update any collateral state that can change due to reentrancy.
-    function refreshTransients() public virtual override {
-        // no action here; the price is just an oracle value, which we expect
-        // not to be transient under reentrancy.
-    }
 }

@@ -111,7 +111,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(issuer, queue.left, queue.right);
 
             // Refresh collateral after interaction
-            main.assetRegistry().refreshTransients();
+            main.assetRegistry().refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
             (basketNonce, ) = bh.lastSet();

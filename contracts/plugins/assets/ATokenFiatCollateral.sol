@@ -104,20 +104,6 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
         }
     }
 
-    /// Update any collateral state that can change due to reentrancy.
-    function refreshTransients() external virtual override {
-        // refPrice might have changed
-        if (whenDefault <= block.timestamp) return;
-
-        uint192 referencePrice = refPerTok();
-        if (referencePrice.lt(prevReferencePrice)) {
-            uint256 oldWhenDefault = whenDefault;
-            whenDefault = block.timestamp;
-            emit DefaultStatusChanged(oldWhenDefault, block.timestamp, status());
-        }
-        prevReferencePrice = referencePrice;
-    }
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rateInRAYs = IStaticAToken(address(erc20)).rate(); // {ray ref/tok}
