@@ -1,33 +1,33 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `218327`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `218238`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `220946`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `220857`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `220946`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `220857`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `221072`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `220983`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `299770`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `299681`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `253213`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `253036`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `253213`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `253036`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `253427`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `253250`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `757968`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `757883`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `963328`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 2`] = `962802`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `213770`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 3`] = `213756`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `198108`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 4`] = `198094`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `736051`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 5`] = `735966`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `46927`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 6`] = `46926`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `174770`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 7`] = `174756`;
 
-exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `43723`;
+exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 8`] = `43722`;

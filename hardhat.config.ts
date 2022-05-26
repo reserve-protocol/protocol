@@ -75,7 +75,7 @@ const config: any = {
       },
       'contracts/p1/StRSRVotes.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 1000 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 800 } },
       },
     },
   },

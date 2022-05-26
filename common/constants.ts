@@ -25,6 +25,18 @@ export enum CollateralStatus {
   DISABLED,
 }
 
+// @dev Must match `Governance.ProposalState`.
+export enum ProposalState {
+  Pending,
+  Active,
+  Canceled,
+  Defeated,
+  Succeeded,
+  Queued,
+  Expired,
+  Executed,
+}
+
 // @dev Must match `Fixed.RoundingApproach`.
 export enum RoundingMode {
   FLOOR,
