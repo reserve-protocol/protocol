@@ -25,6 +25,7 @@ module.exports = {
     'node/no-extraneous-import': 'off',
     'node/no-unpublished-import': 'off',
     '@typescript-eslint/no-extra-semi': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
     '@typescript-eslint/no-floating-promises': 'error',
     '@typescript-eslint/no-misused-promises': 'error',
   },

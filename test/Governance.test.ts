@@ -141,8 +141,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should return votes correctly', async () => {
-      let stkAmt1: BigNumber = bn('1000e18')
-      let stkAmt2: BigNumber = bn('500e18')
+      const stkAmt1: BigNumber = bn('1000e18')
+      const stkAmt2: BigNumber = bn('500e18')
 
       // Initially no supply at all
       let currBlockNumber: number = (await getLatestBlockNumber()) - 1
@@ -233,7 +233,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
   describe('Proposals', () => {
     // Proposal details
     const newValue: BigNumber = bn('360')
-    const proposalDescription: string = 'Proposal #1 - Update Trading Delay to 360'
+    const proposalDescription = 'Proposal #1 - Update Trading Delay to 360'
     let encodedFunctionCall: string
     let stkAmt1: BigNumber
     let stkAmt2: BigNumber
@@ -314,9 +314,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
 
-      // Cannot cancel with other user
-      const descriptionHash = ethers.utils.id(proposalDescription)
-
       await expect(governor.connect(other).cancel(proposalId)).to.be.revertedWith(
         'Governor: proposer above threshold and same era'
       )
@@ -353,7 +350,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       })
 
       // Anyone can cancel if era changed
-      const descriptionHash = ethers.utils.id(proposalDescription)
       await expect(governor.connect(other).cancel(proposalId))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
@@ -387,7 +383,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(VOTING_DELAY + 1)
 
       // Anyone can cancel if proposer is below threshold
-      const descriptionHash = ethers.utils.id(proposalDescription)
       await expect(governor.connect(other).cancel(proposalId))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
@@ -434,7 +429,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(VOTING_DELAY + 1)
 
       // First exchange rate change does not trigger cancel
-      const descriptionHash = ethers.utils.id(proposalDescription)
       await expect(governor.connect(other).alternativeCancel(proposalId, 0, 1)).to.be.revertedWith(
         'Governor: rate not inflated'
       )
@@ -492,9 +486,6 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Finished voting - Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
 
-      // Queue
-      const descriptionHash = ethers.utils.id(proposalDescription)
-
       // Using Bravo-type signature
       await governor['queue(uint256)'](proposalId)
 
@@ -533,7 +524,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting
       await advanceBlocks(VOTING_DELAY + 1)
 
-      let snapshotBlock = (await getLatestBlockNumber()) - 1
+      const snapshotBlock = (await getLatestBlockNumber()) - 1
 
       const voteWay = 1 // for
 
@@ -625,7 +616,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting
       await advanceBlocks(VOTING_DELAY + 1)
 
-      let snapshotBlock1 = (await getLatestBlockNumber()) - 1
+      const snapshotBlock1 = (await getLatestBlockNumber()) - 1
 
       // Change Rate (decrease by 50%) - should only impact the new proposal
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -656,7 +647,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Advance time to start voting 2nd proposal
       await advanceBlocks(VOTING_DELAY + 1)
 
-      let snapshotBlock2 = (await getLatestBlockNumber()) - 1
+      const snapshotBlock2 = (await getLatestBlockNumber()) - 1
 
       // Check proposal states
       expect(await governor.state(proposalId)).to.equal(ProposalState.Active)

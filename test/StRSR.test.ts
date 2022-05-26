@@ -1575,8 +1575,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   describeP1('Name and Symbol', () => {
     it('Should allow to set name/symbol if Owner', async () => {
       // Setup new values
-      const newName: string = 'newSTRSR Token'
-      const newSymbol: string = 'newSTRSR'
+      const newName = 'newSTRSR Token'
+      const newSymbol = 'newSTRSR'
 
       // Update name and symbol
       await stRSR.connect(owner).setName(newName)
@@ -1604,7 +1604,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should setup initial state correctly', async function () {
-      let currentBlockNumber = (await getLatestBlockNumber()) - 1
+      const currentBlockNumber = (await getLatestBlockNumber()) - 1
       expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
 
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
@@ -1818,7 +1818,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Mine an additional block
       await advanceBlocks(1)
 
-      let currentBlockNumber = (await getLatestBlockNumber()) - 1
+      const currentBlockNumber = (await getLatestBlockNumber()) - 1
       expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(
         amount.mul(2)
@@ -1965,7 +1965,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       it('Should update votes/checkpoints on transfer', async function () {
         // Check values before transfers
-        let currentBlockNumber = (await getLatestBlockNumber()) - 1
+        const currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
         expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
         expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
