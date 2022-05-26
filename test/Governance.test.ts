@@ -136,7 +136,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // If not the owner cannot update
       await expect(backingManager.connect(owner).setTradingDelay(bn(360))).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
     })
 
