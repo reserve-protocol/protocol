@@ -57,22 +57,17 @@ interface ICollateral is IAsset {
     /// Emitted whenever `whenDefault` is changed
     /// @param oldWhenDefault The old value of `whenDefault`
     /// @param newWhenDefault The new value of `whenDefault`
-    /// @param status The updated CollateralStatus
+    /// @param newStatus The updated CollateralStatus
     event DefaultStatusChanged(
         uint256 indexed oldWhenDefault,
         uint256 indexed newWhenDefault,
-        CollateralStatus indexed status
+        CollateralStatus indexed newStatus
     );
 
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
     function refresh() external;
-
-    /// Update any collateral state that can change due to reentrancy.
-    /// To avoid reentrancy bugs, the Reserve protocol calls this before relying on prices or
-    /// default status, if it's had an interaction since it or refresh() was previously called.
-    function refreshTransients() external;
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

@@ -231,7 +231,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external notPaused {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        uint192 initRate = exchangeRate();
+        uint192 initRate = stakeRate;
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
@@ -263,7 +263,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         }
 
         // Transfer RSR to caller
-        emit ExchangeRateSet(initRate, exchangeRate());
+        emit ExchangeRateSet(initRate, stakeRate);
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
@@ -315,7 +315,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
-        uint192 initRate = exchangeRate();
+        uint192 initRate = stakeRate;
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing

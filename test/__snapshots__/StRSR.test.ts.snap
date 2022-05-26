@@ -14,6 +14,6 @@ exports[`StRSRP1 contract Gas Reporting Unstake 1`] = `196179`;
 
 exports[`StRSRP1 contract Gas Reporting Unstake 2`] = `133200`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `472077`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `471875`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `442935`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `442733`;

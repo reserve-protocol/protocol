@@ -113,6 +113,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Forward any RSR held to StRSR pool
         if (main.rsr().balanceOf(address(this)) > 0) {
+            // We consider this an interaction "within our system" even though RSR is already live
             IERC20Upgradeable(address(main.rsr())).safeTransfer(
                 address(main.rsrTrader()),
                 main.rsr().balanceOf(address(this))

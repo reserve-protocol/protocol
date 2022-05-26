@@ -107,23 +107,6 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         // No interactions beyond the initial refresher
     }
 
-    /// Update any collateral state that can change due to reentrancy.
-    function refreshTransients() public virtual override {
-        ICToken(address(erc20)).exchangeRateCurrent();
-
-        // refPrice might have changed
-        if (whenDefault <= block.timestamp) return;
-
-        uint192 referencePrice = refPerTok();
-        if (referencePrice.lt(prevReferencePrice)) {
-            emit DefaultStatusChanged(whenDefault, block.timestamp, status());
-            whenDefault = block.timestamp;
-        }
-        prevReferencePrice = referencePrice;
-
-        // No interactions beyond the initial refresher
-    }
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();

@@ -93,6 +93,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
     function issue(uint256 amtRToken) external interaction {
+        require(amtRToken > 0, "Cannot issue zero");
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -109,7 +111,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(issuer, queue.left, queue.right);
 
             // Refresh collateral after interaction
-            main.assetRegistry().refreshTransients();
+            main.assetRegistry().refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
             (basketNonce, ) = bh.lastSet();
@@ -117,7 +119,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // == Checks-effects block ==
-        require(amtRToken > 0, "Cannot issue zero");
         CollateralStatus status = bh.status();
         require(status != CollateralStatus.DISABLED, "basket disabled");
 
@@ -234,9 +235,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
             refundSpan(account, queue.left, queue.right);
-            main.assetRegistry().refreshTransients();
+        } else {
+            vestUpTo(account, endId);
         }
-        vestUpTo(account, endId);
     }
 
     /// @return A non-inclusive ending index
@@ -288,17 +289,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:action
     /// @custom:interaction CEI
     function redeem(uint256 amount) external interaction {
+        require(amount > 0, "Cannot redeem zero");
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
-
-        // Call collective state keepers
-        main.assetRegistry().refresh();
-
         // Allow redemption during IFFY
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 

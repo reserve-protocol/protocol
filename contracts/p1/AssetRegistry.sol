@@ -37,15 +37,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Refresh all transient collateral state
-    function refreshTransients() external {
-        uint256 length = _erc20s.length();
-        for (uint256 i = 0; i < length; ++i) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refreshTransients();
-        }
-    }
-
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return If the asset was moved from unregistered to registered
     /// @custom:governance
