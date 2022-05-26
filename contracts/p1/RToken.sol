@@ -93,6 +93,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
     function issue(uint256 amtRToken) external interaction {
+        require(amtRToken > 0, "Cannot issue zero");
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -117,7 +119,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // == Checks-effects block ==
-        require(amtRToken > 0, "Cannot issue zero");
         CollateralStatus status = bh.status();
         require(status != CollateralStatus.DISABLED, "basket disabled");
 
@@ -288,12 +289,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:action
     /// @custom:interaction CEI
     function redeem(uint256 amount) external interaction {
+        require(amount > 0, "Cannot redeem zero");
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        require(amount > 0, "Cannot redeem zero");
         require(balanceOf(redeemer) >= amount, "not enough RToken");
 
         // Call collective state keepers
