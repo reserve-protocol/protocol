@@ -117,7 +117,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function refreshBasket() external {
         require(!main.paused() || main.owner() == _msgSender(), "unpaused or by owner");
 
-        main.assetRegistry().forceUpdates();
+        main.assetRegistry().refresh();
         _switchBasket();
     }
 

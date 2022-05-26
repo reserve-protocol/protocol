@@ -642,7 +642,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         await primeBasket[i].setExchangeRate(fp('0.00001'))
       }
 
-      await assetRegistry.forceUpdates()
+      await assetRegistry.refresh()
       await basketHandler.refreshBasket()
       await runRecapitalizationAuctions(rTokenSupply, basketSize)
     }

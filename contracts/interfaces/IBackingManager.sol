@@ -26,6 +26,7 @@ interface IBackingManager is IComponent, ITrading {
 
     // Give RToken max allowance over a registered token
     /// @custom:refresher
+    /// @custom:interaction
     function grantRTokenAllowance(IERC20) external;
 
     /// Mointain the overall backing policy; handout assets otherwise

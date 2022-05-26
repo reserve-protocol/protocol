@@ -795,7 +795,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // This is mostly leftover from when we were just testing P0
 
       // By default functions can be run
-      await assetRegistry.forceUpdates()
+      await assetRegistry.refresh()
       await basketHandler.refreshBasket()
       await backingManager.manageTokens([token0.address])
       await rsrTrader.manageToken(token0.address)
@@ -1209,13 +1209,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await compoundOracleInternal.setPrice(await token1.symbol(), bn('0.5e6'))
 
       // Mark default as probable
-      await collateral1.forceUpdates()
+      await collateral1.refresh()
 
       // Advance time post delayUntilDefault
       await advanceTime((await collateral1.delayUntilDefault()).toString())
 
       // Mark default as confirmed
-      await collateral1.forceUpdates()
+      await collateral1.refresh()
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -1353,9 +1353,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
   describeGas('Gas Reporting', () => {
     it('Asset Registry - Force Updates', async () => {
-      // Basket handler can run forceUpdates
+      // Basket handler can run refresh
       await whileImpersonating(basketHandler.address, async (bhsigner) => {
-        await snapshotGasCost(assetRegistry.connect(bhsigner).forceUpdates())
+        await snapshotGasCost(assetRegistry.connect(bhsigner).refresh())
       })
     })
 

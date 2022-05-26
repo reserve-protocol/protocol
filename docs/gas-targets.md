@@ -7,7 +7,7 @@ This document serves to classify the protocol functions and define acceptable ga
 
 ## Classes
 
-- Refreshers/Keepers (e.g. `forceUpdates`)
+- Refreshers/Keepers (e.g. `refresh`)
 - Economic stabilization actions by whales (`issuance`, `redemption`, `launching/settling auctions`)
 - Individual user actions (`transfers`, `approvals`, `staking/unstaking`)
 - Governance actions (`register assets`, `basket switching`, `configuring prime basket`)
@@ -22,7 +22,7 @@ This document serves to classify the protocol functions and define acceptable ga
 
 ### Collateral
 
-- `forceUpdates`
+- `refresh`
   - Gas:
     - AavePricedFiatCollateral [23395, 78546, 65227]
     - ATokenFiatCollateral [23395, 89772, 56274]
@@ -35,18 +35,18 @@ This document serves to classify the protocol functions and define acceptable ga
 - `swapRegistered` (Governance)
 
   - Gas: [359269, 511253, 389352]
-  - Calls `basketHandler.forceUpdates`
+  - Calls `basketHandler.refresh`
   - Can trigger switch basket
 
 - `unregister` (Governance)
 
   - Gas: [217296, 749472, 474155]
-  - Calls `basketHandler.forceUpdates`
+  - Calls `basketHandler.refresh`
   - Can trigger switch basket
 
-- `forceUpdates`
+- `refresh`
   - Gas: [193810, 575750, 372563] (reference: 4 tokens in basket)
-  - Aggregator of `forceUpdates` on each collateral
+  - Aggregator of `refresh` on each collateral
 
 ### BackingManager
 
@@ -57,7 +57,7 @@ This document serves to classify the protocol functions and define acceptable ga
 - `manageTokens`
 
   - Gas: [47495, 3196066, 1566374]
-  - Calls `forceUpdates`
+  - Calls `refresh`
   - Triggers auctions
 
 - `claimAndSweepRewards`
@@ -125,17 +125,17 @@ This document serves to classify the protocol functions and define acceptable ga
 - `issue`
 
   - Gas: [562655, 1645260, 960430]
-  - Calls `forceUpdates` and `melt`
+  - Calls `refresh` and `melt`
 
 - `vest`
 
   - Gas: [346539, 1047371, 752171]
-  - Calls `forceUpdates`
+  - Calls `refresh`
 
 - `redeem`
 
   - Gas: [512864, 541664, 516982]
-  - Calls `forceUpdates` and `refreshBasket`
+  - Calls `refresh` and `refreshBasket`
 
 - `cancel`
 
@@ -159,7 +159,7 @@ This document serves to classify the protocol functions and define acceptable ga
 - `withdraw` (Individuals)
 
   - Gas: [476325, 537233, 521004]
-  - Calls `forceUpdates`
+  - Calls `refresh`
 
 - `payoutRewards`
 

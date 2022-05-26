@@ -57,16 +57,17 @@ interface ICollateral is IAsset {
     /// Emitted whenever `whenDefault` is changed
     /// @param oldWhenDefault The old value of `whenDefault`
     /// @param newWhenDefault The new value of `whenDefault`
-    /// @param status The updated CollateralStatus
+    /// @param newStatus The updated CollateralStatus
     event DefaultStatusChanged(
         uint256 indexed oldWhenDefault,
         uint256 indexed newWhenDefault,
-        CollateralStatus indexed status
+        CollateralStatus indexed newStatus
     );
 
-    /// Force any updates such as updating the default status or poking the defi protocol.
-    /// Block-idempotent.
-    function forceUpdates() external;
+    /// Refresh exchange rates and update default status.
+    /// The Reserve protocol calls this at least once per transaction, before relying on
+    /// this collateral's prices or default status.
+    function refresh() external;
 
     /// @return The canonical name of this collateral's target unit.
     function targetName() external view returns (bytes32);

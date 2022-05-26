@@ -1342,7 +1342,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     async function forceUpdateGetStatus(): Promise<CollateralStatus> {
       await whileImpersonating(basketHandler.address, async (bhSigner) => {
-        await assetRegistry.connect(bhSigner).forceUpdates()
+        await assetRegistry.connect(bhSigner).refresh()
       })
       return basketHandler.status()
     }

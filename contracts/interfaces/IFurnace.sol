@@ -38,7 +38,7 @@ interface IFurnace is IComponent {
     function setRatio(uint192) external;
 
     /// Performs any RToken melting that has vested since the last payout.
-    /// @custom:interaction
+    /// @custom:refresher
     function melt() external;
 }
 

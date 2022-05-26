@@ -36,9 +36,16 @@ contract DistributorP1 is ComponentP1, IDistributor {
         _setDistribution(dest, share);
     }
 
+    struct Transfer {
+        IERC20 erc20;
+        address addrTo;
+        uint256 amount;
+    }
+
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
+    /// @custom:interaction CEI
     function distribute(
         IERC20 erc20,
         address from,
@@ -59,6 +66,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
         // This rounds "early", and that's deliberate!
         address furnace = address(main.furnace());
         address stRSR = address(main.stRSR());
+
+        Transfer[] memory transfers = new Transfer[](destinations.length());
+        uint256 numTransfers;
+
         for (uint256 i = 0; i < destinations.length(); ++i) {
             address addrTo = destinations.at(i);
 
@@ -73,7 +84,19 @@ contract DistributorP1 is ComponentP1, IDistributor {
             } else if (addrTo == ST_RSR) {
                 addrTo = stRSR;
             }
-            IERC20Upgradeable(address(erc20)).safeTransferFrom(from, addrTo, transferAmt);
+
+            transfers[numTransfers] = Transfer({
+                erc20: erc20,
+                addrTo: addrTo,
+                amount: transferAmt
+            });
+            numTransfers++;
+        }
+
+        // == Interactions ==
+        for (uint256 i = 0; i < numTransfers; i++) {
+            Transfer memory t = transfers[i];
+            IERC20Upgradeable(address(t.erc20)).safeTransferFrom(from, t.addrTo, t.amount);
         }
     }
 

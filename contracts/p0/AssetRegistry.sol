@@ -27,9 +27,12 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Force updates in all collateral assets
     /// @custom:refresher
-    function forceUpdates() external {
+    function refresh() external {
         // It's a waste of gas to require notPaused because assets can be updated directly
-        _forceUpdates();
+        for (uint256 i = 0; i < _erc20s.length(); i++) {
+            IAsset asset = assets[IERC20(_erc20s.at(i))];
+            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+        }
     }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
@@ -94,14 +97,6 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     }
 
     //
-
-    /// Force updates in all collateral assets
-    function _forceUpdates() internal {
-        for (uint256 i = 0; i < _erc20s.length(); i++) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).forceUpdates();
-        }
-    }
 
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered
