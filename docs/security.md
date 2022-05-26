@@ -62,4 +62,4 @@ Note that `delegatecall` can also be dangerous for other reasons, such as transf
 
 ### Reentrancy Problems
 
-This is, unavoidably, a whole developer discipline. See [handling reentrancy](handling-reentrancy.md) in our docs.
+This is, unavoidably, an entire developer discipline. See [handling reentrancy](handling-reentrancy.md) in our docs.
