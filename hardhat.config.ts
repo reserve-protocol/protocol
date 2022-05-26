@@ -12,18 +12,19 @@ import { HardhatUserConfig } from 'hardhat/types'
 dotenv.config()
 
 if (process.env.TASKS === 'true') {
+  // eslint-disable-next-line node/no-missing-require
   require('./tasks')
 }
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
-const TIMEOUT = !!process.env.SLOW ? 3_000_000 : 300_000
+const TIMEOUT = process.env.SLOW ? 3_000_000 : 300_000
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
 const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
 
-let config: any = {
+const config: any = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
@@ -66,7 +67,7 @@ let config: any = {
     overrides: {
       'contracts/p1/aux/Deployer.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 10 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
       },
       'contracts/p1/RToken.sol': {
         version: '0.8.9',

@@ -31,7 +31,7 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     }
 
     modifier governance() {
-        require(main.owner() == _msgSender(), "prev caller is not the owner");
+        require(main.owner() == _msgSender(), "unpaused or by owner");
         _;
     }
 

@@ -42,36 +42,17 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
         IERC20 rewardERC20_
-    ) {
-        init(
-            erc20_,
-            maxTradeVolume_,
-            defaultThreshold_,
-            delayUntilDefault_,
-            referenceERC20_,
-            comptroller_,
-            rewardERC20_
-        );
-    }
-
-    function init(
-        IERC20Metadata erc20_,
-        uint192 maxTradeVolume_,
-        uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
-        IComptroller comptroller_,
-        IERC20 rewardERC20_
-    ) public initializer {
-        __Collateral_init(
+    )
+        Collateral(
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20_,
             bytes32(bytes("USD"))
-        );
-        __CompoundOracleMixin_init(comptroller_);
+        )
+        CompoundOracleMixin(comptroller_)
+    {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
     }
@@ -91,7 +72,6 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
 
         if (whenDefault <= block.timestamp) return;
         uint256 oldWhenDefault = whenDefault;
-
 
         // Check for hard default
         uint192 referencePrice = refPerTok();

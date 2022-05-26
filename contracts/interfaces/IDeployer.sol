@@ -53,9 +53,6 @@ struct Implementations {
     IMain main;
     Components components;
     ITrade trade;
-    IAsset rTokenAsset;
-    IAsset aavePricedAsset;
-    IAsset compoundPricedAsset;
     IFacade facade;
 }
 

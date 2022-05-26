@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/libraries/Fixed.sol";
+import "./IMain.sol";
 import "./IRToken.sol";
 
 /**
@@ -12,6 +12,8 @@ import "./IRToken.sol";
  * - @custom:view - Regular view
  */
 interface IFacade {
+    function init(IMain main_) external;
+
     /// Prompt all traders to run auctions
     /// @custom:interaction
     function runAuctionsForAllTraders() external;

@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { expectEvents } from '../common/events'
 import { bn, fp, shortString } from '../common/numbers'
 import {
   AaveLendingPoolMock,
@@ -241,7 +242,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
 
       // Check value did not change
@@ -311,7 +312,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Set basket
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Check RToken price
       expect(await rToken.price()).to.equal(fp('1'))
@@ -325,7 +326,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(main.address)).to.equal(0)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'IssuanceStarted')
 
       // Check Balances after
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -350,7 +351,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       const endID = await rToken.endIdForVest(addr1.address)
       expect(endID).to.equal(1)
-      await rToken.vest(addr1.address, 1)
+      await expectEvents(rToken.vest(addr1.address, 1), [
+        {
+          contract: rToken,
+          name: 'IssuancesCompleted',
+          args: [addr1.address, 0, 1],
+          emitted: true,
+        },
+        {
+          contract: rToken,
+          name: 'Issuance',
+          args: [addr1.address, issueAmount, issueAmount],
+          emitted: true,
+        },
+      ])
 
       // Check minting is confirmed
       await expectIssuance(addr1.address, 0, { processed: true })
@@ -390,7 +404,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'IssuanceStarted')
 
       // Check Balances after
       const expectedTkn0: BigNumber = quotes[0]
@@ -431,7 +445,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
       await advanceBlocks(1)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await expectEvents(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)), [
+        {
+          contract: rToken,
+          name: 'IssuancesCompleted',
+          args: [addr1.address, 0, 1],
+          emitted: true,
+        },
+        {
+          contract: rToken,
+          name: 'Issuance',
+          args: [addr1.address, issueAmount, issueAmount],
+          emitted: true,
+        },
+      ])
 
       // Check previous minting was processed and funds sent to minter
       await expectIssuance(addr1.address, 0, {
@@ -1063,7 +1090,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
 
       // Cancel slow issuances
       await expect(rToken.connect(addr1).cancel(0, false))
@@ -1357,7 +1384,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
       await basketHandler.connect(owner).setPrimeBasket(basketAddresses, weights)
-      await basketHandler.connect(owner).switchBasket()
+      await basketHandler.connect(owner).refreshBasket()
       expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
 
       for (let i = 0; i < basketAddresses.length; i++) {

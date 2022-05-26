@@ -59,9 +59,12 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     /// @custom:governance
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
+
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         swapped = _registerIgnoringCollisions(asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity > 0) main.basketHandler().disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -69,11 +72,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
+        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
-        main.basketHandler().disableBasket();
+        if (quantity > 0) main.basketHandler().disableBasket();
     }
 
     /// Return the Asset modelling this ERC20, or revert
