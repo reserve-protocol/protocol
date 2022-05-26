@@ -317,18 +317,12 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Cannot cancel with other user
       const descriptionHash = ethers.utils.id(proposalDescription)
 
-      await expect(
-        governor
-          .connect(other)
-          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
-      ).to.be.revertedWith('Governor: proposer above threshold and same era')
+      await expect(governor.connect(other).cancel(proposalId)).to.be.revertedWith(
+        'Governor: proposer above threshold and same era'
+      )
 
       // Proposer can cancel
-      await expect(
-        governor
-          .connect(addr1)
-          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
-      )
+      await expect(governor.connect(addr1).cancel(proposalId))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
 
@@ -360,11 +354,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Anyone can cancel if era changed
       const descriptionHash = ethers.utils.id(proposalDescription)
-      await expect(
-        governor
-          .connect(other)
-          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
-      )
+      await expect(governor.connect(other).cancel(proposalId))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
 
@@ -398,11 +388,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Anyone can cancel if proposer is below threshold
       const descriptionHash = ethers.utils.id(proposalDescription)
-      await expect(
-        governor
-          .connect(other)
-          .cancel([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
-      )
+      await expect(governor.connect(other).cancel(proposalId))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
 
@@ -449,46 +435,17 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // First exchange rate change does not trigger cancel
       const descriptionHash = ethers.utils.id(proposalDescription)
-      await expect(
-        governor
-          .connect(other)
-          .alternativeCancel(
-            [backingManager.address],
-            [0],
-            [encodedFunctionCall],
-            descriptionHash,
-            0,
-            1
-          )
-      ).to.be.revertedWith('Governor: rate not inflated')
+      await expect(governor.connect(other).alternativeCancel(proposalId, 0, 1)).to.be.revertedWith(
+        'Governor: rate not inflated'
+      )
 
       // Second exchange rate change does not trigger cancel
-      await expect(
-        governor
-          .connect(other)
-          .alternativeCancel(
-            [backingManager.address],
-            [0],
-            [encodedFunctionCall],
-            descriptionHash,
-            1,
-            2
-          )
-      ).to.be.revertedWith('Governor: rate not inflated')
+      await expect(governor.connect(other).alternativeCancel(proposalId, 1, 2)).to.be.revertedWith(
+        'Governor: rate not inflated'
+      )
 
       // By comparing the initial and final checkpoints, anyone can cancel
-      await expect(
-        governor
-          .connect(other)
-          .alternativeCancel(
-            [backingManager.address],
-            [0],
-            [encodedFunctionCall],
-            descriptionHash,
-            0,
-            2
-          )
-      )
+      await expect(governor.connect(other).alternativeCancel(proposalId, 0, 2))
         .to.emit(governor, 'ProposalCanceled')
         .withArgs(proposalId)
 
@@ -538,7 +495,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Queue
       const descriptionHash = ethers.utils.id(proposalDescription)
 
-      await governor.queue([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      // Using Bravo-type signature
+      await governor['queue(uint256)'](proposalId)
 
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
@@ -547,8 +505,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceTime(MIN_DELAY + 1)
       await advanceBlocks(1)
 
-      // Execute
-      await governor.execute([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      // Execute - using Bravo-type signature
+      await governor['execute(uint256)'](proposalId)
 
       // Check proposal state
       expect(await governor.state(proposalId)).to.equal(ProposalState.Executed)
@@ -620,7 +578,12 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Queue & execute
       const descriptionHash = ethers.utils.id(proposalDescription)
-      await governor.queue([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+      await governor['queue(address[],uint256[],bytes[],bytes32)'](
+        [backingManager.address],
+        [0],
+        [encodedFunctionCall],
+        descriptionHash
+      )
       expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
 
       // Advance time required by timelock
@@ -628,7 +591,12 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Execute - Will fail if era changed
       await expect(
-        governor.execute([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
+        governor['execute(address[],uint256[],bytes[],bytes32)'](
+          [backingManager.address],
+          [0],
+          [encodedFunctionCall],
+          descriptionHash
+        )
       ).to.be.revertedWith('new era')
 
       // Check proposal, remains queued until expired
@@ -729,13 +697,13 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Succeeded)
 
       // Queue
-      const descriptionHash = ethers.utils.id(proposalDescription)
-      const descriptionHash2 = ethers.utils.id(proposalDescription2)
+      // Attempt to queue proposal #1
+      await expect(governor['queue(uint256)'](proposalId)).to.be.revertedWith(
+        'Governor: proposal not successful'
+      )
 
-      await expect(
-        governor.queue([backingManager.address], [0], [encodedFunctionCall], descriptionHash)
-      ).to.be.revertedWith('Governor: proposal not successful')
-      await governor.queue([main.address], [0], [newEncodedFunctionCall], descriptionHash2)
+      // Queue proposal #2
+      await governor['queue(uint256)'](proposalId2)
 
       //   Check proposal state
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Queued)
@@ -745,7 +713,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await advanceBlocks(1)
 
       // Execute
-      await governor.execute([main.address], [0], [newEncodedFunctionCall], descriptionHash2)
+      await governor['execute(uint256)'](proposalId2)
 
       // Check proposal state
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Executed)
