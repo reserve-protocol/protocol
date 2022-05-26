@@ -297,10 +297,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // == Checks and Effects ==
         address redeemer = _msgSender();
         require(balanceOf(redeemer) >= amount, "not enough RToken");
-
-        // Call collective state keepers
-        main.assetRegistry().refresh();
-
         // Allow redemption during IFFY
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
