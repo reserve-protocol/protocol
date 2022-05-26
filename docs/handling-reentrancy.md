@@ -28,13 +28,11 @@ Roughly, this is exception is safe because we're doing this interaction before a
 
 At the start of the Interactions block in a CEI-pattern function, set them off visually with a comment like: `// == Interactions ==`
 
-When a function is an interaction made reentrancy-safe by the CEI pattern, follow its `@custom:interaction` mark with `CEI`, or with `RCEI` (R is for "Refresh") if it starts by calling AssetRegistry.refresh()
+When a function is an interaction made reentrancy-safe by the CEI pattern, follow its `@custom:interaction` mark with `CEI`, or with `RCEI` (R is for "Refresh") if it starts by calling `AssetRegistry.refresh()`.
 
 ### ReentrancyGuard
 
-Where using the CEI pattern is impractical, every function on that contract that is `external`, and can write to the relevant state elements, should use `reentrancyGuard`.
-
-> TODO: fill in description of usage; provide link to relevant documentation
+Where using the CEI pattern is impractical, every function on that contract that is `external`, and can write to the relevant state elements, should use `reentrancyGuard`. That is, the contract should inherit from either `ReentrancyGuard` (or `ReentrancyGuardUpgradable` as needed), and every external function that can either modify contract state, or read it when it's inconsistent, should be marked with the `nonReentrant` modifier.
 
 ### Exceptions
 
@@ -50,4 +48,13 @@ Anything that doesn't fit these two policies precisely must be carefully and ful
 
 ## Reentrancy Risk from Collateral
 
-> TODO: writeme
+For some collateral, we can only trust that we have up-to-date prices after we've  called `refresh()` (or `refreshTransients()`) on that Collateral contract, during the same transaction. These functions can modify the state of external contracts, so in the usual security model in which we reason about reentrancy, they are potential vectors for reentrancy attacks.
+
+Part of the responsibilities of `refresh` (or `refreshTransients`) is to update potentially-invalid caches of price information. However, if we expect that these external contracts might exhibit truly arbitrary behavior, then it can happen that two Collateral plugins `A` and `B` might cause interactions between the underlying protocols such that calling either `A.refresh` or `B.refresh` will change the state of the protocol underlying both `A` and `B`, such that at least one cache is always out-of-date.
+
+There's no sensible precaution for the protocol to take against this sort of situation. Instead, the RToken protocol guarantees that, for any transaction that depends on some Collateral's price and status, at the point of dependence in the control flow:
+
+- The protocol has called `refresh()` in the same transaction,
+- Since any non-Collateral interaction, the protocol has either called `refresh()` or `refreshTransients()`.
+
+Necessarily, we leave it to the deployers of any further Collateral plugins to ensure that these properties suffice to ensure the safety of any particular RToken deployment.
