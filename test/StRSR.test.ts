@@ -1587,10 +1587,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
       await expect(stRSR.connect(addr1).setSymbol('randomSymbol')).to.be.revertedWith(
-        'prev caller is not the owner'
+        'unpaused or by owner'
       )
     })
   })
