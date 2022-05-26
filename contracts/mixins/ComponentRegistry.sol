@@ -31,10 +31,6 @@ abstract contract ComponentRegistry is Initializable, OwnableUpgradeable, ICompo
         setRToken(components_.rToken);
     }
 
-    function isComponent(address componentAddr) public view returns (bool) {
-        return components.contains(componentAddr);
-    }
-
     // === Components ===
 
     IRToken public rToken;
