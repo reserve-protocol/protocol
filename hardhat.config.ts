@@ -30,7 +30,7 @@ const config: any = {
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL,
-        blockNumber: 14393847,
+        blockNumber: 14854439,
         enabled: !!process.env.FORK,
       },
       gas: 0x1ffffffff,
