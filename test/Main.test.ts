@@ -1265,7 +1265,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
-      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
+      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3].mul(50))
 
       // Swap basket should not find valid basket because no backup config
       await expect(basketHandler.refreshBasket())

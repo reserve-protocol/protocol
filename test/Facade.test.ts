@@ -91,7 +91,7 @@ describe('Facade contract', () => {
     beforeEach(async () => {
       await rToken.connect(owner).setIssuanceRate(fp('1'))
 
-      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
+      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('1.25e9')]
 
       // Mint Tokens
       initialBal = bn('10000000000e18')
