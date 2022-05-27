@@ -267,23 +267,23 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       expect(await assetRegistry.toColl(ERC20s[5])).to.equal(cTokenCollateral.address)
     })
 
-    // it('Should register Basket correctly', async () => {
-    //   // Basket
-    //   expect(await basketHandler.fullyCapitalized()).to.equal(true)
-    //   const backing = await facade.basketTokens()
-    //   expect(backing[0]).to.equal(token.address)
-    //   expect(backing[1]).to.equal(cToken.address)
+    it('Should register Basket correctly', async () => {
+      // Basket
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      const backing = await facade.basketTokens()
+      expect(backing[0]).to.equal(token.address)
+      expect(backing[1]).to.equal(cToken.address)
 
-    //   expect(backing.length).to.equal(2)
+      expect(backing.length).to.equal(2)
 
-    //   // Check other values
-    //   expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
-    //   expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-    //   expect(await basketHandler.price()).to.equal(fp('1'))
-    //   expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+      // Check other values
+      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.price()).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
-    //   // Check RToken price
-    //   expect(await rToken.price()).to.equal(fp('1'))
-    // })
+      // Check RToken price
+       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.01'))
+    })
   })
 })
