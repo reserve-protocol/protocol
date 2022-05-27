@@ -63,6 +63,10 @@ const config: any = {
           revertStrings: 'default',
         },
       },
+      {
+        version: '0.6.12',
+        settingis: { optimizer: { enabled: false } },
+      },
     ],
     overrides: {
       'contracts/p1/aux/Deployer.sol': {
