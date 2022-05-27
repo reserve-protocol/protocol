@@ -2,7 +2,7 @@
 
 There are 3 types of baskets in our system:
 
-1. Prime Basket
+1. Prime Basket (Configuration)
 2. Reference Basket
 3. Collateral Basket
 
@@ -16,12 +16,12 @@ Terminology
 ```
 
 ## Prime Basket
-
+Dif
 `{target/BU}`
 
 The prime basket is the most fundamental of the three baskets. It is a definition of a `BU` in terms of `target` units, such as USD or EURO. The prime basket consists of a set of triples `<collateral token, target unit, target amount>`, such as `<cUSDC, USD, 0.33 cents>`.
 
-The prime basket is indefinitely static. The only way it can change is via governance action.
+The prime basket changes only through governance action.
 
 ## Reference Basket
 

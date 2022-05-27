@@ -22,10 +22,10 @@ Developers: See setup and repository usage notes at [docs/developers.md](docs/de
 
 ## Repository Structure
 
-`contracts` holds all our smart contracts, organized as follows:
+`contracts` holds our smart contracts:
 
 - `p0` and `p1` each contain an entire implementations of our core protocol. `p0` is as easy as possible to understand; `p1` is our gas-efficient system to deploy in production.
-- The core protocol requires a plugin contract for each asset it handles, and each auction platform it can use. `plugins` contains our initial implementations of these (`plugins/assets`, `plugins/markets`), as well as mock implementations of each asset and auction platform that we're using for testing purposes (`plugins/mocks`).
+- The core protocol requires a plugin contract for each asset it handles and each auction platform it can use. `plugins` contains our initial implementations of these (`plugins/assets`, `plugins/markets`), as well as mock implementations of each asset and auction platform that we're using for testing purposes (`plugins/mocks`).
 - `interfaces` contains the contract interfaces for all of those implementations.
 
 `test` holds our Typescript system tests, driven through Hardhat.

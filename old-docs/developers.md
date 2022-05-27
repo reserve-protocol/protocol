@@ -127,7 +127,9 @@ Run Echidna, for fuzz and differential testing:
 
     yarn echidna
 
-## Before Pushing Upstream
+## On Git Push
+
+When you make a git push 
 
 Before making a pull request to push your changes upstream (to `master` or whatever other branch people are working on), make sure that you
 
@@ -237,7 +239,7 @@ An ERC20 exists in our system wrapped in either an _Asset_ or _Collateral_ contr
 
 The units of variables is tracked in comments in the implementation. Curly braces are used to denote units, e.g. `{UoA/qTok}`.
 
-The `q` prefix denotes "quanta", ie the smallest indivisible unit of the token.
+The `q` prefix denotes "quantum", the smallest indivisible unit of a token.
 
 The `atto` prefix denotes 1e18.
 
