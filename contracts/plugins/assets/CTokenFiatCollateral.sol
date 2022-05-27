@@ -9,8 +9,6 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 // ==== External Interfaces ====
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
 interface ICToken {
