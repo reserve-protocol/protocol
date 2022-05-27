@@ -6,7 +6,7 @@ import hre, { ethers, waffle } from 'hardhat'
 import { Collateral } from '../fixtures'
 import { aaveCompDefaultFixture } from './fixtures'
 import { bn, fp } from '../../common/numbers'
-import { ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
   AAVE_ADDRESS,
   AAVE_LENDING_POOL_ADDRESS,
@@ -177,23 +177,22 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
 
       // TODO: Get Tokens from holders initial balances
-     
     })
-    
+
     it('Should setup assets correctly', async () => {
       // COMP Token
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compAsset.erc20()).to.equal(COMP_ADDRESS)
       expect(await compToken.decimals()).to.equal(18)
-      expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('1'))  // Close to $58 USD
+      expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('1')) // Close to $58 USD
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
       // AAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
-      expect(await aaveAsset.erc20()).to.equal(AAVE_ADDRESS) 
+      expect(await aaveAsset.erc20()).to.equal(AAVE_ADDRESS)
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.price()).to.be.closeTo(fp('97'), fp('1')) // Close to $97 USD
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
@@ -212,11 +211,10 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await tokenCollateral.price()).to.be.closeTo(fp('1'), fp('0.01'))
-     
+
       expect(await tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
-      
-     
+
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
       expect(await cTokenCollateral.referenceERC20()).to.equal(token.address)
@@ -224,15 +222,13 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       expect(await cTokenCollateral.erc20()).to.equal(CDAI_ADDRESS)
       expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-     // expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
-     // 1100408736870110950
-    //   expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-    //   expect(await cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
-    //   expect(await cTokenCollateral.prevReferencePrice()).to.equal(
-    //     await cTokenCollateral.refPerTok()
-    //   )
-       expect(await cTokenCollateral.price()).to.equal(fp('1'))
-       // 1102173792484050608
+      expect(await cTokenCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await cTokenCollateral.prevReferencePrice()).to.equal(
+        await cTokenCollateral.refPerTok()
+      )
+      expect(await cTokenCollateral.price()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
 
       let calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
@@ -241,7 +237,6 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       ])
       expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
     })
-
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
       // Check assets/collateral
@@ -272,25 +267,23 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       expect(await assetRegistry.toColl(ERC20s[5])).to.equal(cTokenCollateral.address)
     })
 
-    //   it('Should register Basket correctly', async () => {
-    //     // Basket
-    //     expect(await basketHandler.fullyCapitalized()).to.equal(true)
-    //     const backing = await facade.basketTokens()
-    //     expect(backing[0]).to.equal(token0.address)
-    //     expect(backing[1]).to.equal(token1.address)
-    //     expect(backing[2]).to.equal(token2.address)
-    //     expect(backing[3]).to.equal(token3.address)
+    // it('Should register Basket correctly', async () => {
+    //   // Basket
+    //   expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    //   const backing = await facade.basketTokens()
+    //   expect(backing[0]).to.equal(token.address)
+    //   expect(backing[1]).to.equal(cToken.address)
 
-    //     expect(backing.length).to.equal(4)
+    //   expect(backing.length).to.equal(2)
 
-    //     // Check other values
-    //     expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
-    //     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-    //     expect(await basketHandler.price()).to.equal(fp('1'))
-    //     expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+    //   // Check other values
+    //   expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+    //   expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    //   expect(await basketHandler.price()).to.equal(fp('1'))
+    //   expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
-    //     // Check RToken price
-    //     expect(await rToken.price()).to.equal(fp('1'))
-    //   })
+    //   // Check RToken price
+    //   expect(await rToken.price()).to.equal(fp('1'))
+    // })
   })
 })
