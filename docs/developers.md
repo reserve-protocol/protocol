@@ -209,6 +209,16 @@ Once contracts are deployed you can interact with them by running:
 $ npx hardhat --network ropsten console
 ```
 
+## Mainnet Forking
+
+The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy node is recommended for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
+
+For running scripts and tasks using Mainnet Forking a `FORK` environment variable can be defined. For example to run a local node using Mainnet forking you can run:
+
+```bash
+FORK=true npx hardhat node
+```
+
 ## Upgrades
 
 Components of the production version `P1` are designed to be **upgradeable** using the **Proxy Upgrade Pattern** implemented by OpenZeppelin. More information about this general pattern can be found [here](https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies)
