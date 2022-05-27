@@ -5,6 +5,7 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { bn, fp, near, shortString } from '../common/numbers'
+
 import {
   AaveOracleMock,
   CTokenMock,
@@ -20,7 +21,13 @@ import {
   TestIStRSR,
 } from '../typechain'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
-import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from './utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockNumber,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
 import {
   Collateral,
@@ -35,6 +42,8 @@ import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
@@ -1560,6 +1569,440 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Remains the same
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
+    })
+  })
+
+  describeP1('Name and Symbol', () => {
+    it('Should allow to set name/symbol if Owner', async () => {
+      // Setup new values
+      const newName = 'newSTRSR Token'
+      const newSymbol = 'newSTRSR'
+
+      // Update name and symbol
+      await stRSR.connect(owner).setName(newName)
+      await stRSR.connect(owner).setSymbol(newSymbol)
+
+      expect(await stRSR.name()).to.equal(newName)
+      expect(await stRSR.symbol()).to.equal(newSymbol)
+
+      // Try to update again if not owner
+      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith(
+        'unpaused or by owner'
+      )
+      await expect(stRSR.connect(addr1).setSymbol('randomSymbol')).to.be.revertedWith(
+        'unpaused or by owner'
+      )
+    })
+  })
+
+  describeP1('ERC20Votes', () => {
+    let stRSRVotes: StRSRP1Votes
+
+    beforeEach(async function () {
+      // Cast to ERC20Votes contract
+      stRSRVotes = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+    })
+
+    it('Should setup initial state correctly', async function () {
+      const currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
+
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+      expect(await stRSRVotes.delegates(addr2.address)).to.equal(ZERO_ADDRESS)
+      expect(await stRSRVotes.delegates(addr3.address)).to.equal(ZERO_ADDRESS)
+
+      expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(0)
+      expect(await stRSRVotes.numCheckpoints(addr3.address)).to.equal(0)
+    })
+
+    it('Should register delegates correctly', async function () {
+      // Change delegate for addr1
+      await stRSRVotes.connect(addr1).delegate(addr1.address)
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr1.address)
+
+      // Change delegate for addr1, again
+      await stRSRVotes.connect(addr1).delegate(addr2.address)
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr2.address)
+
+      // Change delegate for addr2
+      await stRSRVotes.connect(addr2).delegate(addr3.address)
+      expect(await stRSRVotes.delegates(addr2.address)).to.equal(addr3.address)
+
+      // Change delegate for addr3
+      await stRSRVotes.connect(addr3).delegate(addr3.address)
+      expect(await stRSRVotes.delegates(addr3.address)).to.equal(addr3.address)
+    })
+
+    it('Should allow to delegate by signature', async function () {
+      // Check no delegate
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+
+      const Delegation = [
+        { name: 'delegatee', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+      ]
+
+      const nonce = await stRSRVotes.nonces(addr1.address)
+      const expiry = MAX_UINT256
+      const chainId = await getChainId(hre)
+      const name = await stRSRVotes.name()
+      const version = '1'
+      const verifyingContract = stRSRVotes.address
+
+      // Get data
+      const buildData = {
+        types: { Delegation },
+        domain: { name, version, chainId, verifyingContract },
+        message: {
+          delegatee: addr1.address,
+          nonce,
+          expiry,
+        },
+      }
+
+      // Get data
+      const sig = await addr1._signTypedData(buildData.domain, buildData.types, buildData.message)
+      const { v, r, s } = ethers.utils.splitSignature(sig)
+
+      // Change delegate for addr1 using signature
+      await stRSRVotes.connect(other).delegateBySig(addr1.address, nonce, expiry, v, r, s)
+
+      // Check result
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr1.address)
+    })
+
+    it('Should count votes properly when staking', async function () {
+      // Perform some stakes
+      const amount1: BigNumber = bn('50e18')
+      await rsr.connect(addr1).approve(stRSRVotes.address, amount1)
+      await stRSRVotes.connect(addr1).stake(amount1)
+
+      // Check checkpoint
+      expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(0)
+
+      // Advance block
+      await advanceBlocks(1)
+
+      // Check new values - Still zero for addr1, requires delegation
+      let currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount1)
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+
+      // Delegate votes
+      await stRSRVotes.connect(addr1).delegate(addr1.address)
+
+      // Check checkpoint stored
+      expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(1)
+      expect(await stRSRVotes.checkpoints(addr1.address, 0)).to.eql([
+        await getLatestBlockNumber(),
+        amount1,
+      ])
+
+      // Advance block
+      await advanceBlocks(1)
+
+      // Check new values - Now properly counted
+      currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount1)
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount1)
+      expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+      // Check current votes
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
+
+      // Perform some stakes with another user
+      const amount2: BigNumber = bn('40e18')
+      await rsr.connect(addr2).approve(stRSRVotes.address, amount2)
+      await stRSRVotes.connect(addr2).stake(amount2)
+
+      // Delegate votes
+      await stRSRVotes.connect(addr2).delegate(addr2.address)
+
+      // Check checkpoint stored
+      expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(1)
+      expect(await stRSRVotes.checkpoints(addr2.address, 0)).to.eql([
+        await getLatestBlockNumber(),
+        amount2,
+      ])
+
+      // Advance block
+      await advanceBlocks(1)
+
+      // Check new values - Couting votes for addr2
+      currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount1.add(amount2))
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount1)
+      expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount2)
+      expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+      // Check current votes
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount2)
+
+      // Perform some stakes with other users
+      const amount3: BigNumber = bn('10e18')
+      await rsr.connect(addr3).approve(stRSRVotes.address, amount3)
+      await stRSRVotes.connect(addr3).stake(amount3)
+
+      // Delegate votes to addr2
+      await stRSRVotes.connect(addr3).delegate(addr2.address)
+
+      // Check checkpoints stored
+      expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(2)
+      expect(await stRSRVotes.checkpoints(addr2.address, 1)).to.eql([
+        await getLatestBlockNumber(),
+        amount2.add(amount3),
+      ])
+      expect(await stRSRVotes.numCheckpoints(addr3.address)).to.equal(0)
+
+      // Advance block
+      await advanceBlocks(1)
+
+      // Check new values - Delegated votes from addr3 count for addr2
+      currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(
+        amount1.add(amount2).add(amount3)
+      )
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount1)
+      expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(
+        amount2.add(amount3)
+      )
+      expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+      // Check current votes
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
+      expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount2.add(amount3))
+      expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+    })
+
+    it('Should register single checkpoint per block per account', async function () {
+      // Set automine to false for multiple transactions in one block
+      await hre.network.provider.send('evm_setAutomine', [false])
+
+      // Perform two stakes and delegate
+      const amount: BigNumber = bn('50e18')
+      await rsr.connect(addr1).approve(stRSRVotes.address, amount.mul(2))
+      await stRSRVotes.connect(addr1).stake(amount)
+      await stRSRVotes.connect(addr1).stake(amount)
+
+      await stRSRVotes.connect(addr1).delegate(addr1.address)
+
+      // Mine block
+      await advanceBlocks(1)
+
+      // Set automine to true again
+      await hre.network.provider.send('evm_setAutomine', [true])
+
+      // Check checkpoints stored - Only one checkpoint
+      expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(1)
+      expect(await stRSRVotes.checkpoints(addr1.address, 0)).to.eql([
+        await getLatestBlockNumber(),
+        amount.mul(2),
+      ])
+
+      // Current votes properly counted
+      expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount.mul(2))
+
+      // Mine an additional block
+      await advanceBlocks(1)
+
+      const currentBlockNumber = (await getLatestBlockNumber()) - 1
+      expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+      expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(
+        amount.mul(2)
+      )
+    })
+
+    context('With stakes', function () {
+      let currentBlockNumber: number
+      let amount: BigNumber
+
+      beforeEach(async function () {
+        // Perform stakes
+        amount = bn('50e18')
+        await rsr.connect(addr1).approve(stRSRVotes.address, amount)
+        await stRSRVotes.connect(addr1).stake(amount)
+        await rsr.connect(addr2).approve(stRSRVotes.address, amount)
+        await stRSRVotes.connect(addr2).stake(amount)
+
+        // Delegate votes
+        await stRSRVotes.connect(addr1).delegate(addr1.address)
+        await stRSRVotes.connect(addr2).delegate(addr2.address)
+        await stRSRVotes.connect(addr3).delegate(addr3.address)
+
+        // Advance block
+        await advanceBlocks(1)
+      })
+
+      it('Should count votes properly when changing exchange rate', async function () {
+        // Check values before changing rate
+        currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Check balances and stakes
+        expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(0)
+        expect(await stRSRVotes.exchangeRate()).to.equal(fp('1'))
+
+        // Seize RSR 50%
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await expect(stRSRVotes.connect(signer).seizeRSR(amount))
+            .to.emit(stRSR, 'ExchangeRateSet')
+            .withArgs(fp('1'), fp('2'))
+        })
+
+        // Check balances and stakes
+        expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(0)
+        expect(await stRSRVotes.exchangeRate()).to.equal(fp('2'))
+
+        // Advance block
+        await advanceBlocks(1)
+
+        // Check values after changing exchange rate
+        currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Perform a new stake with the updated rate
+        await rsr.connect(addr3).approve(stRSRVotes.address, amount)
+        await stRSRVotes.connect(addr3).stake(amount)
+
+        // Advance block
+        await advanceBlocks(1)
+
+        // Check values after new stake - final stake counts double
+        currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(4))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(
+          amount.mul(2)
+        )
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(amount.mul(2))
+      })
+
+      it('Should clean votes properly when changing era', async function () {
+        // Check values before changing era
+        let currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Perform wipeout - Seize RSR
+        await whileImpersonating(backingManager.address, async (signer) => {
+          await expect(stRSRVotes.connect(signer).seizeRSR(amount.mul(2)))
+            .to.emit(stRSR, 'ExchangeRateSet')
+            .withArgs(fp('1'), fp('1'))
+        })
+
+        // Check balances and stakes
+        expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(0)
+        expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(0)
+        expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(0)
+        expect(await stRSRVotes.exchangeRate()).to.equal(fp('1'))
+
+        // Advance block
+        await advanceBlocks(1)
+
+        // Check values after changing era
+        currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Perform a new stake with the updated era
+        await rsr.connect(addr3).approve(stRSRVotes.address, amount)
+        await stRSRVotes.connect(addr3).stake(amount)
+
+        // Advance block
+        await advanceBlocks(1)
+
+        // Check values after new stake - final stake is registered normally
+        currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(amount)
+      })
+
+      it('Should update votes/checkpoints on transfer', async function () {
+        // Check values before transfers
+        const currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Check checkpoint stored
+        expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(1)
+        expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(1)
+
+        // Transfer stRSR
+        await stRSRVotes.connect(addr1).transfer(addr2.address, amount)
+
+        // Checkpoints stored
+        expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(2)
+        expect(await stRSRVotes.checkpoints(addr1.address, 1)).to.eql([
+          await getLatestBlockNumber(),
+          bn(0),
+        ])
+        expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(2)
+        expect(await stRSRVotes.checkpoints(addr2.address, 1)).to.eql([
+          await getLatestBlockNumber(),
+          amount.mul(2),
+        ])
+
+        // Check current voting power has moved, previous values remain for older blocks
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+      })
     })
   })
 

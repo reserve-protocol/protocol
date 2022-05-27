@@ -160,6 +160,8 @@ interface TestIMain is IMain {
 
     function unpause() external;
 
+    function isComponent(address componentAddr) external view returns (bool);
+
     function oneshotPauser() external view returns (address);
 
     function setOneshotPauser(address pauser_) external;

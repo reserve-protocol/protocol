@@ -10,7 +10,7 @@ import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/RToken.sol";
-import "contracts/p1/StRSR.sol";
+import "contracts/p1/StRSRVotes.sol";
 
 /**
  * @title Facade
@@ -184,8 +184,8 @@ contract FacadeP1 is Facade, IFacadeP1 {
         view
         returns (Pending[] memory unstakings)
     {
-        StRSRP1 stRSR = StRSRP1(address(main.stRSR()));
-        uint256 era = stRSR.era();
+        StRSRP1Votes stRSR = StRSRP1Votes(address(main.stRSR()));
+        uint256 era = stRSR.currentEra();
         uint256 left = stRSR.firstRemainingDraft(era, account);
         uint256 right = stRSR.draftQueueLen(era, account);
 
