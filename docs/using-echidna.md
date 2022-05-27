@@ -2,7 +2,7 @@
 
 > Echidna is a Haskell program designed for fuzzing/property-based testing of Ethereum smarts contracts. It uses sophisticated grammar-based fuzzing campaigns based on a contract ABI to falsify user-defined predicates or Solidity assertions.
 
-Our usage of Echidna is immature; we've used it only just enough to get a handful of proof-of-concept results, not as a day-to-day part of our toolchain.
+Our usage of Echidna is immature; we've used it only just enough to get a handful of proof-of-concept results, not as a day-to-day part of our toolchain. These notes are useful but preliminary!
 
 ## Installation
 
