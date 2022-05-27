@@ -186,7 +186,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       beforeEach(async function () {
         issueAmount = bn('100e18')
-        initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
+        initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('1.25e9')]
         initialQuantities = initialQuotes.map((q) => {
           return q.mul(issueAmount).div(BN_SCALE_FACTOR)
         })
@@ -680,7 +680,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           quantities: initialQuantities,
         })
 
-        //  Basket should switch
+        // Basket should switch
         const newTokens = [initialTokens[0], backupToken1.address]
         const newQuantities = [initialQuantities[0], bn('0')]
         const newRefAmounts = [fp('0.5'), fp('0.5')]
@@ -739,7 +739,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           quantities: initialQuantities,
         })
 
-        //  Basket should switch to empty and defaulted
+        // Basket should switch to empty and defaulted
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([], [], true)
@@ -834,7 +834,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
@@ -849,7 +849,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
@@ -880,13 +880,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
-        //  Another call should not create any new auctions if still ongoing
+        // Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -901,7 +901,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        //  End current auction, should  not start any new auctions
+        // End current auction, should  not start any new auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: backingManager,
@@ -922,7 +922,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
@@ -938,7 +938,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Switch Basket
@@ -953,7 +953,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
@@ -983,13 +983,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
-        //  Another call should not create any new auctions if still ongoing
+        // Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -1004,7 +1004,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        //  End current auction, should  not start any new auctions
+        // End current auction, should  not start any new auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: backingManager,
@@ -1023,7 +1023,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
-        //  Check price in USD of the current RToken - Haircut of 10% taken
+        // Check price in USD of the current RToken - Haircut of 10% taken
         expect(await rToken.price()).to.equal(fp('0.99'))
       })
 
@@ -1039,7 +1039,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current
+        // Check price in USD of the current
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
@@ -1064,7 +1064,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Trigger recapitalization
@@ -1095,13 +1095,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
-        //  Another call should not create any new auctions if still ongoing
+        // Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -1152,13 +1152,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check Gnosis
         expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
 
-        //  Another call should not create any new auctions if still ongoing
+        // Another call should not create any new auctions if still ongoing
         await expect(facade.runAuctionsForAllTraders()).to.not.emit(backingManager, 'TradeStarted')
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -1173,7 +1173,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        //  End current auction, should  not start any new auctions
+        // End current auction, should  not start any new auctions
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
             contract: backingManager,
@@ -1197,7 +1197,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
@@ -1218,7 +1218,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Set Token0 to default - 50% price reduction
@@ -1250,7 +1250,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RTokenc- Remains the same
+        // Check price in USD of the current RTokenc- Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Running auctions will trigger recapitalization - All balance will be redeemed
@@ -1282,11 +1282,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Reduced 50%
+        // Check price in USD of the current RToken - Reduced 50%
         expect(await rToken.price()).to.equal(fp('1'))
 
-        //  Perform Mock Bids for the new Token (addr1 has balance)
-        //  Assume fair price, get half of the tokens (because price reduction was 50%)
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
         await gnosis.placeBid(0, {
@@ -1295,7 +1295,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: minBuyAmt,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, will not open any new auctions (no RSR)
@@ -1321,7 +1321,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
-        //  Check price in USD of the current RToken - Haircut of 50% taken
+        // Check price in USD of the current RToken - Haircut of 50% taken
         expect(await rToken.price()).to.equal(fp('1').div(2))
       })
 
@@ -1362,7 +1362,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
@@ -1423,10 +1423,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1436,7 +1436,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: minBuyAmt,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction for the other half
@@ -1472,10 +1472,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
         await gnosis.placeBid(1, {
@@ -1484,7 +1484,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: minBuyAmt,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Check staking situation remains unchanged
@@ -1530,13 +1530,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
-        //  Perform Mock Bids for RSR (addr1 has balance)
+        // Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them
         await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
         await gnosis.placeBid(2, {
@@ -1545,7 +1545,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: buyAmtBidRSR,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
@@ -1563,7 +1563,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        //  Should have seized RSR
+        // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
         // Check final state - All back to normal
@@ -1577,7 +1577,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
@@ -1613,7 +1613,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken4.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Perform stake
@@ -1681,7 +1681,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('0'),
         })
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get 80% the tokens - More than what we need for this token
         const minBuyAmt: BigNumber = sellAmt.mul(80).div(100)
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -1691,10 +1691,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: minBuyAmt,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        //  Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
+        // Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
         const requiredBkpToken: BigNumber = issueAmount.mul(bkpTokenRefAmt).div(BN_SCALE_FACTOR)
         const sellAmtBkp: BigNumber = requiredBkpToken // Will auction only what is required
         const minBuyAmtBkp: BigNumber = sellAmtBkp // No trade slippage
@@ -1729,7 +1729,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           quantities: [minBuyAmt.sub(sellAmtBkp), bn('0'), bn('0'), bn('0')],
         })
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get all the required tokens
         await backupToken2.connect(addr1).approve(gnosis.address, minBuyAmt)
         await gnosis.placeBid(1, {
@@ -1745,7 +1745,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount)
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
-        //  Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
+        // Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
         // We still have funds of backup Token 1 to trade for the other tokens
         await expectEvents(facade.runAuctionsForAllTraders(), [
           {
@@ -1777,7 +1777,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           quantities: [minBuyAmt.sub(requiredBkpToken.mul(2)), requiredBkpToken, bn('0'), bn('0')],
         })
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get all the required tokens
         await backupToken3.connect(addr1).approve(gnosis.address, minBuyAmt)
         await gnosis.placeBid(2, {
@@ -1793,7 +1793,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount)
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
-        //  Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
+        // Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
         // We still have a small portionn of funds of backup Token 1 to trade for the other tokens (only 5e18)
         const sellAmtBkp1Remainder: BigNumber = minBuyAmt.sub(sellAmtBkp.mul(3))
         const minBuyAmtBkp1Remainder: BigNumber = sellAmtBkp1Remainder // No trade splippage
@@ -1838,7 +1838,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           ],
         })
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get all the required tokens
         await backupToken4.connect(addr1).approve(gnosis.address, minBuyAmt)
         await gnosis.placeBid(3, {
@@ -1904,7 +1904,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
-        //  Perform Mock Bids for RSR (addr1 has balance)
+        // Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them
         await backupToken4.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
         await gnosis.placeBid(4, {
@@ -1954,7 +1954,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           ],
         })
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
@@ -2022,7 +2022,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('0'),
         })
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
         const minBuyAmt: BigNumber = sellAmt.div(2)
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
@@ -2032,7 +2032,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: minBuyAmt,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction to sell RSR for collateral
@@ -2074,7 +2074,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Should have seized RSR  - Nothing in backing manager so far
@@ -2113,10 +2113,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('2'),
         })
 
-        //  Funds were reused. No more seizures
+        // Funds were reused. No more seizures
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
-        //  Perform Mock Bids (addr1 has balance)
+        // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get all the RSR required
         await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
         await gnosis.placeBid(2, {
@@ -2125,7 +2125,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: buyAmtBidRSR,
         })
 
-        //  Advance time till auction ended
+        // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions again - Will close the pending auction
@@ -2139,7 +2139,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           { contract: backingManager, name: 'TradeStarted', emitted: false },
         ])
 
-        //  Check final state - All back to normal
+        // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(minBuyAmt.add(buyAmtBidRSR))
@@ -2148,7 +2148,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
       })
     })
@@ -2162,7 +2162,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
       beforeEach(async function () {
         issueAmount = bn('100e18')
-        initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('0.25e8')]
+        initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('1.25e9')]
         initialQuantities = initialQuotes.map((q) => {
           return q.mul(issueAmount).div(BN_SCALE_FACTOR)
         })
@@ -2220,14 +2220,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
-        //  Check no Backup tokens available
+        // Check no Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
 
         // Set Token2 to hard default - Reducing rate
@@ -2260,7 +2260,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
-        //  Check state - After basket switch
+        // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(75).div(100)) // only 75% of collateral is worth something
@@ -2270,7 +2270,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - With the new basket
+        // Check price in USD of the current RToken - With the new basket
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
@@ -2347,7 +2347,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('1'),
         })
 
-        //  Check state - After first auction
+        // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -2360,20 +2360,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt2)
 
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
-        //  Perform Mock Bids for RSR (addr1 has balance)
+        // Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them
         await backupToken1.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
         await gnosis.placeBid(1, {
@@ -2400,7 +2400,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        //  Check final state - All back to normal
+        // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -2419,14 +2419,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt2.add(buyAmtBidRSR)
         )
@@ -2465,14 +2465,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
-        //  Check no Backup tokens available
+        // Check no Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
@@ -2516,7 +2516,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
-        //  Check state - After basket switch
+        // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.mul(75).div(100)) // only 75% of collateral is worth something
@@ -2526,7 +2526,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - With the new basket
+        // Check price in USD of the current RToken - With the new basket
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
@@ -2604,7 +2604,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('1'),
         })
 
-        //  Check state - After first auction
+        // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -2623,14 +2623,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(requiredBkpToken)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
@@ -2646,7 +2646,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        //  End current auction, should start a new one to sell RSR for collateral
+        // End current auction, should start a new one to sell RSR for collateral
         // Only 5e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
         const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
@@ -2677,7 +2677,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('2'),
         })
 
-        //  Check state - After second auction
+        // Check state - After second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -2696,21 +2696,21 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(requiredBkpToken)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(minBuyAmtBkp1)
 
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stkAmount.sub(sellAmtRSR)) // Sent to market (auction)
 
-        //  Perform Mock Bids for RSR (addr1 has balance)
+        // Perform Mock Bids for RSR (addr1 has balance)
         // Assume fair price RSR = 1 get all of them - Leave a surplus of RSR to be returned
         await backupToken2.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
         await gnosis.placeBid(2, {
@@ -2737,7 +2737,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        //  Check final state - All back to normal
+        // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -2758,14 +2758,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(requiredBkpToken)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(
           minBuyAmtBkp1.add(buyAmtBidRSR)
@@ -2792,14 +2792,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
-        //  Check no Backup tokens available
+        // Check no Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
@@ -2825,7 +2825,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(newTokens, newRefAmounts, false)
 
-        //  Check state - After basket switch
+        // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
@@ -2835,7 +2835,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - With the new basket
+        // Check price in USD of the current RToken - With the new basket
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
@@ -2923,14 +2923,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt0)
 
         // Perform Mock Bids for the new Token (addr1 has balance)
@@ -2986,21 +2986,23 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt2)
         )
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Assume fair price, get 80% of tokens
-        const minBuyAmt3: BigNumber = sellAmt3.mul(80).div(100)
+        // Divide by 50 to convert between cToken scale and fiatcoin scale
+        const minBuyAmt3: BigNumber = sellAmt3.mul(80).div(100).div(50)
+
         const newTotalAssetValue: BigNumber = (await facade.callStatic.totalAssetValue()).add(
           minBuyAmt3
         )
@@ -3066,19 +3068,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3)
         )
 
-        //  Perform Mock Bids for the new Token (addr1 has balance)
+        // Perform Mock Bids for the new Token (addr1 has balance)
         // Assume fair price, get all tokens
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmtRebalance)
         await gnosis.placeBid(3, {
@@ -3121,7 +3123,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Haircut of 15% taken (5% lost of each of the three defaulted tokens)
+        // Check price in USD of the current RToken - Haircut of 15% taken (5% lost of each of the three defaulted tokens)
         expect(await rToken.price()).to.equal(fp('0.85'))
 
         // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
@@ -3131,7 +3133,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(quotes).to.eql(finalQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3).add(minBuyAmtRebalance)
         )
@@ -3160,14 +3162,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken
+        // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(initialQuotes)
 
-        //  Check no Backup tokens available
+        // Check no Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
@@ -3203,7 +3205,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - With the new basket
+        // Check price in USD of the current RToken - With the new basket
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
@@ -3289,14 +3291,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
@@ -3340,7 +3342,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           externalId: bn('2'),
         })
 
-        //   Check state after second auction
+        //  Check state after second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue()).to.equal(
@@ -3353,21 +3355,22 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(minBuyAmt2)
 
         // Perform Mock Bids for the new Token (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
 
-        const minBuyAmt3: BigNumber = sellAmt3.div(2)
+        // Divide by 50 to convert from cToken scale to fiatcoin scale
+        const minBuyAmt3: BigNumber = sellAmt3.div(2).div(50)
         const newTotalAssetValue: BigNumber = (await facade.callStatic.totalAssetValue()).add(
           minBuyAmt3
         )
@@ -3436,20 +3439,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt3)
         )
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(minBuyAmt2)
 
-        //   Perform Mock Bids for the new Token (addr1 has balance)
+        //  Perform Mock Bids for the new Token (addr1 has balance)
         // Assume fair price, get all tokens
         await backupToken2.connect(addr1).approve(gnosis.address, minBuyAmtRebalance)
         await gnosis.placeBid(3, {
@@ -3521,14 +3524,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Remains the same
+        // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Check quotes
         quotes = await facade.connect(addr1).callStatic.issue(bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt3).sub(sellAmtRebalanceBkp)
         )
@@ -3536,7 +3539,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           minBuyAmt2.add(minBuyAmtRebalance)
         )
 
-        //  Perform Mock Bids for the new Token (addr1 has balance)
+        // Perform Mock Bids for the new Token (addr1 has balance)
         // Assume fair price, get all tokens
         await backupToken2.connect(addr1).approve(gnosis.address, minBuyAmtRebalanceBkp)
         await gnosis.placeBid(4, {
@@ -3586,7 +3589,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        //  Check price in USD of the current RToken - Haircut of 37.5% taken
+        // Check price in USD of the current RToken - Haircut of 37.5% taken
         expect(await rToken.price()).to.equal(fp('0.625'))
 
         // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
@@ -3596,7 +3599,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(quotes).to.eql(finalQuotes)
 
-        //  Check Backup tokens available
+        // Check Backup tokens available
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(
           minBuyAmt0.add(minBuyAmt3).sub(sellAmtRebalanceBkp)
         )
@@ -3708,7 +3711,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
 
-      //  End current auction, should start a new one to sell RSR for collateral
+      // End current auction, should start a new one to sell RSR for collateral
       // Only 5e18 Tokens left to buy - Sets Buy amount as independent value
       const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
       const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
@@ -3717,7 +3720,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       await snapshotGasCost(backingManager.settleTrade(backupToken1.address))
       await snapshotGasCost(backingManager.manageTokens(registeredERC20s))
 
-      //  Perform Mock Bids for RSR (addr1 has balance)
+      // Perform Mock Bids for RSR (addr1 has balance)
       // Assume fair price RSR = 1 get all of them - Leave a surplus of RSR to be returned
       await backupToken2.connect(addr1).approve(gnosis.address, buyAmtBidRSR)
       await gnosis.placeBid(2, {
