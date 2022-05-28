@@ -79,41 +79,11 @@ However, ensure that you do not change the value of `.husky/pre-push` in our sha
 
 # Further Topics
 
-## Upgrades
+## Echidna
 
-Components of the production version `P1` are designed to be upgradeable using the Proxy Upgrade Pattern, as implemented by OpenZeppelin. More information about this general pattern is available in the [OZ documentation][proxy-docs].
+We _have_ some tooling for testing with Echidna, but it is immature, out-of-date, and shouldn't be expected to work out-of-the-box. Still, there is some useful, tested support for working with Echidna, see our [echidna usage docs](using-echidna.md)
 
-[proxy-docs]: https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies
-
-This implies that the core contracts in `P1` (`Main` and core components) are meant to be deployed as implementation contracts, which will serve as a reference to deploy later specific instances (or "proxies") via the `Deployer` contract. If changes are required in the future, a new implementation version can be deployed and the Proxy can be upgrated to point to this new implementation, while preserving its state and storage.
-
-When upgrading smart contracts it is crucial to keep in mind the limitations of what can be changed/modified to avoid breaking the contracts. Again, the OZ documentation has good material on [how to write upgradable contracts][writing-upgradable]. The most obvious effect on our code base is that upgradable contracts must initialize their contract state through specialized initializers, rather than just initializing state in its constructor.
-
-[writing-upgradable]: https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
-
-As OZ recommends, we use their upgrades plugin for Hardhat to ensure that implementations are upgrade-safe before upgrading any smart contract.
-
-The recommended process to perform an upgrade is the following:
-
-- Create the new implementation version of the contract. This should follow all the recommendations from the article linked above, to make sure the implementation is "Upgrade Safe"
-
-- Ensure metadata of the existing/deployed proxies is created for the required network. This is located in a folder names `.openzeppelin`, which should be persisted in `git` for Production networks. Because the initial proxies are deployed via the `Deployer` factory contract, this folder needs to be created using the [forceImport][] function provided by the plugin. A concrete example on how to use this function is provided in our Upgradeability test file (`test/Upgradeability.test.ts`)
-
-- Using mainnet forking, make sure you perform tests to check the new implementation behaves as expected. Proxies should be updated using the `upgradeProxy` function provided by the plugin to ensure all validations and checks are performed.
-
-- Create a deployemnt script to the required network (Mainnet), using `upgradeProxy`. Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
-
-For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the [OZ docs][upgrades-docs]. 
-
-[upgrades-docs]: https://docs.openzeppelin.com/upgrades
-
-[forceImport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
-
-## Testing With Echidna 
-
-Our tooling for testing with Echidna is immature, out-of-date, and shouldn't be expected to work out-of-the-box. Still, there is some useful, tested support for working with Echidna, see our [echidna usage docs](using-echidna.md)
-
-## Deployment
+## Test Deployment
 
 See our [deployment documentation](deployment.md).
 
