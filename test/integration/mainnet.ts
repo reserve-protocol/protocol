@@ -1,3 +1,7 @@
+export const MAINNET_BLOCK_NUMBER = process.env.MAINNET_BLOCK
+  ? Number(process.env.MAINNET_BLOCK)
+  : 14854439
+
 // Aave/Compound Protocol addresses
 export const AAVE_ADDRESS = '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'
 export const AAVE_LENDING_POOL_ADDRESS = '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9'

@@ -18,6 +18,11 @@ export const getTrade = async (trader: TestITrading, sellAddr: string): Promise<
   return await ethers.getContractAt('GnosisTrade', tradeAddr)
 }
 
+export const getAuctionId = async (trader: TestITrading, erc20Addr: string): Promise<BigNumber> => {
+  const trade = await getTrade(trader, erc20Addr)
+  return await trade.auctionId()
+}
+
 export interface ITradeInfo {
   sell: string
   buy: string

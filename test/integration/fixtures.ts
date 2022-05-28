@@ -25,9 +25,10 @@ import {
   Facade,
   DistributorP1,
   FurnaceP1,
-  GnosisMock,
+  EasyAuction,
   GnosisTrade,
   IBasketHandler,
+  IGnosis,
   MainP1,
   RevenueTraderP1,
   RewardableLibP1,
@@ -76,7 +77,7 @@ import {
   CUSDC_ADDRESS,
   CUSDT_ADDRESS,
   CDAI_ADDRESS,
-} from './mainnet-addresses'
+} from './mainnet'
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -127,13 +128,13 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface ModuleFixture {
-  gnosis: GnosisMock
+  gnosis: IGnosis
 }
 
 async function gnosisFixture(): Promise<ModuleFixture> {
-  const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
-  const gnosisMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
-  return { gnosis: gnosisMock }
+  const EasyAuctionFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
+  const gnosis: IGnosis = <IGnosis>await EasyAuctionFactory.deploy()
+  return { gnosis: gnosis }
 }
 
 interface CollateralFixture {
@@ -322,7 +323,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenTrader: TestIRevenueTrader
 }
 
-export const aaveCompDefaultFixture: Fixture<DefaultFixture> = async function ([
+export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
@@ -347,6 +348,7 @@ export const aaveCompDefaultFixture: Fixture<DefaultFixture> = async function ([
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotPauseDuration: bn('864000'), // 10 days
+    minBidSize: fp('0.001'), // 0.1% of the minBuyAmount
   }
 
   // Deploy TradingLib external library

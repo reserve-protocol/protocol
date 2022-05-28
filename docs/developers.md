@@ -365,3 +365,19 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
+
+## `oneshotPauseDuration`
+
+{s}
+
+The number of seconds a oneshot pause should last. That is, a pause performed by the pauser role, which can only be used once. The owner can pause indefinitely.
+
+Anticipated value: `864000` = 10 days
+
+## `minBidSize`
+
+{%}
+
+The minimum bid size allowed in a Gnosis EasyAuction as afraction of the `minBuyAmount`.
+
+Antipicated value: `0.001e18` = 0.1%

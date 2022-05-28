@@ -269,7 +269,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, trade.address, config.auctionLength],
+        [main.address, gnosis.address, trade.address, config.auctionLength, config.minBidSize],
         {
           initializer: 'init',
           kind: 'uups',
