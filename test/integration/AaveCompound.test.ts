@@ -81,7 +81,9 @@ const setup = async () => {
   })
 }
 
-describe('AAve/Compound Tests - Mainnet Forking', function () {
+const describeFork = process.env.FORK ? describe : describe.skip
+
+describeFork('AAve/Compound Tests - Mainnet Forking', function () {
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
   let other: SignerWithAddress

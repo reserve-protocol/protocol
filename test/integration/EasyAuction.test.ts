@@ -44,7 +44,9 @@ const setup = async () => {
   })
 }
 
-describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
+const describeFork = process.env.FORK ? describe : describe.skip
+
+describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
   let initialBal: BigNumber
 
   let config: IConfig
