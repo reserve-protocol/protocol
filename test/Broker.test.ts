@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { TradeStatus } from '../common/constants'
-import { bn, toBNDecimals } from '../common/numbers'
+import { fp, bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
   GnosisMock,
@@ -102,6 +102,29 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Check value was updated
       expect(await broker.auctionLength()).to.equal(newValue)
+    })
+
+    it('Should allow to update minBidSize if Owner', async () => {
+      const newValue: BigNumber = fp('10')
+
+      // Check existing value
+      expect(await broker.minBidSize()).to.equal(config.minBidSize)
+
+      // If not owner cannot update
+      await expect(broker.connect(other).setMinBidSize(newValue)).to.be.revertedWith(
+        'unpaused or by owner'
+      )
+
+      // Check value did not change
+      expect(await broker.minBidSize()).to.equal(config.minBidSize)
+
+      // Update with owner
+      await expect(broker.connect(owner).setMinBidSize(newValue))
+        .to.emit(broker, 'MinBidSizeSet')
+        .withArgs(config.minBidSize, newValue)
+
+      // Check value was updated
+      expect(await broker.minBidSize()).to.equal(newValue)
     })
 
     it('Should allow to update disabled if Owner', async () => {
@@ -244,6 +267,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -270,6 +294,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.origin(),
           await trade.gnosis(),
           await broker.auctionLength(),
+          await broker.minBidSize(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -300,6 +325,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -337,6 +363,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -392,6 +419,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -472,6 +500,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -576,6 +605,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       )
@@ -589,6 +619,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         backingManager.address,
         gnosis.address,
         config.auctionLength,
+        config.minBidSize,
         tradeRequest
       )
 

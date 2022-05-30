@@ -55,6 +55,7 @@ contract GnosisTrade is ITrade {
         address origin_,
         IGnosis gnosis_,
         uint32 auctionLength,
+        uint256 minBidSize,
         TradeRequest memory req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
@@ -84,7 +85,7 @@ contract GnosisTrade is ITrade {
             endTime,
             uint96(sellAmount),
             uint96(req.minBuyAmount),
-            0,
+            minBidSize,
             req.minBuyAmount, // TODO to double-check this usage of gnosis later
             false,
             address(0),

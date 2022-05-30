@@ -8,20 +8,27 @@ import "@openzeppelin/contracts/proxy/Clones.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
+
+    // The fraction of the supply of the bidding token that is the min bid size in case of default
+    uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
 
     ITrade public tradeImplementation;
 
     IGnosis public gnosis;
 
     uint32 public auctionLength; // {s} the length of an auction
+
+    uint192 public minBidSize; // {UoA} The minimum size of a bid during auctions
 
     bool public disabled;
 
@@ -31,12 +38,14 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         IMain main_,
         IGnosis gnosis_,
         ITrade tradeImplementation_,
-        uint32 auctionLength_
+        uint32 auctionLength_,
+        uint192 minBidSize_
     ) external initializer {
         __Component_init(main_);
         gnosis = gnosis_;
         tradeImplementation = tradeImplementation_;
         auctionLength = auctionLength_;
+        minBidSize = minBidSize_;
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -63,7 +72,8 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
             address(trade),
             req.sellAmount
         );
-        trade.init(this, caller, gnosis, auctionLength, req);
+
+        trade.init(this, caller, gnosis, auctionLength, minBidAmt(req.buy), req);
         return trade;
     }
 
@@ -75,12 +85,39 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         disabled = true;
     }
 
+    // === Private ===
+
+    /// @return minBidAmt_ {qTok} The minimum bid size for an asset
+    function minBidAmt(IAsset asset) private view returns (uint256 minBidAmt_) {
+        if (
+            asset.isCollateral() &&
+            ICollateral(address(asset)).status() != CollateralStatus.DISABLED
+        ) {
+            // {tok} = {UoA} / {UoA/tok}
+            uint192 minBidSize_ = minBidSize.div(asset.price(), CEIL);
+
+            // {qTok} = {tok} * {qTok/tok}
+            minBidAmt_ = minBidSize_.shiftl_toUint(int8(asset.erc20().decimals()), CEIL);
+        }
+
+        if (minBidAmt_ == 0) {
+            // {qTok} = {1} * {qTok}
+            minBidAmt_ = MIN_BID_SHARE_OF_TOTAL_SUPPLY.mulu_toUint(asset.erc20().totalSupply());
+        }
+    }
+
     // === Setters ===
 
     /// @custom:governance
     function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
+    }
+
+    /// @custom:governance
+    function setMinBidSize(uint192 newMinBidSize) external governance {
+        emit MinBidSizeSet(minBidSize, newMinBidSize);
+        minBidSize = newMinBidSize;
     }
 
     /// @custom:governance

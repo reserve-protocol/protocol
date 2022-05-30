@@ -2,7 +2,7 @@
 
 exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 1`] = `42710`;
 
-exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 2`] = `50042`;
+exports[`Collateral contracts Gas Reporting Force Updates - Hard Default - ATokens/CTokens 2`] = `49442`;
 
 exports[`Collateral contracts Gas Reporting Force Updates - Soft Default 1`] = `76037`;
 
