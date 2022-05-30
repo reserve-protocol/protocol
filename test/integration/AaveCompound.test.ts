@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { getAddress } from 'ethers/lib/utils'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral } from '../fixtures'
-import { aaveCompDefaultFixture } from './fixtures'
+import { defaultFixture } from './fixtures'
 import { bn, fp } from '../../common/numbers'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
@@ -24,7 +24,8 @@ import {
   CUSDC_ADDRESS,
   CUSDT_ADDRESS,
   CDAI_ADDRESS,
-} from './mainnet-addresses'
+  MAINNET_BLOCK_NUMBER,
+} from './mainnet'
 
 import {
   AaveOracleMock,
@@ -38,7 +39,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
-  GnosisMock,
+  IGnosis,
   GnosisTrade,
   IBasketHandler,
   RTokenAsset,
@@ -73,7 +74,7 @@ const setup = async () => {
       {
         forking: {
           jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: 14854439,
+          blockNumber: MAINNET_BLOCK_NUMBER,
         },
       },
     ],
@@ -103,7 +104,7 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let gnosis: GnosisMock
+  let gnosis: IGnosis
   let broker: TestIBroker
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
@@ -168,7 +169,7 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
         facade,
         rsrTrader,
         rTokenTrader,
-      } = await loadFixture(aaveCompDefaultFixture))
+      } = await loadFixture(defaultFixture))
 
       // Get assets and tokens
       tokenCollateral = <AavePricedFiatCollateral>basket[0]
@@ -283,7 +284,7 @@ describe('AAve/Compound Tests - Mainnet Forking', function () {
       expect(await facade.callStatic.totalAssetValue()).to.equal(0)
 
       // Check RToken price
-       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.01'))
     })
   })
 })

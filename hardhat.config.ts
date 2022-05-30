@@ -63,6 +63,10 @@ const config: any = {
           revertStrings: 'default',
         },
       },
+      {
+        version: '0.6.12',
+        settingis: { optimizer: { enabled: false } },
+      },
     ],
     overrides: {
       'contracts/p1/aux/Deployer.sol': {
@@ -75,7 +79,7 @@ const config: any = {
       },
       'contracts/p1/StRSRVotes.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 1000 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 800 } },
       },
     },
   },

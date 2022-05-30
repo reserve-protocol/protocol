@@ -4,6 +4,7 @@ import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
+import { EASY_AUCTION_ADDRESS } from './integration/mainnet'
 import {
   AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
@@ -22,6 +23,7 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
+  EasyAuction,
   Facade,
   DistributorP1,
   FurnaceP1,
@@ -75,6 +77,7 @@ export interface IConfig {
   dustAmount: BigNumber
   issuanceRate: BigNumber
   oneshotPauseDuration: BigNumber
+  minBidSize: BigNumber
 }
 
 export interface IRevenueShare {
@@ -177,14 +180,29 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   }
 }
 
-interface ModuleFixture {
+interface GnosisFixture {
   gnosis: GnosisMock
 }
 
-async function gnosisFixture(): Promise<ModuleFixture> {
+async function mockGnosisFixture(): Promise<GnosisFixture> {
   const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
   const gnosisMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
   return { gnosis: gnosisMock }
+}
+
+interface EasyAuctionFixture {
+  easyAuction: EasyAuction
+}
+
+async function easyAuctionFixture(): Promise<EasyAuctionFixture> {
+  // const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
+  // const easyAuction: EasyAuction = <EasyAuction>await GnosisMockFactory.deploy()
+
+  // Only use this with mainnet forking
+  const easyAuction: EasyAuction = <EasyAuction>(
+    await ethers.getContractAt('EasyAuction', EASY_AUCTION_ADDRESS)
+  )
+  return { easyAuction: easyAuction }
 }
 
 interface CollateralFixture {
@@ -352,7 +370,8 @@ async function collateralFixture(
 type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
   CollateralFixture &
-  ModuleFixture
+  GnosisFixture &
+  EasyAuctionFixture
 
 interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
@@ -389,7 +408,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracleInternal,
     aaveMock,
   } = await compAaveFixture()
-  const { gnosis } = await gnosisFixture()
+  const { easyAuction } = await easyAuctionFixture()
+  const { gnosis } = await mockGnosisFixture()
+  const auctionAddress = process.env.FORK ? easyAuction.address : gnosis.address
+
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -409,6 +431,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotPauseDuration: bn('864000'), // 10 days
+    minBidSize: fp('0.001'), // 0.1% of the minBuyAmount
   }
 
   // Deploy TradingLib external library
@@ -424,7 +447,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsr.address,
       compToken.address,
       aaveToken.address,
-      gnosis.address,
+      auctionAddress,
       compoundMock.address,
       aaveMock.address
     )
@@ -512,7 +535,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rsr.address,
         compToken.address,
         aaveToken.address,
-        gnosis.address,
+        auctionAddress,
         compoundMock.address,
         aaveMock.address,
         implementations
@@ -664,6 +687,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     stRSR,
     broker,
     gnosis,
+    easyAuction,
     facade,
     rsrTrader,
     rTokenTrader,

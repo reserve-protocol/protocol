@@ -244,6 +244,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -270,6 +271,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.origin(),
           await trade.gnosis(),
           await broker.auctionLength(),
+          await broker.minBidSize(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -300,6 +302,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -337,6 +340,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -392,6 +396,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -472,6 +477,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -576,6 +582,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
+          config.minBidSize,
           tradeRequest
         )
       )
@@ -589,6 +596,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         backingManager.address,
         gnosis.address,
         config.auctionLength,
+        config.minBidSize,
         tradeRequest
       )
 
@@ -604,5 +612,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await newTrade.status()).to.equal(TradeStatus.CLOSED)
       expect(await newTrade.canSettle()).to.equal(false)
     })
+
+    // TODO test insufficient bid triggering reportViolation
   })
 })

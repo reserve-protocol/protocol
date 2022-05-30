@@ -8,10 +8,12 @@ import "contracts/plugins/trading/GnosisTrade.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrade.sol";
+import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP0 is ComponentP0, IBroker {
+    using FixLib for uint192;
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
@@ -21,17 +23,21 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     uint32 public auctionLength; // {s} the length of an auction
 
+    uint192 public minBidSize; // {%} the minimum bid allowed, set as % of minBuyAmount
+
     bool public disabled;
 
     function init(
         IMain main_,
         IGnosis gnosis_,
         ITrade, // Added for Interface compatibility with P1
-        uint32 auctionLength_
+        uint32 auctionLength_,
+        uint192 minBidSize_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
         auctionLength = auctionLength_;
+        minBidSize = minBidSize_;
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -53,7 +59,13 @@ contract BrokerP0 is ComponentP0, IBroker {
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
         req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
-        trade.init(this, caller, gnosis, auctionLength, req);
+        uint256 minBidAmt = minBidSize.mulu_toUint(req.minBuyAmount, CEIL);
+
+        // This potentially allows someone to troll auctions by placing lots of
+        // orders for a tiny size.
+        if (minBidAmt == 0) minBidAmt = 1;
+
+        trade.init(this, caller, gnosis, auctionLength, minBidAmt, req);
         return trade;
     }
 
@@ -71,6 +83,12 @@ contract BrokerP0 is ComponentP0, IBroker {
     function setAuctionLength(uint32 newAuctionLength) external governance {
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
+    }
+
+    /// @custom:governance
+    function setMinBidSize(uint192 newMinBidSize) external governance {
+        emit MinBidSizeSet(minBidSize, newMinBidSize);
+        minBidSize = newMinBidSize;
     }
 
     /// @custom:governance

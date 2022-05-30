@@ -340,7 +340,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
       await expect(
-        broker.init(main.address, gnosis.address, trade.address, config.auctionLength)
+        broker.init(
+          main.address,
+          gnosis.address,
+          trade.address,
+          config.auctionLength,
+          config.minBidSize
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken

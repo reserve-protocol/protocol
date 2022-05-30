@@ -25,6 +25,18 @@ export enum CollateralStatus {
   DISABLED,
 }
 
+// @dev Must match `Governance.ProposalState`.
+export enum ProposalState {
+  Pending,
+  Active,
+  Canceled,
+  Defeated,
+  Succeeded,
+  Queued,
+  Expired,
+  Executed,
+}
+
 // @dev Must match `Fixed.RoundingApproach`.
 export enum RoundingMode {
   FLOOR,
@@ -41,3 +53,5 @@ export enum TradeStatus {
 
 export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'
 export const STRSR_DEST = '0x0000000000000000000000000000000000000002'
+
+export const QUEUE_START = '0x0000000000000000000000000000000000000000000000000000000000000001'
