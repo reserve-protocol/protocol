@@ -21,17 +21,21 @@ contract InvalidBrokerMock is ComponentP0, IBroker {
 
     uint32 public auctionLength; // {s} the length of an auction
 
+    uint192 public minBidSize; // {UoA} The minimum size of a bid during auctions
+
     bool public disabled = false;
 
     function init(
         IMain main_,
         IGnosis gnosis_,
         ITrade,
-        uint32 auctionLength_
+        uint32 auctionLength_,
+        uint192 minBidSize_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
         auctionLength = auctionLength_;
+        minBidSize = minBidSize_;
     }
 
     /// Invalid implementation - Reverts

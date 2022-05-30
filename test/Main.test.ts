@@ -340,7 +340,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
       const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
       await expect(
-        broker.init(main.address, gnosis.address, trade.address, config.auctionLength)
+        broker.init(
+          main.address,
+          gnosis.address,
+          trade.address,
+          config.auctionLength,
+          config.minBidSize
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken
@@ -1265,7 +1271,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0])
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
-      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3])
+      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3].mul(50))
 
       // Swap basket should not find valid basket because no backup config
       await expect(basketHandler.refreshBasket())

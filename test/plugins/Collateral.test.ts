@@ -191,13 +191,13 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await cTokenCollateral.maxTradeVolume()).to.equal(config.maxTradeVolume)
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt)
-      expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await cTokenCollateral.prevReferencePrice()).to.equal(
         await cTokenCollateral.refPerTok()
       )
-      expect(await cTokenCollateral.price()).to.equal(fp('1'))
+      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
       calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -213,13 +213,13 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.price()).to.equal(fp('1'))
       expect(await usdcCollateral.price()).to.equal(fp('1'))
       expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('1'))
+      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
-      expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Update values in Oracles increase by 10-20%
       await aaveOracleInternal.setPrice(token.address, bn('2.75e14')) // 10%
@@ -230,13 +230,13 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.price()).to.equal(fp('1.1'))
       expect(await usdcCollateral.price()).to.equal(fp('1.1'))
       expect(await aTokenCollateral.price()).to.equal(fp('1.1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('1.1'))
+      expect(await cTokenCollateral.price()).to.equal(fp('0.022'))
 
       // Check refPerTok remains the same
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
-      expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Check RToken price
       expect(await rToken.price()).to.equal(fp('1.1'))
@@ -245,11 +245,11 @@ describe('Collateral contracts', () => {
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
       // Check initial prices
       expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('1'))
+      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
-      expect(await cTokenCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Increase rate for Ctoken and AToken to double
       await aToken.setExchangeRate(fp(2))
@@ -257,11 +257,11 @@ describe('Collateral contracts', () => {
 
       // Check prices doubled
       expect(await aTokenCollateral.price()).to.equal(fp('2'))
-      expect(await cTokenCollateral.price()).to.equal(fp('2'))
+      expect(await cTokenCollateral.price()).to.equal(fp('0.04'))
 
       // RefPerTok also doubles in this case
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('2'))
-      expect(await cTokenCollateral.refPerTok()).to.equal(fp('2'))
+      expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.04'))
 
       // Check RToken price - Remains the same until Revenues are processed
       expect(await rToken.price()).to.equal(fp('1'))

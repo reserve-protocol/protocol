@@ -4,12 +4,12 @@
 
 The protocol is split into core contracts and plugins.
 
-The _core_ contracts include `Main` and the other contracts (`Component`s) directly registered by `Main`. The core contracts all share governance and pausing status, they're all upgradable, and they form a single security domain. 
+The _core_ contracts include `Main` and the other contracts (`Component`s) directly registered by `Main`. The core contracts all share governance and pausing status, they're all upgradable, and they form a single security domain.
 
 The _plugin_ contracts are intended to be individual, static contracts that can be _registered_ with the core contracts. This includes the `Asset` and `Collateral` contracts that are registered in `AssetRegistry`, and `Trade` contracts that are selected and created by the `Broker`. Plugin contracts have only short-term state, are not individually puasable, and are not upgradable; if a plugin contract must be upgraded, it can simply be replaced.
 
 Any ERC20 token that our system knows how to deal with is wrapped and modelled in an `Asset` or `Collateral` contract. An Asset models an ERC20 token, and provides a view of its price against the unit of account. A Collateral is an Asset with the further information our protocol requires to use its ERC20 as RToken backing.
-    
+
 The remained solidity files in our repository are either:
 
 - `Facade.sol`, which is a practically stateless Facade for our system, for the convenience of external interactions and app development
@@ -19,6 +19,7 @@ The remained solidity files in our repository are either:
 - Mocks or stubs for testing
 
 ## Notes on Token Flow
+
 ### Tokens Held by Different Contracts
 
 Some of the core contracts in our system regularly own ERC20 tokens. In each case, such tokens are intended for particular purposes:
@@ -34,7 +35,6 @@ Some of the core contracts in our system regularly own ERC20 tokens. In each cas
 1. During SlowIssuance, the `RToken` transfers collateral tokens from the issuer's address into itself.
 2. At vesting time, the `RToken` contract mints new RToken to the issuer and transfers the held collateral to the `BackingManager`. If the `BasketHandler` has updated the basket since issuance began, then the collateral is instead returned to the user and no RToken is minted.
 3. During redemption, RToken is burnt from the redeemer's account and they are transferred a prorata share of backing collateral from the `BackingManager`.
-
 
 ## Basket Dynamics
 
@@ -80,8 +80,6 @@ This is the form of the basket that issuers and redeemer will care most about. I
 Since defi redemption rates can change every block, so can the collateral basket. As an issuance is pending in the mempool, the quantities of tokens that will be ingested when the tx is mined decreases slightly as the collateral becomes worth more. If furnace melting happens in that time, however, this can increase the quantity of collateral tokens in the basket and cause the issuance to fail.
 
 And the flip side: as a redemption is pending in the mempool the quantities of collateral tokens the redeemer will receive steadily decreases. If a furnace melting happens in that time the quantities will be increased, causing the redeemer to get more than they expected.
-
-
 
 ## Deployment Parameters
 
@@ -164,3 +162,19 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
+
+## oneshotPauseDuration
+
+{s}
+
+The number of seconds a oneshot pause should last. That is, a pause performed by the pauser role, which can only be used once. The owner can pause indefinitely.
+
+Anticipated value: `864000` = 10 days
+
+## minBidSize
+
+{UoA}
+
+The minimum bid size in a dutch auction (such as Gnosis EasyAuction) in terms of the unit of account. This prevents auction bidders from performing gas-griefing attacks against the protocol.
+
+Antipicated value: `1e18` = $1

@@ -43,6 +43,9 @@ struct DeploymentParams {
     //
     // === RToken ===
     uint192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+    //
+    // === Broker ===
+    uint192 minBidSize; // {UoA} The minimum size of a bid during auctions, in UoA
 }
 
 /**

@@ -26,9 +26,6 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
-    // cToken initial exchange rate is 0.02
-    uint192 public constant COMPOUND_BASE = uint192(FIX_SCALE / 50);
-
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
@@ -111,8 +108,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
-        uint192 rateNow = shiftl_toFix(rate, shiftLeft);
-        return rateNow.div(COMPOUND_BASE);
+        return shiftl_toFix(rate, shiftLeft);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
