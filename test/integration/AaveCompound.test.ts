@@ -301,38 +301,37 @@ describeFork('AAve/Compound Tests - Mainnet Forking', function () {
     })
 
     it.skip('Should issue RTokens correctly', async function () {
-        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
-         // check balances before
-         expect(await token.balanceOf(backingManager.address)).to.equal(0)
-         expect(await cToken.balanceOf(backingManager.address)).to.equal(0)
- 
-         expect(await token.balanceOf(addr1.address)).to.equal(initialBal)
-         expect(await cToken.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(5))
+      // check balances before
+      expect(await token.balanceOf(backingManager.address)).to.equal(0)
+      expect(await cToken.balanceOf(backingManager.address)).to.equal(0)
 
-        // Provide approvals
-        await token.connect(addr1).approve(rToken.address, issueAmount)
-        await cToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(5))
-       
-        expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await token.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await cToken.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(5))
 
-        // Issue rTokens
-        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      // Provide approvals
+      await token.connect(addr1).approve(rToken.address, issueAmount)
+      await cToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(5))
 
-        
-        // Check Balances after
-        // expect(await token.balanceOf(backingManager.address)).to.equal(issueAmount.div(2)) // 5K needed (50%)
-        // expect(await cToken.balanceOf(backingManager.address)).to.be.closeTo(bn('227188e8'), bn(1e8)) // approx 227K needed
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
 
-        // expect(await token.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(2)))
-        // expect(await cToken.balanceOf(addr1.address)).to.be.closeTo(toBNDecimals(initialBal, 8).mul(5).sub(bn('227188e8')), bn(1e8))
-        
-        // // RTokens issued to user
-        // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-        // // Check asset value
-        // expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
-      })
+      // Check Balances after
+      // expect(await token.balanceOf(backingManager.address)).to.equal(issueAmount.div(2)) // 5K needed (50%)
+      // expect(await cToken.balanceOf(backingManager.address)).to.be.closeTo(bn('227188e8'), bn(1e8)) // approx 227K needed
+
+      // expect(await token.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(2)))
+      // expect(await cToken.balanceOf(addr1.address)).to.be.closeTo(toBNDecimals(initialBal, 8).mul(5).sub(bn('227188e8')), bn(1e8))
+
+      // // RTokens issued to user
+      // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // // Check asset value
+      // expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
+    })
   })
 })
