@@ -65,7 +65,7 @@ const config: any = {
       },
       {
         version: '0.6.12',
-        settingis: { optimizer: { enabled: false } },
+        settings: { optimizer: { enabled: false } },
       },
     ],
     overrides: {
@@ -80,6 +80,10 @@ const config: any = {
       'contracts/p1/StRSRVotes.sol': {
         version: '0.8.9',
         settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 800 } },
+      },
+      'contracts/plugins/aave/StaticATokenLM.sol': {
+        version: '0.6.12',
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
       },
     },
   },

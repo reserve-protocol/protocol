@@ -5,6 +5,15 @@ __metadata:
   version: 4
   cacheKey: 8
 
+"@aave/protocol-v2@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@aave/protocol-v2@npm:1.0.1"
+  dependencies:
+    tmp-promise: ^3.0.2
+  checksum: 9fb81748ebd57e42f0e1332ba6b5ef49d7184c1e98ba017617b5741f830705024194e7c1874afc517fdb126f2a900eb281bbdbf1b36e10e20c3a42ac654dd9be
+  languageName: node
+  linkType: hard
+
 "@ampproject/remapping@npm:^2.1.0":
   version: 2.2.0
   resolution: "@ampproject/remapping@npm:2.2.0"
@@ -11773,6 +11782,7 @@ fsevents@~2.1.1:
   version: 0.0.0-use.local
   resolution: "reserve-protocol@workspace:."
   dependencies:
+    "@aave/protocol-v2": ^1.0.1
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-waffle": ^2.0.1
     "@openzeppelin/contracts": ^4.5.0
@@ -11975,7 +11985,7 @@ resolve@1.17.0:
   languageName: node
   linkType: hard
 
-"rimraf@npm:^3.0.2":
+"rimraf@npm:^3.0.0, rimraf@npm:^3.0.2":
   version: 3.0.2
   resolution: "rimraf@npm:3.0.2"
   dependencies:
@@ -13260,6 +13270,15 @@ resolve@1.17.0:
   languageName: node
   linkType: hard
 
+"tmp-promise@npm:^3.0.2":
+  version: 3.0.3
+  resolution: "tmp-promise@npm:3.0.3"
+  dependencies:
+    tmp: ^0.2.0
+  checksum: f854f5307dcee6455927ec3da9398f139897faf715c5c6dcee6d9471ae85136983ea06662eba2edf2533bdcb0fca66d16648e79e14381e30c7fb20be9c1aa62c
+  languageName: node
+  linkType: hard
+
 "tmp@npm:0.0.33, tmp@npm:^0.0.33":
   version: 0.0.33
   resolution: "tmp@npm:0.0.33"
@@ -13275,6 +13294,15 @@ resolve@1.17.0:
   dependencies:
     rimraf: ^2.6.3
   checksum: 6bab8431de9d245d4264bd8cd6bb216f9d22f179f935dada92a11d1315572c8eb7c3334201e00594b4708608bd536fad3a63bfb037e7804d827d66aa53a1afcd
+  languageName: node
+  linkType: hard
+
+"tmp@npm:^0.2.0":
+  version: 0.2.1
+  resolution: "tmp@npm:0.2.1"
+  dependencies:
+    rimraf: ^3.0.0
+  checksum: 8b1214654182575124498c87ca986ac53dc76ff36e8f0e0b67139a8d221eaecfdec108c0e6ec54d76f49f1f72ab9325500b246f562b926f85bcdfca8bf35df9e
   languageName: node
   linkType: hard
 
