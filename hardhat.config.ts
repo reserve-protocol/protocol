@@ -5,6 +5,7 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import { MAINNET_BLOCK_NUMBER } from './test/integration/mainnet'
 
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -30,7 +31,7 @@ const config: any = {
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL,
-        blockNumber: 14854439,
+        blockNumber: MAINNET_BLOCK_NUMBER,
         enabled: !!process.env.FORK,
       },
       gas: 0x1ffffffff,
