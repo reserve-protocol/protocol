@@ -5,8 +5,10 @@ import { getAddress } from 'ethers/lib/utils'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { whileImpersonating } from '../utils/impersonation'
+
 import {
   AAVE_ADDRESS,
   AAVE_LENDING_POOL_ADDRESS,
@@ -60,6 +62,8 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Relevant addresses (Mainnet)
+// cDAI and DAI Holder
+const holderDAI = '0x30030383d959675eC884E7EC88F05EE0f186cC06'
 
 let owner: SignerWithAddress
 
@@ -144,6 +148,7 @@ describeFork('AAve/Compound Tests - Mainnet Forking', function () {
 
   describe('Compound', () => {
     beforeEach(async () => {
+      ;[owner, addr1, addr2, other] = await ethers.getSigners()
       ;({
         rsr,
         rsrAsset,
@@ -179,7 +184,13 @@ describeFork('AAve/Compound Tests - Mainnet Forking', function () {
       token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
       cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
 
-      // TODO: Get Tokens from holders initial balances
+      // Transfer tokens from holder
+      initialBal = bn('20000e18')
+
+      await whileImpersonating(holderDAI, async (holdSigner) => {
+        await token.connect(holdSigner).transfer(addr1.address, initialBal)
+        await cToken.connect(holdSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(5))
+      })
     })
 
     it('Should setup assets correctly', async () => {
@@ -288,5 +299,40 @@ describeFork('AAve/Compound Tests - Mainnet Forking', function () {
       // Check RToken price
       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.01'))
     })
+
+    it.skip('Should issue RTokens correctly', async function () {
+        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+         // check balances before
+         expect(await token.balanceOf(backingManager.address)).to.equal(0)
+         expect(await cToken.balanceOf(backingManager.address)).to.equal(0)
+ 
+         expect(await token.balanceOf(addr1.address)).to.equal(initialBal)
+         expect(await cToken.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(5))
+
+        // Provide approvals
+        await token.connect(addr1).approve(rToken.address, issueAmount)
+        await cToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(5))
+       
+        expect(await rToken.balanceOf(main.address)).to.equal(0)
+
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        
+        // Check Balances after
+        // expect(await token.balanceOf(backingManager.address)).to.equal(issueAmount.div(2)) // 5K needed (50%)
+        // expect(await cToken.balanceOf(backingManager.address)).to.be.closeTo(bn('227188e8'), bn(1e8)) // approx 227K needed
+
+        // expect(await token.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(2)))
+        // expect(await cToken.balanceOf(addr1.address)).to.be.closeTo(toBNDecimals(initialBal, 8).mul(5).sub(bn('227188e8')), bn(1e8))
+        
+        // // RTokens issued to user
+        // expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        // // Check asset value
+        // expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
+      })
   })
 })
