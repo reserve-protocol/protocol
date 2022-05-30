@@ -376,8 +376,8 @@ Anticipated value: `864000` = 10 days
 
 ## `minBidSize`
 
-{%}
+{UoA}
 
-The minimum bid size allowed in a Gnosis EasyAuction as afraction of the `minBuyAmount`.
+The minimum bid size in a dutch auction (such as Gnosis EasyAuction) in terms of the unit of account. This prevents auction bidders from performing gas-griefing attacks against the protocol.
 
-Antipicated value: `0.001e18` = 0.1%
+Antipicated value: `1e18` = $1

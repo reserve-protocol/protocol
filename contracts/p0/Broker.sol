@@ -17,13 +17,16 @@ contract BrokerP0 is ComponentP0, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeERC20 for IERC20Metadata;
 
+    // The fraction of the supply of the bidding token that is the min bid size in case of default
+    uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-11%
+
     IGnosis public gnosis;
 
     mapping(address => bool) private trades;
 
     uint32 public auctionLength; // {s} the length of an auction
 
-    uint192 public minBidSize; // {%} the minimum bid allowed, set as % of minBuyAmount
+    uint192 public minBidSize; // {UoA} The minimum size of a bid during auctions
 
     bool public disabled;
 
@@ -59,13 +62,8 @@ contract BrokerP0 is ComponentP0, IBroker {
         GnosisTrade trade = new GnosisTrade();
         trades[address(trade)] = true;
         req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
-        uint256 minBidAmt = minBidSize.mulu_toUint(req.minBuyAmount, CEIL);
 
-        // This potentially allows someone to troll auctions by placing lots of
-        // orders for a tiny size.
-        if (minBidAmt == 0) minBidAmt = 1;
-
-        trade.init(this, caller, gnosis, auctionLength, minBidAmt, req);
+        trade.init(this, caller, gnosis, auctionLength, minBidAmt(req.buy), req);
         return trade;
     }
 
@@ -75,6 +73,27 @@ contract BrokerP0 is ComponentP0, IBroker {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;
+    }
+
+    // === Private ===
+
+    /// @return minBidAmt_ {qTok} The minimum bid size for an asset
+    function minBidAmt(IAsset asset) private view returns (uint256 minBidAmt_) {
+        if (
+            asset.isCollateral() &&
+            ICollateral(address(asset)).status() != CollateralStatus.DISABLED
+        ) {
+            // {tok} = {UoA} / {UoA/tok}
+            uint192 minBidSize_ = minBidSize.div(asset.price(), CEIL);
+
+            // {qTok} = {tok} * {qTok/tok}
+            minBidAmt_ = minBidSize_.shiftl_toUint(int8(asset.erc20().decimals()), CEIL);
+        }
+
+        if (minBidAmt_ == 0) {
+            // {qTok} = {1} * {qTok}
+            minBidAmt_ = MIN_BID_SHARE_OF_TOTAL_SUPPLY.mulu_toUint(asset.erc20().totalSupply());
+        }
     }
 
     // === Setters ===
