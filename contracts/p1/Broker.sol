@@ -102,7 +102,10 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
         if (minBidAmt_ == 0) {
             // {qTok} = {1} * {qTok}
-            minBidAmt_ = MIN_BID_SHARE_OF_TOTAL_SUPPLY.mulu_toUint(asset.erc20().totalSupply());
+            minBidAmt_ = MIN_BID_SHARE_OF_TOTAL_SUPPLY.mulu_toUint(
+                asset.erc20().totalSupply(),
+                CEIL
+            );
         }
     }
 
