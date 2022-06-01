@@ -24,7 +24,6 @@ import { RTokenAsset } from '@typechain/RTokenAsset'
 import { ZERO_ADDRESS } from '../common/constants'
 import { AavePricedAsset } from '@typechain/AavePricedAsset'
 import { CompoundPricedAsset } from '@typechain/CompoundPricedAsset'
-import { FacadeP1 } from '@typechain/FacadeP1'
 
 export const defaultThreshold = fp('0.05') // 5%
 export const delayUntilDefault = bn('86400') // 24h
@@ -51,6 +50,7 @@ export const config: IConfig = {
   dustAmount: fp('0.01'), // 0.01 UoA (USD)
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   oneshotPauseDuration: bn('864000'), // 10 days
+  minBidSize: fp('1'), // 1 UoA (USD)
 }
 
 const createATokenCollateral = async (
@@ -223,10 +223,6 @@ export const deployImplementations = async (
   )
   await compoundPricedAssetImpl.deployed()
 
-  // Facade - Can use dummy data in constructor as only logic will be used
-  const FacadeFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeP1')
-  const facadeImpl = <FacadeP1>await FacadeFactory.deploy(ZERO_ADDRESS)
-
   return {
     main: mainImpl.address,
     components: {
@@ -242,7 +238,6 @@ export const deployImplementations = async (
       rTokenTrader: revTraderImpl.address,
     },
     trade: tradeImpl.address,
-    facade: facadeImpl.address,
   }
 }
 
