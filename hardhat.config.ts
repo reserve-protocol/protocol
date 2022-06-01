@@ -30,7 +30,7 @@ const config: any = {
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL,
-        blockNumber: 14393847,
+        blockNumber: 14854439,
         enabled: !!process.env.FORK,
       },
       gas: 0x1ffffffff,
@@ -62,6 +62,10 @@ const config: any = {
           // "debug" injects strings for compiler-generated internal reverts
           revertStrings: 'default',
         },
+      },
+      {
+        version: '0.6.12',
+        settingis: { optimizer: { enabled: false } },
       },
     ],
     overrides: {

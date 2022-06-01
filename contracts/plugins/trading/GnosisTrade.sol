@@ -34,7 +34,8 @@ contract GnosisTrade is ITrade {
     address public origin;
     IERC20Metadata public sell;
     IERC20Metadata public buy;
-    uint256 public sellAmount; // {qTok}
+    uint96 public sellAmount; // {qTok}
+    uint96 public minBuyAmount; // {qTok}
     uint32 public endTime;
     uint192 public worstCasePrice; // {buyTok/sellTok}
 
@@ -68,7 +69,10 @@ contract GnosisTrade is ITrade {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        sellAmount = sell.balanceOf(address(this));
+        require(sell.balanceOf(address(this)) <= type(uint96).max, "order too large");
+        require(req.minBuyAmount <= type(uint96).max, "order too large");
+        sellAmount = uint96(sell.balanceOf(address(this)));
+        minBuyAmount = uint96(req.minBuyAmount);
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
@@ -78,6 +82,7 @@ contract GnosisTrade is ITrade {
         // == Interactions ==
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
@@ -86,7 +91,7 @@ contract GnosisTrade is ITrade {
             uint96(sellAmount),
             uint96(req.minBuyAmount),
             minBidSize,
-            req.minBuyAmount, // TODO to double-check this usage of gnosis later
+            0,
             false,
             address(0),
             new bytes(0)
@@ -154,5 +159,14 @@ contract GnosisTrade is ITrade {
     function atStageFinished() private view returns (bool) {
         GnosisAuctionData memory data = gnosis.auctionData(auctionId);
         return data.clearingPriceOrder != bytes32(0);
+    }
+
+    function encodeOrder(
+        uint64 userId,
+        uint96 buyAmount,
+        uint96 sellAmount_
+    ) internal pure returns (bytes32) {
+        return
+            bytes32((uint256(userId) << 192) + (uint256(buyAmount) << 96) + uint256(sellAmount_));
     }
 }

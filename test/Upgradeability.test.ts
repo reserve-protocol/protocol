@@ -18,7 +18,7 @@ import {
   ERC20Mock,
   FurnaceP1,
   FurnaceP1V2,
-  GnosisMock,
+  EasyAuction,
   GnosisTrade,
   IBasketHandler,
   MainP1,
@@ -59,7 +59,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rsrAsset: Asset
 
   // Market / Facade
-  let gnosis: GnosisMock
+  let gnosis: EasyAuction
   let broker: TestIBroker
 
   // Core contracts

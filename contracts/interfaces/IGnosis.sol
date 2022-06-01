@@ -3,8 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// Everything in this file is directly from GnosisEasyAuction code
-
 struct GnosisAuctionData {
     IERC20 auctioningToken;
     IERC20 biddingToken;

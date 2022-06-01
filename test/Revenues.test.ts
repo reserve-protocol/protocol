@@ -15,7 +15,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
-  GnosisMock,
+  EasyAuction,
   IBasketHandler,
   StaticATokenMock,
   TestIAssetRegistry,
@@ -53,7 +53,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let aaveMock: AaveLendingPoolMock
 
   // Trading
-  let gnosis: GnosisMock
+  let gnosis: EasyAuction
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let broker: TestIBroker

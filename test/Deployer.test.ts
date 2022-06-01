@@ -10,7 +10,7 @@ import {
   ComptrollerMock,
   ERC20Mock,
   Facade,
-  GnosisMock,
+  EasyAuction,
   IBasketHandler,
   RTokenAsset,
   TestIAssetRegistry,
@@ -50,7 +50,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let aaveMock: AaveLendingPoolMock
 
   // Market / Facade
-  let gnosis: GnosisMock
+  let gnosis: EasyAuction
   let broker: TestIBroker
   let facade: Facade
 

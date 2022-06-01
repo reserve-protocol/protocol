@@ -13,7 +13,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
-  GnosisMock,
+  EasyAuction,
   IBasketHandler,
   StaticATokenMock,
   TestIAssetRegistry,
@@ -49,7 +49,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let gnosis: GnosisMock
+  let gnosis: EasyAuction
 
   // Tokens and Assets
   let initialBal: BigNumber

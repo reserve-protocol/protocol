@@ -3,6 +3,7 @@ import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { expectInReceipt } from '../common/events'
+import { EASY_AUCTION_ADDRESS } from './integration/mainnet'
 import { bn, fp } from '../common/numbers'
 import {
   AaveLendingAddrProviderMock,
@@ -25,7 +26,7 @@ import {
   Facade,
   DistributorP1,
   FurnaceP1,
-  GnosisMock,
+  EasyAuction,
   GnosisTrade,
   IBasketHandler,
   MainP1,
@@ -178,14 +179,19 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
   }
 }
 
-interface ModuleFixture {
-  gnosis: GnosisMock
+interface GnosisFixture {
+  gnosis: EasyAuction
 }
 
-async function gnosisFixture(): Promise<ModuleFixture> {
-  const GnosisMockFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
-  const gnosisMock: GnosisMock = <GnosisMock>await GnosisMockFactory.deploy()
-  return { gnosis: gnosisMock }
+async function gnosisFixture(): Promise<GnosisFixture> {
+  let gnosis: EasyAuction
+  if (process.env.FORK) {
+    gnosis = <EasyAuction>await ethers.getContractAt('EasyAuction', EASY_AUCTION_ADDRESS)
+  } else {
+    const EasyAuctionFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
+    gnosis = <EasyAuction>await EasyAuctionFactory.deploy()
+  }
+  return { gnosis: gnosis }
 }
 
 interface CollateralFixture {
@@ -353,7 +359,7 @@ async function collateralFixture(
 type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
   CollateralFixture &
-  ModuleFixture
+  GnosisFixture
 
 interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
