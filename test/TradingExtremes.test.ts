@@ -242,7 +242,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     for (let i = 0; didStuff && i < 10; i++) {
       didStuff = false
       // Close any auctions and start new ones
-      await facade.runAuctionsForAllTraders()
+      await facade.runAuctionsForAllTraders(main.address)
 
       expect(await backingManager.tradesOpen()).to.equal(0)
       const traders = [rsrTrader, rTokenTrader]
@@ -535,7 +535,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       const erc20s = await assetRegistry.erc20s()
       for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
         // Close any open auctions and launch new ones
-        await facade.runAuctionsForAllTraders()
+        await facade.runAuctionsForAllTraders(main.address)
 
         for (const erc20 of erc20s) {
           const tradeAddr = await backingManager.trades(erc20)

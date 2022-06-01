@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IFacade.sol";
@@ -17,22 +16,12 @@ import "contracts/p1/StRSRVotes.sol";
  * @notice A UX-friendly layer for non-governance protocol interactions
  * @custom:static-call - Use ethers callStatic() in order to get result after update
  */
-contract Facade is Initializable, IFacade {
+contract Facade is IFacade {
     using FixLib for uint192;
-
-    IMain public main;
-
-    constructor(IMain main_) {
-        init(main_);
-    }
-
-    function init(IMain main_) public initializer {
-        main = main_;
-    }
 
     /// Prompt all traders to run auctions
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead
-    function runAuctionsForAllTraders() external {
+    function runAuctionsForAllTraders(IMain main) external {
         IBackingManager backingManager = main.backingManager();
         IRevenueTrader rsrTrader = main.rsrTrader();
         IRevenueTrader rTokenTrader = main.rTokenTrader();
@@ -66,7 +55,7 @@ contract Facade is Initializable, IFacade {
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    function claimRewards() external {
+    function claimRewards(IMain main) external {
         main.backingManager().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
@@ -75,7 +64,7 @@ contract Facade is Initializable, IFacade {
 
     /// @return {qRTok} How many RToken `account` can issue given current holdings
     /// @custom:static-call
-    function maxIssuable(address account) external returns (uint256) {
+    function maxIssuable(IMain main, address account) external returns (uint256) {
         main.poke();
         // {BU}
 
@@ -96,7 +85,10 @@ contract Facade is Initializable, IFacade {
     /// @return tokens Array of all known ERC20 asset addreses.
     /// @return amounts {qTok} Array of balance that the protocol holds of this current asset
     /// @custom:static-call
-    function currentAssets() external returns (address[] memory tokens, uint256[] memory amounts) {
+    function currentAssets(IMain main)
+        external
+        returns (address[] memory tokens, uint256[] memory amounts)
+    {
         main.poke();
 
         IAssetRegistry reg = main.assetRegistry();
@@ -113,7 +105,7 @@ contract Facade is Initializable, IFacade {
 
     /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
     /// @custom:static-call
-    function totalAssetValue() external returns (uint192 total) {
+    function totalAssetValue(IMain main) external returns (uint192 total) {
         main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
@@ -133,7 +125,7 @@ contract Facade is Initializable, IFacade {
 
     /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
-    function issue(uint256 amount) external returns (uint256[] memory deposits) {
+    function issue(IMain main, uint256 amount) external returns (uint256[] memory deposits) {
         main.poke();
         IRToken rTok = main.rToken();
         IBasketHandler bh = main.basketHandler();
@@ -147,7 +139,7 @@ contract Facade is Initializable, IFacade {
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
-    function basketTokens() external view returns (address[] memory tokens) {
+    function basketTokens(IMain main) external view returns (address[] memory tokens) {
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
     }
 }
@@ -158,12 +150,16 @@ contract Facade is Initializable, IFacade {
  */
 contract FacadeP1 is Facade, IFacadeP1 {
     // solhint-disable-next-line no-empty-blocks
-    constructor(IMain main_) Facade(main_) {}
+    constructor() Facade() {}
 
     /// @param account The account for the query
     /// @return issuances All the pending RToken issuances for an account
     /// @custom:view
-    function pendingIssuances(address account) external view returns (Pending[] memory issuances) {
+    function pendingIssuances(IMain main, address account)
+        external
+        view
+        returns (Pending[] memory issuances)
+    {
         RTokenP1 rTok = RTokenP1(address(main.rToken()));
         (, uint256 left, uint256 right) = rTok.issueQueues(account);
         issuances = new Pending[](right - left);
@@ -179,7 +175,7 @@ contract FacadeP1 is Facade, IFacadeP1 {
     /// @param account The account for the query
     /// @return unstakings All the pending RToken issuances for an account
     /// @custom:view
-    function pendingUnstakings(address account)
+    function pendingUnstakings(IMain main, address account)
         external
         view
         returns (Pending[] memory unstakings)
