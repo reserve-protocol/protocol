@@ -548,7 +548,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
-        const erc20s = await facade.basketTokens(main.address)
+        const erc20s = await facade.basketTokens(rToken.address)
 
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])

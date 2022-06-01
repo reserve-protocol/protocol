@@ -169,7 +169,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await assetRegistry.toAsset(erc20s[1])).to.equal(rsrAsset.address)
       expect(await assetRegistry.toAsset(erc20s[2])).to.equal(aaveAsset.address)
       expect(await assetRegistry.toAsset(erc20s[3])).to.equal(compAsset.address)
-      expect(erc20s.length).to.eql((await facade.basketTokens(main.address)).length + 4)
+      expect(erc20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
       // Other components
       expect(await main.stRSR()).to.equal(stRSR.address)
