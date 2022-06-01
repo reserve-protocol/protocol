@@ -21,6 +21,7 @@ import {
   InvalidCompoundOracleMock,
   StaticATokenMock,
   TestIBackingManager,
+  TestIMain,
   TestIRToken,
   USDCMock,
 } from '../../typechain'
@@ -67,6 +68,7 @@ describe('Collateral contracts', () => {
 
   // Facade
   let facade: Facade
+  let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -95,6 +97,7 @@ describe('Collateral contracts', () => {
       backingManager,
       rToken,
       facade,
+      main,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -564,7 +567,7 @@ describe('Collateral contracts', () => {
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await facade.claimRewards()
+      await facade.claimRewards(main.address)
 
       // Check rewards were transfered to BackingManager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -581,7 +584,7 @@ describe('Collateral contracts', () => {
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenCollateral.address)
-      await expect(facade.claimRewards()).to.be.revertedWith('rewards claim failed')
+      await expect(facade.claimRewards(main.address)).to.be.revertedWith('rewards claim failed')
 
       // Check funds not yet swept
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)

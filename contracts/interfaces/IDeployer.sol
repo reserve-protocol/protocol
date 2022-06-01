@@ -56,7 +56,6 @@ struct Implementations {
     IMain main;
     Components components;
     ITrade trade;
-    IFacade facade;
 }
 
 /**
@@ -68,13 +67,11 @@ interface IDeployer {
     /// @param main The address of `Main`
     /// @param rToken The address of the RToken ERC20
     /// @param stRSR The address of the StRSR ERC20 staking pool/token
-    /// @param facade The address of the view facade
     /// @param owner The owner of the newly deployed system
     event RTokenCreated(
         IMain indexed main,
         IRToken indexed rToken,
         IStRSR stRSR,
-        IFacade facade,
         address indexed owner
     );
 
@@ -112,4 +109,6 @@ interface TestIDeployer is IDeployer {
     function comptroller() external view returns (IComptroller);
 
     function aaveLendingPool() external view returns (IAaveLendingPool);
+
+    function facade() external view returns (IFacade);
 }
