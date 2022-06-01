@@ -35,6 +35,7 @@ contract DeployerP0 is IDeployer {
     IGnosis public immutable gnosis;
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
+    IFacade public immutable facade;
 
     constructor(
         IERC20Metadata rsr_,
@@ -42,7 +43,8 @@ contract DeployerP0 is IDeployer {
         IERC20Metadata aave_,
         IGnosis gnosis_,
         IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_
+        IAaveLendingPool aaveLendingPool_,
+        IFacade facade_
     ) {
         rsr = rsr_;
         comp = comp_;
@@ -50,6 +52,7 @@ contract DeployerP0 is IDeployer {
         gnosis = gnosis_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
+        facade = facade_;
     }
 
     /// Deploys an instance of the entire system
@@ -150,9 +153,7 @@ contract DeployerP0 is IDeployer {
         main.setOneshotPauser(owner);
         main.transferOwnership(owner);
 
-        // Facade
-        IFacade facade = new Facade(main);
-        emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner);
         return (address(main));
     }
 }

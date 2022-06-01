@@ -12,7 +12,6 @@ import {
   StaticATokenMock,
   StRSRP1,
   TestIStRSR,
-  TestIMain,
   TestIRToken,
   USDCMock,
 } from '../typechain'
@@ -47,7 +46,6 @@ describe('Facade contract', () => {
   let facade: Facade
 
   // Main
-  let main: TestIMain
   let rToken: TestIRToken
   let stRSR: TestIStRSR
 
@@ -63,7 +61,7 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, compToken, aaveToken, basket, facade, main, rToken } = await loadFixture(
+    ;({ stRSR, rsr, compToken, aaveToken, basket, facade, rToken } = await loadFixture(
       defaultFixture
     ))
 
@@ -76,12 +74,6 @@ describe('Facade contract', () => {
       await ethers.getContractAt('StaticATokenMock', await aTokenAsset.erc20())
     )
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
-  })
-
-  describe('Deployment', () => {
-    it('Deployment should setup Facade correctly', async () => {
-      expect(await facade.main()).to.equal(main.address)
-    })
   })
 
   describe('Views', () => {
@@ -120,9 +112,13 @@ describe('Facade contract', () => {
 
     it('Should return maxIssuable correctly', async () => {
       // Check values
-      expect(await facade.callStatic.maxIssuable(addr1.address)).to.equal(bn('39999999900e18'))
-      expect(await facade.callStatic.maxIssuable(addr2.address)).to.equal(bn('40000000000e18'))
-      expect(await facade.callStatic.maxIssuable(other.address)).to.equal(0)
+      expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
+        bn('39999999900e18')
+      )
+      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
+        bn('40000000000e18')
+      )
+      expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
 
     it('Should return currentAssets correctly', async () => {
@@ -130,7 +126,7 @@ describe('Facade contract', () => {
         return q.mul(issueAmount).div(BN_SCALE_FACTOR)
       })
 
-      const [tokens, quantities] = await facade.callStatic.currentAssets()
+      const [tokens, quantities] = await facade.callStatic.currentAssets(rToken.address)
 
       // Get Backing ERC20s addresses
       const backingERC20Addrs: string[] = await Promise.all(
@@ -158,7 +154,7 @@ describe('Facade contract', () => {
     })
 
     it('Should return totalAssetValue correctly', async () => {
-      expect(await facade.callStatic.totalAssetValue()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
 
     // P1 only
@@ -177,7 +173,7 @@ describe('Facade contract', () => {
         // Issue rTokens
         await rToken.connect(addr1).issue(largeIssueAmount)
         await rToken.connect(addr1).issue(largeIssueAmount.add(1))
-        const pendings = await facadeP1.pendingIssuances(addr1.address)
+        const pendings = await facadeP1.pendingIssuances(rToken.address, addr1.address)
 
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
@@ -197,7 +193,7 @@ describe('Facade contract', () => {
         await stRSRP1.connect(addr1).unstake(unstakeAmount)
         await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
 
-        const pendings = await facadeP1.pendingUnstakings(addr1.address)
+        const pendings = await facadeP1.pendingUnstakings(rToken.address, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
         expect(pendings[0][2]).to.eql(unstakeAmount) // amount

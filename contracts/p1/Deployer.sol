@@ -34,6 +34,7 @@ contract DeployerP1 is IDeployer {
     IGnosis public immutable gnosis;
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
+    IFacade public immutable facade;
 
     // Implementation contracts for Upgradeability
     Implementations public implementations;
@@ -45,6 +46,7 @@ contract DeployerP1 is IDeployer {
         IGnosis gnosis_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
+        IFacade facade_,
         Implementations memory implementations_
     ) {
         rsr = rsr_;
@@ -53,6 +55,7 @@ contract DeployerP1 is IDeployer {
         gnosis = gnosis_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;
+        facade = facade_;
         implementations = implementations_;
     }
 
@@ -200,10 +203,7 @@ contract DeployerP1 is IDeployer {
         main.setOneshotPauser(owner);
         main.transferOwnership(owner);
 
-        // Facade
-        IFacade facade = IFacade(address(implementations.facade).clone());
-        facade.init(main);
-        emit RTokenCreated(main, components.rToken, components.stRSR, facade, owner);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner);
         return (address(main));
     }
 }

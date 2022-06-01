@@ -222,7 +222,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         })
       )
       expect(ERC20s.slice(4)).to.eql(initialTokens)
-      expect(ERC20s.length).to.eql((await facade.basketTokens()).length + 4)
+      expect(ERC20s.length).to.eql((await facade.basketTokens(rToken.address)).length + 4)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
@@ -244,7 +244,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await facade.basketTokens()
+      const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -256,7 +256,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
-      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check RToken price
       expect(await rToken.price()).to.equal(fp('1'))
@@ -283,12 +283,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow to initialize Main twice', async () => {
       await expect(main.init(components, rsr.address, 0)).to.be.revertedWith(
-        'Initializable: contract is already initialized'
-      )
-    })
-
-    it('Should not allow to initialize Facade twice', async () => {
-      await expect(facade.init(main.address)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
@@ -672,7 +666,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return backing tokens', async () => {
-      expect(await facade.basketTokens()).to.eql([
+      expect(await facade.basketTokens(rToken.address)).to.eql([
         token0.address,
         token1.address,
         token2.address,
@@ -1121,7 +1115,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await facade.basketTokens()
+      const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -1133,7 +1127,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
-      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
     it('Should allow to call refresh Basket if not paused - No changes', async () => {
@@ -1142,7 +1136,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Basket remains the same in this case
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await facade.basketTokens()
+      const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
@@ -1153,7 +1147,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Not updated so basket last changed is not set
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await facade.callStatic.totalAssetValue()).to.equal(0)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
     it('Should handle full collateral deregistration and reduce to empty basket', async () => {
@@ -1183,7 +1177,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket should be 100% collateral0
-      let toks = await facade.basketTokens()
+      let toks = await facade.basketTokens(rToken.address)
       expect(toks.length).to.equal(1)
       expect(toks[0]).to.equal(token0.address)
 
@@ -1198,7 +1192,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs([], [], true)
 
       // Final basket should be empty
-      toks = await facade.basketTokens()
+      toks = await facade.basketTokens(rToken.address)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(toks.length).to.equal(0)
