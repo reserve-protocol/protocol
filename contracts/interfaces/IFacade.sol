@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IRToken.sol";
+import "./IStRSR.sol";
 
 /**
  * @title IFacade
@@ -41,6 +42,10 @@ interface IFacade {
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
+
+    /// @return stTokenAddress The address of the corresponding stToken address
+    /// @custom:view
+    function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 }
 
 interface IFacadeP1 is IFacade {

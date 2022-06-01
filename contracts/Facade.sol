@@ -6,6 +6,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
+import "contracts/interfaces/IStRSR.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/RToken.sol";
 import "contracts/p1/StRSRVotes.sol";
@@ -147,6 +148,12 @@ contract Facade is IFacade {
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
         IMain main = rToken.main();
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+    }
+
+    /// @return stTokenAddress The address of the corresponding stToken for the rToken
+    function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress) {
+        IMain main = rToken.main();
+        stTokenAddress = main.stRSR();
     }
 }
 
