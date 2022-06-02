@@ -35,9 +35,12 @@ interface IFacade {
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total);
 
+    /// @return tokens The erc20 needed for the issuance
     /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount) external returns (uint256[] memory deposits);
+    function issue(IRToken rToken, uint256 amount)
+        external
+        returns (address[] memory tokens, uint256[] memory deposits);
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view

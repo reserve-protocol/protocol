@@ -128,9 +128,11 @@ contract Facade is IFacade {
         }
     }
 
-    /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount) external returns (uint256[] memory deposits) {
+    function issue(IRToken rToken, uint256 amount)
+        external
+        returns (address[] memory tokens, uint256[] memory deposits)
+    {
         IMain main = rToken.main();
         main.poke();
         IRToken rTok = rToken;
@@ -141,7 +143,7 @@ contract Facade is IFacade {
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
-        (, deposits) = bh.quote(baskets, CEIL);
+        (tokens, deposits) = bh.quote(baskets, CEIL);
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
