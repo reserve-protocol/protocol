@@ -123,6 +123,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) external initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
+
+        require(unstakingDelay_ > 0, "unstaking delay cannot be zero");
+        require(rewardPeriod_ * 2 <= unstakingDelay_, "unstakingDelay/rewardPeriod incompatible");
+
         name = name_;
         symbol = symbol_;
         payoutLastPaid = uint32(block.timestamp);
@@ -130,7 +134,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         unstakingDelay = unstakingDelay_;
         rewardPeriod = rewardPeriod_;
         rewardRatio = rewardRatio_;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
 
         // Add initial exchange rate
         exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), FIX_ONE));
@@ -598,6 +601,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @custom:governance
     function setUnstakingDelay(uint32 val) external governance {
+        require(val > 0, "unstaking delay cannot be zero");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
