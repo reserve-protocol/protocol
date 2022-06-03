@@ -384,9 +384,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await facade
-        .connect(addr1)
-        .callStatic.issue(rToken.address, issueAmount)
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
       // check balances before
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -610,9 +608,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await facade
-        .connect(addr1)
-        .callStatic.issue(rToken.address, issueAmount)
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -947,9 +943,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await facade
-        .connect(addr1)
-        .callStatic.issue(rToken.address, issueAmount)
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
       const expectedTkn0: BigNumber = quotes[0]
       const expectedTkn1: BigNumber = quotes[1]
       const expectedTkn2: BigNumber = quotes[2]
@@ -1002,9 +996,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await facade
-        .connect(addr1)
-        .callStatic.issue(rToken.address, issueAmount)
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
       const expectedTkn0: BigNumber = quotes[0]
       const expectedTkn1: BigNumber = quotes[1]
       const expectedTkn2: BigNumber = quotes[2]
@@ -1079,9 +1071,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      const quotes: BigNumber[] = await facade
-        .connect(addr1)
-        .callStatic.issue(rToken.address, issueAmount)
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
