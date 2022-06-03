@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -90,7 +91,7 @@ contract GnosisTrade is ITrade {
             endTime,
             uint96(sellAmount),
             uint96(req.minBuyAmount),
-            minBidSize,
+            Math.max(1, minBidSize),
             0,
             false,
             address(0),

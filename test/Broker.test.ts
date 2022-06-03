@@ -392,7 +392,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
     })
 
-    it.only('Should be able to settle a trade - handles arbitrary funds being sent to trade', async () => {
+    it('Should be able to settle a trade - handles arbitrary funds being sent to trade', async () => {
       const amount: BigNumber = bn('100e18')
 
       // Create a Trade
@@ -430,10 +430,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Perform mock bid - do not cover full amount
       const bidAmount: BigNumber = amount.sub(bn('1e18'))
-      const minBuyAmt: BigNumber = toBNDecimals(bidAmount, 6)
+      const minBuyAmt: BigNumber = toBNDecimals(bidAmount, 6).sub(1)
       await token1.connect(owner).mint(addr1.address, minBuyAmt)
       await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
-      console.log(bidAmount, minBuyAmt)
       await gnosis
         .connect(addr1)
         .placeSellOrders(1, [bidAmount], [minBuyAmt], [QUEUE_START], ethers.constants.HashZero)
@@ -465,9 +464,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Additional funds transfered to origin
-      expect(await token0.balanceOf(backingManager.address)).to.equal(
-        bn('1e18').add(additionalFundsSell)
-      )
+      expect(await token0.balanceOf(backingManager.address)).to.equal(additionalFundsSell)
       expect(await token1.balanceOf(backingManager.address)).to.equal(
         minBuyAmt.add(additionalFundsBuy)
       )

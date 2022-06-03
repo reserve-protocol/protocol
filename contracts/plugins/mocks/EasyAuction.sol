@@ -472,6 +472,7 @@ contract EasyAuction is Ownable {
                     fullAuctionedAmount,
                     minAuctionedBuyAmount
                 );
+
                 fillVolumeOfAuctioneerOrder = currentBidSum
                     .mul(fullAuctionedAmount)
                     .div(minAuctionedBuyAmount)
