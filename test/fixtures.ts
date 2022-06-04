@@ -26,6 +26,7 @@ import {
   DistributorP1,
   FurnaceP1,
   EasyAuction,
+  GnosisMock,
   GnosisTrade,
   IBasketHandler,
   MainP1,
@@ -178,18 +179,16 @@ async function compAaveFixture(): Promise<COMPAAVEFixture> {
 }
 
 interface GnosisFixture {
-  gnosis: EasyAuction
+  gnosis: GnosisMock
+  easyAuction: EasyAuction
 }
 
 async function gnosisFixture(): Promise<GnosisFixture> {
-  let gnosis: EasyAuction
-  if (process.env.FORK) {
-    gnosis = <EasyAuction>await ethers.getContractAt('EasyAuction', EASY_AUCTION_ADDRESS)
-  } else {
-    const EasyAuctionFactory: ContractFactory = await ethers.getContractFactory('EasyAuction')
-    gnosis = <EasyAuction>await EasyAuctionFactory.deploy()
+  const GnosisFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
+  return {
+    gnosis: <GnosisMock>await GnosisFactory.deploy(),
+    easyAuction: <EasyAuction>await ethers.getContractAt('EasyAuction', EASY_AUCTION_ADDRESS),
   }
-  return { gnosis: gnosis }
 }
 
 interface CollateralFixture {
@@ -395,7 +394,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveOracleInternal,
     aaveMock,
   } = await compAaveFixture()
-  const { gnosis } = await gnosisFixture()
+  const { gnosis, easyAuction } = await gnosisFixture()
+  const gnosisAddr = process.env.FORK ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
@@ -435,7 +435,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsr.address,
       compToken.address,
       aaveToken.address,
-      gnosis.address,
+      gnosisAddr,
       compoundMock.address,
       aaveMock.address,
       facade.address
@@ -523,7 +523,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rsr.address,
         compToken.address,
         aaveToken.address,
-        gnosis.address,
+        gnosisAddr,
         compoundMock.address,
         aaveMock.address,
         facade.address,
@@ -673,6 +673,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     stRSR,
     broker,
     gnosis,
+    easyAuction,
     facade,
     rsrTrader,
     rTokenTrader,

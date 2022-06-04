@@ -45,6 +45,10 @@ const setup = async () => {
 }
 
 describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
+  if (!process.env.FORK) {
+    return
+  }
+
   let initialBal: BigNumber
 
   let config: IConfig
@@ -54,7 +58,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   let basketHandler: IBasketHandler
   let facade: Facade
 
-  let gnosis: EasyAuction
+  let easyAuction: EasyAuction
 
   let basket: Collateral[]
   let collateral: Collateral[]
@@ -80,7 +84,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       rToken,
       erc20s,
       collateral,
-      gnosis,
+      easyAuction,
       facade,
       backingManager,
       basketHandler,
@@ -181,7 +185,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
       // Check Gnosis
-      expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
 
       await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
         backingManager,
@@ -192,8 +196,8 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
     it('Should recapitalize -- bid at asking price', async () => {
       // Perform Real Bids for the new Token (addr1 has balance)
       // Get fair price - all tokens
-      await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
-      await gnosis
+      await token1.connect(addr1).approve(easyAuction.address, toBNDecimals(sellAmt, 6))
+      await easyAuction
         .connect(addr1)
         .placeSellOrders(
           auctionId,
@@ -230,8 +234,8 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       const buyAmt = toBNDecimals(minBuyAmt, 6).add(1)
       // Perform Real Bids for the new Token (addr1 has balance)
       // Get fair price - all tokens
-      await token1.connect(addr1).approve(gnosis.address, buyAmt)
-      await gnosis
+      await token1.connect(addr1).approve(easyAuction.address, buyAmt)
+      await easyAuction
         .connect(addr1)
         .placeSellOrders(auctionId, [sellAmt], [buyAmt], [QUEUE_START], ethers.constants.HashZero)
 

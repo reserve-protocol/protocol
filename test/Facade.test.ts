@@ -110,6 +110,10 @@ describe('Facade contract', () => {
       await rToken.connect(addr1).issue(issueAmount)
     })
 
+    it('should return the correct facade address', async () => {
+      expect(await facade.stToken(rToken.address)).to.equal(stRSR.address)
+    })
+
     it('Should return maxIssuable correctly', async () => {
       // Check values
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(

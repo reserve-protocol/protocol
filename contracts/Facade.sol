@@ -6,6 +6,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
+import "contracts/interfaces/IStRSR.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/RToken.sol";
 import "contracts/p1/StRSRVotes.sol";
@@ -127,9 +128,11 @@ contract Facade is IFacade {
         }
     }
 
-    /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount) external returns (uint256[] memory deposits) {
+    function issue(IRToken rToken, uint256 amount)
+        external
+        returns (address[] memory tokens, uint256[] memory deposits)
+    {
         IMain main = rToken.main();
         main.poke();
         IRToken rTok = rToken;
@@ -140,13 +143,19 @@ contract Facade is IFacade {
             ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
-        (, deposits) = bh.quote(baskets, CEIL);
+        (tokens, deposits) = bh.quote(baskets, CEIL);
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
         IMain main = rToken.main();
         (tokens, ) = main.basketHandler().quote(FIX_ONE, CEIL);
+    }
+
+    /// @return stTokenAddress The address of the corresponding stToken for the rToken
+    function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress) {
+        IMain main = rToken.main();
+        stTokenAddress = main.stRSR();
     }
 }
 

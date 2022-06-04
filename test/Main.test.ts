@@ -16,7 +16,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
-  EasyAuction,
+  GnosisMock,
   GnosisTrade,
   IBasketHandler,
   RTokenAsset,
@@ -67,7 +67,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let aaveOracleInternal: AaveOracleMock
 
   // Trading
-  let gnosis: EasyAuction
+  let gnosis: GnosisMock
   let broker: TestIBroker
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader

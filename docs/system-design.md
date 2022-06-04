@@ -90,6 +90,7 @@ And the flip side: as a redemption is pending in the mempool the quantities of c
 The max trade volume is a value in the unit of account that represents the largest amount of value that should be transacted in any single trade. This value is distributed on deployment to the initial RSR, RToken, AAVE, and COMP assts. After deployment the values are allowed to differ.
 
 Anticipated value: `1e6` = $1m
+Reasonable range: 1e21 to 1e27
 
 ## `rewardPeriod`
 
@@ -98,6 +99,7 @@ Anticipated value: `1e6` = $1m
 The reward period is the length of one period of the StRSR and Furnace reward curves, which use exponential decay in order to hand out rewards slowly. The `rewardPeriod` must be set in conjuction with `rewardRatio` in order to achieve a desired payout rate. The `rewardPeriod` is the length of time that comprises a single period. Over a single period, `rewardRatio` of the last balance recorded is handed out. For multiple periods, the amount handed out is `(1 - (1-r)^N)`, where `r` is the `rewardRatio` and `N` is the number of periods elapsed.
 
 Anticipated value: `86400` = 1 day
+Reasonable range: 10 to 31536000 (1 year)
 
 ## `rewardRatio`
 
@@ -106,6 +108,7 @@ Anticipated value: `86400` = 1 day
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
 Anticipated value: `0.02284e18` = causes the half life to occur at 30 periods
+Reasonable range: 1e9 to 1e18
 
 ## `unstakingDelay`
 
@@ -113,7 +116,8 @@ Anticipated value: `0.02284e18` = causes the half life to occur at 30 periods
 
 The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It may also be influenced by the length of governance votes.
 
-Anticipated value: `1209600` = 2 weeks
+Anticipated value: `604800` = 1 week
+Reasonable range: 1 to 31536000
 
 ## `tradingDelay`
 
@@ -122,6 +126,7 @@ Anticipated value: `1209600` = 2 weeks
 The trading delay is how many seconds should pass after the basket has been changed, before a trade is opened. In the long-term this can probably trend towards zero but at the start we will want some heads up before trading in order to avoid losses due to poor liquidity.
 
 Anticipated value: `14400` = 4 hours
+Reasonable range: 0 to 604800
 
 ## `auctionLength`
 
@@ -130,6 +135,7 @@ Anticipated value: `14400` = 4 hours
 The auction length is how many seconds long Gnosis EasyAuctions should be.
 
 Anticipated value: `900` = 15 minutes
+Reasonable range: 60 to 3600
 
 ## `backingBuffer`
 
@@ -137,7 +143,8 @@ Anticipated value: `900` = 15 minutes
 
 The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This helps cause collateral tokens to more reliably be converted into RToken, which is the most efficient form of revenue production.
 
-Anticipated value: `0.0001e18` = 0.01%
+Anticipated value: `1e14` = 0.01%
+Reasonable range: 1e12 to 1e18
 
 ## `maxTradeSlippage`
 
@@ -146,6 +153,7 @@ Anticipated value: `0.0001e18` = 0.01%
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
 
 Anticipated value: `0.01e18` = 1%
+Reasonable range: 1e12 to 1e18
 
 ## `dustAmount`
 
@@ -154,6 +162,7 @@ Anticipated value: `0.01e18` = 1%
 The dust amount is a value in the unit of account that represents the smallest amount of value that it is worth executing a trade for. This parameter is a function of the strength of time preferences during recapitalization. It should be set such that the protocol is happy to accept donated assets and run a recapitalization auction with them, rather than proceed to RSR seizure.
 
 Anticipated value: `1000e18` = $1,000
+Reasonable range: 1e18 to 1e24
 
 ## `issuanceRate`
 
@@ -162,6 +171,7 @@ Anticipated value: `1000e18` = $1,000
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
+Reasonable range: 1e12 to 1e16
 
 ## oneshotPauseDuration
 
@@ -170,6 +180,7 @@ Anticipated value: `0.00025e18` = 0.025% per block
 The number of seconds a oneshot pause should last. That is, a pause performed by the pauser role, which can only be used once. The owner can pause indefinitely.
 
 Anticipated value: `864000` = 10 days
+Reasonable range: 3600 to 31536000
 
 ## minBidSize
 
@@ -177,4 +188,5 @@ Anticipated value: `864000` = 10 days
 
 The minimum bid size in a dutch auction (such as Gnosis EasyAuction) in terms of the unit of account. This prevents auction bidders from performing gas-griefing attacks against the protocol.
 
-Antipicated value: `1e18` = $1
+Antipicated value: `1e19` = $10
+Reasonable range: 1e18 to 1e24

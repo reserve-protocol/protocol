@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IRToken.sol";
+import "./IStRSR.sol";
 
 /**
  * @title IFacade
@@ -34,13 +35,20 @@ interface IFacade {
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total);
 
+    /// @return tokens The erc20 needed for the issuance
     /// @return deposits The deposits necessary to issue `amount` RToken
     /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount) external returns (uint256[] memory deposits);
+    function issue(IRToken rToken, uint256 amount)
+        external
+        returns (address[] memory tokens, uint256[] memory deposits);
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens);
+
+    /// @return stTokenAddress The address of the corresponding stToken address
+    /// @custom:view
+    function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
 }
 
 interface IFacadeP1 is IFacade {

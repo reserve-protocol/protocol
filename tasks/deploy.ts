@@ -2,6 +2,7 @@ import { AssetRegistryP1 } from '@typechain/AssetRegistryP1'
 import { BackingManagerP1 } from '@typechain/BackingManagerP1'
 import { BasketHandlerP1 } from '@typechain/BasketHandlerP1'
 import { DeployerP1 } from '@typechain/DeployerP1'
+import { FacadeP1 } from '@typechain/FacadeP1'
 import { MainP1 } from '@typechain/MainP1'
 import { TradingLibP1 } from '@typechain/TradingLibP1'
 import { ContractFactory } from 'ethers'
@@ -35,6 +36,10 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
   console.log('Deploying RToken deployer...')
   const DeployerFactory = <ContractFactory>await hre.ethers.getContractFactory('DeployerP1')
 
+  const FacadeFactory: ContractFactory = await hre.ethers.getContractFactory('FacadeP1')
+  const facadeImpl = <FacadeP1>await FacadeFactory.deploy()
+  await facadeImpl.deployed()
+
   const rtokenDeployer = <DeployerP1>await DeployerFactory.connect(deployer).deploy(
     RSR_ADDRESS, // RSR
     COMP_ADDRESS, // COMP TOKEN
@@ -42,6 +47,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
     gnosisAddress, // Mock Market (Auctions)
     COMPTROLLER_ADDRESS, // COMPTROLLER
     AAVE_LENDING_ADDRESS, // AAVE LENDING POOL
+    facadeImpl.address,
     implementations
   )
   await rtokenDeployer.deployed()
@@ -58,7 +64,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
   ).wait()
 
   // Get main and facade addresses
-  const { main: mainAddr, facade: facadeAddr } = expectInReceipt(receipt, 'RTokenCreated').args
+  const { main: mainAddr } = expectInReceipt(receipt, 'RTokenCreated').args
 
   // Get Core
   const main = <MainP1>await hre.ethers.getContractAt('MainP1', mainAddr)
@@ -117,7 +123,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
     Reserve Proto0 - Deployed
     -------------------------
     RTOKEN_DEPLOYER - ${rtokenDeployer.address}
-    FACADE          - ${facadeAddr}
+    FACADE          - ${facadeImpl.address}
     MAIN            - ${main.address}
     RTOKEN          - ${rTokenAddr}
     stRSR           - ${stRSRAddr}

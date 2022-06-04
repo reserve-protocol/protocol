@@ -2,11 +2,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { TradeStatus, QUEUE_START } from '../common/constants'
+import { TradeStatus } from '../common/constants'
 import { fp, bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
-  EasyAuction,
+  GnosisMock,
   GnosisTrade,
   TestIBackingManager,
   TestIBroker,
@@ -37,7 +37,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let token1: ERC20Mock
 
   // Trading
-  let gnosis: EasyAuction
+  let gnosis: GnosisMock
   let broker: TestIBroker
 
   // Config values
@@ -169,7 +169,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: bn('100e18'),
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       await whileImpersonating(backingManager.address, async (bmSigner) => {
@@ -179,14 +179,14 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
     })
 
-    it('Should not allow to open trade if not a trader', async () => {
+    it('Should not allow to open trade if not a component', async () => {
       const amount: BigNumber = bn('100e18')
 
       const tradeRequest: ITradeRequest = {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: bn('100e18'),
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Mint required tokens
@@ -256,7 +256,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Fund trade and initialize
@@ -274,7 +274,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Check trade values
       expect(await trade.gnosis()).to.equal(gnosis.address)
-      expect(await trade.auctionId()).to.equal(1)
+      expect(await trade.auctionId()).to.equal(0)
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
       expect(await trade.broker()).to.equal(broker.address)
       expect(await trade.origin()).to.equal(backingManager.address)
@@ -284,7 +284,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.endTime()).to.equal(
         (await getLatestBlockTimestamp()) + Number(config.auctionLength)
       )
-      expect(await trade.worstCasePrice()).to.equal(bn('1e10'))
+      expect(await trade.worstCasePrice()).to.equal(bn('0'))
       expect(await trade.canSettle()).to.equal(false)
 
       // Attempt to initialize again
@@ -294,7 +294,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.origin(),
           await trade.gnosis(),
           await broker.auctionLength(),
-          1,
+          await broker.minBidSize(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -315,7 +315,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Attempt to initialize without funding
@@ -325,7 +325,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          bn('1'),
+          config.minBidSize,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -347,7 +347,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Attempt to settle (will fail)
@@ -363,7 +363,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          bn('1'),
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -408,7 +408,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Fund trade and initialize
@@ -419,7 +419,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          bn('1'),
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -428,15 +428,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
       expect(await trade.canSettle()).to.equal(false)
 
-      // Perform mock bid - do not cover full amount
-      const bidAmount: BigNumber = amount.sub(bn('1e18'))
-      const minBuyAmt: BigNumber = toBNDecimals(bidAmount, 6).sub(1)
-      await token1.connect(owner).mint(addr1.address, minBuyAmt)
-      await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
-      await gnosis
-        .connect(addr1)
-        .placeSellOrders(1, [bidAmount], [minBuyAmt], [QUEUE_START], ethers.constants.HashZero)
-
       // Advance time till trade can be settled
       await advanceTime(config.auctionLength.add(100).toString())
 
@@ -444,8 +435,19 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
       expect(await trade.canSettle()).to.equal(true)
 
+      // Perform mock bid - do not cover full amount
+      const bidAmount: BigNumber = amount.sub(bn('1e18'))
+      const minBuyAmt: BigNumber = toBNDecimals(bidAmount, 6)
+      await token1.connect(owner).mint(addr1.address, minBuyAmt)
+      await token1.connect(addr1).approve(gnosis.address, minBuyAmt)
+      await gnosis.placeBid(0, {
+        bidder: addr1.address,
+        sellAmount: bidAmount,
+        buyAmount: minBuyAmt,
+      })
+
       // Settle auction directly in Gnosis
-      await gnosis.settleAuction(1)
+      await gnosis.settleAuction(0)
 
       // Send tokens to the trade to try to disable it (Potential attack)
       const additionalFundsSell: BigNumber = amount
@@ -464,10 +466,15 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.canSettle()).to.equal(false)
 
       // Additional funds transfered to origin
-      expect(await token0.balanceOf(backingManager.address)).to.equal(additionalFundsSell)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(
+        bn('1e18').add(additionalFundsSell)
+      )
       expect(await token1.balanceOf(backingManager.address)).to.equal(
         minBuyAmt.add(additionalFundsBuy)
       )
+
+      // Funds sent to bidder
+      expect(await token0.balanceOf(addr1.address)).to.equal(bidAmount)
     })
 
     it('Should allow anyone to transfer to origin after a trade is complete', async () => {
@@ -482,7 +489,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: amount,
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Fund trade and initialize
@@ -493,7 +500,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          bn('1'),
+          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -554,7 +561,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         sell: collateral0.address,
         buy: collateral1.address,
         sellAmount: bn('100e18'),
-        minBuyAmount: bn('1'),
+        minBuyAmount: bn('0'),
       }
 
       // Mint required tokens
@@ -598,7 +605,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          bn('1'),
+          config.minBidSize,
           tradeRequest
         )
       )
@@ -612,7 +619,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         backingManager.address,
         gnosis.address,
         config.auctionLength,
-        bn('1'),
+        config.minBidSize,
         tradeRequest
       )
 

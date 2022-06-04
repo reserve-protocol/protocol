@@ -24,7 +24,7 @@ import {
   GnosisTrade,
   TestIStRSR,
   TestIMain,
-  EasyAuction,
+  GnosisMock,
   TestIRevenueTrader,
   RTokenAsset,
   TestIRToken,
@@ -253,9 +253,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
           didStuff = true
           const trade = <GnosisTrade>await ethers.getContractAt('GnosisTrade', tradeAddr)
-          const gnosis = <EasyAuction>(
-            await ethers.getContractAt('EasyAuction', await trade.gnosis())
-          )
+          const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
           expect(buy == rToken.address || buy == rsr.address)
@@ -546,9 +544,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const trade = <GnosisTrade>(
             await ethers.getContractAt('GnosisTrade', await backingManager.trades(erc20))
           )
-          const gnosis = <EasyAuction>(
-            await ethers.getContractAt('EasyAuction', await trade.gnosis())
-          )
+          const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, minBuyAmt] = await gnosis.auctions(auctionId)
           const actualBuyAmt = minBuyAmt.eq(0) ? sellAmt : minBuyAmt

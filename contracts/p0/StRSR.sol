@@ -102,6 +102,9 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     ) public initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
+        require(unstakingDelay_ > 0, "unstaking delay cannot be zero");
+        require(rewardPeriod_ * 2 <= unstakingDelay_, "unstakingDelay/rewardPeriod incompatible");
+
         _name = name_;
         _symbol = symbol_;
         payoutLastPaid = block.timestamp;
@@ -110,7 +113,6 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         rewardPeriod = rewardPeriod_;
         rewardRatio = rewardRatio_;
         era = 1;
-        require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// Assign reward payouts to the staker pool
@@ -487,6 +489,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // ==== Gov Param Setters ====
 
     function setUnstakingDelay(uint32 val) external governance {
+        require(val > 0, "unstaking delay cannot be zero");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
