@@ -9,6 +9,8 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
+import "hardhat/console.sol";
+
 enum TradeStatus {
     NOT_STARTED, // before init()
     OPEN, // after init() and before settle()
@@ -131,7 +133,9 @@ contract GnosisTrade is ITrade {
             uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
                 shiftl_toFix(soldAmt, -int8(sell.decimals()))
             );
-            if (clearingPrice.lt(worstCasePrice)) {
+
+            // Gnosis rounds defensively, so we are slightly forgiving here
+            if (clearingPrice.plus(FIX_ATTO).lt(worstCasePrice)) {
                 broker.reportViolation();
             }
         }
