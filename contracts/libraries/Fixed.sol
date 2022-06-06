@@ -39,7 +39,6 @@ uint192 constant FIX_ZERO = 0; // The uint192 representation of zero.
 uint192 constant FIX_ONE = FIX_SCALE; // The uint192 representation of one.
 uint192 constant FIX_MAX = type(uint192).max; // The largest uint192. (Not an integer!)
 uint192 constant FIX_MIN = 0; // The smallest uint192.
-uint192 constant FIX_ATTO = 1; // The smallest tick of granularity
 
 /// An enum that describes a rounding approach for converting to ints
 enum RoundingMode {

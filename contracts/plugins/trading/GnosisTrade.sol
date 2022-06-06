@@ -129,13 +129,15 @@ contract GnosisTrade is ITrade {
         if (sellBal < sellAmount) {
             soldAmt = sellAmount - sellBal;
 
+            // Gnosis rounds defensively, so it's possible to get 1 fewer attoTokens returned
+            uint256 adjustedSoldAmt = Math.max(soldAmt - 1, 1);
+
             // {buyTok/sellTok}
             uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
-                shiftl_toFix(soldAmt, -int8(sell.decimals()))
+                shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
             );
 
-            // Gnosis rounds defensively, so we are slightly forgiving here
-            if (clearingPrice.plus(FIX_ATTO).lt(worstCasePrice)) {
+            if (clearingPrice.lt(worstCasePrice)) {
                 broker.reportViolation();
             }
         }
