@@ -1,13 +1,10 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
-import { ZERO_ADDRESS } from '../../common/constants'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingAddrProviderMock,
   AaveLendingPoolMock,
-  AaveOracleMock,
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
@@ -15,18 +12,14 @@ import {
   BackingManagerP1,
   BasketHandlerP1,
   BrokerP1,
-  Collateral as AbstractCollateral,
-  CompoundOracleMock,
   ComptrollerMock,
   CTokenFiatCollateral,
-  CTokenMock,
   ERC20Mock,
   DeployerP0,
   DeployerP1,
   Facade,
   DistributorP1,
   FurnaceP1,
-  EasyAuction,
   GnosisTrade,
   IBasketHandler,
   IERC20,
@@ -36,7 +29,6 @@ import {
   RewardableLibP1,
   RTokenAsset,
   RTokenP1,
-  StaticATokenMock,
   StaticATokenLM,
   StRSRP1Votes,
   TestIAssetRegistry,
@@ -51,7 +43,6 @@ import {
   TestIStRSR,
   TradingLibP0,
   TradingLibP1,
-  USDCMock,
 } from '../../typechain'
 
 import {
@@ -61,10 +52,8 @@ import {
   Implementation,
   IMPLEMENTATION,
   IRevenueShare,
-  IComponents,
 } from '../fixtures'
 import {
-  AAVE_ADDRESS,
   STAKEDAAVE_ADDRESS,
   AAVE_LENDING_POOL_ADDRESS,
   COMP_ADDRESS,
