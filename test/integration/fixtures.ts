@@ -340,6 +340,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
+  let facade: Facade
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()
@@ -369,6 +370,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
+  // Deploy Facade
+  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+  facade = <Facade>await FacadeFactory.deploy()
+
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
@@ -380,7 +385,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveToken.address,
       gnosis.address,
       compoundMock.address,
-      aaveMock.address
+      aaveMock.address,
+      facade.address
     )
   )
 
@@ -437,10 +443,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
-    // Facade - Can use dummy data in constructor as only logic will be used
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP1')
-    const facadeImpl: Facade = <Facade>await FacadeFactory.deploy(ZERO_ADDRESS)
-
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
@@ -457,8 +459,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rTokenTrader: revTraderImpl.address,
       },
       trade: tradeImpl.address,
-      facade: facadeImpl.address,
     }
+
+    // Deploy FacadeP1
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP1')
+    facade = <Facade>await FacadeFactory.deploy()
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
@@ -469,6 +474,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         gnosis.address,
         compoundMock.address,
         aaveMock.address,
+        facade.address,
         implementations
       )
     )
@@ -480,7 +486,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-  const facadeAddr = expectInReceipt(receipt, 'RTokenCreated').args.facade
   const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
   // Get Core
@@ -527,8 +532,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIFurnace', await main.furnace())
   )
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
-
-  const facade: Facade = <Facade>await ethers.getContractAt('Facade', facadeAddr)
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
