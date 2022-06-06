@@ -14,11 +14,9 @@ import {
   ERC20Mock,
   TestIBackingManager,
   IBasketHandler,
-  USDCMock,
+  TestIStRSR,
   Facade,
   TestIRToken,
-  StaticATokenMock,
-  CTokenMock,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -49,10 +47,10 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
     return
   }
 
-  let initialBal: BigNumber
-
   let config: IConfig
 
+  let rsr: ERC20Mock
+  let stRSR: TestIStRSR
   let rToken: TestIRToken
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -63,9 +61,6 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   let basket: Collateral[]
   let collateral: Collateral[]
   let token0: ERC20Mock
-  let token1: USDCMock
-  let token2: StaticATokenMock
-  let token3: CTokenMock
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -83,6 +78,8 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       config,
       rToken,
       erc20s,
+      stRSR,
+      rsr,
       collateral,
       easyAuction,
       facade,
@@ -91,86 +88,61 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
     } = await loadFixture(defaultFixture))
 
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
-    token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
-    token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
-    token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
-
-    // Mint initial balances
-    initialBal = bn('1000000e18')
-    await token0.connect(owner).mint(addr1.address, initialBal)
-    await token1.connect(owner).mint(addr1.address, initialBal)
-    await token2.connect(owner).mint(addr1.address, initialBal)
-    await token3.connect(owner).mint(addr1.address, initialBal)
   })
 
-  context('normal basket switching', function () {
-    let issueAmount: BigNumber
-    let auctionId: BigNumber
-    let sellAmt: BigNumber
+  context('RSR -> token0', function () {
+    let amount: BigNumber
     let minBuyAmt: BigNumber
+    let auctionId: BigNumber
 
+    // Set up an auction of 10_000e18 RSR for token0
     beforeEach(async function () {
-      issueAmount = bn('100e18')
+      amount = bn('10000e18')
+      minBuyAmt = amount.mul(99).div(100)
 
-      // Provide approvals
-      await token0.connect(addr1).approve(rToken.address, initialBal)
-      await token1.connect(addr1).approve(rToken.address, initialBal)
-      await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
-
-      // Setup new basket with single token
+      // Set prime basket
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // Provide approvals
-      await token0.connect(addr1).approve(rToken.address, initialBal)
+      // Issue
+      await token0.connect(owner).mint(addr1.address, amount)
+      await token0.connect(addr1).approve(rToken.address, amount)
+      await rToken.connect(addr1).issue(amount)
 
-      // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
-
-      // Setup prime basket
-      await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+      // Seed stake
+      await rsr.connect(owner).mint(addr1.address, amount)
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await stRSR.connect(addr1).stake(amount)
 
       // Check initial state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
-      expect(await token1.balanceOf(backingManager.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-
-      // Check price in USD of the current RToken
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(amount)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(amount)
+      expect(await rToken.totalSupply()).to.equal(amount)
       expect(await rToken.price()).to.equal(fp('1'))
 
-      // Switch Basket
-      await expect(basketHandler.connect(owner).refreshBasket())
-        .to.emit(basketHandler, 'BasketSet')
-        .withArgs([token1.address], [fp('1')], false)
+      // Take backing
+      await token0.connect(owner).burn(backingManager.address, amount)
 
-      // Check state remains SOUND
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
-      expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+      // Prepare addr1 for trading
+      expect(await token0.balanceOf(addr1.address)).to.equal(0)
+      await token0.connect(owner).mint(addr1.address, amount) // excess
+      expect(await token0.balanceOf(addr1.address)).to.equal(amount)
 
-      // Trigger recapitalization
-      sellAmt = await token0.balanceOf(backingManager.address)
-      minBuyAmt = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
-
-      await expect(facade.runAuctionsForAllTraders(rToken.address))
+      // Create auction
+      await expect(backingManager.manageTokens([]))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+        .withArgs(rsr.address, token0.address, amount, minBuyAmt)
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
-
-      auctionId = await getAuctionId(backingManager, token0.address)
+      auctionId = await getAuctionId(backingManager, rsr.address)
 
       // Check auction registered
-      // Token0 -> Token1 Auction
+      // RSR -> Token0 Auction
       await expectTrade(backingManager, {
-        sell: token0.address,
-        buy: token1.address,
+        sell: rsr.address,
+        buy: token0.address,
         endTime: auctionTimestamp + Number(config.auctionLength),
         externalId: auctionId,
       })
@@ -178,44 +150,32 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(false)
-      // Asset value is zero, everything was moved to the Market
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-      expect(await token1.balanceOf(backingManager.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(amount)
 
       // Check Gnosis
-      expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
-
-      await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
-        backingManager,
-        'TradeStarted'
-      )
+      expect(await rsr.balanceOf(easyAuction.address)).to.equal(amount)
+      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
     })
 
     it('Should recapitalize -- bid at asking price', async () => {
       // Perform Real Bids for the new Token (addr1 has balance)
       // Get fair price - all tokens
-      await token1.connect(addr1).approve(easyAuction.address, toBNDecimals(sellAmt, 6))
+      await token0.connect(addr1).approve(easyAuction.address, amount)
       await easyAuction
         .connect(addr1)
-        .placeSellOrders(
-          auctionId,
-          [sellAmt],
-          [toBNDecimals(sellAmt, 6)],
-          [QUEUE_START],
-          ethers.constants.HashZero
-        )
+        .placeSellOrders(auctionId, [amount], [amount], [QUEUE_START], ethers.constants.HashZero)
 
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
 
       // End current auction, should not start any new auctions
-      await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+      await expectEvents(backingManager.settleTrade(rsr.address), [
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
+          args: [rsr.address, token0.address, amount, amount],
           emitted: true,
         },
         { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -224,41 +184,42 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       // Check state - Order restablished
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-      expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 6))
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(amount)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(amount)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(amount)
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
     })
 
-    it('Should recapitalize -- bid at worst-case price', async () => {
-      const buyAmt = toBNDecimals(minBuyAmt, 6).add(1)
-      // Perform Real Bids for the new Token (addr1 has balance)
-      // Get fair price - all tokens
-      await token1.connect(addr1).approve(easyAuction.address, buyAmt)
-      await easyAuction
-        .connect(addr1)
-        .placeSellOrders(auctionId, [sellAmt], [buyAmt], [QUEUE_START], ethers.constants.HashZero)
+    // it('Should recapitalize -- bid at worst-case price', async () => {
+    //   const buyAmt = amount.add(1)
+    //   // Perform Real Bids for the new Token (addr1 has balance)
+    //   // Get fair price - all tokens
+    //   await token0.connect(addr1).approve(easyAuction.address, buyAmt)
+    //   await easyAuction
+    //     .connect(addr1)
+    //     .placeSellOrders(auctionId, [amount], [buyAmt], [QUEUE_START], ethers.constants.HashZero)
 
-      // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
+    //   // Advance time till auction ended
+    //   await advanceTime(config.auctionLength.add(100).toString())
 
-      // End current auction, should not start any new auctions
-      await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
-        {
-          contract: backingManager,
-          name: 'TradeSettled',
-          args: [token0.address, token1.address, sellAmt, buyAmt],
-          emitted: true,
-        },
-        { contract: backingManager, name: 'TradeStarted', emitted: false },
-      ])
+    //   // End current auction, should not start any new auctions
+    //   await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    //     {
+    //       contract: backingManager,
+    //       name: 'TradeSettled',
+    //       args: [token0.address, token0.address, amount, buyAmt],
+    //       emitted: true,
+    //     },
+    //     { contract: backingManager, name: 'TradeStarted', emitted: false },
+    //   ])
 
-      // Check state - Order restablished
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-      expect(await token1.balanceOf(backingManager.address)).to.equal(buyAmt)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-    })
+    //   // Check state - Order restablished
+    //   expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    //   expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    //   expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+    //   expect(await token0.balanceOf(backingManager.address)).to.equal(buyAmt)
+    //   expect(await rToken.totalSupply()).to.equal(amount)
+    // })
   })
 })
