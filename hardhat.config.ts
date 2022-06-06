@@ -8,6 +8,7 @@ import 'solidity-coverage'
 
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
+import { MAINNET_BLOCK_NUMBER } from './test/integration/mainnet'
 
 dotenv.config()
 
@@ -30,7 +31,7 @@ const config: any = {
     hardhat: {
       forking: {
         url: MAINNET_RPC_URL,
-        blockNumber: 14854439,
+        blockNumber: MAINNET_BLOCK_NUMBER,
         enabled: !!process.env.FORK,
       },
       gas: 0x1ffffffff,
@@ -80,6 +81,10 @@ const config: any = {
       'contracts/p1/StRSRVotes.sol': {
         version: '0.8.9',
         settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 800 } },
+      },
+      'contracts/plugins/aave/StaticATokenLM.sol': {
+        version: '0.6.12',
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
       },
     },
   },

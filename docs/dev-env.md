@@ -71,6 +71,16 @@ hash -r && slither --version
 - Run a local evm devchain: `yarn devchain`
 - Deploy our system to your local evm devchain: `yarn deploy`
 
+## Mainnet Forking
+
+The tests located in `test/integration` will require the Mainnet Forking setup in place. This is done by setting the `MAINNET_RPC_URL` variable in your local `.env`. An Alchemy node is recommended for Mainnet Forking to properly work. Additional information can be found [here](https://hardhat.org/hardhat-network/guides/mainnet-forking.html).
+
+For running scripts and tasks using Mainnet Forking a `FORK` environment variable can be defined. For example to run a local node using Mainnet forking you can run:
+
+```bash
+FORK=true npx hardhat node
+```
+
 ## Pre-push Validation
 
 We use git pre-push validation to ensure that the code in our `master` branch always lints, compiles, and at least passes our "fast" tests, before we even share it with each other. However, if you're working on a separate branch, and it's more practical to share code with teammates working to a different standard, you can easily comment out or otherwise modify the lines in `.husky/pre-push`, and commit those along with your branch.

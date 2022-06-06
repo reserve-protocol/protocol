@@ -37,4 +37,11 @@ jobs:
         run: yarn lint
 
       - name: Run unit tests
-        run: yarn test
+        run: yarn test:unit
+
+      - name: Run integration tests
+        run: yarn test:integration
+        env:
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          MAINNET_BLOCK: 12521999
+          HARDHAT_MAX_MEMORY: 4096
