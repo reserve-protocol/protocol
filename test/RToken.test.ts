@@ -1545,9 +1545,23 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Issuance: across blocks', async () => {
-      // Issue rTokens twice across blocks
+      // Issue 1
       await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
       await snapshotGasCost(rToken.connect(addr1).issue(issueAmount))
+    })
+
+    it('Issuance: vesting', async () => {
+      // Issue
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Vest
+      await advanceTime(100)
+      await snapshotGasCost(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)))
+
+      // Vest
+      await advanceTime(100)
+      await snapshotGasCost(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)))
     })
 
     it('Redemption', async () => {
