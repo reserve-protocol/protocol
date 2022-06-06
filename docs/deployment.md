@@ -14,8 +14,8 @@ MNEMONIC=""
 # Ropsten Infura URL, used for Testnet deployments
 ROPSTEN_RPC_URL=""
 
-#  Alchemy Mainnet URL, used for Mainnet forking
-ALCHEMY_MAINNET_RPC_URL=""
+#  Mainnet URL, used for Mainnet forking
+MAINNET_RPC_URL=""
 ```
 
 Next, you need to complete the network configuration (`networkConfig`) for the desired network. This can be located at `/common/configuration.ts`. These settings will be used to validate supported networks and reuse components which may be already deployed.
