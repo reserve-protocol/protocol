@@ -4,12 +4,13 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { MAINNET_BLOCK_NUMBER } from './mainnet'
 import { Collateral, IConfig, defaultFixture, IMPLEMENTATION } from '../fixtures'
-import { bn, fp, toBNDecimals } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId } from '../utils/trades'
 import {
+  AaveOracleMock,
   EasyAuction,
   ERC20Mock,
   TestIBackingManager,
@@ -58,6 +59,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let facade: Facade
+  let aaveOracleInternal: AaveOracleMock
 
   let easyAuction: EasyAuction
 
@@ -77,6 +79,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   beforeEach(async () => {
     let erc20s: ERC20Mock[]
     ;({
+      aaveOracleInternal,
       basket,
       config,
       rToken,
@@ -354,10 +357,54 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+    })
 
-      // Haircut
-      await backingManager.manageTokens([])
+    it('/w non-trivial prices', async () => {
+      // End first auction, since it is at old prices
+      await advanceTime(config.auctionLength.add(100).toString())
+      await backingManager.settleTrade(rsr.address)
+
+      // $0.007 RSR at $4k ETH
+      await aaveOracleInternal.setPrice(rsr.address, bn('1.75e12'))
+      sellAmt = issueAmount.mul(bn('2.5e14')).mul(100).div(99).div(bn('1.75e12')).add(2)
+
+      // Start next auction
+      await expectEvents(backingManager.manageTokens([]), [
+        {
+          contract: backingManager,
+          name: 'TradeStarted',
+          args: [rsr.address, token0.address, sellAmt, buyAmt],
+          emitted: true,
+        },
+      ])
+      auctionId = auctionId.add(1)
+
+      const bidAmt = buyAmt.add(1)
+      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction
+      await expectEvents(backingManager.settleTrade(rsr.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          emitted: true,
+        },
+      ])
+
+      // Check state - Should be undercapitalized
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
     })
   })
 })
