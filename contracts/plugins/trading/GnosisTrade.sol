@@ -34,7 +34,7 @@ contract GnosisTrade is ITrade {
     address public origin;
     IERC20Metadata public sell;
     IERC20Metadata public buy;
-    uint256 public sellAmount; // {qTok}
+    uint256 public initBal; // {qTok}
     uint32 public endTime;
     uint192 public worstCasePrice; // {buyTok/sellTok}
 
@@ -68,22 +68,23 @@ contract GnosisTrade is ITrade {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        sellAmount = sell.balanceOf(address(this));
+
+        initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
-            shiftl_toFix(sellAmount, -int8(sell.decimals()))
+            shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
         );
 
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), req.sellAmount);
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
             endTime,
             endTime,
-            uint96(sellAmount),
+            uint96(req.sellAmount),
             uint96(req.minBuyAmount),
             minBidSize,
             req.minBuyAmount, // TODO to double-check this usage of gnosis later
@@ -118,8 +119,8 @@ contract GnosisTrade is ITrade {
         if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
 
         // Check clearing prices
-        if (sellBal < sellAmount) {
-            soldAmt = sellAmount - sellBal;
+        if (sellBal < initBal) {
+            soldAmt = initBal - sellBal;
 
             // {buyTok/sellTok}
             uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
