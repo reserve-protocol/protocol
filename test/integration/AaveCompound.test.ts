@@ -65,17 +65,17 @@ const setup = async (blockNumber: number) => {
   ;[owner] = await ethers.getSigners()
 
   // Use Mainnet fork
-  await hre.network.provider.request({
-    method: 'hardhat_reset',
-    params: [
-      {
-        forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: blockNumber,
-        },
-      },
-    ],
-  })
+  // await hre.network.provider.request({
+  //   method: 'hardhat_reset',
+  //   params: [
+  //     {
+  //       forking: {
+  //         jsonRpcUrl: process.env.MAINNET_RPC_URL,
+  //         blockNumber: blockNumber,
+  //       },
+  //     },
+  //   ],
+  // })
 }
 
 const describeFork = process.env.FORK ? describe : describe.skip

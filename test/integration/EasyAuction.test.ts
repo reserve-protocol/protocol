@@ -32,17 +32,17 @@ const setup = async () => {
   ;[owner, addr1, addr2] = await ethers.getSigners()
 
   // Use Mainnet fork
-  await hre.network.provider.request({
-    method: 'hardhat_reset',
-    params: [
-      {
-        forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: forkBlockNumber['easy-auction'],
-        },
-      },
-    ],
-  })
+  // await hre.network.provider.request({
+  //   method: 'hardhat_reset',
+  //   params: [
+  //     {
+  //       forking: {
+  //         jsonRpcUrl: process.env.MAINNET_RPC_URL,
+  //         blockNumber: forkBlockNumber['easy-auction'],
+  //       },
+  //     },
+  //   ],
+  // })
 }
 
 describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
