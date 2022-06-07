@@ -433,6 +433,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     let rsr: ERC20Mock
     let rsrAsset: Asset
 
+    // DAI, cDAI, and aDAI Holders
+    const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
+    const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
+    const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
+
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
@@ -633,7 +638,12 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
-  describe('Claim Rewards', () => {
+  describe.skip('Claim Rewards', () => {
+    // DAI, cDAI, and aDAI Holders
+    const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
+    const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
+    const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
+
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
