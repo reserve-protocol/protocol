@@ -73,6 +73,9 @@ jobs:
       - name: Install dependencies
         run: yarn --frozen-lockfile
 
+      - name: Compile
+        run: yarn compile
+
       - name: Run integration tests
         run: yarn test:integration
         env:
