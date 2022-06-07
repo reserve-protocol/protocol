@@ -7,7 +7,7 @@ import { defaultFixture } from './fixtures'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
-import { advanceBlocks, advanceTime } from '../utils/time'
+import { advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import forkBlockNumber from './fork-block-numbers'
 
@@ -40,24 +40,23 @@ import {
   Facade,
   IAToken,
   IERC20,
-  IGnosis,
-  IAaveIncentivesController,
   IBasketHandler,
   RTokenAsset,
   StaticATokenLM,
   TestIAssetRegistry,
   TestIBackingManager,
-  TestIBroker,
-  TestIDistributor,
-  TestIFurnace,
   TestIMain,
-  TestIRevenueTrader,
   TestIRToken,
-  TestIStRSR,
   USDCMock,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+// Relevant addresses (Mainnet)
+// DAI, cDAI, and aDAI Holders
+const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
+const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
+const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
 
 let owner: SignerWithAddress
 
@@ -82,6 +81,8 @@ const setup = async (blockNumber: number) => {
 const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
+  let addr1: SignerWithAddress
+
   // Assets
   let collateral: Collateral[]
 
@@ -124,6 +125,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cUsdcCollateral: CTokenFiatCollateral
   let cUsdtCollateral: CTokenFiatCollateral
 
+  // Contracts to retrieve after deploy
+  let rToken: TestIRToken
+  let rTokenAsset: RTokenAsset
+  let main: TestIMain
+  let facade: Facade
+  let assetRegistry: TestIAssetRegistry
+  let backingManager: TestIBackingManager
+  let basketHandler: IBasketHandler
+
+  let initialBal: BigNumber
+  let basket: Collateral[]
   let erc20s: IERC20[]
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -131,7 +143,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   describe('Assets/Collateral Setup', () => {
     before(async () => {
-      //await setup(forkBlockNumber['aave-compound-setup'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
     })
@@ -415,53 +426,20 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
-  describe('Basket/Issue/Redeem/Rewards', () => {
-    let addr1: SignerWithAddress
+  describe('Basket/Issue/Redeem', () => {
     let addr2: SignerWithAddress
-    let other: SignerWithAddress
 
     // RSR
     let rsr: ERC20Mock
     let rsrAsset: Asset
 
-    // Contracts to retrieve after deploy
-    let rToken: TestIRToken
-    let rTokenAsset: RTokenAsset
-    let stRSR: TestIStRSR
-    let furnace: TestIFurnace
-    let main: TestIMain
-    let facade: Facade
-    let assetRegistry: TestIAssetRegistry
-    let backingManager: TestIBackingManager
-    let basketHandler: IBasketHandler
-    let distributor: TestIDistributor
-    let incentivesController: IAaveIncentivesController
-
-    let initialBal: BigNumber
-
-    let basket: Collateral[]
-    let basketsNeededAmts: BigNumber[]
-
-    // Trading
-    let gnosis: IGnosis
-    let broker: TestIBroker
-    let rsrTrader: TestIRevenueTrader
-    let rTokenTrader: TestIRevenueTrader
-
-    // Relevant addresses (Mainnet)
-    // DAI, cDAI, and aDAI Holders
-    const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
-    const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
-    const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
-
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
-      await setup(forkBlockNumber['aave-compound-rewards'])
     })
 
     beforeEach(async () => {
-      ;[owner, addr1, addr2, other] = await ethers.getSigners()
+      ;[owner, addr1, addr2] = await ethers.getSigners()
       ;({
         rsr,
         rsrAsset,
@@ -473,21 +451,13 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         erc20s,
         collateral,
         basket,
-        basketsNeededAmts,
         main,
         assetRegistry,
         backingManager,
         basketHandler,
-        distributor,
         rToken,
         rTokenAsset,
-        furnace,
-        stRSR,
-        gnosis,
-        broker,
         facade,
-        rsrTrader,
-        rTokenTrader,
       } = await loadFixture(defaultFixture))
 
       // Get assets and tokens for default basket
@@ -586,8 +556,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cDai.balanceOf(backingManager.address)).to.equal(0)
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
 
-      // Balance for Static a Token is about 19189.78e18, about 95.95% of the provided amount (20K)
-      const initialBalAToken = initialBal.mul(9595).div(10000)
+      // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
+      const initialBalAToken = initialBal.mul(9321).div(10000)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
       expect(await cDai.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
 
@@ -606,12 +576,12 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Check Balances after
       expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
-      const issueAmtAToken = issueAmount.div(4).mul(9595).div(10000) // approx 95.95% of 2.5K needed (25% of basket)
+      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 95.95% of 2.5K needed (25% of basket)
       expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
         issueAmtAToken,
         fp('1')
       )
-      const requiredCTokens: BigNumber = bn('233155e8') // approx 233K needed (~5K, 50% of basket)
+      const requiredCTokens: BigNumber = bn('227116e8') // approx 227K needed (~5K, 50% of basket) - Price: ~0.022
       expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(requiredCTokens, bn(1e8))
 
       // Balances for user
@@ -661,11 +631,74 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.001')
       ) // Near zero
     })
+  })
+
+  describe('Claim Rewards', () => {
+    before(async () => {
+      await setup(forkBlockNumber['aave-compound-rewards'])
+      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
+      loadFixture = createFixtureLoader([wallet])
+    })
+
+    beforeEach(async () => {
+      ;[owner, addr1] = await ethers.getSigners()
+      ;({
+        compToken,
+        aaveToken,
+        compAsset,
+        aaveAsset,
+        compoundMock,
+        erc20s,
+        collateral,
+        basket,
+        main,
+        assetRegistry,
+        backingManager,
+        basketHandler,
+        rToken,
+        rTokenAsset,
+        facade,
+      } = await loadFixture(defaultFixture))
+
+      // Get assets and tokens for default basket
+      daiCollateral = <AavePricedFiatCollateral>basket[0]
+      aDaiCollateral = <ATokenFiatCollateral>basket[1]
+      cDaiCollateral = <CTokenFiatCollateral>basket[2]
+
+      dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await daiCollateral.erc20())
+      stataDai = <StaticATokenLM>(
+        await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
+      )
+      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiCollateral.erc20())
+
+      // Get plain aToken
+      aDai = <IAToken>(
+        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+      )
+
+      // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
+      // DAI
+      initialBal = bn('20000e18')
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+      })
+      // aDAI
+      await whileImpersonating(holderADAI, async (adaiSigner) => {
+        // Wrap ADAI into static ADAI
+        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
+        await aDai.connect(addr1).approve(stataDai.address, initialBal)
+        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
+      })
+      // cDAI
+      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
+        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+      })
+    })
 
     it('Should claim rewards correctly', async function () {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-    
+
       // Try to claim rewards at this point - Nothing for Backing Manager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
@@ -714,7 +747,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Check rewards both in COMP and stkAAVE
       const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
       const rewardsAAVE1: BigNumber = await aaveToken.balanceOf(backingManager.address)
-      
+
       expect(rewardsCOMP1).to.be.gt(0)
       expect(rewardsAAVE1).to.be.gt(0)
 
@@ -726,7 +759,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
       const rewardsAAVE2: BigNumber = await aaveToken.balanceOf(backingManager.address)
-      
+
       expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
       expect(rewardsAAVE2.sub(rewardsAAVE1)).to.be.gt(0)
     })
