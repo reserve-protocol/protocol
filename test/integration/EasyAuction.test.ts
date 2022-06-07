@@ -1,9 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 import { Collateral, IConfig, defaultFixture, IMPLEMENTATION } from '../fixtures'
-import forkBlockNumber from './fork-block-numbers'
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
@@ -26,24 +25,6 @@ const createFixtureLoader = waffle.createFixtureLoader
 let owner: SignerWithAddress
 let addr1: SignerWithAddress
 let addr2: SignerWithAddress
-
-// Setup test environment
-const setup = async () => {
-  ;[owner, addr1, addr2] = await ethers.getSigners()
-
-  // Use Mainnet fork
-  // await hre.network.provider.request({
-  //   method: 'hardhat_reset',
-  //   params: [
-  //     {
-  //       forking: {
-  //         jsonRpcUrl: process.env.MAINNET_RPC_URL,
-  //         blockNumber: forkBlockNumber['easy-auction'],
-  //       },
-  //     },
-  //   ],
-  // })
-}
 
 describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
   if (!process.env.FORK) {
@@ -71,7 +52,6 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   let wallet: Wallet
 
   before('create fixture loader', async () => {
-    await setup()
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
