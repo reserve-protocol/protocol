@@ -57,6 +57,8 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   })
 
   beforeEach(async () => {
+    ;[owner, addr1, addr2] = await ethers.getSigners()
+
     let erc20s: ERC20Mock[]
     ;({
       aaveOracleInternal,
