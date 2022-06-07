@@ -8,7 +8,7 @@ import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { expectTrade, getAuctionId } from '../utils/trades'
+import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import {
   AaveOracleMock,
   EasyAuction,
@@ -166,11 +166,31 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       // Check Gnosis
       expect(await rsr.balanceOf(easyAuction.address)).to.equal(sellAmt)
       await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+
+      // Auction should not be able to be settled
+      await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
     })
 
-    // Should not trigger a de-listing of the auction platform
     afterEach(async () => {
+      // Should not trigger a de-listing of the auction platform
       expect(await broker.disabled()).to.equal(false)
+
+      // Should not be able to re-bid in auction
+      await token0.connect(addr2).approve(easyAuction.address, buyAmt)
+      await expect(
+        easyAuction
+          .connect(addr2)
+          .placeSellOrders(
+            auctionId,
+            [sellAmt.div(2)],
+            [buyAmt],
+            [QUEUE_START],
+            ethers.constants.HashZero
+          )
+      ).to.be.reverted
+
+      // Should not be able to re-settle
+      await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
     })
 
     it('no volume -- no bids', async () => {
@@ -194,20 +214,9 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       ])
     })
 
-    it('no volume -- bids worse than worst-case price', async () => {
+    it('no volume -- below worst-case price', async () => {
       const bidAmt = buyAmt.div(2).sub(1)
       await token0.connect(addr1).approve(easyAuction.address, bidAmt)
-      await expect(
-        easyAuction
-          .connect(addr1)
-          .placeSellOrders(
-            auctionId,
-            [sellAmt.div(2)],
-            [bidAmt],
-            [QUEUE_START],
-            ethers.constants.HashZero
-          )
-      ).to.be.reverted
 
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
@@ -227,36 +236,6 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
           emitted: true,
         },
       ])
-    })
-
-    it('full volume -- asking price', async () => {
-      const bidAmt = sellAmt.add(1)
-      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
-      await easyAuction
-        .connect(addr1)
-        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
-
-      // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
-
-      // End current auction
-      await expectEvents(backingManager.settleTrade(rsr.address), [
-        {
-          contract: backingManager,
-          name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
-          emitted: true,
-        },
-      ])
-
-      // Check state - Order restablished
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
-      expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
-      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
     })
 
     it('partial volume -- asking price', async () => {
@@ -330,6 +309,36 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       expect(await rsr.balanceOf(backingManager.address)).to.equal(sellAmt.div(2))
     })
 
+    it('full volume -- asking price', async () => {
+      const bidAmt = sellAmt.add(1)
+      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction
+      await expectEvents(backingManager.settleTrade(rsr.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          emitted: true,
+        },
+      ])
+
+      // Check state - Order restablished
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+    })
+
     it('full volume -- worst-case price', async () => {
       const bidAmt = buyAmt.add(1)
       await token0.connect(addr1).approve(easyAuction.address, bidAmt)
@@ -377,13 +386,18 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
           emitted: true,
         },
       ])
-      auctionId = auctionId.add(1)
 
       const bidAmt = buyAmt.add(1)
       await token0.connect(addr1).approve(easyAuction.address, bidAmt)
       await easyAuction
         .connect(addr1)
-        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+        .placeSellOrders(
+          auctionId.add(1),
+          [sellAmt],
+          [bidAmt],
+          [QUEUE_START],
+          ethers.constants.HashZero
+        )
 
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
@@ -401,6 +415,39 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+    })
+
+    it('/w someone else settling the auction for us', async () => {
+      const bidAmt = sellAmt.add(1)
+      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Settle auction directly
+      await easyAuction.connect(addr2).settleAuction(auctionId)
+
+      // End current auction, should behave same as if the protocol did the settlement
+      await expectEvents(backingManager.settleTrade(rsr.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          emitted: true,
+        },
+      ])
+
+      // Check state - Order restablished
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
