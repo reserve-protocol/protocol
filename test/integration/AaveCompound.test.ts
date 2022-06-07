@@ -4,8 +4,9 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { expectEvents } from '../../common/events'
+import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import forkBlockNumber from './fork-block-numbers'
@@ -128,15 +129,13 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
-  before(async () => {
-    await setup(forkBlockNumber['aave-compound-setup'])
-    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture = createFixtureLoader([wallet])
-  })
-
-
   describe('Assets/Collateral Setup', () => {
-  
+    before(async () => {
+      //await setup(forkBlockNumber['aave-compound-setup'])
+      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
+      loadFixture = createFixtureLoader([wallet])
+    })
+
     beforeEach(async () => {
       ;[owner] = await ethers.getSigners()
       ;({ compToken, aaveToken, compAsset, aaveAsset, compoundMock, erc20s, collateral } =
@@ -455,11 +454,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
     const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
 
-    // before(async () => {
-    //   await setup(forkBlockNumber['aave-compound-rewards'])
-    //   ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-    //   loadFixture = createFixtureLoader([wallet])
-    // })
+    before(async () => {
+      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
+      loadFixture = createFixtureLoader([wallet])
+      await setup(forkBlockNumber['aave-compound-rewards'])
+    })
 
     beforeEach(async () => {
       ;[owner, addr1, addr2, other] = await ethers.getSigners()
@@ -585,123 +584,57 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await dai.balanceOf(backingManager.address)).to.equal(0)
       expect(await stataDai.balanceOf(backingManager.address)).to.equal(0)
       expect(await cDai.balanceOf(backingManager.address)).to.equal(0)
-
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
 
-      // Balance for Static a Token is about 19189.78e18, about 95.95%
-      //19189.786186550558379691
+      // Balance for Static a Token is about 19189.78e18, about 95.95% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9595).div(10000)
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
-      // console.log('Este es el monto')
-      // console.log(toBNDecimals(initialBal, 8).mul(100))
-      // console.log('Este es el balance')
-      // console.log(await cDai.balanceOf(addr1.address))
       expect(await cDai.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
 
-      // Try to claim rewards at this point - Nothing for Backing Manager
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-
-      await expect(backingManager.claimAndSweepRewards())
-        .to.emit(backingManager, 'RewardsClaimed')
-        .withArgs(compToken.address, bn(0))
-      // No rewards
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-
-      // Provide approvals for issuances
+      // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
       // Check rToken balance
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
       // Check Balances after
-      expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (50%)
-      const issueAmtAToken = issueAmount.div(4).mul(9595).div(10000) // approx 95.95% of 2.5K needed
-
-      // console.log('PRICE OF ATOKEN')
-      // console.log(await aDaiCollateral.price())
-      // 1.068768672323288327
-
-      // console.log('PRICE OF CTOKEN')
-      // console.log(await cDaiCollateral.price())
-      // 0.021466701330381378
-
+      expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
+      const issueAmtAToken = issueAmount.div(4).mul(9595).div(10000) // approx 95.95% of 2.5K needed (25% of basket)
       expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
         issueAmtAToken,
         fp('1')
       )
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn('233155e8'), bn(1e8)) // approx 233K needed
+      const requiredCTokens: BigNumber = bn('233155e8') // approx 233K needed (~5K, 50% of basket)
+      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(requiredCTokens, bn(1e8))
+
+      // Balances for user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
         initialBalAToken.sub(issueAmtAToken),
         fp('1')
       )
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 8).mul(100).sub(bn('233155e8')),
+        toBNDecimals(initialBal, 8).mul(100).sub(requiredCTokens),
         bn(1e8)
       )
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.balanceOf(main.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
 
       // Check asset value
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         issueAmount,
         fp('150')
-      ) // approx 10K
+      ) // approx 10K in value
 
-      // Now we can claim rewards - check initial balance
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
-
-      expect(await aDaiCollateral.price()).to.be.closeTo(fp('1'), fp('0.08'))
-
-      // Claim rewards
-      await advanceTime(80000000)
-      expect(await stataDai.getTotalClaimableRewards()).to.be.gt(0)
-
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      expect(await stataDai.getTotalClaimableRewards()).to.be.gt(0)
-      await advanceBlocks(3000)
-
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      // Get Total claimable rewards
-      //expect(await aToken.getTotalClaimableRewards()).to.equal(0)
-
-      expect(await aDaiCollateral.price()).to.be.closeTo(fp('1.5'), fp('0.08'))
-
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-      expect(await compToken.balanceOf(backingManager.address)).to.be.gt(0)
-      //expect(await aaveToken.balanceOf(aToken.address)).to.be.gt(0)
-
-      //   expect(await compToken.balanceOf(backingManager.address)).to.be.closeTo(
-      //     fp('0.00000021'),
-      //     fp('0.00000001')
-      //   )
-      expect(await aaveToken.balanceOf(backingManager.address)).to.be.gt(0)
-
-      // console.log('Balance Before')
-      // console.log(await stataDai.balanceOf(backingManager.address))
-      // 2398.72325748032561 * 1.068
-      // console.log('Balance BeforeCTOKEN')
-      // console.log(await cDai.balanceOf(backingManager.address))
-      // // 233155.98996649
-      // * 0.02146 = $5003
       // Redeem Rtokens
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
 
@@ -709,86 +642,50 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      console.log('Check price')
-      // 1.552695451776587584
-      console.log(await aDaiCollateral.price())
-
-      console.log('Balance After')
-      //747.607279896538740000
-      //Redeem: 1651.21
-
-      // console.log(await stataDai.balanceOf(backingManager.address))
-
+      // Check balances after - Backing Manager is empty
       expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      // Price is now 1.5, so we will get less ATokens
+      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(bn(0), fp('0.01'))
+      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('1e6'))
 
-      // console.log('Check price CTOKEN')
-
-      // console.log(await cDaiCollateral.price())
-      // //0.0214720596292281430
-
-      // console.log('Balance After CTOKEN')
-      // console.log(await cDai.balanceOf(backingManager.address))
-      // //58.18349492
-      // Redeem 233097.8   = 4988
-
-      //   200000000000000
-      //   1999941.81650508
-
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
-        fp('747.60'),
-        fp('0.01')
-      )
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(58e8), bn('1e8')) // Small remainder
-      //747.607286328774640000
+      // Check funds returned to user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('750'))
-
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 8).mul(100),
-        bn('60e8')
+        bn('1e7')
       )
 
-      1162.055740264540221449
-      // Check asset value
+      // Check asset value left
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('1162'),
-        fp('1')
-      ) // Remainder - Qty * Price
-
-      // 1158.78 + 1.2412 =
+        bn(0),
+        fp('0.001')
+      ) // Near zero
     })
 
-    it('Should issue/reedem/claim rewards correctly', async function () {
-      console.log('Backing Manager: ' + backingManager.address)
+    it('Should claim rewards correctly', async function () {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-      // Check balances before
-      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await stataDai.balanceOf(backingManager.address)).to.equal(0)
-      expect(await cDai.balanceOf(backingManager.address)).to.equal(0)
-
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-
-      // Balance for Static a Token is about 19189.78e18, about 95.95%
-      //19189.786186550558379691
-      const initialBalAToken = initialBal.mul(9595).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
-      // console.log('Este es el monto')
-      // console.log(toBNDecimals(initialBal, 8).mul(100))
-      // console.log('Este es el balance')
-      // console.log(await cDai.balanceOf(addr1.address))
-      expect(await cDai.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
-
+    
       // Try to claim rewards at this point - Nothing for Backing Manager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
-      await expect(backingManager.claimAndSweepRewards())
-        .to.emit(backingManager, 'RewardsClaimed')
-        .withArgs(compToken.address, bn(0))
-      // No rewards
+      await expectEvents(backingManager.claimAndSweepRewards(), [
+        {
+          contract: backingManager,
+          name: 'RewardsClaimed',
+          args: [compToken.address, bn(0)],
+          emitted: true,
+        },
+        {
+          contract: backingManager,
+          name: 'RewardsClaimed',
+          args: [aaveToken.address, bn(0)],
+          emitted: true,
+        },
+      ])
+
+      // No rewards so far
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
@@ -797,294 +694,41 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
-      // Check rToken balance
-      expect(await rToken.balanceOf(main.address)).to.equal(0)
-
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-      // Check Balances after
-      expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (50%)
-      const issueAmtAToken = issueAmount.div(4).mul(9595).div(10000) // approx 95.95% of 2.5K needed
-
-      // console.log('PRICE OF ATOKEN')
-      // console.log(await aDaiCollateral.price())
-      // 1.068768672323288327
-
-      // console.log('PRICE OF CTOKEN')
-      // console.log(await cDaiCollateral.price())
-      // 0.021466701330381378
-
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
-        issueAmtAToken,
-        fp('1')
-      )
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn('233155e8'), bn(1e8)) // approx 233K needed
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
-        initialBalAToken.sub(issueAmtAToken),
-        fp('1')
-      )
-      expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 8).mul(100).sub(bn('233155e8')),
-        bn(1e8)
-      )
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-      // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        issueAmount,
-        fp('150')
-      ) // approx 10K
-
-      // Now we can claim rewards - check initial balance
+      // Now we can claim rewards - check initial balance still 0
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
-      expect(await aDaiCollateral.price()).to.be.closeTo(fp('1'), fp('0.08'))
+      // Advance Time
+      await advanceTime(8000)
 
       // Claim rewards
-      await advanceTime(80000000)
       expect(await stataDai.getTotalClaimableRewards()).to.be.gt(0)
-
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceTime(80000000)
-      await advanceTime(80000000)
-      expect(await stataDai.getTotalClaimableRewards()).to.be.gt(0)
-      await advanceBlocks(3000)
-
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      await advanceBlocks(3000)
-      // Get Total claimable rewards
-      //expect(await aToken.getTotalClaimableRewards()).to.equal(0)
-
-      expect(await aDaiCollateral.price()).to.be.closeTo(fp('1.5'), fp('0.08'))
-
       await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-      expect(await compToken.balanceOf(backingManager.address)).to.be.gt(0)
-      //expect(await aaveToken.balanceOf(aToken.address)).to.be.gt(0)
+      // Check rewards both in COMP and stkAAVE
+      const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
+      const rewardsAAVE1: BigNumber = await aaveToken.balanceOf(backingManager.address)
+      
+      expect(rewardsCOMP1).to.be.gt(0)
+      expect(rewardsAAVE1).to.be.gt(0)
 
-      //   expect(await compToken.balanceOf(backingManager.address)).to.be.closeTo(
-      //     fp('0.00000021'),
-      //     fp('0.00000001')
-      //   )
-      expect(await aaveToken.balanceOf(backingManager.address)).to.be.gt(0)
+      // Keep moving time
+      await advanceTime(3600)
 
-      // console.log('Balance Before')
-      // console.log(await stataDai.balanceOf(backingManager.address))
-      // 2398.72325748032561 * 1.068
-      // console.log('Balance BeforeCTOKEN')
-      // console.log(await cDai.balanceOf(backingManager.address))
-      // // 233155.98996649
-      // * 0.02146 = $5003
-      // Redeem Rtokens
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+      // Get additional rewards
+      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-      // Check funds were transferred
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
-
-      console.log('Check price')
-      // 1.552695451776587584
-      console.log(await aDaiCollateral.price())
-
-      console.log('Balance After')
-      //747.607279896538740000
-      //Redeem: 1651.21
-
-      // console.log(await stataDai.balanceOf(backingManager.address))
-
-      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
-      // Price is now 1.5, so we will get less ATokens
-
-      // console.log('Check price CTOKEN')
-
-      // console.log(await cDaiCollateral.price())
-      // //0.0214720596292281430
-
-      // console.log('Balance After CTOKEN')
-      // console.log(await cDai.balanceOf(backingManager.address))
-      // //58.18349492
-      // Redeem 233097.8   = 4988
-
-      //   200000000000000
-      //   1999941.81650508
-
-      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
-        fp('747.60'),
-        fp('0.01')
-      )
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(58e8), bn('1e8')) // Small remainder
-      //747.607286328774640000
-      expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('750'))
-
-      expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
-        toBNDecimals(initialBal, 8).mul(100),
-        bn('60e8')
-      )
-
-      1162.055740264540221449
-      // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('1162'),
-        fp('1')
-      ) // Remainder - Qty * Price
-
-      // 1158.78 + 1.2412 =
+      const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
+      const rewardsAAVE2: BigNumber = await aaveToken.balanceOf(backingManager.address)
+      
+      expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
+      expect(rewardsAAVE2.sub(rewardsAAVE1)).to.be.gt(0)
     })
-
-    it('Should setup StaticAToken correctly - using underlying', async () => {
-      // Transfer plain DAI
-      await whileImpersonating(holderDAI, async (daiSigner) => {
-        await dai.connect(daiSigner).transfer(addr1.address, bn('1000e18'))
-      })
-
-      await dai.connect(addr1).approve(stataDai.address, bn('1000e18'))
-      await stataDai.connect(addr1).deposit(addr1.address, bn('1000e18'), 0, true)
-
-      const pendingRewards2 = await stataDai.getClaimableRewards(addr1.address)
-
-      await stataDai.collectAndUpdateRewards()
-
-      const pendingRewards3 = await stataDai.getClaimableRewards(addr1.address)
-
-      // console.log('Rewards')
-
-      // console.log(pendingRewards2)
-
-      // console.log(pendingRewards3)
-
-      // console.log('Balance Rewards - Before')
-
-      // console.log(await aaveToken.balanceOf(addr1.address))
-
-      await stataDai.connect(addr1).claimRewardsToSelf(false)
-
-      const pendingRewards5 = await stataDai.getClaimableRewards(addr1.address)
-
-      // console.log('After claim')
-      // console.log(pendingRewards5)
-      // console.log(await stataDai.getClaimableRewards(addr1.address))
-
-      //console.log('Balance Rewards - After')
-
-      const claimed = await aaveToken.balanceOf(addr1.address)
-
-      // console.log(claimed)
-      await stataDai.getClaimableRewards(addr1.address)
-
-      await stataDai.connect(addr1).transfer(addr2.address, await stataDai.balanceOf(addr1.address))
-
-      await advanceTime(60 * 60)
-
-      // console.log('CLaimable after transfer')
-      // console.log(await aToken.getClaimableRewards(addr1.address))
-      // console.log(await aToken.getClaimableRewards(addr2.address))
-
-      // console.log('Balance Rewards - Before ADDR2')
-
-      // console.log(await aaveToken.balanceOf(addr2.address))
-
-      await stataDai.connect(addr2).claimRewardsToSelf(true)
-      // console.log('Balance Rewards - After ADDR2')
-
-      // console.log(await aaveToken.balanceOf(addr2.address))
-
-      // console.log(await token.balanceOf(holderDAI))
-      // console.log(await token.balanceOf(holderDAI2))
-      // console.log(await token.balanceOf(holderDAI3))
-      //     await aToken.connect(addr1).deposit(addr1.address, initialBal, 0, false)
-      //
-    })
-
-    // it('Should setup StaticAToken correctly wrapping AToken', async () => {
-    //   // StaticAToken
-    //   expect(await stataDai.name()).to.equal('Static Aave interest bearing DAI')
-    //   expect(await stataDai.symbol()).to.equal('stataDAI')
-    //   expect(await stataDai.decimals()).to.equal(18)
-    //   expect(await stataDai.LENDING_POOL()).to.equal(AAVE_LENDING_POOL_ADDRESS)
-    //   expect(await stataDai.INCENTIVES_CONTROLLER()).to.equal(AAVE_INCENTIVES_ADDRESS)
-    //   expect(await stataDai.ATOKEN()).to.equal(aDai.address)
-    //   expect(await stataDai.ASSET()).to.equal(dai.address)
-    //   expect(await stataDai.REWARD_TOKEN()).to.equal(aaveToken.address)
-
-    //   // const aDai: IAToken = <IAToken>(
-    //   //   await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
-    //   // )
-    //   await whileImpersonating(holderADAI, async (adaiSigner) => {
-    //     await aDai.connect(adaiSigner).transfer(addr1.address, bn('1000e18'))
-    //   })
-
-    //   //console.log(await aDai.balanceOf(addr1.address))
-
-    //   await aDai.connect(addr1).approve(stataDai.address, bn('1000e18'))
-    //   await stataDai.connect(addr1).deposit(addr1.address, bn('1000e18'), 0, false)
-
-    //   //console.log(await stataDai.balanceOf(addr1.address))
-    //   //const pendingRewards2 = await stataDai.getClaimableRewards(addr1.address)
-
-    //   //await stataDai.collectAndUpdateRewards()
-
-    //   // const pendingRewards3 = await stataDai.getClaimableRewards(addr1.address)
-
-    //   // console.log('Rewards')
-
-    //   // console.log(pendingRewards2)
-
-    //   // console.log(pendingRewards3)
-
-    //   // console.log('Balance Rewards - Before')
-
-    //   // console.log(await aaveToken.balanceOf(addr1.address))
-
-    //   // console.log('Claim!')
-
-    //   await stataDai.connect(addr1).claimRewardsToSelf(true)
-
-    //   //  const pendingRewards5 = await stataDai.getClaimableRewards(addr1.address)
-
-    //   // console.log('After claim')
-    //   // console.log(pendingRewards5)
-    //   // console.log(await stataDai.getClaimableRewards(addr1.address))
-
-    //   // console.log('Balance Rewards - After')
-
-    //   const claimed = await aaveToken.balanceOf(addr1.address)
-
-    //   //console.log(claimed)
-    //   await stataDai.getClaimableRewards(addr1.address)
-
-    //   await stataDai.connect(addr1).transfer(addr2.address, await stataDai.balanceOf(addr1.address))
-
-    //   await advanceTime(60 * 60)
-
-    //   // console.log('CLaimable after transfer')
-    //   // console.log(await stataDai.getClaimableRewards(addr1.address))
-    //   // console.log(await stataDai.getClaimableRewards(addr2.address))
-
-    //   // console.log('Balance Rewards - Before ADDR2')
-
-    //   // console.log(await aaveToken.balanceOf(addr2.address))
-
-    //   await stataDai.connect(addr2).claimRewardsToSelf(true)
-    //   // console.log('Balance Rewards - After ADDR2')
-
-    //   // console.log(await aaveToken.balanceOf(addr2.address))
-
-    //   // console.log(await token.balanceOf(holderDAI))
-    //   // console.log(await token.balanceOf(holderDAI2))
-    //   // console.log(await token.balanceOf(holderDAI3))
-    //   //     await aToken.connect(addr1).deposit(addr1.address, initialBal, 0, false)
-    //   //
-    // })
   })
 })
