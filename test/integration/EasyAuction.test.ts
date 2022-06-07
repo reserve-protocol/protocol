@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { MAINNET_BLOCK_NUMBER } from './mainnet'
 import { Collateral, IConfig, defaultFixture, IMPLEMENTATION } from '../fixtures'
+import forkBlockNumber from './fork-block-numbers'
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
@@ -38,7 +38,7 @@ const setup = async () => {
       {
         forking: {
           jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: MAINNET_BLOCK_NUMBER,
+          blockNumber: forkBlockNumber['easy-auction'],
         },
       },
     ],
