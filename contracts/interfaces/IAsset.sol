@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
-error PriceIsZero();
+error InvalidOraclePrice();
 error UnknownError(bytes);
 
 /**
