@@ -280,7 +280,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await trade.origin()).to.equal(backingManager.address)
       expect(await trade.sell()).to.equal(token0.address)
       expect(await trade.buy()).to.equal(token1.address)
-      expect(await trade.sellAmount()).to.equal(amount)
+      expect(await trade.initBal()).to.equal(amount)
       expect(await trade.endTime()).to.equal(
         (await getLatestBlockTimestamp()) + Number(config.auctionLength)
       )
