@@ -48,7 +48,7 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
         price_ = uint192(mulDiv256(p, FIX_ONE * ethPrice, ethNorm, ROUND) / 1e6);
 
         if (price_ == 0) {
-            revert InvalidOraclePrice();
+            revert PriceIsZero();
         }
     }
 }

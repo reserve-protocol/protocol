@@ -72,14 +72,9 @@ abstract contract Collateral is ICollateral, Asset, Context {
             if (p < peg - delta || p > peg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
-        } catch Panic(uint256) {
-            // This indicates a problem in the price function!
-            assert(false); // To confirm: there is no way to maintain the error code here
-        } catch (bytes memory lowLevelData) {
-            if (bytes4(lowLevelData) == bytes4(keccak256("InvalidOraclePrice()"))) {
-                // The oracle has broken on us and we should default immediately
-                whenDefault = block.timestamp;
-            } else revert UnknownError(lowLevelData);
+        } catch {
+            // The oracle has broken on us and we should default immediately
+            whenDefault = block.timestamp;
         }
 
         if (whenDefault != oldWhenDefault) {
