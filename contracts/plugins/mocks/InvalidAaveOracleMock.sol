@@ -8,8 +8,6 @@ contract InvalidAaveOracleMock is IAaveOracle {
 
     address private _weth;
 
-    bool public shouldFailAssert;
-
     constructor(address wethAddress) {
         _weth = wethAddress;
     }
@@ -22,17 +20,10 @@ contract InvalidAaveOracleMock is IAaveOracle {
         return _weth;
     }
 
-    function setShouldFailAssert(bool newValue) external {
-        shouldFailAssert = newValue;
-    }
-
-    // Dummy implementation - Reverts or fails an assertion - Testing Purposes
+    // Dummy implementation - Reverts - Testing Purposes
     function getAssetPrice(address) external view returns (uint256) {
-        if (shouldFailAssert) {
-            assert(false);
-        } else {
-            revert();
-        }
+        revert();
+
         return 1; // Dummy, never returned
     }
 }
