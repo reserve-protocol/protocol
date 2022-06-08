@@ -469,16 +469,16 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ).deploy(nonpriceToken.address, config.maxTradeVolume, compoundMock.address)
       )
 
-      // Aave - Assets with no price info return 0 , so they revert with Invalid Oracle Price
-      await expect(nonpriceAaveAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // Aave - Assets with no price info return 0 , so they revert with Price is Zero
+      await expect(nonpriceAaveAsset.price()).to.be.revertedWith('PriceIsZero()')
       await expect(nonpriceAaveAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'InvalidOraclePrice()'
+        'PriceIsZero()'
       )
 
-      // Compound - Assets with no price info revert with also with Invalid Oracle Price
-      await expect(nonpriceCompoundAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // Compound - Assets with no price info revert with also with token config not found
+      await expect(nonpriceCompoundAsset.price()).to.be.revertedWith('token config not found')
       await expect(nonpriceCompoundAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'InvalidOraclePrice()'
+        'token config not found'
       )
     })
 
@@ -521,10 +521,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Aave - Collateral with no price info return 0, so they revert with Invalid Oracle Price
-      await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // Aave - Collateral with no price info return 0, so they revert with Price is Zero
+      await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('PriceIsZero()')
       await expect(nonpriceAaveCollateral.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'InvalidOraclePrice()'
+        'PriceIsZero()'
       )
 
       // Refresh should not revert but set default
@@ -536,11 +536,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Compound - Assets with no price info revert with Invalid Oracle Price
-      await expect(nonpriceCompoundCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // Compound - Assets with no price info revert with token config not found
+      await expect(nonpriceCompoundCollateral.price()).to.be.revertedWith('token config not found')
       await expect(
         nonpriceCompoundCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('InvalidOraclePrice()')
+      ).to.be.revertedWith('token config not found')
 
       // Refresh should not revert but set default
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
@@ -614,11 +614,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // ATokens - Collateral with no price info return 0, so they revert with Invalid Oracle Price
-      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // ATokens - Collateral with no price info return 0, so they revert with Price is Zero
+      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
       await expect(
         nonpriceAtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('InvalidOraclePrice()')
+      ).to.be.revertedWith('PriceIsZero()')
 
       // Refresh should not revert but set default
       let expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
@@ -629,11 +629,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Compound - Collateral with no price info revert with Invalid Oracle Price
-      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      // CTokens - Collateral with no price info revert with token config not found
+      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('token config not found')
       await expect(
         nonpriceCtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('InvalidOraclePrice()')
+      ).to.be.revertedWith('token config not found')
 
       // Refresh should not revert but set default
       expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)

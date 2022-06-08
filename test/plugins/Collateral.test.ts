@@ -272,7 +272,7 @@ describe('Collateral contracts', () => {
       await aaveOracleInternal.setPrice(token.address, bn('0'))
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(tokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
     })
   })
 
@@ -307,7 +307,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
     })
 
-    it('Updates status in case of soft default', async () => {
+    it('Should updates status in case of soft default', async () => {
       const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
 
       // Check initial state
@@ -370,7 +370,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
-    it('Updates status in case of hard default', async () => {
+    it('Should update status in case of hard default', async () => {
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -409,7 +409,7 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Updates status when price is zero', async () => {
+    it('Should update status when price is zero', async () => {
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -440,7 +440,7 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Reverts on update status when price function fails', async () => {
+    it('Should handles price failure correctly', async () => {
       // Deploy invalid Compound Oracle
       const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
         'InvalidCompoundOracleMock'
@@ -530,23 +530,17 @@ describe('Collateral contracts', () => {
         expect(await coll.status()).to.equal(CollateralStatus.SOUND)
         expect(await coll.whenDefault()).to.equal(MAX_UINT256)
 
-        // Attempt to update status - assertion failed (Panic)
-        await invalidAaveOracle.setShouldFailAssert(true)
-        await invalidCompoundOracle.setShouldFailAssert(true)
-        await expect(coll.refresh()).to.be.reverted
+        // Set next block timestamp - for deterministic result
+        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-        // No changes
-        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
 
-        // Attempt to update status - Revert
-        await invalidAaveOracle.setShouldFailAssert(false)
-        await invalidCompoundOracle.setShouldFailAssert(false)
-        await expect(coll.refresh()).to.be.reverted
+        // Attempt to update status - Should not revert and set default
+        await expect(coll.refresh()).to.not.be.reverted
 
-        // No changes
-        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+        // Should set default
+        expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
       }
     })
   })
@@ -675,12 +669,12 @@ describe('Collateral contracts', () => {
       // Fiat token
       symbol = await token.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundTokenAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(compoundTokenAsset.price()).to.be.revertedWith('PriceIsZero()')
 
       // Usdc (6 decimals)
       symbol = await usdc.symbol()
       await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundUsdcAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(compoundUsdcAsset.price()).to.be.revertedWith('PriceIsZero()')
     })
   })
 
