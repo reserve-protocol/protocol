@@ -2,12 +2,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, IMPLEMENTATION } from '../fixtures'
+import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
-import { advanceTime } from '../utils/time'
+import {
+  advanceBlocks,
+  advanceTime,
+  getLatestBlockTimestamp,
+  setNextBlockTimestamp,
+} from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import forkBlockNumber from './fork-block-numbers'
 
@@ -30,9 +35,11 @@ import {
 } from './mainnet'
 
 import {
+  AaveLendingPoolMock,
   AavePricedFiatCollateral,
   Asset,
   ATokenFiatCollateral,
+  CompoundPricedFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
@@ -43,11 +50,14 @@ import {
   IBasketHandler,
   RTokenAsset,
   StaticATokenLM,
+  StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
   USDCMock,
+  AavePricedAsset,
+  CompoundPricedAsset,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -91,6 +101,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
+  let aaveMock: AaveLendingPoolMock
 
   // Tokens and Assets
   let dai: ERC20Mock
@@ -133,6 +144,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
+  let config: IConfig
 
   let initialBal: BigNumber
   let basket: Collateral[]
@@ -149,8 +161,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
     beforeEach(async () => {
       ;[owner] = await ethers.getSigners()
-      ;({ compToken, aaveToken, compAsset, aaveAsset, compoundMock, erc20s, collateral } =
-        await loadFixture(defaultFixture))
+      ;({
+        compToken,
+        aaveToken,
+        compAsset,
+        aaveAsset,
+        compoundMock,
+        aaveMock,
+        erc20s,
+        collateral,
+        config,
+      } = await loadFixture(defaultFixture))
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
@@ -424,6 +445,202 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
       }
     })
+
+    it('Should handle invalid Price - Assets', async () => {
+      // Setup Assets with no price - Use stkAAVE token
+      const nonpriceToken: ERC20Mock = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+      )
+
+      const nonpriceAaveAsset: AavePricedAsset = <AavePricedAsset>(
+        await (
+          await ethers.getContractFactory('AavePricedAsset')
+        ).deploy(
+          nonpriceToken.address,
+          config.maxTradeVolume,
+          compoundMock.address,
+          aaveMock.address
+        )
+      )
+
+      const nonpriceCompoundAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+        await (
+          await ethers.getContractFactory('CompoundPricedAsset')
+        ).deploy(nonpriceToken.address, config.maxTradeVolume, compoundMock.address)
+      )
+
+      // Aave - Assets with no price info return 0 , so they revert with Invalid Oracle Price
+      await expect(nonpriceAaveAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(nonpriceAaveAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
+        'InvalidOraclePrice()'
+      )
+
+      // Compound - Assets with no price info revert with also with Invalid Oracle Price
+      await expect(nonpriceCompoundAsset.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(nonpriceCompoundAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
+        'InvalidOraclePrice()'
+      )
+    })
+
+    it('Should handle invalid Price - Collaterals - Fiat', async () => {
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // Setup Collateral with no price - Use stkAAVE token
+      const nonpriceToken: ERC20Mock = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+      )
+
+      // Fiat collateral - Aave
+      const nonpriceAaveCollateral: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
+        await (
+          await ethers.getContractFactory('AavePricedFiatCollateral')
+        ).deploy(
+          nonpriceToken.address,
+          config.maxTradeVolume,
+          defaultThreshold,
+          delayUntilDefault,
+          compoundMock.address,
+          aaveMock.address
+        )
+      )
+
+      // Fiat Collateral - Compound
+      const nonpriceCompoundCollateral: CompoundPricedFiatCollateral = <
+        CompoundPricedFiatCollateral
+      >await (
+        await ethers.getContractFactory('CompoundPricedFiatCollateral')
+      ).deploy(
+        nonpriceToken.address,
+        config.maxTradeVolume,
+        defaultThreshold,
+        delayUntilDefault,
+        compoundMock.address
+      )
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      // Aave - Collateral with no price info return 0, so they revert with Invalid Oracle Price
+      await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(nonpriceAaveCollateral.consultOracle(nonpriceToken.address)).to.be.revertedWith(
+        'InvalidOraclePrice()'
+      )
+
+      // Refresh should not revert but set default
+      let expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      await expect(nonpriceAaveCollateral.refresh())
+        .to.emit(nonpriceAaveCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      // Compound - Assets with no price info revert with Invalid Oracle Price
+      await expect(nonpriceCompoundCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(
+        nonpriceCompoundCollateral.consultOracle(nonpriceToken.address)
+      ).to.be.revertedWith('InvalidOraclePrice()')
+
+      // Refresh should not revert but set default
+      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      await expect(nonpriceCompoundCollateral.refresh())
+        .to.emit(nonpriceCompoundCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+    })
+
+    it('Should handle invalid Price - Collaterals - AToken/CToken', async () => {
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // Setup Collateral with no price - Use stkAAVE token
+      const nonpriceToken: ERC20Mock = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+      )
+
+      // Wrap in Static AToken (use mock in this case)
+      const staticNonPriceErc20: StaticATokenMock = <StaticATokenMock>(
+        await (
+          await ethers.getContractFactory('StaticATokenMock')
+        ).deploy(
+          'static ' + (await nonpriceToken.name()),
+          'stat' + (await nonpriceToken.symbol()),
+          nonpriceToken.address
+        )
+      )
+
+      // AToken collateral
+      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          staticNonPriceErc20.address,
+          config.maxTradeVolume,
+          defaultThreshold,
+          delayUntilDefault,
+          nonpriceToken.address,
+          compoundMock.address,
+          aaveMock.address,
+          aaveToken.address
+        )
+      )
+
+      // Setup CToken (use mock for this purpose)
+      const nonpriceCtoken: CTokenMock = <CTokenMock>(
+        await (
+          await ethers.getContractFactory('CTokenMock')
+        ).deploy(
+          'c' + (await nonpriceToken.name()),
+          'c' + (await nonpriceToken.symbol()),
+          nonpriceToken.address
+        )
+      )
+
+      // CTokens Collateral
+      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          nonpriceCtoken.address,
+          config.maxTradeVolume,
+          defaultThreshold,
+          delayUntilDefault,
+          nonpriceToken.address,
+          compoundMock.address,
+          compToken.address
+        )
+      )
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      // ATokens - Collateral with no price info return 0, so they revert with Invalid Oracle Price
+      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(
+        nonpriceAtokenCollateral.consultOracle(nonpriceToken.address)
+      ).to.be.revertedWith('InvalidOraclePrice()')
+
+      // Refresh should not revert but set default
+      let expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      await expect(nonpriceAtokenCollateral.refresh())
+        .to.emit(nonpriceAtokenCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      // Compound - Collateral with no price info revert with Invalid Oracle Price
+      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('InvalidOraclePrice()')
+      await expect(
+        nonpriceCtokenCollateral.consultOracle(nonpriceToken.address)
+      ).to.be.revertedWith('InvalidOraclePrice()')
+
+      // Refresh should not revert but set default
+      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      await expect(nonpriceCtokenCollateral.refresh())
+        .to.emit(nonpriceCtokenCollateral, 'DefaultStatusChanged')
+        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+    })
   })
 
   describe('Basket/Issue/Redeem', () => {
@@ -432,11 +649,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     // RSR
     let rsr: ERC20Mock
     let rsrAsset: Asset
-
-    // DAI, cDAI, and aDAI Holders
-    const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
-    const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
-    const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
 
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -636,14 +848,179 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.001')
       ) // Near zero
     })
+
+    it('Should handle rates correctly on Issue/Redeem', async function () {
+      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+      const initialBalAToken = initialBal.mul(9595).div(10000)
+
+      // Provide approvals for issuances
+      await dai.connect(addr1).approve(rToken.address, issueAmount)
+      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Store Balances after issuance
+      const balanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
+      const balanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
+      const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+
+      // Check rates and prices
+      const aDaiPrice1: BigNumber = await aDaiCollateral.price() // ~1.07546
+      const aDaiRefPerTok1: BigNumber = await aDaiCollateral.refPerTok() // ~ 1.07287
+      const cDaiPrice1: BigNumber = await cDaiCollateral.price() // ~ 0.022015 cents
+      const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
+
+      expect(aDaiPrice1).to.be.closeTo(fp('1'), fp('0.095'))
+      expect(aDaiRefPerTok1).to.be.closeTo(fp('1'), fp('0.095'))
+      expect(cDaiPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check total asset value
+      const totalAssetValue1: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+
+      // Advance time and blocks slightly
+      await advanceTime(10000)
+      await advanceBlocks(10000)
+
+      // Refresh cToken manually (required)
+      await cDaiCollateral.refresh()
+
+      // Check rates and prices - Have changed, slight inrease
+      const aDaiPrice2: BigNumber = await aDaiCollateral.price() // ~1.07548
+      const aDaiRefPerTok2: BigNumber = await aDaiCollateral.refPerTok() // ~1.07288
+      const cDaiPrice2: BigNumber = await cDaiCollateral.price() // ~0.022016
+      const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
+
+      // Check rates and price increase
+      expect(aDaiPrice2).to.be.gt(aDaiPrice1)
+      expect(aDaiRefPerTok2).to.be.gt(aDaiRefPerTok1)
+      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
+      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+
+      // Still close to the original values
+      expect(aDaiPrice2).to.be.closeTo(fp('1'), fp('0.095'))
+      expect(aDaiRefPerTok2).to.be.closeTo(fp('1'), fp('0.095'))
+      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check total asset value increased
+      const totalAssetValue2: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+
+      // Advance time and blocks significantly
+      await advanceTime(100000000)
+      await advanceBlocks(100000000)
+
+      // Refresh cToken manually (required)
+      await cDaiCollateral.refresh()
+
+      // Check rates and prices - Have changed significantly
+      const aDaiPrice3: BigNumber = await aDaiCollateral.price() // ~1.1873
+      const aDaiRefPerTok3: BigNumber = await aDaiCollateral.refPerTok() // ~1.1845
+      const cDaiPrice3: BigNumber = await cDaiCollateral.price() // ~0.03294
+      const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
+
+      // Check rates and price increase
+      expect(aDaiPrice3).to.be.gt(aDaiPrice2)
+      expect(aDaiRefPerTok3).to.be.gt(aDaiRefPerTok2)
+      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
+      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+
+      // Need to adjust ranges
+      expect(aDaiPrice3).to.be.closeTo(fp('1.1'), fp('0.095'))
+      expect(aDaiRefPerTok3).to.be.closeTo(fp('1.1'), fp('0.095'))
+      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+
+      // Check total asset value increased
+      const totalAssetValue3: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+
+      // Redeem Rtokens with the udpated rates
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+      // Check funds were transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
+
+      // Check balances - Fewer ATokens and cTokens should have been sent to the user
+      const newBalanceAddr1Dai: BigNumber = await dai.balanceOf(addr1.address)
+      const newBalanceAddr1aDai: BigNumber = await stataDai.balanceOf(addr1.address)
+      const newBalanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+
+      // Check received tokens represent ~10K in value at current prices
+      expect(newBalanceAddr1Dai.sub(balanceAddr1Dai)).to.equal(issueAmount.div(4)) // = 2.5K (25% of basket)
+      expect(newBalanceAddr1aDai.sub(balanceAddr1aDai)).to.be.closeTo(fp('2110.5'), fp('0.5')) // ~1.1873 * 2110.5  ~= 2.5K (25% of basket)
+      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('151785e8'), bn('5e7')) // ~0.03294 * 151785.3 ~= 5K (50% of basket)
+
+      // Check remainders in Backing Manager
+      expect(await dai.balanceOf(backingManager.address)).to.equal(0)
+      expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
+        fp('219.64'), // ~= 260 usd in value
+        fp('0.01')
+      )
+      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(75331e8), bn('5e7')) // ~= 2481 usd in value
+
+      //  Check total asset value (remainder)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        fp('2742'), // ~=  260usd + 2481 usd (from above)
+        fp('1')
+      )
+    })
+
+    it('Should also support StaticAToken from underlying', async () => {
+      // Transfer out all existing stataDai - empty balance
+      await stataDai.connect(addr1).transfer(addr2.address, await stataDai.balanceOf(addr1.address))
+      expect(await stataDai.balanceOf(addr1.address)).to.equal(bn(0))
+
+      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+      // Transfer plain DAI
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+      })
+
+      // Wrap DAI into a staticaDAI
+      await dai.connect(addr1).approve(stataDai.address, initialBal)
+      await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, true)
+
+      // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
+      const initialBalAToken = initialBal.mul(9321).div(10000)
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+
+      // Provide approvals
+      await dai.connect(addr1).approve(rToken.address, issueAmount)
+      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+      // Check rToken balance
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+      // Check asset value
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        issueAmount,
+        fp('150')
+      ) // approx 10K in value
+    })
   })
 
   describe.skip('Claim Rewards', () => {
-    // DAI, cDAI, and aDAI Holders
-    const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
-    const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
-    const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
-
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
