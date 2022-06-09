@@ -1,7 +1,5 @@
 import hre from 'hardhat'
 import { ContractTransaction } from 'ethers'
-import { signTypedData_v4 } from 'eth-sig-util'
-import { fromRpcSig, ECDSASignature } from 'ethereumjs-util'
 
 export const evmSnapshot = async () => await hre.network.provider.send('evm_snapshot', [])
 
@@ -129,12 +127,3 @@ export const buildMetaWithdrawParams = (
   },
 })
 
-export const getSignatureFromTypedData = (
-  privateKey: string,
-  typedData: any // TODO: should be TypedData, from eth-sig-utils, but TS doesn't accept it
-): ECDSASignature => {
-  const signature = signTypedData_v4(Buffer.from(privateKey.substring(2, 66), 'hex'), {
-    data: typedData,
-  })
-  return fromRpcSig(signature)
-}

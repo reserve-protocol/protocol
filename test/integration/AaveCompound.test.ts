@@ -18,27 +18,29 @@ import forkBlockNumber from './fork-block-numbers'
 
 import {
   AAVE_INCENTIVES_ADDRESS,
-  STAKEDAAVE_ADDRESS,
-  COMP_ADDRESS,
-  DAI_ADDRESS,
-  USDC_ADDRESS,
-  USDT_ADDRESS,
-  BUSD_ADDRESS,
+  AAVE_LENDING_POOL_ADDRESS,
+  ABUSD_ADDRESS,
+  ADAI_ADDRESS,
   AUSDC_ADDRESS,
   AUSDT_ADDRESS,
-  ADAI_ADDRESS,
-  ABUSD_ADDRESS,
+  BUSD_ADDRESS,
+  COMP_ADDRESS,
   CUSDC_ADDRESS,
   CUSDT_ADDRESS,
   CDAI_ADDRESS,
-  AAVE_LENDING_POOL_ADDRESS,
+  DAI_ADDRESS,
+  STAKEDAAVE_ADDRESS,
+  USDC_ADDRESS,
+  USDT_ADDRESS,
 } from './mainnet'
 
 import {
   AaveLendingPoolMock,
+  AavePricedAsset,
   AavePricedFiatCollateral,
   Asset,
   ATokenFiatCollateral,
+  CompoundPricedAsset,
   CompoundPricedFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
@@ -56,8 +58,6 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
-  AavePricedAsset,
-  CompoundPricedAsset,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -542,11 +542,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         nonpriceCompoundCollateral.consultOracle(nonpriceToken.address)
       ).to.be.revertedWith('token config not found')
 
-      // Refresh should not revert but set default
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceCompoundCollateral.refresh())
-        .to.emit(nonpriceCompoundCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh reverts (does not handle in the same way as Aave)
+      await expect(nonpriceCompoundCollateral.refresh()).to.be.reverted
     })
 
     it('Should handle invalid Price - Collaterals - AToken/CToken', async () => {
@@ -635,11 +632,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         nonpriceCtokenCollateral.consultOracle(nonpriceToken.address)
       ).to.be.revertedWith('token config not found')
 
-      // Refresh should not revert but set default
-      expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceCtokenCollateral.refresh())
-        .to.emit(nonpriceCtokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh reverts (does not handle in the same way as Aave)
+      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
     })
   })
 
@@ -1020,7 +1014,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
-  describe.skip('Claim Rewards', () => {
+  describe('Claim Rewards', () => {
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]

@@ -10,9 +10,9 @@ import {
   buildPermitParams,
   buildMetaDepositParams,
   buildMetaWithdrawParams,
-  waitForTx,
   evmRevert,
   evmSnapshot,
+  waitForTx,
 } from './utils'
 import { BigNumber, ContractFactory, providers, Signer, utils } from 'ethers'
 import { rayDiv, rayMul } from './ray-math'
@@ -29,8 +29,8 @@ import {
 import {
   ERC20Mock,
   IAaveIncentivesController,
-  ILendingPool,
   IAToken,
+  ILendingPool,
   IWETH,
   SelfdestructTransfer,
   StaticATokenLM,
@@ -174,7 +174,7 @@ const getContext = async ({
   staticATokenSupply: await staticAToken.totalSupply(),
 })
 
-describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity mining', () => {
+describe('StaticATokenLM: aToken wrapper with static balances and liquidity mining', () => {
   let user1: SignerWithAddress
   let user2: SignerWithAddress
   let userSigner: providers.JsonRpcSigner
