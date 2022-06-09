@@ -56,7 +56,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
   // Tokens and Assets
   let initialBal: BigNumber
-  let token0: ERC20Mock
+  let token0: BadERC20
   let backupToken: ERC20Mock
   let collateral0: Collateral
   let backupCollateral: Collateral
@@ -135,6 +135,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       backupToken.address,
     ])
     await basketHandler.refreshBasket()
+    await backingManager.grantRTokenAllowance(token0.address)
+    await backingManager.grantRTokenAllowance(backupToken.address)
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -150,6 +152,37 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     await rToken.connect(addr1).issue(issueAmt)
     await rToken.connect(addr1).transfer(addr2.address, issueAmt)
     expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmt)
+    await token0.connect(addr2).approve(rToken.address, issueAmt)
+    await rToken.connect(addr2).issue(issueAmt)
+    expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmt.mul(2))
     expect(await rToken.decimals()).to.equal(18)
+  })
+
+  describe('with reverting decimals', function () {
+    let issueAmt: BigNumber
+
+    beforeEach(async () => {
+      issueAmt = initialBal.div(100)
+      await token0.connect(addr1).approve(rToken.address, issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
+      await token0.setRevertDecimals(true)
+    })
+
+    it('should fail safely during issuance', async () => {
+      await token0.connect(addr2).approve(rToken.address, issueAmt)
+      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.reverted
+
+      // Should work now
+      await token0.setRevertDecimals(false)
+      await rToken.connect(addr2).issue(issueAmt)
+    })
+
+    it('should fail safely during redemption', async () => {
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.reverted
+
+      // Should work now
+      await token0.setRevertDecimals(false)
+      await rToken.connect(addr1).redeem(issueAmt)
+    })
   })
 })
