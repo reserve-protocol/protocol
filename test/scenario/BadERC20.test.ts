@@ -3,7 +3,6 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
-import { ZERO_ADDRESS } from '../../common/constants'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
