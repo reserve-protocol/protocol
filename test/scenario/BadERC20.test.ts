@@ -19,6 +19,7 @@ import {
   StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
+  TestIFurnace,
   TestIRToken,
   TestIStRSR,
   USDCMock,
@@ -67,6 +68,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
+  let furnace: TestIFurnace
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let facade: Facade
@@ -103,6 +105,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       stRSR,
       gnosis,
       facade,
+      furnace,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -146,7 +149,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     await backupToken.connect(owner).mint(addr2.address, initialBal)
   })
 
-  it('should act normal at first', async () => {
+  it('should act honestly without modification', async () => {
     const issueAmt = initialBal.div(100)
     await token0.connect(addr1).approve(rToken.address, issueAmt)
     await rToken.connect(addr1).issue(issueAmt)
@@ -168,21 +171,154 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await token0.setRevertDecimals(true)
     })
 
-    it('should fail safely during issuance', async () => {
+    it('should revert during atomic issuance', async () => {
       await token0.connect(addr2).approve(rToken.address, issueAmt)
-      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.reverted
+      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
       await rToken.connect(addr2).issue(issueAmt)
     })
 
-    it('should fail safely during redemption', async () => {
-      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.reverted
+    it('should revert during slow issuance', async () => {
+      issueAmt = initialBal.div(10)
+      await token0.connect(addr2).approve(rToken.address, issueAmt)
+      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('No Decimals')
+
+      // Should work now
+      await token0.setRevertDecimals(false)
+      await rToken.connect(addr2).issue(issueAmt)
+    })
+
+    it('should revert during redemption', async () => {
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('No Decimals')
 
       // Should work now
       await token0.setRevertDecimals(false)
       await rToken.connect(addr1).redeem(issueAmt)
+    })
+
+    it('should revert during trading', async () => {
+      await aaveOracleInternal.setPrice(token0.address, bn('1e10')) // default
+      await assetRegistry.refresh()
+      await advanceTime(DELAY_UNTIL_DEFAULT.toString())
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([backupToken.address], [fp('1')], false)
+      await expect(backingManager.manageTokens([])).to.be.revertedWith('No Decimals')
+    })
+
+    it('should keep collateral working', async () => {
+      await collateral0.refresh()
+      await collateral0.price()
+      await collateral0.targetPerRef()
+      await collateral0.pricePerTarget()
+      expect(await collateral0.status()).to.equal(0)
+    })
+
+    it('should still transfer', async () => {
+      await rToken.connect(addr1).transfer(addr2.address, issueAmt)
+    })
+
+    it('should still approve / transferFrom', async () => {
+      await rToken.connect(addr1).approve(addr2.address, issueAmt)
+      await rToken.connect(addr2).transferFrom(addr1.address, addr2.address, issueAmt)
+    })
+
+    it('should still be able to claim rewards', async () => {
+      await rToken.connect(addr1).claimAndSweepRewards()
+    })
+
+    it('should still have price', async () => {
+      await rToken.connect(addr1).price()
+    })
+
+    it('should still melt', async () => {
+      await rToken.connect(addr1).transfer(furnace.address, issueAmt)
+      await furnace.melt()
+    })
+  })
+
+  describe('with censorship', function () {
+    let issueAmt: BigNumber
+
+    beforeEach(async () => {
+      issueAmt = initialBal.div(100)
+      await token0.connect(addr1).approve(rToken.address, issueAmt)
+      await rToken.connect(addr1).issue(issueAmt)
+      await token0.setCensored(backingManager.address, true)
+      await token0.setCensored(rToken.address, true)
+    })
+
+    it('should revert during atomic issuance', async () => {
+      await token0.connect(addr2).approve(rToken.address, issueAmt)
+      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
+
+      // Should work now
+      await token0.setCensored(backingManager.address, false)
+      await rToken.connect(addr2).issue(issueAmt)
+    })
+
+    it('should revert during slow issuance', async () => {
+      issueAmt = initialBal.div(10) // over 1 block
+      await token0.connect(addr2).approve(rToken.address, issueAmt)
+      await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
+
+      // Should work now
+      await token0.setCensored(rToken.address, false)
+      await rToken.connect(addr2).issue(issueAmt)
+    })
+
+    it('should revert during redemption', async () => {
+      await expect(rToken.connect(addr1).redeem(issueAmt)).to.be.revertedWith('censored')
+
+      // Should work now
+      await token0.setCensored(backingManager.address, false)
+      await rToken.connect(addr1).redeem(issueAmt)
+    })
+
+    it('should revert during trading', async () => {
+      await aaveOracleInternal.setPrice(token0.address, bn('1e10')) // default
+      await collateral0.refresh()
+      await advanceTime(DELAY_UNTIL_DEFAULT.toString())
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([backupToken.address], [fp('1')], false)
+      await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
+
+      // Should work now
+      await token0.setCensored(backingManager.address, false)
+      await backingManager.manageTokens([])
+    })
+
+    it('should keep collateral working', async () => {
+      await collateral0.refresh()
+      await collateral0.price()
+      await collateral0.targetPerRef()
+      await collateral0.pricePerTarget()
+      expect(await collateral0.status()).to.equal(0)
+    })
+
+    it('should still transfer', async () => {
+      await rToken.connect(addr1).transfer(addr2.address, issueAmt)
+    })
+
+    it('should still approve / transferFrom', async () => {
+      await rToken.connect(addr1).approve(addr2.address, issueAmt)
+      await rToken.connect(addr2).transferFrom(addr1.address, addr2.address, issueAmt)
+    })
+
+    it('should still be able to claim rewards', async () => {
+      await rToken.connect(addr1).claimAndSweepRewards()
+    })
+
+    it('should still have price', async () => {
+      await rToken.connect(addr1).price()
+    })
+
+    it('should still melt', async () => {
+      await rToken.connect(addr1).transfer(furnace.address, issueAmt)
+      await furnace.melt()
     })
   })
 })

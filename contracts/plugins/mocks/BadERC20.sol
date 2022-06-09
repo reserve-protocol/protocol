@@ -22,6 +22,10 @@ contract BadERC20 is ERC20Mock {
         revertDecimals = newVal;
     }
 
+    function setCensored(address account, bool val) external {
+        censored[account] = val;
+    }
+
     function decimals() public view override returns (uint8) {
         if (revertDecimals) revert("No Decimals");
         return 18;
@@ -29,7 +33,7 @@ contract BadERC20 is ERC20Mock {
 
     function transfer(address to, uint256 amount) public virtual override returns (bool) {
         address owner = _msgSender();
-        if (censored[owner]) revert("censored");
+        if (censored[owner] || censored[to]) revert("censored");
         uint256 fee = transferFee.mulu_toUint(amount, CEIL);
         _transfer(owner, to, amount - fee);
         _burn(owner, fee);
@@ -42,7 +46,7 @@ contract BadERC20 is ERC20Mock {
         uint256 amount
     ) public virtual override returns (bool) {
         address spender = _msgSender();
-        if (censored[from]) revert("censored");
+        if (censored[from] || censored[to]) revert("censored");
         _spendAllowance(from, spender, amount);
         uint256 fee = transferFee.mulu_toUint(amount, CEIL);
         _transfer(from, to, amount - fee);
