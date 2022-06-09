@@ -307,7 +307,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
     })
 
-    it('Should updates status in case of soft default', async () => {
+    it('Updates status in case of soft default', async () => {
       const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
 
       // Check initial state
@@ -370,7 +370,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
-    it('Should update status in case of hard default', async () => {
+    it('Updates status in case of hard default', async () => {
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -409,7 +409,7 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Should update status when price is zero', async () => {
+    it('Updates status when price is zero', async () => {
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -440,7 +440,7 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Should handles price failure correctly', async () => {
+    it('Reverts on update status when price function fails', async () => {
       // Deploy invalid Compound Oracle
       const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
         'InvalidCompoundOracleMock'
@@ -530,17 +530,23 @@ describe('Collateral contracts', () => {
         expect(await coll.status()).to.equal(CollateralStatus.SOUND)
         expect(await coll.whenDefault()).to.equal(MAX_UINT256)
 
-        // Set next block timestamp - for deterministic result
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+        // Attempt to update status - assertion failed (Panic)
+        await invalidAaveOracle.setShouldFailAssert(true)
+        await invalidCompoundOracle.setShouldFailAssert(true)
+        await expect(coll.refresh()).to.be.reverted
 
-        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
+        // No changes
+        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
 
-        // Attempt to update status - Should not revert and set default
-        await expect(coll.refresh()).to.not.be.reverted
+        // Attempt to update status - Revert
+        await invalidAaveOracle.setShouldFailAssert(false)
+        await invalidCompoundOracle.setShouldFailAssert(false)
+        await expect(coll.refresh()).to.be.reverted
 
-        // Should set default
-        expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
+        // No changes
+        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
       }
     })
   })
