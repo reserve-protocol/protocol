@@ -1,6 +1,6 @@
 import hre, { ethers } from 'hardhat'
+import { expect } from 'chai'
 import bnjs from 'bignumber.js'
-import { solidity } from 'ethereum-waffle'
 import { formatEther, parseEther, _TypedDataEncoder } from 'ethers/lib/utils'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import forkBlockNumber from './fork-block-numbers'
@@ -36,10 +36,6 @@ import {
   StaticATokenLM,
 } from '../../typechain'
 
-const { expect, use } = require('chai')
-
-use(solidity)
-
 // Setup test environment
 const setup = async (blockNumber: number) => {
   // Use Mainnet fork
@@ -62,7 +58,7 @@ const getUserData = async (
   staticAToken: StaticATokenLM,
   stkAave: ERC20Mock
 ) => {
-  let usersData: {
+  const usersData: {
     pendingRewards: BigNumber
     stkAaveBalance: BigNumber
     staticBalance: BigNumber
@@ -360,8 +356,6 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     )
 
     const ctxtAfterDeposit = await getContext(ctxtParams)
-
-    const expectedATokenWithdraw = await staticAToken.staticToDynamicAmount(amountToWithdraw)
 
     // Withdraw
     await waitForTx(
@@ -1341,7 +1335,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     expect(ctxtAfterClaim.staticATokenStkAaveBalance).to.be.lt(5)
   })
 
-  describe('Rewards - Small checks', async () => {
+  describe('Rewards - Small checks', () => {
     it('Rewards increase at deposit, update and withdraw and set to 0 at claim', async () => {
       const amountToDeposit = utils.parseEther('5')
       const amountToWithdraw = MAX_UINT256
@@ -1391,20 +1385,17 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
       const pendingRewards6 = await staticAToken.getClaimableRewards(userSigner._address)
 
       // Checks
-
       expect(pendingRewards2).to.be.gt(pendingRewards1)
       expect(pendingRewards3).to.be.gt(pendingRewards2)
       expect(pendingRewards4).to.be.gt(pendingRewards3)
       expect(totPendingRewards4).to.be.gte(pendingRewards4)
       expect(pendingRewards5).to.be.eq(0) // User "sacrifice" excess rewards to save on gas-costs
       expect(pendingRewards6).to.be.eq(0)
-
       expect(claimedRewards4).to.be.eq(0)
 
       // Expect the user to have withdrawn everything.
       expect(claimedRewards5).to.be.eq(stkAaveStatic4)
       expect(stkAaveStatic5).to.be.eq(0)
-
       expect(totPendingRewards5).to.be.gt(0)
     })
 
@@ -1456,7 +1447,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
       await hre.network.provider.send('evm_setAutomine', [false])
 
       // Depositing
-      let a = await staticAToken.deposit(
+      const a = await staticAToken.deposit(
         userSigner._address,
         amountToDeposit,
         0,
@@ -1465,7 +1456,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
       )
 
       // Depositing
-      let b = await staticAToken.deposit(
+      const b = await staticAToken.deposit(
         userSigner._address,
         amountToDeposit,
         0,
@@ -1503,8 +1494,8 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
 
       await hre.network.provider.send('evm_setAutomine', [false])
 
-      let a = await staticAToken.collectAndUpdateRewards()
-      let b = await staticAToken.collectAndUpdateRewards()
+      const a = await staticAToken.collectAndUpdateRewards()
+      const b = await staticAToken.collectAndUpdateRewards()
 
       await hre.network.provider.send('evm_mine', [])
 
@@ -1794,7 +1785,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const _debugUserData = false
 
     for (let i = 0; i < 5; i++) {
-      let currentUser = users[i]
+      const currentUser = users[i]
       // Preparation
       await waitForTx(await weth.connect(currentUser).deposit({ value: amountToDeposit }))
       await waitForTx(
@@ -1815,8 +1806,8 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     await advanceTime(60 * 60)
     await staticAToken.collectAndUpdateRewards()
 
-    let staticATokenTotClaimableInitial = await staticAToken.getTotalClaimableRewards()
-    let usersDataInitial = await getUserData(users, _debugUserData, staticAToken, stkAave)
+    const staticATokenTotClaimableInitial = await staticAToken.getTotalClaimableRewards()
+    const usersDataInitial = await getUserData(users, _debugUserData, staticAToken, stkAave)
 
     await waitForTx(
       await staticAToken
@@ -1834,9 +1825,9 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
       await waitForTx(await staticAToken.connect(users[i]).claimRewardsToSelf(false))
     }
 
-    let staticATokenTotClaimableAfterTransferAndClaim =
+    const staticATokenTotClaimableAfterTransferAndClaim =
       await staticAToken.getTotalClaimableRewards()
-    let usersDataAfterTransferAndClaim = await getUserData(
+    const usersDataAfterTransferAndClaim = await getUserData(
       users,
       _debugUserData,
       staticAToken,
@@ -1845,8 +1836,8 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
 
     await waitForTx(await staticAToken.collectAndUpdateRewards())
 
-    let staticATokenTotClaimableFinal = await staticAToken.getTotalClaimableRewards()
-    let usersDataFinal = await getUserData(users, _debugUserData, staticAToken, stkAave)
+    const staticATokenTotClaimableFinal = await staticAToken.getTotalClaimableRewards()
+    const usersDataFinal = await getUserData(users, _debugUserData, staticAToken, stkAave)
 
     // Time for checks
     let pendingRewardsSumInitial = BigNumber.from(0)
@@ -1938,7 +1929,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const _debugUserData = false
 
     for (let i = 0; i < 5; i++) {
-      let currentUser = users[i]
+      const currentUser = users[i]
       // Preparation
       await waitForTx(await weth.connect(currentUser).deposit({ value: amountToDeposit }))
       await waitForTx(
@@ -1958,8 +1949,8 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     // Advance time to accrue significant rewards.
     await advanceTime(60 * 60)
 
-    let staticATokenTotClaimableInitial = await staticAToken.getTotalClaimableRewards()
-    let usersDataInitial = await getUserData(users, _debugUserData, staticAToken, stkAave)
+    const staticATokenTotClaimableInitial = await staticAToken.getTotalClaimableRewards()
+    const usersDataInitial = await getUserData(users, _debugUserData, staticAToken, stkAave)
 
     // User 0 transfer full balance of staticATokens to user 1. This will also transfer the rewards since last update as well.
     await waitForTx(
@@ -1978,13 +1969,13 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
       await waitForTx(await staticAToken.connect(users[i]).claimRewardsToSelf(false))
     }
 
-    let staticATokenTotClaimableAfterTransfer = await staticAToken.getTotalClaimableRewards()
-    let usersDataAfterTransfer = await getUserData(users, _debugUserData, staticAToken, stkAave)
+    const staticATokenTotClaimableAfterTransfer = await staticAToken.getTotalClaimableRewards()
+    const usersDataAfterTransfer = await getUserData(users, _debugUserData, staticAToken, stkAave)
 
     await waitForTx(await staticAToken.collectAndUpdateRewards())
 
-    let staticATokenTotClaimableFinal = await staticAToken.getTotalClaimableRewards()
-    let usersDataFinal = await getUserData(users, _debugUserData, staticAToken, stkAave)
+    const staticATokenTotClaimableFinal = await staticAToken.getTotalClaimableRewards()
+    const usersDataFinal = await getUserData(users, _debugUserData, staticAToken, stkAave)
 
     // Time for checks
     let pendingRewardsSumInitial = BigNumber.from(0)
@@ -2053,7 +2044,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const depositCount = users.length
 
     for (let i = 0; i < depositCount; i++) {
-      let currentUser = users[i % users.length]
+      const currentUser = users[i % users.length]
       // Preparation
       await waitForTx(await weth.connect(currentUser).deposit({ value: amountToDeposit }))
       await waitForTx(
@@ -2074,7 +2065,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     await advanceTime(60 * 60)
     await waitForTx(await staticAToken.collectAndUpdateRewards())
 
-    let pendingRewards: BigNumber[] = []
+    const pendingRewards: BigNumber[] = []
 
     for (let i = 0; i < users.length; i++) {
       const pendingReward = await staticAToken.getClaimableRewards(await users[i].getAddress())
@@ -2094,7 +2085,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const depositCount = users.length
 
     for (let i = 0; i < depositCount; i++) {
-      let currentUser = users[i % users.length]
+      const currentUser = users[i % users.length]
       // Preparation
       await waitForTx(await weth.connect(currentUser).deposit({ value: amountToDeposit }))
       await waitForTx(
@@ -2115,7 +2106,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     await advanceTime(60 * 60)
     await waitForTx(await staticAToken.collectAndUpdateRewards())
 
-    let pendingRewards: BigNumber[] = []
+    const pendingRewards: BigNumber[] = []
     let sum: BigNumber = BigNumber.from(0)
     const receiverAddress = await users[0].getAddress()
 
@@ -2138,7 +2129,7 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const depositCount = users.length
 
     for (let i = 0; i < depositCount; i++) {
-      let currentUser = users[i % users.length]
+      const currentUser = users[i % users.length]
       // Preparation
       await waitForTx(await weth.connect(currentUser).deposit({ value: amountToDeposit }))
       await waitForTx(
