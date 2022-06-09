@@ -1014,7 +1014,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
-  describe('Claim Rewards', () => {
+  describe.skip('Claim Rewards', () => {
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
