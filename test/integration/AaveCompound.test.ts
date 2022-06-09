@@ -346,7 +346,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
 
-        let calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
+        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
         expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
           compoundMock.address,
           calldata,
@@ -423,7 +423,9 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await atkInf.aTokenCollateral.price()).to.be.closeTo(fp('1'), fp('0.095'))
 
-        let calldata = atkInf.stataToken.interface.encodeFunctionData('claimRewardsToSelf', [true])
+        const calldata = atkInf.stataToken.interface.encodeFunctionData('claimRewardsToSelf', [
+          true,
+        ])
         expect(await atkInf.aTokenCollateral.getClaimCalldata()).to.eql([
           atkInf.stataToken.address,
           calldata,
@@ -528,7 +530,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Refresh should not revert but set default
-      let expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
       await expect(nonpriceAaveCollateral.refresh())
         .to.emit(nonpriceAaveCollateral, 'DefaultStatusChanged')
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
@@ -618,7 +620,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       ).to.be.revertedWith('PriceIsZero()')
 
       // Refresh should not revert but set default
-      let expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
+      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
       await expect(nonpriceAtokenCollateral.refresh())
         .to.emit(nonpriceAtokenCollateral, 'DefaultStatusChanged')
         .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
@@ -846,7 +848,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     it('Should handle rates correctly on Issue/Redeem', async function () {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-      const initialBalAToken = initialBal.mul(9595).div(10000)
 
       // Provide approvals for issuances
       await dai.connect(addr1).approve(rToken.address, issueAmount)

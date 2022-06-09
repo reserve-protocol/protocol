@@ -7,7 +7,7 @@ import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
+import { expectTrade, getAuctionId } from '../utils/trades'
 import {
   AaveOracleMock,
   EasyAuction,
