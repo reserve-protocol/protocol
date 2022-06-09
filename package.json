@@ -19,7 +19,7 @@
         "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
         "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts --parallel",
         "test:plugins": "hardhat test test/libraries/*.test.ts test/plugins/*.test.ts --parallel",
-        "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/*.test.ts --parallel",
+        "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/*.test.ts",
         "test:coverage": "hardhat coverage --temp artifacts",
         "test:serial": "hardhat test",
         "test:recompile": "hardhat compile --force && mocha --require hardhat/register --recursive --exit",
