@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../../common/constants'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
@@ -13,8 +14,10 @@ import {
   TestIAssetRegistry,
   TestIBackingManager,
   TestIFurnace,
+  TestIStRSR,
   TestIRToken,
 } from '../../typechain'
+import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
 
@@ -47,6 +50,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let config: IConfig
 
   // Contracts to retrieve after deploy
+  let stRSR: TestIStRSR
+  let rsr: ERC20Mock
   let furnace: TestIFurnace
   let rToken: TestIRToken
   let assetRegistry: TestIAssetRegistry
@@ -67,6 +72,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Deploy fixture
     ;({
+      rsr,
+      stRSR,
       compoundMock,
       aaveMock,
       aaveOracleInternal,
@@ -116,6 +123,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     await backupToken.connect(owner).mint(addr1.address, initialBal)
     await token0.connect(owner).mint(addr2.address, initialBal)
     await backupToken.connect(owner).mint(addr2.address, initialBal)
+
+    // Stake RSR
+    await rsr.connect(owner).mint(addr1.address, initialBal)
+    await rsr.connect(addr1).approve(stRSR.address, initialBal)
+    await stRSR.connect(addr1).stake(initialBal)
   })
 
   it('should act honestly without modification', async () => {
@@ -207,12 +219,19 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and switch basket', async () => {
+    it('should be able to unregister and use RSR to recapitalize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([backupToken.address], [fp('1')], false)
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+
+      // Should be trading RSR for backup token
+      const trade = await getTrade(backingManager, rsr.address)
+      expect(await trade.status()).to.equal(1) // OPEN state
+      expect(await trade.sell()).to.equal(rsr.address)
+      expect(await trade.buy()).to.equal(backupToken.address)
     })
   })
 
@@ -298,12 +317,19 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and switch basket', async () => {
+    it('should be able to unregister and use RSR to recapitalize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([backupToken.address], [fp('1')], false)
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+
+      // Should be trading RSR for backup token
+      const trade = await getTrade(backingManager, rsr.address)
+      expect(await trade.status()).to.equal(1) // OPEN state
+      expect(await trade.sell()).to.equal(rsr.address)
+      expect(await trade.buy()).to.equal(backupToken.address)
     })
   })
 })
