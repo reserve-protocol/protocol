@@ -1,40 +1,27 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../../common/constants'
-import { expectEvents } from '../../common/events'
-import { bn, fp, pow10, toBNDecimals } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   AaveOracleMock,
   BadERC20,
-  CompoundOracleMock,
   ComptrollerMock,
-  CTokenMock,
   ERC20Mock,
-  Facade,
-  GnosisMock,
   IBasketHandler,
-  StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIFurnace,
   TestIRToken,
-  TestIStRSR,
-  USDCMock,
 } from '../../typechain'
-import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from '../fixtures'
-import snapshotGasCost from '../utils/snapshotGasCost'
+import { advanceTime } from '../utils/time'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
-
-const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -45,15 +32,9 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let collateral: Collateral[]
 
   // Non-backing assets
-  let rsr: ERC20Mock
   let compoundMock: ComptrollerMock
-  let compoundOracleInternal: CompoundOracleMock
-  let aaveToken: ERC20Mock
   let aaveMock: AaveLendingPoolMock
   let aaveOracleInternal: AaveOracleMock
-
-  // Trading
-  let gnosis: GnosisMock
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -61,8 +42,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let backupToken: ERC20Mock
   let collateral0: Collateral
   let backupCollateral: Collateral
-  let basket: Collateral[]
-  let basketsNeededAmts: BigNumber[]
 
   // Config values
   let config: IConfig
@@ -70,8 +49,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let stRSR: TestIStRSR
-  let facade: Facade
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -90,21 +67,13 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Deploy fixture
     ;({
-      rsr,
-      aaveToken,
       compoundMock,
       aaveMock,
-      compoundOracleInternal,
       aaveOracleInternal,
       erc20s,
       collateral,
-      basket,
-      basketsNeededAmts,
       config,
       rToken,
-      stRSR,
-      gnosis,
-      facade,
       furnace,
       assetRegistry,
       backingManager,
