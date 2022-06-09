@@ -206,6 +206,14 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).transfer(furnace.address, issueAmt)
       await furnace.melt()
     })
+
+    it('should be able to unregister and switch basket', async () => {
+      await assetRegistry.connect(owner).unregister(collateral0.address)
+      expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([backupToken.address], [fp('1')], false)
+    })
   })
 
   describe('with censorship', function () {
@@ -288,6 +296,14 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     it('should still melt', async () => {
       await rToken.connect(addr1).transfer(furnace.address, issueAmt)
       await furnace.melt()
+    })
+
+    it('should be able to unregister and switch basket', async () => {
+      await assetRegistry.connect(owner).unregister(collateral0.address)
+      expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
+      await expect(basketHandler.refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs([backupToken.address], [fp('1')], false)
     })
   })
 })
