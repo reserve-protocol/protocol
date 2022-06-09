@@ -5,5 +5,8 @@ test/
 mocks/
 fuzz/
 
+# Ignore the style of external contracts
+aave/
+
 # The Fixed library defines a custom type and crashes the solhint parser
 contracts/libraries/Fixed.sol

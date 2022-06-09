@@ -2,11 +2,14 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
+
+import "hardhat/console.sol";
 
 enum TradeStatus {
     NOT_STARTED, // before init()
@@ -68,7 +71,8 @@ contract GnosisTrade is ITrade {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-
+        require(sell.balanceOf(address(this)) <= type(uint96).max, "order too large");
+        require(req.minBuyAmount <= type(uint96).max, "order too large");
         initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
@@ -86,8 +90,8 @@ contract GnosisTrade is ITrade {
             endTime,
             uint96(req.sellAmount),
             uint96(req.minBuyAmount),
-            minBidSize,
-            req.minBuyAmount, // TODO to double-check this usage of gnosis later
+            Math.max(1, minBidSize),
+            0,
             false,
             address(0),
             new bytes(0)
@@ -122,10 +126,14 @@ contract GnosisTrade is ITrade {
         if (sellBal < initBal) {
             soldAmt = initBal - sellBal;
 
+            // Gnosis rounds defensively, so it's possible to get 1 fewer attoTokens returned
+            uint256 adjustedSoldAmt = Math.max(soldAmt - 1, 1);
+
             // {buyTok/sellTok}
             uint192 clearingPrice = shiftl_toFix(boughtAmt, -int8(buy.decimals())).div(
-                shiftl_toFix(soldAmt, -int8(sell.decimals()))
+                shiftl_toFix(adjustedSoldAmt, -int8(sell.decimals()))
             );
+
             if (clearingPrice.lt(worstCasePrice)) {
                 broker.reportViolation();
             }
@@ -155,5 +163,14 @@ contract GnosisTrade is ITrade {
     function atStageFinished() private view returns (bool) {
         GnosisAuctionData memory data = gnosis.auctionData(auctionId);
         return data.clearingPriceOrder != bytes32(0);
+    }
+
+    function encodeOrder(
+        uint64 userId,
+        uint96 buyAmount,
+        uint96 sellAmount_
+    ) internal pure returns (bytes32) {
+        return
+            bytes32((uint256(userId) << 192) + (uint256(buyAmount) << 96) + uint256(sellAmount_));
     }
 }

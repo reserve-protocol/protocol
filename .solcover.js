@@ -12,6 +12,7 @@ module.exports = {
     'p2/test',
     'p2/mocks',
     'plugins/mocks',
+    'plugins/aave',
     'fuzz',
   ],
 }

@@ -37,4 +37,48 @@ jobs:
         run: yarn lint
 
       - name: Run unit tests
-        run: yarn test
+        run: yarn test:unit
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out github repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+
+      - name: Cache hardhat network fork
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-hardhat-network-fork
+        with:
+          path: cache/hardhat-network-fork
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: "16.x"
+
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
+
+      - name: Compile
+        run: yarn compile
+
+      - name: Run integration tests
+        run: yarn test:integration
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+          

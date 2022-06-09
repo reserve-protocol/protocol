@@ -196,8 +196,6 @@ library TradingLibP1 {
     /// @return req The prepared trade request
     function rsrTrade() external returns (bool doTrade, TradeRequest memory req) {
         IERC20 rsr_ = rsr();
-        require(assetRegistry().isRegistered(rsr_), "rsr unregistered");
-
         IStRSR stRSR_ = stRSR();
         IAsset rsrAsset = assetRegistry().toAsset(rsr_);
 
