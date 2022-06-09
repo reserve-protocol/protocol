@@ -76,12 +76,12 @@ The `atto` prefix [denotes 1e18][atto].
 
 Otherwise, the unit is assumed to be whole. The meaning of a "whole" token changes depending on how many decimals that token has.
 
-- {qTok} = token quantum
-- {tok} = whole token = 1e6{qTok} (USDC) = 1e18{qTok} (DAI)
-- {ref} = whole reference token (USDC is cUSDC's reference token)
-- {target} = whole target unit (USD is cUSDC's target unit)
-- {BU} = whole basket unit
-- {UoA} = whole unit of the Unit of Account (which is probably USD)
+- `{qTok}` = token quantum
+- `{tok}` = whole token = 1e6{qTok} (USDC) = 1e18{qTok} (DAI)
+- `{ref}` = whole reference token (USDC is cUSDC's reference token)
+- `{target}` = whole target unit (USD is cUSDC's target unit)
+- `{BU}` = whole basket unit
+- `{UoA}` = whole unit of the Unit of Account (which is probably USD)
 
 Thoroughout our code, we use [dimensional analysis][] to guard against mistakes of reasoning, similar to type checking. (Except we don't have a type system that will actually do the static checking for us, so we have to be careful and verbose instead.)
 

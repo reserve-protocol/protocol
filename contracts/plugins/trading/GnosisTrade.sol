@@ -37,8 +37,7 @@ contract GnosisTrade is ITrade {
     address public origin;
     IERC20Metadata public sell;
     IERC20Metadata public buy;
-    uint96 public sellAmount; // {qTok}
-    uint96 public minBuyAmount; // {qTok}
+    uint256 public initBal; // {qTok}
     uint32 public endTime;
     uint192 public worstCasePrice; // {buyTok/sellTok}
 
@@ -74,24 +73,22 @@ contract GnosisTrade is ITrade {
         buy = req.buy.erc20();
         require(sell.balanceOf(address(this)) <= type(uint96).max, "order too large");
         require(req.minBuyAmount <= type(uint96).max, "order too large");
-        sellAmount = uint96(sell.balanceOf(address(this)));
-        minBuyAmount = uint96(req.minBuyAmount);
+        initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
-            shiftl_toFix(sellAmount, -int8(sell.decimals()))
+            shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
         );
 
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
-
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), req.sellAmount);
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
             endTime,
             endTime,
-            uint96(sellAmount),
+            uint96(req.sellAmount),
             uint96(req.minBuyAmount),
             Math.max(1, minBidSize),
             0,
@@ -126,8 +123,8 @@ contract GnosisTrade is ITrade {
         if (boughtAmt > 0) IERC20Upgradeable(address(buy)).safeTransfer(origin, boughtAmt);
 
         // Check clearing prices
-        if (sellBal < sellAmount) {
-            soldAmt = sellAmount - sellBal;
+        if (sellBal < initBal) {
+            soldAmt = initBal - sellBal;
 
             // Gnosis rounds defensively, so it's possible to get 1 fewer attoTokens returned
             uint256 adjustedSoldAmt = Math.max(soldAmt - 1, 1);
