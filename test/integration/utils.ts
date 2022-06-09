@@ -1,14 +1,13 @@
 import hre from 'hardhat'
-import { ContractTransaction } from 'ethers';
-import { signTypedData_v4 } from 'eth-sig-util';
-import { fromRpcSig, ECDSASignature } from 'ethereumjs-util';
+import { ContractTransaction } from 'ethers'
+import { signTypedData_v4 } from 'eth-sig-util'
+import { fromRpcSig, ECDSASignature } from 'ethereumjs-util'
 
+export const evmSnapshot = async () => await hre.network.provider.send('evm_snapshot', [])
 
-export const evmSnapshot = async () => await hre.network.provider.send('evm_snapshot', []);
+export const evmRevert = async (id: string) => hre.network.provider.send('evm_revert', [id])
 
-export const evmRevert = async (id: string) => hre.network.provider.send('evm_revert', [id]);
-
-export const waitForTx = async (tx: ContractTransaction) => await tx.wait(1);
+export const waitForTx = async (tx: ContractTransaction) => await tx.wait(1)
 
 export const buildPermitParams = (
   chainId: number,
@@ -44,7 +43,7 @@ export const buildPermitParams = (
     nonce,
     deadline,
   },
-});
+})
 
 export const buildMetaDepositParams = (
   chainId: number,
@@ -86,7 +85,7 @@ export const buildMetaDepositParams = (
     nonce,
     deadline,
   },
-});
+})
 
 export const buildMetaWithdrawParams = (
   chainId: number,
@@ -128,7 +127,7 @@ export const buildMetaWithdrawParams = (
     nonce,
     deadline,
   },
-});
+})
 
 export const getSignatureFromTypedData = (
   privateKey: string,
@@ -136,6 +135,6 @@ export const getSignatureFromTypedData = (
 ): ECDSASignature => {
   const signature = signTypedData_v4(Buffer.from(privateKey.substring(2, 66), 'hex'), {
     data: typedData,
-  });
-  return fromRpcSig(signature);
-};
+  })
+  return fromRpcSig(signature)
+}
