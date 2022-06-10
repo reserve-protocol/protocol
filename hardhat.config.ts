@@ -66,7 +66,11 @@ const config: any = {
       },
       {
         version: '0.6.12',
-        settingis: { optimizer: { enabled: false } },
+        settings: { optimizer: { enabled: false } },
+      },
+      {
+        version: '0.4.24',
+        settings: { optimizer: { enabled: false } },
       },
     ],
     overrides: {
