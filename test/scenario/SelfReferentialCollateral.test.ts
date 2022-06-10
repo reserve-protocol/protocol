@@ -5,8 +5,6 @@ import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { CollateralStatus } from '../../common/constants'
 import {
-  AaveLendingPoolMock,
-  AaveOracleMock,
   CTokenMock,
   ComptrollerMock,
   CompoundSelfReferentialCollateral,
@@ -15,18 +13,13 @@ import {
   IBasketHandler,
   TestIAssetRegistry,
   TestIBackingManager,
-  TestIFurnace,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
   WETH9,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
-
-const DEFAULT_THRESHOLD = fp('0.05') // 5%
-const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -56,7 +49,6 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rsr: ERC20Mock
-  let furnace: TestIFurnace
   let rToken: TestIRToken
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
@@ -89,7 +81,6 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
       collateral,
       config,
       rToken,
-      furnace,
       assetRegistry,
       backingManager,
       basketHandler,
