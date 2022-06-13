@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
