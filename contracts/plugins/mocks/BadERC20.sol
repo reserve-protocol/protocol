@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 contract BadERC20 is ERC20Mock {
+    using Address for address;
     using FixLib for uint192;
     uint192 public transferFee; // {1}
 
@@ -27,7 +29,10 @@ contract BadERC20 is ERC20Mock {
     }
 
     function decimals() public view override returns (uint8) {
-        if (revertDecimals) revert("No Decimals");
+        bytes memory data = abi.encodePacked((bytes4(keccak256("absentDecimalsFn()"))));
+
+        // Make an external staticcall to this address, for a function that does not exist
+        if (revertDecimals) address(this).functionStaticCall(data, "No Decimals");
         return 18;
     }
 
