@@ -204,9 +204,37 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
     it('should not default when USD price falls', async () => {
       await compoundOracleInternal.setPrice('ETH', bn('2000e6')) // halving of price
       await assetRegistry.refresh()
+
+      // Should be fully capitalized
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+    })
+
+    it('should be able to deregister', async () => {
+      await assetRegistry.connect(owner).unregister(wethCollateral.address)
+      await basketHandler.refreshBasket()
+
+      // Should be in disabled state, as there are no backups for WETH
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('should be able to switch away from WETH', async () => {
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.refreshBasket()
+
+      // Should be fully capitalized
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+
+      // Should view WETH as surplus
+      await expect(backingManager.manageTokens([token0.address, weth.address])).to.not.emit(
+        backingManager,
+        'TradeStarted'
+      )
+      await expect(rsrTrader.manageToken(weth.address)).to.emit(rsrTrader, 'TradeStarted')
+      await expect(rTokenTrader.manageToken(weth.address)).to.emit(rTokenTrader, 'TradeStarted')
     })
   })
 })
