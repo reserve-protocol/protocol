@@ -31,10 +31,10 @@ abstract contract CompoundOracleMixin is Initializable {
     }
 
     /// @return {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20) public view virtual returns (uint192) {
+    function consultOracle(string memory symbol) internal view virtual returns (uint192) {
         // Compound stores prices with 6 decimals of precision
 
-        uint256 p = comptroller.oracle().price(erc20.symbol());
+        uint256 p = comptroller.oracle().price(symbol);
         if (p == 0) {
             revert PriceIsZero();
         }
