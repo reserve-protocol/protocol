@@ -200,5 +200,13 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal)
       expect(await weth.balanceOf(addr1.address)).to.equal(ethBal)
     })
+
+    it('should not default when USD price falls', async () => {
+      await compoundOracleInternal.setPrice('ETH', bn('2000e6')) // halving of price
+      await assetRegistry.refresh()
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
+    })
   })
 })
