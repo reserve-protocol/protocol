@@ -8,76 +8,41 @@ on:
 
 jobs:
   unit-tests:
-    name: Unit Tests
+    name: 'Unit Tests'
     runs-on: ubuntu-latest
-
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-node@v1
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: 16.x
-
-      - id: yarn-cache
-        run: echo "::set-output name=dir::$(yarn cache dir)"
-
-      - uses: actions/cache@v1
-        with:
-          path: ${{ steps.yarn-cache.outputs.dir }}
-          key: yarn-${{ hashFiles('**/yarn.lock') }}
-          restore-keys: |
-            yarn-
-
-      - name: Install dependencies
-        run: yarn setup
-
-      - name: Compile
-        run: yarn compile
-
-      - name: Lint
-        run: yarn lint
-
-      - name: Run unit tests
-        run: yarn test:unit
+          cache: 'yarn'
+      - run: yarn setup
+      - run: yarn compile
+      - run: yarn lint
+      - run: yarn test:unit
 
   integration-tests:
-    name: Integration Tests
+    name: 'Integration Tests'
     runs-on: ubuntu-latest
-
     steps:
-      - name: Check out github repository
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           fetch-depth: 1
-
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
+      - uses: actions/setup-node@v3
         with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
-      - name: Cache hardhat network fork
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-hardhat-network-fork
+          node-version: 16.x
+          cache: 'yarn'
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
         with:
           path: cache/hardhat-network-fork
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-
-      - name: Install node
-        uses: actions/setup-node@v1
-        with:
-          node-version: "16.x"
-
-      - name: Install dependencies
-        run: yarn setup
-
-      - name: Compile
-        run: yarn compile
-
-      - name: Run integration tests
-        run: yarn test:integration
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn setup
+      - run: yarn compile
+      - run: yarn test:integration
         env:
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
