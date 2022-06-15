@@ -433,10 +433,8 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         'ATokenFiatCollateral',
         await assetRegistry.toColl(backing[0])
       )
-      for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {  
-        const erc20 = await ethers.getContractAt(
-            'CTokenMock',backing[i]
-          )
+      for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
+        const erc20 = await ethers.getContractAt('CTokenMock', backing[i])
         // Decrease rate to cause default in Ctoken
         await erc20.setExchangeRate(fp('0.8'))
 
@@ -454,7 +452,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Advance time post delayUntilDefault
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
 
-       // Ensure valid basket
+      // Ensure valid basket
       if (process.env.REPORT_GAS) {
         await snapshotGasCost(basketHandler.refreshBasket())
       } else {
@@ -468,7 +466,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
-      const firstDefaultedToken = await ethers.getContractAt('ERC20Mock', backing[maxBasketSize - tokensToDefault])
+      const firstDefaultedToken = await ethers.getContractAt(
+        'ERC20Mock',
+        backing[maxBasketSize - tokensToDefault]
+      )
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
 
       if (process.env.REPORT_GAS) {
@@ -518,7 +519,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       }
 
       // Check balances after
-      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(Math.ceil(maxBasketSize / 2)))
+      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(
+        rewardAmount.mul(Math.ceil(maxBasketSize / 2))
+      )
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(20))
     })
   })
