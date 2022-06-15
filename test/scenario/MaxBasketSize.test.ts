@@ -491,7 +491,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     })
 
     it('Should claim rewards correctly', async () => {
-      // COMP Rewards - Set only oncr
+      // COMP Rewards - Set only once
       await compoundMock.setRewards(backingManager.address, rewardAmount.mul(20))
 
       // Check balances before
