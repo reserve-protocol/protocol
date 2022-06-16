@@ -3,20 +3,40 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/plugins/assets/CTokenFiatCollateral.sol";
+import "contracts/plugins/assets/abstract/SelfReferentialCollateral.sol";
+
+// ==== External Interfaces ====
+// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
+interface ICToken {
+    /// @dev From Compound Docs:
+    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
+    function exchangeRateCurrent() external returns (uint256);
+
+    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
+    function exchangeRateStored() external view returns (uint256);
+}
 
 /**
  * @title CTokenSelfReferentialCollateral
  * @notice Collateral plugin for a cToken of a self-referential asset. For example:
- *   - cWETH
+ *   - cETH
  *   - cRSR
  *   - ...
  */
-contract CTokenSelfReferentialCollateral is CompoundOracleMixin, Collateral {
+contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferentialCollateral {
     using FixLib for uint192;
-    using SafeERC20 for IERC20Metadata;
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+
+    // Default Status:
+    // whenDefault == NEVER: no risk of default (initial value)
+    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
+    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
+    // whenDefault <= block.timestamp: default has already happened (permanently)
+    uint256 internal constant NEVER = type(uint256).max;
+    uint256 public whenDefault = NEVER;
+
+    IERC20Metadata public referenceERC20;
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
@@ -26,30 +46,22 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, Collateral {
     constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
-        uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
         IERC20 rewardERC20_,
         string memory targetName_
     )
-        Collateral(
-            erc20_,
-            maxTradeVolume_,
-            defaultThreshold_,
-            delayUntilDefault_,
-            referenceERC20_,
-            bytes32(bytes(targetName_))
-        )
+        SelfReferentialCollateral(erc20_, maxTradeVolume_, bytes32(bytes(targetName_)))
         CompoundOracleMixin(comptroller_)
     {
+        referenceERC20 = referenceERC20_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
         oracleLookupSymbol = targetName_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (uint192) {
+    function price() public view returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return consultOracle(oracleLookupSymbol).mul(refPerTok());
     }
@@ -73,6 +85,17 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, Collateral {
         prevReferencePrice = referencePrice;
 
         // No interactions beyond the initial refresher
+    }
+
+    /// @return The collateral's status
+    function status() public view override returns (CollateralStatus) {
+        if (whenDefault == NEVER) {
+            return CollateralStatus.SOUND;
+        } else if (whenDefault <= block.timestamp) {
+            return CollateralStatus.DISABLED;
+        } else {
+            return CollateralStatus.IFFY;
+        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
