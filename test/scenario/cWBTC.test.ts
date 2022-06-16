@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
+import { advanceTime } from '../utils/time'
 import { CollateralStatus } from '../../common/constants'
 import {
   CTokenMock,
@@ -98,7 +99,7 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
     token0 = <CTokenMock>erc20s[4] // cDai
     collateral0 = collateral[4]
 
-    wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('wBTC Token', 'wBTC')
+    wbtc = await (await ethers.getContractFactory('ERC20Mock')).deploy('WBTC Token', 'WBTC')
     wBTCCollateral = await (
       await ethers.getContractFactory('CompoundSelfReferentialCollateral')
     ).deploy(wbtc.address, config.maxTradeVolume, compoundMock.address, 'BTC')
@@ -127,6 +128,7 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
 
     // Basket configuration
     await compoundOracleInternal.setPrice('BTC', bn('20000e6')) // $20k
+    await compoundOracleInternal.setPrice('WBTC', bn('20000e6')) // $20k
     await assetRegistry.connect(owner).register(collateral0.address)
     await assetRegistry.connect(owner).register(wBTCCollateral.address)
     await assetRegistry.connect(owner).register(cWBTCCollateral.address)
@@ -261,7 +263,8 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
     })
 
     it('should not default when USD price falls', async () => {
-      await compoundOracleInternal.setPrice('BTC', bn('2000e6')) // halving of price
+      await compoundOracleInternal.setPrice('BTC', bn('10000e6')) // halving
+      await compoundOracleInternal.setPrice('WBTC', bn('10000e6')) // halving
       await assetRegistry.refresh()
 
       // Should be fully capitalized
@@ -288,6 +291,40 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
       const [tokens] = await basketHandler.quote(fp('1'), 2)
       expect(tokens[0]).to.equal(token0.address)
       expect(tokens[1]).to.equal(wbtc.address)
+
+      // Should not be fully capitalized
+      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(0)
+
+      // Should view cWBTC as surplus
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+
+      // BackingManager should be selling cWBTC and buying cWBTC
+      const trade = await getTrade(backingManager, cWBTC.address)
+      expect(await trade.sell()).to.equal(cWBTC.address)
+      expect(await trade.buy()).to.equal(wbtc.address)
+    })
+
+    it('should fallback from cWBTC to WBTC after slow default', async () => {
+      // Depeg WBTC from BTC
+      await cWBTCCollateral.refresh()
+      await compoundOracleInternal.setPrice('WBTC', bn('10000e6')) // $10k -- halving
+      await cWBTCCollateral.refresh()
+      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Advance time and complete default
+      await advanceTime(DELAY_UNTIL_DEFAULT.toString())
+      await cWBTCCollateral.refresh()
+      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      await basketHandler.refreshBasket()
+
+      // Should swap WBTC in for cWBTC
+      const [tokens] = await basketHandler.quote(fp('1'), 2)
+      expect(tokens[0]).to.equal(token0.address)
+      expect(tokens[1]).to.equal(wbtc.address)
+      expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
       // Should not be fully capitalized
       expect(await basketHandler.fullyCapitalized()).to.equal(false)
