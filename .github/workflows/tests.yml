@@ -16,7 +16,7 @@ jobs:
         with:
           node-version: 16.x
           cache: 'yarn'
-      - run: yarn setup
+      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
       - run: yarn test:unit
@@ -40,7 +40,7 @@ jobs:
           restore-keys: |
             hardhat-network-fork-${{ runner.os }}-
             hardhat-network-fork-
-      - run: yarn setup
+      - run: yarn install --immutable
       - run: yarn compile
       - run: yarn test:integration
         env:
