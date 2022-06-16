@@ -69,7 +69,7 @@ contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
             whenDefault = block.timestamp;
         } else {
             // Check for soft default of underlying reference token
-            uint192 p = consultOracle(oracleLookupSymbol);
+            uint192 p = consultOracle(referenceERC20.symbol());
 
             // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
