@@ -42,13 +42,14 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();
         uint256 p = aaveOracle.getAssetPrice(address(erc20_));
         uint256 ethPrice = comptroller.oracle().price("ETH"); // {microUoA/ETH}
+
         uint256 ethNorm = aaveOracle.getAssetPrice(aaveOracle.WETH()); // {qETH/ETH}
 
         // D18{UoA/erc20} = {qETH/erc20} * {microUoA/ETH} / {qETH/ETH} / {microUoA/UoA}
         price_ = uint192(mulDiv256(p, FIX_ONE * ethPrice, ethNorm, ROUND) / 1e6);
 
         if (price_ == 0) {
-            revert PriceIsZero();
+            revert PriceOutsideRange();
         }
     }
 }

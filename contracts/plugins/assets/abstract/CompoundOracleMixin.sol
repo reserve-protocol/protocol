@@ -36,7 +36,7 @@ abstract contract CompoundOracleMixin is Initializable {
 
         uint256 p = comptroller.oracle().price(symbol);
         if (p == 0) {
-            revert PriceIsZero();
+            revert PriceOutsideRange();
         }
 
         // D18{UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}
