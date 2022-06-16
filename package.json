@@ -17,7 +17,7 @@
         "test:fast": "bash tools/fast-test.sh",
         "test:exhaustive": "SLOW=true yarn test:p0 && yarn test:p1",
         "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
-        "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts --parallel",
+        "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts test/scenario.test.ts --parallel",
         "test:plugins": "hardhat test test/libraries/*.test.ts test/plugins/*.test.ts --parallel",
         "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/*.test.ts",
         "test:coverage": "hardhat coverage --temp artifacts",
