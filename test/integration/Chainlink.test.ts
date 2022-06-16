@@ -7,7 +7,15 @@ import { defaultFixture } from './fixtures'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { fp } from '../../common/numbers'
 
-import { STAKEDAAVE_ADDRESS, COMP_ADDRESS, AAVE_ADDRESS, RSR_ADDRESS, RSR_USD_PRICE_FEED, AAVE_USD_PRICE_FEED, COMP_USD_PRICE_FEED, } from './mainnet'
+import {
+  STAKEDAAVE_ADDRESS,
+  COMP_ADDRESS,
+  AAVE_ADDRESS,
+  RSR_ADDRESS,
+  RSR_USD_PRICE_FEED,
+  AAVE_USD_PRICE_FEED,
+  COMP_USD_PRICE_FEED,
+} from './mainnet'
 
 import { ChainlinkPricedAsset, ERC20Mock, IERC20 } from '../../typechain'
 
@@ -26,7 +34,7 @@ describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, fun
   let aaveToken: ERC20Mock
   let compCLAsset: ChainlinkPricedAsset
   let aaveCLAsset: ChainlinkPricedAsset
-  
+
   // Contracts to retrieve after deploy
   let config: IConfig
 
@@ -55,7 +63,6 @@ describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, fun
         )
       )
 
-      
       compCLAsset = <ChainlinkPricedAsset>(
         await ChainlinkAssetFactory.deploy(
           compToken.address,
@@ -71,8 +78,6 @@ describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, fun
           AAVE_USD_PRICE_FEED
         )
       )
-
-
     })
 
     it('Should setup assets correctly', async () => {

@@ -12,7 +12,6 @@ abstract contract ChainlinkOracleMixin {
     }
 
     function consultOracle() public view returns (uint192) {
-
         (
             uint80 roundId,
             int256 price, /*uint startedAt*/
@@ -32,7 +31,7 @@ abstract contract ChainlinkOracleMixin {
 
         // Scale price to 18 decimals
         uint256 scaledPrice = uint256(scalePrice(price, priceFeed.decimals(), 18));
-        
+
         if (scaledPrice > type(uint192).max) {
             revert PriceOutsideRange();
         }
