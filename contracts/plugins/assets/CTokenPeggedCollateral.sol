@@ -20,6 +20,8 @@ contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
 
+    string public oracleLookupSymbol;
+
     constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
@@ -42,12 +44,13 @@ contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
     {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
+        oracleLookupSymbol = targetName_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(referenceERC20.symbol()).mul(refPerTok());
+        return consultOracle(oracleLookupSymbol).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -64,10 +67,24 @@ contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
-            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        } else {
+            // Check for soft default of underlying reference token
+            uint192 p = consultOracle(oracleLookupSymbol);
+
+            // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
+            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+
+            // If the price is below the default-threshold price, default eventually
+            if (p < peg - delta || p > peg + delta) {
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            } else whenDefault = NEVER;
         }
         prevReferencePrice = referencePrice;
 
+        if (whenDefault != oldWhenDefault) {
+            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        }
         // No interactions beyond the initial refresher
     }
 
@@ -80,7 +97,7 @@ contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return consultOracle(referenceERC20.symbol());
+        return consultOracle(oracleLookupSymbol);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
