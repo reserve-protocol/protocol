@@ -64,7 +64,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let wallet: Wallet
 
   let initialBal: BigNumber
-  let ethBal: BigNumber
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
