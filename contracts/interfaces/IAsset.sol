@@ -6,6 +6,7 @@ import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
 error PriceIsZero();
+error PriceOutsideRange();
 error UnknownError(bytes);
 
 /**
