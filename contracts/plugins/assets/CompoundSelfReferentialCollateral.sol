@@ -27,7 +27,7 @@ contract CompoundSelfReferentialCollateral is SelfReferentialCollateral {
     function price() public view virtual override returns (uint192) {
         uint256 p = comptroller.oracle().price(oracleLookupSymbol);
         if (p == 0) {
-            revert PriceIsZero();
+            revert PriceOutsideRange();
         }
 
         // D18{UoA/erc20} = {microUoA/erc20} / {microUoA/UoA}

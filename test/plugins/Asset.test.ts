@@ -174,9 +174,9 @@ describe('Assets contracts #fast', () => {
       await aaveOracleInternal.setPrice(rsr.address, bn(0))
 
       // Check new prices
-      await expect(rsrAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(compAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(aaveAsset.price()).to.be.revertedWith('PriceIsZero()')
+      await expect(rsrAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(compAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
     })
   })
 })

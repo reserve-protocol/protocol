@@ -89,7 +89,7 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
                 // This indicates a problem in the price function!
                 assert(false); // To confirm: there is no way to maintain the error code here
             } catch (bytes memory lowLevelData) {
-                if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
+                if (bytes4(lowLevelData) == bytes4(keccak256("PriceOutsideRange()"))) {
                     // This means the oracle has broken on us and we should default immediately
                     whenDefault = block.timestamp;
                 } else revert UnknownError(lowLevelData);
