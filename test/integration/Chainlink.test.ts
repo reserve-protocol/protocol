@@ -6,6 +6,7 @@ import { IConfig, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
+import { getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 
 import {
   DAI_ADDRESS,
@@ -237,6 +238,48 @@ describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, fun
         expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
       }
+    })
+
+    it('Should handle invalid Price - Assets', async () => {
+      const nonPriceDataFeed = '0x51597f405303C4377E36123cBc172b13269EA163'
+
+      // Asset - Chainlink
+      const nonpriceChainlinkAsset: ChainlinkPricedAsset = <ChainlinkPricedAsset>(
+        await (
+          await ethers.getContractFactory('ChainlinkPricedAsset')
+        ).deploy(usdc.address, config.maxTradeVolume, nonPriceDataFeed)
+      )
+
+      // Chainlink - Asset reverts
+      await expect(nonpriceChainlinkAsset.price()).to.be.reverted
+      await expect(nonpriceChainlinkAsset.consultOracle()).to.be.reverted
+    })
+
+    it('Should handle invalid Price - Collaterals - Fiat', async () => {
+      const nonPriceDataFeed = '0x51597f405303C4377E36123cBc172b13269EA163'
+
+      // Fiat collateral - Chainlink
+      const nonpriceChainlinkCollateral: ChainlinkPricedFiatCollateral = <
+        ChainlinkPricedFiatCollateral
+      >await (
+        await ethers.getContractFactory('ChainlinkPricedFiatCollateral')
+      ).deploy(
+        usdc.address,
+        config.maxTradeVolume,
+        DEFAULT_THRESHOLD,
+        DELAY_UNTIL_DEFAULT,
+        nonPriceDataFeed
+      )
+
+      // Set next block timestamp - for deterministic result
+      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+
+      // Chainlink - Collateral reverts
+      await expect(nonpriceChainlinkCollateral.price()).to.be.reverted
+      await expect(nonpriceChainlinkCollateral.consultOracle()).to.be.reverted
+
+      // Refresh reverts (does not handle in the same way as Aave)
+      await expect(nonpriceChainlinkCollateral.refresh()).to.be.reverted
     })
   })
 })
