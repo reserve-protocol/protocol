@@ -37,7 +37,7 @@ abstract contract AaveOracleMixin is CompoundOracleMixin {
     }
 
     /// @return price_ {UoA/erc20}
-    function consultOracle(IERC20Metadata erc20_) public view override returns (uint192 price_) {
+    function consultOracle(address erc20_) internal view virtual returns (uint192 price_) {
         // Aave keeps their prices in terms of ETH
         IAaveOracle aaveOracle = aaveLendingPool.getAddressesProvider().getPriceOracle();
         uint256 p = aaveOracle.getAssetPrice(address(erc20_));

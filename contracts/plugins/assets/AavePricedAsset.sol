@@ -18,6 +18,6 @@ contract AavePricedAsset is AaveOracleMixin, Asset {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        return consultOracle(erc20);
+        return consultOracle(address(erc20));
     }
 }

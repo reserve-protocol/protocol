@@ -20,6 +20,6 @@ contract StakedAaveAsset is AavePricedAsset {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        return consultOracle(IStkAAVE(address(erc20)).STAKED_TOKEN());
+        return consultOracle(address(IStkAAVE(address(erc20)).STAKED_TOKEN()));
     }
 }

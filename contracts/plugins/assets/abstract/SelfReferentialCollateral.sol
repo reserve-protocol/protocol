@@ -36,7 +36,7 @@ abstract contract SelfReferentialCollateral is ICollateral, Asset, Context {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function refresh() public virtual {}
+    function refresh() external virtual {}
 
     /// @return The collateral's status -- always SOUND!
     function status() public view virtual returns (CollateralStatus) {

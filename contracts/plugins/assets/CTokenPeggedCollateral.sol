@@ -2,27 +2,16 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/plugins/assets/abstract/Collateral.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/CTokenFiatCollateral.sol";
 
-// ==== External Interfaces ====
-// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
-interface ICToken {
-    /// @dev From Compound Docs:
-    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    function exchangeRateCurrent() external returns (uint256);
-
-    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
-    function exchangeRateStored() external view returns (uint256);
-}
-
-// ==== End External Interfaces ====
-
-contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
+/**
+ * @title CTokenPeggedCollateral
+ * @notice Collateral plugin for a cToken of a pegged asset. For example:
+ *   - cWBTC
+ *   - ...
+ */
+contract CTokenPeggedCollateral is CompoundOracleMixin, Collateral {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
@@ -31,6 +20,8 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
 
+    string public oracleLookupSymbol;
+
     constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
@@ -38,7 +29,8 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IComptroller comptroller_,
-        IERC20 rewardERC20_
+        IERC20 rewardERC20_,
+        string memory targetName_
     )
         Collateral(
             erc20_,
@@ -46,18 +38,19 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20_,
-            bytes32(bytes("USD"))
+            bytes32(bytes(targetName_))
         )
         CompoundOracleMixin(comptroller_)
     {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
+        oracleLookupSymbol = targetName_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(referenceERC20.symbol()).mul(refPerTok());
+        return consultOracle(oracleLookupSymbol).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -92,7 +85,6 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         if (whenDefault != oldWhenDefault) {
             emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
         }
-
         // No interactions beyond the initial refresher
     }
 
@@ -101,6 +93,11 @@ contract CTokenFiatCollateral is CompoundOracleMixin, Collateral {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
         return shiftl_toFix(rate, shiftLeft);
+    }
+
+    /// @return {UoA/target} The price of a target unit in UoA
+    function pricePerTarget() public view override returns (uint192) {
+        return consultOracle(oracleLookupSymbol);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

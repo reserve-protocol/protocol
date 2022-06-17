@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
@@ -473,15 +473,9 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Aave - Assets with no price info return 0 , so they revert with Price is Zero
       await expect(nonpriceAaveAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(nonpriceAaveAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'PriceIsZero()'
-      )
 
       // Compound - Assets with no price info revert with also with token config not found
       await expect(nonpriceCompoundAsset.price()).to.be.revertedWith('token config not found')
-      await expect(nonpriceCompoundAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'token config not found'
-      )
     })
 
     it('Should handle invalid Price - Collaterals - Fiat', async () => {
@@ -525,26 +519,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Aave - Collateral with no price info return 0, so they revert with Price is Zero
       await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(nonpriceAaveCollateral.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'PriceIsZero()'
-      )
 
-      // Refresh should not revert but set default
-      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceAaveCollateral.refresh())
-        .to.emit(nonpriceAaveCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh should revert
+      await expect(nonpriceAaveCollateral.refresh()).to.be.reverted
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // Compound - Assets with no price info revert with token config not found
       await expect(nonpriceCompoundCollateral.price()).to.be.revertedWith('token config not found')
-      await expect(
-        nonpriceCompoundCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('token config not found')
 
-      // Refresh reverts (does not handle in the same way as Aave)
+      // Refresh reverts
       await expect(nonpriceCompoundCollateral.refresh()).to.be.reverted
     })
 
@@ -615,26 +600,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // ATokens - Collateral with no price info return 0, so they revert with Price is Zero
       await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(
-        nonpriceAtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('PriceIsZero()')
 
-      // Refresh should not revert but set default
-      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceAtokenCollateral.refresh())
-        .to.emit(nonpriceAtokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh should revert
+      await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // CTokens - Collateral with no price info revert with token config not found
       await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('token config not found')
-      await expect(
-        nonpriceCtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('token config not found')
 
-      // Refresh reverts (does not handle in the same way as Aave)
+      // Refresh reverts
       await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
     })
   })

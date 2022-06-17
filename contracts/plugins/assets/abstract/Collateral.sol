@@ -49,38 +49,25 @@ abstract contract Collateral is ICollateral, Asset, Context {
     }
 
     /// Refresh exchange rates and update default status.
-    function refresh() external virtual {
-        _refresh();
-    }
-
-    /// Refresh exchange rates and update default status.
     /// @dev This default check assumes that the collateral's price() value is expected
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
-    function _refresh() internal {
+    function refresh() external virtual {
         if (whenDefault <= block.timestamp) {
             return;
         }
         uint256 oldWhenDefault = whenDefault;
 
-        try this.price() returns (uint192 p) {
-            // {UoA/ref} = {UoA/target} * {target/ref}
-            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
-            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+        uint192 p = price();
 
-            // If the price is below the default-threshold price, default eventually
-            if (p < peg - delta || p > peg + delta) {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-            } else whenDefault = NEVER;
-        } catch Panic(uint256) {
-            // This indicates a problem in the price function!
-            assert(false); // To confirm: there is no way to maintain the error code here
-        } catch (bytes memory lowLevelData) {
-            if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
-                // The oracle has broken on us and we should default immediately
-                whenDefault = block.timestamp;
-            } else revert UnknownError(lowLevelData);
-        }
+        // {UoA/ref} = {UoA/target} * {target/ref}
+        uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+        uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+
+        // If the price is below the default-threshold price, default eventually
+        if (p < peg - delta || p > peg + delta) {
+            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+        } else whenDefault = NEVER;
 
         if (whenDefault != oldWhenDefault) {
             emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());

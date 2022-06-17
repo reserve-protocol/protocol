@@ -409,7 +409,8 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Updates status when price is zero', async () => {
+    // TODO consider if keeping
+    it.skip('Updates status when price is zero', async () => {
       // Check initial state
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)

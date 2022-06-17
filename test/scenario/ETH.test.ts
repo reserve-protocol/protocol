@@ -23,7 +23,7 @@ import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
+describe(`Self-referential collateral (eg ETH) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -36,11 +36,11 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
   let compoundOracleInternal: CompoundOracleMock
 
   // Tokens and Assets
-  let token0: CTokenMock
   let weth: WETH9
   let wethCollateral: CompoundSelfReferentialCollateral
-  let backupToken: ERC20Mock
+  let token0: CTokenMock
   let collateral0: Collateral
+  let backupToken: ERC20Mock
   let backupCollateral: Collateral
 
   // Config values
@@ -135,21 +135,24 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
     await stRSR.connect(addr1).stake(initialBal)
   })
 
-  describe('Happy paths', function () {
+  describe('Scenarios', function () {
     let issueAmt: BigNumber
+    let cTokenAmt: BigNumber
 
     beforeEach(async () => {
       issueAmt = initialBal.div(100)
-      await token0.connect(addr1).approve(rToken.address, issueAmt)
-      await weth.connect(addr1).approve(rToken.address, issueAmt)
+      cTokenAmt = issueAmt.mul(50).div(1e10) // cTokens are 50:1 with their underlying
+      await token0.connect(addr1).approve(rToken.address, cTokenAmt)
+      await weth.connect(addr1).approve(rToken.address, issueAmt.div(1000))
       await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(cTokenAmt)
       expect(await weth.balanceOf(backingManager.address)).to.equal(issueAmt.div(1000))
     })
 
-    it('should sell appreciating collateral and ignore self-referential', async () => {
+    it('should sell appreciating collateral and ignore WETH', async () => {
       await token0.setExchangeRate(fp('1.1')) // 10% appreciation
       await expect(backingManager.manageTokens([token0.address])).to.not.emit(
         backingManager,
@@ -174,7 +177,7 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
       expect(await trade2.buy()).to.equal(rsr.address)
     })
 
-    it('should change basket around self-referential collateral', async () => {
+    it('should change basket around WETH', async () => {
       await token0.setExchangeRate(fp('0.99')) // default
       await basketHandler.refreshBasket()
       await expect(backingManager.manageTokens([token0.address, weth.address])).to.emit(
@@ -192,7 +195,7 @@ describe(`Self-referential collateral - P${IMPLEMENTATION}`, () => {
       expect(await weth.balanceOf(rsrTrader.address)).to.equal(0)
     })
 
-    it('should be able to redeem after ETH price increase', async () => {
+    it('should redeem after ETH price increase for same quantities', async () => {
       await compoundOracleInternal.setPrice('ETH', bn('8000e6')) // doubling of price
 
       // Price change should not impact share of redemption tokens

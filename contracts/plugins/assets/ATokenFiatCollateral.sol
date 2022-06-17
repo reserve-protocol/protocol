@@ -64,7 +64,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(referenceERC20).mul(refPerTok());
+        return consultOracle(address(referenceERC20)).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -78,24 +78,16 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
             whenDefault = block.timestamp;
         } else {
             // Check for soft default of underlying reference token
-            try this.consultOracle(referenceERC20) returns (uint192 p) {
-                // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+            uint192 p = consultOracle(address(referenceERC20));
 
-                // If the price is below the default-threshold price, default eventually
-                if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
-            } catch Panic(uint256) {
-                // This indicates a problem in the price function!
-                assert(false); // To confirm: there is no way to maintain the error code here
-            } catch (bytes memory lowLevelData) {
-                if (bytes4(lowLevelData) == bytes4(keccak256("PriceIsZero()"))) {
-                    // This means the oracle has broken on us and we should default immediately
-                    whenDefault = block.timestamp;
-                } else revert UnknownError(lowLevelData);
-            }
+            // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
+            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+
+            // If the price is below the default-threshold price, default eventually
+            if (p < peg - delta || p > peg + delta) {
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            } else whenDefault = NEVER;
         }
         prevReferencePrice = referencePrice;
 
