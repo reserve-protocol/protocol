@@ -20,9 +20,9 @@ abstract contract ChainlinkOracleMixin {
             uint80 answeredInRound
         ) = priceFeed.latestRoundData();
 
-        // TODO: STALE: Should we add these validations?
-        //require(updateTime != 0, "Incomplete round");
-        //require(answeredInRound >= roundId, "Stale price");
+        // TODO: STALE: Should we add these validations? Should we revert with error?
+        require(updateTime != 0, "Incomplete round");
+        require(answeredInRound >= roundId, "Stale price");
 
         // Scale price and perform validations
         uint256 scaledPrice = uint256(scalePrice(price, priceFeed.decimals(), 18));
