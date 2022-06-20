@@ -1,4 +1,3 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -38,8 +37,6 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
-  let owner: SignerWithAddress
-
   // Tokens and Assets
   let rsrMainnet: ERC20Mock
   let compToken: ERC20Mock
@@ -73,7 +70,7 @@ describeFork(`Chainlink - Integration - Mainnet Forking P${IMPLEMENTATION}`, fun
     })
 
     beforeEach(async () => {
-      ;[owner] = await ethers.getSigners()
+      // ;[owner] = await ethers.getSigners()
       ;({ compToken, aaveToken, erc20s, config } = await loadFixture(defaultFixture))
 
       // Get tokens
