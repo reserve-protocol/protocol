@@ -517,16 +517,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-<<<<<<< HEAD
-      // Aave - Collateral with no price info return 0, so they revert with Price is Zero
-      await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('PriceIsZero()')
-=======
       // Aave - Collateral with no price info return 0, so they revert with Invalid Price
       await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
-      await expect(nonpriceAaveCollateral.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'PriceOutsideRange()'
-      )
->>>>>>> dac13d07 (rename error)
 
       // Refresh should revert
       await expect(nonpriceAaveCollateral.refresh()).to.be.reverted
@@ -606,16 +598,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-<<<<<<< HEAD
-      // ATokens - Collateral with no price info return 0, so they revert with Price is Zero
-      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
-=======
       // ATokens - Collateral with no price info return 0, so they revert with Invalid Price
       await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
-      await expect(
-        nonpriceAtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('PriceOutsideRange()')
->>>>>>> dac13d07 (rename error)
 
       // Refresh should revert
       await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
