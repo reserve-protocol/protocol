@@ -2,8 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/plugins/assets/abstract/SelfReferentialCollateral.sol";
+import "./SelfReferentialCollateral.sol";
 
 // ==== External Interfaces ====
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
@@ -23,10 +22,8 @@ interface ICToken {
  *   - cRSR
  *   - ...
  */
-contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferentialCollateral {
+contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     using FixLib for uint192;
-
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -36,34 +33,34 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferential
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    IERC20Metadata public referenceERC20;
+    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
+    IERC20Metadata public immutable referenceERC20;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public override rewardERC20;
-
-    string public oracleLookupSymbol;
+    IERC20 public immutable override rewardERC20;
+    bytes32 public immutable oracleLookupKey;
+    address public immutable comptrollerAddr;
 
     constructor(
+        IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         IERC20Metadata referenceERC20_,
-        IComptroller comptroller_,
         IERC20 rewardERC20_,
-        string memory targetName_
-    )
-        SelfReferentialCollateral(erc20_, maxTradeVolume_, bytes32(bytes(targetName_)))
-        CompoundOracleMixin(comptroller_)
-    {
+        bytes32 targetName_,
+        address comptrollerAddr_
+    ) SelfReferentialCollateral(main_, erc20_, maxTradeVolume_, targetName_) {
         referenceERC20 = referenceERC20_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
-        oracleLookupSymbol = targetName_;
+        oracleLookupKey = targetName_;
+        comptrollerAddr = comptrollerAddr_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(oracleLookupSymbol).mul(refPerTok());
+        return main.oracle().priceUSD(oracleLookupKey).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -107,14 +104,14 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferential
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return consultOracle(oracleLookupSymbol);
+        return main.oracle().priceUSD(oracleLookupKey);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
     /// @return _cd The calldata to send
     function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
-        _to = address(comptroller);
+        _to = comptrollerAddr;
         _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }
 }

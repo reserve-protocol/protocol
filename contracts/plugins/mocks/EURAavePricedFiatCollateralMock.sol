@@ -2,31 +2,29 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
+import "contracts/interfaces/IMain.sol";
 
-contract EURAavePricedFiatCollateral is AaveOracleMixin, Collateral {
+contract EURAavePricedFiatCollateral is FiatCollateral {
     constructor(
+        IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_
+        uint256 delayUntilDefault_
     )
-        Collateral(
+        FiatCollateral(
+            main_,
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
-            erc20_,
-            bytes32(bytes("EUR"))
+            erc20_
         )
-        AaveOracleMixin(comptroller_, aaveLendingPool_)
     {}
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (uint192) {
-        return consultOracle(address(erc20));
+    function price() public view virtual override returns (uint192) {
+        return main.oracle().priceEUR(bytes32(bytes(referenceERC20.symbol())));
     }
 }

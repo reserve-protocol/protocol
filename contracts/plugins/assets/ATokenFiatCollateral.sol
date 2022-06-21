@@ -3,8 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -30,7 +29,7 @@ interface AToken {
 
 // ==== End External ====
 
-contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
+contract ATokenFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
@@ -38,33 +37,31 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
     IERC20 public override rewardERC20;
 
     constructor(
+        IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
         IERC20 rewardERC20_
     )
-        Collateral(
+        FiatCollateral(
+            main_,
             erc20_,
             maxTradeVolume_,
             defaultThreshold_,
             delayUntilDefault_,
-            referenceERC20_,
-            bytes32(bytes("USD"))
+            referenceERC20_
         )
-        AaveOracleMixin(comptroller_, aaveLendingPool_)
     {
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (uint192) {
+    function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(address(referenceERC20)).mul(refPerTok());
+        return main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol()))).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -78,7 +75,7 @@ contract ATokenFiatCollateral is AaveOracleMixin, Collateral {
             whenDefault = block.timestamp;
         } else {
             // Check for soft default of underlying reference token
-            uint192 p = consultOracle(address(referenceERC20));
+            uint192 p = main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol())));
 
             // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;

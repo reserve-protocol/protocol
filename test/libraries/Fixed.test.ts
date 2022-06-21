@@ -963,6 +963,10 @@ describe('In FixLib,', () => {
         )
       }
     })
+
+    it('correctly fails on overflows', async () => {
+      await expect(caller.mul_toUint(MAX_UINT192.div(2), 3)).to.be.reverted
+    })
   })
 
   // If seed is an arbitrary (possibly large) uint, return an aribtrary uint in [min, max)

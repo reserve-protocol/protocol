@@ -4,22 +4,32 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract Asset is Initializable, IAsset {
+contract Asset is Initializable, IAsset {
     using FixLib for uint192;
 
-    IERC20Metadata public erc20;
+    IMain public immutable main;
 
-    uint192 public maxTradeVolume; // {UoA}
+    IERC20Metadata public immutable erc20;
 
-    constructor(IERC20Metadata erc20_, uint192 maxTradeVolume_) {
+    uint192 public immutable maxTradeVolume; // {UoA}
+
+    constructor(
+        IMain main_,
+        IERC20Metadata erc20_,
+        uint192 maxTradeVolume_
+    ) {
+        main = main_;
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (uint192);
+    function price() public view virtual returns (uint192) {
+        return main.oracle().priceUSD(bytes32(bytes(erc20.symbol())));
+    }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192) {

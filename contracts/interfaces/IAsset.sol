@@ -5,9 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
-error PriceOutsideRange();
-error UnknownError(bytes);
-
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,

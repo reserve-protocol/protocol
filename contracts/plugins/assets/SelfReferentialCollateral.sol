@@ -20,18 +20,18 @@ import "./Asset.sol";
  *
  * Self-referential collateral cannot default
  */
-abstract contract SelfReferentialCollateral is ICollateral, Asset, Context {
+contract SelfReferentialCollateral is ICollateral, Asset, Context {
     using FixLib for uint192;
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    // solhint-disable-next-line func-name-mixedcase
     constructor(
+        IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_
-    ) Asset(erc20_, maxTradeVolume_) {
+    ) Asset(main_, erc20_, maxTradeVolume_) {
         targetName = targetName_;
     }
 

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
-import "contracts/plugins/assets/CompoundPricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
@@ -15,6 +13,7 @@ import "contracts/p0/Broker.sol";
 import "contracts/p0/Distributor.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
+import "contracts/p0/Oracle.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/p0/RToken.sol";
 import "contracts/p0/StRSR.sol";
@@ -31,22 +30,19 @@ contract DeployerP0 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IComptroller public immutable comptroller;
-    IAaveLendingPool public immutable aaveLendingPool;
     IFacade public immutable facade;
+    AggregatorV3Interface public immutable rsrChainlinkFeed;
 
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
-        IFacade facade_
+        IFacade facade_,
+        AggregatorV3Interface rsrChainlinkFeed_
     ) {
         rsr = rsr_;
         gnosis = gnosis_;
-        comptroller = comptroller_;
-        aaveLendingPool = aaveLendingPool_;
         facade = facade_;
+        rsrChainlinkFeed = rsrChainlinkFeed_;
     }
 
     /// Deploys an instance of the entire system
@@ -77,17 +73,18 @@ contract DeployerP0 is IDeployer {
             rsrTrader: new RevenueTraderP0(),
             rTokenTrader: new RevenueTraderP0(),
             furnace: new FurnaceP0(),
-            broker: new BrokerP0()
+            broker: new BrokerP0(),
+            oracle: new OracleP0()
         });
 
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
+            main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume,
-            main
+            params.maxTradeVolume
         );
 
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[1] = new Asset(main, rsr, params.maxTradeVolume);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);

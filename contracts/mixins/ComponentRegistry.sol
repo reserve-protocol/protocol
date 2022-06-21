@@ -23,6 +23,7 @@ abstract contract ComponentRegistry is Initializable, OwnableUpgradeable, ICompo
         setBroker(components_.broker);
         setStRSR(components_.stRSR);
         setRToken(components_.rToken);
+        setOracle(components_.oracle);
     }
 
     // === Components ===
@@ -95,5 +96,12 @@ abstract contract ComponentRegistry is Initializable, OwnableUpgradeable, ICompo
     function setBroker(IBroker val) public onlyOwner {
         emit BrokerSet(broker, val);
         broker = val;
+    }
+
+    IOracle public oracle;
+
+    function setOracle(IOracle val) public onlyOwner {
+        emit OracleSet(oracle, val);
+        oracle = val;
     }
 }

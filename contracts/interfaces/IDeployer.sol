@@ -2,8 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "./IFacade.sol";
 import "./IGnosis.sol";
 import "./IMain.sol";
@@ -101,10 +99,6 @@ interface TestIDeployer is IDeployer {
     function rsr() external view returns (IERC20Metadata);
 
     function gnosis() external view returns (IGnosis);
-
-    function comptroller() external view returns (IComptroller);
-
-    function aaveLendingPool() external view returns (IAaveLendingPool);
 
     function facade() external view returns (IFacade);
 }

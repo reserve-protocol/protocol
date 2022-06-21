@@ -11,6 +11,7 @@ import "./IDeployer.sol";
 import "./IGnosis.sol";
 import "./IFurnace.sol";
 import "./IDistributor.sol";
+import "./IOracle.sol";
 import "./IRToken.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
@@ -36,6 +37,7 @@ struct Components {
     IBroker broker;
     IRevenueTrader rsrTrader;
     IRevenueTrader rTokenTrader;
+    IOracle oracle;
 }
 
 interface IPausable {
@@ -131,6 +133,13 @@ interface IComponentRegistry {
 
     /// @custom:governance
     function setBroker(IBroker broker) external;
+
+    event OracleSet(IOracle indexed oldVal, IOracle indexed newVal);
+
+    function oracle() external view returns (IOracle);
+
+    /// @custom:governance
+    function setOracle(IOracle oracle) external;
 }
 
 /**

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
@@ -14,9 +15,10 @@ import "contracts/interfaces/IDistributor.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
+import "contracts/interfaces/IOracle.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p1/Main.sol";
 
@@ -30,9 +32,8 @@ contract DeployerP1 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IComptroller public immutable comptroller;
-    IAaveLendingPool public immutable aaveLendingPool;
     IFacade public immutable facade;
+    AggregatorV3Interface public immutable rsrChainlinkFeed;
 
     // Implementation contracts for Upgradeability
     Implementations public implementations;
@@ -40,16 +41,14 @@ contract DeployerP1 is IDeployer {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
         IFacade facade_,
+        AggregatorV3Interface rsrChainlinkFeed_,
         Implementations memory implementations_
     ) {
         rsr = rsr_;
         gnosis = gnosis_;
-        comptroller = comptroller_;
-        aaveLendingPool = aaveLendingPool_;
         facade = facade_;
+        rsrChainlinkFeed = rsrChainlinkFeed_;
         implementations = implementations_;
     }
 
@@ -125,17 +124,20 @@ contract DeployerP1 is IDeployer {
             ),
             broker: IBroker(
                 address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
+            ),
+            oracle: IOracle(
+                address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
             )
         });
 
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
+            main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume,
-            main
+            params.maxTradeVolume
         );
 
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[1] = new Asset(main, rsr, params.maxTradeVolume);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
@@ -177,6 +179,8 @@ contract DeployerP1 is IDeployer {
             params.auctionLength,
             params.minBidSize
         );
+
+        main.oracle().init(main, rsrChainlinkFeed);
 
         // Init StRSR
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

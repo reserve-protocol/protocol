@@ -3,17 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
-import "./Asset.sol";
+import "./SelfReferentialCollateral.sol";
 
 /**
- * @title Collateral
+ * @title FiatCollateral
  * @notice A general non-appreciating collateral type to be extended.
  */
-abstract contract Collateral is ICollateral, Asset, Context {
+contract FiatCollateral is SelfReferentialCollateral {
     using FixLib for uint192;
 
     // Default Status:
@@ -24,35 +21,36 @@ abstract contract Collateral is ICollateral, Asset, Context {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    // targetName: The canonical name of this collateral's target unit.
-    bytes32 public targetName;
+    IERC20Metadata public immutable referenceERC20;
 
-    IERC20Metadata public referenceERC20;
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint192 public defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public delayUntilDefault; // {s} e.g 86400
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     // solhint-disable-next-line func-name-mixedcase
     constructor(
+        IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
-        bytes32 targetName_
-    ) Asset(erc20_, maxTradeVolume_) {
+        IERC20Metadata referenceERC20_
+    ) SelfReferentialCollateral(main_, erc20_, maxTradeVolume_, bytes32(bytes("USD"))) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
-        targetName = targetName_;
+    }
+
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() public view virtual override returns (uint192) {
+        return main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol())));
     }
 
     /// Refresh exchange rates and update default status.
     /// @dev This default check assumes that the collateral's price() value is expected
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
-    function refresh() external virtual {
+    function refresh() external virtual override {
         if (whenDefault <= block.timestamp) {
             return;
         }
@@ -75,7 +73,7 @@ abstract contract Collateral is ICollateral, Asset, Context {
     }
 
     /// @return The collateral's status
-    function status() public view virtual returns (CollateralStatus) {
+    function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
             return CollateralStatus.SOUND;
         } else if (whenDefault <= block.timestamp) {
@@ -85,23 +83,8 @@ abstract contract Collateral is ICollateral, Asset, Context {
         }
     }
 
-    /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() external pure virtual override(Asset, IAsset) returns (bool) {
-        return true;
-    }
-
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view virtual returns (uint192) {
-        return FIX_ONE;
-    }
-
-    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() public view virtual returns (uint192) {
-        return FIX_ONE;
-    }
-
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (uint192) {
+    function pricePerTarget() public view virtual override returns (uint192) {
         return FIX_ONE;
     }
 }

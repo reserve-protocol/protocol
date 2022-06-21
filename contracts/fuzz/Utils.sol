@@ -3,9 +3,6 @@ pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
-import "contracts/plugins/mocks/ComptrollerMock.sol";
-import "contracts/plugins/mocks/AaveLendingPoolMock.sol";
-import "contracts/plugins/mocks/AaveLendingAddrProviderMock.sol";
 import "contracts/p0/Deployer.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
