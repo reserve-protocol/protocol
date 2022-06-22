@@ -38,6 +38,11 @@ contract SelfReferentialCollateral is ICollateral, Asset, Context {
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {}
 
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function price() public view virtual override(Asset, IAsset) returns (uint192) {
+        return main.oracle().priceUSD(bytes32(bytes(erc20.symbol())));
+    }
+
     /// @return The collateral's status -- always SOUND!
     function status() public view virtual returns (CollateralStatus) {
         return CollateralStatus.SOUND;
@@ -60,6 +65,6 @@ contract SelfReferentialCollateral is ICollateral, Asset, Context {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual returns (uint192) {
-        return price();
+        return main.oracle().priceUSD(bytes32(bytes(erc20.symbol())));
     }
 }

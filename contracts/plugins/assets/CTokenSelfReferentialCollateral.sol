@@ -58,7 +58,7 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view returns (uint192) {
+    function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return main.oracle().priceUSD(oracleLookupKey).mul(refPerTok());
     }
