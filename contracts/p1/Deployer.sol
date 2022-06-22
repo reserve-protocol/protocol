@@ -29,8 +29,6 @@ contract DeployerP1 is IDeployer {
 
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
-    IERC20Metadata public immutable comp;
-    IERC20Metadata public immutable aave;
     IGnosis public immutable gnosis;
     IComptroller public immutable comptroller;
     IAaveLendingPool public immutable aaveLendingPool;
@@ -41,8 +39,6 @@ contract DeployerP1 is IDeployer {
 
     constructor(
         IERC20Metadata rsr_,
-        IERC20Metadata comp_,
-        IERC20Metadata aave_,
         IGnosis gnosis_,
         IComptroller comptroller_,
         IAaveLendingPool aaveLendingPool_,
@@ -50,8 +46,6 @@ contract DeployerP1 is IDeployer {
         Implementations memory implementations_
     ) {
         rsr = rsr_;
-        comp = comp_;
-        aave = aave_;
         gnosis = gnosis_;
         comptroller = comptroller_;
         aaveLendingPool = aaveLendingPool_;

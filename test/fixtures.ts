@@ -433,8 +433,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(
       rsr.address,
-      compToken.address,
-      aaveToken.address,
       gnosisAddr,
       compoundMock.address,
       aaveMock.address,
@@ -521,8 +519,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     deployer = <DeployerP1>(
       await DeployerFactory.deploy(
         rsr.address,
-        compToken.address,
-        aaveToken.address,
         gnosisAddr,
         compoundMock.address,
         aaveMock.address,
