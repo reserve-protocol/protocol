@@ -100,10 +100,6 @@ interface TestIDeployer is IDeployer {
 
     function rsr() external view returns (IERC20Metadata);
 
-    function comp() external view returns (IERC20Metadata);
-
-    function aave() external view returns (IERC20Metadata);
-
     function gnosis() external view returns (IGnosis);
 
     function comptroller() external view returns (IComptroller);

@@ -42,10 +42,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let rsrAsset: Asset
 
   // AAVE and Compound
-  let compToken: ERC20Mock
   let compAsset: Asset
   let compoundMock: ComptrollerMock
-  let aaveToken: ERC20Mock
   let aaveAsset: Asset
   let aaveMock: AaveLendingPoolMock
 
@@ -82,10 +80,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     ;({
       rsr,
       rsrAsset,
-      compToken,
       compAsset,
       compoundMock,
-      aaveToken,
       aaveAsset,
       aaveMock,
       config,
@@ -111,8 +107,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup values correctly', async () => {
       expect(await deployer.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployer.rsr()).to.equal(rsr.address)
-      expect(await deployer.comp()).to.equal(compToken.address)
-      expect(await deployer.aave()).to.equal(aaveToken.address)
       expect(await deployer.gnosis()).to.equal(gnosis.address)
       expect(await deployer.comptroller()).to.equal(compoundMock.address)
       expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
