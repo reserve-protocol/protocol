@@ -30,3 +30,10 @@ interface IOracle is IComponent {
     /// @return {EUR/tok}
     function priceEUR(bytes32 symbolBytes) external view returns (uint192);
 }
+
+interface TestIOracle is IOracle {
+    function chainlink(bytes32 symbolBytes) external view returns (AggregatorV3Interface);
+
+    /// @param symbolBytes e.g. bytes32(bytes("ETH"))
+    function setChainlinkFeed(bytes32 symbolBytes, AggregatorV3Interface chainlinkFeed) external;
+}

@@ -5,17 +5,12 @@ import { expectInReceipt } from '../common/events'
 import { EASY_AUCTION_ADDRESS } from './integration/mainnet'
 import { bn, fp } from '../common/numbers'
 import {
-  AaveLendingAddrProviderMock,
-  AaveLendingPoolMock,
-  AaveOracleMock,
   Asset,
   AssetRegistryP1,
   ATokenFiatCollateral,
   BackingManagerP1,
   BasketHandlerP1,
   BrokerP1,
-  Collateral as AbstractCollateral,
-  CompoundOracleMock,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
@@ -29,7 +24,10 @@ import {
   GnosisMock,
   GnosisTrade,
   IBasketHandler,
+  FiatCollateral,
+  OracleP1,
   MainP1,
+  MockV3Aggregator,
   RevenueTraderP1,
   RewardableLibP1,
   RTokenAsset,
@@ -43,6 +41,7 @@ import {
   TestIDistributor,
   TestIFurnace,
   TestIMain,
+  TestIOracle,
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
@@ -61,7 +60,7 @@ export const IMPLEMENTATION: Implementation =
 
 export const SLOW = !!process.env.SLOW
 
-export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
+export type Collateral = FiatCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
 export interface IConfig {
   maxTradeVolume: BigNumber
@@ -95,6 +94,7 @@ export interface IComponents {
   broker: string
   rsrTrader: string
   rTokenTrader: string
+  oracle: string
 }
 
 export interface IImplementations {
@@ -118,63 +118,39 @@ async function rsrFixture(): Promise<RSRFixture> {
 interface COMPAAVEFixture {
   weth: ERC20Mock
   compToken: ERC20Mock
-  compoundOracleInternal: CompoundOracleMock
   compoundMock: ComptrollerMock
+  rsrChainlinkMock: MockV3Aggregator
   aaveToken: ERC20Mock
-  aaveOracleInternal: AaveOracleMock
-  aaveMock: AaveLendingPoolMock
 }
 
 async function compAaveFixture(): Promise<COMPAAVEFixture> {
-  // Deploy COMP token and Asset
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+
+  // Deploy WETH
+  const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
+
+  // Deploy COMP token and Asset
   const compToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('COMP Token', 'COMP')
 
   // Deploy AAVE token
   const aaveToken: ERC20Mock = <ERC20Mock>await ERC20.deploy('AAVE Token', 'AAVE')
 
   // Deploy Comp and Aave Oracle Mocks
-  const CompoundOracleMockFactory: ContractFactory = await ethers.getContractFactory(
-    'CompoundOracleMock'
-  )
-  const compoundOracleInternal: CompoundOracleMock = <CompoundOracleMock>(
-    await CompoundOracleMockFactory.deploy()
-  )
-
   const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory('ComptrollerMock')
-  const compoundMock: ComptrollerMock = <ComptrollerMock>(
-    await ComptrollerMockFactory.deploy(compoundOracleInternal.address)
-  )
+  const compoundMock: ComptrollerMock = <ComptrollerMock>await ComptrollerMockFactory.deploy()
   await compoundMock.setCompToken(compToken.address)
 
-  const AaveOracleMockFactory: ContractFactory = await ethers.getContractFactory('AaveOracleMock')
-  const weth: ERC20Mock = <ERC20Mock>await ERC20.deploy('Wrapped ETH', 'WETH')
-  const aaveOracleInternal: AaveOracleMock = <AaveOracleMock>(
-    await AaveOracleMockFactory.deploy(weth.address)
-  )
-
-  const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveLendingAddrProviderMock'
-  )
-  const aaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
-    await AaveAddrProviderFactory.deploy(aaveOracleInternal.address)
-  )
-
-  const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
-    'AaveLendingPoolMock'
-  )
-  const aaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
-    await AaveLendingPoolMockFactory.deploy(aaveAddrProvider.address)
-  )
+  // Deploy RSR Chainlink
+  const rsrChainlinkMock: MockV3Aggregator = await (
+    await ethers.getContractFactory('MockV3Aggregator')
+  ).deploy(18, fp('1'))
 
   return {
     weth,
     compToken,
-    compoundOracleInternal,
     compoundMock,
     aaveToken,
-    aaveOracleInternal,
-    aaveMock,
+    rsrChainlinkMock,
   }
 }
 
@@ -199,8 +175,8 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
+  mainAddr: string,
   comptroller: ComptrollerMock,
-  aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
   compToken: ERC20Mock,
   config: IConfig
@@ -209,9 +185,7 @@ async function collateralFixture(
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-  const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-    'AavePricedFiatCollateral'
-  )
+  const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
   const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
   const defaultThreshold = fp('0.05') // 5%
@@ -223,13 +197,13 @@ async function collateralFixture(
     return [
       erc20,
       <Collateral>(
-        await AaveCollateralFactory.deploy(
+        await FiatCollateralFactory.deploy(
+          mainAddr,
           erc20.address,
           config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
-          comptroller.address,
-          aaveLendingPool.address
+          erc20.address
         )
       ),
     ]
@@ -239,13 +213,13 @@ async function collateralFixture(
     return [
       erc20,
       <Collateral>(
-        await AaveCollateralFactory.deploy(
+        await FiatCollateralFactory.deploy(
+          mainAddr,
           erc20.address,
           config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
-          comptroller.address,
-          aaveLendingPool.address
+          erc20.address
         )
       ),
     ]
@@ -262,13 +236,14 @@ async function collateralFixture(
       erc20,
       <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
+          mainAddr,
           erc20.address,
           config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
-          comptroller.address,
-          compToken.address
+          compToken.address,
+          comptroller.address
         )
       ),
     ]
@@ -289,13 +264,12 @@ async function collateralFixture(
       erc20,
       <ATokenFiatCollateral>(
         await ATokenCollateralFactory.deploy(
+          mainAddr,
           erc20.address,
           config.maxTradeVolume,
           defaultThreshold,
           delayUntilDefault,
           underlyingAddress,
-          comptroller.address,
-          aaveLendingPool.address,
           aaveToken.address
         )
       ),
@@ -378,6 +352,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
+  oracle: TestIOracle
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -385,15 +360,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 ]): Promise<DefaultFixture> {
   let facade: Facade
   const { rsr } = await rsrFixture()
-  const {
-    weth,
-    compToken,
-    compoundOracleInternal,
-    compoundMock,
-    aaveToken,
-    aaveOracleInternal,
-    aaveMock,
-  } = await compAaveFixture()
+  const { weth, compToken, compoundMock, aaveToken, rsrChainlinkMock } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()
   const gnosisAddr = process.env.FORK ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
@@ -426,18 +393,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
 
+  // Deploy RSR Chainlink
+  const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
+    'MockV3Aggregator'
+  )
+  const rsrChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+    await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  )
+
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(
-      rsr.address,
-      gnosisAddr,
-      compoundMock.address,
-      aaveMock.address,
-      facade.address
-    )
+    await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrChainlinkFeed.address)
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
@@ -493,6 +462,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
+    const OracleImplFactory: ContractFactory = await ethers.getContractFactory('OracleP1')
+    const oracleImpl: OracleP1 = <OracleP1>await OracleImplFactory.deploy()
+
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
@@ -507,6 +479,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         broker: brokerImpl.address,
         rsrTrader: revTraderImpl.address,
         rTokenTrader: revTraderImpl.address,
+        oracle: oracleImpl.address,
       },
       trade: tradeImpl.address,
     }
@@ -520,9 +493,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       await DeployerFactory.deploy(
         rsr.address,
         gnosisAddr,
-        compoundMock.address,
-        aaveMock.address,
         facade.address,
+        rsrChainlinkFeed.address,
         implementations
       )
     )
@@ -551,19 +523,19 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   const rsrAsset: Asset = <Asset>(
-    await ethers.getContractAt('AavePricedAsset', await assetRegistry.toAsset(rsr.address))
+    await ethers.getContractAt('Asset', await assetRegistry.toAsset(rsr.address))
   )
 
   const aaveAsset: Asset = <Asset>(
     await (
-      await ethers.getContractFactory('AavePricedAsset')
-    ).deploy(aaveToken.address, config.maxTradeVolume, compoundMock.address, aaveMock.address)
+      await ethers.getContractFactory('Asset')
+    ).deploy(main.address, aaveToken.address, config.maxTradeVolume)
   )
 
   const compAsset: Asset = <Asset>(
     await (
-      await ethers.getContractFactory('CompoundPricedAsset')
-    ).deploy(compToken.address, config.maxTradeVolume, compoundMock.address)
+      await ethers.getContractFactory('Asset')
+    ).deploy(main.address, compToken.address, config.maxTradeVolume)
   )
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
@@ -581,10 +553,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const stRSR: TestIStRSR = <TestIStRSR>await ethers.getContractAt('TestIStRSR', await main.stRSR())
 
+  const oracle: TestIOracle = <TestIOracle>(
+    await ethers.getContractAt('TestIOracle', await main.oracle())
+  )
+
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
+    main.address,
     compoundMock,
-    aaveMock,
     aaveToken,
     compToken,
     config
@@ -597,13 +573,30 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
   )
 
+  // Setup oracle
+  await oracle
+    .connect(owner)
+    .setChainlinkFeed(ethers.utils.formatBytes32String('RSR'), rsrChainlinkFeed.address)
+  const ethChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+    await MockV3AggregatorFactory.deploy(8, bn('4e11'))
+  ) // $4k
+  await oracle
+    .connect(owner)
+    .setChainlinkFeed(ethers.utils.formatBytes32String('ETH'), ethChainlinkFeed.address)
+  const compChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+    await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  )
+  await oracle
+    .connect(owner)
+    .setChainlinkFeed(ethers.utils.formatBytes32String('COMP'), compChainlinkFeed.address)
+  const aaveChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+    await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  )
+  await oracle
+    .connect(owner)
+    .setChainlinkFeed(ethers.utils.formatBytes32String('AAVE'), aaveChainlinkFeed.address)
+
   // Set Oracle Prices
-  await compoundOracleInternal.setPrice('ETH', bn('4000e6'))
-  await compoundOracleInternal.setPrice('COMP', bn('1e6'))
-  await aaveOracleInternal.setPrice(weth.address, bn('1e18'))
-  await aaveOracleInternal.setPrice(aaveToken.address, bn('2.5e14'))
-  await aaveOracleInternal.setPrice(compToken.address, bn('2.5e14'))
-  await aaveOracleInternal.setPrice(rsr.address, bn('2.5e14'))
   for (let i = 0; i < collateral.length; i++) {
     // Get erc20 and refERC20
     const erc20 = await ethers.getContractAt('ERC20Mock', await collateral[i].erc20())
@@ -611,8 +604,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     // Set Oracle price only if its a fiat token (exclude aTokens, cTokens, etc)
     if (erc20.address == refERC20.address) {
-      await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
-      await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
+      const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+        await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+      await oracle
+        .connect(owner)
+        .setChainlinkFeed(
+          ethers.utils.formatBytes32String(await erc20.symbol()),
+          chainlinkFeed.address
+        )
     }
   }
 
@@ -645,12 +645,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     weth,
     compToken,
     compAsset,
-    compoundOracleInternal,
     compoundMock,
     aaveToken,
     aaveAsset,
-    aaveOracleInternal,
-    aaveMock,
     erc20s,
     collateral,
     basket,
@@ -673,5 +670,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facade,
     rsrTrader,
     rTokenTrader,
+    oracle,
+    rsrChainlinkMock,
   }
 }

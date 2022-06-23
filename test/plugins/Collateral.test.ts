@@ -1,24 +1,18 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingAddrProviderMock,
-  AaveLendingPoolMock,
-  AaveOracleMock,
-  AavePricedFiatCollateral,
   ATokenFiatCollateral,
-  CompoundOracleMock,
-  CompoundPricedFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   Facade,
-  InvalidAaveOracleMock,
-  InvalidCompoundOracleMock,
+  FiatCollateral,
+  TestIOracle,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -26,6 +20,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
+import { setPrice } from '../utils/oracles'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -49,21 +44,20 @@ describe('Collateral contracts', () => {
   let compToken: ERC20Mock
 
   // Assets
-  let tokenCollateral: AavePricedFiatCollateral
-  let usdcCollateral: AavePricedFiatCollateral
+  let tokenCollateral: FiatCollateral
+  let usdcCollateral: FiatCollateral
   let aTokenCollateral: ATokenFiatCollateral
   let cTokenCollateral: CTokenFiatCollateral
 
-  // Aave / Compound
+  // Aave / Compound / Chainlink
   let compoundMock: ComptrollerMock
-  let compoundOracleInternal: CompoundOracleMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Config
   let config: IConfig
 
   // Main
   let backingManager: TestIBackingManager
+  let oracle: TestIOracle
 
   // Facade
   let facade: Facade
@@ -87,19 +81,18 @@ describe('Collateral contracts', () => {
     ;({
       compToken,
       compoundMock,
-      compoundOracleInternal,
       aaveToken,
-      aaveOracleInternal,
       basket,
       config,
       backingManager,
       rToken,
       facade,
+      oracle,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    tokenCollateral = <AavePricedFiatCollateral>basket[0]
-    usdcCollateral = <AavePricedFiatCollateral>basket[1]
+    tokenCollateral = <FiatCollateral>basket[0]
+    usdcCollateral = <FiatCollateral>basket[1]
     aTokenCollateral = <ATokenFiatCollateral>basket[2]
     cTokenCollateral = <CTokenFiatCollateral>basket[3]
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
@@ -222,9 +215,9 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Update values in Oracles increase by 10-20%
-      await aaveOracleInternal.setPrice(token.address, bn('2.75e14')) // 10%
-      await aaveOracleInternal.setPrice(usdc.address, bn('2.75e14')) // 10%
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('1.1e6')) // 10%
+      await setPrice(oracle, await token.symbol(), bn('1.1e8')) // 10%
+      await setPrice(oracle, await usdc.symbol(), bn('1.1e8')) // 10%
+      await setPrice(oracle, await token.symbol(), bn('1.1e8')) // 10%
 
       // Check new prices
       expect(await tokenCollateral.price()).to.equal(fp('1.1'))
@@ -269,7 +262,7 @@ describe('Collateral contracts', () => {
 
     it('Should revert if price is zero', async () => {
       // Set price of token to 0 in Aave
-      await aaveOracleInternal.setPrice(token.address, bn('0'))
+      await setPrice(oracle, await token.symbol(), bn('0'))
 
       // Check price of token
       await expect(tokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
@@ -323,8 +316,8 @@ describe('Collateral contracts', () => {
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
-      await aaveOracleInternal.setPrice(token.address, bn('2e14')) // -20%
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('0.8e6')) // -20%
+      await setPrice(oracle, await token.symbol(), bn('8e7')) // -20%
+      await setPrice(oracle, await token.symbol(), bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
@@ -423,8 +416,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Set price of tokens to 0
-      await aaveOracleInternal.setPrice(token.address, bn('0'))
-      await compoundOracleInternal.setPrice(await token.symbol(), bn(0))
+      await setPrice(oracle, await token.symbol(), bn('0'))
 
       const priceZeroCollaterals = [tokenCollateral, aTokenCollateral, cTokenCollateral]
       for (const coll of priceZeroCollaterals) {
@@ -441,115 +433,116 @@ describe('Collateral contracts', () => {
       }
     })
 
-    it('Reverts on update status when price function fails', async () => {
-      // Deploy invalid Compound Oracle
-      const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
-        'InvalidCompoundOracleMock'
-      )
-      const invalidCompoundOracle: InvalidCompoundOracleMock = <InvalidCompoundOracleMock>(
-        await InvalidCompoundOracleFactory.deploy()
-      )
+    // TODO consider if keeping
+    //   it('Reverts on update status when price function fails', async () => {
+    //     // Deploy invalid Compound Oracle
+    //     const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
+    //       'InvalidCompoundOracleMock'
+    //     )
+    //     const invalidCompoundOracle: InvalidCompoundOracleMock = <InvalidCompoundOracleMock>(
+    //       await InvalidCompoundOracleFactory.deploy()
+    //     )
 
-      const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory(
-        'ComptrollerMock'
-      )
-      const invalidCompoundMock: ComptrollerMock = <ComptrollerMock>(
-        await ComptrollerMockFactory.deploy(invalidCompoundOracle.address)
-      )
+    //     const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory(
+    //       'ComptrollerMock'
+    //     )
+    //     const invalidCompoundMock: ComptrollerMock = <ComptrollerMock>(
+    //       await ComptrollerMockFactory.deploy(invalidCompoundOracle.address)
+    //     )
 
-      // Deply invalid  AaveOracle
-      const InvalidAaveOracleFactory: ContractFactory = await ethers.getContractFactory(
-        'InvalidAaveOracleMock'
-      )
-      const invalidAaveOracle: InvalidAaveOracleMock = <InvalidAaveOracleMock>(
-        await InvalidAaveOracleFactory.deploy(ZERO_ADDRESS)
-      )
+    //     // Deply invalid  AaveOracle
+    //     const InvalidAaveOracleFactory: ContractFactory = await ethers.getContractFactory(
+    //       'InvalidAaveOracleMock'
+    //     )
+    //     const invalidAaveOracle: InvalidAaveOracleMock = <InvalidAaveOracleMock>(
+    //       await InvalidAaveOracleFactory.deploy(ZERO_ADDRESS)
+    //     )
 
-      const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
-        'AaveLendingAddrProviderMock'
-      )
-      const invalidAaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
-        await AaveAddrProviderFactory.deploy(invalidAaveOracle.address)
-      )
+    //     const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
+    //       'AaveLendingAddrProviderMock'
+    //     )
+    //     const invalidAaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
+    //       await AaveAddrProviderFactory.deploy(invalidAaveOracle.address)
+    //     )
 
-      const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
-        'AaveLendingPoolMock'
-      )
-      const invalidAaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
-        await AaveLendingPoolMockFactory.deploy(invalidAaveAddrProvider.address)
-      )
+    //     const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
+    //       'AaveLendingPoolMock'
+    //     )
+    //     const invalidAaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
+    //       await AaveLendingPoolMockFactory.deploy(invalidAaveAddrProvider.address)
+    //     )
 
-      // Deploy invalid collaterals to revert/fail
-      const AaveFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-        'AavePricedFiatCollateral'
-      )
-      const invalidTokenAsset: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-        await AaveFiatCollFactory.deploy(
-          token.address,
-          await tokenCollateral.maxTradeVolume(),
-          await tokenCollateral.defaultThreshold(),
-          await tokenCollateral.delayUntilDefault(),
-          compoundMock.address,
-          invalidAaveMock.address
-        )
-      )
+    //     // Deploy invalid collaterals to revert/fail
+    //     const AaveFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+    //       'AavePricedFiatCollateral'
+    //     )
+    //     const invalidTokenAsset: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
+    //       await AaveFiatCollFactory.deploy(
+    //         token.address,
+    //         await tokenCollateral.maxTradeVolume(),
+    //         await tokenCollateral.defaultThreshold(),
+    //         await tokenCollateral.delayUntilDefault(),
+    //         compoundMock.address,
+    //         invalidAaveMock.address
+    //       )
+    //     )
 
-      const ATokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-        'ATokenFiatCollateral'
-      )
-      const invalidATokenAsset: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenFiatCollFactory.deploy(
-          aToken.address,
-          await aTokenCollateral.maxTradeVolume(),
-          await aTokenCollateral.defaultThreshold(),
-          await aTokenCollateral.delayUntilDefault(),
-          await aTokenCollateral.referenceERC20(),
-          compoundMock.address,
-          invalidAaveMock.address,
-          await aTokenCollateral.rewardERC20()
-        )
-      )
+    //     const ATokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+    //       'ATokenFiatCollateral'
+    //     )
+    //     const invalidATokenAsset: ATokenFiatCollateral = <ATokenFiatCollateral>(
+    //       await ATokenFiatCollFactory.deploy(
+    //         aToken.address,
+    //         await aTokenCollateral.maxTradeVolume(),
+    //         await aTokenCollateral.defaultThreshold(),
+    //         await aTokenCollateral.delayUntilDefault(),
+    //         await aTokenCollateral.referenceERC20(),
+    //         compoundMock.address,
+    //         invalidAaveMock.address,
+    //         await aTokenCollateral.rewardERC20()
+    //       )
+    //     )
 
-      const CTokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-        'CTokenFiatCollateral'
-      )
-      const invalidCTokenAsset: CTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenFiatCollFactory.deploy(
-          cToken.address,
-          await cTokenCollateral.maxTradeVolume(),
-          await cTokenCollateral.defaultThreshold(),
-          await cTokenCollateral.delayUntilDefault(),
-          await cTokenCollateral.referenceERC20(),
-          invalidCompoundMock.address,
-          await cTokenCollateral.rewardERC20()
-        )
-      )
+    //     const CTokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
+    //       'CTokenFiatCollateral'
+    //     )
+    //     const invalidCTokenAsset: CTokenFiatCollateral = <CTokenFiatCollateral>(
+    //       await CTokenFiatCollFactory.deploy(
+    //         cToken.address,
+    //         await cTokenCollateral.maxTradeVolume(),
+    //         await cTokenCollateral.defaultThreshold(),
+    //         await cTokenCollateral.delayUntilDefault(),
+    //         await cTokenCollateral.referenceERC20(),
+    //         invalidCompoundMock.address,
+    //         await cTokenCollateral.rewardERC20()
+    //       )
+    //     )
 
-      const invalidCollaterals = [invalidTokenAsset, invalidATokenAsset, invalidCTokenAsset]
-      for (const coll of invalidCollaterals) {
-        // Check initial state
-        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+    //     const invalidCollaterals = [invalidTokenAsset, invalidATokenAsset, invalidCTokenAsset]
+    //     for (const coll of invalidCollaterals) {
+    //       // Check initial state
+    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
 
-        // Attempt to update status - assertion failed (Panic)
-        await invalidAaveOracle.setShouldFailAssert(true)
-        await invalidCompoundOracle.setShouldFailAssert(true)
-        await expect(coll.refresh()).to.be.reverted
+    //       // Attempt to update status - assertion failed (Panic)
+    //       await invalidAaveOracle.setShouldFailAssert(true)
+    //       await invalidCompoundOracle.setShouldFailAssert(true)
+    //       await expect(coll.refresh()).to.be.reverted
 
-        // No changes
-        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+    //       // No changes
+    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
 
-        // Attempt to update status - Revert
-        await invalidAaveOracle.setShouldFailAssert(false)
-        await invalidCompoundOracle.setShouldFailAssert(false)
-        await expect(coll.refresh()).to.be.reverted
+    //       // Attempt to update status - Revert
+    //       await invalidAaveOracle.setShouldFailAssert(false)
+    //       await invalidCompoundOracle.setShouldFailAssert(false)
+    //       await expect(coll.refresh()).to.be.reverted
 
-        // No changes
-        expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-        expect(await coll.whenDefault()).to.equal(MAX_UINT256)
-      }
-    })
+    //       // No changes
+    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
+    //     }
+    //   })
   })
 
   describe('Rewards', () => {
@@ -590,109 +583,13 @@ describe('Collateral contracts', () => {
     })
   })
 
-  // Tests specific to the CompoundFiatCollateral.sol contract, not used by default in fixture
-  describe('Compound Fiat Collateral #fast', () => {
-    let compoundTokenAsset: CompoundPricedFiatCollateral
-    let compoundUsdcAsset: CompoundPricedFiatCollateral
-
-    beforeEach(async () => {
-      const CompoundFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-        'CompoundPricedFiatCollateral'
-      )
-      compoundTokenAsset = <CompoundPricedFiatCollateral>(
-        await CompoundFiatCollFactory.deploy(
-          token.address,
-          await tokenCollateral.maxTradeVolume(),
-          await tokenCollateral.defaultThreshold(),
-          await tokenCollateral.delayUntilDefault(),
-          compoundMock.address
-        )
-      )
-      compoundUsdcAsset = <CompoundPricedFiatCollateral>(
-        await CompoundFiatCollFactory.deploy(
-          usdc.address,
-          await usdcCollateral.maxTradeVolume(),
-          await usdcCollateral.defaultThreshold(),
-          await usdcCollateral.delayUntilDefault(),
-          compoundMock.address
-        )
-      )
-    })
-
-    it('Should setup collateral correctly', async function () {
-      // Compound - Fiat Token Asset
-      expect(await compoundTokenAsset.isCollateral()).to.equal(true)
-      expect(await compoundTokenAsset.referenceERC20()).to.equal(token.address)
-      expect(await compoundTokenAsset.erc20()).to.equal(token.address)
-      expect(await token.decimals()).to.equal(18)
-      expect(await compoundTokenAsset.targetName()).to.equal(
-        ethers.utils.formatBytes32String('USD')
-      )
-      expect(await compoundTokenAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await compoundTokenAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await compoundTokenAsset.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-      expect(await compoundTokenAsset.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await compoundTokenAsset.maxTradeVolume()).to.equal(config.maxTradeVolume)
-      expect(await compoundTokenAsset.refPerTok()).to.equal(fp('1'))
-      expect(await compoundTokenAsset.targetPerRef()).to.equal(fp('1'))
-      expect(await compoundTokenAsset.pricePerTarget()).to.equal(fp('1'))
-      expect(await compoundTokenAsset.bal(owner.address)).to.equal(amt)
-      expect(await compoundTokenAsset.price()).to.equal(fp('1'))
-
-      // Compound - USDC Fiat Token
-      expect(await compoundUsdcAsset.isCollateral()).to.equal(true)
-      expect(await compoundUsdcAsset.referenceERC20()).to.equal(usdc.address)
-      expect(await compoundUsdcAsset.erc20()).to.equal(usdc.address)
-      expect(await usdc.decimals()).to.equal(6)
-      expect(await compoundUsdcAsset.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await compoundUsdcAsset.status()).to.equal(CollateralStatus.SOUND)
-      expect(await compoundUsdcAsset.whenDefault()).to.equal(MAX_UINT256)
-      expect(await compoundUsdcAsset.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-      expect(await compoundUsdcAsset.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await compoundUsdcAsset.maxTradeVolume()).to.equal(config.maxTradeVolume)
-      expect(await compoundUsdcAsset.refPerTok()).to.equal(fp('1'))
-      expect(await compoundUsdcAsset.targetPerRef()).to.equal(fp('1'))
-      expect(await compoundUsdcAsset.pricePerTarget()).to.equal(fp('1'))
-      expect(await compoundUsdcAsset.bal(owner.address)).to.equal(amt)
-      expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
-    })
-
-    it('Should calculate prices correctly', async function () {
-      // Check initial prices
-      expect(await compoundTokenAsset.price()).to.equal(fp('1'))
-      expect(await compoundUsdcAsset.price()).to.equal(fp('1'))
-
-      // Update values in Oracle increase by 10%
-      let symbol: string = await token.symbol()
-      await compoundOracleInternal.setPrice(symbol, bn('1.1e6')) // 10%
-      symbol = await usdc.symbol()
-      await compoundOracleInternal.setPrice(symbol, bn('1.1e6')) // 10%
-
-      // Check new prices
-      expect(await compoundTokenAsset.price()).to.equal(fp('1.1'))
-      expect(await compoundUsdcAsset.price()).to.equal(fp('1.1'))
-
-      // Revert if price is zero - Update Oracles and check prices
-      // Fiat token
-      symbol = await token.symbol()
-      await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundTokenAsset.price()).to.be.revertedWith('PriceOutsideRange()')
-
-      // Usdc (6 decimals)
-      symbol = await usdc.symbol()
-      await compoundOracleInternal.setPrice(symbol, bn(0))
-      await expect(compoundUsdcAsset.price()).to.be.revertedWith('PriceOutsideRange()')
-    })
-  })
-
   describeGas('Gas Reporting', () => {
     it('Force Updates - Soft Default', async function () {
       const delayUntilDefault: BigNumber = await tokenCollateral.delayUntilDefault()
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
-      await aaveOracleInternal.setPrice(token.address, bn('2e14')) // -20%
-      await compoundOracleInternal.setPrice(await token.symbol(), bn('0.8e6')) // -20%
+      await setPrice(oracle, await token.symbol(), bn('7e7'))
 
       // Force updates - Should update whenDefault and status
       await snapshotGasCost(tokenCollateral.refresh())
