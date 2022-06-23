@@ -34,6 +34,7 @@ contract OracleP1 is ComponentP1, IOracle {
 
         // Chainlink
         AggregatorV3Interface chainlinkFeed = chainlink[symbolBytes];
+        if (address(chainlinkFeed) == address(0)) revert MissingPriceFeed(symbolBytes);
         (
             uint80 roundId,
             int256 price, /*uint startedAt*/
