@@ -7,7 +7,6 @@ import "./IComponent.sol";
 
 error MissingPriceFeed(bytes32);
 error StaleChainlinkPrice(bytes32);
-error NegativeChainlinkPrice(bytes32);
 error PriceOutsideRange(bytes32);
 
 /**

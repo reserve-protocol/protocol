@@ -42,8 +42,6 @@ contract OracleP0 is ComponentP1, IOracle {
             uint80 answeredInRound
         ) = chainlinkFeed.latestRoundData();
 
-        if (price < 0) revert NegativeChainlinkPrice(symbolBytes);
-
         if (updateTime == 0 || answeredInRound < roundId) {
             revert StaleChainlinkPrice(symbolBytes);
         }
