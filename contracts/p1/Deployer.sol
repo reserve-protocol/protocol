@@ -15,7 +15,6 @@ import "contracts/interfaces/IDistributor.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
-import "contracts/interfaces/IOracle.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/assets/Asset.sol";
@@ -48,8 +47,8 @@ contract DeployerP1 is IDeployer {
         rsr = rsr_;
         gnosis = gnosis_;
         facade = facade_;
-        rsrChainlinkFeed = rsrChainlinkFeed_;
         implementations = implementations_;
+        rsrChainlinkFeed = rsrChainlinkFeed_;
     }
 
     /// Deploys an instance of the entire system
@@ -124,9 +123,6 @@ contract DeployerP1 is IDeployer {
             ),
             broker: IBroker(
                 address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
-            ),
-            oracle: IOracle(
-                address(new ERC1967Proxy(address(implementations.components.broker), new bytes(0)))
             )
         });
 
@@ -137,7 +133,7 @@ contract DeployerP1 is IDeployer {
             params.maxTradeVolume
         );
 
-        assets[1] = new Asset(main, rsr, params.maxTradeVolume);
+        assets[1] = new Asset(rsrChainlinkFeed, rsr, params.maxTradeVolume);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
@@ -179,8 +175,6 @@ contract DeployerP1 is IDeployer {
             params.auctionLength,
             params.minBidSize
         );
-
-        main.oracle().init(main, rsrChainlinkFeed);
 
         // Init StRSR
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

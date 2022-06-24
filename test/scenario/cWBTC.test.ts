@@ -7,7 +7,7 @@ import { advanceTime } from '../utils/time'
 import { CollateralStatus } from '../../common/constants'
 import {
   CTokenMock,
-  CTokenPeggedCollateral,
+  CTokenBridgedCollateral,
   ComptrollerMock,
   CompoundOracleMock,
   ERC20Mock,
@@ -44,7 +44,7 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
   let wbtc: ERC20Mock
   let wBTCCollateral: SelfReferentialCollateral
   let cWBTC: CTokenMock
-  let cWBTCCollateral: CTokenPeggedCollateral
+  let cWBTCCollateral: CTokenBridgedCollateral
   let token0: CTokenMock
   let collateral0: Collateral
   let backupToken: ERC20Mock
@@ -110,7 +110,7 @@ describe(`CToken of self-referential collateral (eg cWBTC) - P${IMPLEMENTATION}`
     ).deploy('cWBTC Token', 'cWBTC', wbtc.address)
 
     cWBTCCollateral = await (
-      await ethers.getContractFactory('CTokenPeggedCollateral')
+      await ethers.getContractFactory('CTokenBridgedCollateral')
     ).deploy(
       cWBTC.address,
       config.maxTradeVolume,

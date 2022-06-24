@@ -13,7 +13,6 @@ import "contracts/p0/Broker.sol";
 import "contracts/p0/Distributor.sol";
 import "contracts/p0/Furnace.sol";
 import "contracts/p0/Main.sol";
-import "contracts/p0/Oracle.sol";
 import "contracts/p0/RevenueTrader.sol";
 import "contracts/p0/RToken.sol";
 import "contracts/p0/StRSR.sol";
@@ -73,8 +72,7 @@ contract DeployerP0 is IDeployer {
             rsrTrader: new RevenueTraderP0(),
             rTokenTrader: new RevenueTraderP0(),
             furnace: new FurnaceP0(),
-            broker: new BrokerP0(),
-            oracle: new OracleP0()
+            broker: new BrokerP0()
         });
 
         IAsset[] memory assets = new IAsset[](2);
@@ -84,7 +82,7 @@ contract DeployerP0 is IDeployer {
             params.maxTradeVolume
         );
 
-        assets[1] = new Asset(main, rsr, params.maxTradeVolume);
+        assets[1] = new Asset(rsrChainlinkFeed, rsr, params.maxTradeVolume);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
