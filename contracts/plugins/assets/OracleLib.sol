@@ -8,10 +8,8 @@ error StaleChainlinkPrice(AggregatorV3Interface);
 error PriceOutsideRange(AggregatorV3Interface);
 
 library OracleLib {
-    using FixLib for uint192;
-
     /// @return {UoA/tok}
-    function price(AggregatorV3Interface chainlinkFeed) external view returns (uint192) {
+    function price(AggregatorV3Interface chainlinkFeed) internal view returns (uint192) {
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed
             .latestRoundData();
 
@@ -24,7 +22,7 @@ library OracleLib {
         // {UoA/tok}
         uint192 scaledPrice = shiftl_toFix(uint256(p), 18 - int8(chainlinkFeed.decimals()));
 
-        if (scaledPrice.eq(FIX_ZERO)) revert PriceOutsideRange(chainlinkFeed);
+        if (scaledPrice == 0) revert PriceOutsideRange(chainlinkFeed);
         return scaledPrice;
     }
 }

@@ -1,34 +1,33 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
+import "./OracleLib.sol";
 
-contract Asset is Initializable, IAsset {
-    using FixLib for uint192;
+contract Asset is IAsset {
+    using OracleLib for AggregatorV3Interface;
 
-    IMain public immutable main;
+    AggregatorV3Interface public immutable chainlinkFeed;
 
     IERC20Metadata public immutable erc20;
 
     uint192 public immutable maxTradeVolume; // {UoA}
 
     constructor(
-        IMain main_,
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
     ) {
-        main = main_;
+        chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (uint192) {
-        return main.oracle().priceUSD(bytes32(bytes(erc20.symbol())));
+        return chainlinkFeed.price();
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

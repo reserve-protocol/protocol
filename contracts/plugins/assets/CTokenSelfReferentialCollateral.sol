@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./SelfReferentialCollateral.sol";
+import "contracts/plugins/assets/AbstractCollateral.sol";
 
 // ==== External Interfaces ====
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
@@ -22,8 +21,9 @@ interface ICToken {
  *   - cRSR
  *   - ...
  */
-contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
+contract CTokenSelfReferentialCollateral is Collateral {
     using FixLib for uint192;
+    using OracleLib for AggregatorV3Interface;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -42,14 +42,14 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     address public immutable comptrollerAddr;
 
     constructor(
-        IMain main_,
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        bytes32 targetName_,
         IERC20Metadata referenceERC20_,
         IERC20 rewardERC20_,
-        bytes32 targetName_,
         address comptrollerAddr_
-    ) SelfReferentialCollateral(main_, erc20_, maxTradeVolume_, targetName_) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
         referenceERC20 = referenceERC20_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
@@ -60,7 +60,6 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return main.oracle().priceUSD(oracleLookupKey).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -104,7 +103,7 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return main.oracle().priceUSD(oracleLookupKey);
+        return chainlinkFeed.price();
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

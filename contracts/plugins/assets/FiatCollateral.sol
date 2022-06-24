@@ -4,13 +4,13 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
-import "./SelfReferentialCollateral.sol";
+import "contracts/plugins/assets/AbstractCollateral.sol";
 
 /**
  * @title FiatCollateral
- * @notice A general non-appreciating collateral type to be extended.
+ * @notice Such as USDC, DAI, USDT, but also EUR stablecoins
  */
-contract FiatCollateral is SelfReferentialCollateral {
+contract FiatCollateral is Collateral {
     using FixLib for uint192;
 
     // Default Status:
@@ -27,23 +27,17 @@ contract FiatCollateral is SelfReferentialCollateral {
 
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
-    // solhint-disable-next-line func-name-mixedcase
     constructor(
-        IMain main_,
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_
-    ) SelfReferentialCollateral(main_, erc20_, maxTradeVolume_, bytes32(bytes("USD"))) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, bytes32(bytes("USD"))) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;
-    }
-
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
-        return main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol())));
     }
 
     /// Refresh exchange rates and update default status.
@@ -81,10 +75,5 @@ contract FiatCollateral is SelfReferentialCollateral {
         } else {
             return CollateralStatus.IFFY;
         }
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual override returns (uint192) {
-        return FIX_ONE;
     }
 }

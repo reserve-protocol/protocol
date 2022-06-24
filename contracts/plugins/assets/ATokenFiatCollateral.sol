@@ -2,10 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/plugins/assets/FiatCollateral.sol";
-import "contracts/interfaces/IMain.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/AbstractCollateral.sol";
 
 // ==== External ====
 
@@ -29,39 +28,49 @@ interface AToken {
 
 // ==== End External ====
 
-contract ATokenFiatCollateral is FiatCollateral {
+contract ATokenFiatCollateral is Collateral {
+    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
-    using SafeERC20 for IERC20Metadata;
+
+    // Default Status:
+    // whenDefault == NEVER: no risk of default (initial value)
+    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
+    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
+    // whenDefault <= block.timestamp: default has already happened (permanently)
+    uint256 internal constant NEVER = type(uint256).max;
+    uint256 public whenDefault = NEVER;
+
+    IERC20Metadata public immutable referenceERC20;
+
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
+
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
 
     constructor(
-        IMain main_,
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         IERC20 rewardERC20_
-    )
-        FiatCollateral(
-            main_,
-            erc20_,
-            maxTradeVolume_,
-            defaultThreshold_,
-            delayUntilDefault_,
-            referenceERC20_
-        )
-    {
-        rewardERC20 = rewardERC20_;
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+        defaultThreshold = defaultThreshold_;
+        delayUntilDefault = delayUntilDefault_;
+        referenceERC20 = referenceERC20_;
+
         prevReferencePrice = refPerTok(); // {collateral/reference}
+        rewardERC20 = rewardERC20_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol()))).mul(refPerTok());
+        return chainlinkFeed.price().mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -75,7 +84,7 @@ contract ATokenFiatCollateral is FiatCollateral {
             whenDefault = block.timestamp;
         } else {
             // Check for soft default of underlying reference token
-            uint192 p = main.oracle().priceUSD(bytes32(bytes(referenceERC20.symbol())));
+            uint192 p = chainlinkFeed.price();
 
             // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
