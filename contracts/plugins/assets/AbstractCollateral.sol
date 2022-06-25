@@ -13,6 +13,8 @@ import "./OracleLib.sol";
 abstract contract Collateral is ICollateral, Asset {
     using OracleLib for AggregatorV3Interface;
 
+    bool public priceable;
+
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
@@ -31,11 +33,23 @@ abstract contract Collateral is ICollateral, Asset {
     }
 
     // solhint-disable-next-line no-empty-blocks
-    function refresh() external virtual {}
+    function refresh() external virtual {
+        CollateralStatus oldStatus = status();
+        try chainlinkFeed.price_() returns (uint192) {
+            priceable = true;
+        } catch {
+            priceable = false;
+        }
 
-    /// @return The collateral's status -- always SOUND!
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+    }
+
+    /// @return The collateral's status -- either SOUND or UNPRICED
     function status() public view virtual returns (CollateralStatus) {
-        return CollateralStatus.SOUND;
+        return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
     }
 
     /// @return If the asset is an instance of ICollateral or not

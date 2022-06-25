@@ -77,32 +77,48 @@ contract CTokenFiatCollateral is Collateral {
         ICToken(address(erc20)).exchangeRateCurrent();
 
         if (whenDefault <= block.timestamp) return;
-        uint256 oldWhenDefault = whenDefault;
+        CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            // Check for soft default of underlying reference token
-            uint192 p = chainlinkFeed.price();
+            try chainlinkFeed.price_() returns (uint192 p) {
+                priceable = true;
 
-            // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
-            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+                // Check for soft default of underlying reference token
+                // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
+                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
 
-            // If the price is below the default-threshold price, default eventually
-            if (p < peg - delta || p > peg + delta) {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-            } else whenDefault = NEVER;
+                // If the price is below the default-threshold price, default eventually
+                if (p < peg - delta || p > peg + delta) {
+                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                } else whenDefault = NEVER;
+            } catch {
+                priceable = false;
+            }
         }
         prevReferencePrice = referencePrice;
 
-        if (whenDefault != oldWhenDefault) {
-            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
         }
 
         // No interactions beyond the initial refresher
+    }
+
+    /// @return The collateral's status
+    function status() public view virtual override returns (CollateralStatus) {
+        if (whenDefault == NEVER) {
+            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+        } else if (whenDefault > block.timestamp) {
+            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
+        } else {
+            return CollateralStatus.DISABLED;
+        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

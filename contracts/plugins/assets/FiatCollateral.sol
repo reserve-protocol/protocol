@@ -12,6 +12,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  */
 contract FiatCollateral is Collateral {
     using FixLib for uint192;
+    using OracleLib for AggregatorV3Interface;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -45,35 +46,38 @@ contract FiatCollateral is Collateral {
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) {
-            return;
+        if (whenDefault <= block.timestamp) return;
+        CollateralStatus oldStatus = status();
+
+        try chainlinkFeed.price_() returns (uint192 p) {
+            priceable = true;
+
+            // {UoA/ref} = {UoA/target} * {target/ref}
+            uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+
+            // If the price is below the default-threshold price, default eventually
+            if (p < peg - delta || p > peg + delta) {
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            } else whenDefault = NEVER;
+        } catch {
+            priceable = false;
         }
-        uint256 oldWhenDefault = whenDefault;
 
-        uint192 p = price();
-
-        // {UoA/ref} = {UoA/target} * {target/ref}
-        uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
-        uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
-
-        // If the price is below the default-threshold price, default eventually
-        if (p < peg - delta || p > peg + delta) {
-            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-        } else whenDefault = NEVER;
-
-        if (whenDefault != oldWhenDefault) {
-            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
         }
     }
 
     /// @return The collateral's status
     function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
-            return CollateralStatus.SOUND;
-        } else if (whenDefault <= block.timestamp) {
-            return CollateralStatus.DISABLED;
+            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+        } else if (whenDefault > block.timestamp) {
+            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
         } else {
-            return CollateralStatus.IFFY;
+            return CollateralStatus.DISABLED;
         }
     }
 }

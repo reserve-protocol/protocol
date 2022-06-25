@@ -60,6 +60,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
+        return chainlinkFeed.price().mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -70,16 +71,25 @@ contract CTokenSelfReferentialCollateral is Collateral {
         ICToken(address(erc20)).exchangeRateCurrent();
 
         if (whenDefault <= block.timestamp) return;
-        uint256 oldWhenDefault = whenDefault;
+        CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
-            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        } else {
+            try chainlinkFeed.price_() returns (uint192) {
+                priceable = true;
+            } catch {
+                priceable = false;
+            }
         }
         prevReferencePrice = referencePrice;
 
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
         // No interactions beyond the initial refresher
     }
 
