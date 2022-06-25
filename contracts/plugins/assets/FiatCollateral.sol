@@ -22,20 +22,30 @@ contract FiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    IERC20Metadata public immutable referenceERC20;
+    IERC20Metadata public referenceERC20;
 
-    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
+    uint192 public defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint256 public delayUntilDefault; // {s} e.g 86400
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, bytes32(bytes("USD"))) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+        FiatCollateral_init(defaultThreshold_, delayUntilDefault_, referenceERC20_);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function FiatCollateral_init(
+        uint192 defaultThreshold_,
+        uint256 delayUntilDefault_,
+        IERC20Metadata referenceERC20_
+    ) public initializer {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;

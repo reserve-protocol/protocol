@@ -19,13 +19,18 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
 
-    // solhint-disable no-empty-blocks
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {}
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+        SelfReferentialCollateral_init();
+    }
+
+    // solhint-disable no-empty-blocks
+    // solhint-disable-next-line func-name-mixedcase
+    function SelfReferentialCollateral_init() public initializer {}
 
     // solhint-enable no-empty-blocks
 

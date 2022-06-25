@@ -3,23 +3,33 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "contracts/interfaces/IAsset.sol";
 import "./OracleLib.sol";
 
-contract Asset is IAsset {
+contract Asset is IAsset, Initializable {
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable chainlinkFeed;
+    AggregatorV3Interface public chainlinkFeed;
 
-    IERC20Metadata public immutable erc20;
+    IERC20Metadata public erc20;
 
-    uint192 public immutable maxTradeVolume; // {UoA}
+    uint192 public maxTradeVolume; // {UoA}
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
     ) {
+        Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function Asset_init(
+        AggregatorV3Interface chainlinkFeed_,
+        IERC20Metadata erc20_,
+        uint192 maxTradeVolume_
+    ) public initializer {
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;

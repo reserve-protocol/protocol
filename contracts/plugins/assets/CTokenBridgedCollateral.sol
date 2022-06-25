@@ -13,7 +13,6 @@ import "contracts/plugins/assets/OracleLib.sol";
 contract CTokenBridgedCollateral is CTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
-    // solhint-disable no-empty-blocks
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
@@ -36,7 +35,13 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
             rewardERC20_,
             comptrollerAddr_
         )
-    {}
+    {
+        CTokenBridgedCollateral_init();
+    }
+
+    // solhint-disable no-empty-blocks
+    // solhint-disable-next-line func-name-mixedcase
+    function CTokenBridgedCollateral_init() public initializer {}
 
     // solhint-enable no-empty-blocks
 

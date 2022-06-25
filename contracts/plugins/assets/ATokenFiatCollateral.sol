@@ -40,11 +40,11 @@ contract ATokenFiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    IERC20Metadata public immutable referenceERC20;
+    IERC20Metadata public referenceERC20;
 
-    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
+    uint192 public defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+    uint256 public delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
@@ -59,6 +59,21 @@ contract ATokenFiatCollateral is Collateral {
         IERC20Metadata referenceERC20_,
         IERC20 rewardERC20_
     ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+        ATokenFiatCollateral_init(
+            defaultThreshold_,
+            delayUntilDefault_,
+            referenceERC20_,
+            rewardERC20_
+        );
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function ATokenFiatCollateral_init(
+        uint192 defaultThreshold_,
+        uint256 delayUntilDefault_,
+        IERC20Metadata referenceERC20_,
+        IERC20 rewardERC20_
+    ) public initializer {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20 = referenceERC20_;

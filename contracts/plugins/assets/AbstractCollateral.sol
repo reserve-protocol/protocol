@@ -16,7 +16,7 @@ abstract contract Collateral is ICollateral, Asset {
     bool public priceable;
 
     // targetName: The canonical name of this collateral's target unit.
-    bytes32 public immutable targetName;
+    bytes32 public targetName;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
@@ -24,6 +24,11 @@ abstract contract Collateral is ICollateral, Asset {
         uint192 maxTradeVolume_,
         bytes32 targetName_
     ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {
+        Collateral_init(targetName_);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function Collateral_init(bytes32 targetName_) public initializer {
         targetName = targetName_;
     }
 

@@ -9,12 +9,17 @@ import "contracts/plugins/assets/OracleLib.sol";
 contract StakedAaveAsset is Asset {
     using OracleLib for AggregatorV3Interface;
 
-    // solhint-disable no-empty-blocks
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {}
+    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {
+        StakedAaveAsset_init();
+    }
+
+    // solhint-disable no-empty-blocks
+    // solhint-disable-next-line func-name-mixedcase
+    function StakedAaveAsset_init() public initializer {}
 
     // solhint-enable no-empty-blocks
 

@@ -35,11 +35,10 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    IERC20Metadata public immutable referenceERC20;
+    IERC20Metadata public referenceERC20;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public immutable override rewardERC20;
-    bytes32 public immutable oracleLookupKey;
-    address public immutable comptrollerAddr;
+    IERC20 public override rewardERC20;
+    address public comptrollerAddr;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
@@ -50,10 +49,18 @@ contract CTokenSelfReferentialCollateral is Collateral {
         IERC20 rewardERC20_,
         address comptrollerAddr_
     ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+        CTokenSelfReferentialCollateral_init(referenceERC20_, rewardERC20_, comptrollerAddr_);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function CTokenSelfReferentialCollateral_init(
+        IERC20Metadata referenceERC20_,
+        IERC20 rewardERC20_,
+        address comptrollerAddr_
+    ) public initializer {
         referenceERC20 = referenceERC20_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
-        oracleLookupKey = targetName_;
         comptrollerAddr = comptrollerAddr_;
     }
 
