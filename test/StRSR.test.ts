@@ -4,10 +4,9 @@ import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
-
 import {
-  AaveOracleMock,
   CTokenMock,
   ERC20Mock,
   Facade,
@@ -78,9 +77,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let collateral2: Collateral
   let collateral3: Collateral
 
-  // Aave/ Compound
-  let aaveOracleInternal: AaveOracleMock
-
   // Config
   let config: IConfig
 
@@ -147,7 +143,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     ;({
       rsr,
       stRSR,
-      aaveOracleInternal,
       basket,
       basketsNeededAmts,
       config,
@@ -582,7 +577,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Set Token1 to default - 50% price reduction and mark default as probable
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
         await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
