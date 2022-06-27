@@ -21,11 +21,12 @@ contract SelfReferentialCollateral is Collateral {
 
     // solhint-disable-next-line func-name-mixedcase
     function SelfReferentialCollateral_init(
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_
     ) external initializer {
-        __Asset_init(AggregatorV3Interface(address(0)), erc20_, maxTradeVolume_);
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
         __Collateral_init(targetName_);
     }
 
