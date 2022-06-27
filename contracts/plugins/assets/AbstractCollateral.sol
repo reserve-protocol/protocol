@@ -18,17 +18,19 @@ abstract contract Collateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public targetName;
 
-    constructor(
+    // solhint-disable-next-line func-name-mixedcase
+    function Collateral_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {
-        Collateral_init(targetName_);
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+        __Collateral_init(targetName_);
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function Collateral_init(bytes32 targetName_) public initializer {
+    function __Collateral_init(bytes32 targetName_) internal onlyInitializing {
         targetName = targetName_;
     }
 

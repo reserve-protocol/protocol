@@ -9,19 +9,14 @@ import "contracts/plugins/assets/OracleLib.sol";
 contract StakedAaveAsset is Asset {
     using OracleLib for AggregatorV3Interface;
 
-    constructor(
+    // solhint-disable-next-line func-name-mixedcase
+    function StakedAaveAsset_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {
-        StakedAaveAsset_init();
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
     }
-
-    // solhint-disable no-empty-blocks
-    // solhint-disable-next-line func-name-mixedcase
-    function StakedAaveAsset_init() public initializer {}
-
-    // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {

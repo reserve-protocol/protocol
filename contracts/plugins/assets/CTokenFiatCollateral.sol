@@ -33,7 +33,7 @@ contract CTokenFiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    IERC20Metadata public referenceERC20;
+    int8 public referenceERC20Decimals;
 
     uint192 public defaultThreshold; // {%} e.g. 0.05
 
@@ -43,37 +43,40 @@ contract CTokenFiatCollateral is Collateral {
     IERC20 public override rewardERC20;
     address public comptrollerAddr;
 
-    constructor(
+    // solhint-disable-next-line func-name-mixedcase
+    function CTokenFiatCollateral_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
+        int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
-        CTokenFiatCollateral_init(
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+        __Collateral_init(targetName_);
+        __CTokenFiatCollateral_init(
             defaultThreshold_,
             delayUntilDefault_,
-            referenceERC20_,
+            referenceERC20Decimals_,
             rewardERC20_,
             comptrollerAddr_
         );
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function CTokenFiatCollateral_init(
+    function __CTokenFiatCollateral_init(
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
+        int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) public initializer {
+    ) internal onlyInitializing {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
-        referenceERC20 = referenceERC20_;
+        referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok(); // {collateral/reference}
         rewardERC20 = rewardERC20_;
@@ -141,7 +144,7 @@ contract CTokenFiatCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
+        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 

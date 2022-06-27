@@ -35,30 +35,37 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    IERC20Metadata public referenceERC20;
+    int8 public referenceERC20Decimals;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public override rewardERC20;
     address public comptrollerAddr;
 
-    constructor(
+    // solhint-disable-next-line func-name-mixedcase
+    function CTokenSelfReferentialCollateral_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
-        IERC20Metadata referenceERC20_,
+        int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
-        CTokenSelfReferentialCollateral_init(referenceERC20_, rewardERC20_, comptrollerAddr_);
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+        __Collateral_init(targetName_);
+        __CTokenSelfReferentialCollateral_init(
+            referenceERC20Decimals_,
+            rewardERC20_,
+            comptrollerAddr_
+        );
     }
 
     // solhint-disable-next-line func-name-mixedcase
-    function CTokenSelfReferentialCollateral_init(
-        IERC20Metadata referenceERC20_,
+    function __CTokenSelfReferentialCollateral_init(
+        int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) public initializer {
-        referenceERC20 = referenceERC20_;
+    ) internal onlyInitializing {
+        referenceERC20Decimals = referenceERC20Decimals_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
         comptrollerAddr = comptrollerAddr_;
@@ -114,7 +121,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
+        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 

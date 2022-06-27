@@ -13,35 +13,33 @@ import "contracts/plugins/assets/OracleLib.sol";
 contract CTokenBridgedCollateral is CTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
-    constructor(
+    // solhint-disable no-empty-blocks
+    // solhint-disable-next-line func-name-mixedcase
+    function CTokenBridgedCollateral_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
+        int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    )
-        CTokenFiatCollateral(
-            chainlinkFeed_,
-            erc20_,
-            maxTradeVolume_,
-            targetName_,
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+        __Collateral_init(targetName_);
+        __CTokenFiatCollateral_init(
             defaultThreshold_,
             delayUntilDefault_,
-            referenceERC20_,
+            referenceERC20Decimals_,
             rewardERC20_,
             comptrollerAddr_
-        )
-    {
-        CTokenBridgedCollateral_init();
+        );
+        __CTokenBridgedCollateral_init();
     }
 
-    // solhint-disable no-empty-blocks
     // solhint-disable-next-line func-name-mixedcase
-    function CTokenBridgedCollateral_init() public initializer {}
+    function __CTokenBridgedCollateral_init() internal onlyInitializing {}
 
     // solhint-enable no-empty-blocks
 

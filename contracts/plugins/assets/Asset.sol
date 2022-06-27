@@ -16,20 +16,21 @@ contract Asset is IAsset, Initializable {
 
     uint192 public maxTradeVolume; // {UoA}
 
-    constructor(
-        AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        uint192 maxTradeVolume_
-    ) {
-        Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
-    }
-
     // solhint-disable-next-line func-name-mixedcase
     function Asset_init(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
-    ) public initializer {
+    ) external initializer {
+        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
+    }
+
+    // solhint-disable-next-line func-name-mixedcase
+    function __Asset_init(
+        AggregatorV3Interface chainlinkFeed_,
+        IERC20Metadata erc20_,
+        uint192 maxTradeVolume_
+    ) internal onlyInitializing {
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
