@@ -150,7 +150,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction CEI
-    function stake(uint256 rsrAmount) external interaction {
+    function stake(uint256 rsrAmount) external notPaused {
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
@@ -202,7 +202,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:interaction RCEI
-    function withdraw(address account, uint256 endId) external interaction {
+    function withdraw(address account, uint256 endId) external notPaused {
         // == Refresh ==
         main.assetRegistry().refresh();
 

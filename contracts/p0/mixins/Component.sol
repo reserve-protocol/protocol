@@ -22,26 +22,14 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
         _;
     }
 
+    // === See docs/security.md ===
+
     modifier notPaused() {
         require(!main.paused(), "paused");
         _;
     }
-
-    // === See docs/security.md ===
-    // In P0 we do not apply locks
-
-    modifier interaction() {
-        require(!main.paused(), "paused");
-        _;
-    }
-
     modifier governance() {
         require(main.owner() == _msgSender(), "unpaused or by owner");
-        _;
-    }
-
-    modifier refresher() {
-        require(!main.paused(), "paused");
         _;
     }
 }

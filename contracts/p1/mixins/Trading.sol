@@ -40,7 +40,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction (only reads or writes trades, and is marked `nonReentrant`)
-    function settleTrade(IERC20 sell) external interaction nonReentrant {
+    function settleTrade(IERC20 sell) external notPaused nonReentrant {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");
@@ -56,7 +56,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     /// @custom:interaction CEI
-    function claimAndSweepRewards() external interaction {
+    function claimAndSweepRewards() external notPaused {
         // == Interaction ==
         RewardableLibP1.claimAndSweepRewards();
     }

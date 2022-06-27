@@ -36,7 +36,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
     /// @custom:interaction
-    function settleTrade(IERC20 sell) public interaction {
+    function settleTrade(IERC20 sell) public notPaused {
         ITrade trade = trades[sell];
         if (address(trade) == address(0)) return;
         require(trade.canSettle(), "cannot settle yet");

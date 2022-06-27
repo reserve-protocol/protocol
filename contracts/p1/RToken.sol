@@ -92,7 +92,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external interaction {
+    function issue(uint256 amtRToken) external notPaused {
         require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -220,7 +220,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
     /// @custom:interaction CEI
-    function vest(address account, uint256 endId) external interaction {
+    function vest(address account, uint256 endId) external notPaused {
         // == Keepers ==
         main.assetRegistry().refresh();
 
@@ -270,7 +270,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external interaction {
+    function cancel(uint256 endId, bool earliest) external notPaused {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -288,7 +288,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external interaction {
+    function redeem(uint256 amount) external notPaused {
         require(amount > 0, "Cannot redeem zero");
 
         // == Refresh ==
@@ -370,7 +370,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external interaction {
+    function claimAndSweepRewards() external notPaused {
         RewardableLibP1.claimAndSweepRewards();
     }
 
