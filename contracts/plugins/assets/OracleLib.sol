@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/libraries/Fixed.sol";
 
-error StaleChainlinkPrice(AggregatorV3Interface);
-error PriceOutsideRange(AggregatorV3Interface);
+error StaleChainlinkPrice();
+error PriceOutsideRange();
 
 /// Used by asset plugins to price their collateral
 library OracleLib {
@@ -27,15 +27,15 @@ library OracleLib {
             .latestRoundData();
 
         if (updateTime == 0 || answeredInRound < roundId) {
-            revert StaleChainlinkPrice(chainlinkFeed);
+            revert StaleChainlinkPrice();
         }
 
         // TODO other checks, maybe against Compound's sanitized values
 
         // {UoA/tok}
-        uint192 scaledPrice = shiftl_toFix(uint256(p), 18 - int8(chainlinkFeed.decimals()));
+        uint192 scaledPrice = shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));
 
-        if (scaledPrice == 0) revert PriceOutsideRange(chainlinkFeed);
+        if (scaledPrice == 0) revert PriceOutsideRange();
         return scaledPrice;
     }
 }
