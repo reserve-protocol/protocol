@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
-import { ethers, upgrades, waffle } from 'hardhat'
+import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
@@ -162,55 +162,6 @@ describe('Assets contracts #fast', () => {
       await expect(rsrAsset.price()).to.be.revertedWith('PriceOutsideRange()')
       await expect(compAsset.price()).to.be.revertedWith('PriceOutsideRange()')
       await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
-    })
-  })
-
-  describe('Proxy', () => {
-    it('Should only initialize once', async () => {
-      await expect(rTokenAsset.RTokenAsset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith(
-        'Initializable: contract is already initialized'
-      )
-      await expect(rTokenAsset.Asset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith(
-        'Initializable: contract is already initialized'
-      )
-    })
-    context('When deployed via proxy', function () {
-      it('Should only initialize once when using parent initializer', async () => {
-        const RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
-        const newRTokenAsset: RTokenAsset = <RTokenAsset>await upgrades.deployProxy(
-          RTokenAssetFactory,
-          [ZERO_ADDRESS, ZERO_ADDRESS, 0],
-          {
-            initializer: 'Asset_init',
-            kind: 'transparent',
-          }
-        )
-
-        await expect(newRTokenAsset.Asset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith(
-          'Initializable: contract is already initialized'
-        )
-        await expect(
-          newRTokenAsset.RTokenAsset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-        ).to.be.revertedWith('Initializable: contract is already initialized')
-      })
-      it('Should only initialize once when using child initializer', async () => {
-        const RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
-        const newRTokenAsset: RTokenAsset = <RTokenAsset>await upgrades.deployProxy(
-          RTokenAssetFactory,
-          [ZERO_ADDRESS, ZERO_ADDRESS, 0],
-          {
-            initializer: 'RTokenAsset_init',
-            kind: 'transparent',
-          }
-        )
-
-        await expect(newRTokenAsset.Asset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)).to.be.revertedWith(
-          'Initializable: contract is already initialized'
-        )
-        await expect(
-          newRTokenAsset.RTokenAsset_init(ZERO_ADDRESS, ZERO_ADDRESS, 0)
-        ).to.be.revertedWith('Initializable: contract is already initialized')
-      })
     })
   })
 })
