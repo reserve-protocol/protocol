@@ -199,14 +199,15 @@ async function collateralFixture(
     const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
-    const coll = <FiatCollateral>await FiatCollateralFactory.deploy()
-    await coll.FiatCollateral_init(
-      chainlinkFeed.address,
-      erc20.address,
-      config.maxTradeVolume,
-      ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault
+    const coll = <FiatCollateral>(
+      await FiatCollateralFactory.deploy(
+        chainlinkFeed.address,
+        erc20.address,
+        config.maxTradeVolume,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
     )
     await assetRegistry.register(coll.address)
     return [erc20, coll]
@@ -217,14 +218,15 @@ async function collateralFixture(
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
 
-    const coll = <FiatCollateral>await FiatCollateralFactory.deploy()
-    await coll.FiatCollateral_init(
-      chainlinkFeed.address,
-      erc20.address,
-      config.maxTradeVolume,
-      ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault
+    const coll = <FiatCollateral>(
+      await FiatCollateralFactory.deploy(
+        chainlinkFeed.address,
+        erc20.address,
+        config.maxTradeVolume,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
     )
     await assetRegistry.register(coll.address)
     return [erc20, coll]
@@ -244,18 +246,18 @@ async function collateralFixture(
     const underlyingCollateral: Collateral = <Collateral>(
       await ethers.getContractAt('FiatCollateral', await assetRegistry.toColl(underlyingAddress))
     )
-    const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy()
-
-    await coll.CTokenFiatCollateral_init(
-      await underlyingCollateral.chainlinkFeed(),
-      erc20.address,
-      config.maxTradeVolume,
-      ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault,
-      (await referenceERC20.decimals()).toString(),
-      compToken.address,
-      comptroller.address
+    const coll = <CTokenFiatCollateral>(
+      await CTokenCollateralFactory.deploy(
+        await underlyingCollateral.chainlinkFeed(),
+        erc20.address,
+        config.maxTradeVolume,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        (await referenceERC20.decimals()).toString(),
+        compToken.address,
+        comptroller.address
+      )
     )
     await assetRegistry.register(coll.address)
     return [erc20, coll]
@@ -275,15 +277,16 @@ async function collateralFixture(
       await ethers.getContractAt('FiatCollateral', await assetRegistry.toColl(underlyingAddress))
     )
 
-    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy()
-    await coll.ATokenFiatCollateral_init(
-      await underlyingCollateral.chainlinkFeed(),
-      erc20.address,
-      config.maxTradeVolume,
-      ethers.utils.formatBytes32String('USD'),
-      defaultThreshold,
-      delayUntilDefault,
-      aaveToken.address
+    const coll = <ATokenFiatCollateral>(
+      await ATokenCollateralFactory.deploy(
+        await underlyingCollateral.chainlinkFeed(),
+        erc20.address,
+        config.maxTradeVolume,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        aaveToken.address
+      )
     )
     await assetRegistry.register(coll.address)
     return [erc20, coll]
@@ -541,14 +544,20 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const aaveChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
-  const aaveAsset: Asset = <Asset>await (await ethers.getContractFactory('Asset')).deploy()
-  aaveAsset.Asset_init(aaveChainlinkFeed.address, aaveToken.address, config.maxTradeVolume)
+  const aaveAsset: Asset = <Asset>(
+    await (
+      await ethers.getContractFactory('Asset')
+    ).deploy(aaveChainlinkFeed.address, aaveToken.address, config.maxTradeVolume)
+  )
 
   const compChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
-  const compAsset: Asset = <Asset>await (await ethers.getContractFactory('Asset')).deploy()
-  compAsset.Asset_init(compChainlinkFeed.address, compToken.address, config.maxTradeVolume)
+  const compAsset: Asset = <Asset>(
+    await (
+      await ethers.getContractFactory('Asset')
+    ).deploy(compChainlinkFeed.address, compToken.address, config.maxTradeVolume)
+  )
 
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
