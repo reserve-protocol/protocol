@@ -22,6 +22,7 @@ export enum AuctionStatus {
 export enum CollateralStatus {
   SOUND,
   IFFY,
+  UNPRICED,
   DISABLED,
 }
 

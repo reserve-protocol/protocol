@@ -12,7 +12,6 @@ import {
   ERC20Mock,
   Facade,
   FiatCollateral,
-  TestIOracle,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -20,7 +19,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
-import { setPrice } from '../utils/oracles'
+import { setOraclePrice } from '../utils/oracles'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -57,7 +56,6 @@ describe('Collateral contracts', () => {
 
   // Main
   let backingManager: TestIBackingManager
-  let oracle: TestIOracle
 
   // Facade
   let facade: Facade
@@ -78,17 +76,8 @@ describe('Collateral contracts', () => {
     let basket: Collateral[]
 
       // Deploy fixture
-    ;({
-      compToken,
-      compoundMock,
-      aaveToken,
-      basket,
-      config,
-      backingManager,
-      rToken,
-      facade,
-      oracle,
-    } = await loadFixture(defaultFixture))
+    ;({ compToken, compoundMock, aaveToken, basket, config, backingManager, rToken, facade } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenCollateral = <FiatCollateral>basket[0]
@@ -112,7 +101,6 @@ describe('Collateral contracts', () => {
     it('Deployment should setup collateral correctly #fast', async () => {
       // Fiat Token Asset
       expect(await tokenCollateral.isCollateral()).to.equal(true)
-      expect(await tokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await tokenCollateral.erc20()).to.equal(token.address)
       expect(await token.decimals()).to.equal(18)
       expect(await tokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -131,7 +119,6 @@ describe('Collateral contracts', () => {
 
       // USDC Fiat Token
       expect(await usdcCollateral.isCollateral()).to.equal(true)
-      expect(await usdcCollateral.referenceERC20()).to.equal(usdc.address)
       expect(await usdcCollateral.erc20()).to.equal(usdc.address)
       expect(await usdc.decimals()).to.equal(6)
       expect(await usdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -151,7 +138,6 @@ describe('Collateral contracts', () => {
       // AToken
 
       expect(await aTokenCollateral.isCollateral()).to.equal(true)
-      expect(await aTokenCollateral.referenceERC20()).to.equal(token.address)
       expect(await aTokenCollateral.erc20()).to.equal(aToken.address)
       expect(await aToken.decimals()).to.equal(18)
       expect(await aTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -174,7 +160,7 @@ describe('Collateral contracts', () => {
 
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
-      expect(await cTokenCollateral.referenceERC20()).to.equal(token.address)
+      expect(await cTokenCollateral.referenceERC20Decimals()).to.equal(18)
       expect(await cTokenCollateral.erc20()).to.equal(cToken.address)
       expect(await cToken.decimals()).to.equal(8)
       expect(await cTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -215,9 +201,8 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Update values in Oracles increase by 10-20%
-      await setPrice(oracle, await token.symbol(), bn('1.1e8')) // 10%
-      await setPrice(oracle, await usdc.symbol(), bn('1.1e8')) // 10%
-      await setPrice(oracle, await token.symbol(), bn('1.1e8')) // 10%
+      await setOraclePrice(tokenCollateral.address, bn('1.1e8')) // 10%
+      await setOraclePrice(usdcCollateral.address, bn('1.1e8')) // 10%
 
       // Check new prices
       expect(await tokenCollateral.price()).to.equal(fp('1.1'))
@@ -262,7 +247,7 @@ describe('Collateral contracts', () => {
 
     it('Should revert if price is zero', async () => {
       // Set price of token to 0 in Aave
-      await setPrice(oracle, await token.symbol(), bn('0'))
+      await setOraclePrice(tokenCollateral.address, bn('0'))
 
       // Check price of token
       await expect(tokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
@@ -316,8 +301,8 @@ describe('Collateral contracts', () => {
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
-      await setPrice(oracle, await token.symbol(), bn('8e7')) // -20%
-      await setPrice(oracle, await token.symbol(), bn('8e7')) // -20%
+      await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
+      await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
@@ -337,7 +322,7 @@ describe('Collateral contracts', () => {
 
         await expect(coll.refresh())
           .to.emit(coll, 'DefaultStatusChanged')
-          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.IFFY)
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
         expect(await coll.status()).to.equal(CollateralStatus.IFFY)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
       }
@@ -396,38 +381,7 @@ describe('Collateral contracts', () => {
         const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
         await expect(coll.refresh())
           .to.emit(coll, 'DefaultStatusChanged')
-          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
-        expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
-      }
-    })
-
-    // TODO consider if keeping
-    it.skip('Updates status when price is zero', async () => {
-      // Check initial state
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-      // Set price of tokens to 0
-      await setPrice(oracle, await token.symbol(), bn('0'))
-
-      const priceZeroCollaterals = [tokenCollateral, aTokenCollateral, cTokenCollateral]
-      for (const coll of priceZeroCollaterals) {
-        // Set next block timestamp - for deterministic result
-        await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
-
-        await expect(coll.refresh())
-          .to.emit(coll, 'DefaultStatusChanged')
-          .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
-
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
         expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
       }
@@ -589,7 +543,7 @@ describe('Collateral contracts', () => {
 
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
-      await setPrice(oracle, await token.symbol(), bn('7e7'))
+      await setOraclePrice(tokenCollateral.address, bn('7e7'))
 
       // Force updates - Should update whenDefault and status
       await snapshotGasCost(tokenCollateral.refresh())
