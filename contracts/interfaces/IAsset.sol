@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
@@ -38,6 +39,10 @@ interface IAsset {
     /// The ERC20 token address that this Asset's rewards are paid in.
     /// If there are no rewards, will return a zero value.
     function rewardERC20() external view returns (IERC20 reward);
+}
+
+interface TestIAsset is IAsset {
+    function chainlinkFeed() external view returns (AggregatorV3Interface);
 }
 
 enum CollateralStatus {

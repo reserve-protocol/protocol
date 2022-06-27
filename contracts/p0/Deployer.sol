@@ -75,14 +75,21 @@ contract DeployerP0 is IDeployer {
             broker: new BrokerP0()
         });
 
+        // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(
-            main,
-            IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume
-        );
+        {
+            RTokenAsset rTokAsset = new RTokenAsset();
+            rTokAsset.RTokenAsset_init(
+                main,
+                IERC20Metadata(address(components.rToken)),
+                params.maxTradeVolume
+            );
+            assets[0] = rTokAsset;
 
-        assets[1] = new Asset(rsrChainlinkFeed, rsr, params.maxTradeVolume);
+            Asset rsrAsset = new Asset();
+            rsrAsset.Asset_init(rsrChainlinkFeed, rsr, params.maxTradeVolume);
+            assets[1] = rsrAsset;
+        }
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
