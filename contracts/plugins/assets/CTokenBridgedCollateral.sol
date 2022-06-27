@@ -14,8 +14,7 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
 
     // solhint-disable no-empty-blocks
-    // solhint-disable-next-line func-name-mixedcase
-    function CTokenBridgedCollateral_init(
+    constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
@@ -25,21 +24,19 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
         int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) external initializer {
-        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
-        __Collateral_init(targetName_);
-        __CTokenFiatCollateral_init(
+    )
+        CTokenFiatCollateral(
+            chainlinkFeed_,
+            erc20_,
+            maxTradeVolume_,
+            targetName_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20Decimals_,
             rewardERC20_,
             comptrollerAddr_
-        );
-        __CTokenBridgedCollateral_init();
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __CTokenBridgedCollateral_init() internal onlyInitializing {}
+        )
+    {}
 
     // solhint-enable no-empty-blocks
 

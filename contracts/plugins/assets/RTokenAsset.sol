@@ -8,18 +8,11 @@ import "contracts/interfaces/IMain.sol";
 contract RTokenAsset is Asset {
     IMain public main;
 
-    // solhint-disable-next-line func-name-mixedcase
-    function RTokenAsset_init(
+    constructor(
         IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
-    ) external initializer {
-        __Asset_init(AggregatorV3Interface(address(0)), erc20_, maxTradeVolume_);
-        __RTokenAsset_init(main_);
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __RTokenAsset_init(IMain main_) internal onlyInitializing {
+    ) Asset(AggregatorV3Interface(address(0)), erc20_, maxTradeVolume_) {
         main = main_;
     }
 

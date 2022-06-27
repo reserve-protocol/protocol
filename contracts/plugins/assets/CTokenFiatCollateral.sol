@@ -43,8 +43,7 @@ contract CTokenFiatCollateral is Collateral {
     IERC20 public override rewardERC20;
     address public comptrollerAddr;
 
-    // solhint-disable-next-line func-name-mixedcase
-    function CTokenFiatCollateral_init(
+    constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
@@ -54,26 +53,7 @@ contract CTokenFiatCollateral is Collateral {
         int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) external initializer {
-        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
-        __Collateral_init(targetName_);
-        __CTokenFiatCollateral_init(
-            defaultThreshold_,
-            delayUntilDefault_,
-            referenceERC20Decimals_,
-            rewardERC20_,
-            comptrollerAddr_
-        );
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __CTokenFiatCollateral_init(
-        uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_,
-        IERC20 rewardERC20_,
-        address comptrollerAddr_
-    ) internal onlyInitializing {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20Decimals = referenceERC20Decimals_;

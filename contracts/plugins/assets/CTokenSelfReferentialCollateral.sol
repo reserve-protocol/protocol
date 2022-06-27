@@ -40,8 +40,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     IERC20 public override rewardERC20;
     address public comptrollerAddr;
 
-    // solhint-disable-next-line func-name-mixedcase
-    function CTokenSelfReferentialCollateral_init(
+    constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
@@ -49,22 +48,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) external initializer {
-        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
-        __Collateral_init(targetName_);
-        __CTokenSelfReferentialCollateral_init(
-            referenceERC20Decimals_,
-            rewardERC20_,
-            comptrollerAddr_
-        );
-    }
-
-    // solhint-disable-next-line func-name-mixedcase
-    function __CTokenSelfReferentialCollateral_init(
-        int8 referenceERC20Decimals_,
-        IERC20 rewardERC20_,
-        address comptrollerAddr_
-    ) internal onlyInitializing {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
         referenceERC20Decimals = referenceERC20Decimals_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}

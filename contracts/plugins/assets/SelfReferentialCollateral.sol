@@ -19,16 +19,15 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
 
-    // solhint-disable-next-line func-name-mixedcase
-    function SelfReferentialCollateral_init(
+    // solhint-disable no-empty-blocks
+    constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         bytes32 targetName_
-    ) external initializer {
-        __Asset_init(chainlinkFeed_, erc20_, maxTradeVolume_);
-        __Collateral_init(targetName_);
-    }
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual override returns (uint192) {

@@ -128,19 +128,13 @@ contract DeployerP1 is IDeployer {
 
         // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
-        {
-            RTokenAsset rTokAsset = new RTokenAsset();
-            rTokAsset.RTokenAsset_init(
-                main,
-                IERC20Metadata(address(components.rToken)),
-                params.maxTradeVolume
-            );
-            assets[0] = rTokAsset;
+        assets[0] = new RTokenAsset(
+            main,
+            IERC20Metadata(address(components.rToken)),
+            params.maxTradeVolume
+        );
 
-            Asset rsrAsset = new Asset();
-            rsrAsset.Asset_init(rsrChainlinkFeed, rsr, params.maxTradeVolume);
-            assets[1] = rsrAsset;
-        }
+        assets[1] = new Asset(rsrChainlinkFeed, rsr, params.maxTradeVolume);
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
