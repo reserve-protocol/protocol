@@ -4,18 +4,17 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AavePricedFiatCollateral,
-  AaveOracleMock,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   CTokenMock,
-  ComptrollerMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   IBasketHandler,
+  MockV3Aggregator,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
@@ -72,11 +71,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   // Config values
   let config: IConfig
-
-  // Aave / Compound
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
-  let compoundMock: ComptrollerMock
 
   // Main
   let main: TestIMain
@@ -151,19 +145,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      aaveMock,
-      aaveOracleInternal,
-      assetRegistry,
-      backingManager,
-      basket,
-      basketHandler,
-      compoundMock,
-      config,
-      facade,
-      main,
-      rToken,
-    } = await loadFixture(defaultFixture))
+    ;({ assetRegistry, backingManager, basket, basketHandler, config, facade, main, rToken } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = <Collateral>basket[0]
@@ -521,7 +504,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
       // Default one of the tokens - 50% price reduction and mark default as probable
-      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -1241,7 +1224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should redeem if basket is IFFY #fast', async function () {
         // Default one of the tokens - 50% price reduction and mark default as probable
-        await aaveOracleInternal.setPrice(token3.address, bn('1.25e14'))
+        await setOraclePrice(collateral3.address, bn('0.5e8'))
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
@@ -1335,22 +1318,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-        'AavePricedFiatCollateral'
-      )
-      const coll: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-        await AaveCollateralFactory.deploy(
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
+      const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
+      const coll: FiatCollateral = <FiatCollateral>(
+        await CollateralFactory.deploy(
+          oracle.address,
           erc20.address,
           fp('1e36'),
+          ethers.utils.formatBytes32String('USD'),
           fp('0.05'),
-          bn(86400),
-          compoundMock.address,
-          aaveMock.address
+          bn(86400)
         )
       )
-      await assetRegistry.register(coll.address) // SHOULD BE LINTED
+      await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-      await aaveOracleInternal.setPrice(erc20.address, price)
+      await setOraclePrice(coll.address, price)
       return erc20
     }
 
