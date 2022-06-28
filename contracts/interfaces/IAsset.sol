@@ -48,7 +48,7 @@ interface TestIAsset is IAsset {
 enum CollateralStatus {
     SOUND,
     IFFY, // When a peg is not holding
-    UNPRICED, // When there is a problem with the chainlink feed
+    UNPRICED, // When a problem is detected with the chainlink feed
     DISABLED // When the collateral has completely defaulted
 }
 

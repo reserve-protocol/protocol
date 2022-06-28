@@ -26,7 +26,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Update the state of all collateral
+    /// Update the state of all assets
     /// @custom:refresher
     function refresh() external {
         // It's a waste of gas to require notPaused because assets can be updated directly

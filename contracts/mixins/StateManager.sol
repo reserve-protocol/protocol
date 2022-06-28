@@ -17,7 +17,7 @@ abstract contract StateManager is AccessControlUpgradeable, IStateManager {
 
     // === Lite Pausing ===
 
-    bool public litePause;
+    bool public litePause; // since the lite pause does not pause redemption, it does not expire
 
     // solhint-disable-next-line func-name-mixedcase
     function __StateManager_init(uint32 oneshotPauseDuration_) internal onlyInitializing {

@@ -51,7 +51,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
-        // Do not trade when DISABLED or IFFY
+        // Only trade when SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
