@@ -17,19 +17,20 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
         main = main_;
     }
 
-    modifier onlyOwner() {
-        require(main.owner() == _msgSender(), "unpaused or by owner");
-        _;
-    }
-
     // === See docs/security.md ===
 
     modifier notPaused() {
         require(!main.paused(), "paused");
         _;
     }
+
+    modifier notFullyPaused() {
+        require(!main.fullyPaused(), "fully paused");
+        _;
+    }
+
     modifier governance() {
-        require(main.owner() == _msgSender(), "unpaused or by owner");
+        require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
     }
 }

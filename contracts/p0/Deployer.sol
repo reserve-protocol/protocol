@@ -140,8 +140,10 @@ contract DeployerP0 is IDeployer {
         main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
-        main.setOneshotPauser(owner);
-        main.transferOwnership(owner);
+        main.grantRole(OWNER, owner);
+        main.grantRole(PAUSER, owner);
+        main.grantRole(PAUSER_LITE, owner);
+        main.renounceRole(OWNER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
         return (address(main));

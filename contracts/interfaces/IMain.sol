@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./IAsset.sol";
 import "./IAssetRegistry.sol";
@@ -15,6 +16,11 @@ import "./IRToken.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
+
+// Roles
+bytes32 constant OWNER = keccak256("OWNER"); // ignore the default admin
+bytes32 constant PAUSER = keccak256("PAUSER");
+bytes32 constant PAUSER_LITE = keccak256("PAUSER_LITE");
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -38,23 +44,25 @@ struct Components {
     IRevenueTrader rTokenTrader;
 }
 
-interface IPausable {
+interface IStateManager is IAccessControlUpgradeable {
     /// Emitted when `unpauseAt` is changed
     /// @param oldUnpauseAt The old value of `unpauseAt`
     /// @param newUnpauseAt The new value of `unpauseAt`
-    event UnpauseAtSet(uint32 oldUnpauseAt, uint32 newUnpauseAt);
-
-    /// Emitted when the pauser address is set
-    /// @param oldPauser The address of the old pauser
-    /// @param newPauser The address of the new pauser
-    event OneshotPauserSet(address oldPauser, address newPauser);
+    event UnpauseAtSet(uint32 indexed oldUnpauseAt, uint32 indexed newUnpauseAt);
 
     /// Emitted when the oneshot pause duration governance param is changed
     /// @param oldDuration The address of the old pauser
     /// @param newDuration The address of the new pauser
-    event OneshotPauseDurationSet(uint32 oldDuration, uint32 newDuration);
+    event OneshotPauseDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+
+    /// Emitted when `litePause` is changed
+    /// @param oldLitePause The old value of `litePause`
+    /// @param newLitePause The new value of `litePause`
+    event LitePauseSet(bool indexed oldLitePause, bool indexed newLitePause);
 
     function paused() external view returns (bool);
+
+    function fullyPaused() external view returns (bool);
 
     function oneshotPauseDuration() external view returns (uint32);
 }
@@ -137,7 +145,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IComponentRegistry, IPausable {
+interface IMain is IStateManager, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===
@@ -151,8 +159,6 @@ interface IMain is IComponentRegistry, IPausable {
     ) external;
 
     function rsr() external view returns (IERC20);
-
-    function owner() external view returns (address);
 }
 
 interface TestIMain is IMain {
@@ -162,15 +168,5 @@ interface TestIMain is IMain {
 
     function isComponent(address componentAddr) external view returns (bool);
 
-    function oneshotPauser() external view returns (address);
-
-    function setOneshotPauser(address pauser_) external;
-
     function setOneshotPauseDuration(uint32) external;
-
-    function renounceOwnership() external;
-
-    function renouncePausership() external;
-
-    function transferOwnership(address newOwner) external;
 }

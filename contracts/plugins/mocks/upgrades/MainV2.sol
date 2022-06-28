@@ -6,7 +6,8 @@ import "contracts/p1/Main.sol";
 contract MainP1V2 is MainP1 {
     uint256 public newValue;
 
-    function setNewValue(uint256 newValue_) external onlyOwner {
+    function setNewValue(uint256 newValue_) external {
+        require(!paused(), "paused");
         newValue = newValue_;
     }
 

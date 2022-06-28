@@ -286,8 +286,8 @@ contract RTokenDiffTest {
     // Auth on these is that the caller needs to be main.owner. That... should be this contract?
     function setIssuanceRate(uint192 val) external {
         val %= 1e24;
-        assert(p0.owner() == address(this)); // hope but verify
-        assert(p1.owner() == address(this));
+        assert(p0.hasRole(OWNER, address(this))); // hope but verify
+        assert(p1.hasRole(OWNER, address(this))); // hope but verify
         RTokenP0(address(p0.rToken())).setIssuanceRate(val);
         RTokenP1(address(p1.rToken())).setIssuanceRate(val);
     }

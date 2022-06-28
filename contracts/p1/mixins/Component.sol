@@ -31,8 +31,13 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
         _;
     }
 
+    modifier notFullyPaused() {
+        require(!main.fullyPaused(), "fully paused");
+        _;
+    }
+
     modifier governance() {
-        require(main.owner() == _msgSender(), "unpaused or by owner");
+        require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
     }
 

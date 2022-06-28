@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
-import "contracts/mixins/Pausable.sol";
+import "contracts/mixins/StateManager.sol";
 
 /**
  * @title Main
@@ -17,9 +17,8 @@ import "contracts/mixins/Pausable.sol";
 // solhint-disable max-states-count
 contract MainP1 is
     Initializable,
-    OwnableUpgradeable,
+    StateManager,
     ComponentRegistry,
-    Pausable,
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable,
     IMain
@@ -36,7 +35,7 @@ contract MainP1 is
         IERC20 rsr_,
         uint32 oneshotPauseDuration_
     ) public virtual initializer {
-        __Pausable_init(oneshotPauseDuration_);
+        __StateManager_init(oneshotPauseDuration_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
 
@@ -57,11 +56,7 @@ contract MainP1 is
         stRSR.payoutRewards();
     }
 
-    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
-        return OwnableUpgradeable.owner();
-    }
-
     // === Upgradeability ===
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(OWNER) {}
 }

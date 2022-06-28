@@ -288,7 +288,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external notPaused {
+    function redeem(uint256 amount) external notFullyPaused {
         require(amount > 0, "Cannot redeem zero");
 
         // == Refresh ==
