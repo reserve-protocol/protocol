@@ -9,15 +9,18 @@ import "contracts/interfaces/IMain.sol";
  * @notice Abstract class that provides fine-grained access controls to support state management
  */
 abstract contract StateManager is AccessControlUpgradeable, IStateManager {
-    // === Full Pausing ===
+    // === Full Pausing (pause _everything_) ===
+    // Pause everything except governance actions
 
     uint32 public unpauseAt; // {s} 0 when not paused, uint32.max to pause indefinitely
 
     uint32 public oneshotPauseDuration; // {s} gov param that controls length of a oneshot pause
 
     // === Lite Pausing ===
+    // Pause everything except governance actions and redemption
+    // Not oneshot
 
-    bool public litePause; // since the lite pause does not pause redemption, it does not expire
+    bool public litePause; // since the lite pause does not pause redemption, it need not expire
 
     // solhint-disable-next-line func-name-mixedcase
     function __StateManager_init(uint32 oneshotPauseDuration_) internal onlyInitializing {
@@ -36,12 +39,12 @@ abstract contract StateManager is AccessControlUpgradeable, IStateManager {
 
     // ==== States ====
 
-    function fullyPaused() public view returns (bool) {
-        return block.timestamp < unpauseAt;
-    }
-
     function paused() public view returns (bool) {
         return (block.timestamp < unpauseAt) || litePause;
+    }
+
+    function fullyPaused() public view returns (bool) {
+        return block.timestamp < unpauseAt;
     }
 
     // ==== State Transitions ====

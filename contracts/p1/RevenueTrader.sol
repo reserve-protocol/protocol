@@ -43,6 +43,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
+        // Any asset with a broken price feed will trigger a revert here
         IAssetRegistry reg = main.assetRegistry();
         (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
             reg.toAsset(erc20),
