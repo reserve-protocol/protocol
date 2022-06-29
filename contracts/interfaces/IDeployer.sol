@@ -19,7 +19,7 @@ struct DeploymentParams {
     // === Pausing ===
     uint32 oneshotPauseDuration; // {s} how long a oneshot pause lasts
     //
-    // === RSR/RToken/AAVE/COMP ===
+    // === RToken asset ===
     uint192 maxTradeVolume; // {UoA}
     //
     // === Revenue sharing ===

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
@@ -30,18 +29,18 @@ contract DeployerP0 is IDeployer {
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IFacade public immutable facade;
-    AggregatorV3Interface public immutable rsrChainlinkFeed;
+    IAsset public immutable rsrAsset;
 
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
         IFacade facade_,
-        AggregatorV3Interface rsrChainlinkFeed_
+        IAsset rsrAsset_
     ) {
         rsr = rsr_;
         gnosis = gnosis_;
         facade = facade_;
-        rsrChainlinkFeed = rsrChainlinkFeed_;
+        rsrAsset = rsrAsset_;
     }
 
     /// Deploys an instance of the entire system
@@ -82,8 +81,7 @@ contract DeployerP0 is IDeployer {
             IERC20Metadata(address(components.rToken)),
             params.maxTradeVolume
         );
-
-        assets[1] = new Asset(rsrChainlinkFeed, rsr, params.maxTradeVolume);
+        assets[1] = rsrAsset;
 
         // Init Main
         main.init(components, rsr, params.oneshotPauseDuration);
