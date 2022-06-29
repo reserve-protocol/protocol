@@ -40,22 +40,23 @@ contract ATokenFiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    uint192 public defaultThreshold; // {%} e.g. 0.05
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public delayUntilDefault; // {s} e.g 86400
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public override rewardERC20;
+    IERC20 public immutable override rewardERC20;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20 rewardERC20_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
 
@@ -66,7 +67,7 @@ contract ATokenFiatCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price().mul(refPerTok());
+        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -78,7 +79,7 @@ contract ATokenFiatCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_() returns (uint192 p) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 priceable = true;
 
                 // Check for soft default of underlying reference token

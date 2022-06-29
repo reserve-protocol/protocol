@@ -35,20 +35,21 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    int8 public referenceERC20Decimals;
+    int8 public immutable referenceERC20Decimals;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public override rewardERC20;
-    address public comptrollerAddr;
+    IERC20 public immutable override rewardERC20;
+    address public immutable comptrollerAddr;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_,
         int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
         referenceERC20Decimals = referenceERC20Decimals_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
@@ -58,7 +59,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price().mul(refPerTok());
+        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -76,7 +77,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_() returns (uint192) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
                 priceable = true;
             } catch {
                 priceable = false;
@@ -111,7 +112,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return chainlinkFeed.price();
+        return chainlinkFeed.price(oracleTimeout);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

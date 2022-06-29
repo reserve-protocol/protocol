@@ -24,13 +24,14 @@ contract SelfReferentialCollateral is Collateral {
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {}
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {}
 
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual override returns (uint192) {
-        return chainlinkFeed.price();
+        return chainlinkFeed.price(oracleTimeout);
     }
 }

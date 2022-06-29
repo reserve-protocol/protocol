@@ -13,13 +13,14 @@ contract StakedAaveAsset is Asset {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        uint192 maxTradeVolume_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {}
+        uint192 maxTradeVolume_,
+        uint32 oracleTimeout_
+    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {}
 
     // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        return chainlinkFeed.price();
+        return chainlinkFeed.price(oracleTimeout);
     }
 }

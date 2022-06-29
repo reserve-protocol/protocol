@@ -18,6 +18,7 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
@@ -29,6 +30,7 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
             chainlinkFeed_,
             erc20_,
             maxTradeVolume_,
+            oracleTimeout_,
             targetName_,
             defaultThreshold_,
             delayUntilDefault_,
@@ -42,6 +44,6 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return chainlinkFeed.price();
+        return chainlinkFeed.price(oracleTimeout);
     }
 }

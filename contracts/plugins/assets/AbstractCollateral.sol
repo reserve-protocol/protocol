@@ -16,26 +16,27 @@ abstract contract Collateral is ICollateral, Asset {
     bool public priceable;
 
     // targetName: The canonical name of this collateral's target unit.
-    bytes32 public targetName;
+    bytes32 public immutable targetName;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_) {
+    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {
         targetName = targetName_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override(Asset, IAsset) returns (uint192) {
-        return chainlinkFeed.price();
+        return chainlinkFeed.price(oracleTimeout);
     }
 
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
         CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_() returns (uint192) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
             priceable = true;
         } catch {
             priceable = false;

@@ -22,18 +22,19 @@ contract FiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    uint192 public defaultThreshold; // {%} e.g. 0.05
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public delayUntilDefault; // {s} e.g 86400
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
     }
@@ -46,7 +47,7 @@ contract FiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
-        try chainlinkFeed.price_() returns (uint192 p) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
             priceable = true;
 
             // {UoA/ref} = {UoA/target} * {target/ref}

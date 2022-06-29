@@ -33,27 +33,28 @@ contract CTokenFiatCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    int8 public referenceERC20Decimals;
+    int8 public immutable referenceERC20Decimals;
 
-    uint192 public defaultThreshold; // {%} e.g. 0.05
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public delayUntilDefault; // {s} e.g 86400
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public override rewardERC20;
-    address public comptrollerAddr;
+    IERC20 public immutable override rewardERC20;
+    address public immutable comptrollerAddr;
 
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
         IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, targetName_) {
+    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20Decimals = referenceERC20Decimals_;
@@ -66,7 +67,7 @@ contract CTokenFiatCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price().mul(refPerTok());
+        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -84,7 +85,7 @@ contract CTokenFiatCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_() returns (uint192 p) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 priceable = true;
 
                 // Check for soft default of underlying reference token
