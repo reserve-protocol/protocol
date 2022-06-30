@@ -14,11 +14,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
      *  - Frozen: only allow OWNER actions
      *  - Paused: only allow OWNER actions and redemption
      *
-     * Freezing lasts a finite period when performed by the FREEZER. It can also be performed
-     * by the OWNER indefinitely. Only OWNER can unfreeze.
+     * Freezing lasts a finite period when performed by the FREEZER, called a oneshot freeze.
+     * This also renounces their role as FREEZER, while allowing them to perform the unfreeze.
+     * Freezing can also be performed by the OWNER indefinitely. They may also unfreeze anytime.
      */
 
     // === Freezing ===
+
+    address private frozenBy; // only applies when frozen() is true
 
     uint32 public unfreezeAt; // {s} uint32.max to pause indefinitely
 
@@ -68,6 +71,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     function freeze() external onlyRole(OWNER) {
         emit UnfreezeAtSet(unfreezeAt, type(uint32).max);
         unfreezeAt = type(uint32).max;
+        frozenBy = address(0);
     }
 
     function unfreeze() external onlyRole(OWNER) {
@@ -75,11 +79,18 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         unfreezeAt = uint32(block.timestamp);
     }
 
-    function freezeTemporarily() external onlyRole(FREEZER) {
+    function oneshotFreeze() external onlyRole(FREEZER) {
         // Revoke role if not also OWNER
         if (!hasRole(OWNER, _msgSender())) _revokeRole(FREEZER, _msgSender());
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
         unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
+        frozenBy = _msgSender();
+    }
+
+    function unOneshotFreeze() external {
+        require(frozen() && frozenBy == _msgSender(), "not original freezer");
+        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
+        unfreezeAt = uint32(block.timestamp);
     }
 
     // === Gov params ===
