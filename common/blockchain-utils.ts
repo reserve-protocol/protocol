@@ -1,4 +1,4 @@
-import { BigNumber } from 'ethers'
+import { BigNumber, Contract } from 'ethers'
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 
 // getChainId: Returns current chain Id
@@ -18,4 +18,11 @@ export const getChainId = async (hre: HardhatRuntimeEnvironment) => {
     _chainId = BigNumber.from(_chainId).toString()
   }
   return _chainId
+}
+
+export const isValidContract = async (
+  hre: HardhatRuntimeEnvironment,
+  contractAddr: string
+): Promise<boolean> => {
+  return (await hre.ethers.provider.getCode(contractAddr)) != '0x'
 }
