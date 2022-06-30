@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
-import "contracts/mixins/StateManager.sol";
+import "contracts/mixins/Auth.sol";
 
 /**
  * @title Main
@@ -17,7 +17,7 @@ import "contracts/mixins/StateManager.sol";
 // solhint-disable max-states-count
 contract MainP1 is
     Initializable,
-    StateManager,
+    Auth,
     ComponentRegistry,
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable,
@@ -35,7 +35,7 @@ contract MainP1 is
         IERC20 rsr_,
         uint32 oneshotPauseDuration_
     ) public virtual initializer {
-        __StateManager_init(oneshotPauseDuration_);
+        __Auth_init(oneshotPauseDuration_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
 
@@ -46,14 +46,23 @@ contract MainP1 is
     /// @custom:refresher
     /// @custom:interaction CEI
     function poke() external {
-        require(!paused(), "paused");
+        require(!paused, "paused");
         // == Refresher ==
         assetRegistry.refresh();
 
         // == CE block ==
-        require(!paused(), "paused");
+        require(!paused, "paused");
         furnace.melt();
         stRSR.payoutRewards();
+    }
+
+    function hasRole(bytes32 role, address account)
+        public
+        view
+        override(AccessControlUpgradeable, IMain)
+        returns (bool)
+    {
+        return super.hasRole(role, account);
     }
 
     // === Upgradeability ===

@@ -37,14 +37,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
     // Give RToken max allowance over a registered token
     /// @custom:interaction
-    function grantRTokenAllowance(IERC20 erc20) external notPaused {
+    function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         erc20.approve(address(main.rToken()), type(uint256).max);
     }
 
     /// Mointain the overall backing policy; handout assets otherwise
     /// @custom:interaction
-    function manageTokens(IERC20[] calldata erc20s) external notPaused {
+    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Call keepers before
         main.poke();
 

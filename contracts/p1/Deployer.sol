@@ -135,7 +135,7 @@ contract DeployerP1 is IDeployer {
         assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.oneshotPauseDuration);
+        main.init(components, rsr, params.oneshotFreezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -192,8 +192,8 @@ contract DeployerP1 is IDeployer {
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
+        main.grantRole(FREEZER, owner);
         main.grantRole(PAUSER, owner);
-        main.grantRole(PAUSER_LITE, owner);
         main.renounceRole(OWNER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);

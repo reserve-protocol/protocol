@@ -17,10 +17,11 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-// Roles
-bytes32 constant OWNER = keccak256("OWNER"); // ignore the default admin
-bytes32 constant PAUSER = keccak256("PAUSER");
-bytes32 constant PAUSER_LITE = keccak256("PAUSER_LITE");
+// === Roles ===
+
+bytes32 constant OWNER = keccak256("OWNER"); // replacement for default AccssControl admin
+bytes32 constant FREEZER = keccak256("FREEZER"); // disable everything except OWNER actions
+bytes32 constant PAUSER = keccak256("PAUSER"); // disable everything except OWNER actions + redeem
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -44,27 +45,29 @@ struct Components {
     IRevenueTrader rTokenTrader;
 }
 
-interface IStateManager is IAccessControlUpgradeable {
-    /// Emitted when `unpauseAt` is changed
-    /// @param oldUnpauseAt The old value of `unpauseAt`
-    /// @param newUnpauseAt The new value of `unpauseAt`
-    event UnpauseAtSet(uint32 indexed oldUnpauseAt, uint32 indexed newUnpauseAt);
+interface IAuth {
+    /// Emitted when `unfreezeAt` is changed
+    /// @param oldVal The old value of `unfreezeAt`
+    /// @param newVal The new value of `unfreezeAt`
+    event UnfreezeAtSet(uint32 indexed oldVal, uint32 indexed newVal);
 
-    /// Emitted when the oneshot pause duration governance param is changed
-    /// @param oldDuration The address of the old pauser
-    /// @param newDuration The address of the new pauser
-    event OneshotPauseDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+    /// Emitted when the oneshot freeze duration governance param is changed
+    /// @param oldDuration The old oneshot freeze duration
+    /// @param newDuration The new oneshot freeze duration
+    event OneshotFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
 
-    /// Emitted when `litePause` is changed
-    /// @param oldLitePause The old value of `litePause`
-    /// @param newLitePause The new value of `litePause`
-    event LitePauseSet(bool indexed oldLitePause, bool indexed newLitePause);
+    /// Emitted when the system is paused or unpaused
+    /// @param oldVal The old value of `paused`
+    /// @param newVal The new value of `paused`
+    event PausedSet(bool indexed oldVal, bool indexed newVal);
 
-    function paused() external view returns (bool);
+    function oneshotFreezeDuration() external view returns (uint32);
 
-    function fullyPaused() external view returns (bool);
+    /// Paused = Everything is disabled except for OWNER actions and redemption
+    function pausedOrFrozen() external view returns (bool);
 
-    function oneshotPauseDuration() external view returns (uint32);
+    /// Frozen = Everything disabled except for OWNER actions
+    function frozen() external view returns (bool);
 }
 
 interface IComponentRegistry {
@@ -145,7 +148,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IStateManager, IComponentRegistry {
+interface IMain is IAuth, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===
@@ -159,6 +162,8 @@ interface IMain is IStateManager, IComponentRegistry {
     ) external;
 
     function rsr() external view returns (IERC20);
+
+    function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
 interface TestIMain is IMain {

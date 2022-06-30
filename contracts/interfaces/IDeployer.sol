@@ -17,7 +17,7 @@ import "./ITrade.sol";
  */
 struct DeploymentParams {
     // === Pausing ===
-    uint32 oneshotPauseDuration; // {s} how long a oneshot pause lasts
+    uint32 oneshotFreezeDuration; // {s} how long a oneshot pause lasts
     //
     // === RToken asset ===
     uint192 maxTradeVolume; // {UoA}

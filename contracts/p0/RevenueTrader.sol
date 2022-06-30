@@ -30,7 +30,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @custom:interaction
-    function manageToken(IERC20 erc20) external notPaused {
+    function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));

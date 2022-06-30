@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
-import "contracts/mixins/StateManager.sol";
+import "contracts/mixins/Auth.sol";
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Initializable, StateManager, ComponentRegistry, IMain {
+contract MainP0 is Initializable, Auth, ComponentRegistry, IMain {
     using FixLib for uint192;
 
     IERC20 public rsr;
@@ -24,7 +24,7 @@ contract MainP0 is Initializable, StateManager, ComponentRegistry, IMain {
         IERC20 rsr_,
         uint32 oneshotPauseDuration_
     ) public virtual initializer {
-        __StateManager_init(oneshotPauseDuration_);
+        __Auth_init(oneshotPauseDuration_);
         __ComponentRegistry_init(components);
 
         rsr = rsr_;
@@ -33,10 +33,19 @@ contract MainP0 is Initializable, StateManager, ComponentRegistry, IMain {
 
     /// @custom:refresher
     function poke() external {
-        require(!paused(), "paused");
+        require(!paused, "paused");
         assetRegistry.refresh();
         furnace.melt();
         stRSR.payoutRewards();
         // NOT basketHandler.refreshBasket
+    }
+
+    function hasRole(bytes32 role, address account)
+        public
+        view
+        override(AccessControlUpgradeable, IMain)
+        returns (bool)
+    {
+        return super.hasRole(role, account);
     }
 }

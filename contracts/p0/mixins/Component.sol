@@ -19,13 +19,12 @@ abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
 
     // === See docs/security.md ===
 
-    modifier notPaused() {
-        require(!main.paused(), "paused");
+    modifier notPausedOrFrozen() {
+        require(!main.pausedOrFrozen(), "paused or frozen");
         _;
     }
-
-    modifier notFullyPaused() {
-        require(!main.fullyPaused(), "fully paused");
+    modifier notFrozen() {
+        require(!main.frozen(), "frozen");
         _;
     }
 

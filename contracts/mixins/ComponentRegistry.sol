@@ -5,12 +5,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/mixins/StateManager.sol";
+import "contracts/mixins/Auth.sol";
 
 /**
  * @title ComponentRegistry
  */
-abstract contract ComponentRegistry is Initializable, StateManager, IComponentRegistry {
+abstract contract ComponentRegistry is Initializable, Auth, IComponentRegistry {
     // solhint-disable-next-line func-name-mixedcase
     function __ComponentRegistry_init(Components memory components_) internal onlyInitializing {
         setBackingManager(components_.backingManager);
