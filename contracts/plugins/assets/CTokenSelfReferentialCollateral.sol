@@ -77,7 +77,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
+            try chainlinkFeed.price(oracleTimeout) returns (uint192) {
                 priceable = true;
             } catch {
                 priceable = false;

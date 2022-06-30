@@ -85,7 +85,7 @@ contract CTokenFiatCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try chainlinkFeed.price(oracleTimeout) returns (uint192 p) {
                 priceable = true;
 
                 // Check for soft default of underlying reference token
