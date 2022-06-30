@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, network, waffle } from 'hardhat'
+import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'

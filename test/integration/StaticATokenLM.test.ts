@@ -1,4 +1,4 @@
-import hre, { ethers, network } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { expect } from 'chai'
 import bnjs from 'bignumber.js'
 import { formatEther, parseEther, _TypedDataEncoder } from 'ethers/lib/utils'
