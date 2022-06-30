@@ -106,10 +106,10 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 Dimension: `{UoA}`
 
-The max trade volume is a value in the unit of account that represents the largest amount of value that should be transacted in any single trade. This value is distributed on deployment to the initial RSR, RToken, AAVE, and COMP assts. After deployment the values are allowed to differ.
+In general the max trade volume is a value in the unit of account that caps how many tokens are traded at once. Generally each asset plugin has its own `maxTradeVolume`, and both assets that are part of the trade participate to constrain trade volume. However, in this case the deployment parameter is just for the RToken asset. At deployment-time the RSR asset is already immutably deployed and it is up to the user to specify `maxTradeVolume` for further individual collateral deployments.
 
 Anticipated value: `1e6` = $1m
-Reasonable range: 1e21 to 1e27
+Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
 
 ## `rewardPeriod`
 
