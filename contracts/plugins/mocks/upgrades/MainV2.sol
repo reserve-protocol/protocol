@@ -7,7 +7,7 @@ contract MainP1V2 is MainP1 {
     uint256 public newValue;
 
     function setNewValue(uint256 newValue_) external {
-        require(!paused, "paused");
+        require(!pausedOrFrozen(), "paused or frozen");
         newValue = newValue_;
     }
 

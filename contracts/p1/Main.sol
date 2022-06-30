@@ -46,12 +46,12 @@ contract MainP1 is
     /// @custom:refresher
     /// @custom:interaction CEI
     function poke() external {
-        require(!paused, "paused");
+        require(!pausedOrFrozen(), "paused or frozen");
         // == Refresher ==
         assetRegistry.refresh();
 
         // == CE block ==
-        require(!paused, "paused");
+        require(!pausedOrFrozen(), "paused or frozen");
         furnace.melt();
         stRSR.payoutRewards();
     }
