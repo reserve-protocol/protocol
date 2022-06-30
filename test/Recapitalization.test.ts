@@ -16,7 +16,7 @@ import {
   GnosisMock,
   IBasketHandler,
   StaticATokenMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIRToken,
   TestIStRSR,
@@ -79,7 +79,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
 

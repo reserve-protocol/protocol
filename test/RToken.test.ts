@@ -19,7 +19,7 @@ import {
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -82,7 +82,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let main: TestIMain
   let rToken: TestIRToken
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
 

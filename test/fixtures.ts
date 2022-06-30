@@ -1,8 +1,9 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
+import { getChainId } from '../common/blockchain-utils'
+import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
-import { EASY_AUCTION_ADDRESS } from './integration/mainnet'
 import { bn, fp } from '../common/numbers'
 import {
   AaveLendingAddrProviderMock,
@@ -28,6 +29,7 @@ import {
   EasyAuction,
   GnosisMock,
   GnosisTrade,
+  IAssetRegistry,
   IBasketHandler,
   MainP1,
   RevenueTraderP1,
@@ -36,7 +38,6 @@ import {
   RTokenP1,
   StaticATokenMock,
   StRSRP1Votes,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -62,46 +63,6 @@ export const IMPLEMENTATION: Implementation =
 export const SLOW = !!process.env.SLOW
 
 export type Collateral = AbstractCollateral | CTokenFiatCollateral | ATokenFiatCollateral
-
-export interface IConfig {
-  maxTradeVolume: BigNumber
-  dist: IRevenueShare
-  rewardPeriod: BigNumber
-  rewardRatio: BigNumber
-  unstakingDelay: BigNumber
-  tradingDelay: BigNumber
-  auctionLength: BigNumber
-  backingBuffer: BigNumber
-  maxTradeSlippage: BigNumber
-  dustAmount: BigNumber
-  issuanceRate: BigNumber
-  oneshotPauseDuration: BigNumber
-  minBidSize: BigNumber
-}
-
-export interface IRevenueShare {
-  rTokenDist: BigNumber
-  rsrDist: BigNumber
-}
-
-export interface IComponents {
-  rToken: string
-  stRSR: string
-  assetRegistry: string
-  basketHandler: string
-  backingManager: string
-  distributor: string
-  furnace: string
-  broker: string
-  rsrTrader: string
-  rTokenTrader: string
-}
-
-export interface IImplementations {
-  main: string
-  components: IComponents
-  trade: string
-}
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -185,9 +146,13 @@ interface GnosisFixture {
 
 async function gnosisFixture(): Promise<GnosisFixture> {
   const GnosisFactory: ContractFactory = await ethers.getContractFactory('GnosisMock')
+  const chainId = await getChainId(hre)
+
   return {
     gnosis: <GnosisMock>await GnosisFactory.deploy(),
-    easyAuction: <EasyAuction>await ethers.getContractAt('EasyAuction', EASY_AUCTION_ADDRESS),
+    easyAuction: <EasyAuction>(
+      await ethers.getContractAt('EasyAuction', networkConfig[chainId].GNOSIS_EASY_AUCTION || '')
+    ),
   }
 }
 
@@ -363,7 +328,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   dist: IRevenueShare
   deployer: TestIDeployer
   main: TestIMain
-  assetRegistry: TestIAssetRegistry
+  assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
   basketHandler: IBasketHandler
   distributor: TestIDistributor
@@ -384,6 +349,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
   let facade: Facade
+
   const { rsr } = await rsrFixture()
   const {
     weth,
@@ -537,8 +503,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
   // Get Core
-  const assetRegistry: TestIAssetRegistry = <TestIAssetRegistry>(
-    await ethers.getContractAt('TestIAssetRegistry', await main.assetRegistry())
+  const assetRegistry: IAssetRegistry = <IAssetRegistry>(
+    await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
   )
   const backingManager: TestIBackingManager = <TestIBackingManager>(
     await ethers.getContractAt('TestIBackingManager', await main.backingManager())

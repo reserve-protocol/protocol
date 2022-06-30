@@ -10,7 +10,7 @@ import {
   ComptrollerMock,
   ERC20Mock,
   IBasketHandler,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
@@ -53,7 +53,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
 

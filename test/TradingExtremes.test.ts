@@ -8,7 +8,7 @@ import {
   AaveLendingPoolMock,
   AavePricedAsset,
   AaveOracleMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   ATokenFiatCollateral,
   TestIBackingManager,
   IBasketHandler,
@@ -64,7 +64,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let rToken: TestIRToken
   let main: TestIMain
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

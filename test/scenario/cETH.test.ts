@@ -12,7 +12,7 @@ import {
   CompoundOracleMock,
   ERC20Mock,
   IBasketHandler,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIStRSR,
   TestIRevenueTrader,
@@ -54,7 +54,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let stRSR: TestIStRSR
   let rsr: ERC20Mock
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader

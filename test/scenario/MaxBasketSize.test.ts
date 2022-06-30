@@ -16,7 +16,7 @@ import {
   Facade,
   IBasketHandler,
   StaticATokenMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIRToken,
 } from '../../typechain'
@@ -53,7 +53,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
   let facade: Facade
   let backingManager: TestIBackingManager

@@ -31,7 +31,7 @@ import {
   RTokenP1V2,
   StRSRP1Votes,
   StRSRP1VotesV2,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -68,7 +68,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

@@ -1,9 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
+import hre, { ethers, network, waffle } from 'hardhat'
+import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
+import { getChainId } from '../../common/blockchain-utils'
+import { IConfig, networkConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
@@ -15,24 +17,6 @@ import {
 } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import forkBlockNumber from './fork-block-numbers'
-
-import {
-  AAVE_INCENTIVES_ADDRESS,
-  AAVE_LENDING_POOL_ADDRESS,
-  ABUSD_ADDRESS,
-  ADAI_ADDRESS,
-  AUSDC_ADDRESS,
-  AUSDT_ADDRESS,
-  BUSD_ADDRESS,
-  COMP_ADDRESS,
-  CUSDC_ADDRESS,
-  CUSDT_ADDRESS,
-  CDAI_ADDRESS,
-  DAI_ADDRESS,
-  STAKEDAAVE_ADDRESS,
-  USDC_ADDRESS,
-  USDT_ADDRESS,
-} from './mainnet'
 
 import {
   AaveLendingPoolMock,
@@ -53,7 +37,7 @@ import {
   RTokenAsset,
   StaticATokenLM,
   StaticATokenMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -141,7 +125,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let rTokenAsset: RTokenAsset
   let main: TestIMain
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let config: IConfig
@@ -153,10 +137,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  let chainId: number
+
   describe('Assets/Collateral Setup', () => {
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
+
+      chainId = await getChainId(hre)
+      if (!networkConfig[chainId]) {
+        throw new Error(`Missing network configuration for ${hre.network.name}`)
+      }
     })
 
     beforeEach(async () => {
@@ -188,17 +179,29 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       aUsdc = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', AUSDC_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDC || ''
+        )
       )
       aUsdt = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', AUSDT_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDT || ''
+        )
       )
       aBusd = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ABUSD_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aBUSD || ''
+        )
       )
 
       // Get collaterals
@@ -219,7 +222,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // COMP Token
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
-      expect(await compAsset.erc20()).to.equal(COMP_ADDRESS)
+      expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
@@ -228,7 +231,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // stkAAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
-      expect(await aaveAsset.erc20()).to.equal(STAKEDAAVE_ADDRESS)
+      expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.price()).to.be.closeTo(fp('105.5'), fp('0.5')) // Close to $105.5 USD - June 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
@@ -249,25 +252,25 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         {
           token: dai,
           tokenDecimals: 18,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           tokenCollateral: daiCollateral,
         },
         {
           token: usdc,
           tokenDecimals: 6,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           tokenCollateral: usdcCollateral,
         },
         {
           token: usdt,
           tokenDecimals: 6,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           tokenCollateral: usdtCollateral,
         },
         {
           token: busd,
           tokenDecimals: 18,
-          tokenAddress: BUSD_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
           tokenCollateral: busdCollateral,
         },
       ]
@@ -306,23 +309,23 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const cTokenInfos: CTokenInfo[] = [
         {
           token: dai,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           cToken: cDai,
-          cTokenAddress: CDAI_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cDAI || '',
           cTokenCollateral: cDaiCollateral,
         },
         {
           token: usdc,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           cToken: cUsdc,
-          cTokenAddress: CUSDC_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cUSDC || '',
           cTokenCollateral: cUsdcCollateral,
         },
         {
           token: usdt,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           cToken: cUsdt,
-          cTokenAddress: CUSDT_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cUSDT || '',
           cTokenCollateral: cUsdtCollateral,
         },
       ]
@@ -370,34 +373,34 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const aTokenInfos: ATokenInfo[] = [
         {
           token: dai,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           stataToken: stataDai,
           aToken: aDai,
-          aTokenAddress: ADAI_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aDAI || '',
           aTokenCollateral: aDaiCollateral,
         },
         {
           token: usdc,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           stataToken: stataUsdc,
           aToken: aUsdc,
-          aTokenAddress: AUSDC_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aUSDC || '',
           aTokenCollateral: aUsdcCollateral,
         },
         {
           token: usdt,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           stataToken: stataUsdt,
           aToken: aUsdt,
-          aTokenAddress: AUSDT_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aUSDT || '',
           aTokenCollateral: aUsdtCollateral,
         },
         {
           token: busd,
-          tokenAddress: BUSD_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
           stataToken: stataBusd,
           aToken: aBusd,
-          aTokenAddress: ABUSD_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aBUSD || '',
           aTokenCollateral: aBusdCollateral,
         },
       ]
@@ -438,8 +441,12 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await atkInf.stataToken.symbol()).to.equal('stata' + (await atkInf.token.symbol()))
         expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
-        expect(await atkInf.stataToken.LENDING_POOL()).to.equal(AAVE_LENDING_POOL_ADDRESS)
-        expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(AAVE_INCENTIVES_ADDRESS)
+        expect(await atkInf.stataToken.LENDING_POOL()).to.equal(
+          networkConfig[chainId].AAVE_LENDING_POOL
+        )
+        expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(
+          networkConfig[chainId].AAVE_INCENTIVES
+        )
         expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aToken.address)
         expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aTokenAddress)
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
@@ -451,7 +458,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     it('Should handle invalid Price - Assets', async () => {
       // Setup Assets with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
       const nonpriceAaveAsset: AavePricedAsset = <AavePricedAsset>(
@@ -484,7 +491,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Setup Collateral with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
       // Fiat collateral - Aave
@@ -539,7 +546,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Setup Collateral with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
       // Wrap in Static AToken (use mock in this case)
@@ -662,7 +669,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
@@ -1031,7 +1041,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)

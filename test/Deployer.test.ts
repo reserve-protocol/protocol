@@ -13,7 +13,7 @@ import {
   GnosisMock,
   IBasketHandler,
   RTokenAsset,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -58,7 +58,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

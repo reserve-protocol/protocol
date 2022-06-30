@@ -18,7 +18,7 @@ import {
   GnosisMock,
   IBasketHandler,
   StaticATokenMock,
-  TestIAssetRegistry,
+  IAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -80,7 +80,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
