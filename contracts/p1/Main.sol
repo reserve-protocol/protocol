@@ -61,6 +61,15 @@ contract MainP1 is
         return OwnableUpgradeable.owner();
     }
 
+    function transferOwnership(address newOwner)
+        public
+        virtual
+        override(IMain, OwnableUpgradeable)
+        onlyOwner
+    {
+        OwnableUpgradeable.transferOwnership(newOwner);
+    }
+
     // === Upgradeability ===
     // solhint-disable-next-line no-empty-blocks
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

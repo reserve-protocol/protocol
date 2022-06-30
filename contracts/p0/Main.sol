@@ -46,4 +46,13 @@ contract MainP0 is Initializable, ContextUpgradeable, ComponentRegistry, Pausabl
     function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
         return OwnableUpgradeable.owner();
     }
+
+    function transferOwnership(address newOwner)
+        public
+        virtual
+        override(IMain, OwnableUpgradeable)
+        onlyOwner
+    {
+        OwnableUpgradeable.transferOwnership(newOwner);
+    }
 }

@@ -57,6 +57,12 @@ interface IPausable {
     function paused() external view returns (bool);
 
     function oneshotPauseDuration() external view returns (uint32);
+
+    function setOneshotPauser(address pauser_) external;
+
+    function pause() external;
+
+    function unpause() external;
 }
 
 interface IComponentRegistry {
@@ -153,24 +159,18 @@ interface IMain is IComponentRegistry, IPausable {
     function rsr() external view returns (IERC20);
 
     function owner() external view returns (address);
+
+    function transferOwnership(address newOwner) external;
 }
 
 interface TestIMain is IMain {
-    function pause() external;
-
-    function unpause() external;
-
     function isComponent(address componentAddr) external view returns (bool);
 
     function oneshotPauser() external view returns (address);
-
-    function setOneshotPauser(address pauser_) external;
 
     function setOneshotPauseDuration(uint32) external;
 
     function renounceOwnership() external;
 
     function renouncePausership() external;
-
-    function transferOwnership(address newOwner) external;
 }
