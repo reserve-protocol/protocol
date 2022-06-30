@@ -189,7 +189,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(40))
       expect(rsrTotal).to.equal(bn(60))
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -466,7 +466,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Pause with Owner
       await main.connect(owner).pause()
       expect(await main.paused()).to.equal(true)
-      await advanceTime((await config.oneshotPauseDuration).toString())
+      await advanceTime((await config.oneshotFreezeDuration).toString())
 
       expect(await main.paused()).to.equal(true)
     })
@@ -477,7 +477,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Pause with pauser
       await main.connect(addr1).pause()
       expect(await main.paused()).to.equal(true)
-      await advanceTime((await config.oneshotPauseDuration).toString())
+      await advanceTime((await config.oneshotFreezeDuration).toString())
 
       expect(await main.paused()).to.equal(false)
     })
@@ -763,12 +763,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check value was updated
       expect(await main.furnace()).to.equal(newFurnace.address)
     })
-    it('Should allow to update oneshotPauseDuration if Owner', async () => {
+    it('Should allow to update oneshotFreezeDuration if Owner', async () => {
       const newValue: BigNumber = bn(1)
       await main.connect(owner).setOneshotPauser(addr1.address)
 
       // Check existing value
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // If not owner cannot update
       await expect(main.connect(addr1).setOneshotPauseDuration(newValue)).to.be.revertedWith(
@@ -776,15 +776,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
 
       // Check value did not change
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // Update with owner
       await expect(main.connect(owner).setOneshotPauseDuration(newValue))
         .to.emit(main, 'OneshotPauseDurationSet')
-        .withArgs(config.oneshotPauseDuration, newValue)
+        .withArgs(config.oneshotFreezeDuration, newValue)
 
       // Check value was updated
-      expect(await main.oneshotPauseDuration()).to.equal(newValue)
+      expect(await main.oneshotFreezeDuration()).to.equal(newValue)
     })
   })
 

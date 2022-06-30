@@ -84,8 +84,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Gov params ===
 
-    function setOneshotPauseDuration(uint32 oneshotPauseDuration_) external onlyRole(OWNER) {
-        emit OneshotFreezeDurationSet(oneshotFreezeDuration, oneshotPauseDuration_);
-        oneshotFreezeDuration = oneshotPauseDuration_;
+    function setOneshotFreezeDuration(uint32 oneshotFreezeDuration_) external onlyRole(OWNER) {
+        emit OneshotFreezeDurationSet(oneshotFreezeDuration, oneshotFreezeDuration_);
+        oneshotFreezeDuration = oneshotFreezeDuration_;
     }
 }

@@ -68,11 +68,11 @@ There are 3 types of baskets in our system:
 
 ### Prime Basket
 
-The prime basket is directly set by governance, and only changes when governance demands it. The prime basket consists of a set of triples `<collateral token, target unit, target amount>`. Each triple means that, in each basket unit, `target amount` of the `target unit` should be represented by `collateral token`. 
+The prime basket is directly set by governance, and only changes when governance demands it. The prime basket consists of a set of triples `<collateral token, target unit, target amount>`. Each triple means that, in each basket unit, `target amount` of the `target unit` should be represented by `collateral token`.
 
 The dimension of `target amount` is `{target / BU}`.
 
-For example, if the prime basket contains the triple `<cUSDC, USD, 0.33>`, that means "The configured system should contain 0.33 USD/BU, as represented by cUSDC". 
+For example, if the prime basket contains the triple `<cUSDC, USD, 0.33>`, that means "The configured system should contain 0.33 USD/BU, as represented by cUSDC".
 
 As a consequence, the prime basket also defines the quantity of each target unit that's intended to be represented by one basket; altogether, these pairs `<target unit, target amount>` form the _target basket_. The target basket isn't used explicitly anywhere in our code, but it's a useful property of a proposed RToken. (e.g, "A target basket of 1 USD, 1 EUR, and 1/1000th ETH".)
 
@@ -88,7 +88,7 @@ For example, if the reference basket contains the triple `<cUSDC, USDC, 0.33>`, 
 
 ### Collateral Basket
 
-The collateral basket is derived, moment-by-moment and on-demand, from the reference basket. Since defi redemption rates can change every transaction, so can the collateral basket. The collateral basket is a set of pairs `<collateral token, token amount>`. Each pair means that each basket unit must contain `token amount` of `collateral token`. 
+The collateral basket is derived, moment-by-moment and on-demand, from the reference basket. Since defi redemption rates can change every transaction, so can the collateral basket. The collateral basket is a set of pairs `<collateral token, token amount>`. Each pair means that each basket unit must contain `token amount` of `collateral token`.
 
 The dimension of `token amount` is `{tok/BU}`.
 
@@ -192,11 +192,11 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-## oneshotPauseDuration
+## oneshotFreezeDuration
 
 Dimension: `{s}`
 
-The number of seconds a oneshot pause should last. That is, a pause performed by the pauser role, which can only be used once. The owner can pause indefinitely.
+The number of seconds a freeze performed by a non-governance freezer. Governance can freeze indefinitely.
 
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
