@@ -102,7 +102,7 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## Deployment Parameters
 
-## `maxTradeVolume`
+### `maxTradeVolume`
 
 Dimension: `{UoA}`
 
@@ -111,7 +111,7 @@ In general the max trade volume is a value in the unit of account that caps how 
 Anticipated value: `1e6` = $1m
 Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
 
-## `rewardPeriod`
+### `rewardPeriod`
 
 Dimension: `{seconds}`
 
@@ -120,7 +120,7 @@ The reward period is the length of one period of the StRSR and Furnace reward cu
 Anticipated value: `86400` = 1 day
 Reasonable range: 10 to 31536000 (1 year)
 
-## `rewardRatio`
+### `rewardRatio`
 
 Dimension: `{%}`
 
@@ -129,7 +129,7 @@ The `rewardRatio` is the amount of the current reward amount that should be hand
 Anticipated value: `0.02284e18` = half life of 30 periods
 Reasonable range: 1e9 to 1e18
 
-## `unstakingDelay`
+### `unstakingDelay`
 
 Dimension: `{seconds}`
 
@@ -138,7 +138,7 @@ The unstaking delay is the number of seconds that all RSR unstakings must be del
 Anticipated value: `604800` = 1 week
 Reasonable range: 1 to 31536000
 
-## `tradingDelay`
+### `tradingDelay`
 
 Dimension: `{seconds}`
 
@@ -147,7 +147,7 @@ The trading delay is how many seconds should pass after the basket has been chan
 Anticipated value: `14400` = 4 hours
 Reasonable range: 0 to 604800
 
-## `auctionLength`
+### `auctionLength`
 
 Dimension: `{seconds}`
 
@@ -156,7 +156,7 @@ The auction length is how many seconds long Gnosis EasyAuctions should be.
 Anticipated value: `900` = 15 minutes
 Reasonable range: 60 to 3600
 
-## `backingBuffer`
+### `backingBuffer`
 
 Dimension: `{%}`
 
@@ -165,7 +165,7 @@ The backing buffer is a percentage value that describes how much additional coll
 Anticipated value: `1e14` = 0.01%
 Reasonable range: 1e12 to 1e18
 
-## `maxTradeSlippage`
+### `maxTradeSlippage`
 
 Dimension: `{%}`
 
@@ -174,7 +174,7 @@ The max trade slippage is a percentage value that describes the maximum deviatio
 Anticipated value: `0.01e18` = 1%
 Reasonable range: 1e12 to 1e18
 
-## `dustAmount`
+### `dustAmount`
 
 Dimension: `{UoA}`
 
@@ -183,7 +183,7 @@ The dust amount is a value in the unit of account that represents the smallest a
 Anticipated value: `1000e18` = $1,000
 Reasonable range: 1e18 to 1e24
 
-## `issuanceRate`
+### `issuanceRate`
 
 Dimension: `{%}`
 
@@ -192,7 +192,7 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-## oneshotFreezeDuration
+### `oneshotFreezeDuration`
 
 Dimension: `{s}`
 
@@ -201,7 +201,7 @@ The number of seconds a freeze performed by a non-governance freezer. Governance
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
 
-## minBidSize
+### `minBidSize`
 
 Dimension: `{UoA}`
 
