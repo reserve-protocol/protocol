@@ -47,6 +47,10 @@ contract ATokenFiatCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     IERC20 public immutable override rewardERC20;
 
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
+    /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,

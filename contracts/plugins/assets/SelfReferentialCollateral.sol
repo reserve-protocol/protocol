@@ -19,6 +19,8 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
 
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     // solhint-disable no-empty-blocks
     constructor(
         AggregatorV3Interface chainlinkFeed_,

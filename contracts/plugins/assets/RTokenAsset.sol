@@ -8,6 +8,7 @@ import "contracts/interfaces/IMain.sol";
 contract RTokenAsset is Asset {
     IMain public immutable main;
 
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     constructor(
         IMain main_,
         IERC20Metadata erc20_,
