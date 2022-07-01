@@ -72,7 +72,7 @@ index 53f55eb5..f4086212 100644
 
 -    /// Claim all rewards and sweep to BackingManager
 -    /// @custom:interaction
--    function claimAndSweepRewards() external notPausedOrFrozen {
+-    function claimAndSweepRewards() external interaction {
 -        RewardableLibP1.claimAndSweepRewards();
 -    }
 -
@@ -168,7 +168,7 @@ index 8d96627a..0a3746af 100644
 -    /// Claim all rewards and sweep to BackingManager
 -    /// Collective Action
 -    /// @custom:interaction CEI
--    function claimAndSweepRewards() external notPausedOrFrozen {
+-    function claimAndSweepRewards() external interaction {
 -        // == Interaction ==
 -        RewardableLibP1.claimAndSweepRewards();
 -    }
