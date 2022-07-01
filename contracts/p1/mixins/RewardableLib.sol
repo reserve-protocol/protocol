@@ -10,7 +10,7 @@ import "contracts/interfaces/IRewardable.sol";
 
 /**
  * @title RewardableLibP1
- * @notice An library that allows a contract to claim rewards
+ * @notice A library that allows a contract to claim rewards
  * @dev The caller must implement the IRewardable interface!
  */
 library RewardableLibP1 {

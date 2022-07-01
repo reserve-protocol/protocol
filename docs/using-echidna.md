@@ -12,6 +12,20 @@ If you're using the "mostly-static" precompiled binaries for MacOS, putting the 
 
 ## Usage
 
+Summary:
+
+    # once per commit, apply the static patch
+    git apply tools/static.diff
+    
+    # many times
+    yarn compile && echdina-test . --contract ${CONTRACT} \
+      --config tools/echidna.config.yml
+    
+    # before committing, reverse the static patch
+    git apply -R tools/static.diff
+
+### Running Echidna
+
 Echidna runs are typically pretty slow. Frequently, your system has to generate _lots_ and _lots_ of iterations for any particular property under test, but it _can_ make surprising progress after a long runtime. This means that you'll probably either do things just a few tests at a time, reasoning interactively and getting things right, or you'll launch a long fuzzing campaign on a remote system, and then await the results.
 
 Remote campaigns are _not_ set up yet, we're still in the local-system-fiddling stage.
@@ -31,18 +45,10 @@ The [Echidna tutorial](https://github.com/crytic/building-secure-contracts/tree/
 
 Among the release notes, especially note the use of `--testMode`! Very important!
 
-## Avoiding Dynamic Libraries
+### Avoiding Dynamic Libraries
 
 For Echidna to run, our Solidity code [cannot contain dynamic libraries](https://github.com/crytic/echidna/#limitations-and-known-issues). Our deployment code absolutely does contain dynamic libraries, so something must be done.
 
-The simplest thing is to run through all of our library contracts, and redeclare all of their `public` and `external` functions instead to be `internal`. This causes Solidity to instead link those libraries statically -- that is, at compile time, solc just copies that function bytecode into any contract that calls them.
+The change required is relatively small, and doesn't change all that often, so we're just keeping the needed patch in the repository as `tools/static.diff`. You can go from static to dynamic by running `git apply tools/static.diff`, and you can go from dynamic to static by running `git apply -R tools/static.diff`. Both should compile and pass our general test suite.
 
-This would obviously be a pain to do by hand, so I've set up a little automation in `tools` to help do this. From your shell, `cd` anywhere into the project and execute `tools/make-static.sh`. For each dynamic library contract `path/foo.sol` in our codebase, 1t will:
-
-- copy the original library to a backup file `path/foo.sol.original`
-- replace all instances of tokens `public` and `external` with `internal` inside `path/foo.sol`
-- stick a warning comment at the top of `path/foo.sol` that says not to change or commit that file.
-
-I've also added a pre-commit hook to help keep you from committing these files; whenever you do `git commit`, it'll abort if any file in your live directory has the `DO_NOT_COMMIT` keyword somewhere in its first 10 lines. (`*.sol.original` files should also be in `.gitignore`, so you won't accidentally commit those.)
-
-To undo the changes that `tools/make-static.sh` causes, just run `tools/make-dynamic.sh`. In particular, this should enable you to commit changes again!
+You can only run echidna in static mode; you can only commit changes to the repo in dynamic mode.

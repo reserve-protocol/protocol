@@ -2,9 +2,18 @@
 # format: 'text'
 #seqLen defines how many transactions are in a test sequence
 seqLen: 200
+
 #prefix is the prefix for Boolean functions that are properties to be checked
 prefix: 'echidna'
+
 #testLimit is the number of test sequences to run
 testLimit: 1000
+
 #estimateGas makes echidna perform analysis of maximum gas costs for functions (experimental)
-estimateGas: true
+estimateGas: false
+
+# maximum deployable code size (much larger here than on mainnet!)
+codeSize: 50000
+
+# use corpusDir by default; you frequently want it to see run coverage
+corpusDir: echidna-corpus
