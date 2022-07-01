@@ -237,3 +237,266 @@ index 0f21b8c7..a702f34d 100644
          view
          returns (bool doTrade, TradeRequest memory req)
      {
+diff --git a/test/Upgradeability.test.ts b/test/Upgradeability.test.ts
+index a525adae..ffd632b7 100644
+--- a/test/Upgradeability.test.ts
++++ b/test/Upgradeability.test.ts
+@@ -25,7 +25,6 @@ import {
+   MainP1V2,
+   RevenueTraderP1,
+   RevenueTraderP1V2,
+-  RewardableLibP1,
+   RTokenAsset,
+   RTokenP1,
+   RTokenP1V2,
+@@ -40,7 +39,6 @@ import {
+   TestIRevenueTrader,
+   TestIRToken,
+   TestIStRSR,
+-  TradingLibP1,
+ } from '../typechain'
+ import { defaultFixture, IComponents, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+
+@@ -74,8 +72,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
+   let distributor: TestIDistributor
+   let rsrTrader: TestIRevenueTrader
+   let rTokenTrader: TestIRevenueTrader
+-  let tradingLib: TradingLibP1
+-  let rewardableLib: RewardableLibP1
+
+   // Factories
+   let MainFactory: ContractFactory
+@@ -123,26 +119,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
+       rTokenTrader,
+     } = await loadFixture(defaultFixture))
+
+-    // Deploy TradingLib external library
+-    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+-    tradingLib = <TradingLibP1>await TradingLibFactory.deploy()
+-
+-    // Deploy RewardableLib external library
+-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+-    rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
+-
+     // Setup factories
+     MainFactory = await ethers.getContractFactory('MainP1')
+-    RTokenFactory = await ethers.getContractFactory('RTokenP1', {
+-      libraries: { RewardableLibP1: rewardableLib.address },
+-    })
++    RTokenFactory = await ethers.getContractFactory('RTokenP1')
+     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
+-    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
+-      libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+-    })
+-    BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
+-      libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+-    })
++    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1')
++    BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1')
+     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
+
+     BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
+@@ -447,8 +429,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
+     it('Should upgrade correctly - BackingManager', async () => {
+       // Upgrading
+       const BackingMgrV2Factory: ContractFactory = await ethers.getContractFactory(
+-        'BackingManagerP1V2',
+-        { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
++        'BackingManagerP1V2'
+       )
+       const backingMgrV2: BackingManagerP1V2 = <BackingManagerP1V2>await upgrades.upgradeProxy(
+         backingManager.address,
+@@ -577,8 +558,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
+     it('Should upgrade correctly - RevenueTrader', async () => {
+       // Upgrading
+       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
+-        'RevenueTraderP1V2',
+-        { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
++        'RevenueTraderP1V2'
+       )
+       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
+         rsrTrader.address,
+@@ -626,9 +606,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
+
+     it('Should upgrade correctly - RToken', async () => {
+       // Upgrading
+-      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2', {
+-        libraries: { RewardableLibP1: rewardableLib.address },
+-      })
++      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2')
++
+       const rTokenV2: RTokenP1V2 = <RTokenP1V2>await upgrades.upgradeProxy(
+         rToken.address,
+         RTokenV2Factory,
+diff --git a/test/fixtures.ts b/test/fixtures.ts
+index f34e2b58..2d1197c5 100644
+--- a/test/fixtures.ts
++++ b/test/fixtures.ts
+@@ -31,7 +31,6 @@ import {
+   IBasketHandler,
+   MainP1,
+   RevenueTraderP1,
+-  RewardableLibP1,
+   RTokenAsset,
+   RTokenP1,
+   StaticATokenMock,
+@@ -46,8 +45,6 @@ import {
+   TestIRevenueTrader,
+   TestIRToken,
+   TestIStRSR,
+-  TradingLibP0,
+-  TradingLibP1,
+   USDCMock,
+ } from '../typechain'
+
+@@ -418,18 +415,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     minBidSize: fp('1'), // 1 UoA (USD)
+   }
+
+-  // Deploy TradingLib external library
+-  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+-  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+-
+   // Deploy Facade
+   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+   facade = <Facade>await FacadeFactory.deploy()
+
+   // Create Deployer
+-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+-    libraries: { TradingLibP0: tradingLib.address },
+-  })
++  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
+   let deployer: TestIDeployer = <DeployerP0>(
+     await DeployerFactory.deploy(
+       rsr.address,
+@@ -445,20 +436,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
+     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
+
+-    // Deploy TradingLib external library
+-    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+-    const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+-
+-    // Deploy RewardableLib external library
+-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+-    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+-
+     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
+     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
+
+     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
+-      'BackingManagerP1',
+-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
++      'BackingManagerP1'
+     )
+     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
+
+@@ -470,10 +452,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
+     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
+
+-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+-      'RevenueTraderP1',
+-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+-    )
++    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
+
+     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
+@@ -485,9 +464,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
+     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
+
+-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
+-      libraries: { RewardableLibP1: rewardableLib.address },
+-    })
++    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
+     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
+
+     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
+diff --git a/test/integration/fixtures.ts b/test/integration/fixtures.ts
+index b79bf0e0..084bfe8d 100644
+--- a/test/integration/fixtures.ts
++++ b/test/integration/fixtures.ts
+@@ -26,7 +26,6 @@ import {
+   IGnosis,
+   MainP1,
+   RevenueTraderP1,
+-  RewardableLibP1,
+   RTokenAsset,
+   RTokenP1,
+   StaticATokenLM,
+@@ -41,8 +40,6 @@ import {
+   TestIRevenueTrader,
+   TestIRToken,
+   TestIStRSR,
+-  TradingLibP0,
+-  TradingLibP1,
+ } from '../../typechain'
+
+ import {
+@@ -355,18 +352,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     minBidSize: fp('0.001'), // 0.1% of the minBuyAmount
+   }
+
+-  // Deploy TradingLib external library
+-  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+-  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+-
+   // Deploy Facade
+   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
+   facade = <Facade>await FacadeFactory.deploy()
+
+   // Create Deployer
+-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+-    libraries: { TradingLibP0: tradingLib.address },
+-  })
++  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
+   let deployer: TestIDeployer = <DeployerP0>(
+     await DeployerFactory.deploy(
+       rsr.address,
+@@ -382,20 +373,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
+     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
+
+-    // Deploy TradingLib external library
+-    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+-    const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+-
+-    // Deploy RewardableLib external library
+-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+-    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+-
+     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
+     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
+
+     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
+-      'BackingManagerP1',
+-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
++      'BackingManagerP1'
+     )
+     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
+
+@@ -407,10 +389,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
+     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
+
+-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
+-      'RevenueTraderP1',
+-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+-    )
++    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
+     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
+
+     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
+@@ -422,9 +401,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
+     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
+     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
+
+-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
+-      libraries: { RewardableLibP1: rewardableLib.address },
+-    })
++    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
+     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
+
+     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
