@@ -164,4 +164,13 @@ describe('Assets contracts #fast', () => {
       await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
     })
   })
+
+  describe('Invalid checks', () => {
+    it('Should not allow 0 oracleTimeout', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(ZERO_ADDRESS, await collateral0.maxTradeVolume(), ZERO_ADDRESS, 0)
+      ).to.be.revertedWith('oracle timeout zero')
+    })
+  })
 })
