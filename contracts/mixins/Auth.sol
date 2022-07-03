@@ -32,15 +32,17 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     bool public paused;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Auth_init(uint32 oneshotPauseDuration_) internal onlyInitializing {
+    function __Auth_init(uint32 oneshotFreezeDuration_) internal onlyInitializing {
         __AccessControl_init();
-        oneshotFreezeDuration = oneshotPauseDuration_;
+        oneshotFreezeDuration = oneshotFreezeDuration_;
 
         // Role setup
         _setRoleAdmin(OWNER, OWNER);
         _setRoleAdmin(FREEZER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
         _grantRole(OWNER, _msgSender());
+        _grantRole(FREEZER, _msgSender());
+        _grantRole(PAUSER, _msgSender());
 
         // begin frozen
         unfreezeAt = type(uint32).max;
@@ -74,7 +76,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         frozenBy = address(0);
     }
 
-    function unfreeze() external onlyRole(OWNER) {
+    function unfreeze() external {
+        require(frozen(), "not frozen");
+        require(hasRole(OWNER, _msgSender()) || frozenBy == _msgSender(), "not original freezer");
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
         unfreezeAt = uint32(block.timestamp);
     }
@@ -85,12 +89,6 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
         unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
         frozenBy = _msgSender();
-    }
-
-    function unOneshotFreeze() external {
-        require(frozen() && frozenBy == _msgSender(), "not original freezer");
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
-        unfreezeAt = uint32(block.timestamp);
     }
 
     // === Gov params ===

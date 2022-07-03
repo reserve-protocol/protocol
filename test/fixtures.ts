@@ -212,7 +212,6 @@ async function collateralFixture(
         delayUntilDefault
       )
     )
-    await assetRegistry.register(coll.address)
     return [erc20, coll]
   }
   const makeSixDecimalCollateral = async (symbol: string): Promise<[USDCMock, Collateral]> => {
@@ -232,23 +231,16 @@ async function collateralFixture(
         delayUntilDefault
       )
     )
-    await assetRegistry.register(coll.address)
     return [erc20, coll]
   }
   const makeCTokenCollateral = async (
     symbol: string,
-    underlyingAddress: string,
+    referenceERC20: ERC20Mock,
+    underlyingCollateral: Collateral,
     compToken: ERC20Mock
   ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
-    const referenceERC20: ERC20Mock = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', underlyingAddress)
-    )
     const erc20: CTokenMock = <CTokenMock>(
-      await CTokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
-    )
-
-    const underlyingCollateral: Collateral = <Collateral>(
-      await ethers.getContractAt('FiatCollateral', await assetRegistry.toColl(underlyingAddress))
+      await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
     )
     const coll = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
@@ -264,23 +256,18 @@ async function collateralFixture(
         comptroller.address
       )
     )
-    await assetRegistry.register(coll.address)
     return [erc20, coll]
   }
   const makeATokenCollateral = async (
     symbol: string,
-    underlyingAddress: string,
+    referenceERC20: ERC20Mock,
+    underlyingCollateral: Collateral,
     aaveToken: ERC20Mock
   ): Promise<[StaticATokenMock, ATokenFiatCollateral]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
-      await ATokenMockFactory.deploy(symbol + ' Token', symbol, underlyingAddress)
+      await ATokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
     )
     await erc20.setAaveToken(aaveToken.address)
-
-    // Assert the underlying token already has collateral
-    const underlyingCollateral: Collateral = <Collateral>(
-      await ethers.getContractAt('FiatCollateral', await assetRegistry.toColl(underlyingAddress))
-    )
 
     const coll = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.deploy(
@@ -294,7 +281,6 @@ async function collateralFixture(
         aaveToken.address
       )
     )
-    await assetRegistry.register(coll.address)
     return [erc20, coll]
   }
 
@@ -303,13 +289,13 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0].address, compToken)
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0].address, compToken)
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0].address, compToken)
-  const adai = await makeATokenCollateral('aDAI', dai[0].address, aaveToken)
-  const ausdc = await makeATokenCollateral('aUSDC', usdc[0].address, aaveToken)
-  const ausdt = await makeATokenCollateral('aUSDT', usdt[0].address, aaveToken)
-  const abusd = await makeATokenCollateral('aBUSD', busd[0].address, aaveToken)
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], dai[1], compToken)
+  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], usdc[1], compToken)
+  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], usdt[1], compToken)
+  const adai = await makeATokenCollateral('aDAI', dai[0], dai[1], aaveToken)
+  const ausdc = await makeATokenCollateral('aUSDC', usdc[0], usdc[1], aaveToken)
+  const ausdt = await makeATokenCollateral('aUSDT', usdt[0], usdt[1], aaveToken)
+  const abusd = await makeATokenCollateral('aBUSD', busd[0], busd[1], aaveToken)
   const erc20s = [
     dai[0],
     usdc[0],
@@ -578,6 +564,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     )
   )
 
+  // Register reward tokens
+  await assetRegistry.connect(owner).register(aaveAsset.address)
+  await assetRegistry.connect(owner).register(compAsset.address)
+
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
   )
@@ -611,12 +601,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIRevenueTrader', await main.rTokenTrader())
   )
 
-  // Register reward tokens
-  await assetRegistry.connect(owner).register(aaveAsset.address)
-  await assetRegistry.connect(owner).register(compAsset.address)
+  // Register prime collateral
+  const basketERC20s = []
+  for (let i = 0; i < basket.length; i++) {
+    await assetRegistry.connect(owner).register(basket[i].address)
+    basketERC20s.push(await basket[i].erc20())
+  }
 
   // Set non-empty basket
-  const basketERC20s = await Promise.all(basket.map(async (b) => await b.erc20()))
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
 

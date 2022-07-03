@@ -19,9 +19,9 @@ import "./ITrading.sol";
 
 // === Roles ===
 
-bytes32 constant OWNER = keccak256("OWNER"); // replacement for default AccssControl admin
-bytes32 constant FREEZER = keccak256("FREEZER"); // disable everything except OWNER actions
-bytes32 constant PAUSER = keccak256("PAUSER"); // disable everything except OWNER actions + redeem
+bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
+bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // disable everything except OWNER actions
+bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // disable everything except OWNER actions + redeem
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -151,7 +151,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IAuth, IComponentRegistry {
+interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===
@@ -161,12 +161,10 @@ interface IMain is IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotPauseDuration_
+        uint32 oneshotFreezeDuration_
     ) external;
 
     function rsr() external view returns (IERC20);
-
-    function hasRole(bytes32 role, address account) external view returns (bool);
 }
 
 interface TestIMain is IMain {
@@ -178,6 +176,12 @@ interface TestIMain is IMain {
 
     function unpause() external;
 
+    function oneshotFreeze() external;
+
     /// @custom:governance
-    function setOneshotPauseDuration(uint32) external;
+    function setOneshotFreezeDuration(uint32) external;
+
+    function oneshotFreezeDuration() external view returns (uint32);
+
+    function paused() external view returns (bool);
 }

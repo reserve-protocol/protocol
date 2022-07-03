@@ -33,9 +33,9 @@ contract MainP1 is
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotPauseDuration_
+        uint32 oneshotFreezeDuration_
     ) public virtual initializer {
-        __Auth_init(oneshotPauseDuration_);
+        __Auth_init(oneshotFreezeDuration_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
 
@@ -59,7 +59,7 @@ contract MainP1 is
     function hasRole(bytes32 role, address account)
         public
         view
-        override(AccessControlUpgradeable, IMain)
+        override(IAccessControlUpgradeable, AccessControlUpgradeable)
         returns (bool)
     {
         return super.hasRole(role, account);

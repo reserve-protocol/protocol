@@ -1,6 +1,8 @@
+import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000'
+export const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
 
 export const ONE_ETH = BigNumber.from('1000000000000000000')
 
@@ -56,3 +58,8 @@ export const FURNACE_DEST = '0x0000000000000000000000000000000000000001'
 export const STRSR_DEST = '0x0000000000000000000000000000000000000002'
 
 export const QUEUE_START = '0x0000000000000000000000000000000000000000000000000000000000000001'
+
+// Auth roles
+export const OWNER = ethers.utils.formatBytes32String('OWNER')
+export const FREEZER = ethers.utils.formatBytes32String('FREEZER')
+export const PAUSER = ethers.utils.formatBytes32String('PAUSER')
