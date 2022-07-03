@@ -225,7 +225,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
