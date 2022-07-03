@@ -61,13 +61,16 @@ interface IAuth {
     /// @param newVal The new value of `paused`
     event PausedSet(bool indexed oldVal, bool indexed newVal);
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    /**
+     * Paused = Everything is disabled except for OWNER actions and redemption
+     * Frozen = Everything disabled except for OWNER actions
+     */
 
-    /// Paused = Everything is disabled except for OWNER actions and redemption
     function pausedOrFrozen() external view returns (bool);
 
-    /// Frozen = Everything disabled except for OWNER actions
     function frozen() external view returns (bool);
+
+    function oneshotFreezeDuration() external view returns (uint32);
 }
 
 interface IComponentRegistry {
@@ -167,11 +170,14 @@ interface IMain is IAuth, IComponentRegistry {
 }
 
 interface TestIMain is IMain {
+    function freeze() external;
+
+    function unfreeze() external;
+
     function pause() external;
 
     function unpause() external;
 
-    function isComponent(address componentAddr) external view returns (bool);
-
+    /// @custom:governance
     function setOneshotPauseDuration(uint32) external;
 }
