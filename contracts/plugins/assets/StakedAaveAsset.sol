@@ -15,9 +15,10 @@ contract StakedAaveAsset is Asset {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_
-    ) Asset(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {}
+    ) Asset(chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {}
 
     // solhint-enable no-empty-blocks
 

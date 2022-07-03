@@ -13,7 +13,15 @@ contract RTokenAsset is Asset {
         IMain main_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_
-    ) Asset(AggregatorV3Interface(address(1)), erc20_, maxTradeVolume_, 1) {
+    )
+        Asset(
+            AggregatorV3Interface(address(1)),
+            erc20_,
+            IERC20Metadata(address(0)),
+            maxTradeVolume_,
+            1
+        )
+    {
         main = main_;
     }
 

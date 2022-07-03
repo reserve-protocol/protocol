@@ -33,12 +33,22 @@ contract FiatCollateral is Collateral {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+    )
+        Collateral(
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_
+        )
+    {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         defaultThreshold = defaultThreshold_;

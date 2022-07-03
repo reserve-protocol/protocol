@@ -21,25 +21,25 @@ contract CTokenBridgedCollateral is CTokenFiatCollateral {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
-        IERC20 rewardERC20_,
         address comptrollerAddr_
     )
         CTokenFiatCollateral(
             chainlinkFeed_,
             erc20_,
+            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
             defaultThreshold_,
             delayUntilDefault_,
             referenceERC20Decimals_,
-            rewardERC20_,
             comptrollerAddr_
         )
     {}

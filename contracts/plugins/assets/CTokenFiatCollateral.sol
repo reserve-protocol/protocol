@@ -40,7 +40,6 @@ contract CTokenFiatCollateral is Collateral {
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public immutable override rewardERC20;
     address public immutable comptrollerAddr;
 
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
@@ -50,26 +49,34 @@ contract CTokenFiatCollateral is Collateral {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
-        IERC20 rewardERC20_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+    )
+        Collateral(
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_
+        )
+    {
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok(); // {collateral/reference}
-        rewardERC20 = rewardERC20_;
         comptrollerAddr = comptrollerAddr_;
     }
 

@@ -45,7 +45,6 @@ contract ATokenFiatCollateral is Collateral {
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public immutable override rewardERC20;
 
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -54,21 +53,29 @@ contract ATokenFiatCollateral is Collateral {
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IERC20 rewardERC20_
-    ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+        uint256 delayUntilDefault_
+    )
+        Collateral(
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_
+        )
+    {
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
 
         prevReferencePrice = refPerTok(); // {collateral/reference}
-        rewardERC20 = rewardERC20_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
