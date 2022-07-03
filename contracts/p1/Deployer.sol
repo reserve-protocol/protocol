@@ -195,6 +195,8 @@ contract DeployerP1 is IDeployer {
         main.grantRole(FREEZER, owner);
         main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
+        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
         return (address(main));
