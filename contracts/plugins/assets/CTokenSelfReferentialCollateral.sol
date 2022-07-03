@@ -52,6 +52,9 @@ contract CTokenSelfReferentialCollateral is Collateral {
         IERC20 rewardERC20_,
         address comptrollerAddr_
     ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
+        require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         referenceERC20Decimals = referenceERC20Decimals_;
         rewardERC20 = rewardERC20_;
         prevReferencePrice = refPerTok(); // {collateral/reference}

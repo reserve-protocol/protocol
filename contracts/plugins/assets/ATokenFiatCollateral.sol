@@ -61,6 +61,9 @@ contract ATokenFiatCollateral is Collateral {
         uint256 delayUntilDefault_,
         IERC20 rewardERC20_
     ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+        require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
 

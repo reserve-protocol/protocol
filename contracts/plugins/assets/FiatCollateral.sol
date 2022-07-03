@@ -39,6 +39,8 @@ contract FiatCollateral is Collateral {
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     ) Collateral(chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_, targetName_) {
+        require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
     }

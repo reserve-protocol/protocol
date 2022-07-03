@@ -25,7 +25,10 @@ contract Asset is IAsset {
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_
     ) {
+        require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
+        require(address(erc20_) != address(0), "missing erc20");
         require(oracleTimeout_ > 0, "oracle timeout zero");
+        require(maxTradeVolume_ > 0, "maxTradeVolume zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         maxTradeVolume = maxTradeVolume_;
