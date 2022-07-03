@@ -59,6 +59,8 @@ export const IMPLEMENTATION: Implementation =
 
 export const SLOW = !!process.env.SLOW
 
+export const ORACLE_TIMEOUT = bn('86400') // 24h
+
 export type Collateral = FiatCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
 export interface IConfig {
@@ -204,6 +206,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault
@@ -223,6 +226,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault
@@ -251,6 +255,7 @@ async function collateralFixture(
         await underlyingCollateral.chainlinkFeed(),
         erc20.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -282,6 +287,7 @@ async function collateralFixture(
         await underlyingCollateral.chainlinkFeed(),
         erc20.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
@@ -412,7 +418,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
 
-  // Deploy RSR Chainlink
+  // Deploy RSR chainlink feed
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
     'MockV3Aggregator'
   )
@@ -420,12 +426,23 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
 
+  // Deploy RSR Asset
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+  const rsrAsset: Asset = <Asset>(
+    await AssetFactory.deploy(
+      rsrChainlinkFeed.address,
+      rsr.address,
+      config.maxTradeVolume,
+      ORACLE_TIMEOUT
+    )
+  )
+
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrChainlinkFeed.address)
+    await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrAsset.address)
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
@@ -509,7 +526,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         rsr.address,
         gnosisAddr,
         facade.address,
-        rsrChainlinkFeed.address,
+        rsrAsset.address,
         implementations
       )
     )
@@ -537,26 +554,28 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIDistributor', await main.distributor())
   )
 
-  const rsrAsset: Asset = <Asset>(
-    await ethers.getContractAt('Asset', await assetRegistry.toAsset(rsr.address))
-  )
-
   const aaveChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
   const aaveAsset: Asset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(aaveChainlinkFeed.address, aaveToken.address, config.maxTradeVolume)
+    await AssetFactory.deploy(
+      aaveChainlinkFeed.address,
+      aaveToken.address,
+      config.maxTradeVolume,
+      ORACLE_TIMEOUT
+    )
   )
 
   const compChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
   const compAsset: Asset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(compChainlinkFeed.address, compToken.address, config.maxTradeVolume)
+    await AssetFactory.deploy(
+      compChainlinkFeed.address,
+      compToken.address,
+      config.maxTradeVolume,
+      ORACLE_TIMEOUT
+    )
   )
 
   const rToken: TestIRToken = <TestIRToken>(
@@ -601,8 +620,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
 
-  // Unpause
-  await main.connect(owner).unpause()
+  // Unfreeze
+  await main.connect(owner).unfreeze()
 
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
