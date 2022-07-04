@@ -17,7 +17,7 @@ describe(`ERC20Mock`, () => {
   beforeEach(async () => {
     ;[owner, alice, bob, carol] = await ethers.getSigners()
     const tokenFactory: sc.ERC20Mock__factory = await ethers.getContractFactory('ERC20Mock')
-    token = await tokenFactory.deploy('ERC20Mock Token', 'M20')
+    token = await tokenFactory.deploy('ERC20Mock Token', 'MT')
 
     expect(await token.balanceOf(alice.address)).to.equal(0)
     expect(await token.balanceOf(bob.address)).to.equal(0)
