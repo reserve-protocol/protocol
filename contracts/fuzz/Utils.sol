@@ -27,6 +27,10 @@ function defaultParams() pure returns (DeploymentParams memory params) {
 }
 
 // Assuming "seed" is an arbitrary value, return an arbitrary value in [low, high]
-function between(uint256 low, uint256 high, uint256 seed) pure returns (uint256) {
-    return low + seed % (high - low + 1);
+function between(
+    uint256 low,
+    uint256 high,
+    uint256 seed
+) pure returns (uint256) {
+    return low + (seed % (high - low + 1));
 }

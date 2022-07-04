@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { ethers } from 'hardhat'
+// import { BigNumber, Wallet } from 'ethers'
+// import { BN_SCALE_FACTOR } from '../../common/constants'
+// import { bn, fp } from '../../common/numbers'
 import * as sc from '../../typechain' // All smart contract types
 
 describe(`ERC20Mock`, () => {
@@ -24,7 +24,7 @@ describe(`ERC20Mock`, () => {
   })
 
   it('allows minting', async () => {
-    await token.mint(alice.address, 23)
+    await token.connect(owner).mint(alice.address, 23)
     expect(await token.balanceOf(alice.address)).to.equal(23)
   })
 

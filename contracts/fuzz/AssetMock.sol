@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "contracts/interfaces/IAsset.sol";
-import "contracts/plugins/abstract/Asset.sol";
+import "contracts/plugins/assets/abstract/Asset.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -26,15 +26,15 @@ contract AssetMock is Asset {
         Walk // Price fluctuates as a random walk (in logspace)
     }
 
-    PriceKind kind;
-    uint192 currPrice;
-    uint192 low;
-    uint192 high;
+    Kind public kind;
+    uint192 public currPrice;
+    uint192 public low;
+    uint192 public high;
 
     constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
-        PriceKind kind_,
+        Kind kind_,
         uint192 startPrice,
         uint192 low_,
         uint192 high_
@@ -43,26 +43,26 @@ contract AssetMock is Asset {
         kind = kind_;
         low = low_;
         high = high_;
-        emit SetPrice(symbol(), currPrice);
+        emit SetPrice(erc20.symbol(), currPrice);
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual returns (uint192) {
+    function price() public view virtual override returns (uint192) {
         return currPrice;
     }
 
     function setPrice(uint256 seed) public {
         if (kind == Kind.Constant) return;
         else if (kind == Kind.Manual) {
-            assert(seed < type(uint192).max, "manual setPrice overflow");
+            assert(seed <= type(uint192).max);
             currPrice = uint192(seed);
         } else if (kind == Kind.Band) {
             currPrice = uint192(between(low, high, seed));
         } else if (kind == Kind.Walk) {
-            mult = uint192(between(low, high, seed));
+            uint192 mult = uint192(between(low, high, seed));
             currPrice = currPrice.mul(mult);
         }
 
-        emit SetPrice(symbol(), currPrice);
+        emit SetPrice(erc20.symbol(), currPrice);
     }
 }
