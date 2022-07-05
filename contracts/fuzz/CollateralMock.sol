@@ -11,10 +11,10 @@ contract CollateralMock is Collateral {
     using FixLib for uint192;
     using PriceModelLib for PriceModel;
 
-    PriceModel refPerTokModel;
-    PriceModel targetPerRefModel;
-    PriceModel uoaPerTargetModel;
-    PriceModel deviationModel;
+    PriceModel public refPerTokModel;
+    PriceModel public targetPerRefModel;
+    PriceModel public uoaPerTargetModel;
+    PriceModel public deviationModel;
 
     constructor(
         // Collateral base-class arguments
@@ -28,8 +28,9 @@ contract CollateralMock is Collateral {
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
-        PriceModel memory deviationModel_ /* the deviation of price() from the combination of the above.
-         that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
+        PriceModel memory deviationModel_ /* the deviation of price() from the combination of
+                                             the above. that is:
+        price() = deviation * uoaPerTarget * targetPerRef * refPerTok
         */
     )
         Collateral(
@@ -71,7 +72,12 @@ contract CollateralMock is Collateral {
         return uoaPerTargetModel.price();
     }
 
-    function update(uint192 a, uint192 b, uint192 c, uint192 d) public {
+    function update(
+        uint192 a,
+        uint192 b,
+        uint192 c,
+        uint192 d
+    ) public {
         refPerTokModel.update(a);
         targetPerRefModel.update(b);
         uoaPerTargetModel.update(c);

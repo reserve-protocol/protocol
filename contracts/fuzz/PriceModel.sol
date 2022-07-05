@@ -29,7 +29,10 @@ library PriceModelLib {
     using FixLib for uint192;
     event SetPrice(string symbol, uint192 price);
 
-    function price(PriceModel storage model) internal view returns (uint192) { return model.curr; }
+    function price(PriceModel storage model) internal view returns (uint192) {
+        return model.curr;
+    }
+
     function update(PriceModel storage model, uint192 seed) internal {
         if (model.kind == Kind.Constant) return;
         else if (model.kind == Kind.Manual) {

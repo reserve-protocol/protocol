@@ -1,17 +1,11 @@
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { BigNumber, BigNumberish } from 'ethers'
-import { fp, bn } from '../../common/numbers'
+import { BigNumber } from 'ethers'
+import { fp } from '../../common/numbers'
 import { PriceModelKind, PriceModel } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
 describe(`AssetMock`, () => {
-  let owner: SignerWithAddress
-  let alice: SignerWithAddress
-  let bob: SignerWithAddress
-  let carol: SignerWithAddress
-
   let token: sc.ERC20Mock
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
@@ -20,7 +14,6 @@ describe(`AssetMock`, () => {
   }
 
   beforeEach(async () => {
-    ;[owner, alice, bob, carol] = await ethers.getSigners()
     {
       const f: sc.ERC20Mock__factory = await ethers.getContractFactory('ERC20Mock')
       token = await f.deploy('ERC20Mock Token', 'MT')
@@ -77,7 +70,7 @@ describe(`AssetMock`, () => {
     expect(await asset.price()).to.equal(fp(1.1))
 
     await asset.update(fp(98643.8623))
-    let p = await asset.price()
+    const p = await asset.price()
     expect(p.gte(fp(0.9))).to.be.true
     expect(p.lte(fp(1.1))).to.be.true
   })
@@ -99,7 +92,7 @@ describe(`AssetMock`, () => {
     expect(await asset.price()).to.equal(fp(2))
 
     await asset.update(fp(98643.8623))
-    let p = await asset.price()
+    const p = await asset.price()
     expect(p.gte(fp(1))).to.be.true
     expect(p.lte(fp(4))).to.be.true
   })
