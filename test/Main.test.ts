@@ -17,7 +17,6 @@ import { bn, fp } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
-  ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
@@ -66,7 +65,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let rsrAsset: Asset
   let compToken: ERC20Mock
   let compAsset: Asset
-  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
 
@@ -123,7 +121,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       aaveToken,
       compAsset,
       aaveAsset,
-      compoundMock,
       erc20s,
       collateral,
       basket,
