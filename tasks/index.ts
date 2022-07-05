@@ -1,1 +1,8 @@
 import './deploy'
+import './deployment/assets/deploy-asset-stkAAVE'
+import './deployment/assets/deploy-aave-asset'
+import './deployment/assets/deploy-compound-asset'
+import './deployment/collateral/deploy-aave-collateral'
+import './deployment/collateral/deploy-compound-collateral'
+import './deployment/collateral/deploy-atoken-collateral'
+import './deployment/collateral/deploy-ctoken-collateral'
