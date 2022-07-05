@@ -905,6 +905,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -914,6 +915,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -958,6 +960,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -970,6 +973,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           newToken.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -1020,6 +1024,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -1030,6 +1035,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
           1
         )
@@ -1288,7 +1294,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      await expect(basketHandler.price()).to.be.reverted
+      expect(await basketHandler.price()).to.equal(fp('0.75'))
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -1304,6 +1310,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           ONE_ADDRESS,
           token1.address,
+          ZERO_ADDRESS,
           await collateral1.maxTradeVolume(),
           1
         )
@@ -1434,17 +1441,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address,
           1
         )
       )
       const newAsset2: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[6].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address,
           1
         )
       )
