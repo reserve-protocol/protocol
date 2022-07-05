@@ -4,6 +4,7 @@ import { ethers } from 'hardhat'
 import { expectInReceipt } from '../common/events'
 import { EASY_AUCTION_ADDRESS } from './integration/mainnet'
 import { bn, fp } from '../common/numbers'
+import { ZERO_ADDRESS } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -59,7 +60,7 @@ export const IMPLEMENTATION: Implementation =
 
 export const SLOW = !!process.env.SLOW
 
-export const ORACLE_TIMEOUT = bn('86400') // 24h
+export const ORACLE_TIMEOUT = bn('86400000') // 1000d -- way too long for an actual deployment
 
 export type Collateral = FiatCollateral | CTokenFiatCollateral | ATokenFiatCollateral
 
@@ -205,6 +206,7 @@ async function collateralFixture(
       await FiatCollateralFactory.deploy(
         chainlinkFeed.address,
         erc20.address,
+        ZERO_ADDRESS,
         config.maxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -224,6 +226,7 @@ async function collateralFixture(
       await FiatCollateralFactory.deploy(
         chainlinkFeed.address,
         erc20.address,
+        ZERO_ADDRESS,
         config.maxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -246,13 +249,13 @@ async function collateralFixture(
       await CTokenCollateralFactory.deploy(
         await underlyingCollateral.chainlinkFeed(),
         erc20.address,
+        compToken.address,
         config.maxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
         (await referenceERC20.decimals()).toString(),
-        compToken.address,
         comptroller.address
       )
     )
@@ -273,12 +276,12 @@ async function collateralFixture(
       await ATokenCollateralFactory.deploy(
         await underlyingCollateral.chainlinkFeed(),
         erc20.address,
+        aaveToken.address,
         config.maxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
-        delayUntilDefault,
-        aaveToken.address
+        delayUntilDefault
       )
     )
     return [erc20, coll]
@@ -360,6 +363,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
+  oracleLib: OracleLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -418,6 +422,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await AssetFactory.deploy(
       rsrChainlinkFeed.address,
       rsr.address,
+      ZERO_ADDRESS,
       config.maxTradeVolume,
       ORACLE_TIMEOUT
     )
@@ -547,6 +552,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await AssetFactory.deploy(
       aaveChainlinkFeed.address,
       aaveToken.address,
+      ZERO_ADDRESS,
       config.maxTradeVolume,
       ORACLE_TIMEOUT
     )
@@ -559,6 +565,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await AssetFactory.deploy(
       compChainlinkFeed.address,
       compToken.address,
+      ZERO_ADDRESS,
       config.maxTradeVolume,
       ORACLE_TIMEOUT
     )
@@ -651,5 +658,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facade,
     rsrTrader,
     rTokenTrader,
+    oracleLib,
   }
 }
