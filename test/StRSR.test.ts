@@ -219,7 +219,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Cannot update with invalid unstaking delay
@@ -240,7 +240,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Cannot update with invalid reward period
@@ -261,7 +261,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
     })
   })
@@ -1581,11 +1581,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.symbol()).to.equal(newSymbol)
 
       // Try to update again if not owner
-      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith('governance only')
       await expect(stRSR.connect(addr1).setSymbol('randomSymbol')).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
     })
   })
