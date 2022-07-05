@@ -8,10 +8,7 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment_utils'
-import {
-  ATokenMock,
-  StaticATokenLM,
-} from '../../../typechain'
+import { ATokenMock, StaticATokenLM } from '../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -81,20 +78,19 @@ async function main() {
 
   /********  Deploy cDAI Collateral  **************************/
 
-    const { cTokenCollateral: cDaiCollateral } = await hre.run('deploy-ctoken-collateral', {
-      cToken: networkConfig[chainId].tokens.cDAI ,
-      maxTradeVolume: fp('1e6').toString(), // max trade volume
-      defaultThreshold: fp('0.05').toString(), // 5%
-      delayUntilDefault: bn('86400').toString(), // 24h
-      comptroller: networkConfig[chainId].COMPTROLLER,
-      comp: networkConfig[chainId].tokens.COMP,
-    })
-  
-    assetCollDeployments.collateral.cDAI = cDaiCollateral
-    deployedCollateral.push(cDaiCollateral.toString())
-    
+  const { cTokenCollateral: cDaiCollateral } = await hre.run('deploy-ctoken-collateral', {
+    cToken: networkConfig[chainId].tokens.cDAI,
+    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    comptroller: networkConfig[chainId].COMPTROLLER,
+    comp: networkConfig[chainId].tokens.COMP,
+  })
 
-    /********  Deploy USDC Collateral  **************************/
+  assetCollDeployments.collateral.cDAI = cDaiCollateral
+  deployedCollateral.push(cDaiCollateral.toString())
+
+  /********  Deploy USDC Collateral  **************************/
   const { compoundCollateral: usdcCollateral } = await hre.run('deploy-compound-collateral', {
     tokenAddress: networkConfig[chainId].tokens.USDC,
     maxTradeVolume: fp('1e6').toString(), // max trade volume

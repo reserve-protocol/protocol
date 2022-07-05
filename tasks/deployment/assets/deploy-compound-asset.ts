@@ -18,7 +18,9 @@ task('deploy-compound-asset', 'Deploys a Compound Priced Asset')
     )
     await compoundAsset.deployed()
 
-    console.log(`Deployed Compound Asset to ${hre.network.name} (${chainId}): ${compoundAsset.address}`)
+    console.log(
+      `Deployed Compound Asset to ${hre.network.name} (${chainId}): ${compoundAsset.address}`
+    )
 
     return { compoundAsset: compoundAsset.address }
   })

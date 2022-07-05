@@ -21,7 +21,7 @@ contract FacadeWrite is IFacadeWrite {
 
     // Track the deployer and status for each RToken
     mapping(address => address) public deployers;
-  
+
     constructor(IDeployer deployer_) {
         deployer = deployer_;
     }
@@ -120,8 +120,8 @@ contract FacadeWrite is IFacadeWrite {
         address pauser
     ) external returns (address) {
         require(deployers[address(rToken)] == msg.sender, "Not initial deployer");
-         
-         // Get Main
+
+        // Get Main
         IMain main = rToken.main();
 
         require(main.owner() == address(this), "Ownership already transferred");

@@ -15,7 +15,12 @@ task('deploy-aave-asset', 'Deploys an Aave Priced Asset')
     const aaveAsset = <Asset>(
       await (await hre.ethers.getContractFactory('AavePricedAsset'))
         .connect(deployer)
-        .deploy(params.tokenAddress, params.maxTradeVolume, params.comptroller, params.aaveLendingPool)
+        .deploy(
+          params.tokenAddress,
+          params.maxTradeVolume,
+          params.comptroller,
+          params.aaveLendingPool
+        )
     )
     await aaveAsset.deployed()
 

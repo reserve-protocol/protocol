@@ -103,9 +103,7 @@ async function main() {
   )
 
   // Deploy RToken
-  const receipt = await (
-    await facadeWrite.deployRToken(rTokenConfig, rTokenSetup)
-  ).wait()
+  const receipt = await (await facadeWrite.deployRToken(rTokenConfig, rTokenSetup)).wait()
 
   // Get Main
   const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main

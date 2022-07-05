@@ -19,7 +19,7 @@ task('deploy-atoken-collateral', 'Deploys an AToken Collateral')
 
     // Get StaticAToken
     const staticAToken: StaticATokenLM = <StaticATokenLM>(
-        await hre.ethers.getContractAt('StaticATokenLM', params.staticAToken)
+      await hre.ethers.getContractAt('StaticATokenLM', params.staticAToken)
     )
 
     // Get AToken to retrieve underlying

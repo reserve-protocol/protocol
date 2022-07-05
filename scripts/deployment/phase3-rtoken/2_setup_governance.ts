@@ -54,39 +54,48 @@ async function main() {
   }
 
   // Get StRSRVotes contract and perform validations
-  const rToken: RTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rTokenDeployments.components.rToken)
+  const rToken: RTokenP1 = <RTokenP1>(
+    await ethers.getContractAt('RTokenP1', rTokenDeployments.components.rToken)
+  )
   const main: MainP1 = <MainP1>await ethers.getContractAt('MainP1', await rToken.main())
   const stRSR: StRSRP1 = <StRSRP1>await ethers.getContractAt('StRSRP1', await main.stRSR())
 
-  if ( main.address != rTokenDeployments.main || stRSR.address != rTokenDeployments.components.stRSR ) {
-    throw new Error(`Invalid addresses in config file for RToken ${RTOKEN_NAME} in network ${hre.network.name}`)
+  if (
+    main.address != rTokenDeployments.main ||
+    stRSR.address != rTokenDeployments.components.stRSR
+  ) {
+    throw new Error(
+      `Invalid addresses in config file for RToken ${RTOKEN_NAME} in network ${hre.network.name}`
+    )
   }
 
   // ******************** Setup Governance ****************************************/
   const facadeWrite = <FacadeWrite>(
     await ethers.getContractAt('FacadeWrite', rTokenDeployments.facadeWrite)
   )
- 
+
   const govParams: IGovParams = {
     votingDelay: rTokenConf.votingDelay,
     votingPeriod: rTokenConf.votingPeriod,
     proposalThresholdAsMicroPercent: rTokenConf.proposalThresholdAsMicroPercent,
     quorumPercent: rTokenConf.quorumPercent,
-    minDelay: rTokenConf.minDelay
+    minDelay: rTokenConf.minDelay,
   }
 
   // Setup Governance in RToken
   const receipt = await (
-    await facadeWrite.connect(burner).setupGovernance(rToken.address, true, false, govParams, ZERO_ADDRESS, OWNER_ADDR)
+    await facadeWrite
+      .connect(burner)
+      .setupGovernance(rToken.address, true, false, govParams, ZERO_ADDRESS, OWNER_ADDR)
   ).wait()
 
   const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
   const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
-  
+
   // Write temporary deployments file
   rTokenDeployments.governance = governanceAddr
   rTokenDeployments.timelock = timelockAddr
-  
+
   fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
 
   console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})

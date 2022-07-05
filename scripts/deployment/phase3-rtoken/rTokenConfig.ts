@@ -1,11 +1,7 @@
-import {
-  IGovParams,
-  IRTokenConfig,
-  networkConfig,
-} from '../../../common/configuration'
+import { IGovParams, IRTokenConfig, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
 
-type IRToken = { [key: string]: IRTokenConfig  & IGovParams }
+type IRToken = { [key: string]: IRTokenConfig & IGovParams }
 
 export const rTokenConfig: { [key: string]: IRToken } = {
   '31337': {
@@ -32,10 +28,10 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         minBidSize: fp('1'), // 1 UoA (USD)
       },
       votingDelay: bn(5), // 5 blocks
-      votingPeriod: bn(100),  // 100 blocks
-      proposalThresholdAsMicroPercent: bn(1e6),  // 1&
+      votingPeriod: bn(100), // 100 blocks
+      proposalThresholdAsMicroPercent: bn(1e6), // 1&
       quorumPercent: bn(4), // 4%
-      minDelay: bn(60 * 60 * 24) // 1 day
+      minDelay: bn(60 * 60 * 24), // 1 day
     },
   },
 }

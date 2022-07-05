@@ -3,13 +3,19 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { fileExists, getAssetCollDeploymentFilename , IAssetCollDeployments } from '../deployment_utils'
+import {
+  fileExists,
+  getAssetCollDeploymentFilename,
+  IAssetCollDeployments,
+} from '../deployment_utils'
 
 async function main() {
   // ==== Read Configuration ====
   const chainId = await getChainId(hre)
 
-  console.log(`Creating Assets/Collateral Deployment file for network ${hre.network.name} (${chainId})`)
+  console.log(
+    `Creating Assets/Collateral Deployment file for network ${hre.network.name} (${chainId})`
+  )
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -24,7 +30,7 @@ async function main() {
   // ********************* Output Configuration******************************
   const deployments: IAssetCollDeployments = {
     assets: {},
-    collateral: {}
+    collateral: {},
   }
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 

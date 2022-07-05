@@ -70,7 +70,7 @@ async function main() {
     rsrAsset: '',
     rTokenAsset: '',
     governance: '',
-    timelock: ''
+    timelock: '',
   }
 
   fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))

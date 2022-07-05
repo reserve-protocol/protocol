@@ -2,7 +2,11 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getRTokenDeploymentFilename, IRTokenDeployments } from '../deployment_utils'
+import {
+  getDeploymentFile,
+  getRTokenDeploymentFilename,
+  IRTokenDeployments,
+} from '../deployment_utils'
 
 let rTokendeployments: IRTokenDeployments
 
@@ -20,7 +24,9 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  rTokendeployments = <IRTokenDeployments> getDeploymentFile(getRTokenDeploymentFilename(chainId, RTOKEN_NAME))
+  rTokendeployments = <IRTokenDeployments>(
+    getDeploymentFile(getRTokenDeploymentFilename(chainId, RTOKEN_NAME))
+  )
 
   /********************** Verify Governance ****************************************/
   console.time('Verifying Governance')
