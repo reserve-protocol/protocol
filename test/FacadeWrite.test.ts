@@ -32,9 +32,12 @@ import {
   TimelockController,
   USDCMock,
 } from '../typechain'
-import { Collateral, defaultFixture } from './fixtures'
+import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe('FacadeWrite contract', () => {
   let owner: SignerWithAddress
@@ -200,10 +203,6 @@ describe('FacadeWrite contract', () => {
   describe('Deployment Process', () => {
     beforeEach(async () => {
       // Deploy RToken via FacadeWrite
-      if (process.env.REPORT_GAS) {
-        await snapshotGasCost(await facadeWrite.deployRToken(rTokenConfig, rTokenSetup))
-      }
-
       const receipt = await (
         await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
       ).wait()
@@ -369,20 +368,6 @@ describe('FacadeWrite contract', () => {
     describe('Phase 2 - Complete Setup', () => {
       context('Without deploying Governance - Paused', function () {
         beforeEach(async () => {
-          // Deploy RToken via FacadeWrite
-          if (process.env.REPORT_GAS) {
-            await snapshotGasCost(
-              await facadeWrite.setupGovernance(
-                rToken.address,
-                false,
-                false,
-                govParams,
-                owner.address,
-                ZERO_ADDRESS
-              )
-            )
-          }
-
           await facadeWrite
             .connect(owner)
             .setupGovernance(rToken.address, false, false, govParams, owner.address, ZERO_ADDRESS)
@@ -470,19 +455,6 @@ describe('FacadeWrite contract', () => {
       context('Without deploying Governance - Unpaused', function () {
         beforeEach(async () => {
           // Deploy RToken via FacadeWrite
-          if (process.env.REPORT_GAS) {
-            await snapshotGasCost(
-              await facadeWrite.setupGovernance(
-                rToken.address,
-                false,
-                true,
-                govParams,
-                owner.address,
-                addr1.address
-              )
-            )
-          }
-
           await facadeWrite
             .connect(owner)
             .setupGovernance(rToken.address, false, true, govParams, owner.address, addr1.address)
@@ -498,19 +470,6 @@ describe('FacadeWrite contract', () => {
       context('Deploying Governance - Paused', function () {
         beforeEach(async () => {
           // Deploy RToken via FacadeWrite
-          if (process.env.REPORT_GAS) {
-            await snapshotGasCost(
-              await facadeWrite.setupGovernance(
-                rToken.address,
-                true,
-                false,
-                govParams,
-                ZERO_ADDRESS,
-                addr1.address
-              )
-            )
-          }
-
           const receipt = await (
             await facadeWrite
               .connect(owner)
@@ -568,6 +527,40 @@ describe('FacadeWrite contract', () => {
           expect(await main.oneshotPauser()).to.equal(timelock.address)
           expect(await main.paused()).to.equal(false)
         })
+      })
+    })
+
+    describeGas('Gas Reporting', () => {
+      it('Phase 1 - RToken Deployment', async () => {
+        await snapshotGasCost(await facadeWrite.deployRToken(rTokenConfig, rTokenSetup))
+      })
+
+      it('Phase 2 - Without governance', async () => {
+        // Deploy RToken via FacadeWrite
+        await snapshotGasCost(
+          await facadeWrite.setupGovernance(
+            rToken.address,
+            false,
+            false,
+            govParams,
+            owner.address,
+            ZERO_ADDRESS
+          )
+        )
+      })
+
+      it('Phase 2 - Deploy governance', async () => {
+        // Deploy RToken via FacadeWrite
+        await snapshotGasCost(
+          await facadeWrite.setupGovernance(
+            rToken.address,
+            true,
+            true,
+            govParams,
+            ZERO_ADDRESS,
+            owner.address
+          )
+        )
       })
     })
   })
