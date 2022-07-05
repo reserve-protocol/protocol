@@ -8,8 +8,9 @@ import { expectEvents } from '../../common/events'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId } from '../utils/trades'
+import { setOraclePrice } from '../utils/oracles'
 import {
-  AaveOracleMock,
+  IAssetRegistry,
   EasyAuction,
   ERC20Mock,
   TestIBackingManager,
@@ -40,7 +41,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let facade: Facade
-  let aaveOracleInternal: AaveOracleMock
+  let assetRegistry: IAssetRegistry
 
   let easyAuction: EasyAuction
 
@@ -61,7 +62,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
 
     let erc20s: ERC20Mock[]
     ;({
-      aaveOracleInternal,
+      assetRegistry,
       basket,
       config,
       rToken,
@@ -356,7 +357,7 @@ describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () 
       await backingManager.settleTrade(rsr.address)
 
       // $0.007 RSR at $4k ETH
-      await aaveOracleInternal.setPrice(rsr.address, bn('1.75e12'))
+      await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('0.007e8'))
       sellAmt = issueAmount.mul(bn('2.5e14')).mul(100).div(99).div(bn('1.75e12')).add(2)
 
       // Start next auction

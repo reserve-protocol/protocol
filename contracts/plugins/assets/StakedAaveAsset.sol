@@ -2,24 +2,28 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
+import "contracts/plugins/assets/OracleLib.sol";
 
-interface IStkAAVE {
-    // solhint-disable-next-line func-name-mixedcase
-    function STAKED_TOKEN() external view returns (IERC20Metadata);
-}
+// TODO this might be unneeded now? to-return-to
+contract StakedAaveAsset is Asset {
+    using OracleLib for AggregatorV3Interface;
 
-contract StakedAaveAsset is AavePricedAsset {
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     // solhint-disable no-empty-blocks
     constructor(
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_
-    ) AavePricedAsset(erc20_, maxTradeVolume_, comptroller_, aaveLendingPool_) {}
+        uint32 oracleTimeout_
+    ) Asset(chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {}
+
+    // solhint-enable no-empty-blocks
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        return consultOracle(address(IStkAAVE(address(erc20)).STAKED_TOKEN()));
+        return chainlinkFeed.price(oracleTimeout);
     }
 }

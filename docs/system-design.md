@@ -68,11 +68,11 @@ There are 3 types of baskets in our system:
 
 ### Prime Basket
 
-The prime basket is directly set by governance, and only changes when governance demands it. The prime basket consists of a set of triples `<collateral token, target unit, target amount>`. Each triple means that, in each basket unit, `target amount` of the `target unit` should be represented by `collateral token`. 
+The prime basket is directly set by governance, and only changes when governance demands it. The prime basket consists of a set of triples `<collateral token, target unit, target amount>`. Each triple means that, in each basket unit, `target amount` of the `target unit` should be represented by `collateral token`.
 
 The dimension of `target amount` is `{target / BU}`.
 
-For example, if the prime basket contains the triple `<cUSDC, USD, 0.33>`, that means "The configured system should contain 0.33 USD/BU, as represented by cUSDC". 
+For example, if the prime basket contains the triple `<cUSDC, USD, 0.33>`, that means "The configured system should contain 0.33 USD/BU, as represented by cUSDC".
 
 As a consequence, the prime basket also defines the quantity of each target unit that's intended to be represented by one basket; altogether, these pairs `<target unit, target amount>` form the _target basket_. The target basket isn't used explicitly anywhere in our code, but it's a useful property of a proposed RToken. (e.g, "A target basket of 1 USD, 1 EUR, and 1/1000th ETH".)
 
@@ -88,7 +88,7 @@ For example, if the reference basket contains the triple `<cUSDC, USDC, 0.33>`, 
 
 ### Collateral Basket
 
-The collateral basket is derived, moment-by-moment and on-demand, from the reference basket. Since defi redemption rates can change every transaction, so can the collateral basket. The collateral basket is a set of pairs `<collateral token, token amount>`. Each pair means that each basket unit must contain `token amount` of `collateral token`. 
+The collateral basket is derived, moment-by-moment and on-demand, from the reference basket. Since defi redemption rates can change every transaction, so can the collateral basket. The collateral basket is a set of pairs `<collateral token, token amount>`. Each pair means that each basket unit must contain `token amount` of `collateral token`.
 
 The dimension of `token amount` is `{tok/BU}`.
 
@@ -102,16 +102,16 @@ On the other hand, while a redemption is pending in the mempool, the quantities 
 
 ## Deployment Parameters
 
-## `maxTradeVolume`
+### `maxTradeVolume`
 
 Dimension: `{UoA}`
 
-The max trade volume is a value in the unit of account that represents the largest amount of value that should be transacted in any single trade. This value is distributed on deployment to the initial RSR, RToken, AAVE, and COMP assts. After deployment the values are allowed to differ.
+In general the max trade volume is a value in the unit of account that caps how many tokens are traded at once. Generally each asset plugin has its own `maxTradeVolume`, and both assets that are part of the trade participate to constrain trade volume. However, in this case the deployment parameter is just for the RToken asset. At deployment-time the RSR asset is already immutably deployed and it is up to the user to specify `maxTradeVolume` for further individual collateral deployments.
 
 Anticipated value: `1e6` = $1m
-Reasonable range: 1e21 to 1e27
+Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
 
-## `rewardPeriod`
+### `rewardPeriod`
 
 Dimension: `{seconds}`
 
@@ -120,7 +120,7 @@ The reward period is the length of one period of the StRSR and Furnace reward cu
 Anticipated value: `86400` = 1 day
 Reasonable range: 10 to 31536000 (1 year)
 
-## `rewardRatio`
+### `rewardRatio`
 
 Dimension: `{%}`
 
@@ -129,7 +129,7 @@ The `rewardRatio` is the amount of the current reward amount that should be hand
 Anticipated value: `0.02284e18` = half life of 30 periods
 Reasonable range: 1e9 to 1e18
 
-## `unstakingDelay`
+### `unstakingDelay`
 
 Dimension: `{seconds}`
 
@@ -138,7 +138,7 @@ The unstaking delay is the number of seconds that all RSR unstakings must be del
 Anticipated value: `604800` = 1 week
 Reasonable range: 1 to 31536000
 
-## `tradingDelay`
+### `tradingDelay`
 
 Dimension: `{seconds}`
 
@@ -147,7 +147,7 @@ The trading delay is how many seconds should pass after the basket has been chan
 Anticipated value: `14400` = 4 hours
 Reasonable range: 0 to 604800
 
-## `auctionLength`
+### `auctionLength`
 
 Dimension: `{seconds}`
 
@@ -156,7 +156,7 @@ The auction length is how many seconds long Gnosis EasyAuctions should be.
 Anticipated value: `900` = 15 minutes
 Reasonable range: 60 to 3600
 
-## `backingBuffer`
+### `backingBuffer`
 
 Dimension: `{%}`
 
@@ -165,7 +165,7 @@ The backing buffer is a percentage value that describes how much additional coll
 Anticipated value: `1e14` = 0.01%
 Reasonable range: 1e12 to 1e18
 
-## `maxTradeSlippage`
+### `maxTradeSlippage`
 
 Dimension: `{%}`
 
@@ -174,7 +174,7 @@ The max trade slippage is a percentage value that describes the maximum deviatio
 Anticipated value: `0.01e18` = 1%
 Reasonable range: 1e12 to 1e18
 
-## `dustAmount`
+### `dustAmount`
 
 Dimension: `{UoA}`
 
@@ -183,7 +183,7 @@ The dust amount is a value in the unit of account that represents the smallest a
 Anticipated value: `1000e18` = $1,000
 Reasonable range: 1e18 to 1e24
 
-## `issuanceRate`
+### `issuanceRate`
 
 Dimension: `{%}`
 
@@ -192,16 +192,16 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-## oneshotPauseDuration
+### `oneshotFreezeDuration`
 
 Dimension: `{s}`
 
-The number of seconds a oneshot pause should last. That is, a pause performed by the pauser role, which can only be used once. The owner can pause indefinitely.
+The number of seconds a freeze performed by a non-governance freezer. Governance can freeze indefinitely.
 
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
 
-## minBidSize
+### `minBidSize`
 
 Dimension: `{UoA}`
 

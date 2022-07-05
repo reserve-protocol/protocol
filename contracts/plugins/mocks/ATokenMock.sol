@@ -7,7 +7,7 @@ import "./ERC20Mock.sol";
 
 // This is the inner, rebasing ERC. It's not what we interact with.
 contract ATokenMock is ERC20Mock {
-    address internal immutable _underlyingAsset;
+    address internal _underlyingAsset;
 
     constructor(
         string memory name,
@@ -27,7 +27,7 @@ contract ATokenMock is ERC20Mock {
 contract StaticATokenMock is ERC20Mock {
     using FixLib for uint192;
 
-    ATokenMock internal immutable aToken;
+    ATokenMock internal aToken;
 
     uint256 internal _exchangeRate;
 

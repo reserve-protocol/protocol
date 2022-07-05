@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
-import "contracts/mixins/Pausable.sol";
+import "contracts/mixins/Auth.sol";
 
 /**
  * @title Main
@@ -17,9 +17,8 @@ import "contracts/mixins/Pausable.sol";
 // solhint-disable max-states-count
 contract MainP1 is
     Initializable,
-    OwnableUpgradeable,
+    Auth,
     ComponentRegistry,
-    Pausable,
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable,
     IMain
@@ -34,9 +33,9 @@ contract MainP1 is
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotPauseDuration_
+        uint32 oneshotFreezeDuration_
     ) public virtual initializer {
-        __Pausable_init(oneshotPauseDuration_);
+        __Auth_init(oneshotFreezeDuration_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
 
@@ -47,21 +46,26 @@ contract MainP1 is
     /// @custom:refresher
     /// @custom:interaction CEI
     function poke() external {
-        require(!paused(), "paused");
+        require(!pausedOrFrozen(), "paused or frozen");
         // == Refresher ==
         assetRegistry.refresh();
 
         // == CE block ==
-        require(!paused(), "paused");
+        require(!pausedOrFrozen(), "paused or frozen");
         furnace.melt();
         stRSR.payoutRewards();
     }
 
-    function owner() public view override(IMain, OwnableUpgradeable) returns (address) {
-        return OwnableUpgradeable.owner();
+    function hasRole(bytes32 role, address account)
+        public
+        view
+        override(IAccessControlUpgradeable, AccessControlUpgradeable)
+        returns (bool)
+    {
+        return super.hasRole(role, account);
     }
 
     // === Upgradeability ===
     // solhint-disable-next-line no-empty-blocks
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(OWNER) {}
 }

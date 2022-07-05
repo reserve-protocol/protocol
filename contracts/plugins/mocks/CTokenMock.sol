@@ -7,7 +7,7 @@ import "./ERC20Mock.sol";
 
 contract CTokenMock is ERC20Mock {
     using FixLib for uint192;
-    address internal immutable _underlyingToken;
+    address internal _underlyingToken;
 
     uint256 internal _exchangeRate;
 

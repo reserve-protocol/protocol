@@ -51,7 +51,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction CEI
-    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
+    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -79,7 +79,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    function reportViolation() external notPaused {
+    function reportViolation() external notPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;

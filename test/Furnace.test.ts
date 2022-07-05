@@ -138,7 +138,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(furnace.connect(addr1).setPeriod(bn('500'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Cannot update with period zero
@@ -158,9 +158,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       expect(await furnace.ratio()).to.equal(newRatio)
 
       // Try to update again if not owner
-      await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith('governance only')
     })
   })
 

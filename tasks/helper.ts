@@ -49,7 +49,7 @@ export const config: IConfig = {
   maxTradeSlippage: fp('0.01'), // 1%
   dustAmount: fp('0.01'), // 0.01 UoA (USD)
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-  oneshotPauseDuration: bn('864000'), // 10 days
+  oneshotFreezeDuration: bn('864000'), // 10 days
   minBidSize: fp('1'), // 1 UoA (USD)
 }
 

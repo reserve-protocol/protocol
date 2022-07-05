@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
-import "contracts/plugins/assets/abstract/SelfReferentialCollateral.sol";
+import "contracts/plugins/assets/AbstractCollateral.sol";
 
 // ==== External Interfaces ====
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
@@ -23,10 +21,9 @@ interface ICToken {
  *   - cRSR
  *   - ...
  */
-contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferentialCollateral {
+contract CTokenSelfReferentialCollateral is Collateral {
     using FixLib for uint192;
-
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    using OracleLib for AggregatorV3Interface;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -36,34 +33,45 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferential
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    IERC20Metadata public referenceERC20;
+    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
+    int8 public immutable referenceERC20Decimals;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    IERC20 public override rewardERC20;
+    address public immutable comptrollerAddr;
 
-    string public oracleLookupSymbol;
-
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
-        IERC20Metadata referenceERC20_,
-        IComptroller comptroller_,
-        IERC20 rewardERC20_,
-        string memory targetName_
+        uint32 oracleTimeout_,
+        bytes32 targetName_,
+        int8 referenceERC20Decimals_,
+        address comptrollerAddr_
     )
-        SelfReferentialCollateral(erc20_, maxTradeVolume_, bytes32(bytes(targetName_)))
-        CompoundOracleMixin(comptroller_)
+        Collateral(
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_
+        )
     {
-        referenceERC20 = referenceERC20_;
-        rewardERC20 = rewardERC20_;
+        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
+        require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
+        referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok(); // {collateral/reference}
-        oracleLookupSymbol = targetName_;
+        comptrollerAddr = comptrollerAddr_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view returns (uint192) {
+    function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return consultOracle(oracleLookupSymbol).mul(refPerTok());
+        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -74,16 +82,25 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferential
         ICToken(address(erc20)).exchangeRateCurrent();
 
         if (whenDefault <= block.timestamp) return;
-        uint256 oldWhenDefault = whenDefault;
+        CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
-            emit DefaultStatusChanged(oldWhenDefault, whenDefault, status());
+        } else {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
+                priceable = true;
+            } catch {
+                priceable = false;
+            }
         }
         prevReferencePrice = referencePrice;
 
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
         // No interactions beyond the initial refresher
     }
 
@@ -101,20 +118,20 @@ contract CTokenSelfReferentialCollateral is CompoundOracleMixin, SelfReferential
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - int8(referenceERC20.decimals()) - 18;
+        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return consultOracle(oracleLookupSymbol);
+        return chainlinkFeed.price(oracleTimeout);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
     /// @return _cd The calldata to send
     function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
-        _to = address(comptroller);
+        _to = comptrollerAddr;
         _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }
 }

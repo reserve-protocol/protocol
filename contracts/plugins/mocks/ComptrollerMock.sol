@@ -1,23 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "./ERC20Mock.sol";
 
-contract ComptrollerMock is IComptroller {
-    ICompoundOracle private _compoundOracle;
-
+contract ComptrollerMock {
     mapping(address => uint256) public compBalances;
 
     ERC20Mock public compToken;
 
-    constructor(address compoundOracleAddress) {
-        _compoundOracle = ICompoundOracle(compoundOracleAddress);
-    }
-
-    function oracle() external view returns (ICompoundOracle) {
-        return _compoundOracle;
-    }
+    constructor() {}
 
     function setCompToken(address compToken_) external {
         compToken = ERC20Mock(compToken_);

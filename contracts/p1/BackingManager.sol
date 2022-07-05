@@ -38,7 +38,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // Give RToken max allowance over a registered token
     /// @custom:interaction CEI
-    function grantRTokenAllowance(IERC20 erc20) external interaction {
+    function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
         erc20.approve(address(main.rToken()), type(uint256).max);
@@ -46,12 +46,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction RCEI
-    function manageTokens(IERC20[] calldata erc20s) external interaction {
+    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
-        // Do not trade when DISABLED or IFFY
+        // Only trade when SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();

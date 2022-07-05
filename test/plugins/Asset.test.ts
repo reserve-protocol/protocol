@@ -1,17 +1,10 @@
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
+import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS } from '../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import {
-  AaveOracleMock,
-  Asset,
-  CompoundOracleMock,
-  ERC20Mock,
-  RTokenAsset,
-  TestIRToken,
-  USDCMock,
-} from '../../typechain'
+import { setOraclePrice } from '../utils/oracles'
+import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
 import { Collateral, defaultFixture, IConfig } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -24,8 +17,8 @@ describe('Assets contracts #fast', () => {
   let rToken: TestIRToken
 
   // Tokens/Assets
-  let token0: ERC20Mock
-  let token1: ERC20Mock
+  let collateral0: Collateral
+  let collateral1: Collateral
 
   // Assets
   let rsrAsset: Asset
@@ -33,10 +26,6 @@ describe('Assets contracts #fast', () => {
   let aaveAsset: Asset
   let rTokenAsset: RTokenAsset
   let basket: Collateral[]
-
-  // Oracles
-  let compoundOracleInternal: CompoundOracleMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Config
   let config: IConfig
@@ -54,23 +43,23 @@ describe('Assets contracts #fast', () => {
 
   beforeEach(async () => {
     // Deploy fixture
+    let collateral: Collateral[]
     ;({
       rsr,
       rsrAsset,
       compToken,
       compAsset,
-      compoundOracleInternal,
       aaveToken,
       aaveAsset,
-      aaveOracleInternal,
       basket,
+      collateral,
       config,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await basket[0].erc20())
-    token1 = <USDCMock>await ethers.getContractAt('USDCMock', await basket[1].erc20())
+    collateral0 = <Collateral>await ethers.getContractAt('Asset', collateral[0].address)
+    collateral1 = <Collateral>await ethers.getContractAt('Asset', collateral[1].address)
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
@@ -138,10 +127,9 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.price()).to.equal(fp('1'))
 
       // Update values in Oracles increase by 10-20%
-      await compoundOracleInternal.setPrice('COMP', bn('1.1e6')) // 10%
-      await aaveOracleInternal.setPrice(aaveToken.address, bn('3e14')) // 20%
-      await aaveOracleInternal.setPrice(compToken.address, bn('2.75e14')) // 10%
-      await aaveOracleInternal.setPrice(rsr.address, bn('3e14')) // 20%
+      await setOraclePrice(compAsset.address, bn('1.1e8')) // 10%
+      await setOraclePrice(aaveAsset.address, bn('1.2e8')) // 20%
+      await setOraclePrice(rsrAsset.address, bn('1.2e8')) // 20%
 
       // Check new prices
       expect(await rsrAsset.price()).to.equal(fp('1.2'))
@@ -156,10 +144,8 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.price()).to.equal(fp('1'))
 
       // Update values of underlying tokens - increase all by 10%
-      await aaveOracleInternal.setPrice(token0.address, bn('2.75e14')) // 10%
-      await aaveOracleInternal.setPrice(token1.address, bn('2.75e14')) // 10%
-      await compoundOracleInternal.setPrice(await token0.symbol(), bn('1.1e6')) // 10%
-      await compoundOracleInternal.setPrice(await token1.symbol(), bn('1.1e6')) // 10%
+      await setOraclePrice(collateral0.address, bn('1.1e8')) // 10%
+      await setOraclePrice(collateral1.address, bn('1.1e8')) // 10%
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
@@ -168,15 +154,58 @@ describe('Assets contracts #fast', () => {
 
     it('Should revert if price is zero', async () => {
       // Update values in Oracles to 0
-      await compoundOracleInternal.setPrice('COMP', bn(0))
-      await aaveOracleInternal.setPrice(aaveToken.address, bn(0))
-      await aaveOracleInternal.setPrice(compToken.address, bn(0))
-      await aaveOracleInternal.setPrice(rsr.address, bn(0))
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
 
       // Check new prices
-      await expect(rsrAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(compAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(aaveAsset.price()).to.be.revertedWith('PriceIsZero()')
+      await expect(rsrAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(compAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+    })
+  })
+  describe('Constructor validation', () => {
+    it('Should not allow missing chainlink feed', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(
+          ZERO_ADDRESS,
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          1
+        )
+      ).to.be.revertedWith('missing chainlink feed')
+    })
+    it('Should not allow missing erc20', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(
+          ONE_ADDRESS,
+          ZERO_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          1
+        )
+      ).to.be.revertedWith('missing erc20')
+    })
+    it('Should not allow 0 maxTradeVolume', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
+      ).to.be.revertedWith('maxTradeVolume zero')
+    })
+    it('Should not allow 0 oracleTimeout', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          0
+        )
+      ).to.be.revertedWith('oracleTimeout zero')
     })
   })
 })
