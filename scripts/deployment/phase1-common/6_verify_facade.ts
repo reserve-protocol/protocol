@@ -17,7 +17,7 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  deployments = <IDeployments> getDeploymentFile(getDeploymentFilename(chainId))
+  deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Facade ****************************************/
   console.time('Verifying Facade')

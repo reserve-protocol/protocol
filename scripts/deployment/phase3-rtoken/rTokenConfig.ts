@@ -1,23 +1,11 @@
 import {
+  IGovParams,
   IRTokenConfig,
-  IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
 
-interface IOwned {
-  owner: string
-}
-
-interface IGovernanceConfig {
-  votingDelay: number
-  votingPeriod: number
-  proposalThresholdAsMicroPercent: number
-  quorumPercent: number
-  minDelay: number
-}
-
-type IRToken = { [key: string]: IRTokenConfig & IRTokenSetup & IOwned & IGovernanceConfig }
+type IRToken = { [key: string]: IRTokenConfig  & IGovParams }
 
 export const rTokenConfig: { [key: string]: IRToken } = {
   '31337': {
@@ -43,22 +31,11 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         oneshotPauseDuration: bn('864000'), // 10 days
         minBidSize: fp('1'), // 1 UoA (USD)
       },
-      rewardAssets: ['aave-stkAAVE', 'compound-COMP'],
-      primaryBasket: ['aToken-aDAI', 'cToken-cDAI', 'aave-DAI'],
-      weights: [fp('0.25'), fp('0.25'), fp('0.5')],
-      backups: [
-        {
-          backupUnit: 'USD',
-          diversityFactor: bn(1),
-          backupCollateral: ['aave-USDC'],
-        },
-      ],
-      owner: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
-      votingDelay: 5, // 5 blocks
-      votingPeriod: 100,  // 100 blocks
-      proposalThresholdAsMicroPercent: 1e6,  // 1&
-      quorumPercent: 4, // 4%
-      minDelay: 60 * 60 * 24 // 1 day
+      votingDelay: bn(5), // 5 blocks
+      votingPeriod: bn(100),  // 100 blocks
+      proposalThresholdAsMicroPercent: bn(1e6),  // 1&
+      quorumPercent: bn(4), // 4%
+      minDelay: bn(60 * 60 * 24) // 1 day
     },
   },
 }

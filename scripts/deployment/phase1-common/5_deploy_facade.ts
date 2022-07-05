@@ -3,7 +3,12 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IComponents, networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getDeploymentFilename, IDeployments, validateImplementations } from '../deployment_utils'
+import {
+  getDeploymentFile,
+  getDeploymentFilename,
+  IDeployments,
+  validateImplementations,
+} from '../deployment_utils'
 import { FacadeP1 } from '../../../typechain'
 
 let facade: FacadeP1
@@ -21,7 +26,7 @@ async function main() {
   }
 
   const deploymentFilename = getDeploymentFilename(chainId)
-  const deployments =  <IDeployments> getDeploymentFile(deploymentFilename)
+  const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
   await validateImplementations(deployments)
 

@@ -59,12 +59,11 @@ async function main() {
   }
 
   const deploymentFilename = getDeploymentFilename(chainId)
-  const deployments = <IDeployments> getDeploymentFile(deploymentFilename)
+  const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
   if (!deployments.tradingLib || !deployments.rewardableLib) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
-   } 
-   else if (!(await isValidContract(hre, deployments.tradingLib))) {
+  } else if (!(await isValidContract(hre, deployments.tradingLib))) {
     throw new Error(`TradingLib contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.rewardableLib))) {
     throw new Error(`RewardableLib contract not found in network ${hre.network.name}`)
@@ -143,13 +142,7 @@ async function main() {
   brokerImpl = <BrokerP1>await BrokerImplFactory.connect(burner).deploy()
   await brokerImpl.deployed()
 
-  writeComponentDeployment(
-    deployments,
-    deploymentFilename,
-    'broker',
-    brokerImpl.address,
-    'Broker'
-  )
+  writeComponentDeployment(deployments, deploymentFilename, 'broker', brokerImpl.address, 'Broker')
 
   // 5. *********** Distributor *************/
   const DistribImplFactory = await ethers.getContractFactory('DistributorP1')
@@ -207,13 +200,7 @@ async function main() {
   rTokenImpl = <RTokenP1>await RTokenImplFactory.connect(burner).deploy()
   await rTokenImpl.deployed()
 
-  writeComponentDeployment(
-    deployments,
-    deploymentFilename,
-    'rToken',
-    rTokenImpl.address,
-    'RToken'
-  )
+  writeComponentDeployment(deployments, deploymentFilename, 'rToken', rTokenImpl.address, 'RToken')
 
   // 9. *********** StRSR *************/
 
@@ -221,13 +208,7 @@ async function main() {
   stRSRImpl = <StRSRP1Votes>await StRSRImplFactory.connect(burner).deploy()
   await stRSRImpl.deployed()
 
-  writeComponentDeployment(
-    deployments,
-    deploymentFilename,
-    'stRSR',
-    stRSRImpl.address,
-    'StRSR'
-  )
+  writeComponentDeployment(deployments, deploymentFilename, 'stRSR', stRSRImpl.address, 'StRSR')
 
   console.log(`    Deployment file: ${deploymentFilename}`)
 }

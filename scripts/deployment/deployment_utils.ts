@@ -22,23 +22,30 @@ export interface IDeployments {
   implementations: IImplementations
 }
 
+export interface IAssetCollDeployments {
+  assets: ITokens
+  collateral: ITokens
+}
+
 export interface IRTokenDeployments {
   facadeWrite: string
   main: string
   components: IComponents
   rsrAsset: string
   rTokenAsset: string
-  rewardAssets: string[]
-  owner: string
   governance: string
   timelock: string
-  collateral: ITokens
 }
 
 const tempFileSuffix: string = '-tmp-deployments.json'
+const tempAssetCollFileSuffix: string = '-tmp-assets-collateral.json'
 
 export const getDeploymentFilename = (chainId: number): string => {
   return `./${chainId}${tempFileSuffix}`
+}
+
+export const getAssetCollDeploymentFilename = (chainId: number): string => {
+  return `./${chainId}${tempAssetCollFileSuffix}`
 }
 
 export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {
@@ -54,7 +61,9 @@ export const fileExists = (file: string): boolean => {
   }
 }
 
-export const getDeploymentFile = (path: string): IDeployments | IRTokenDeployments => {
+export const getDeploymentFile = (
+  path: string
+): IDeployments | IAssetCollDeployments | IRTokenDeployments => {
   if (!fileExists(path)) {
     throw new Error(`Deployment file ${path} does not exist. Maybe contracts weren't deployed?`)
   }

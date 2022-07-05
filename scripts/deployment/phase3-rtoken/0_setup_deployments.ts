@@ -51,14 +51,6 @@ async function main() {
     throw new Error(`FacadeWrite contract not found in network ${hre.network.name}`)
   }
 
-  // Get Owner
-  const ownerAddr = rTokenConf.owner
-  if (!ownerAddr) {
-    throw new Error(`Missing address for Owner in network ${hre.network.name}`)
-  } else {
-    console.log(`Ownership will be transferred to account:  ${ownerAddr}`)
-  }
-
   // ********************* Output Configuration******************************
   const rTokenDeployments: IRTokenDeployments = {
     facadeWrite: deployments.facadeWrite,
@@ -77,18 +69,14 @@ async function main() {
     },
     rsrAsset: '',
     rTokenAsset: '',
-    rewardAssets: [],
-    owner: ownerAddr,
     governance: '',
-    timelock: '',
-    collateral: {}
+    timelock: ''
   }
 
   fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
 
   console.log(`Deployment file created for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId}):
     FacadeWrite: ${deployments.facadeWrite}
-    Owner: ${ownerAddr}
     Deployment file: ${rTokenDeploymentFilename}`)
 }
 

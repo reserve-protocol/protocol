@@ -17,13 +17,20 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  deployments = <IDeployments> getDeploymentFile(getDeploymentFilename(chainId))
+  deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Deployer ****************************************/
   console.time('Verifying Deployer')
   await hre.run('verify:verify', {
     address: deployments.deployer,
-    constructorArguments: [deployments.prerequisites.RSR, deployments.prerequisites.GNOSIS_EASY_AUCTION, deployments.prerequisites.COMPTROLLER, deployments.prerequisites.AAVE_LENDING_POOL, deployments.facade, deployments.implementations],
+    constructorArguments: [
+      deployments.prerequisites.RSR,
+      deployments.prerequisites.GNOSIS_EASY_AUCTION,
+      deployments.prerequisites.COMPTROLLER,
+      deployments.prerequisites.AAVE_LENDING_POOL,
+      deployments.facade,
+      deployments.implementations,
+    ],
     contract: 'contracts/p1/Deployer.sol:DeployerP1',
   })
   console.timeEnd('Verifying Deployer')

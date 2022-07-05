@@ -3,7 +3,12 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getDeploymentFilename, IDeployments, validateImplementations } from '../deployment_utils'
+import {
+  getDeploymentFile,
+  getDeploymentFilename,
+  IDeployments,
+  validateImplementations,
+} from '../deployment_utils'
 import { DeployerP1 } from '../../../typechain'
 
 let deployer: DeployerP1
@@ -11,9 +16,9 @@ let deployer: DeployerP1
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
-    
+
   const chainId = await getChainId(hre)
-  
+
   console.log(`Deploying Deployer to network ${hre.network.name} (${chainId})
     with burner account: ${burner.address}`)
 
@@ -22,7 +27,7 @@ async function main() {
   }
 
   const deploymentFilename = getDeploymentFilename(chainId)
-  const deployments = <IDeployments> getDeploymentFile(deploymentFilename)
+  const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
   // Validate implementations
   await validateImplementations(deployments)
@@ -36,7 +41,16 @@ async function main() {
 
   // ******************** Deploy Deployer ****************************************/
   const DeployerFactory = await ethers.getContractFactory('DeployerP1')
-  deployer = <DeployerP1>await DeployerFactory.connect(burner).deploy(deployments.prerequisites.RSR, deployments.prerequisites.GNOSIS_EASY_AUCTION, deployments.prerequisites.COMPTROLLER, deployments.prerequisites.AAVE_LENDING_POOL, deployments.facade, deployments.implementations)
+  deployer = <DeployerP1>(
+    await DeployerFactory.connect(burner).deploy(
+      deployments.prerequisites.RSR,
+      deployments.prerequisites.GNOSIS_EASY_AUCTION,
+      deployments.prerequisites.COMPTROLLER,
+      deployments.prerequisites.AAVE_LENDING_POOL,
+      deployments.facade,
+      deployments.implementations
+    )
+  )
   await deployer.deployed()
 
   // Write temporary deployments file

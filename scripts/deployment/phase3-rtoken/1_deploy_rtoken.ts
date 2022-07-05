@@ -11,9 +11,12 @@ import {
 } from '../../../common/configuration'
 import { getRTokenConfig } from './rTokenConfig'
 import { expectInIndirectReceipt } from '../../../common/events'
+import { bn, fp } from '../../../common/numbers'
 import {
+  getAssetCollDeploymentFilename,
   getDeploymentFile,
   getRTokenDeploymentFilename,
+  IAssetCollDeployments,
   IRTokenDeployments,
 } from '../deployment_utils'
 import { AssetRegistryP1, DeployerP1, FacadeWrite, MainP1 } from '../../../typechain'
@@ -41,23 +44,9 @@ async function main() {
   const rTokenDeploymentFilename = getRTokenDeploymentFilename(chainId, RTOKEN_NAME)
   const rTokenDeployments = <IRTokenDeployments>getDeploymentFile(rTokenDeploymentFilename)
 
-  // Validate Collaterals
-  if (Object.keys(rTokenDeployments.collateral).length == 0) {
-    throw new Error(`Missing collaterals in network ${hre.network.name}`)
-  } else {
-    for (const [, addr] of Object.entries(rTokenDeployments.collateral)) {
-      if (!(await isValidContract(hre, addr))) {
-        throw new Error(`Collateral contract not found in network ${hre.network.name}`)
-      }
-    }
-  }
-
-  // Validate Reward assets
-  for (const assetAddr of rTokenDeployments.rewardAssets) {
-    if (!(await isValidContract(hre, assetAddr))) {
-      throw new Error(`Asset contract not found in network ${hre.network.name}`)
-    }
-  }
+  // Get deployed assets/collateral
+  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
+  const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
   // Get configuration
   const rTokenConfig: IRTokenConfig = {
@@ -67,38 +56,42 @@ async function main() {
     params: rTokenConf.params,
   }
 
-  // Process backups
-  const bkpInfos: IBackupInfo[] = []
-  for (const bkpInfo of rTokenConf.backups) {
-    // Get backup collateral ercs20s
-    const bkpCollaterals: string[] = []
-    for (const bkpColl of bkpInfo.backupCollateral) {
-      const collName = bkpColl.split('-')[1] as keyof ITokens
-      const colAddr = rTokenDeployments.collateral[collName] || ''
-      bkpCollaterals.push(colAddr)
-    }
-
-    bkpInfos.push({
-      backupUnit: ethers.utils.formatBytes32String(bkpInfo.backupUnit),
-      diversityFactor: bkpInfo.diversityFactor,
-      backupCollateral: bkpCollaterals,
-    })
-  }
-
-  // Get primary Basket Addrs
-  const primaryBasketAddrs: string[] = []
-  for (const bskColl of rTokenConf.primaryBasket) {
-    const collName = bskColl.split('-')[1] as keyof ITokens
-    const colAddr = rTokenDeployments.collateral[collName] || ''
-    primaryBasketAddrs.push(colAddr)
-  }
-
-  // Set RToken setup
   const rTokenSetup: IRTokenSetup = {
-    rewardAssets: rTokenDeployments.rewardAssets,
-    primaryBasket: primaryBasketAddrs,
-    weights: rTokenConf.weights,
-    backups: bkpInfos,
+    assets: [
+      assetCollDeployments.assets.stkAAVE as string,
+      assetCollDeployments.assets.COMP as string,
+    ],
+    primaryBasket: [
+      assetCollDeployments.collateral.DAI as string,
+      assetCollDeployments.collateral.aDAI as string,
+      assetCollDeployments.collateral.cDAI as string,
+    ],
+    weights: [fp('0.25'), fp('0.25'), fp('0.5')],
+    backups: [
+      {
+        backupUnit: ethers.utils.formatBytes32String('USD'),
+        diversityFactor: bn(1),
+        backupCollateral: [assetCollDeployments.collateral.USDC as string],
+      },
+    ],
+  }
+
+  // Validate assets
+  for (const assetAddr of rTokenSetup.assets) {
+    if (!(await isValidContract(hre, assetAddr))) {
+      throw new Error(`Asset contract not found in network ${hre.network.name}`)
+    }
+  }
+
+  // Validate collaterals
+  let allCollateral: string[] = rTokenSetup.primaryBasket
+  for (const bkpInfo of rTokenSetup.backups) {
+    allCollateral = allCollateral.concat(bkpInfo.backupCollateral)
+  }
+  for (const collAddr of allCollateral) {
+    if (!(await isValidContract(hre, collAddr))) {
+      throw new Error(`Collateral contract not found in network ${hre.network.name}`)
+    }
   }
 
   // ******************** Deploy RToken ****************************************/
@@ -111,7 +104,7 @@ async function main() {
 
   // Deploy RToken
   const receipt = await (
-    await facadeWrite.deployRToken(rTokenConfig, rTokenSetup, rTokenDeployments.owner)
+    await facadeWrite.deployRToken(rTokenConfig, rTokenSetup)
   ).wait()
 
   // Get Main

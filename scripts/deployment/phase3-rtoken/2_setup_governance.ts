@@ -2,20 +2,21 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
+import { IGovParams, networkConfig } from '../../../common/configuration'
+import { ZERO_ADDRESS } from '../../../common/constants'
+import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig } from './rTokenConfig'
 import {
   getDeploymentFile,
   getRTokenDeploymentFilename,
   IRTokenDeployments,
 } from '../deployment_utils'
-import { Governance, MainP1, RTokenP1, StRSRP1, TimelockController } from '../../../typechain'
-
-let timelock: TimelockController
-let governance: Governance
-
+import { FacadeWrite, MainP1, RTokenP1, StRSRP1 } from '../../../typechain'
 // Define the Token to use
 const RTOKEN_NAME = 'RTKN'
+
+// Address to be used as external owner or pauser (if desired)
+const OWNER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
 async function main() {
   // ==== Read Configuration ====
@@ -61,35 +62,36 @@ async function main() {
     throw new Error(`Invalid addresses in config file for RToken ${RTOKEN_NAME} in network ${hre.network.name}`)
   }
 
-  // ******************** Deploy Governance ****************************************/
-  // Deploy TimelockController
-  const TimelockFactory = await ethers.getContractFactory('TimelockController')
-  timelock = <TimelockController>await TimelockFactory.deploy(rTokenConf.minDelay, [], [])
-  await timelock.deployed()
-
-  
-  const GovernanceFactory = await ethers.getContractFactory('Governance')
-  governance = <Governance>(
-    await GovernanceFactory.connect(burner).deploy(
-      stRSR.address,
-      timelock.address,
-      rTokenConf.votingDelay,
-      rTokenConf.votingPeriod,
-      rTokenConf.proposalThresholdAsMicroPercent,
-      rTokenConf.quorumPercent
-    )
+  // ******************** Setup Governance ****************************************/
+  const facadeWrite = <FacadeWrite>(
+    await ethers.getContractAt('FacadeWrite', rTokenDeployments.facadeWrite)
   )
-  await governance.deployed()
+ 
+  const govParams: IGovParams = {
+    votingDelay: rTokenConf.votingDelay,
+    votingPeriod: rTokenConf.votingPeriod,
+    proposalThresholdAsMicroPercent: rTokenConf.proposalThresholdAsMicroPercent,
+    quorumPercent: rTokenConf.quorumPercent,
+    minDelay: rTokenConf.minDelay
+  }
 
+  // Setup Governance in RToken
+  const receipt = await (
+    await facadeWrite.connect(burner).setupGovernance(rToken.address, true, false, govParams, ZERO_ADDRESS, OWNER_ADDR)
+  ).wait()
+
+  const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
+  const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
+  
   // Write temporary deployments file
-  rTokenDeployments.governance = governance.address
-  rTokenDeployments.timelock = timelock.address
+  rTokenDeployments.governance = governanceAddr
+  rTokenDeployments.timelock = timelockAddr
   
   fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
 
   console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
-    Governance:  ${governance.address}
-    Timelock: ${timelock.address}
+    Governance:  ${governanceAddr}
+    Timelock:  ${timelockAddr}
     Deployment file: ${rTokenDeploymentFilename}`)
 }
 
