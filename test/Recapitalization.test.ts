@@ -2,19 +2,17 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AaveOracleMock,
-  CompoundOracleMock,
-  ComptrollerMock,
   CTokenMock,
   ERC20Mock,
   Facade,
   GnosisMock,
   IBasketHandler,
+  MockV3Aggregator,
+  OracleLib,
   StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
@@ -23,9 +21,17 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IConfig,
+  Implementation,
+  IMPLEMENTATION,
+  ORACLE_TIMEOUT,
+} from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade } from './utils/trades'
+import { setOraclePrice } from './utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -42,11 +48,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let compoundMock: ComptrollerMock
-  let compoundOracleInternal: CompoundOracleMock
   let aaveToken: ERC20Mock
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
@@ -82,6 +84,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let assetRegistry: TestIAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -115,10 +118,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
     ;({
       rsr,
       aaveToken,
-      compoundMock,
-      aaveMock,
-      compoundOracleInternal,
-      aaveOracleInternal,
       erc20s,
       collateral,
       basket,
@@ -131,6 +130,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
+      oracleLib,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -229,7 +229,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
 
         // Mark default as probable
         await collateral1.refresh()
@@ -379,8 +379,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token0 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
-        await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
@@ -479,7 +478,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(initialQuotes)
 
         // Set Token1 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
 
         // Mark default as probable
         await collateral1.refresh()
@@ -591,32 +590,39 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         issueAmount = bn('100e18')
 
         // Swap asset to have EUR target for token1
-        const EURCollateralFactory: ContractFactory = await ethers.getContractFactory(
-          'EURAavePricedFiatCollateral'
+        const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+          'FiatCollateral',
+          { libraries: { OracleLib: oracleLib.address } }
         )
+        const ChainlinkFeedFactory = await ethers.getContractFactory('MockV3Aggregator')
 
+        const newEURFeed = await ChainlinkFeedFactory.deploy(8, bn('1e8'))
         newEURCollateral = <Collateral>(
-          await EURCollateralFactory.deploy(
+          await FiatCollateralFactory.deploy(
+            newEURFeed.address,
             token1.address,
+            ZERO_ADDRESS,
             await collateral1.maxTradeVolume(),
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('EUR'),
             await collateral1.defaultThreshold(),
-            await collateral1.delayUntilDefault(),
-            compoundMock.address,
-            aaveMock.address
+            await collateral1.delayUntilDefault()
           )
         )
 
+        const backupEURFeed = await ChainlinkFeedFactory.deploy(8, bn('1e8'))
         backupEURCollateral = <Collateral>(
-          await EURCollateralFactory.deploy(
+          await FiatCollateralFactory.deploy(
+            backupEURFeed.address,
             backupToken1.address,
+            ZERO_ADDRESS,
             await backupCollateral1.maxTradeVolume(),
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('EUR'),
             await backupCollateral1.defaultThreshold(),
-            await backupCollateral1.delayUntilDefault(),
-            compoundMock.address,
-            aaveMock.address
+            await backupCollateral1.delayUntilDefault()
           )
         )
-
         // Swap asset
         await assetRegistry.swapRegistered(newEURCollateral.address)
 
@@ -660,7 +666,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(initialQuotes)
 
         // Set new EUR Token to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await setOraclePrice(newEURCollateral.address, bn('0.5e8'))
 
         // Mark default as probable
         await newEURCollateral.refresh()
@@ -719,7 +725,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(quotes).to.eql(initialQuotes)
 
         // Set the USD Token to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await collateral0.refresh()
@@ -1237,7 +1243,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
 
         // Set Token0 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
         await expect(facade.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
@@ -1355,17 +1361,23 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [backupToken1.address])
 
         // Set new max auction size for asset (will require 2 auctions)
-        const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-          'AavePricedFiatCollateral'
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+        const CollateralFactory: ContractFactory = await ethers.getContractFactory(
+          'FiatCollateral',
+          { libraries: { OracleLib: oracleLib.address } }
         )
         const newCollateral0: Collateral = <Collateral>(
-          await AaveCollateralFactory.deploy(
+          await CollateralFactory.deploy(
+            chainlinkFeed.address,
             token0.address,
+            ZERO_ADDRESS,
             bn('25e18'),
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
             await backupCollateral1.defaultThreshold(),
-            await backupCollateral1.delayUntilDefault(),
-            compoundMock.address,
-            aaveMock.address
+            await backupCollateral1.delayUntilDefault()
           )
         )
 
@@ -1395,7 +1407,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
         // Set Token0 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+        await setOraclePrice(newCollateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
@@ -1646,7 +1658,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
         // Set Token0 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
@@ -2012,7 +2024,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(stkAmount)
 
         // Set Token0 to default - 50% price reduction
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
@@ -2836,8 +2848,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
         // Set Token0 to default - 20% price reduction - Will also default tokens 2 and 3
-        await aaveOracleInternal.setPrice(token0.address, bn('2e14'))
-        await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.8e6'))
+        await setOraclePrice(collateral0.address, bn('0.8e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
@@ -3209,8 +3220,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
 
         // Set Token0 to default - 50% price reduction - Will also default tokens 2 and 3
-        await aaveOracleInternal.setPrice(token0.address, bn('1.25e14'))
-        await compoundOracleInternal.setPrice(await token0.symbol(), bn('0.5e6'))
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Mark default as probable
         await assetRegistry.refresh()
