@@ -160,8 +160,16 @@ export interface IBackupInfo {
 }
 
 export interface IRTokenSetup {
-  rewardAssets: string[]
+  assets: string[]
   primaryBasket: string[]
   weights: BigNumber[]
   backups: IBackupInfo[]
+}
+
+export interface IGovParams {
+  votingDelay: BigNumber
+  votingPeriod: BigNumber
+  proposalThresholdAsMicroPercent: BigNumber
+  quorumPercent: BigNumber
+  minDelay: BigNumber
 }
