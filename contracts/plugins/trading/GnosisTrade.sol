@@ -9,8 +9,6 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
-import "hardhat/console.sol";
-
 enum TradeStatus {
     NOT_STARTED, // before init()
     OPEN, // after init() and before settle()
