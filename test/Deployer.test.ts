@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { ZERO_ADDRESS } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
@@ -24,7 +25,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
-import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { defaultFixture, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
