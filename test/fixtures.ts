@@ -169,7 +169,6 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  assetRegistry: TestIAssetRegistry,
   oracleLib: OracleLib,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
@@ -239,7 +238,7 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    underlyingCollateral: Collateral,
+    chainlinkAddr: string,
     compToken: ERC20Mock
   ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
     const erc20: CTokenMock = <CTokenMock>(
@@ -247,7 +246,7 @@ async function collateralFixture(
     )
     const coll = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
-        await underlyingCollateral.chainlinkFeed(),
+        chainlinkAddr,
         erc20.address,
         compToken.address,
         config.maxTradeVolume,
@@ -264,7 +263,7 @@ async function collateralFixture(
   const makeATokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    underlyingCollateral: Collateral,
+    chainlinkAddr: string,
     aaveToken: ERC20Mock
   ): Promise<[StaticATokenMock, ATokenFiatCollateral]> => {
     const erc20: StaticATokenMock = <StaticATokenMock>(
@@ -274,7 +273,7 @@ async function collateralFixture(
 
     const coll = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.deploy(
-        await underlyingCollateral.chainlinkFeed(),
+        chainlinkAddr,
         erc20.address,
         aaveToken.address,
         config.maxTradeVolume,
@@ -292,13 +291,38 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0], dai[1], compToken)
-  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], usdc[1], compToken)
-  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], usdt[1], compToken)
-  const adai = await makeATokenCollateral('aDAI', dai[0], dai[1], aaveToken)
-  const ausdc = await makeATokenCollateral('aUSDC', usdc[0], usdc[1], aaveToken)
-  const ausdt = await makeATokenCollateral('aUSDT', usdt[0], usdt[1], aaveToken)
-  const abusd = await makeATokenCollateral('aBUSD', busd[0], busd[1], aaveToken)
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
+  const cusdc = await makeCTokenCollateral(
+    'cUSDC',
+    usdc[0],
+    await usdc[1].chainlinkFeed(),
+    compToken
+  )
+  const cusdt = await makeCTokenCollateral(
+    'cUSDT',
+    usdt[0],
+    await usdt[1].chainlinkFeed(),
+    compToken
+  )
+  const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
+  const ausdc = await makeATokenCollateral(
+    'aUSDC',
+    usdc[0],
+    await usdc[1].chainlinkFeed(),
+    aaveToken
+  )
+  const ausdt = await makeATokenCollateral(
+    'aUSDT',
+    usdt[0],
+    await usdt[1].chainlinkFeed(),
+    aaveToken
+  )
+  const abusd = await makeATokenCollateral(
+    'aBUSD',
+    busd[0],
+    await busd[1].chainlinkFeed(),
+    aaveToken
+  )
   const erc20s = [
     dai[0],
     usdc[0],
@@ -593,7 +617,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    assetRegistry,
     oracleLib,
     compoundMock,
     aaveToken,

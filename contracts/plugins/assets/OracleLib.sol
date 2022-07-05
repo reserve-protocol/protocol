@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/libraries/Fixed.sol";
 
+import "hardhat/console.sol";
+
 error StalePrice();
 error PriceOutsideRange();
 

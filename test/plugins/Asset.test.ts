@@ -1,7 +1,7 @@
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
+import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { ZERO_ADDRESS } from '../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
 import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
@@ -164,13 +164,48 @@ describe('Assets contracts #fast', () => {
       await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
     })
   })
-
-  describe('Invalid checks', () => {
+  describe('Constructor validation', () => {
+    it('Should not allow missing chainlink feed', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(
+          ZERO_ADDRESS,
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          1
+        )
+      ).to.be.revertedWith('missing chainlink feed')
+    })
+    it('Should not allow missing erc20', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(
+          ONE_ADDRESS,
+          ZERO_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          1
+        )
+      ).to.be.revertedWith('missing erc20')
+    })
+    it('Should not allow 0 maxTradeVolume', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
+      ).to.be.revertedWith('maxTradeVolume zero')
+    })
     it('Should not allow 0 oracleTimeout', async () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       await expect(
-        AssetFactory.deploy(ZERO_ADDRESS, await collateral0.maxTradeVolume(), ZERO_ADDRESS, 0)
-      ).to.be.revertedWith('oracle timeout zero')
+        AssetFactory.deploy(
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          ONE_ADDRESS,
+          await collateral0.maxTradeVolume(),
+          0
+        )
+      ).to.be.revertedWith('oracleTimeout zero')
     })
   })
 })
