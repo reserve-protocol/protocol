@@ -30,8 +30,8 @@ contract Asset is IAsset {
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(oracleTimeout_ > 0, "oracle timeout zero");
         require(maxTradeVolume_ > 0, "maxTradeVolume zero");
+        require(oracleTimeout_ > 0, "oracleTimeout zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         rewardERC20 = rewardERC20_;

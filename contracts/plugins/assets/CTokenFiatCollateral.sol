@@ -148,7 +148,13 @@ contract CTokenFiatCollateral is Collateral {
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
     /// @return _cd The calldata to send
-    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
+    function getClaimCalldata()
+        external
+        view
+        virtual
+        override
+        returns (address _to, bytes memory _cd)
+    {
         _to = comptrollerAddr;
         _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }
