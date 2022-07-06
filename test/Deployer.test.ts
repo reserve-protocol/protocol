@@ -5,9 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
   Asset,
-  ComptrollerMock,
   ERC20Mock,
   Facade,
   GnosisMock,
@@ -42,12 +40,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let rsrAsset: Asset
 
   // AAVE and Compound
-  let compToken: ERC20Mock
   let compAsset: Asset
-  let compoundMock: ComptrollerMock
-  let aaveToken: ERC20Mock
   let aaveAsset: Asset
-  let aaveMock: AaveLendingPoolMock
 
   // Market / Facade
   let gnosis: GnosisMock
@@ -82,12 +76,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     ;({
       rsr,
       rsrAsset,
-      compToken,
       compAsset,
-      compoundMock,
-      aaveToken,
       aaveAsset,
-      aaveMock,
       config,
       deployer,
       main,
@@ -111,11 +101,8 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     it('Should setup values correctly', async () => {
       expect(await deployer.ENS()).to.equal('reserveprotocol.eth')
       expect(await deployer.rsr()).to.equal(rsr.address)
-      expect(await deployer.comp()).to.equal(compToken.address)
-      expect(await deployer.aave()).to.equal(aaveToken.address)
       expect(await deployer.gnosis()).to.equal(gnosis.address)
-      expect(await deployer.comptroller()).to.equal(compoundMock.address)
-      expect(await deployer.aaveLendingPool()).to.equal(aaveMock.address)
+      expect(await deployer.rsrAsset()).to.equal(rsrAsset.address)
     })
 
     it('Should deploy required contracts', async () => {
@@ -148,10 +135,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     })
 
     it('Should setup Main correctly', async () => {
-      // Owner/Pauser
-      expect(await main.owner()).to.equal(owner.address)
-      expect(await main.oneshotPauser()).to.equal(owner.address)
-
       // Assets
       // RSR
       expect(await assetRegistry.toAsset(rsr.address)).to.equal(rsrAsset.address)

@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
-
-error PriceIsZero();
-error UnknownError(bytes);
 
 /**
  * @title IAsset
@@ -43,10 +41,15 @@ interface IAsset {
     function rewardERC20() external view returns (IERC20 reward);
 }
 
+interface TestIAsset is IAsset {
+    function chainlinkFeed() external view returns (AggregatorV3Interface);
+}
+
 enum CollateralStatus {
     SOUND,
-    IFFY,
-    DISABLED
+    IFFY, // When a peg is not holding
+    UNPRICED, // When a problem is detected with the chainlink feed
+    DISABLED // When the collateral has completely defaulted
 }
 
 /**
@@ -54,19 +57,20 @@ enum CollateralStatus {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
-    /// Emitted whenever `whenDefault` is changed
-    /// @param oldWhenDefault The old value of `whenDefault`
-    /// @param newWhenDefault The new value of `whenDefault`
+    /// Emitted whenever the collateral status is changed
+    /// @param newStatus The old CollateralStatus
     /// @param newStatus The updated CollateralStatus
     event DefaultStatusChanged(
-        uint256 indexed oldWhenDefault,
-        uint256 indexed newWhenDefault,
+        CollateralStatus indexed oldStatus,
         CollateralStatus indexed newStatus
     );
 
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
+    /// @dev This default check assumes that the collateral's price() value is expected
+    /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
+    /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external;
 
     /// @return The canonical name of this collateral's target unit.

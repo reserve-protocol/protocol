@@ -3,9 +3,6 @@ pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
-import "contracts/plugins/mocks/ComptrollerMock.sol";
-import "contracts/plugins/mocks/AaveLendingPoolMock.sol";
-import "contracts/plugins/mocks/AaveLendingAddrProviderMock.sol";
 import "contracts/p0/Deployer.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
@@ -21,7 +18,7 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         dustAmount: FixLib.divu(toFix(1), 100), // 0.01 UoA (USD)
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
-        oneshotPauseDuration: 864000, // 10 days
+        oneshotFreezeDuration: 864000, // 10 days
         minBidSize: toFix(1) // 1 UoA (USD)
     });
 }

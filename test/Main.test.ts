@@ -2,16 +2,21 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, ZERO_ADDRESS, MAX_UINT256 } from '../common/constants'
+import {
+  CollateralStatus,
+  ZERO_ADDRESS,
+  ONE_ADDRESS,
+  MAX_UINT256,
+  OWNER,
+  FREEZER,
+  PAUSER,
+} from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
 import {
-  AaveOracleMock,
   Asset,
   ATokenFiatCollateral,
-  CompoundOracleMock,
-  CompoundPricedAsset,
-  ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
@@ -60,11 +65,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let rsrAsset: Asset
   let compToken: ERC20Mock
   let compAsset: Asset
-  let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
-  let compoundOracleInternal: CompoundOracleMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Trading
   let gnosis: GnosisMock
@@ -119,9 +121,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       aaveToken,
       compAsset,
       aaveAsset,
-      compoundMock,
-      compoundOracleInternal,
-      aaveOracleInternal,
       erc20s,
       collateral,
       basket,
@@ -168,10 +167,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
   describe('Deployment #fast', () => {
     it('Should setup Main correctly', async () => {
-      // Owner/Pauser
+      // Auth roles
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await main.hasRole(OWNER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(FREEZER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(PAUSER, deployer.address)).to.equal(false)
+      expect(await main.getRoleAdmin(OWNER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(FREEZER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(PAUSER)).to.equal(OWNER)
+
+      // Should start unfrozen and unpaused
       expect(await main.paused()).to.equal(false)
-      expect(await main.owner()).to.equal(owner.address)
-      expect(await main.oneshotPauser()).to.equal(owner.address)
+      expect(await main.pausedOrFrozen()).to.equal(false)
+      expect(await main.frozen()).to.equal(false)
 
       // Components
       expect(await main.stRSR()).to.equal(stRSR.address)
@@ -189,7 +199,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(40))
       expect(rsrTotal).to.equal(bn(60))
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -432,144 +442,216 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Pause/Unpause #fast', () => {
-    it('Should Pause for Pauser and Owner', async () => {
-      // Set different Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
+    beforeEach(async () => {
+      // Set different PAUSER
+      await main.connect(owner).grantRole(PAUSER, addr1.address)
+    })
 
+    it('Should Pause for PAUSER and OWNER', async () => {
       // Check initial status
-      expect(await main.oneshotPauser()).to.equal(addr1.address)
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
       expect(await main.paused()).to.equal(false)
 
-      // Pause with Pauser
+      // Pause with PAUSER
       await main.connect(addr1).pause()
 
-      // Check if Paused
+      // Check if Paused, should not lose PAUSER
       expect(await main.paused()).to.equal(true)
-      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
-
-      // Try to unpause with original pauser
-      await expect(main.connect(addr1).unpause()).to.be.revertedWith('only pauser or owner')
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
       // Unpause
-      await main.connect(owner).unpause()
+      await main.connect(addr1).unpause()
 
       expect(await main.paused()).to.equal(false)
 
-      // Owner should still be able to Pause
+      // OWNER should still be able to Pause
       await main.connect(owner).pause()
 
       // Check if Paused
       expect(await main.paused()).to.equal(true)
     })
 
-    it('Pausing by owner should last indefinitely', async () => {
-      // Pause with Owner
-      await main.connect(owner).pause()
-      expect(await main.paused()).to.equal(true)
-      await advanceTime((await config.oneshotPauseDuration).toString())
-
-      expect(await main.paused()).to.equal(true)
-    })
-
-    it('Pausing by pauser should be temporary', async () => {
-      await main.connect(owner).setOneshotPauser(addr1.address)
-
-      // Pause with pauser
-      await main.connect(addr1).pause()
-      expect(await main.paused()).to.equal(true)
-      await advanceTime((await config.oneshotPauseDuration).toString())
-
-      expect(await main.paused()).to.equal(false)
-    })
-
-    it('Should not allow to Pause/Unpause if not Pauser or Owner', async () => {
-      // Set different Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
-
-      await expect(main.connect(other).pause()).to.be.revertedWith('only pauser or owner')
+    it('Should not allow to Pause/Unpause if not PAUSER or OWNER', async () => {
+      await expect(main.connect(other).pause()).to.be.reverted
 
       // Check no changes
       expect(await main.paused()).to.equal(false)
 
       // Attempt to unpause
-      await expect(main.connect(other).unpause()).to.be.revertedWith('only pauser or owner')
+      await expect(main.connect(other).unpause()).to.be.reverted
 
       // Check no changes
       expect(await main.paused()).to.equal(false)
     })
 
-    it('Should allow to set Pauser if Owner or Pauser', async () => {
-      // Set Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
+    it('Should not allow to set PAUSER if not OWNER', async () => {
+      // Set PAUSER
+      await expect(main.connect(addr1).grantRole(PAUSER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(PAUSER, other.address)).to.be.reverted
 
-      // Check Pauser updated
-      expect(await main.oneshotPauser()).to.equal(addr1.address)
-
-      // Now update it with Pauser
-      await main.connect(addr1).setOneshotPauser(owner.address)
-
-      // Check Pauser updated
-      expect(await main.oneshotPauser()).to.equal(owner.address)
+      // Check PAUSER not updated
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
     })
 
-    it('Should not allow to set Pauser if not Owner', async () => {
-      // Set Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
+    it('Should allow to renounce role if OWNER', async () => {
+      // Check PAUSER updated
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
-      // Set Pauser
-      await expect(main.connect(other).setOneshotPauser(other.address)).to.be.revertedWith(
-        'only pauser or owner'
-      )
+      // Attempt to renounce role with another account
+      await expect(main.connect(other).renounceRole(PAUSER, addr1.address)).to.be.reverted
 
-      // Check Pauser not updated
-      expect(await main.oneshotPauser()).to.equal(addr1.address)
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(PAUSER, owner.address)
+
+      // Check PAUSER renounced
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(false)
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
     })
 
-    it('Should allow to renounce pausership if Owner', async () => {
-      // Set Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
+    it('Should allow to renounce role if PAUSER', async () => {
+      // Check PAUSER updated
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
 
-      // Check Pauser updated
-      expect(await main.oneshotPauser()).to.equal(addr1.address)
+      // Renounce role with pauser
+      await main.connect(addr1).renounceRole(PAUSER, addr1.address)
 
-      // Attempt to renounce pausership with another account
-      await expect(main.connect(other).renouncePausership()).to.be.revertedWith(
-        'only pauser or owner'
-      )
+      // Check PAUSER renounced
+      expect(await main.hasRole(PAUSER, addr1.address)).to.equal(false)
 
-      // Renounce pausership with owner
-      await main.connect(owner).renouncePausership()
+      // Owner should still be OWNER
+      expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
+    })
+  })
 
-      // Check Pauser renounced
-      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
+  describe('Freeze/Unfreeze #fast', () => {
+    beforeEach(async () => {
+      // Set FREEZER
+      await main.connect(owner).grantRole(FREEZER, addr1.address)
+
+      // Check initial status
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+      expect(await main.frozen()).to.equal(false)
+      expect(await main.pausedOrFrozen()).to.equal(false)
     })
 
-    it('Should allow to renounce pausership if Pauser', async () => {
-      // Set Pauser
-      await main.connect(owner).setOneshotPauser(addr1.address)
+    it('Should not allow permanent freeze from FREEZER', async () => {
+      await expect(main.connect(addr1).freeze()).to.be.reverted
+    })
 
-      // Check Pauser updated
-      expect(await main.oneshotPauser()).to.equal(addr1.address)
+    it('Should not allow unfreeze from FREEZER after permanent freeze', async () => {
+      // Freeze with owner FREEZER
+      await main.connect(owner).freeze()
+      expect(await main.frozen()).to.equal(true)
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+    })
 
-      // Renounce pausership with pauser
-      await main.connect(addr1).renouncePausership()
+    it('Should not allow unfreeze from FREEZER after oneshotFreeze by owner', async () => {
+      // Freeze with owner FREEZER
+      await main.connect(owner).oneshotFreeze()
+      expect(await main.frozen()).to.equal(true)
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+    })
 
-      // Check Pauser renounced
-      expect(await main.oneshotPauser()).to.equal(ZERO_ADDRESS)
+    it('Should allow original oneshotFreezer to unfreeze', async () => {
+      // Freeze with non-owner FREEZER
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.frozen()).to.equal(true)
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+
+      // Unfreeze with original freezer
+      await main.connect(addr1).unfreeze()
+
+      // Should not have role
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
+    })
+
+    it('Should allow unfreeze by owner', async () => {
+      // Freeze with non-owner FREEZER
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+
+      // Unfreeze
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+    })
+
+    it('Freezing by owner should last indefinitely', async () => {
+      // Freeze with OWNER
+      await main.connect(owner).freeze()
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(config.oneshotFreezeDuration.toString())
+
+      expect(await main.frozen()).to.equal(true)
+    })
+
+    it('Oneshot freezing should eventually thaw', async () => {
+      // Freeze with freezer
+      await main.connect(owner).oneshotFreeze()
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(config.oneshotFreezeDuration.toString())
+
+      expect(await main.frozen()).to.equal(false)
+    })
+
+    it('Should not allow to set FREEZER if not OWNER', async () => {
+      // Set FREEZER from non-owner
+      await expect(main.connect(addr1).grantRole(FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(FREEZER, other.address)).to.be.reverted
+
+      // Check FREEZER not updated
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+    })
+
+    it('Should allow to renounce FREEZER', async () => {
+      // Renounce role with freezer
+      await main.connect(addr1).renounceRole(FREEZER, addr1.address)
+
+      // Check FREEZER renounced
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce FREEZER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(FREEZER, owner.address)
+
+      // Check FREEZER renounced
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(false)
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
+
+      // Can re-grant to self
+      await main.connect(owner).grantRole(FREEZER, owner.address)
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
     })
   })
 
   describe('Configuration/State #fast', () => {
-    it('Should allow to update tradingDelay if Owner', async () => {
+    it('Should allow to update tradingDelay if OWNER', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
 
       // If not owner cannot update
-      await expect(backingManager.connect(other).setTradingDelay(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(backingManager.connect(other).setTradingDelay(newValue)).to.be.reverted
 
       // Check value did not change
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -583,16 +665,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.tradingDelay()).to.equal(newValue)
     })
 
-    it('Should allow to update maxTradeSlippage if Owner', async () => {
+    it('Should allow to update maxTradeSlippage if OWNER', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
 
       // If not owner cannot update
-      await expect(backingManager.connect(other).setMaxTradeSlippage(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(backingManager.connect(other).setMaxTradeSlippage(newValue)).to.be.reverted
 
       // Check value did not change
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
@@ -606,16 +686,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.maxTradeSlippage()).to.equal(newValue)
     })
 
-    it('Should allow to update dustAmount if Owner', async () => {
+    it('Should allow to update dustAmount if OWNER', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
       expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
 
       // If not owner cannot update
-      await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.reverted
 
       // Check value did not change
       expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
@@ -629,16 +707,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.dustAmount()).to.equal(newValue)
     })
 
-    it('Should allow to update backingBuffer if Owner', async () => {
+    it('Should allow to update backingBuffer if OWNER', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
 
       // If not owner cannot update
-      await expect(backingManager.connect(other).setBackingBuffer(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(backingManager.connect(other).setBackingBuffer(newValue)).to.be.reverted
 
       // Check value did not change
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
@@ -674,14 +750,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ])
     })
 
-    it('Should allow to set Broker if Owner', async () => {
+    it('Should allow to set Broker if OWNER', async () => {
       // Check existing value
       expect(await main.broker()).to.equal(broker.address)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setBroker(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(main.connect(other).setBroker(other.address)).to.be.reverted
 
       // Check value did not change
       expect(await main.broker()).to.equal(broker.address)
@@ -695,14 +769,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.broker()).to.equal(other.address)
     })
 
-    it('Should allow to set StRSR if Owner', async () => {
+    it('Should allow to set StRSR if OWNER', async () => {
       // Check existing value
       expect(await main.stRSR()).to.equal(stRSR.address)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setStRSR(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(main.connect(other).setStRSR(other.address)).to.be.reverted
 
       // Check value did not change
       expect(await main.stRSR()).to.equal(stRSR.address)
@@ -716,14 +788,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.stRSR()).to.equal(other.address)
     })
 
-    it('Should allow to set RToken if Owner', async () => {
+    it('Should allow to set RToken if OWNER', async () => {
       // Check existing value
       expect(await main.rToken()).to.equal(rToken.address)
 
       // If not owner cannot update - use mock address
-      await expect(main.connect(other).setRToken(other.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(main.connect(other).setRToken(other.address)).to.be.reverted
 
       // Check value did not change
       expect(await main.rToken()).to.equal(rToken.address)
@@ -737,7 +807,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.rToken()).to.equal(other.address)
     })
 
-    it('Should allow to set Furnace if Owner and perform validations', async () => {
+    it('Should allow to set Furnace if OWNER and perform validations', async () => {
       // Setup test furnaces - We are only interested in the address no need for proxy
       const FurnaceFactory: ContractFactory = await ethers.getContractFactory(
         `FurnaceP${IMPLEMENTATION}`
@@ -748,9 +818,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.furnace()).to.equal(furnace.address)
 
       // If not owner cannot update
-      await expect(main.connect(other).setFurnace(newFurnace.address)).to.be.revertedWith(
-        'Ownable: caller is not the owner'
-      )
+      await expect(main.connect(other).setFurnace(newFurnace.address)).to.be.reverted
 
       // Check value did not change
       expect(await main.furnace()).to.equal(furnace.address)
@@ -763,28 +831,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check value was updated
       expect(await main.furnace()).to.equal(newFurnace.address)
     })
-    it('Should allow to update oneshotPauseDuration if Owner', async () => {
+
+    it('Should allow to update oneshotFreezeDuration if OWNER', async () => {
       const newValue: BigNumber = bn(1)
-      await main.connect(owner).setOneshotPauser(addr1.address)
+      await main.connect(owner).grantRole(PAUSER, addr1.address)
 
       // Check existing value
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // If not owner cannot update
-      await expect(main.connect(addr1).setOneshotPauseDuration(newValue)).to.be.revertedWith(
-        'only owner'
-      )
+      await expect(main.connect(addr1).setOneshotFreezeDuration(newValue)).to.be.reverted
 
       // Check value did not change
-      expect(await main.oneshotPauseDuration()).to.equal(config.oneshotPauseDuration)
+      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
 
       // Update with owner
-      await expect(main.connect(owner).setOneshotPauseDuration(newValue))
-        .to.emit(main, 'OneshotPauseDurationSet')
-        .withArgs(config.oneshotPauseDuration, newValue)
+      await expect(main.connect(owner).setOneshotFreezeDuration(newValue))
+        .to.emit(main, 'OneshotFreezeDurationSet')
+        .withArgs(config.oneshotFreezeDuration, newValue)
 
       // Check value was updated
-      expect(await main.oneshotPauseDuration()).to.equal(newValue)
+      expect(await main.oneshotFreezeDuration()).to.equal(newValue)
     })
   })
 
@@ -828,22 +895,26 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
     })
 
-    it('Should allow to register Asset if Owner', async () => {
+    it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
-      const duplicateAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const duplicateAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
@@ -851,9 +922,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const previousLength = (await assetRegistry.erc20s()).length
 
       // Cannot add asset if not owner
-      await expect(assetRegistry.connect(other).register(newAsset.address)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(assetRegistry.connect(other).register(newAsset.address)).to.be.reverted
 
       // Reverts if attempting to add an existing ERC20 with different asset
       await expect(
@@ -881,25 +950,29 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(allERC20s.length).to.equal(previousLength + 1)
     })
 
-    it('Should allow to unregister asset if Owner', async () => {
+    it('Should allow to unregister asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
       // Setup new asset with new ERC20
       const ERC20Factory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const newToken: ERC20Mock = <ERC20Mock>await ERC20Factory.deploy('NewTKN Token', 'NewTKN')
-      const newTokenAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const newTokenAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           newToken.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
@@ -912,9 +985,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(allERC20s).to.not.contain(erc20s[5].address)
 
       // Cannot remove asset if not owner
-      await expect(assetRegistry.connect(other).unregister(compAsset.address)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(assetRegistry.connect(other).unregister(compAsset.address)).to.be.reverted
 
       // Cannot remove asset that does not exist
       await expect(assetRegistry.connect(owner).unregister(newAsset.address)).to.be.revertedWith(
@@ -943,23 +1014,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(allERC20s.length).to.equal(previousLength - 1)
     })
 
-    it('Should allow to swap Asset if Owner', async () => {
+    it('Should allow to swap Asset if OWNER', async () => {
       // Setup new Asset - Reusing token
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           token0.address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
       // Setup another one with new token (cannot be used in swap)
-      const invalidAssetForSwap: CompoundPricedAsset = <CompoundPricedAsset>(
+      const invalidAssetForSwap: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 
@@ -969,7 +1044,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Cannot swap asset if not owner
       await expect(
         assetRegistry.connect(other).swapRegistered(newAsset.address)
-      ).to.be.revertedWith('unpaused or by owner')
+      ).to.be.revertedWith('governance only')
 
       // Cannot swap asset if ERC20 is not registered
       await expect(
@@ -1043,10 +1118,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Basket Handling', () => {
-    it('Should not allow to set prime Basket if not Owner', async () => {
+    it('Should not allow to set prime Basket if not OWNER', async () => {
       await expect(
         basketHandler.connect(other).setPrimeBasket([token0.address], [fp('1')])
-      ).to.be.revertedWith('unpaused or by owner')
+      ).to.be.revertedWith('governance only')
     })
 
     it('Should not allow to set prime Basket with invalid length', async () => {
@@ -1061,19 +1136,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('token is not collateral')
     })
 
-    it('Should allow to set prime Basket if Owner', async () => {
+    it('Should allow to set prime Basket if OWNER', async () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
         .to.emit(basketHandler, 'PrimeBasketSet')
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    it('Should not allow to set backup Config if not Owner', async () => {
+    it('Should not allow to set backup Config if not OWNER', async () => {
       await expect(
         basketHandler
           .connect(other)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
-      ).to.be.revertedWith('unpaused or by owner')
+      ).to.be.revertedWith('governance only')
     })
 
     it('Should not allow to set backup Config with non-collateral tokens', async () => {
@@ -1084,7 +1159,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('token is not collateral')
     })
 
-    it('Should allow to set backup Config if Owner', async () => {
+    it('Should allow to set backup Config if OWNER', async () => {
       // Set basket
       await expect(
         basketHandler
@@ -1095,11 +1170,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(ethers.utils.formatBytes32String('USD'), bn(1), [token0.address])
     })
 
-    it('Should not allow to refresh basket if not Owner when paused', async () => {
+    it('Should not allow to refresh basket if not OWNER when paused', async () => {
       await main.connect(owner).pause()
-      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.reverted
     })
 
     it('Should not allow to disable basket if not AssetRegistry', async () => {
@@ -1108,7 +1181,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
-    it('Should allow to call refresh Basket if Owner and paused - No changes', async () => {
+    it('Should allow to call refresh Basket if OWNER and paused - No changes', async () => {
       await main.connect(owner).pause()
       // Switch basket - No backup nor default
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
@@ -1205,8 +1278,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Default one of the collaterals
       // Set Token1 to default - 50% price reduction
-      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-      await compoundOracleInternal.setPrice(await token1.symbol(), bn('0.5e6'))
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
 
       // Mark default as probable
       await collateral1.refresh()
@@ -1219,7 +1291,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await basketHandler.price()).to.equal(fp('0.75')) // disabled collateral is ignored
+      expect(await basketHandler.price()).to.equal(fp('0.75'))
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -1230,12 +1302,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           token1.address,
+          ZERO_ADDRESS,
           await collateral1.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
       // Swap Asset
@@ -1361,19 +1435,23 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Asset Registry - Register Asset', async () => {
       // Setup new Assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[5].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
-      const newAsset2: CompoundPricedAsset = <CompoundPricedAsset>(
+      const newAsset2: Asset = <Asset>(
         await AssetFactory.deploy(
+          ONE_ADDRESS,
           erc20s[6].address,
+          ZERO_ADDRESS,
           await collateral0.maxTradeVolume(),
-          compoundMock.address
+          1
         )
       )
 

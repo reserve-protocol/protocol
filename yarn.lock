@@ -391,6 +391,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@chainlink/contracts@npm:^0.4.1":
+  version: 0.4.1
+  resolution: "@chainlink/contracts@npm:0.4.1"
+  checksum: 5d5e35cb47ffaad94aff236762b17bfb5e9030f1b0d93edac92f57a16d34a7b0cb7565a8692fe14d1e78466aeac24dcc344e9b5f674e28f5cda464c8f2fe7202
+  languageName: node
+  linkType: hard
+
 "@colors/colors@npm:1.5.0":
   version: 1.5.0
   resolution: "@colors/colors@npm:1.5.0"
@@ -11882,6 +11889,7 @@ fsevents@~2.1.1:
   resolution: "reserve-protocol@workspace:."
   dependencies:
     "@aave/protocol-v2": ^1.0.1
+    "@chainlink/contracts": ^0.4.1
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-waffle": ^2.0.1
     "@openzeppelin/contracts": ^4.5.0

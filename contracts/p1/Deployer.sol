@@ -16,7 +16,7 @@ import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p1/Main.sol";
 
@@ -29,33 +29,24 @@ contract DeployerP1 is IDeployer {
 
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
-    IERC20Metadata public immutable comp;
-    IERC20Metadata public immutable aave;
     IGnosis public immutable gnosis;
-    IComptroller public immutable comptroller;
-    IAaveLendingPool public immutable aaveLendingPool;
     IFacade public immutable facade;
+    IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
     Implementations public implementations;
 
     constructor(
         IERC20Metadata rsr_,
-        IERC20Metadata comp_,
-        IERC20Metadata aave_,
         IGnosis gnosis_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
         IFacade facade_,
+        IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
         rsr = rsr_;
-        comp = comp_;
-        aave = aave_;
         gnosis = gnosis_;
-        comptroller = comptroller_;
-        aaveLendingPool = aaveLendingPool_;
         facade = facade_;
+        rsrAsset = rsrAsset_;
         implementations = implementations_;
     }
 
@@ -134,17 +125,17 @@ contract DeployerP1 is IDeployer {
             )
         });
 
+        // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
+            main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume,
-            main
+            params.maxTradeVolume
         );
-
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.oneshotPauseDuration);
+        main.init(components, rsr, params.oneshotFreezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -200,8 +191,12 @@ contract DeployerP1 is IDeployer {
         main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
-        main.setOneshotPauser(owner);
-        main.transferOwnership(owner);
+        main.grantRole(OWNER, owner);
+        main.grantRole(FREEZER, owner);
+        main.grantRole(PAUSER, owner);
+        main.renounceRole(OWNER, address(this));
+        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
         return (address(main));

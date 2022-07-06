@@ -2,14 +2,13 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
+import "./IAsset.sol";
+import "./IDistributor.sol";
 import "./IFacade.sol";
 import "./IGnosis.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
-import "./IDistributor.sol";
 import "./ITrade.sol";
 
 /**
@@ -19,9 +18,9 @@ import "./ITrade.sol";
  */
 struct DeploymentParams {
     // === Pausing ===
-    uint32 oneshotPauseDuration; // {s} how long a oneshot pause lasts
+    uint32 oneshotFreezeDuration; // {s} how long a oneshot pause lasts
     //
-    // === RSR/RToken/AAVE/COMP ===
+    // === RToken asset ===
     uint192 maxTradeVolume; // {UoA}
     //
     // === Revenue sharing ===
@@ -100,15 +99,9 @@ interface TestIDeployer is IDeployer {
 
     function rsr() external view returns (IERC20Metadata);
 
-    function comp() external view returns (IERC20Metadata);
-
-    function aave() external view returns (IERC20Metadata);
-
     function gnosis() external view returns (IGnosis);
 
-    function comptroller() external view returns (IComptroller);
-
-    function aaveLendingPool() external view returns (IAaveLendingPool);
-
     function facade() external view returns (IFacade);
+
+    function rsrAsset() external view returns (IAsset);
 }

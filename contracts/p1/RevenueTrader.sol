@@ -29,7 +29,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @custom:interaction CEI
-    function manageToken(IERC20 erc20) external interaction {
+    function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));
@@ -43,6 +43,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         }
 
         // If not dust, trade the non-target asset for the target asset
+        // Any asset with a broken price feed will trigger a revert here
         IAssetRegistry reg = main.assetRegistry();
         (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
             reg.toAsset(erc20),

@@ -117,14 +117,14 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPaused {
+    function payoutRewards() external notPausedOrFrozen {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external interaction {
+    function stake(uint256 rsrAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -151,7 +151,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external interaction {
+    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -182,7 +182,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external interaction {
+    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
@@ -225,7 +225,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
-    function seizeRSR(uint256 rsrAmount) external notPaused {
+    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initialExchangeRate = exchangeRate();

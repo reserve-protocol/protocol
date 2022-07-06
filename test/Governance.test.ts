@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { ProposalState, ZERO_ADDRESS } from '../common/constants'
+import { ProposalState, ZERO_ADDRESS, OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import {
   ERC20Mock,
@@ -110,7 +110,14 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     await timelock.revokeRole(adminRole, owner.address)
 
     // Transfer ownership of Main to the Timelock (and thus, Governor)
-    await main.transferOwnership(timelock.address)
+    await main.grantRole(OWNER, timelock.address)
+    await main.grantRole(FREEZER, timelock.address)
+    await main.grantRole(PAUSER, timelock.address)
+
+    // Renounce all roles from owner
+    await main.renounceRole(OWNER, owner.address)
+    await main.renounceRole(FREEZER, owner.address)
+    await main.renounceRole(PAUSER, owner.address)
   })
 
   describe('Deployment / Setup', () => {
@@ -132,11 +139,11 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
     it('Should setup Timelock (Governance) as owner', async () => {
       // Check owner
-      expect(await main.owner()).to.equal(timelock.address)
+      expect(await main.hasRole(OWNER, timelock.address)).to.equal(true)
 
       // If not the owner cannot update
       await expect(backingManager.connect(owner).setTradingDelay(bn(360))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
     })
 

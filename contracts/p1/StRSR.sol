@@ -143,14 +143,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPaused {
+    function payoutRewards() external notPausedOrFrozen {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction CEI
-    function stake(uint256 rsrAmount) external interaction {
+    function stake(uint256 rsrAmount) external notPausedOrFrozen {
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
@@ -178,7 +178,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
-    function unstake(uint256 stakeAmount) external notPaused {
+    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(stakes[era][account] >= stakeAmount, "Not enough balance");
@@ -202,7 +202,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:interaction RCEI
-    function withdraw(address account, uint256 endId) external interaction {
+    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -244,7 +244,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @param rsrAmount {qRSR}
     /// Must always seize exactly `rsrAmount`, or revert
     /// @custom:protected
-    function seizeRSR(uint256 rsrAmount) external notPaused {
+    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initRate = stakeRate;
