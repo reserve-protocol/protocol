@@ -4,27 +4,27 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AaveOracleMock,
-  AavePricedFiatCollateral,
   ATokenFiatCollateral,
-  CompoundOracleMock,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   IBasketHandler,
+  MockV3Aggregator,
+  OracleLib,
   StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIRToken,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
-import { CollateralStatus } from '../../common/constants'
+import { defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
+import { setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
@@ -38,10 +38,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   // Non-backing assets
   let compoundMock: ComptrollerMock
-  let compoundOracleInternal: CompoundOracleMock
   let compToken: ERC20Mock
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
   let aaveToken: ERC20Mock
 
   // Tokens and Assets
@@ -57,6 +54,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let facade: Facade
   let backingManager: TestIBackingManager
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -112,26 +110,30 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   const makeToken = async (tokenName: string): Promise<ERC20Mock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'AavePricedFiatCollateral'
-    )
+    const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
+      libraries: { OracleLib: oracleLib.address },
+    })
 
     const erc20: ERC20Mock = <ERC20Mock>(
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
     )
-    const collateral: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-      await AaveCollateralFactory.deploy(
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
+    const collateral: FiatCollateral = <FiatCollateral>(
+      await CollateralFactory.deploy(
+        chainlinkFeed.address,
         erc20.address,
+        ZERO_ADDRESS,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT,
-        compoundMock.address,
-        aaveMock.address
+        DELAY_UNTIL_DEFAULT
       )
     )
 
     await assetRegistry.register(collateral.address)
-    await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
     return erc20
   }
 
@@ -139,7 +141,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
     const ATokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'ATokenFiatCollateral'
+      'ATokenFiatCollateral',
+      {
+        libraries: { OracleLib: oracleLib.address },
+      }
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -154,21 +159,23 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     await atoken.setAaveToken(aaveToken.address)
     await atoken.setRewards(backingManager.address, rewardAmount)
 
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
     const collateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.deploy(
+        chainlinkFeed.address,
         atoken.address,
+        aaveToken.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT,
-        erc20.address,
-        compoundMock.address,
-        aaveMock.address,
-        aaveToken.address
+        DELAY_UNTIL_DEFAULT
       )
     )
 
     await assetRegistry.register(collateral.address)
-    await aaveOracleInternal.setPrice(erc20.address, bn('2.5e14'))
     return atoken
   }
 
@@ -176,7 +183,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenFiatCollateral'
+      'CTokenFiatCollateral',
+      {
+        libraries: { OracleLib: oracleLib.address },
+      }
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -187,20 +197,25 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await CTokenMockFactory.deploy('c' + tokenName, `${'c' + tokenName} symbol`, erc20.address)
     )
 
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
     const collateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
+        chainlinkFeed.address,
         ctoken.address,
+        compToken.address,
         config.maxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
         DELAY_UNTIL_DEFAULT,
-        erc20.address,
-        compoundMock.address,
-        compToken.address
+        await erc20.decimals(),
+        compoundMock.address
       )
     )
 
     await assetRegistry.register(collateral.address)
-    await compoundOracleInternal.setPrice(await erc20.symbol(), bn('1e6'))
 
     return ctoken
   }
@@ -227,10 +242,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     // Deploy fixture
     ;({
       compoundMock,
-      compoundOracleInternal,
       compToken,
-      aaveMock,
-      aaveOracleInternal,
       aaveToken,
       config,
       rToken,
@@ -238,6 +250,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       facade,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Mint initial balances
@@ -303,15 +316,15 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Basket Swapping
       const firstCollateral = await ethers.getContractAt(
-        'AavePricedFiatCollateral',
+        'FiatCollateral',
         await assetRegistry.toColl(backing[0])
       )
       for (let i = maxBasketSize - tokensToDefault; i < backing.length; i++) {
-        await aaveOracleInternal.setPrice(backing[i], bn('1.25e14'))
         const erc20Collateral = await ethers.getContractAt(
-          'AavePricedFiatCollateral',
+          'FiatCollateral',
           await assetRegistry.toColl(backing[i])
         )
+        await setOraclePrice(erc20Collateral.address, bn('0.5e8'))
 
         // Mark Collateral as IFFY
         await erc20Collateral.refresh()
@@ -325,7 +338,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Confirm default
       for (let i = 1; i < backing.length; i++) {
         const erc20Collateral = await ethers.getContractAt(
-          'AavePricedFiatCollateral',
+          'FiatCollateral',
           await assetRegistry.toColl(backing[i])
         )
         // Confirm default

@@ -3,15 +3,16 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
   CTokenMock,
   CTokenSelfReferentialCollateral,
   ComptrollerMock,
-  CompoundSelfReferentialCollateral,
-  CompoundOracleMock,
   ERC20Mock,
   IBasketHandler,
+  MockV3Aggregator,
+  OracleLib,
+  SelfReferentialCollateral,
   TestIAssetRegistry,
   TestIBackingManager,
   TestIStRSR,
@@ -20,7 +21,8 @@ import {
   WETH9,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
+import { setOraclePrice } from '../utils/oracles'
+import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -34,12 +36,11 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
   // Non-backing assets
   let compoundMock: ComptrollerMock
-  let compoundOracleInternal: CompoundOracleMock
   let compToken: ERC20Mock
 
   // Tokens and Assets
   let weth: WETH9
-  let wethCollateral: CompoundSelfReferentialCollateral
+  let wethCollateral: SelfReferentialCollateral
   let cETH: CTokenMock
   let cETHCollateral: CTokenSelfReferentialCollateral
   let token0: CTokenMock
@@ -59,6 +60,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -80,7 +82,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       stRSR,
       compoundMock,
       compToken,
-      compoundOracleInternal,
       erc20s,
       collateral,
       config,
@@ -90,6 +91,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       basketHandler,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -98,9 +100,21 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
     // WETH
     weth = await (await ethers.getContractFactory('WETH9')).deploy()
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
     wethCollateral = await (
-      await ethers.getContractFactory('CompoundSelfReferentialCollateral')
-    ).deploy(weth.address, config.maxTradeVolume, compoundMock.address, 'ETH')
+      await ethers.getContractFactory('SelfReferentialCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+    ).deploy(
+      chainlinkFeed.address,
+      weth.address,
+      ZERO_ADDRESS,
+      config.maxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('ETH')
+    )
 
     // cETH
     cETH = await (
@@ -108,14 +122,18 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     ).deploy('cETH Token', 'cETH', weth.address)
 
     cETHCollateral = await (
-      await ethers.getContractFactory('CTokenSelfReferentialCollateral')
+      await ethers.getContractFactory('CTokenSelfReferentialCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
     ).deploy(
+      chainlinkFeed.address,
       cETH.address,
-      config.maxTradeVolume,
-      weth.address,
-      compoundMock.address,
       compToken.address,
-      'ETH'
+      config.maxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('ETH'),
+      await weth.decimals(),
+      compoundMock.address
     )
 
     // Backup
@@ -219,7 +237,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     })
 
     it('should redeem after ETH price increase for same quantities', async () => {
-      await compoundOracleInternal.setPrice('ETH', bn('8000e6')) // doubling of price
+      await setOraclePrice(wethCollateral.address, bn('2e8')) // doubling of price
 
       // Price change should not impact share of redemption tokens
       expect(await rToken.connect(addr1).redeem(issueAmt))
@@ -254,7 +272,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     })
 
     it('should not default when USD price falls', async () => {
-      await compoundOracleInternal.setPrice('ETH', bn('2000e6')) // halving of price
+      await setOraclePrice(wethCollateral.address, bn('0.5e8')) // doubling of price
       await assetRegistry.refresh()
 
       // Should be fully capitalized
