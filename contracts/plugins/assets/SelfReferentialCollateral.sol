@@ -14,7 +14,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  *   - MKR
  *   - ...
  *
- * Self-referential collateral cannot default
+ * Self-referential collateral cannot default, though it can become UNPRICED.
  */
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
