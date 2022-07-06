@@ -12,7 +12,7 @@
         "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
         "deploy": "TASKS=true hardhat run scripts/deploy_all.ts --network localhost",
         "devchain": "hardhat node",
-        "test": "yarn test:unit && yarn test:integration && yarn test:scenario",
+        "test": "yarn test:unit && yarn test:integration",
         "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1 && yarn test:scenario",
         "test:fast": "bash tools/fast-test.sh",
         "test:exhaustive": "SLOW=true yarn test:p0 && yarn test:p1",
