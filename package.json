@@ -27,7 +27,7 @@
         "eslint": "eslint test/",
         "prepare": "husky install",
         "prettier": "bash tools/prettier",
-        "size": " hardhat size-contracts",
+        "size": "hardhat size-contracts",
         "slither": "bash tools/slither"
     },
     "repository": {

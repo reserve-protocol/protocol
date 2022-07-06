@@ -108,7 +108,7 @@ const config: any = {
     except: ['Extension'],
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS ? true : false,
+    enabled: !!process.env.REPORT_GAS,
   },
 }
 
