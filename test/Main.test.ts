@@ -834,7 +834,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to update oneshotFreezeDuration if OWNER', async () => {
       const newValue: BigNumber = bn(1)
-      await main.connect(owner).grantRole(PAUSER, addr1.address)
+      await main.connect(owner).grantRole(FREEZER, addr1.address)
 
       // Check existing value
       expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
