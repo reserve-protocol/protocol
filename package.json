@@ -13,7 +13,7 @@
         "deploy": "TASKS=true hardhat run scripts/deploy_all.ts --network localhost",
         "devchain": "hardhat node",
         "test": "yarn test:unit && yarn test:integration && yarn test:scenario",
-        "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1",
+        "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1 && yarn test:scenario",
         "test:fast": "bash tools/fast-test.sh",
         "test:exhaustive": "SLOW=true yarn test:p0 && yarn test:p1",
         "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
