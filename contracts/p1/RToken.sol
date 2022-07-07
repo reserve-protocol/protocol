@@ -272,7 +272,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external notPausedOrFrozen {
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
