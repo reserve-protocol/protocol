@@ -8,8 +8,6 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-import "hardhat/console.sol";
-
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
