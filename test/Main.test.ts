@@ -797,10 +797,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Attempt to run functions again
-      await expect(backingManager.manageTokens([token0.address])).to.be.revertedWith('paused')
-      await expect(rsrTrader.manageToken(token0.address)).to.be.revertedWith('paused')
-      await expect(rTokenTrader.manageToken(token0.address)).to.be.revertedWith('paused')
-      await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused')
+      await expect(backingManager.manageTokens([token0.address])).to.be.revertedWith(
+        'paused or frozen'
+      )
+      await expect(rsrTrader.manageToken(token0.address)).to.be.revertedWith('paused or frozen')
+      await expect(rTokenTrader.manageToken(token0.address)).to.be.revertedWith('paused or frozen')
+      await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused or frozen')
     })
   })
 
