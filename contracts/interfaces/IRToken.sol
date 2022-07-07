@@ -36,7 +36,8 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Emitted when an RToken issuance is canceled, such as during a default
     /// @param issuer The account of the issuer
     /// @param firstId The first of the cancelled issuances in the issuer's queue
-    /// @param endId The last of the cancelled issuances in the issuer's queue
+    /// @param endId The index _after_ the last of the cancelled issuances in the issuer's queue
+    /// That is, id was cancelled iff firstId <= id < endId
     event IssuancesCanceled(address indexed issuer, uint256 indexed firstId, uint256 indexed endId);
 
     /// Emitted when an RToken issuance is completed successfully

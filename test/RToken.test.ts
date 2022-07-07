@@ -917,6 +917,59 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should allow the issuer to rollback some, but not all, issuances', async () => {
+      // Regression test for TOB-RES-8
+
+      // Mint more tokens! Wind up with 32e24 of each token.
+      await token0.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token1.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token2.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token3.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+
+      await token0.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token1.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token2.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token3.connect(addr1).approve(rToken.address, bn('32e24'))
+
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e24'))
+      const expectedTkn0: BigNumber = quotes[0]
+      const expectedTkn1: BigNumber = quotes[1]
+      const expectedTkn2: BigNumber = quotes[2]
+      const expectedTkn3: BigNumber = quotes[3]
+
+      // launch 5 issuances of increasing size (1e24, 2e24, ... 5e24)
+      for (let i = 0; i < 5; i++) await rToken.connect(addr1).issue(bn('1e24').mul(2 ** i))
+
+      const before0 = bn('32e24').sub(expectedTkn0.mul(31))
+      const before1 = bn('32e24').sub(expectedTkn1.mul(31))
+      const before2 = bn('32e24').sub(expectedTkn2.mul(31))
+      const before3 = bn('32e24').sub(expectedTkn3.mul(31))
+
+      expect(await token0.balanceOf(addr1.address)).to.equal(before0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(before1)
+      expect(await token2.balanceOf(addr1.address)).to.equal(before2)
+      expect(await token3.balanceOf(addr1.address)).to.equal(before3)
+
+      // Check initial state
+      await expectIssuance(addr1.address, 0, { processed: false })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Cancel the last 3 issuances
+      await expect(rToken.connect(addr1).cancel(2, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 2, 5)
+
+      // Check that the last 3 issuances were refunded
+      // (28 = 4 + 8 + 16)
+      expect((await token0.balanceOf(addr1.address)).sub(before0).div(expectedTkn0)).to.equal(28)
+      expect((await token1.balanceOf(addr1.address)).sub(before1).div(expectedTkn1)).to.equal(28)
+      expect((await token2.balanceOf(addr1.address)).sub(before2).div(expectedTkn2)).to.equal(28)
+      expect((await token3.balanceOf(addr1.address)).sub(before3).div(expectedTkn3)).to.equal(28)
+
+      // Check total asset value did not change
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    })
+
     it('Should allow the issuer to rollback minting', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
