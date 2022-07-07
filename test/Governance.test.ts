@@ -633,8 +633,12 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       })
 
       // Create another proposal to replace broker
-      const newEncodedFunctionCall = main.interface.encodeFunctionData('setBroker', [other.address])
-      const proposalDescription2 = 'Proposal #2 - Replace Broker'
+      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+      const newEncodedFunctionCall = main.interface.encodeFunctionData('grantRole', [
+        FREEZER,
+        other.address,
+      ])
+      const proposalDescription2 = 'Proposal #2 - Grant new freezer'
       const proposeTx2 = await governor
         .connect(addr1)
         .propose([main.address], [0], [newEncodedFunctionCall], proposalDescription2)
@@ -716,8 +720,8 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       // Check proposal state
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Executed)
 
-      // Check value was updated
-      expect(await main.broker()).to.equal(other.address)
+      // Check role was granted
+      expect(await main.hasRole(FREEZER, other.address)).to.equal(true)
     })
   })
 })
