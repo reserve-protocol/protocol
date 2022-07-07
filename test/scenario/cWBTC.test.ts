@@ -53,8 +53,8 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   // Config values
   let config: IConfig
 
-  let referenceUnitOracle: MockV3Aggregator // WBTC
-  let targetUnitOracle: MockV3Aggregator // BTC
+  let referenceUnitOracle: MockV3Aggregator // {target/ref}
+  let targetUnitOracle: MockV3Aggregator // {UoA/target}
 
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
@@ -108,7 +108,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('20000e8')) // $20k
     )
     referenceUnitOracle = <MockV3Aggregator>(
-      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('20000e8')) // $20k
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
     )
     wBTCCollateral = await (
       await ethers.getContractFactory('NonFiatCollateral', {
@@ -251,9 +251,16 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       expect(await cWBTC.balanceOf(rsrTrader.address)).to.equal(0)
     })
 
+    it('should calculate price correctly', async () => {
+      await referenceUnitOracle.updateAnswer(bn('0.95e8')) // 5% below peg
+      await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
+      await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
+      // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
+      expect(await cWBTCCollateral.price()).to.equal(fp('95000').mul(3).div(2).div(50))
+    })
+
     it('should redeem after BTC price increase for same quantities', async () => {
       // $40k, doubling
-      await referenceUnitOracle.updateAnswer(bn('10000e8'))
       await targetUnitOracle.updateAnswer(bn('10000e8'))
 
       // Price change should not impact share of redemption tokens
@@ -290,7 +297,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     it('should not default when USD price falls', async () => {
       // $10k, halving
-      await referenceUnitOracle.updateAnswer(bn('10000e8'))
       await targetUnitOracle.updateAnswer(bn('10000e8'))
       await assetRegistry.refresh()
 
@@ -335,7 +341,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
     it('should enter basket disabled state after slow default', async () => {
       // Depeg WBTC from BTC
-      await referenceUnitOracle.updateAnswer(bn('10000e8'))
+      await referenceUnitOracle.updateAnswer(bn('0.5e8'))
       await assetRegistry.refresh()
       expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
 

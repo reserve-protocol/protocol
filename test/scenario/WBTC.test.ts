@@ -46,8 +46,8 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
   let config: IConfig
 
   // Chainlink oracles
-  let referenceUnitOracle: MockV3Aggregator // WBTC
-  let targetUnitOracle: MockV3Aggregator // BTC
+  let referenceUnitOracle: MockV3Aggregator // {target/ref}
+  let targetUnitOracle: MockV3Aggregator // {UoA/target}
 
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
@@ -99,7 +99,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('20000e8')) // $20k
     )
     referenceUnitOracle = <MockV3Aggregator>(
-      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('20000e8')) // $20k
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
     )
     wbtcCollateral = await (
       await ethers.getContractFactory('NonFiatCollateral', {
@@ -209,9 +209,14 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       expect(await wbtc.balanceOf(rsrTrader.address)).to.equal(0)
     })
 
+    it('should calculate price correctly', async () => {
+      await referenceUnitOracle.updateAnswer(bn('0.95e8')) // 5% below peg
+      await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
+      expect(await wbtcCollateral.price()).to.equal(fp('95000'))
+    })
+
     it('should redeem after BTC price increase for same quantities', async () => {
       // $40k, doubling
-      await referenceUnitOracle.updateAnswer(bn('40000e8'))
       await targetUnitOracle.updateAnswer(bn('40000e8'))
 
       // Price change should not impact share of redemption tokens
@@ -222,7 +227,6 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
 
     it('should not default when USD price falls', async () => {
       // $10k, halving
-      await referenceUnitOracle.updateAnswer(bn('10000e8'))
       await targetUnitOracle.updateAnswer(bn('10000e8'))
       await assetRegistry.refresh()
 
@@ -244,7 +248,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
     it('should enter basket disabled state after slow default', async () => {
       // Depeg WBTC from BTC
       await wbtcCollateral.refresh()
-      await referenceUnitOracle.updateAnswer(bn('10000e8')) // $10k -- halving
+      await referenceUnitOracle.updateAnswer(bn('0.5e8')) // halving
       await wbtcCollateral.refresh()
       expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
