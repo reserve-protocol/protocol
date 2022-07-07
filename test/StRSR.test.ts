@@ -1025,7 +1025,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it.only('Seize RSR - Single staker after giant unstaking', async () => {
+    it('Seize RSR - Single staker after giant unstaking', async () => {
       // Regression for TOB-RES-11
 
       const all = bn('10000e18')
