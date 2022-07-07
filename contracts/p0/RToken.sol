@@ -315,7 +315,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
-        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock));
+        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock, CEIL));
         return allVestAt;
     }
 

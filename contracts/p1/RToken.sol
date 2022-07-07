@@ -211,7 +211,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 before = allVestAt; // D18{block number}
         uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
-        finished = before + uint192((FIX_ONE_256 * amtRToken) / lastIssRate);
+
+        // ... - 1 + lastIssRate gives us division rounding up, instead of down.
+        finished = before + uint192((FIX_ONE_256 * amtRToken - 1 + lastIssRate) / lastIssRate);
         allVestAt = finished;
     }
 
