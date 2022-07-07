@@ -18,6 +18,7 @@ abstract contract Collateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(

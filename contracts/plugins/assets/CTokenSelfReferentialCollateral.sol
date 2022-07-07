@@ -39,6 +39,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
@@ -64,7 +65,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         referenceERC20Decimals = referenceERC20Decimals_;
-        prevReferencePrice = refPerTok(); // {collateral/reference}
+        prevReferencePrice = refPerTok();
         comptrollerAddr = comptrollerAddr_;
     }
 

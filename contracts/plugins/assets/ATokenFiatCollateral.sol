@@ -46,6 +46,7 @@ contract ATokenFiatCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -75,7 +76,7 @@ contract ATokenFiatCollateral is Collateral {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
 
-        prevReferencePrice = refPerTok(); // {collateral/reference}
+        prevReferencePrice = refPerTok();
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
