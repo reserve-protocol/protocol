@@ -452,6 +452,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
       expect(await main.paused()).to.equal(false)
+      expect(await main.pausedOrFrozen()).to.equal(false)
 
       // Pause with PAUSER
       await main.connect(addr1).pause()
@@ -470,6 +471,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Check if Paused
+      expect(await main.pausedOrFrozen()).to.equal(true)
       expect(await main.paused()).to.equal(true)
     })
 
