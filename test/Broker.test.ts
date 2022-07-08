@@ -89,7 +89,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
@@ -112,7 +112,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setMinBidSize(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
@@ -132,9 +132,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.disabled()).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith('governance only')
 
       // Check value did not change
       expect(await broker.disabled()).to.equal(false)

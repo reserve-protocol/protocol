@@ -4,10 +4,9 @@ import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
-
 import {
-  AaveOracleMock,
   CTokenMock,
   ERC20Mock,
   Facade,
@@ -78,9 +77,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let collateral2: Collateral
   let collateral3: Collateral
 
-  // Aave/ Compound
-  let aaveOracleInternal: AaveOracleMock
-
   // Config
   let config: IConfig
 
@@ -147,7 +143,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     ;({
       rsr,
       stRSR,
-      aaveOracleInternal,
       basket,
       basketsNeededAmts,
       config,
@@ -224,7 +219,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setUnstakingDelay(bn('500'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Cannot update with invalid unstaking delay
@@ -245,7 +240,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardPeriod(bn('500'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Cannot update with invalid reward period
@@ -266,7 +261,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
     })
   })
@@ -582,7 +577,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Set Token1 to default - 50% price reduction and mark default as probable
-        await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+        await setOraclePrice(collateral1.address, bn('0.5e8'))
         await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
@@ -1028,6 +1023,50 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+    })
+
+    it('Seize RSR - Single staker after giant unstaking', async () => {
+      // Regression for TOB-RES-11
+
+      const all = bn('10000e18')
+      const most = all.sub(1)
+      const toSeize = bn('9999e18')
+
+      // Stake all
+      await rsr.connect(addr1).approve(stRSR.address, all)
+      await stRSR.connect(addr1).stake(all)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(all)
+      expect(await stRSR.totalSupply()).to.equal(all)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(all)
+      expect(await stRSR.exchangeRate()).to.equal(fp(1))
+
+      // Start to unstake most
+      await stRSR.connect(addr1).unstake(most)
+
+      // Again, check expected balances
+      expect(await stRSR.totalSupply()).to.equal(1) // That's not a lot!
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(all)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(0)
+
+      // Seize most
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(toSeize)
+      })
+
+      // Ensure seizure actually happened
+      const rsrBal = await rsr.balanceOf(stRSR.address)
+      expect(rsrBal).lte(all.sub(toSeize)) // Expect to have seized all of the toSeize amount
+      expect(rsrBal).gte(all.sub(toSeize).sub(10)) // And no more than a little more.
+
+      // Test for the TOB-RES-11 failure -- the above unstaking would leave stakeBal nonzero,
+      // but unable to be unstaked.
+      const stakeBal = await stRSR.balanceOf(addr1.address)
+      if (stakeBal.gt(0)) {
+        await stRSR.connect(addr1).unstake(stakeBal)
+      }
     })
 
     it('Should allow to remove RSR - Two stakers - Rounded values', async () => {
@@ -1586,11 +1625,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.symbol()).to.equal(newSymbol)
 
       // Try to update again if not owner
-      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(stRSR.connect(addr1).setName('randomName')).to.be.revertedWith('governance only')
       await expect(stRSR.connect(addr1).setSymbol('randomSymbol')).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
     })
   })

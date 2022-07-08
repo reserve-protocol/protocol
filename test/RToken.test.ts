@@ -4,18 +4,17 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AavePricedFiatCollateral,
-  AaveOracleMock,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   CTokenMock,
-  ComptrollerMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   IBasketHandler,
+  MockV3Aggregator,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
@@ -72,11 +71,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   // Config values
   let config: IConfig
-
-  // Aave / Compound
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
-  let compoundMock: ComptrollerMock
 
   // Main
   let main: TestIMain
@@ -151,19 +145,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      aaveMock,
-      aaveOracleInternal,
-      assetRegistry,
-      backingManager,
-      basket,
-      basketHandler,
-      compoundMock,
-      config,
-      facade,
-      main,
-      rToken,
-    } = await loadFixture(defaultFixture))
+    ;({ assetRegistry, backingManager, basket, basketHandler, config, facade, main, rToken } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = <Collateral>basket[0]
@@ -242,7 +225,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
@@ -521,7 +504,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
       // Default one of the tokens - 50% price reduction and mark default as probable
-      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -934,6 +917,59 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should allow the issuer to rollback some, but not all, issuances', async () => {
+      // Regression test for TOB-RES-8
+
+      // Mint more tokens! Wind up with 32e24 of each token.
+      await token0.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token1.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token2.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token3.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+
+      await token0.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token1.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token2.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token3.connect(addr1).approve(rToken.address, bn('32e24'))
+
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e24'))
+      const expectedTkn0: BigNumber = quotes[0]
+      const expectedTkn1: BigNumber = quotes[1]
+      const expectedTkn2: BigNumber = quotes[2]
+      const expectedTkn3: BigNumber = quotes[3]
+
+      // launch 5 issuances of increasing size (1e24, 2e24, ... 5e24)
+      for (let i = 0; i < 5; i++) await rToken.connect(addr1).issue(bn('1e24').mul(2 ** i))
+
+      const before0 = bn('32e24').sub(expectedTkn0.mul(31))
+      const before1 = bn('32e24').sub(expectedTkn1.mul(31))
+      const before2 = bn('32e24').sub(expectedTkn2.mul(31))
+      const before3 = bn('32e24').sub(expectedTkn3.mul(31))
+
+      expect(await token0.balanceOf(addr1.address)).to.equal(before0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(before1)
+      expect(await token2.balanceOf(addr1.address)).to.equal(before2)
+      expect(await token3.balanceOf(addr1.address)).to.equal(before3)
+
+      // Check initial state
+      await expectIssuance(addr1.address, 0, { processed: false })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Cancel the last 3 issuances
+      await expect(rToken.connect(addr1).cancel(2, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 2, 5)
+
+      // Check that the last 3 issuances were refunded
+      // (28 = 4 + 8 + 16)
+      expect((await token0.balanceOf(addr1.address)).sub(before0).div(expectedTkn0)).to.equal(28)
+      expect((await token1.balanceOf(addr1.address)).sub(before1).div(expectedTkn1)).to.equal(28)
+      expect((await token2.balanceOf(addr1.address)).sub(before2).div(expectedTkn2)).to.equal(28)
+      expect((await token3.balanceOf(addr1.address)).sub(before3).div(expectedTkn3)).to.equal(28)
+
+      // Check total asset value did not change
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    })
+
     it('Should allow the issuer to rollback minting', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
@@ -1241,7 +1277,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should redeem if basket is IFFY #fast', async function () {
         // Default one of the tokens - 50% price reduction and mark default as probable
-        await aaveOracleInternal.setPrice(token3.address, bn('1.25e14'))
+        await setOraclePrice(collateral3.address, bn('0.5e8'))
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
@@ -1335,22 +1371,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-        'AavePricedFiatCollateral'
-      )
-      const coll: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-        await AaveCollateralFactory.deploy(
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
+      const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
+      const coll: FiatCollateral = <FiatCollateral>(
+        await CollateralFactory.deploy(
+          oracle.address,
           erc20.address,
           fp('1e36'),
+          ethers.utils.formatBytes32String('USD'),
           fp('0.05'),
-          bn(86400),
-          compoundMock.address,
-          aaveMock.address
+          bn(86400)
         )
       )
-      await assetRegistry.register(coll.address) // SHOULD BE LINTED
+      await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-      await aaveOracleInternal.setPrice(erc20.address, price)
+      await setOraclePrice(coll.address, price)
       return erc20
     }
 

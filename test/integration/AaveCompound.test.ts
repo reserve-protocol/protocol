@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS, MAX_ORACLE_TIMEOUT } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
@@ -29,27 +29,25 @@ import {
   CUSDT_ADDRESS,
   CDAI_ADDRESS,
   DAI_ADDRESS,
+  NO_PRICE_DATA_FEED,
   STAKEDAAVE_ADDRESS,
   USDC_ADDRESS,
   USDT_ADDRESS,
 } from './mainnet'
 
 import {
-  AaveLendingPoolMock,
-  AavePricedAsset,
-  AavePricedFiatCollateral,
   Asset,
   ATokenFiatCollateral,
-  CompoundPricedAsset,
-  CompoundPricedFiatCollateral,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   IAToken,
   IERC20,
   IBasketHandler,
+  OracleLib,
   RTokenAsset,
   StaticATokenLM,
   StaticATokenMock,
@@ -101,7 +99,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
   let aaveAsset: Asset
-  let aaveMock: AaveLendingPoolMock
 
   // Tokens and Assets
   let dai: ERC20Mock
@@ -122,10 +119,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cUsdc: CTokenMock
   let cUsdt: CTokenMock
 
-  let daiCollateral: AavePricedFiatCollateral
-  let usdcCollateral: AavePricedFiatCollateral
-  let usdtCollateral: AavePricedFiatCollateral
-  let busdCollateral: AavePricedFiatCollateral
+  let daiCollateral: FiatCollateral
+  let usdcCollateral: FiatCollateral
+  let usdtCollateral: FiatCollateral
+  let busdCollateral: FiatCollateral
 
   let aDaiCollateral: ATokenFiatCollateral
   let aUsdcCollateral: ATokenFiatCollateral
@@ -145,6 +142,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let config: IConfig
+  let oracleLib: OracleLib
 
   let initialBal: BigNumber
   let basket: Collateral[]
@@ -167,10 +165,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         compAsset,
         aaveAsset,
         compoundMock,
-        aaveMock,
         erc20s,
         collateral,
         config,
+        oracleLib,
       } = await loadFixture(defaultFixture))
 
       // Get tokens
@@ -202,10 +200,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Get collaterals
-      daiCollateral = <AavePricedFiatCollateral>collateral[0] // DAI
-      usdcCollateral = <AavePricedFiatCollateral>collateral[1] // USDC
-      usdtCollateral = <AavePricedFiatCollateral>collateral[2] // USDT
-      busdCollateral = <AavePricedFiatCollateral>collateral[3] // BUSD
+      daiCollateral = <FiatCollateral>collateral[0] // DAI
+      usdcCollateral = <FiatCollateral>collateral[1] // USDC
+      usdtCollateral = <FiatCollateral>collateral[2] // USDT
+      busdCollateral = <FiatCollateral>collateral[3] // BUSD
       cDaiCollateral = <CTokenFiatCollateral>collateral[4] // cDAI
       cUsdcCollateral = <CTokenFiatCollateral>collateral[5] // cUSDC
       cUsdtCollateral = <CTokenFiatCollateral>collateral[6] // cUSDT
@@ -230,7 +228,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveAsset.erc20()).to.equal(STAKEDAAVE_ADDRESS)
       expect(await aaveToken.decimals()).to.equal(18)
-      expect(await aaveAsset.price()).to.be.closeTo(fp('105.5'), fp('0.5')) // Close to $105.5 USD - June 2022 - Uses AAVE price
+      expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
@@ -241,7 +239,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         token: ERC20Mock
         tokenDecimals: number
         tokenAddress: string
-        tokenCollateral: AavePricedFiatCollateral
+        tokenCollateral: FiatCollateral
       }
 
       // DAI - USDC - USDT - BUSD
@@ -275,7 +273,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       for (const tkInf of tokenInfos) {
         // Fiat Token Assets
         expect(await tkInf.tokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.tokenCollateral.referenceERC20()).to.equal(tkInf.token.address)
         expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.token.address)
         expect(await tkInf.tokenCollateral.erc20()).to.equal(tkInf.tokenAddress)
         expect(await tkInf.token.decimals()).to.equal(tkInf.tokenDecimals)
@@ -330,8 +327,9 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       for (const ctkInf of cTokenInfos) {
         // CToken
         expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
-        expect(await ctkInf.cTokenCollateral.referenceERC20()).to.equal(ctkInf.token.address)
-        expect(await ctkInf.cTokenCollateral.referenceERC20()).to.equal(ctkInf.tokenAddress)
+        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+          await ctkInf.token.decimals()
+        )
         expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cToken.address)
         expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenAddress)
         expect(await ctkInf.cToken.decimals()).to.equal(8)
@@ -405,8 +403,6 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       for (const atkInf of aTokenInfos) {
         // AToken
         expect(await atkInf.aTokenCollateral.isCollateral()).to.equal(true)
-        expect(await atkInf.aTokenCollateral.referenceERC20()).to.equal(atkInf.token.address)
-        expect(await atkInf.aTokenCollateral.referenceERC20()).to.equal(atkInf.tokenAddress)
         expect(await atkInf.aTokenCollateral.erc20()).to.equal(atkInf.stataToken.address)
         expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
         expect(await atkInf.aTokenCollateral.targetName()).to.equal(
@@ -453,35 +449,35 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
         await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
       )
-
-      const nonpriceAaveAsset: AavePricedAsset = <AavePricedAsset>(
+      const nonpriceAaveAsset: Asset = <Asset>(
         await (
-          await ethers.getContractFactory('AavePricedAsset')
+          await ethers.getContractFactory('Asset')
         ).deploy(
+          NO_PRICE_DATA_FEED,
           nonpriceToken.address,
+          aaveToken.address,
           config.maxTradeVolume,
-          compoundMock.address,
-          aaveMock.address
+          MAX_ORACLE_TIMEOUT
         )
       )
 
-      const nonpriceCompoundAsset: CompoundPricedAsset = <CompoundPricedAsset>(
+      const nonpriceCompoundAsset: Asset = <Asset>(
         await (
-          await ethers.getContractFactory('CompoundPricedAsset')
-        ).deploy(nonpriceToken.address, config.maxTradeVolume, compoundMock.address)
+          await ethers.getContractFactory('Asset')
+        ).deploy(
+          NO_PRICE_DATA_FEED,
+          nonpriceToken.address,
+          compToken.address,
+          config.maxTradeVolume,
+          MAX_ORACLE_TIMEOUT
+        )
       )
 
-      // Aave - Assets with no price info return 0 , so they revert with Price is Zero
-      await expect(nonpriceAaveAsset.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(nonpriceAaveAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'PriceIsZero()'
-      )
+      // Aave - Assets with no price info return 0 , so they revert with Invalid Price
+      await expect(nonpriceAaveAsset.price()).to.be.reverted
 
       // Compound - Assets with no price info revert with also with token config not found
-      await expect(nonpriceCompoundAsset.price()).to.be.revertedWith('token config not found')
-      await expect(nonpriceCompoundAsset.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'token config not found'
-      )
+      await expect(nonpriceCompoundAsset.price()).to.be.reverted
     })
 
     it('Should handle invalid Price - Collaterals - Fiat', async () => {
@@ -494,58 +490,56 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Fiat collateral - Aave
-      const nonpriceAaveCollateral: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-        await (
-          await ethers.getContractFactory('AavePricedFiatCollateral')
-        ).deploy(
-          nonpriceToken.address,
-          config.maxTradeVolume,
-          defaultThreshold,
-          delayUntilDefault,
-          compoundMock.address,
-          aaveMock.address
-        )
+      const nonpriceAaveCollateral: FiatCollateral = <FiatCollateral>await (
+        await ethers.getContractFactory('FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        nonpriceToken.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
       )
 
       // Fiat Collateral - Compound
-      const nonpriceCompoundCollateral: CompoundPricedFiatCollateral = <
-        CompoundPricedFiatCollateral
-      >await (
-        await ethers.getContractFactory('CompoundPricedFiatCollateral')
+      const nonpriceCompoundCollateral: FiatCollateral = <FiatCollateral>await (
+        await ethers.getContractFactory('FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
       ).deploy(
+        NO_PRICE_DATA_FEED,
         nonpriceToken.address,
+        compToken.address,
         config.maxTradeVolume,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
-        delayUntilDefault,
-        compoundMock.address
+        delayUntilDefault
       )
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Aave - Collateral with no price info return 0, so they revert with Price is Zero
-      await expect(nonpriceAaveCollateral.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(nonpriceAaveCollateral.consultOracle(nonpriceToken.address)).to.be.revertedWith(
-        'PriceIsZero()'
-      )
+      // Aave - Collateral with no price info return 0, so they revert with Invalid Price
+      await expect(nonpriceAaveCollateral.price()).to.be.reverted
 
-      // Refresh should not revert but set default
-      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceAaveCollateral.refresh())
-        .to.emit(nonpriceAaveCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh should mark status UNPRICED
+      await nonpriceAaveCollateral.refresh()
+      expect(await nonpriceAaveCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // Compound - Assets with no price info revert with token config not found
-      await expect(nonpriceCompoundCollateral.price()).to.be.revertedWith('token config not found')
-      await expect(
-        nonpriceCompoundCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('token config not found')
+      await expect(nonpriceCompoundCollateral.price()).to.be.reverted
 
-      // Refresh reverts (does not handle in the same way as Aave)
-      await expect(nonpriceCompoundCollateral.refresh()).to.be.reverted
+      // Refresh should mark status UNPRICED
+      await nonpriceCompoundCollateral.refresh()
+      expect(await nonpriceCompoundCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
 
     it('Should handle invalid Price - Collaterals - AToken/CToken', async () => {
@@ -569,19 +563,19 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // AToken collateral
-      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await (
-          await ethers.getContractFactory('ATokenFiatCollateral')
-        ).deploy(
-          staticNonPriceErc20.address,
-          config.maxTradeVolume,
-          defaultThreshold,
-          delayUntilDefault,
-          nonpriceToken.address,
-          compoundMock.address,
-          aaveMock.address,
-          aaveToken.address
-        )
+      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+        await ethers.getContractFactory('ATokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        staticNonPriceErc20.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
       )
 
       // Setup CToken (use mock for this purpose)
@@ -596,46 +590,42 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens Collateral
-      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-        await (
-          await ethers.getContractFactory('CTokenFiatCollateral')
-        ).deploy(
-          nonpriceCtoken.address,
-          config.maxTradeVolume,
-          defaultThreshold,
-          delayUntilDefault,
-          nonpriceToken.address,
-          compoundMock.address,
-          compToken.address
-        )
+      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        nonpriceCtoken.address,
+        compToken.address,
+        config.maxTradeVolume,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        await nonpriceToken.decimals(),
+        compoundMock.address
       )
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // ATokens - Collateral with no price info return 0, so they revert with Price is Zero
-      await expect(nonpriceAtokenCollateral.price()).to.be.revertedWith('PriceIsZero()')
-      await expect(
-        nonpriceAtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('PriceIsZero()')
+      // ATokens - Collateral with no price info return 0, so they revert with Invalid Price
+      await expect(nonpriceAtokenCollateral.price()).to.be.reverted
 
-      // Refresh should not revert but set default
-      const expectedDefaultTimestamp = bn(await getLatestBlockTimestamp()).add(1)
-      await expect(nonpriceAtokenCollateral.refresh())
-        .to.emit(nonpriceAtokenCollateral, 'DefaultStatusChanged')
-        .withArgs(MAX_UINT256, expectedDefaultTimestamp, CollateralStatus.DISABLED)
+      // Refresh should mark status UNPRICED
+      await nonpriceAtokenCollateral.refresh()
+      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
       // CTokens - Collateral with no price info revert with token config not found
-      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('token config not found')
-      await expect(
-        nonpriceCtokenCollateral.consultOracle(nonpriceToken.address)
-      ).to.be.revertedWith('token config not found')
+      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
 
-      // Refresh reverts (does not handle in the same way as Aave)
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
+      // Refresh should mark status UNPRICED
+      await nonpriceCtokenCollateral.refresh()
+      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -674,7 +664,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       } = await loadFixture(defaultFixture))
 
       // Get assets and tokens for default basket
-      daiCollateral = <AavePricedFiatCollateral>basket[0]
+      daiCollateral = <FiatCollateral>basket[0]
       aDaiCollateral = <ATokenFiatCollateral>basket[1]
       cDaiCollateral = <CTokenFiatCollateral>basket[2]
 
@@ -1043,7 +1033,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       } = await loadFixture(defaultFixture))
 
       // Get assets and tokens for default basket
-      daiCollateral = <AavePricedFiatCollateral>basket[0]
+      daiCollateral = <FiatCollateral>basket[0]
       aDaiCollateral = <ATokenFiatCollateral>basket[1]
       cDaiCollateral = <CTokenFiatCollateral>basket[2]
 

@@ -19,8 +19,8 @@ For a much more detailed explanation of the economic design, including an hour-l
 ## Further Documentation
 
 - [Development Environment](docs/dev-env.md): Setup and usage of our dev environment. How to compile, autoformat, lint, and test our code.
-    - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
-    - [Deployment](docs/deployment.md): How to do test deployments in our environment.
+  - [Testing with Echidna](docs/using-echidna.md): Notes so far on setup and usage of Echidna (which is decidedly an integration-in-progress!)
+  - [Deployment](docs/deployment.md): How to do test deployments in our environment.
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details and conventions relevant to reading and writing our Solidity source code, especially where those go beyond standard practice.
 
@@ -45,7 +45,7 @@ P1 is the production version of the economic protocol.
 - Upgradable
 - Optimized for gas costs
 - No function call needs more than _O(lg N)_ time or space, and it's _O(1)_ where possible.
-    - Caveat: a function might be _O(k)_, where _k_ is the number of registered Assets or Collateral tokens; however, we take great care to make those loops efficient, and to avoid _O(k^2)_ behavior!
+  - Caveat: a function might be _O(k)_, where _k_ is the number of registered Assets or Collateral tokens; however, we take great care to make those loops efficient, and to avoid _O(k^2)_ behavior!
 - No user is ever forced to pay gas to process other users' transactions.
 
 ## Repository Structure
@@ -114,3 +114,9 @@ Status as of 2022-05-27: We've gotten some simple proofs-of-concept to run, but 
 Target: Intensive equivalence testing, run continuously for days or weeks, sensitive to any difference between observable behaviors of `p0` and `p1`.
 
 Status as of 2022-05-27: Beyond proof-of-concept work with Echidna, we have not started these tests.
+
+## Contributing
+
+If you would like to contribute, you'll need to configure a secret in your fork repo in order for our integration tests to pass in CI. The name of the secret should `ALCHEMY_MAINNET_KEY` and it should be equal to the suffix portion of the full URL.
+
+Usage: `https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}`

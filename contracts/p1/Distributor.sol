@@ -50,7 +50,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external notPaused {
+    ) external notPausedOrFrozen {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
@@ -92,6 +92,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
+        emit RevenueDistributed(erc20, from, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {

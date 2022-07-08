@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -189,11 +190,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         }
       )
       await newMain.deployed()
-
-      // Owner/Pauser - Paused by default
-      expect(await newMain.paused()).to.equal(true)
-      expect(await newMain.owner()).to.equal(owner.address)
-      expect(await newMain.oneshotPauser()).to.equal(owner.address)
 
       // Components
       expect(await newMain.stRSR()).to.equal(stRSR.address)
@@ -396,8 +392,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       // Check state is preserved
       expect(await mainV2.paused()).to.equal(false)
-      expect(await mainV2.owner()).to.equal(owner.address)
-      expect(await mainV2.oneshotPauser()).to.equal(owner.address)
+      expect(await mainV2.frozen()).to.equal(false)
+      expect(await mainV2.pausedOrFrozen()).to.equal(false)
+      expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(FREEZER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
 
       // Components
       expect(await mainV2.stRSR()).to.equal(stRSR.address)

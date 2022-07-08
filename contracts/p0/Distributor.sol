@@ -40,7 +40,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external notPaused {
+    ) external notPausedOrFrozen {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
@@ -71,6 +71,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
             }
             erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
+        emit RevenueDistributed(erc20, from, amount);
     }
 
     /// Returns the rsr + rToken shareTotals
