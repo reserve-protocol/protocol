@@ -25,7 +25,7 @@ library OracleLib {
         if (updateTime == 0 || answeredInRound < roundId) {
             revert StalePrice();
         }
-
+        // Downcast is safe: uint256(-) reverts on underflow; block.timestamp assumed < 2^32
         uint32 secondsSince = uint32(block.timestamp - updateTime);
         if (secondsSince > timeout) revert StalePrice();
 
