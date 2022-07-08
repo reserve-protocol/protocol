@@ -271,14 +271,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
-    it('Should not issue RTokens if UNPRICED collateral', async function () {
-      const issueAmount: BigNumber = bn('10e18')
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('StalePrice()')
-    })
-
     it('Should not vest RTokens if paused', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
@@ -336,7 +328,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Try to vest
-      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith('StalePrice()')
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'collateral default'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -1402,6 +1396,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
+      it('Should redeem if basket is UNPRICED #fast', async function () {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
       it('Should redeem if paused #fast', async function () {
         await main.connect(owner).pause()
         await rToken.connect(addr1).redeem(issueAmount)
@@ -1416,13 +1417,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount)
-      })
-
-      it('Should not issue RTokens if UNPRICED collateral', async function () {
-        await advanceTime(ORACLE_TIMEOUT.toString())
-
-        // Try to redeem
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('StalePrice()')
       })
 
       it('Should revert if basket is DISABLED #fast', async function () {

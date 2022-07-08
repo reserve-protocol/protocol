@@ -651,11 +651,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       it('Should not complete withdrawal if UNPRICED collateral', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
+        await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.UNPRICED)
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
-          'StalePrice()'
+          'basket defaulted'
         )
 
         // Nothing completed

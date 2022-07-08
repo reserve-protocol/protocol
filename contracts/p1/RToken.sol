@@ -303,6 +303,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
+        // solhint-disable-next-line no-empty-blocks
         try main.furnace().melt() {} catch {}
 
         uint192 basketsNeeded_ = basketsNeeded; // gas optimization
