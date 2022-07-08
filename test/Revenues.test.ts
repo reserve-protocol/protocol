@@ -30,6 +30,7 @@ import {
   TestIDistributor,
   TestIFurnace,
   TestIRevenueTrader,
+  TestIMain,
   TestIRToken,
   TestIStRSR,
   USDCMock,
@@ -97,6 +98,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
   let oracleLib: OracleLib
+  let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -132,6 +134,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       rTokenTrader,
       oracleLib,
+      main,
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy
@@ -249,6 +252,42 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
+      })
+
+      it('Should not trade if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not trade if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not claim rewards if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not claim rewards if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not settle trade if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not settle trade if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not launch revenue auction if UNPRICED', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, 1)
+        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith('StalePrice()')
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {

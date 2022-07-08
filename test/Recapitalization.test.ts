@@ -16,6 +16,7 @@ import {
   StaticATokenMock,
   TestIAssetRegistry,
   TestIBackingManager,
+  TestIMain,
   TestIRToken,
   TestIStRSR,
   USDCMock,
@@ -85,6 +86,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let oracleLib: OracleLib
+  let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -131,6 +133,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       oracleLib,
+      main,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -786,6 +789,16 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
+      })
+
+      it('Should not trade if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not trade if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
       })
 
       it('Should only start recapitalization after tradingDelay', async () => {

@@ -743,6 +743,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('erc20 unregistered')
     })
 
+    it('Should not grant allowances when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
+        'paused or frozen'
+      )
+    })
+
+    it('Should not grant allowances when frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
+        'paused or frozen'
+      )
+    })
+
     it('Should return backing tokens', async () => {
       expect(await facade.basketTokens(rToken.address)).to.eql([
         token0.address,
@@ -772,37 +786,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await main.oneshotFreezeDuration()).to.equal(newValue)
-    })
-  })
-
-  describe('Actions / Refreshers / Completions / Others', () => {
-    it('Should not allow actions on components if paused', async () => {
-      // NOTE
-      // This is not exhaustive: Each component is responsible for checking notPaused for itself
-      // This is mostly leftover from when we were just testing P0
-
-      // By default functions can be run
-      await assetRegistry.refresh()
-      await basketHandler.refreshBasket()
-      await backingManager.manageTokens([token0.address])
-      await rsrTrader.manageToken(token0.address)
-      await rTokenTrader.manageToken(token0.address)
-      await token0.connect(addr1).approve(rToken.address, initialBal)
-      await token1.connect(addr1).approve(rToken.address, initialBal)
-      await token2.connect(addr1).approve(rToken.address, initialBal)
-      await token3.connect(addr1).approve(rToken.address, initialBal)
-      await rToken.connect(addr1).issue(fp('1e-6'))
-
-      // Pause Main
-      await main.connect(owner).pause()
-
-      // Attempt to run functions again
-      await expect(backingManager.manageTokens([token0.address])).to.be.revertedWith(
-        'paused or frozen'
-      )
-      await expect(rsrTrader.manageToken(token0.address)).to.be.revertedWith('paused or frozen')
-      await expect(rTokenTrader.manageToken(token0.address)).to.be.revertedWith('paused or frozen')
-      await expect(rToken.connect(addr1).issue(fp('1e-6'))).to.be.revertedWith('paused or frozen')
     })
   })
 
@@ -1094,7 +1077,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
       await main.connect(owner).pause()
-      await expect(basketHandler.connect(other).refreshBasket()).to.be.reverted
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
+        'paused or frozen'
+      )
+    })
+
+    it('Should not allow to refresh basket if not OWNER when frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
+        'paused or frozen'
+      )
     })
 
     it('Should not allow to disable basket if not AssetRegistry', async () => {
