@@ -115,10 +115,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Switch the basket, only callable directly by governance
     /// @custom:interaction OR @custom:governance
     function refreshBasket() external {
-        require(
-            !main.pausedOrFrozen() || main.hasRole(OWNER, _msgSender()),
-            "unpaused or by owner"
-        );
+        require(!main.pausedOrFrozen() || main.hasRole(OWNER, _msgSender()), "paused or frozen");
 
         main.assetRegistry().refresh();
         _switchBasket();
