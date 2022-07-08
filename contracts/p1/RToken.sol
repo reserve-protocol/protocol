@@ -302,7 +302,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Allow redemption during IFFY + UNPRICED
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
-        main.furnace().melt();
+        // Failure to melt results in a lower redemption price, so we can allow it when paused
+        try main.furnace().melt() {} catch {}
+
         uint192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
