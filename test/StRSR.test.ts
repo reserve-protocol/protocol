@@ -35,6 +35,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   SLOW,
+  ORACLE_TIMEOUT,
 } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -640,6 +641,21 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'basket defaulted'
+        )
+
+        // Nothing completed
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      })
+
+      it('Should not complete withdrawal if UNPRICED collateral', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        expect(await basketHandler.status()).to.equal(CollateralStatus.UNPRICED)
+
+        // Attempt to Withdraw
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'StalePrice()'
         )
 
         // Nothing completed

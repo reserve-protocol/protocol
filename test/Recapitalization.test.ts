@@ -801,6 +801,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
       })
 
+      it('Should not trade if UNPRICED', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not sound')
+      })
+
       it('Should only start recapitalization after tradingDelay', async () => {
         // Set trading delay
         const newDelay = 3600
