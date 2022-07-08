@@ -71,6 +71,16 @@ interface IAuth {
     function frozen() external view returns (bool);
 
     function oneshotFreezeDuration() external view returns (uint32);
+
+    function freeze() external;
+
+    function unfreeze() external;
+
+    function pause() external;
+
+    function unpause() external;
+
+    function oneshotFreeze() external;
 }
 
 interface IComponentRegistry {
@@ -138,16 +148,6 @@ interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
 }
 
 interface TestIMain is IMain {
-    function freeze() external;
-
-    function unfreeze() external;
-
-    function pause() external;
-
-    function unpause() external;
-
-    function oneshotFreeze() external;
-
     /// @custom:governance
     function setOneshotFreezeDuration(uint32) external;
 
