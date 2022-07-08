@@ -261,50 +261,39 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
         if (rsrBalance == 0) return;
 
-        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount) {
-            // Rebase event: total RSR stake wipeout
-            seizedRSR = rsrBalance;
-            beginEra();
-            beginDraftEra();
-        } else {
-            uint256 rewards = rsrRewards();
+        uint256 rewards = rsrRewards();
 
-            // Remove RSR evenly from stakeRSR, draftRSR, and the reward pool
-            uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            stakeRSR -= stakeRSRToTake;
-            seizedRSR = stakeRSRToTake;
+        // Remove RSR from stakeRSR
+        uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        stakeRSR -= stakeRSRToTake;
+        seizedRSR = stakeRSRToTake;
 
-            if (stakeRSR == 0) {
-                beginEra();
-            } else {
-                stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
-
-                // if stakeRate is now absurdly high, just take all the stakeRSR and start over.
-                if (stakeRate > MAX_STAKE_RATE) {
-                    seizedRSR += stakeRSR;
-                    beginEra();
-                }
-            }
-
-            uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            draftRSR -= draftRSRToTake;
-            seizedRSR += draftRSRToTake;
-            if (draftRSR == 0) {
-                beginDraftEra();
-            } else {
-                draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
-
-                if (draftRate > MAX_DRAFT_RATE) {
-                    seizedRSR += draftRSR;
-                    beginDraftEra();
-                }
-            }
-
-            // Removing from unpaid rewards is implicit
-            seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        if (stakeRSR > 0) {
+            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
         }
+
+        if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
+            seizedRSR += stakeRSR;
+            beginEra();
+        }
+
+        // Remove RSR from draftRSR
+        uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        draftRSR -= draftRSRToTake;
+        seizedRSR += draftRSRToTake;
+
+        if (draftRSR > 0) {
+            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
+        }
+
+        if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
+            seizedRSR += draftRSR;
+            beginDraftEra();
+        }
+
+        // Remove RSR from yet-unpaid rewards (implicitly)
+        seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, stakeRate);
