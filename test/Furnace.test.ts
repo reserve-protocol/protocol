@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -15,7 +16,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'

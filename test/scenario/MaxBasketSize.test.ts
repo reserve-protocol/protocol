@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../../common/configuration'
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -11,16 +12,16 @@ import {
   ERC20Mock,
   Facade,
   FiatCollateral,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIRToken,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
@@ -50,7 +51,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
   let facade: Facade
   let backingManager: TestIBackingManager

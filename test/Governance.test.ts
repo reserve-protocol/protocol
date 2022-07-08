@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { ProposalState, ZERO_ADDRESS, OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import {
@@ -14,7 +15,7 @@ import {
   TestIStRSR,
   TimelockController,
 } from '../typechain'
-import { defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceBlocks, advanceTime, getLatestBlockNumber } from './utils/time'
 

@@ -3,17 +3,18 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
+import { IConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
   CTokenMock,
   CTokenSelfReferentialCollateral,
   ComptrollerMock,
   ERC20Mock,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
   SelfReferentialCollateral,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIStRSR,
   TestIRevenueTrader,
@@ -22,7 +23,7 @@ import {
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -55,7 +56,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let stRSR: TestIStRSR
   let rsr: ERC20Mock
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader

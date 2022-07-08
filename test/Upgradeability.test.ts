@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { IComponents, IConfig } from '../common/configuration'
 import { OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
@@ -21,6 +22,7 @@ import {
   FurnaceP1V2,
   GnosisMock,
   GnosisTrade,
+  IAssetRegistry,
   IBasketHandler,
   MainP1,
   MainP1V2,
@@ -32,7 +34,6 @@ import {
   RTokenP1V2,
   StRSRP1Votes,
   StRSRP1VotesV2,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -43,7 +44,7 @@ import {
   TestIStRSR,
   TradingLibP1,
 } from '../typechain'
-import { defaultFixture, IComponents, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -69,7 +70,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

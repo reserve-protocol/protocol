@@ -16,16 +16,9 @@ import {
 } from './utils'
 import { BigNumber, ContractFactory, providers, Signer, utils } from 'ethers'
 import { rayDiv, rayMul } from './ray-math'
+import { getChainId } from '../../common/blockchain-utils'
+import { networkConfig } from '../../common/configuration'
 import { MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
-import {
-  AAVE_EMISSIONS_MGR_ADDRESS,
-  AAVE_INCENTIVES_ADDRESS,
-  AAVE_LENDING_POOL_ADDRESS,
-  AWETH_ADDRESS,
-  STAKEDAAVE_ADDRESS,
-  WETH_ADDRESS,
-} from './mainnet'
-
 import {
   ERC20Mock,
   IAaveIncentivesController,
@@ -35,6 +28,8 @@ import {
   SelfdestructTransfer,
   StaticATokenLM,
 } from '../../typechain'
+
+let chainId: number
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -166,7 +161,9 @@ const getContext = async ({
   user2StaticATokenBalance: await staticAToken.balanceOf(user2),
   user2DynamicStaticATokenBalance: await staticAToken.dynamicBalanceOf(user2),
   user2PendingRewards: await staticAToken.getClaimableRewards(user2),
-  currentRate: await lendingPool.getReserveNormalizedIncome(WETH_ADDRESS),
+  currentRate: await lendingPool.getReserveNormalizedIncome(
+    networkConfig[chainId].tokens.WETH || ''
+  ),
   staticATokenSupply: await staticAToken.totalSupply(),
 })
 
@@ -190,32 +187,57 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     await setup(forkBlockNumber['aave-compound-rewards'])
     ;[user1, user2] = await ethers.getSigners()
 
+    chainId = await getChainId(hre)
+    if (!networkConfig[chainId]) {
+      throw new Error(`Missing network configuration for ${hre.network.name}`)
+    }
+
     userSigner = hre.ethers.provider.getSigner(await user1.getAddress())
     user2Signer = hre.ethers.provider.getSigner(await user2.getAddress())
 
     lendingPool = <ILendingPool>(
-      await ethers.getContractAt('ILendingPool', AAVE_LENDING_POOL_ADDRESS, userSigner)
+      await ethers.getContractAt(
+        'ILendingPool',
+        networkConfig[chainId].AAVE_LENDING_POOL || '',
+        userSigner
+      )
     )
     incentives = <IAaveIncentivesController>(
-      await ethers.getContractAt('IAaveIncentivesController', AAVE_INCENTIVES_ADDRESS, userSigner)
+      await ethers.getContractAt(
+        'IAaveIncentivesController',
+        networkConfig[chainId].AAVE_INCENTIVES || '',
+        userSigner
+      )
     )
 
-    weth = <IWETH>await ethers.getContractAt('IWETH', WETH_ADDRESS, userSigner)
-    aweth = <IAToken>await ethers.getContractAt('IAToken', AWETH_ADDRESS, userSigner)
-    stkAave = <ERC20Mock>await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS, userSigner)
+    weth = <IWETH>(
+      await ethers.getContractAt('IWETH', networkConfig[chainId].tokens.WETH || '', userSigner)
+    )
+    aweth = <IAToken>(
+      await ethers.getContractAt('IAToken', networkConfig[chainId].tokens.aWETH || '', userSigner)
+    )
+    stkAave = <ERC20Mock>(
+      await ethers.getContractAt(
+        'ERC20Mock',
+        networkConfig[chainId].tokens.stkAAVE || '',
+        userSigner
+      )
+    )
 
     const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
 
     staticAToken = <StaticATokenLM>(
       await StaticATokenFactory.connect(userSigner).deploy(
-        AAVE_LENDING_POOL_ADDRESS,
-        AWETH_ADDRESS,
+        networkConfig[chainId].AAVE_LENDING_POOL,
+        networkConfig[chainId].tokens.aWETH,
         'Static Aave Interest Bearing WETH',
         'stataWETH'
       )
     )
 
-    expect(await staticAToken.getIncentivesController()).to.be.eq(AAVE_INCENTIVES_ADDRESS)
+    expect(await staticAToken.getIncentivesController()).to.be.eq(
+      networkConfig[chainId].AAVE_INCENTIVES
+    )
 
     ctxtParams = {
       staticAToken: <StaticATokenLM>staticAToken,
@@ -1146,20 +1168,25 @@ describe.skip('StaticATokenLM: aToken wrapper with static balances and liquidity
     const claimerSigner = hre.ethers.provider.getSigner(await claimer.getAddress())
 
     // Allow another use to claim on behalf of
-    await whileImpersonating(AAVE_EMISSIONS_MGR_ADDRESS, async (emSigner) => {
-      // Fund emissionManager
-      const selfdestructContract: SelfdestructTransfer = <SelfdestructTransfer>(
-        await (await ethers.getContractFactory('SelfdestructTransfer')).deploy()
-      )
-      // Selfdestruct the mock, pointing to WETHGateway address
-      await selfdestructContract
-        .connect(user2Signer)
-        .destroyAndTransfer(emSigner.address, { value: parseEther('1') })
+    await whileImpersonating(
+      networkConfig[chainId].AAVE_EMISSIONS_MGR as string,
+      async (emSigner) => {
+        // Fund emissionManager
+        const selfdestructContract: SelfdestructTransfer = <SelfdestructTransfer>(
+          await (await ethers.getContractFactory('SelfdestructTransfer')).deploy()
+        )
+        // Selfdestruct the mock, pointing to WETHGateway address
+        await selfdestructContract
+          .connect(user2Signer)
+          .destroyAndTransfer(emSigner.address, { value: parseEther('1') })
 
-      await waitForTx(
-        await incentives.connect(emSigner).setClaimer(user2Signer._address, claimerSigner._address)
-      )
-    })
+        await waitForTx(
+          await incentives
+            .connect(emSigner)
+            .setClaimer(user2Signer._address, claimerSigner._address)
+        )
+      }
+    )
 
     // Preparation
     await waitForTx(await weth.deposit({ value: amountToDeposit }))

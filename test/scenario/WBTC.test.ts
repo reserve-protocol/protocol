@@ -4,22 +4,23 @@ import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
+import { IConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
   ERC20Mock,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   NonFiatCollateral,
   OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -53,7 +54,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let rsr: ERC20Mock
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader

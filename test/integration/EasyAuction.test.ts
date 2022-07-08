@@ -2,23 +2,24 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { Collateral, IConfig, defaultFixture, IMPLEMENTATION } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION } from '../fixtures'
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
+import { IConfig } from '../../common/configuration'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import {
-  IAssetRegistry,
   EasyAuction,
   ERC20Mock,
-  TestIBackingManager,
-  IBasketHandler,
-  TestIStRSR,
   Facade,
-  TestIRToken,
+  IAssetRegistry,
+  IBasketHandler,
+  TestIBackingManager,
   TestIBroker,
+  TestIRToken,
+  TestIStRSR,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
