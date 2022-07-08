@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
   FURNACE_DEST,
@@ -20,11 +21,11 @@ import {
   ERC20Mock,
   Facade,
   GnosisMock,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -40,7 +41,6 @@ import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   ORACLE_TIMEOUT,
@@ -92,7 +92,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

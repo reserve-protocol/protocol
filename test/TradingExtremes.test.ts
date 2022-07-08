@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import {
   FURNACE_DEST,
   STRSR_DEST,
@@ -12,30 +13,30 @@ import {
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   Asset,
-  TestIAssetRegistry,
   ATokenFiatCollateral,
-  TestIBackingManager,
-  IBasketHandler,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
-  TestIDistributor,
   ERC20Mock,
   Facade,
   FiatCollateral,
+  GnosisMock,
   GnosisTrade,
+  IAssetRegistry,
+  IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  TestIBackingManager,
+  TestIDistributor,
   TestIStRSR,
   TestIMain,
-  GnosisMock,
   TestIRevenueTrader,
   TestIRToken,
   StaticATokenMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import { advanceTime } from './utils/time'
-import { defaultFixture, IConfig, SLOW } from './fixtures'
+import { defaultFixture, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
 import { setOraclePrice } from './utils/oracles'
@@ -68,7 +69,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let rToken: TestIRToken
   let main: TestIMain
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

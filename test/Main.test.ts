@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import {
   CollateralStatus,
   ZERO_ADDRESS,
@@ -23,10 +24,10 @@ import {
   Facade,
   GnosisMock,
   GnosisTrade,
+  IAssetRegistry,
   IBasketHandler,
   RTokenAsset,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -39,7 +40,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
 
@@ -97,7 +98,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let furnace: TestIFurnace
   let main: TestIMain
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

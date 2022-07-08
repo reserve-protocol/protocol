@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -20,7 +21,7 @@ import {
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { setOraclePrice } from '../utils/oracles'
-import { Collateral, defaultFixture, IConfig } from '../fixtures'
+import { Collateral, defaultFixture } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

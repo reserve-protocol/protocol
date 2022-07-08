@@ -2,15 +2,16 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../../common/configuration'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   BadERC20,
   ERC20Mock,
-  MockV3Aggregator,
+  IAssetRegistry,
   IBasketHandler,
+  MockV3Aggregator,
   OracleLib,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
@@ -19,7 +20,7 @@ import {
 import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -49,7 +50,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let oracleLib: OracleLib

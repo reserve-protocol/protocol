@@ -19,6 +19,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
+import { IConfig } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import {
   advanceBlocks,
@@ -28,14 +29,7 @@ import {
   setNextBlockTimestamp,
 } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import {
-  Collateral,
-  defaultFixture,
-  IConfig,
-  Implementation,
-  IMPLEMENTATION,
-  SLOW,
-} from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION, SLOW } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
