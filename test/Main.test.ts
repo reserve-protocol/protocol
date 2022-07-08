@@ -750,91 +750,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ])
     })
 
-    it('Should allow to set Broker if OWNER', async () => {
-      // Check existing value
-      expect(await main.broker()).to.equal(broker.address)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).setBroker(other.address)).to.be.reverted
-
-      // Check value did not change
-      expect(await main.broker()).to.equal(broker.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setBroker(other.address))
-        .to.emit(main, 'BrokerSet')
-        .withArgs(broker.address, other.address)
-
-      // Check value was updated
-      expect(await main.broker()).to.equal(other.address)
-    })
-
-    it('Should allow to set StRSR if OWNER', async () => {
-      // Check existing value
-      expect(await main.stRSR()).to.equal(stRSR.address)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).setStRSR(other.address)).to.be.reverted
-
-      // Check value did not change
-      expect(await main.stRSR()).to.equal(stRSR.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setStRSR(other.address))
-        .to.emit(main, 'StRSRSet')
-        .withArgs(stRSR.address, other.address)
-
-      // Check value was updated
-      expect(await main.stRSR()).to.equal(other.address)
-    })
-
-    it('Should allow to set RToken if OWNER', async () => {
-      // Check existing value
-      expect(await main.rToken()).to.equal(rToken.address)
-
-      // If not owner cannot update - use mock address
-      await expect(main.connect(other).setRToken(other.address)).to.be.reverted
-
-      // Check value did not change
-      expect(await main.rToken()).to.equal(rToken.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setRToken(other.address))
-        .to.emit(main, 'RTokenSet')
-        .withArgs(rToken.address, other.address)
-
-      // Check value was updated
-      expect(await main.rToken()).to.equal(other.address)
-    })
-
-    it('Should allow to set Furnace if OWNER and perform validations', async () => {
-      // Setup test furnaces - We are only interested in the address no need for proxy
-      const FurnaceFactory: ContractFactory = await ethers.getContractFactory(
-        `FurnaceP${IMPLEMENTATION}`
-      )
-      const newFurnace = <TestIFurnace>await FurnaceFactory.deploy()
-
-      // Check existing value
-      expect(await main.furnace()).to.equal(furnace.address)
-
-      // If not owner cannot update
-      await expect(main.connect(other).setFurnace(newFurnace.address)).to.be.reverted
-
-      // Check value did not change
-      expect(await main.furnace()).to.equal(furnace.address)
-
-      // Update with owner
-      await expect(main.connect(owner).setFurnace(newFurnace.address))
-        .to.emit(main, 'FurnaceSet')
-        .withArgs(furnace.address, newFurnace.address)
-
-      // Check value was updated
-      expect(await main.furnace()).to.equal(newFurnace.address)
-    })
-
     it('Should allow to update oneshotFreezeDuration if OWNER', async () => {
       const newValue: BigNumber = bn(1)
-      await main.connect(owner).grantRole(PAUSER, addr1.address)
+      await main.connect(owner).grantRole(FREEZER, addr1.address)
 
       // Check existing value
       expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)

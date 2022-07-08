@@ -23,6 +23,11 @@ contract MainMock is MainP0 {
         emit MainInitialized();
     }
 
+    function setRToken(IRToken rToken_) external {
+        emit RTokenSet(rToken, rToken_);
+        rToken = rToken_;
+    }
+
     event TestError(string message);
 
     function echidna_mainmock_sender_is_always_zero() external returns (bool) {

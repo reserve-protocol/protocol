@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
+import "contracts/plugins/assets/OracleLib.sol";
+import "contracts/libraries/Fixed.sol";
 
 // ==== External Interfaces ====
 // See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
@@ -15,15 +18,19 @@ interface ICToken {
 }
 
 /**
- * @title CTokenSelfReferentialCollateral
- * @notice Collateral plugin for a cToken of a self-referential asset. For example:
- *   - cETH
- *   - cRSR
- *   - ...
+ * @title CTokenNonFiatCollateral
+ * @notice Collateral plugin for a cToken of a nonfiat collateral that requires default checks
+ * For example:
+ *   - cWBTC
  */
-contract CTokenSelfReferentialCollateral is Collateral {
+contract CTokenNonFiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
+
+    /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
+
+    AggregatorV3Interface public immutable targetUnitUSDChainlinkFeed;
+    AggregatorV3Interface public immutable refUnitChainlinkFeed;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -33,27 +40,36 @@ contract CTokenSelfReferentialCollateral is Collateral {
     uint256 internal constant NEVER = type(uint256).max;
     uint256 public whenDefault = NEVER;
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    int8 public immutable referenceERC20Decimals;
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
 
-    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    int8 public immutable referenceERC20Decimals;
+
+    /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
+    /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
+    /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
-        AggregatorV3Interface chainlinkFeed_,
+        AggregatorV3Interface refUnitChainlinkFeed_,
+        AggregatorV3Interface targetUnitUSDChainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
+        uint192 defaultThreshold_,
+        uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
         address comptrollerAddr_
     )
         Collateral(
-            chainlinkFeed_,
+            AggregatorV3Interface(address(1)),
             erc20_,
             rewardERC20_,
             maxTradeVolume_,
@@ -61,9 +77,19 @@ contract CTokenSelfReferentialCollateral is Collateral {
             targetName_
         )
     {
+        require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
+        require(address(refUnitChainlinkFeed_) != address(0), "missing ref unit chainlink feed");
+        require(
+            address(targetUnitUSDChainlinkFeed_) != address(0),
+            "missing target unit chainlink feed"
+        );
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
+        defaultThreshold = defaultThreshold_;
+        delayUntilDefault = delayUntilDefault_;
+        targetUnitUSDChainlinkFeed = targetUnitUSDChainlinkFeed_;
+        refUnitChainlinkFeed = refUnitChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
         comptrollerAddr = comptrollerAddr_;
@@ -71,8 +97,12 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        return
+            targetUnitUSDChainlinkFeed
+                .price(oracleTimeout)
+                .mul(refUnitChainlinkFeed.price(oracleTimeout))
+                .mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -90,8 +120,23 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice.lt(prevReferencePrice)) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                priceable = true;
+            // p {target/ref}
+            try refUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+                // We don't need the return value from this next feed, but it should still function
+                try targetUnitUSDChainlinkFeed.price_(oracleTimeout) returns (uint192) {
+                    priceable = true;
+
+                    // {target/ref}
+                    uint192 peg = targetPerRef();
+                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+
+                    // If the price is below the default-threshold price, default eventually
+                    if (p < peg - delta || p > peg + delta) {
+                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                    } else whenDefault = NEVER;
+                } catch {
+                    priceable = false;
+                }
             } catch {
                 priceable = false;
             }
@@ -102,17 +147,18 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
+
         // No interactions beyond the initial refresher
     }
 
     /// @return The collateral's status
-    function status() public view override returns (CollateralStatus) {
+    function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
-            return CollateralStatus.SOUND;
-        } else if (whenDefault <= block.timestamp) {
-            return CollateralStatus.DISABLED;
+            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+        } else if (whenDefault > block.timestamp) {
+            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
         } else {
-            return CollateralStatus.IFFY;
+            return CollateralStatus.DISABLED;
         }
     }
 
@@ -125,13 +171,19 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        return targetUnitUSDChainlinkFeed.price(oracleTimeout);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
     /// @return _cd The calldata to send
-    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
+    function getClaimCalldata()
+        external
+        view
+        virtual
+        override
+        returns (address _to, bytes memory _cd)
+    {
         _to = comptrollerAddr;
         _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
     }

@@ -42,6 +42,7 @@ contract CTokenFiatCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -76,7 +77,7 @@ contract CTokenFiatCollateral is Collateral {
         delayUntilDefault = delayUntilDefault_;
         referenceERC20Decimals = referenceERC20Decimals_;
 
-        prevReferencePrice = refPerTok(); // {collateral/reference}
+        prevReferencePrice = refPerTok();
         comptrollerAddr = comptrollerAddr_;
     }
 

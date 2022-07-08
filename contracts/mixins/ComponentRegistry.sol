@@ -13,86 +13,86 @@ import "contracts/mixins/Auth.sol";
 abstract contract ComponentRegistry is Initializable, Auth, IComponentRegistry {
     // solhint-disable-next-line func-name-mixedcase
     function __ComponentRegistry_init(Components memory components_) internal onlyInitializing {
-        setBackingManager(components_.backingManager);
-        setBasketHandler(components_.basketHandler);
-        setRSRTrader(components_.rsrTrader);
-        setRTokenTrader(components_.rTokenTrader);
-        setAssetRegistry(components_.assetRegistry);
-        setDistributor(components_.distributor);
-        setFurnace(components_.furnace);
-        setBroker(components_.broker);
-        setStRSR(components_.stRSR);
-        setRToken(components_.rToken);
+        _setBackingManager(components_.backingManager);
+        _setBasketHandler(components_.basketHandler);
+        _setRSRTrader(components_.rsrTrader);
+        _setRTokenTrader(components_.rTokenTrader);
+        _setAssetRegistry(components_.assetRegistry);
+        _setDistributor(components_.distributor);
+        _setFurnace(components_.furnace);
+        _setBroker(components_.broker);
+        _setStRSR(components_.stRSR);
+        _setRToken(components_.rToken);
     }
 
     // === Components ===
 
     IRToken public rToken;
 
-    function setRToken(IRToken val) public onlyRole(OWNER) {
+    function _setRToken(IRToken val) private {
         emit RTokenSet(rToken, val);
         rToken = val;
     }
 
     IStRSR public stRSR;
 
-    function setStRSR(IStRSR val) public onlyRole(OWNER) {
+    function _setStRSR(IStRSR val) private {
         emit StRSRSet(stRSR, val);
         stRSR = val;
     }
 
     IAssetRegistry public assetRegistry;
 
-    function setAssetRegistry(IAssetRegistry val) public onlyRole(OWNER) {
+    function _setAssetRegistry(IAssetRegistry val) private {
         emit AssetRegistrySet(assetRegistry, val);
         assetRegistry = val;
     }
 
     IBasketHandler public basketHandler;
 
-    function setBasketHandler(IBasketHandler val) public onlyRole(OWNER) {
+    function _setBasketHandler(IBasketHandler val) private {
         emit BasketHandlerSet(basketHandler, val);
         basketHandler = val;
     }
 
     IBackingManager public backingManager;
 
-    function setBackingManager(IBackingManager val) public onlyRole(OWNER) {
+    function _setBackingManager(IBackingManager val) private {
         emit BackingManagerSet(backingManager, val);
         backingManager = val;
     }
 
     IDistributor public distributor;
 
-    function setDistributor(IDistributor val) public onlyRole(OWNER) {
+    function _setDistributor(IDistributor val) private {
         emit DistributorSet(distributor, val);
         distributor = val;
     }
 
     IRevenueTrader public rsrTrader;
 
-    function setRSRTrader(IRevenueTrader val) public onlyRole(OWNER) {
+    function _setRSRTrader(IRevenueTrader val) private {
         emit RSRTraderSet(rsrTrader, val);
         rsrTrader = val;
     }
 
     IRevenueTrader public rTokenTrader;
 
-    function setRTokenTrader(IRevenueTrader val) public onlyRole(OWNER) {
+    function _setRTokenTrader(IRevenueTrader val) private {
         emit RTokenTraderSet(rTokenTrader, val);
         rTokenTrader = val;
     }
 
     IFurnace public furnace;
 
-    function setFurnace(IFurnace val) public onlyRole(OWNER) {
+    function _setFurnace(IFurnace val) private {
         emit FurnaceSet(furnace, val);
         furnace = val;
     }
 
     IBroker public broker;
 
-    function setBroker(IBroker val) public onlyRole(OWNER) {
+    function _setBroker(IBroker val) private {
         emit BrokerSet(broker, val);
         broker = val;
     }

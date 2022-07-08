@@ -211,7 +211,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 before = allVestAt; // D18{block number}
         uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
         if (worst > before) before = worst;
-        finished = before + uint192((FIX_ONE_256 * amtRToken) / lastIssRate);
+
+        // ... - 1 + lastIssRate gives us division rounding up, instead of down.
+        finished = before + uint192((FIX_ONE_256 * amtRToken - 1 + lastIssRate) / lastIssRate);
         allVestAt = finished;
     }
 
@@ -413,12 +415,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[right - 1];
 
         // we could dedup this logic but it would take more SLOADS, so I think this is best
-        if (queue.left == 0) {
+        if (left == 0) {
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
             }
         } else {
-            IssueItem storage leftItem = queue.items[queue.left - 1];
+            IssueItem storage leftItem = queue.items[left - 1];
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }

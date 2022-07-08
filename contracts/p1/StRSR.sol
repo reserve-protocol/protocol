@@ -7,6 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpg
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
@@ -40,9 +41,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // Min exchange rate {qRSR/qStRSR}
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9 D18{1}
 
-    // Era. If ever there's a total RSR wipeout, increment the era to zero old balances in one step.
-    uint256 internal era;
-
     /// @param fromBlock The block number at which the exchange rate was first reached
     /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
     struct HistoricalExchangeRate {
@@ -60,10 +58,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
-    // era => (owner => (spender => {qStRSR}))
-    mapping(uint256 => mapping(address => mapping(address => uint256))) private _allowances;
-
     /// === Stakes (balances) ===
+    // Era. If stake balances are wiped out due to RSR seizure, increment the era to zero balances.
+    uint256 internal era;
 
     // Typically: "balances". These are the tokenized staking positions!
     // era => ({account} => {qStRSR})
@@ -71,21 +68,29 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal totalStakes; // Total of all stakes {qStRSR}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
     uint192 public stakeRate; // The exchange rate between stakes and RSR. {qStRSR/qRSR}
+    // invariant: either (totalStakes == 0, stakeRSR == 0, and stakeRate == FIX_ONE),
+    //            or (totalStakes > 0 and stakeRSR > 0)
+
+    // era => (owner => (spender => {qStRSR}))
+    mapping(uint256 => mapping(address => mapping(address => uint256))) private _allowances;
 
     // === Drafts ===
-
+    // Era. If drafts get wiped out due to RSR seizure, increment the era to zero draft values.
+    uint256 internal draftEra;
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {
         // Avoid re-using uint192 in order to avoid confusion with our type system; 176 is enough
         uint176 drafts; // Total amount of drafts that will become available // {qDraft}
         uint64 availableAt; // When the last of the drafts will become available
     }
-    // era => ({account} => {drafts})
+    // draftEra => ({account} => {drafts})
     mapping(uint256 => mapping(address => CumulativeDraft[])) public draftQueues; // {drafts}
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
     uint192 public draftRate; // The exchange rate between drafts and RSR. {qDrafts/qRSR}
+    // invariant: either (totalDrafts == 0, draftRSR == 0, and draftRate == FIX_ONE),
+    //            or (totalDrafts > 0 and draftRSR > 0)
 
     // === ERC20Permit ===
 
@@ -139,6 +144,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), FIX_ONE));
 
         beginEra();
+        beginDraftEra();
     }
 
     /// Assign reward payouts to the staker pool
@@ -211,8 +217,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
-        uint256 firstId = firstRemainingDraft[era][account];
-        CumulativeDraft[] storage queue = draftQueues[era][account];
+        uint256 firstId = firstRemainingDraft[draftEra][account];
+        CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         if (endId == 0 || firstId >= endId) return;
 
         require(endId <= queue.length, "index out-of-bounds");
@@ -222,7 +228,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 draftAmount = queue[endId - 1].drafts - oldDrafts;
 
         // advance queue past withdrawal
-        firstRemainingDraft[era][account] = endId;
+        firstRemainingDraft[draftEra][account] = endId;
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
@@ -235,14 +241,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         totalDrafts = newTotalDrafts;
         draftRSR = newDraftRSR;
 
-        emit UnstakingCompleted(firstId, endId, era, account, rsrAmount);
+        emit UnstakingCompleted(firstId, endId, draftEra, account, rsrAmount);
 
         // == Interaction ==
         IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
-    /// Must always seize exactly `rsrAmount`, or revert
+    /// Must seize at least `rsrAmount`, or revert
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
@@ -260,6 +266,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             // Rebase event: total RSR stake wipeout
             seizedRSR = rsrBalance;
             beginEra();
+            beginDraftEra();
         } else {
             uint256 rewards = rsrRewards();
 
@@ -267,12 +274,20 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
-            stakeRate = stakeRSR == 0 ? FIX_ONE : uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
+            if (stakeRSR == 0) {
+                beginEra();
+            } else {
+                stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
+            }
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             draftRSR -= draftRSRToTake;
             seizedRSR += draftRSRToTake;
-            draftRate = draftRSR == 0 ? FIX_ONE : uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
+            if (draftRSR == 0) {
+                beginDraftEra();
+            } else {
+                draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
+            }
 
             // Removing from unpaid rewards is implicit
             seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -295,10 +310,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ///     than linear search?
     function endIdForWithdraw(address account) external view returns (uint256) {
         uint256 time = block.timestamp;
-        CumulativeDraft[] storage queue = draftQueues[era][account];
+        CumulativeDraft[] storage queue = draftQueues[draftEra][account];
 
         // Bounds our search for the current cumulative draft
-        (uint256 left, uint256 right) = (firstRemainingDraft[era][account], queue.length);
+        (uint256 left, uint256 right) = (firstRemainingDraft[draftEra][account], queue.length);
 
         // If there are no drafts to be found, return 0 drafts
         if (left >= right) return right;
@@ -367,7 +382,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         totalDrafts = newTotalDrafts;
 
         // Push drafts into account's draft queue
-        CumulativeDraft[] storage queue = draftQueues[era][account];
+        CumulativeDraft[] storage queue = draftQueues[draftEra][account];
         index = queue.length;
 
         uint192 oldDrafts = index > 0 ? queue[index - 1].drafts : 0;
@@ -384,14 +399,20 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Overriden in StRSRVotes to handle rebases
     function beginEra() internal virtual {
         stakeRSR = 0;
-        draftRSR = 0;
         totalStakes = 0;
-        totalDrafts = 0;
         stakeRate = FIX_ONE;
-        draftRate = FIX_ONE;
         era++;
 
         emit AllBalancesReset(era);
+    }
+
+    function beginDraftEra() internal virtual {
+        draftRSR = 0;
+        totalDrafts = 0;
+        draftRate = FIX_ONE;
+        draftEra++;
+
+        emit AllUnstakingReset(draftEra);
     }
 
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.

@@ -363,24 +363,20 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       bal: BigNumber
     ): Promise<TestIFurnace> => {
       // Deploy fixture
-      ;({ main, rToken, backingManager } = await loadFixture(defaultFixture))
+      ;({ main, rToken, backingManager, furnace } = await loadFixture(defaultFixture))
 
-      const newConfig = JSON.parse(JSON.stringify(config))
-      newConfig.rewardPeriod = period
-      newConfig.rewardRatio = ratio
-      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
-
-      await main.connect(owner).setFurnace(newFurnace.address)
+      await furnace.connect(owner).setPeriod(period)
+      await furnace.connect(owner).setRatio(ratio)
 
       // Issue and send tokens to furnace
       if (bal.gt(bn('0'))) {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
-          await rToken.connect(bmSigner).mint(newFurnace.address, bal)
+          // Create new bal
+          await rToken.connect(bmSigner).mint(furnace.address, bal)
         })
       }
-      await newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
 
-      return newFurnace
+      return furnace
     }
 
     it('Should not revert at extremes', async () => {

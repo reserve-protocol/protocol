@@ -1099,7 +1099,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await rsr.connect(bmSigner).approve(distributor.address, distAmount)
         })
-        await distributor.distribute(rsr.address, backingManager.address, distAmount)
+        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount))
+          .to.emit(distributor, 'RevenueDistributed')
+          .withArgs(rsr.address, backingManager.address, distAmount)
 
         //  Check all funds distributed to StRSR
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)

@@ -14,11 +14,12 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  *   - MKR
  *   - ...
  *
- * Self-referential collateral cannot default
+ * Self-referential collateral cannot default, though it can become UNPRICED.
  */
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     // solhint-disable no-empty-blocks

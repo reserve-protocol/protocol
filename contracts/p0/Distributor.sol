@@ -71,6 +71,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
             }
             erc20.safeTransferFrom(from, addrTo, transferAmt);
         }
+        emit RevenueDistributed(erc20, from, amount);
     }
 
     /// Returns the rsr + rToken shareTotals

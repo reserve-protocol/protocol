@@ -19,6 +19,7 @@ contract Asset is IAsset {
 
     uint32 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(

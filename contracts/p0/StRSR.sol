@@ -256,6 +256,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             rsrBacking -= backingToTake;
             seizedRSR = backingToTake;
+            if (rsrBacking == 0) emit AllBalancesReset(era);
 
             for (uint256 i = 0; i < accounts.length(); i++) {
                 Withdrawal[] storage queue = withdrawals[accounts.at(i)];

@@ -80,71 +80,41 @@ interface IComponentRegistry {
 
     function rToken() external view returns (IRToken);
 
-    /// @custom:governance
-    function setRToken(IRToken rToken) external;
-
     event StRSRSet(IStRSR indexed oldVal, IStRSR indexed newVal);
 
     function stRSR() external view returns (IStRSR);
-
-    /// @custom:governance
-    function setStRSR(IStRSR stRSR) external;
 
     event AssetRegistrySet(IAssetRegistry indexed oldVal, IAssetRegistry indexed newVal);
 
     function assetRegistry() external view returns (IAssetRegistry);
 
-    /// @custom:governance
-    function setAssetRegistry(IAssetRegistry val) external;
-
     event BasketHandlerSet(IBasketHandler indexed oldVal, IBasketHandler indexed newVal);
 
     function basketHandler() external view returns (IBasketHandler);
-
-    /// @custom:governance
-    function setBasketHandler(IBasketHandler val) external;
 
     event BackingManagerSet(IBackingManager indexed oldVal, IBackingManager indexed newVal);
 
     function backingManager() external view returns (IBackingManager);
 
-    /// @custom:governance
-    function setBackingManager(IBackingManager val) external;
-
     event DistributorSet(IDistributor indexed oldVal, IDistributor indexed newVal);
 
     function distributor() external view returns (IDistributor);
-
-    /// @custom:governance
-    function setDistributor(IDistributor val) external;
 
     event RSRTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
 
     function rsrTrader() external view returns (IRevenueTrader);
 
-    /// @custom:governance
-    function setRSRTrader(IRevenueTrader rsrTrader) external;
-
     event RTokenTraderSet(IRevenueTrader indexed oldVal, IRevenueTrader indexed newVal);
 
     function rTokenTrader() external view returns (IRevenueTrader);
-
-    /// @custom:governance
-    function setRTokenTrader(IRevenueTrader rTokenTrader) external;
 
     event FurnaceSet(IFurnace indexed oldVal, IFurnace indexed newVal);
 
     function furnace() external view returns (IFurnace);
 
-    /// @custom:governance
-    function setFurnace(IFurnace furnace) external;
-
     event BrokerSet(IBroker indexed oldVal, IBroker indexed newVal);
 
     function broker() external view returns (IBroker);
-
-    /// @custom:governance
-    function setBroker(IBroker broker) external;
 }
 
 /**
