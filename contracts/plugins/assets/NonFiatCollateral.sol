@@ -95,6 +95,8 @@ contract NonFiatCollateral is Collateral {
 
                 // {target/ref}
                 uint192 peg = targetPerRef();
+
+                // D18{target/ref}= D18{target/ref} * D18{1} / D18
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
                 // If the price is below the default-threshold price, default eventually

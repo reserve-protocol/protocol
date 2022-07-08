@@ -68,9 +68,12 @@ contract FiatCollateral is Collateral {
 
             // {UoA/ref} = {UoA/target} * {target/ref}
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+
+            // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
             uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
 
             // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
             if (p < peg - delta || p > peg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
