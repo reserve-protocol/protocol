@@ -28,11 +28,9 @@ let owner: SignerWithAddress
 let addr1: SignerWithAddress
 let addr2: SignerWithAddress
 
-describe(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
-  if (!process.env.FORK) {
-    return
-  }
+const describeFork = process.env.FORK ? describe : describe.skip
 
+describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
   let config: IConfig
 
   let rsr: ERC20Mock
