@@ -1303,7 +1303,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
 
       const dustAmt = bn('20e9')
-      const toSeize = amount.mul(2).sub(dustAmt)
+      const toSeize = amount.mul(2).sub(dustAmt).add(1)
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -1344,7 +1344,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
 
       const dustAmt = bn('20e9')
-      const toSeize = amount.mul(2).sub(dustAmt).sub(1)
+      const toSeize = amount.mul(2).sub(dustAmt)
 
       // Seize all but dustAmt qRSR
       await whileImpersonating(backingManager.address, async (signer) => {

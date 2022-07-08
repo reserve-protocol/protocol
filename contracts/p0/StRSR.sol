@@ -238,34 +238,41 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
 
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount + dustRSRAmt) {
+        if (rsrBalance == rsrAmount) {
             // Everyone's wiped out! Doom! Mayhem!
             // Zero all balances and withdrawals
             seizedRSR = rsrBalance;
-            rsrBacking = 0;
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                address account = accounts.at(i);
-                delete withdrawals[account];
-                balances[account] = 0;
-            }
-            totalStaked = 0;
-            era++;
-            emit AllBalancesReset(era);
+            bankruptStakers();
+            bankruptWithdrawals();
         } else {
             // Remove RSR evenly from stakers, withdrawals, and the reward pool
             uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            rsrBacking -= backingToTake;
-            seizedRSR = backingToTake;
-            if (rsrBacking == 0) emit AllBalancesReset(era);
 
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                Withdrawal[] storage queue = withdrawals[accounts.at(i)];
-                for (uint256 j = 0; j < queue.length; j++) {
-                    uint256 withdrawAmt = queue[j].rsrAmount;
-                    uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-                    queue[j].rsrAmount -= amtToTake;
+            // If the resulting (amount of RSR backing the staking pool / supply of stRSR)
+            // is less than MIN_EXCHANGE_RATE, then just bankrupt stakers instead.
+            if (rsrBacking - backingToTake < MIN_EXCHANGE_RATE * totalStaked) {
+                seizedRSR = bankruptStakers();
+            } else {
+                rsrBacking -= backingToTake;
+                seizedRSR = backingToTake;
+            }
 
-                    seizedRSR += amtToTake;
+            // Ditto for RSR being withdrawn
+            uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
+                rsrBalance;
+
+            if (rsrBeingWithdrawn() - withdrawalRSRtoTake < MIN_EXCHANGE_RATE * stakeBeingWithdrawn()) {
+                seizedRSR = bankruptWithdrawals();
+            } else {
+                for (uint256 i = 0; i < accounts.length(); i++) {
+                    Withdrawal[] storage queue = withdrawals[accounts.at(i)];
+                    for (uint256 j = 0; j < queue.length; j++) {
+                        uint256 withdrawAmt = queue[j].rsrAmount;
+                        uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+                        queue[j].rsrAmount -= amtToTake;
+
+                        seizedRSR += amtToTake;
+                    }
                 }
             }
 
@@ -279,6 +286,26 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
+    }
+
+    function bankruptStakers() internal returns (uint256 seizedRSR) {
+        seizedRSR = rsrBacking;
+        rsrBacking = 0;
+        totalStaked = 0;
+        era++;
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            address account = accounts.at(i);
+            balances[account] = 0;
+        }
+        emit AllBalancesReset(era);
+    }
+
+    function bankruptWithdrawals() internal returns (uint256 seizedRSR) {
+        seizedRSR = rsrBeingWithdrawn();
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            address account = accounts.at(i);
+            delete withdrawals[account];
+        }
     }
 
     function exchangeRate() public view returns (uint192) {

@@ -38,9 +38,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * a new era begins.
      */
 
-    // Min exchange rate {qRSR/qStRSR}
-    uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9 D18{1}
-
     /// @param fromBlock The block number at which the exchange rate was first reached
     /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
     struct HistoricalExchangeRate {
@@ -71,6 +68,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // invariant: either (totalStakes == 0, stakeRSR == 0, and stakeRate == FIX_ONE),
     //            or (totalStakes > 0 and stakeRSR > 0)
 
+    uint192 private constant MAX_STAKE_RATE = 1e27; // 1e9 D18{qStRSR/qRSR}
+
     // era => (owner => (spender => {qStRSR}))
     mapping(uint256 => mapping(address => mapping(address => uint256))) private _allowances;
 
@@ -91,6 +90,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 public draftRate; // The exchange rate between drafts and RSR. {qDrafts/qRSR}
     // invariant: either (totalDrafts == 0, draftRSR == 0, and draftRate == FIX_ONE),
     //            or (totalDrafts > 0 and draftRSR > 0)
+
+    uint192 private constant MAX_DRAFT_RATE = 1e27; // 1e9 D18{qDrafts/qRSR}
+
 
     // === ERC20Permit ===
 
@@ -260,9 +262,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (rsrBalance == 0) return;
 
         // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 dustRSRAmt = (MIN_EXCHANGE_RATE * (totalDrafts + totalStakes)) / FIX_ONE; // {qRSR}
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount + dustRSRAmt) {
+        if (rsrBalance <= rsrAmount) {
             // Rebase event: total RSR stake wipeout
             seizedRSR = rsrBalance;
             beginEra();
@@ -274,10 +275,17 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             uint256 stakeRSRToTake = (stakeRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             stakeRSR -= stakeRSRToTake;
             seizedRSR = stakeRSRToTake;
+
             if (stakeRSR == 0) {
                 beginEra();
             } else {
                 stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
+
+                // if stakeRate is now absurdly high, just take all the stakeRSR and start over.
+                if (stakeRate > MAX_STAKE_RATE) {
+                    seizedRSR += stakeRSR;
+                    beginEra();
+                }
             }
 
             uint256 draftRSRToTake = (draftRSR * rsrAmount + (rsrBalance - 1)) / rsrBalance;
@@ -287,6 +295,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
                 beginDraftEra();
             } else {
                 draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
+
+                if (draftRate > MAX_DRAFT_RATE) {
+                    seizedRSR += draftRSR;
+                    beginDraftEra();
+                }
             }
 
             // Removing from unpaid rewards is implicit
