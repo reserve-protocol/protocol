@@ -2,11 +2,12 @@ import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
+import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
 import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
-import { Collateral, defaultFixture } from '../fixtures'
+import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -163,6 +164,15 @@ describe('Assets contracts #fast', () => {
       await expect(rsrAsset.price()).to.be.revertedWith('PriceOutsideRange()')
       await expect(compAsset.price()).to.be.revertedWith('PriceOutsideRange()')
       await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+    })
+
+    it('Should revert if price is stale', async () => {
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Check new prices
+      await expect(rsrAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
     })
   })
   describe('Constructor validation', () => {

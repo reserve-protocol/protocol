@@ -21,7 +21,7 @@ import {
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { setOraclePrice } from '../utils/oracles'
-import { Collateral, defaultFixture } from '../fixtures'
+import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -388,116 +388,27 @@ describe('Collateral contracts', () => {
       }
     })
 
-    // TODO consider if keeping
-    //   it('Reverts on update status when price function fails', async () => {
-    //     // Deploy invalid Compound Oracle
-    //     const InvalidCompoundOracleFactory: ContractFactory = await ethers.getContractFactory(
-    //       'InvalidCompoundOracleMock'
-    //     )
-    //     const invalidCompoundOracle: InvalidCompoundOracleMock = <InvalidCompoundOracleMock>(
-    //       await InvalidCompoundOracleFactory.deploy()
-    //     )
+    it('Reverts if price is stale', async () => {
+      await advanceTime(ORACLE_TIMEOUT.toString())
 
-    //     const ComptrollerMockFactory: ContractFactory = await ethers.getContractFactory(
-    //       'ComptrollerMock'
-    //     )
-    //     const invalidCompoundMock: ComptrollerMock = <ComptrollerMock>(
-    //       await ComptrollerMockFactory.deploy(invalidCompoundOracle.address)
-    //     )
+      // Check new prices
+      await expect(usdcCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cTokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(aTokenCollateral.price()).to.be.revertedWith('StalePrice()')
+    })
 
-    //     // Deply invalid  AaveOracle
-    //     const InvalidAaveOracleFactory: ContractFactory = await ethers.getContractFactory(
-    //       'InvalidAaveOracleMock'
-    //     )
-    //     const invalidAaveOracle: InvalidAaveOracleMock = <InvalidAaveOracleMock>(
-    //       await InvalidAaveOracleFactory.deploy(ZERO_ADDRESS)
-    //     )
-
-    //     const AaveAddrProviderFactory: ContractFactory = await ethers.getContractFactory(
-    //       'AaveLendingAddrProviderMock'
-    //     )
-    //     const invalidAaveAddrProvider: AaveLendingAddrProviderMock = <AaveLendingAddrProviderMock>(
-    //       await AaveAddrProviderFactory.deploy(invalidAaveOracle.address)
-    //     )
-
-    //     const AaveLendingPoolMockFactory: ContractFactory = await ethers.getContractFactory(
-    //       'AaveLendingPoolMock'
-    //     )
-    //     const invalidAaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
-    //       await AaveLendingPoolMockFactory.deploy(invalidAaveAddrProvider.address)
-    //     )
-
-    //     // Deploy invalid collaterals to revert/fail
-    //     const AaveFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-    //       'AavePricedFiatCollateral'
-    //     )
-    //     const invalidTokenAsset: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-    //       await AaveFiatCollFactory.deploy(
-    //         token.address,
-    //         await tokenCollateral.maxTradeVolume(),
-    //         await tokenCollateral.defaultThreshold(),
-    //         await tokenCollateral.delayUntilDefault(),
-    //         compoundMock.address,
-    //         invalidAaveMock.address
-    //       )
-    //     )
-
-    //     const ATokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-    //       'ATokenFiatCollateral'
-    //     )
-    //     const invalidATokenAsset: ATokenFiatCollateral = <ATokenFiatCollateral>(
-    //       await ATokenFiatCollFactory.deploy(
-    //         aToken.address,
-    //         await aTokenCollateral.maxTradeVolume(),
-    //         await aTokenCollateral.defaultThreshold(),
-    //         await aTokenCollateral.delayUntilDefault(),
-    //         await aTokenCollateral.referenceERC20(),
-    //         compoundMock.address,
-    //         invalidAaveMock.address,
-    //         await aTokenCollateral.rewardERC20()
-    //       )
-    //     )
-
-    //     const CTokenFiatCollFactory: ContractFactory = await ethers.getContractFactory(
-    //       'CTokenFiatCollateral'
-    //     )
-    //     const invalidCTokenAsset: CTokenFiatCollateral = <CTokenFiatCollateral>(
-    //       await CTokenFiatCollFactory.deploy(
-    //         cToken.address,
-    //         await cTokenCollateral.maxTradeVolume(),
-    //         await cTokenCollateral.defaultThreshold(),
-    //         await cTokenCollateral.delayUntilDefault(),
-    //         await cTokenCollateral.referenceERC20(),
-    //         invalidCompoundMock.address,
-    //         await cTokenCollateral.rewardERC20()
-    //       )
-    //     )
-
-    //     const invalidCollaterals = [invalidTokenAsset, invalidATokenAsset, invalidCTokenAsset]
-    //     for (const coll of invalidCollaterals) {
-    //       // Check initial state
-    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
-
-    //       // Attempt to update status - assertion failed (Panic)
-    //       await invalidAaveOracle.setShouldFailAssert(true)
-    //       await invalidCompoundOracle.setShouldFailAssert(true)
-    //       await expect(coll.refresh()).to.be.reverted
-
-    //       // No changes
-    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
-
-    //       // Attempt to update status - Revert
-    //       await invalidAaveOracle.setShouldFailAssert(false)
-    //       await invalidCompoundOracle.setShouldFailAssert(false)
-    //       await expect(coll.refresh()).to.be.reverted
-
-    //       // No changes
-    //       expect(await coll.status()).to.equal(CollateralStatus.SOUND)
-    //       expect(await coll.whenDefault()).to.equal(MAX_UINT256)
-    //     }
-    //   })
+    it('Enters UNPRICED state when price becomes stale', async () => {
+      await advanceTime(ORACLE_TIMEOUT.toString())
+      await usdcCollateral.refresh()
+      await tokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+      await aTokenCollateral.refresh()
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
   })
 
   describe('Rewards', () => {

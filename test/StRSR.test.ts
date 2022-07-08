@@ -29,7 +29,14 @@ import {
   setNextBlockTimestamp,
 } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, Implementation, IMPLEMENTATION, SLOW } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+  SLOW,
+  ORACLE_TIMEOUT,
+} from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
@@ -286,7 +293,25 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused')
+      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
+
+      // Check deposit not registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+    })
+
+    it('Should not allow to stake if Main is Frozen', async () => {
+      // Perform stake
+      const amount: BigNumber = bn('1000e18')
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Approve transfer and stake
+      await rsr.connect(addr1).approve(stRSR.address, amount)
+      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
 
       // Check deposit not registered
       expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
@@ -362,6 +387,16 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Unstake with no stakes/balance
       await expect(stRSR.connect(addr1).unstake(amount)).to.be.revertedWith('Not enough balance')
+    })
+
+    it('Should not unstake if paused', async () => {
+      await main.connect(owner).pause()
+      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not unstake if frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
     })
 
     it('Should create Pending withdrawal when unstaking', async () => {
@@ -485,7 +520,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await stRSR.connect(addr1).unstake(amount1)
       })
 
-      it('Should revert withdraw/unstake if Main is paused', async () => {
+      it('Should revert withdraw if Main is paused', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)
 
@@ -496,13 +531,40 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await main.connect(owner).pause()
 
         // Withdraw
-        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith('paused')
-
-        // You cannot unstake also in this situation
-        await expect(stRSR.connect(addr2).unstake(amount2)).to.be.revertedWith('paused')
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'paused or frozen'
+        )
 
         // If unpaused should withdraw OK
         await main.connect(owner).unpause()
+
+        // Withdraw
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+        // Withdrawal was completed
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      })
+
+      it('Should revert withdraw if Main is frozen', async () => {
+        // Get current balance for user
+        const prevAddr1Balance = await rsr.balanceOf(addr1.address)
+
+        // Move forward past stakingWithdrawalDelay
+        await advanceTime(stkWithdrawalDelay + 1)
+
+        // Freeze Main
+        await main.connect(owner).freeze()
+
+        // Withdraw
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'paused or frozen'
+        )
+
+        // If unpaused should withdraw OK
+        await main.connect(owner).unfreeze()
 
         // Withdraw
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
@@ -575,6 +637,22 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+        // Attempt to Withdraw
+        await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
+          'basket defaulted'
+        )
+
+        // Nothing completed
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      })
+
+      it('Should not complete withdrawal if UNPRICED collateral', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        await collateral1.refresh()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.UNPRICED)
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
@@ -810,6 +888,22 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
+    it('Rewards should not be handed out when paused', async () => {
+      await main.connect(owner).pause()
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Rewards should not be handed out when frozen', async () => {
+      await main.connect(owner).freeze()
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+    })
+
     it('Should allow to add RSR - Single staker', async () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
@@ -941,14 +1035,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Remove RSR #fast', () => {
-    it('Should not allow to remove RSR if caller is not part of Main', async () => {
-      const amount: BigNumber = bn('1e18')
-      const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
-
-      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
-    })
-
     it('Should not allow to remove RSR if caller is not backing manager', async () => {
       const amount: BigNumber = bn('1e18')
       const prevPoolBalance: BigNumber = await rsr.balanceOf(stRSR.address)
@@ -958,8 +1044,24 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           'not backing manager'
         )
       })
-
       expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+
+      await expect(stRSR.connect(other).seizeRSR(amount)).to.be.revertedWith('not backing manager')
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(prevPoolBalance)
+    })
+
+    it('Should not allow to remove RSR if paused', async () => {
+      await main.connect(owner).pause()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
+      })
+    })
+
+    it('Should not allow to remove RSR if frozen', async () => {
+      await main.connect(owner).freeze()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
+      })
     })
 
     it('Should not allow to remove RSR if amount is zero', async () => {
@@ -1017,6 +1119,50 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.totalSupply()).to.equal(amount)
       expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+    })
+
+    it('Seize RSR - Single staker after giant unstaking', async () => {
+      // Regression for TOB-RES-11
+
+      const all = bn('10000e18')
+      const most = all.sub(1)
+      const toSeize = bn('9999e18')
+
+      // Stake all
+      await rsr.connect(addr1).approve(stRSR.address, all)
+      await stRSR.connect(addr1).stake(all)
+
+      // Check balances and stakes
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(all)
+      expect(await stRSR.totalSupply()).to.equal(all)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(0)
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(all)
+      expect(await stRSR.exchangeRate()).to.equal(fp(1))
+
+      // Start to unstake most
+      await stRSR.connect(addr1).unstake(most)
+
+      // Again, check expected balances
+      expect(await stRSR.totalSupply()).to.equal(1) // That's not a lot!
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(all)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(0)
+
+      // Seize most
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await stRSR.connect(signer).seizeRSR(toSeize)
+      })
+
+      // Ensure seizure actually happened
+      const rsrBal = await rsr.balanceOf(stRSR.address)
+      expect(rsrBal).lte(all.sub(toSeize)) // Expect to have seized all of the toSeize amount
+      expect(rsrBal).gte(all.sub(toSeize).sub(10)) // And no more than a little more.
+
+      // Test for the TOB-RES-11 failure -- the above unstaking would leave stakeBal nonzero,
+      // but unable to be unstaked.
+      const stakeBal = await stRSR.balanceOf(addr1.address)
+      if (stakeBal.gt(0)) {
+        await stRSR.connect(addr1).unstake(stakeBal)
+      }
     })
 
     it('Should allow to remove RSR - Two stakers - Rounded values', async () => {

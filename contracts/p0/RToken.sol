@@ -149,9 +149,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction
-    function cancel(uint256 endId, bool earliest) external notPausedOrFrozen {
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         // Call collective state keepers.
-        main.poke();
+        // notFrozen modifier requires we use only a subset of main.poke()
+        main.assetRegistry().refresh();
+
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         address account = _msgSender();
 
@@ -212,7 +216,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
-        main.poke();
+        // notFrozen modifier requires we use only a subset of main.poke()
+        main.assetRegistry().refresh();
+
+        // Failure to melt results in a lower redemption price, so we can allow it when paused
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");

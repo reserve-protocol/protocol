@@ -178,6 +178,42 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
     })
 
+    it('Should not allow to open trade if paused', async () => {
+      await main.connect(owner).pause()
+
+      // Attempt to open trade
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
+    it('Should not allow to open trade if frozen', async () => {
+      await main.connect(owner).pause()
+
+      // Attempt to open trade
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
     it('Should not allow to open trade if not a component', async () => {
       const amount: BigNumber = bn('100e18')
 
