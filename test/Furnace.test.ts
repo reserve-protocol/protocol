@@ -181,6 +181,16 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr2).issue(issueAmount)
     })
 
+    it('Should not melt if paused', async () => {
+      await main.connect(owner).pause()
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not melt if frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
+    })
+
     it('Should not melt any funds in the initial block', async () => {
       const hndAmt: BigNumber = bn('2e18')
 

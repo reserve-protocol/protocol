@@ -290,7 +290,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external notPausedOrFrozen {
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -320,7 +320,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Allow redemption during IFFY + UNPRICED
         require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
-        main.furnace().melt();
+        // Failure to melt results in a lower redemption price, so we can allow it when paused
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
+
         uint192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}

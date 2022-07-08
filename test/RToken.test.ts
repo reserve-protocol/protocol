@@ -34,6 +34,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   SLOW,
+  ORACLE_TIMEOUT,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
@@ -251,10 +252,122 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not issue RTokens if frozen', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if paused', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'paused or frozen'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if frozen', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'paused or frozen'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if UNPRICED collateral', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'collateral default'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not be able to cancel vesting if frozen', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('frozen')
+    })
+
+    it('Should be able to cancel vesting if paused', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Cancel
+      await rToken.connect(addr1).cancel(1, true)
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -1283,6 +1396,29 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
+      it('Should redeem if basket is UNPRICED #fast', async function () {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should redeem if paused #fast', async function () {
+        await main.connect(owner).pause()
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should not redeem if frozen #fast', async function () {
+        await main.connect(owner).freeze()
+
+        // Try to redeem
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('frozen')
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
+
       it('Should revert if basket is DISABLED #fast', async function () {
         // Default immediately
         await token3.setExchangeRate(fp('0.999999'))
@@ -1290,17 +1426,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
           'collateral default'
         )
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
-      })
-
-      it('Should not redeem if paused', async function () {
-        // Pause Main
-        await main.connect(owner).pause()
-
-        // Try to redeem
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
-
-        // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })
@@ -1324,6 +1449,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issue tokens
       await rToken.connect(addr1).issue(issueAmount)
+    })
+
+    it('Should not melt if paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not melt if frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
     })
 
     it('Should allow to melt tokens if caller', async () => {
@@ -1364,6 +1499,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           'not backing manager'
         )
       })
+    })
+  })
+
+  describe('Reward Claiming #fast', () => {
+    it('should not claim rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not claim rewards when frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
     })
   })
   context(`Extreme Values`, () => {

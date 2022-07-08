@@ -252,6 +252,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
+      await token0.setCensored(rToken.address, false)
       await rToken.connect(addr2).issue(issueAmt)
     })
 
@@ -261,6 +262,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
+      await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
       await rToken.connect(addr2).issue(issueAmt)
     })
@@ -270,6 +272,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
+      await token0.setCensored(rToken.address, false)
       await rToken.connect(addr1).redeem(issueAmt)
     })
 

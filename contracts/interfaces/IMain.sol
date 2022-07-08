@@ -62,7 +62,7 @@ interface IAuth {
     event PausedSet(bool indexed oldVal, bool indexed newVal);
 
     /**
-     * Paused = Everything is disabled except for OWNER actions and redemption
+     * Paused = Everything is disabled except for OWNER actions and RToken.redeem/cancel
      * Frozen = Everything disabled except for OWNER actions
      */
 
