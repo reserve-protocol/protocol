@@ -19,3 +19,10 @@ export const getChainId = async (hre: HardhatRuntimeEnvironment) => {
   }
   return _chainId
 }
+
+export const isValidContract = async (
+  hre: HardhatRuntimeEnvironment,
+  contractAddr: string
+): Promise<boolean> => {
+  return (await hre.ethers.provider.getCode(contractAddr)) != '0x'
+}
