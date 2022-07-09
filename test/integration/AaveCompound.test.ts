@@ -72,7 +72,7 @@ const setup = async (blockNumber: number) => {
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
 
   // Assets
@@ -236,7 +236,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
-    it('Should setup collaterals correctly - Fiatcoins', async () => {
+    it('Should setup collateral correctly - Fiatcoins', async () => {
       // Define interface required for each fiat coin
       interface TokenInfo {
         token: ERC20Mock
@@ -292,7 +292,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collaterals correctly - Compound', async () => {
+    it('Should setup collateral correctly - CTokens', async () => {
       // Define interface required for each ctoken
       interface CTokenInfo {
         token: ERC20Mock
@@ -356,7 +356,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collaterals correctly - AAve', async () => {
+    it('Should setup collateral correctly - ATokens', async () => {
       // Define interface required for each aToken
       interface ATokenInfo {
         token: ERC20Mock
@@ -367,7 +367,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         aTokenCollateral: ATokenFiatCollateral
       }
 
-      // Aave - aUSDC, aUSDT, and aBUSD
+      // aUSDC, aUSDT, and aBUSD
       const aTokenInfos: ATokenInfo[] = [
         {
           token: dai,
@@ -456,7 +456,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
         await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
-      const nonpriceAaveAsset: Asset = <Asset>(
+      const nonpriceAsset: Asset = <Asset>(
         await (
           await ethers.getContractFactory('Asset')
         ).deploy(
@@ -468,26 +468,11 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       )
 
-      const nonpriceCompoundAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          NO_PRICE_DATA_FEED,
-          nonpriceToken.address,
-          compToken.address,
-          config.maxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
-      )
-
-      // Aave - Assets with no price info return 0 , so they revert with Invalid Price
-      await expect(nonpriceAaveAsset.price()).to.be.reverted
-
-      // Compound - Assets with no price info revert with also with token config not found
-      await expect(nonpriceCompoundAsset.price()).to.be.reverted
+      // Assets with no price info return 0 , so they revert with Invalid Price
+      await expect(nonpriceAsset.price()).to.be.reverted
     })
 
-    it('Should handle invalid Price - Collaterals - Fiat', async () => {
+    it('Should handle invalid Price - Collateral - Fiat', async () => {
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
@@ -496,8 +481,8 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
-      // Fiat collateral - Aave
-      const nonpriceAaveCollateral: FiatCollateral = <FiatCollateral>await (
+      // Fiat collateral
+      const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -512,44 +497,21 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         delayUntilDefault
       )
 
-      // Fiat Collateral - Compound
-      const nonpriceCompoundCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        nonpriceToken.address,
-        compToken.address,
-        config.maxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Aave - Collateral with no price info return 0, so they revert with Invalid Price
-      await expect(nonpriceAaveCollateral.price()).to.be.reverted
+      // Collateral with no price info return 0, so they revert with Invalid Price
+      await expect(nonPriceCollateral.price()).to.be.reverted
 
       // Refresh should mark status UNPRICED
-      await nonpriceAaveCollateral.refresh()
-      expect(await nonpriceAaveCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      await nonPriceCollateral.refresh()
+      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      // Compound - Assets with no price info revert with token config not found
-      await expect(nonpriceCompoundCollateral.price()).to.be.reverted
-
-      // Refresh should mark status UNPRICED
-      await nonpriceCompoundCollateral.refresh()
-      expect(await nonpriceCompoundCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
 
-    it('Should handle invalid Price - Collaterals - AToken/CToken', async () => {
+    it('Should handle invalid Price - Collateral - AToken/CToken', async () => {
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
@@ -633,6 +595,100 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Refresh should mark status UNPRICED
       await nonpriceCtokenCollateral.refresh()
       expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should detect stale price after ORACLE_TIMEOUT - all collateral', async () => {
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+      const oracleTimeout = bn('86400') // 24h
+
+      // Setup Collateral with valid price - Use DAI token
+      const underlyingToken: ERC20Mock = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
+      )
+
+      // Fiat collateral
+      const fiatCollateral: FiatCollateral = <FiatCollateral>await (
+        await ethers.getContractFactory('FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        underlyingToken.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Wrap in Static AToken (use mock in this case)
+      const staticNonPriceErc20: StaticATokenMock = <StaticATokenMock>(
+        await (
+          await ethers.getContractFactory('StaticATokenMock')
+        ).deploy(
+          'static ' + (await underlyingToken.name()),
+          'stat' + (await underlyingToken.symbol()),
+          underlyingToken.address
+        )
+      )
+
+      // AToken collateral
+      const aTokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+        await ethers.getContractFactory('ATokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        staticNonPriceErc20.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Setup CToken (use mock for this purpose)
+      const cToken: CTokenMock = <CTokenMock>(
+        await (
+          await ethers.getContractFactory('CTokenMock')
+        ).deploy(
+          'c' + (await underlyingToken.name()),
+          'c' + (await underlyingToken.symbol()),
+          underlyingToken.address
+        )
+      )
+
+      // CTokens Collateral
+      const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        cToken.address,
+        compToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        await underlyingToken.decimals(),
+        compoundMock.address
+      )
+
+      // Advance time past oracleTimeout
+      await advanceTime(oracleTimeout.toString())
+      await fiatCollateral.refresh()
+      await aTokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+
+      // Should be UNPRICED
+      expect(await fiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -771,7 +827,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDai.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
 
       // Provide approvals
@@ -789,7 +845,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Check Balances after
       expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
-      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 95.95% of 2.5K needed (25% of basket)
+      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 93.21% of 2.5K needed (25% of basket)
       expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
         issueAmtAToken,
         fp('1')
@@ -801,7 +857,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
         initialBalAToken.sub(issueAmtAToken),
-        fp('1')
+        fp('1.5')
       )
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 8).mul(100).sub(requiredCTokens),
@@ -832,7 +888,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Check funds returned to user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 8).mul(100),
         bn('1e7')
@@ -989,7 +1045,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
 
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
@@ -1015,6 +1071,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
+  // Skip explanation:
+  // - Aave hasn't run their reward program in a while
+  // - We don't expect them to soon
+  // - Rewards can always be collected later through a plugin upgrade
   describe.skip('Claim Rewards', () => {
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
