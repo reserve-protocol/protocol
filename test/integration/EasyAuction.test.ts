@@ -46,7 +46,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
   let basket: Collateral[]
   let collateral: Collateral[]
+  let collateral0: Collateral
   let token0: ERC20Mock
+  let token1: ERC20Mock
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -77,6 +79,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
     } = await loadFixture(defaultFixture))
 
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
+    token1 = <ERC20Mock>erc20s[collateral.indexOf(basket[1])]
+    collateral0 = collateral[0]
   })
 
   context('RSR -> token0', function () {
@@ -434,6 +438,84 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+    })
+  })
+
+  context('token0 -> token1', function () {
+    let issueAmount: BigNumber
+    let sellAmt: BigNumber
+
+    // Set up a basket of just token0
+    beforeEach(async function () {
+      issueAmount = bn('10000e18')
+
+      // Set prime basket
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), 1, [
+          token0.address,
+          token1.address,
+        ])
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Issue
+      await token0.connect(owner).mint(addr1.address, issueAmount)
+      await token1.connect(owner).mint(addr1.address, issueAmount)
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Check initial state
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rToken.price()).to.equal(fp('1'))
+    })
+
+    it('should handle minBuyAmount = 0', async () => {
+      // Default collateral0
+      await setOraclePrice(collateral0.address, bn('0.5e8')) // depeg
+      await collateral0.refresh()
+      await advanceTime((await collateral0.delayUntilDefault()).toString())
+      await basketHandler.refreshBasket()
+
+      // Should launch auction for token1
+      await backingManager.manageTokens([token0.address])
+
+      // Check auction opened even at minBuyAmount = 0
+      await expectTrade(backingManager, {
+        sell: token0.address,
+        buy: token1.address,
+      })
+      const auctionId = await getAuctionId(backingManager, token0.address)
+
+      // Bid
+      const bidAmt = issueAmount
+      await token1.connect(addr1).approve(easyAuction.address, bidAmt)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(
+          auctionId,
+          [issueAmount],
+          [bidAmt],
+          [QUEUE_START],
+          ethers.constants.HashZero
+        )
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction
+      await expectEvents(backingManager.settleTrade(token0.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [token0.address, token1.address, issueAmount, issueAmount],
+          emitted: true,
+        },
+      ])
     })
   })
 })

@@ -7,9 +7,9 @@ export const expectTrade = async (trader: TestITrading, auctionInfo: Partial<ITr
   if (!auctionInfo.sell) throw new Error('Must provide sell token to find trade')
   const trade = await getTrade(trader, auctionInfo.sell as string)
   expect(await trade.sell()).to.equal(auctionInfo.sell)
-  expect(await trade.buy()).to.equal(auctionInfo.buy)
-  expect(await trade.endTime()).to.equal(auctionInfo.endTime)
-  expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
+  if (auctionInfo.buy) expect(await trade.buy()).to.equal(auctionInfo.buy)
+  if (auctionInfo.endTime) expect(await trade.endTime()).to.equal(auctionInfo.endTime)
+  if (auctionInfo.externalId) expect(await trade.auctionId()).to.equal(auctionInfo.externalId)
 }
 
 export const getTrade = async (trader: TestITrading, sellAddr: string): Promise<GnosisTrade> => {
