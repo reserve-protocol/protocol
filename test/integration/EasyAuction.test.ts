@@ -8,7 +8,7 @@ import { expectEvents } from '../../common/events'
 import { IConfig } from '../../common/configuration'
 import { CollateralStatus, QUEUE_START } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { expectTrade, getAuctionId } from '../utils/trades'
+import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import {
   EasyAuction,
@@ -179,31 +179,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
     })
 
-    it('no volume -- no bids', async () => {
-      // Advance time till auction ended
-      await advanceTime(config.auctionLength.add(100).toString())
-
-      // End current auction, should restart
-      await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
-        {
-          contract: backingManager,
-          name: 'TradeSettled',
-          args: [rsr.address, token0.address, 0, 0],
-          emitted: true,
-        },
-        {
-          contract: backingManager,
-          name: 'TradeStarted',
-          args: [rsr.address, token0.address, sellAmt, buyAmt],
-          emitted: true,
-        },
-      ])
-    })
-
-    it('no volume -- below worst-case price', async () => {
-      const bidAmt = buyAmt.div(2).sub(1)
-      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
-
+    it('no volume', async () => {
       // Advance time till auction ended
       await advanceTime(config.auctionLength.add(100).toString())
 
@@ -354,6 +330,36 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
     })
 
+    it('full volume -- bid at 2x price', async () => {
+      const bidAmt = buyAmt.add(1)
+      sellAmt = sellAmt.div(2)
+      await token0.connect(addr1).approve(easyAuction.address, bidAmt)
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(auctionId, [sellAmt], [bidAmt], [QUEUE_START], ethers.constants.HashZero)
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction -- should trade at lower worst-case price
+      await expectEvents(backingManager.settleTrade(rsr.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [rsr.address, token0.address, sellAmt.mul(2), bidAmt],
+          emitted: true,
+        },
+      ])
+
+      // Check state - Should be undercapitalized
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+    })
+
     it('/w non-trivial prices', async () => {
       // End first auction, since it is at old prices
       await advanceTime(config.auctionLength.add(100).toString())
@@ -443,7 +449,6 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
   context('token0 -> token1', function () {
     let issueAmount: BigNumber
-    let sellAmt: BigNumber
 
     // Set up a basket of just token0
     beforeEach(async function () {
@@ -474,7 +479,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await rToken.price()).to.equal(fp('1'))
     })
 
-    it('should handle minBuyAmount = 0', async () => {
+    it('should be able to scoop entire auction when minBuyAmount = 0', async () => {
       // Default collateral0
       await setOraclePrice(collateral0.address, bn('0.5e8')) // depeg
       await collateral0.refresh()
@@ -482,18 +487,37 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await basketHandler.refreshBasket()
 
       // Should launch auction for token1
-      await backingManager.manageTokens([token0.address])
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+
+      const auctionTimestamp: number = await getLatestBlockTimestamp()
+      const auctionId = await getAuctionId(backingManager, token0.address)
 
       // Check auction opened even at minBuyAmount = 0
       await expectTrade(backingManager, {
         sell: token0.address,
         buy: token1.address,
+        endTime: auctionTimestamp + Number(config.auctionLength),
+        externalId: auctionId,
       })
-      const auctionId = await getAuctionId(backingManager, token0.address)
+      const trade = await getTrade(backingManager, token0.address)
+      expect(await trade.status()).to.equal(1) // TradeStatus.OPEN
+
+      // Check state
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+      // Check Gnosis
+      expect(await token0.balanceOf(easyAuction.address)).to.equal(issueAmount)
+      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+
+      // Auction should not be able to be settled
+      await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
 
       // Bid
-      const bidAmt = issueAmount
-      await token1.connect(addr1).approve(easyAuction.address, bidAmt)
+      const bidAmt = 2
+      await token1.connect(addr1).approve(easyAuction.address, issueAmount)
       await easyAuction
         .connect(addr1)
         .placeSellOrders(
@@ -512,7 +536,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [token0.address, token1.address, issueAmount, issueAmount],
+          args: [token0.address, token1.address, issueAmount, bidAmt],
           emitted: true,
         },
       ])
