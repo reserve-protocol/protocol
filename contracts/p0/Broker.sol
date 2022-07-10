@@ -80,8 +80,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// @return minBidAmt_ {qTok} The minimum bid size for an asset
     function minBidAmt(IAsset asset) private view returns (uint256 minBidAmt_) {
         if (
-            asset.isCollateral() &&
-            ICollateral(address(asset)).status() != CollateralStatus.DISABLED
+            asset.isCollateral() && ICollateral(address(asset)).status() == CollateralStatus.SOUND
         ) {
             // {tok} = {UoA} / {UoA/tok}
             uint192 minBidSize_ = minBidSize.div(asset.price(), CEIL);
