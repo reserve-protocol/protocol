@@ -87,7 +87,7 @@ contract GnosisTrade is ITrade {
             endTime,
             endTime,
             uint96(req.sellAmount),
-            uint96(req.minBuyAmount),
+            uint96(Math.max(1, req.minBuyAmount)),
             Math.max(1, minBidSize),
             0,
             false,
