@@ -57,24 +57,6 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 let owner: SignerWithAddress
 
-// Setup test environment
-const setup = async (blockNumber: number) => {
-  ;[owner] = await ethers.getSigners()
-
-  // Use Mainnet fork
-  await hre.network.provider.request({
-    method: 'hardhat_reset',
-    params: [
-      {
-        forking: {
-          jsonRpcUrl: process.env.MAINNET_RPC_URL,
-          blockNumber: blockNumber,
-        },
-      },
-    ],
-  })
-}
-
 const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
@@ -1331,6 +1313,23 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
   describe.skip('Claim Rewards', () => {
+    const setup = async (blockNumber: number) => {
+      ;[owner] = await ethers.getSigners()
+
+      // Use Mainnet fork
+      await hre.network.provider.request({
+        method: 'hardhat_reset',
+        params: [
+          {
+            forking: {
+              jsonRpcUrl: process.env.MAINNET_RPC_URL,
+              blockNumber: blockNumber,
+            },
+          },
+        ],
+      })
+    }
+
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
