@@ -119,10 +119,9 @@ async function main() {
   assetCollDeployments.collateral.cDAI = cDaiCollateral
   deployedCollateral.push(cDaiCollateral.toString())
 
+  /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
 
-   /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
-
-   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
+  const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     cToken: networkConfig[chainId].tokens.cWBTC,
@@ -138,7 +137,6 @@ async function main() {
 
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
   deployedCollateral.push(cWBTCCollateral.toString())
-
 
   /********  Deploy CToken Self-Referential Collateral - cETH  **************************/
 
@@ -164,11 +162,11 @@ async function main() {
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // max trade volume
-    maxOracleTimeout: bn('86400').toString(),  // 24h
+    maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLibrary:  ORACLE_LIB_ADDRESS
+    oracleLibrary: ORACLE_LIB_ADDRESS,
   })
 
   assetCollDeployments.collateral.WBTC = wBTCCollateral

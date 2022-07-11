@@ -34,7 +34,7 @@ async function main() {
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // max trade volume
-    maxOracleTimeout: bn('86400').toString() // 1 day
+    maxOracleTimeout: bn('86400').toString(), // 1 day
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -46,7 +46,7 @@ async function main() {
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // max trade volume
-    maxOracleTimeout: bn('86400').toString()  // 1 day
+    maxOracleTimeout: bn('86400').toString(), // 1 day
   })
 
   assetCollDeployments.assets.COMP = compAsset

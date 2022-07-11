@@ -17,22 +17,27 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
 
     const chainId = await getChainId(hre)
 
-    const CTokenSelfReferentialCollateralFactory = await hre.ethers.getContractFactory('CTokenSelfReferentialCollateral', {
-      libraries: { OracleLib: params.oracleLibrary },
-    })
+    const CTokenSelfReferentialCollateralFactory = await hre.ethers.getContractFactory(
+      'CTokenSelfReferentialCollateral',
+      {
+        libraries: { OracleLib: params.oracleLibrary },
+      }
+    )
 
-    const collateral = <CTokenSelfReferentialCollateral>await CTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
-      params.priceFeed,
-      params.cToken,
-      params.rewardToken,
-      params.maxTradeVolume,
-      params.maxOracleTimeout,
-      params.targetName,
-      params.decimals,
-      params.comptroller
+    const collateral = <CTokenSelfReferentialCollateral>(
+      await CTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
+        params.priceFeed,
+        params.cToken,
+        params.rewardToken,
+        params.maxTradeVolume,
+        params.maxOracleTimeout,
+        params.targetName,
+        params.decimals,
+        params.comptroller
+      )
     )
     await collateral.deployed()
-      
+
     console.log(
       `Deployed CToken Self-referential Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
     )

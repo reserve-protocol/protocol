@@ -86,7 +86,15 @@ async function main() {
   const receipt = await (
     await facadeWrite
       .connect(burner)
-      .setupGovernance(rToken.address, true, false, govParams, ZERO_ADDRESS, ZERO_ADDRESS, ZERO_ADDRESS)
+      .setupGovernance(
+        rToken.address,
+        true,
+        false,
+        govParams,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS,
+        ZERO_ADDRESS
+      )
   ).wait()
 
   const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
