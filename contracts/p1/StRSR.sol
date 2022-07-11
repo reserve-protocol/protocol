@@ -272,6 +272,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // update stakeRate, possibly beginning a new stake era
         if (stakeRSR > 0) {
+            // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
             stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
         }
         if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
@@ -286,6 +287,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // update draftRate, possibly beginning a new draft era
         if (draftRSR > 0) {
+            // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
             draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
         }
 
