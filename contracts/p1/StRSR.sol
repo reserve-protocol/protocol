@@ -64,7 +64,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) private stakes; // Stakes per account {qStRSR}
     uint256 internal totalStakes; // Total of all stakes {qStRSR}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
-    uint192 public stakeRate; // The exchange rate between stakes and RSR. {qStRSR/qRSR}
+    uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
     // invariant: either (totalStakes == 0, stakeRSR == 0, and stakeRate == FIX_ONE),
     //            or (totalStakes > 0 and stakeRSR > 0)
 
@@ -87,12 +87,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     mapping(uint256 => mapping(address => uint256)) public firstRemainingDraft; // draft index
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
-    uint192 public draftRate; // The exchange rate between drafts and RSR. {qDrafts/qRSR}
+    uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
     // invariant: either (totalDrafts == 0, draftRSR == 0, and draftRate == FIX_ONE),
     //            or (totalDrafts > 0 and draftRSR > 0)
 
     uint192 private constant MAX_DRAFT_RATE = 1e27; // 1e9 D18{qDrafts/qRSR}
-
 
     // === ERC20Permit ===
 
@@ -169,6 +168,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // stakeAmount: how many stRSR the user shall receive.
         // pick stakeAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         uint256 newStakeRSR = stakeRSR + rsrAmount;
+        // newTotalStakes: {qStRSR} = D18{qStRSR/qRSR} * {qRSR} / D18
         uint256 newTotalStakes = (stakeRate * newStakeRSR) / FIX_ONE;
         uint256 stakeAmount = newTotalStakes - totalStakes;
 
@@ -198,7 +198,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // pick rsrAmount as big as we can such that (newTotalStakes <= newStakeRSR * stakeRate)
         _burn(account, stakeAmount);
 
-        // {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
+        // newStakeRSR: {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
         uint256 newStakeRSR = (FIX_ONE_256 * totalStakes) / stakeRate;
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
@@ -234,6 +234,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
+        // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
         uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
@@ -354,12 +355,17 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing
+        // payoutRatio: D18 = FIX_ONE: D18 - FixLib.powu(): D18
+        // Both uses of uint192(-) are fine, as it's equivalent to FixLib.sub().
         uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
 
+        // stakeRSR: {qRSR} = D18{1} * {qRSR} / D18
         stakeRSR += (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
+        // stakeRate else case: D18{qStRSR/qRSR} = {qStRSR} * D18 / {qRSR}
+        // downcast is safe: it's at most 1e38 * 1e18 = 1e56
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
             : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
@@ -378,6 +384,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // draftAmount: how many drafts to create and assign to the user
         // pick draftAmount as big as we can such that (newTotalDrafts <= newDraftRSR * draftRate)
         draftRSR += rsrAmount;
+        // newTotalDrafts: {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
         uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
 
         // equivalently, here: uint(draftRate) * draftRSR / FIX_ONE

@@ -1,12 +1,13 @@
 import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
 import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
-import { Collateral, defaultFixture, IConfig, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 

@@ -19,6 +19,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
+import { IConfig } from '../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import {
   advanceBlocks,
@@ -31,7 +32,6 @@ import { whileImpersonating } from './utils/impersonation'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   SLOW,

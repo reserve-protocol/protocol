@@ -2,8 +2,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, IConfig, IMPLEMENTATION } from '../fixtures'
+import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
+import { getChainId } from '../../common/blockchain-utils'
+import { IConfig, networkConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS, MAX_ORACLE_TIMEOUT } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
@@ -15,26 +17,6 @@ import {
 } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
 import forkBlockNumber from './fork-block-numbers'
-
-import {
-  AAVE_INCENTIVES_ADDRESS,
-  AAVE_LENDING_POOL_ADDRESS,
-  ABUSD_ADDRESS,
-  ADAI_ADDRESS,
-  AUSDC_ADDRESS,
-  AUSDT_ADDRESS,
-  BUSD_ADDRESS,
-  COMP_ADDRESS,
-  CUSDC_ADDRESS,
-  CUSDT_ADDRESS,
-  CDAI_ADDRESS,
-  DAI_ADDRESS,
-  NO_PRICE_DATA_FEED,
-  STAKEDAAVE_ADDRESS,
-  USDC_ADDRESS,
-  USDT_ADDRESS,
-} from './mainnet'
-
 import {
   Asset,
   ATokenFiatCollateral,
@@ -46,12 +28,12 @@ import {
   FiatCollateral,
   IAToken,
   IERC20,
+  IAssetRegistry,
   IBasketHandler,
   OracleLib,
   RTokenAsset,
   StaticATokenLM,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -65,6 +47,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
+
+const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 let owner: SignerWithAddress
 
@@ -88,7 +72,7 @@ const setup = async (blockNumber: number) => {
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
 
   // Assets
@@ -138,7 +122,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let rTokenAsset: RTokenAsset
   let main: TestIMain
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let config: IConfig
@@ -151,10 +135,17 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  let chainId: number
+
   describe('Assets/Collateral Setup', () => {
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
+
+      chainId = await getChainId(hre)
+      if (!networkConfig[chainId]) {
+        throw new Error(`Missing network configuration for ${hre.network.name}`)
+      }
     })
 
     beforeEach(async () => {
@@ -186,17 +177,29 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aTokens
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       aUsdc = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', AUSDC_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDC || ''
+        )
       )
       aUsdt = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', AUSDT_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDT || ''
+        )
       )
       aBusd = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ABUSD_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aBUSD || ''
+        )
       )
 
       // Get collaterals
@@ -217,7 +220,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // COMP Token
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
-      expect(await compAsset.erc20()).to.equal(COMP_ADDRESS)
+      expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
@@ -226,14 +229,14 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // stkAAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
-      expect(await aaveAsset.erc20()).to.equal(STAKEDAAVE_ADDRESS)
+      expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
-    it('Should setup collaterals correctly - Fiatcoins', async () => {
+    it('Should setup collateral correctly - Fiatcoins', async () => {
       // Define interface required for each fiat coin
       interface TokenInfo {
         token: ERC20Mock
@@ -247,25 +250,25 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         {
           token: dai,
           tokenDecimals: 18,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           tokenCollateral: daiCollateral,
         },
         {
           token: usdc,
           tokenDecimals: 6,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           tokenCollateral: usdcCollateral,
         },
         {
           token: usdt,
           tokenDecimals: 6,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           tokenCollateral: usdtCollateral,
         },
         {
           token: busd,
           tokenDecimals: 18,
-          tokenAddress: BUSD_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
           tokenCollateral: busdCollateral,
         },
       ]
@@ -289,7 +292,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collaterals correctly - Compound', async () => {
+    it('Should setup collateral correctly - CTokens', async () => {
       // Define interface required for each ctoken
       interface CTokenInfo {
         token: ERC20Mock
@@ -303,23 +306,23 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const cTokenInfos: CTokenInfo[] = [
         {
           token: dai,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           cToken: cDai,
-          cTokenAddress: CDAI_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cDAI || '',
           cTokenCollateral: cDaiCollateral,
         },
         {
           token: usdc,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           cToken: cUsdc,
-          cTokenAddress: CUSDC_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cUSDC || '',
           cTokenCollateral: cUsdcCollateral,
         },
         {
           token: usdt,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           cToken: cUsdt,
-          cTokenAddress: CUSDT_ADDRESS,
+          cTokenAddress: networkConfig[chainId].tokens.cUSDT || '',
           cTokenCollateral: cUsdtCollateral,
         },
       ]
@@ -353,7 +356,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collaterals correctly - AAve', async () => {
+    it('Should setup collateral correctly - ATokens', async () => {
       // Define interface required for each aToken
       interface ATokenInfo {
         token: ERC20Mock
@@ -364,38 +367,38 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         aTokenCollateral: ATokenFiatCollateral
       }
 
-      // Aave - aUSDC, aUSDT, and aBUSD
+      // aUSDC, aUSDT, and aBUSD
       const aTokenInfos: ATokenInfo[] = [
         {
           token: dai,
-          tokenAddress: DAI_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.DAI || '',
           stataToken: stataDai,
           aToken: aDai,
-          aTokenAddress: ADAI_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aDAI || '',
           aTokenCollateral: aDaiCollateral,
         },
         {
           token: usdc,
-          tokenAddress: USDC_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDC || '',
           stataToken: stataUsdc,
           aToken: aUsdc,
-          aTokenAddress: AUSDC_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aUSDC || '',
           aTokenCollateral: aUsdcCollateral,
         },
         {
           token: usdt,
-          tokenAddress: USDT_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.USDT || '',
           stataToken: stataUsdt,
           aToken: aUsdt,
-          aTokenAddress: AUSDT_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aUSDT || '',
           aTokenCollateral: aUsdtCollateral,
         },
         {
           token: busd,
-          tokenAddress: BUSD_ADDRESS,
+          tokenAddress: networkConfig[chainId].tokens.BUSD || '',
           stataToken: stataBusd,
           aToken: aBusd,
-          aTokenAddress: ABUSD_ADDRESS,
+          aTokenAddress: networkConfig[chainId].tokens.aBUSD || '',
           aTokenCollateral: aBusdCollateral,
         },
       ]
@@ -434,8 +437,12 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await atkInf.stataToken.symbol()).to.equal('stata' + (await atkInf.token.symbol()))
         expect(await atkInf.stataToken.decimals()).to.equal(await atkInf.token.decimals())
-        expect(await atkInf.stataToken.LENDING_POOL()).to.equal(AAVE_LENDING_POOL_ADDRESS)
-        expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(AAVE_INCENTIVES_ADDRESS)
+        expect(await atkInf.stataToken.LENDING_POOL()).to.equal(
+          networkConfig[chainId].AAVE_LENDING_POOL
+        )
+        expect(await atkInf.stataToken.INCENTIVES_CONTROLLER()).to.equal(
+          networkConfig[chainId].AAVE_INCENTIVES
+        )
         expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aToken.address)
         expect(await atkInf.stataToken.ATOKEN()).to.equal(atkInf.aTokenAddress)
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
@@ -447,9 +454,9 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     it('Should handle invalid Price - Assets', async () => {
       // Setup Assets with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
-      const nonpriceAaveAsset: Asset = <Asset>(
+      const nonpriceAsset: Asset = <Asset>(
         await (
           await ethers.getContractFactory('Asset')
         ).deploy(
@@ -461,36 +468,21 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       )
 
-      const nonpriceCompoundAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          NO_PRICE_DATA_FEED,
-          nonpriceToken.address,
-          compToken.address,
-          config.maxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
-      )
-
-      // Aave - Assets with no price info return 0 , so they revert with Invalid Price
-      await expect(nonpriceAaveAsset.price()).to.be.reverted
-
-      // Compound - Assets with no price info revert with also with token config not found
-      await expect(nonpriceCompoundAsset.price()).to.be.reverted
+      // Assets with no price info return 0 , so they revert with Invalid Price
+      await expect(nonpriceAsset.price()).to.be.reverted
     })
 
-    it('Should handle invalid Price - Collaterals - Fiat', async () => {
+    it('Should handle invalid Price - Collateral - Fiat', async () => {
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
       // Setup Collateral with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
-      // Fiat collateral - Aave
-      const nonpriceAaveCollateral: FiatCollateral = <FiatCollateral>await (
+      // Fiat collateral
+      const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -505,50 +497,27 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         delayUntilDefault
       )
 
-      // Fiat Collateral - Compound
-      const nonpriceCompoundCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        nonpriceToken.address,
-        compToken.address,
-        config.maxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
 
-      // Aave - Collateral with no price info return 0, so they revert with Invalid Price
-      await expect(nonpriceAaveCollateral.price()).to.be.reverted
+      // Collateral with no price info return 0, so they revert with Invalid Price
+      await expect(nonPriceCollateral.price()).to.be.reverted
 
       // Refresh should mark status UNPRICED
-      await nonpriceAaveCollateral.refresh()
-      expect(await nonpriceAaveCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      await nonPriceCollateral.refresh()
+      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
       // Set next block timestamp - for deterministic result
       await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      // Compound - Assets with no price info revert with token config not found
-      await expect(nonpriceCompoundCollateral.price()).to.be.reverted
-
-      // Refresh should mark status UNPRICED
-      await nonpriceCompoundCollateral.refresh()
-      expect(await nonpriceCompoundCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
 
-    it('Should handle invalid Price - Collaterals - AToken/CToken', async () => {
+    it('Should handle invalid Price - Collateral - AToken/CToken', async () => {
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
       // Setup Collateral with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
       )
 
       // Wrap in Static AToken (use mock in this case)
@@ -627,6 +596,100 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await nonpriceCtokenCollateral.refresh()
       expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
+
+    it('Should detect stale price after ORACLE_TIMEOUT - all collateral', async () => {
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+      const oracleTimeout = bn('86400') // 24h
+
+      // Setup Collateral with valid price - Use DAI token
+      const underlyingToken: ERC20Mock = <ERC20Mock>(
+        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
+      )
+
+      // Fiat collateral
+      const fiatCollateral: FiatCollateral = <FiatCollateral>await (
+        await ethers.getContractFactory('FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        underlyingToken.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Wrap in Static AToken (use mock in this case)
+      const staticNonPriceErc20: StaticATokenMock = <StaticATokenMock>(
+        await (
+          await ethers.getContractFactory('StaticATokenMock')
+        ).deploy(
+          'static ' + (await underlyingToken.name()),
+          'stat' + (await underlyingToken.symbol()),
+          underlyingToken.address
+        )
+      )
+
+      // AToken collateral
+      const aTokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+        await ethers.getContractFactory('ATokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        staticNonPriceErc20.address,
+        aaveToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Setup CToken (use mock for this purpose)
+      const cToken: CTokenMock = <CTokenMock>(
+        await (
+          await ethers.getContractFactory('CTokenMock')
+        ).deploy(
+          'c' + (await underlyingToken.name()),
+          'c' + (await underlyingToken.symbol()),
+          underlyingToken.address
+        )
+      )
+
+      // CTokens Collateral
+      const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        networkConfig[chainId].chainlinkFeeds.DAI || '',
+        cToken.address,
+        compToken.address,
+        config.maxTradeVolume,
+        oracleTimeout,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        await underlyingToken.decimals(),
+        compoundMock.address
+      )
+
+      // Advance time past oracleTimeout
+      await advanceTime(oracleTimeout.toString())
+      await fiatCollateral.refresh()
+      await aTokenCollateral.refresh()
+      await cTokenCollateral.refresh()
+
+      // Should be UNPRICED
+      expect(await fiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
   })
 
   describe('Basket/Issue/Redeem', () => {
@@ -676,7 +739,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
@@ -761,7 +827,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDai.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 8).mul(100))
 
       // Provide approvals
@@ -779,7 +845,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Check Balances after
       expect(await dai.balanceOf(backingManager.address)).to.equal(issueAmount.div(4)) // 2.5K needed (25% of basket)
-      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 95.95% of 2.5K needed (25% of basket)
+      const issueAmtAToken = issueAmount.div(4).mul(9321).div(10000) // approx 93.21% of 2.5K needed (25% of basket)
       expect(await stataDai.balanceOf(backingManager.address)).to.be.closeTo(
         issueAmtAToken,
         fp('1')
@@ -791,7 +857,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount.div(4)))
       expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(
         initialBalAToken.sub(issueAmtAToken),
-        fp('1')
+        fp('1.5')
       )
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 8).mul(100).sub(requiredCTokens),
@@ -822,7 +888,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Check funds returned to user
       expect(await dai.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
       expect(await cDai.balanceOf(addr1.address)).to.be.closeTo(
         toBNDecimals(initialBal, 8).mul(100),
         bn('1e7')
@@ -979,7 +1045,7 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Balance for Static a Token is about 18641.55e18, about 93.21% of the provided amount (20K)
       const initialBalAToken = initialBal.mul(9321).div(10000)
-      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1'))
+      expect(await stataDai.balanceOf(addr1.address)).to.be.closeTo(initialBalAToken, fp('1.5'))
 
       // Provide approvals
       await dai.connect(addr1).approve(rToken.address, issueAmount)
@@ -1005,6 +1071,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
+  // Skip explanation:
+  // - Aave hasn't run their reward program in a while
+  // - We don't expect them to soon
+  // - Rewards can always be collected later through a plugin upgrade
   describe.skip('Claim Rewards', () => {
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
@@ -1045,7 +1115,10 @@ describeFork(`Aave/Compound - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Get plain aToken
       aDai = <IAToken>(
-        await ethers.getContractAt('contracts/plugins/aave/IAToken.sol:IAToken', ADAI_ADDRESS)
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
       )
 
       // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)

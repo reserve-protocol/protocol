@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
   FURNACE_DEST,
@@ -20,11 +21,11 @@ import {
   ERC20Mock,
   Facade,
   GnosisMock,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -41,12 +42,12 @@ import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   ORACLE_TIMEOUT,
 } from './fixtures'
-import { expectTrade } from './utils/trades'
+import { setOraclePrice } from './utils/oracles'
+import { expectTrade, getTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -93,7 +94,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
@@ -284,10 +285,31 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
+      it('Should not launch revenue auction if IFFY', async () => {
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(rTokenTrader.manageToken(rsr.address)).to.not.emit(
+          rTokenTrader,
+          'TradeStarted'
+        )
+      })
+
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
-        await rsr.connect(addr1).transfer(rTokenTrader.address, 1)
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith('StalePrice()')
+      })
+
+      it('Should launch revenue auction if DISABLED with minBuyAmount = 0', async () => {
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await collateral0.refresh()
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
+        await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+
+        // Trade should have near-zero price worst-case price
+        const trade = await getTrade(rTokenTrader, token0.address)
+        expect(await trade.worstCasePrice()).to.be.lt(fp('0.0001'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {

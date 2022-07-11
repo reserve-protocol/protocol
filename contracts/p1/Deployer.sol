@@ -56,7 +56,7 @@ contract DeployerP1 is IDeployer {
     /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
-    /// @return The address of the newly deployed Main instance.
+    /// @return The address of the newly deployed RToken.
     function deploy(
         string memory name,
         string memory symbol,
@@ -199,6 +199,6 @@ contract DeployerP1 is IDeployer {
         main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
-        return (address(main));
+        return (address(components.rToken));
     }
 }

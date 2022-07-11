@@ -42,15 +42,27 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             return;
         }
 
+        IAssetRegistry reg = main.assetRegistry();
+        IAsset sell = reg.toAsset(erc20);
+
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        IAssetRegistry reg = main.assetRegistry();
         (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
-            reg.toAsset(erc20),
+            sell,
             reg.toAsset(tokenToBuy),
-            reg.toAsset(erc20).bal(address(this))
+            sell.bal(address(this))
         );
 
-        if (launch) tryTrade(trade);
+        if (launch) {
+            if (sell.isCollateral()) {
+                CollateralStatus status = ICollateral(address(sell)).status();
+
+                assert(status != CollateralStatus.UNPRICED); // this indicates a TradingLib error
+                if (status == CollateralStatus.IFFY) return;
+                if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
+            }
+
+            tryTrade(trade);
+        }
     }
 }

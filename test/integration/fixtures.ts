@@ -1,6 +1,8 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
+import { getChainId } from '../../common/blockchain-utils'
+import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import { ZERO_ADDRESS, MAX_ORACLE_TIMEOUT } from '../../common/constants'
@@ -22,6 +24,7 @@ import {
   DistributorP1,
   FurnaceP1,
   GnosisTrade,
+  IAssetRegistry,
   IBasketHandler,
   IERC20Metadata,
   IGnosis,
@@ -33,7 +36,6 @@ import {
   RTokenP1,
   StaticATokenLM,
   StRSRP1Votes,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -47,39 +49,7 @@ import {
   TradingLibP1,
 } from '../../typechain'
 
-import {
-  Collateral,
-  IConfig,
-  IImplementations,
-  Implementation,
-  IMPLEMENTATION,
-  IRevenueShare,
-} from '../fixtures'
-import {
-  AAVE_LENDING_POOL_ADDRESS,
-  STAKEDAAVE_ADDRESS,
-  COMP_ADDRESS,
-  COMPTROLLER_ADDRESS,
-  WETH_ADDRESS,
-  DAI_ADDRESS,
-  USDC_ADDRESS,
-  USDT_ADDRESS,
-  BUSD_ADDRESS,
-  AUSDC_ADDRESS,
-  AUSDT_ADDRESS,
-  ADAI_ADDRESS,
-  ABUSD_ADDRESS,
-  CUSDC_ADDRESS,
-  CUSDT_ADDRESS,
-  CDAI_ADDRESS,
-  AAVE_USD_PRICE_FEED,
-  COMP_USD_PRICE_FEED,
-  DAI_USD_PRICE_FEED,
-  USDC_USD_PRICE_FEED,
-  USDT_USD_PRICE_FEED,
-  BUSD_USD_PRICE_FEED,
-  RSR_USD_PRICE_FEED,
-} from './mainnet'
+import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -102,24 +72,36 @@ interface COMPAAVEFixture {
 }
 
 async function compAaveFixture(): Promise<COMPAAVEFixture> {
+  const chainId = await getChainId(hre)
+  if (!networkConfig[chainId]) {
+    throw new Error(`Missing network configuration for ${hre.network.name}`)
+  }
+
   // Get COMP token
-  const compToken: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', COMP_ADDRESS)
+  const compToken: ERC20Mock = <ERC20Mock>(
+    await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
+  )
 
   // Get AAVE token
   const aaveToken: ERC20Mock = <ERC20Mock>(
-    await ethers.getContractAt('ERC20Mock', STAKEDAAVE_ADDRESS)
+    await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
   )
 
   // Get WETH
-  const weth: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', WETH_ADDRESS)
+  const weth: ERC20Mock = <ERC20Mock>(
+    await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.WETH || '')
+  )
 
   // Get Comp and Aave contracts
   const compoundMock: ComptrollerMock = <ComptrollerMock>(
-    await ethers.getContractAt('ComptrollerMock', COMPTROLLER_ADDRESS)
+    await ethers.getContractAt('ComptrollerMock', networkConfig[chainId].COMPTROLLER || '')
   )
 
   const aaveMock: AaveLendingPoolMock = <AaveLendingPoolMock>(
-    await ethers.getContractAt('AaveLendingPoolMock', AAVE_LENDING_POOL_ADDRESS)
+    await ethers.getContractAt(
+      'AaveLendingPoolMock',
+      networkConfig[chainId].AAVE_LENDING_POOL || ''
+    )
   )
 
   return {
@@ -156,6 +138,11 @@ async function collateralFixture(
   compToken: ERC20Mock,
   config: IConfig
 ): Promise<CollateralFixture> {
+  const chainId = await getChainId(hre)
+  if (!networkConfig[chainId]) {
+    throw new Error(`Missing network configuration for ${hre.network.name}`)
+  }
+
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
   const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
     libraries: { OracleLib: oracleLib.address },
@@ -279,17 +266,65 @@ async function collateralFixture(
   }
 
   // Create all possible collateral
-  const dai = await makeVanillaCollateral(DAI_ADDRESS, DAI_USD_PRICE_FEED)
-  const usdc = await makeSixDecimalCollateral(USDC_ADDRESS, USDC_USD_PRICE_FEED)
-  const usdt = await makeVanillaCollateral(USDT_ADDRESS, USDT_USD_PRICE_FEED)
-  const busd = await makeVanillaCollateral(BUSD_ADDRESS, BUSD_USD_PRICE_FEED)
-  const cdai = await makeCTokenCollateral(CDAI_ADDRESS, dai[0], DAI_USD_PRICE_FEED, compToken)
-  const cusdc = await makeCTokenCollateral(CUSDC_ADDRESS, usdc[0], USDC_USD_PRICE_FEED, compToken)
-  const cusdt = await makeCTokenCollateral(CUSDT_ADDRESS, usdt[0], USDT_USD_PRICE_FEED, compToken)
-  const adai = await makeATokenCollateral(ADAI_ADDRESS, DAI_USD_PRICE_FEED, aaveToken)
-  const ausdc = await makeATokenCollateral(AUSDC_ADDRESS, USDC_USD_PRICE_FEED, aaveToken)
-  const ausdt = await makeATokenCollateral(AUSDT_ADDRESS, USDT_USD_PRICE_FEED, aaveToken)
-  const abusd = await makeATokenCollateral(ABUSD_ADDRESS, BUSD_USD_PRICE_FEED, aaveToken)
+  const DAI_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.DAI as string
+  const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
+  const USDT_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDT as string
+  const BUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.BUSD as string
+
+  const dai = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.DAI as string,
+    DAI_USD_PRICE_FEED
+  )
+  const usdc = await makeSixDecimalCollateral(
+    networkConfig[chainId].tokens.USDC as string,
+    USDC_USD_PRICE_FEED
+  )
+  const usdt = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.USDT as string,
+    USDT_USD_PRICE_FEED
+  )
+  const busd = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.BUSD as string,
+    BUSD_USD_PRICE_FEED
+  )
+  const cdai = await makeCTokenCollateral(
+    networkConfig[chainId].tokens.cDAI as string,
+    dai[0],
+    DAI_USD_PRICE_FEED,
+    compToken
+  )
+  const cusdc = await makeCTokenCollateral(
+    networkConfig[chainId].tokens.cUSDC as string,
+    usdc[0],
+    USDC_USD_PRICE_FEED,
+    compToken
+  )
+  const cusdt = await makeCTokenCollateral(
+    networkConfig[chainId].tokens.cUSDT as string,
+    usdt[0],
+    USDT_USD_PRICE_FEED,
+    compToken
+  )
+  const adai = await makeATokenCollateral(
+    networkConfig[chainId].tokens.aDAI as string,
+    DAI_USD_PRICE_FEED,
+    aaveToken
+  )
+  const ausdc = await makeATokenCollateral(
+    networkConfig[chainId].tokens.aUSDC as string,
+    USDC_USD_PRICE_FEED,
+    aaveToken
+  )
+  const ausdt = await makeATokenCollateral(
+    networkConfig[chainId].tokens.aUSDT as string,
+    USDT_USD_PRICE_FEED,
+    aaveToken
+  )
+  const abusd = await makeATokenCollateral(
+    networkConfig[chainId].tokens.aBUSD as string,
+    BUSD_USD_PRICE_FEED,
+    aaveToken
+  )
   const erc20s = [
     dai[0],
     usdc[0],
@@ -339,7 +374,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   dist: IRevenueShare
   deployer: TestIDeployer
   main: TestIMain
-  assetRegistry: TestIAssetRegistry
+  assetRegistry: IAssetRegistry
   backingManager: TestIBackingManager
   basketHandler: IBasketHandler
   distributor: TestIDistributor
@@ -367,6 +402,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR
+  }
+
+  const chainId = await getChainId(hre)
+  if (!networkConfig[chainId]) {
+    throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
   // Setup Config
@@ -402,7 +442,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
-      RSR_USD_PRICE_FEED,
+      networkConfig[chainId].chainlinkFeeds.RSR || '',
       rsr.address,
       ZERO_ADDRESS,
       config.maxTradeVolume,
@@ -474,19 +514,19 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     // Setup Implementation addresses
     const implementations: IImplementations = {
       main: mainImpl.address,
+      trade: tradeImpl.address,
       components: {
-        rToken: rTokenImpl.address,
-        stRSR: stRSRImpl.address,
         assetRegistry: assetRegImpl.address,
-        basketHandler: bskHndlrImpl.address,
         backingManager: backingMgrImpl.address,
+        basketHandler: bskHndlrImpl.address,
+        broker: brokerImpl.address,
         distributor: distribImpl.address,
         furnace: furnaceImpl.address,
-        broker: brokerImpl.address,
         rsrTrader: revTraderImpl.address,
         rTokenTrader: revTraderImpl.address,
+        rToken: rTokenImpl.address,
+        stRSR: stRSRImpl.address,
       },
-      trade: tradeImpl.address,
     }
 
     // Deploy FacadeP1
@@ -514,8 +554,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const main: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
 
   // Get Core
-  const assetRegistry: TestIAssetRegistry = <TestIAssetRegistry>(
-    await ethers.getContractAt('TestIAssetRegistry', await main.assetRegistry())
+  const assetRegistry: IAssetRegistry = <IAssetRegistry>(
+    await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
   )
   const backingManager: TestIBackingManager = <TestIBackingManager>(
     await ethers.getContractAt('TestIBackingManager', await main.backingManager())
@@ -527,20 +567,22 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIDistributor', await main.distributor())
   )
 
-  const aaveAsset: Asset = <Asset>await (
-    await ethers.getContractFactory('StakedAaveAsset')
-  ).deploy(
-    AAVE_USD_PRICE_FEED,
-    aaveToken.address,
-    ZERO_ADDRESS, // should this should be the unstaked Aave token?
-    config.maxTradeVolume,
-    MAX_ORACLE_TIMEOUT
+  const aaveAsset: Asset = <Asset>(
+    await (
+      await ethers.getContractFactory('Asset')
+    ).deploy(
+      networkConfig[chainId].chainlinkFeeds.AAVE || '',
+      aaveToken.address,
+      ZERO_ADDRESS,
+      config.maxTradeVolume,
+      MAX_ORACLE_TIMEOUT
+    )
   )
 
   const compAsset: Asset = <Asset>await (
     await ethers.getContractFactory('Asset')
   ).deploy(
-    COMP_USD_PRICE_FEED,
+    networkConfig[chainId].chainlinkFeeds.COMP || '',
     compToken.address,
     ZERO_ADDRESS, // also uncertain about this one
     config.maxTradeVolume,

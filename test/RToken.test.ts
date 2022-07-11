@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { setOraclePrice } from './utils/oracles'
@@ -13,12 +14,12 @@ import {
   ERC20Mock,
   Facade,
   FiatCollateral,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -30,7 +31,6 @@ import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   SLOW,
@@ -77,7 +77,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let main: TestIMain
   let rToken: TestIRToken
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
 

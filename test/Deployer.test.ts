@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { ZERO_ADDRESS } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
@@ -9,9 +10,9 @@ import {
   ERC20Mock,
   Facade,
   GnosisMock,
+  IAssetRegistry,
   IBasketHandler,
   RTokenAsset,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -22,7 +23,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../typechain'
-import { defaultFixture, IConfig, IMPLEMENTATION } from './fixtures'
+import { defaultFixture, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -54,7 +55,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor

@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
@@ -10,11 +11,11 @@ import {
   ERC20Mock,
   Facade,
   GnosisMock,
+  IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -25,7 +26,6 @@ import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   ORACLE_TIMEOUT,
@@ -82,7 +82,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let oracleLib: OracleLib

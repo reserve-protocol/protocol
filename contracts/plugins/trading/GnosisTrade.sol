@@ -69,8 +69,10 @@ contract GnosisTrade is ITrade {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        require(sell.balanceOf(address(this)) <= type(uint96).max, "order too large");
-        require(req.minBuyAmount <= type(uint96).max, "order too large");
+        require(sell.balanceOf(address(this)) < type(uint96).max, "initBal too large");
+        require(req.sellAmount < type(uint96).max, "sellAmount too large");
+        require(req.minBuyAmount < type(uint96).max, "minBuyAmount too large");
+        require(minBidSize < type(uint96).max, "minBidSize too large");
         initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
@@ -81,14 +83,15 @@ contract GnosisTrade is ITrade {
         // == Interactions ==
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), req.sellAmount);
+        uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
             endTime,
             endTime,
-            uint96(req.sellAmount),
-            uint96(req.minBuyAmount),
-            Math.max(1, minBidSize),
+            uint96(req.sellAmount), // Safe downcast; require'd
+            minBuyAmount,
+            Math.min(minBuyAmount, uint96(minBidSize)), // Safe downcast; require'd
             0,
             false,
             address(0),

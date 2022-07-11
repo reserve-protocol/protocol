@@ -1,4 +1,5 @@
 import '@nomiclabs/hardhat-ethers'
+import '@nomiclabs/hardhat-etherscan'
 import '@nomiclabs/hardhat-waffle'
 import '@openzeppelin/hardhat-upgrades'
 import '@typechain/hardhat'
@@ -12,10 +13,8 @@ import forkBlockNumber from './test/integration/fork-block-numbers'
 
 dotenv.config()
 
-if (process.env.TASKS === 'true') {
-  // eslint-disable-next-line node/no-missing-require
-  require('./tasks')
-}
+// eslint-disable-next-line node/no-missing-require
+require('./tasks')
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
@@ -76,7 +75,11 @@ const config: any = {
     overrides: {
       'contracts/p1/aux/Deployer.sol': {
         version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
+      },
+      'contracts/FacadeWrite.sol': {
+        version: '0.8.9',
+        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
       },
       'contracts/p1/RToken.sol': {
         version: '0.8.9',
@@ -109,6 +112,9 @@ const config: any = {
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false,
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
 }
 
