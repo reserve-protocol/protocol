@@ -1,9 +1,15 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
-import { IConfig, MAX_ORACLE_TIMEOUT } from '../common/configuration'
-import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
+import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../common/configuration'
+import {
+  FURNACE_DEST,
+  STRSR_DEST,
+  MAX_UINT256,
+  ZERO_ADDRESS,
+  MAX_ORACLE_TIMEOUT,
+} from '../common/constants'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   Asset,
@@ -83,8 +89,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   const MAX_UOA = fp('1e29')
 
   before('create fixture loader', async () => {
-    // Reset network for clean execution
-    await hre.network.provider.send('hardhat_reset')
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
