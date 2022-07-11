@@ -2,7 +2,11 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getAssetCollDeploymentFilename, IAssetCollDeployments } from '../deployment_utils'
+import {
+  getDeploymentFile,
+  getAssetCollDeploymentFilename,
+  IAssetCollDeployments,
+} from '../deployment_utils'
 
 let assetCollDeployments: IAssetCollDeployments
 
@@ -17,7 +21,9 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(getAssetCollDeploymentFilename(chainId))
+  assetCollDeployments = <IAssetCollDeployments>(
+    getDeploymentFile(getAssetCollDeploymentFilename(chainId))
+  )
 
   /** ******************** Verify OracleLib ****************************************/
   console.time('Verifying OracleLib')

@@ -84,7 +84,6 @@ export const validatePrerequisites = async (deployments: IDeployments) => {
     !deployments.prerequisites.GNOSIS_EASY_AUCTION ||
     !deployments.prerequisites.RSR ||
     !deployments.prerequisites.RSR_FEED
-    
   ) {
     throw new Error(`Missing pre-requisite addresses in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR))) {

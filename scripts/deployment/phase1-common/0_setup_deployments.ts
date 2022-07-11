@@ -29,13 +29,13 @@ async function main() {
     throw new Error(`RSR contract not found in network ${hre.network.name}`)
   }
 
-   // Get RSR Feed Address
-   const rsrFeedAddr = networkConfig[chainId].chainlinkFeeds.RSR
-   if (!rsrFeedAddr) {
-     throw new Error(`Missing address for RSR Feed in network ${hre.network.name}`)
-   } else if (!(await isValidContract(hre, rsrFeedAddr))) {
-     throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
-   }
+  // Get RSR Feed Address
+  const rsrFeedAddr = networkConfig[chainId].chainlinkFeeds.RSR
+  if (!rsrFeedAddr) {
+    throw new Error(`Missing address for RSR Feed in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, rsrFeedAddr))) {
+    throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
+  }
 
   // Get AaveLendingPool Address
   const aaveLendPoolAddr = networkConfig[chainId].AAVE_LENDING_POOL

@@ -2,11 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
-import {
-  IRTokenConfig,
-  IRTokenSetup,
-  networkConfig,
-} from '../../../common/configuration'
+import { IRTokenConfig, IRTokenSetup, networkConfig } from '../../../common/configuration'
 import { getRTokenConfig } from './rTokenConfig'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
