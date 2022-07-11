@@ -233,55 +233,47 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
-        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
-
         uint256 seizedRSR;
-        if (rsrBalance == rsrAmount) {
-            // Everyone's wiped out! Doom! Mayhem!
-            // Zero all balances and withdrawals
-            seizedRSR = rsrBalance;
-            bankruptStakers();
-            bankruptWithdrawals();
+
+        // ==== Remove RSR evenly from stakers, withdrawals, and the reward pool ====
+
+        // Remove RSR from backing for stRSR
+        uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+
+        // {qRSR} - {qRSR} < Fix {qRSR/qStRSR} * {qStRSR}
+        if (rsrBacking - backingToTake < MIN_EXCHANGE_RATE.mulu_toUint(totalStaked)) {
+            seizedRSR = bankruptStakers();
         } else {
-            // Remove RSR evenly from stakers, withdrawals, and the reward pool
-            uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+            rsrBacking -= backingToTake;
+            seizedRSR = backingToTake;
+        }
 
-            // If the resulting (amount of RSR backing the staking pool / supply of stRSR)
-            // is less than MIN_EXCHANGE_RATE, then just bankrupt stakers instead.
-            if (rsrBacking - backingToTake < MIN_EXCHANGE_RATE * totalStaked) {
-                seizedRSR = bankruptStakers();
-            } else {
-                rsrBacking -= backingToTake;
-                seizedRSR = backingToTake;
-            }
+        // Remove RSR from RSR being withdrawn
+        uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
+            rsrBalance;
+        if (
+            rsrBeingWithdrawn() - withdrawalRSRtoTake <
+            MIN_EXCHANGE_RATE.mulu_toUint(stakeBeingWithdrawn())
+        ) {
+            seizedRSR += bankruptWithdrawals();
+        } else {
+            for (uint256 i = 0; i < accounts.length(); i++) {
+                Withdrawal[] storage queue = withdrawals[accounts.at(i)];
+                for (uint256 j = 0; j < queue.length; j++) {
+                    uint256 withdrawAmt = queue[j].rsrAmount;
+                    uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+                    queue[j].rsrAmount -= amtToTake;
 
-            // Ditto for RSR being withdrawn
-            uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
-                rsrBalance;
-
-            if (rsrBeingWithdrawn() - withdrawalRSRtoTake < MIN_EXCHANGE_RATE * stakeBeingWithdrawn()) {
-                seizedRSR = bankruptWithdrawals();
-            } else {
-                for (uint256 i = 0; i < accounts.length(); i++) {
-                    Withdrawal[] storage queue = withdrawals[accounts.at(i)];
-                    for (uint256 j = 0; j < queue.length; j++) {
-                        uint256 withdrawAmt = queue[j].rsrAmount;
-                        uint256 amtToTake = (withdrawAmt * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-                        queue[j].rsrAmount -= amtToTake;
-
-                        seizedRSR += amtToTake;
-                    }
+                    seizedRSR += amtToTake;
                 }
             }
-
-            // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            seizedRSR += rewardsToTake;
-
-            assert(rsrAmount <= seizedRSR);
         }
+
+        // Removing RSR from yet unpaid rewards
+        uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        seizedRSR += rewardsToTake;
+
+        assert(rsrAmount <= seizedRSR);
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
