@@ -24,7 +24,7 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
         libraries: { OracleLib: params.oracleLibrary },
       }
     )
-    
+
     const collateral = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.connect(deployer).deploy(
         params.priceFeed,

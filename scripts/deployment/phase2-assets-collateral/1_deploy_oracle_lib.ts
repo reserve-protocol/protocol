@@ -5,7 +5,7 @@ import { networkConfig } from '../../../common/configuration'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
-  IAssetCollDeployments
+  IAssetCollDeployments,
 } from '../deployment_utils'
 import { OracleLib } from '../../../typechain'
 

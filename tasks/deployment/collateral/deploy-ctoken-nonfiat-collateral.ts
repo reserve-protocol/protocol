@@ -28,11 +28,16 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
       await hre.ethers.getContractAt('ERC20Mock', await cToken.underlying())
     )
 
-    const CTokenNonFiatCollateralFactory = await hre.ethers.getContractFactory('CTokenNonFiatCollateral', {
-      libraries: { OracleLib: params.oracleLibrary },
-    })
+    const CTokenNonFiatCollateralFactory = await hre.ethers.getContractFactory(
+      'CTokenNonFiatCollateral',
+      {
+        libraries: { OracleLib: params.oracleLibrary },
+      }
+    )
 
-    const collateral = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.connect(deployer).deploy(
+    const collateral = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.connect(
+      deployer
+    ).deploy(
       params.referenceUnitFeed,
       params.targetUnitFeed,
       params.cToken,

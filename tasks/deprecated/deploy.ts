@@ -1,4 +1,12 @@
-import { AssetRegistryP1, BackingManagerP1, BasketHandlerP1, DeployerP1, FacadeP1, MainP1, TradingLibP1  } from '../typechain'
+import {
+  AssetRegistryP1,
+  BackingManagerP1,
+  BasketHandlerP1,
+  DeployerP1,
+  FacadeP1,
+  MainP1,
+  TradingLibP1,
+} from '../typechain'
 import { ContractFactory } from 'ethers'
 import { task } from 'hardhat/config'
 import { ONE_ETH } from '../common/constants'
