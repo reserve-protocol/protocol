@@ -87,7 +87,8 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
-        if (referencePrice.lt(prevReferencePrice)) {
+        // uint192(<) is equivalent to Fix.lt
+        if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192) {

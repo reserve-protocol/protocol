@@ -126,6 +126,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // ==== Compute and accept collateral ====
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        // Downcast is safe because an actual quantity of qBUs fits in uint192
         uint192 amtBaskets = uint192(
             totalSupply() > 0 ? mulDiv256(basketsNeeded, amtRToken, totalSupply()) : amtRToken
         );
@@ -137,12 +138,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // Bypass queue entirely if the issuance can fit in this block and nothing blocking
         if (
+            // D18{blocks} <= D18{1} * {blocks}
             vestingEnd <= FIX_ONE_256 * block.number &&
             queue.left == queue.right &&
             status == CollateralStatus.SOUND
         ) {
             // Complete issuance
             _mint(issuer, amtRToken);
+            // Fixlib optimization:
+            // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
             emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
             basketsNeeded = newBasketsNeeded;
@@ -170,6 +174,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (queue.right > 0) {
             IssueItem storage prev = queue.items[queue.right - 1];
             curr.amtRToken = prev.amtRToken + amtRToken;
+            // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             curr.amtBaskets = prev.amtBaskets + amtBaskets;
             for (uint256 i = 0; i < deposits.length; ++i) {
                 curr.deposits[i] = prev.deposits[i] + deposits[i];
@@ -198,21 +203,33 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
-    /// @return finished D18{bloick number} The new value of allVestAt
+    /// @return finished D18{block} The new value of allVestAt
     function whenFinished(uint256 amtRToken) private returns (uint192 finished) {
         // Calculate the issuance rate (if this is the first issuance in the block)
         if (lastIssRateBlock < block.number) {
             lastIssRateBlock = block.number;
+
+            // D18{rTok/block} = D18{1/block} * D18{rTok} / D18{1}
+            // uint192 downcast is safe, max value representations are 1e18 * 1e48 / 1e18
             lastIssRate = uint192((issuanceRate * totalSupply()) / FIX_ONE);
+            // uint192(<) is equivalent to Fix.lt
             if (lastIssRate < MIN_ISS_RATE) lastIssRate = MIN_ISS_RATE;
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 before = allVestAt; // D18{block number}
-        uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block number}
+        // uint192 downcast is safe: block numbers are smaller than 1e38
+        uint192 worst = uint192(FIX_ONE * (block.number - 1)); // D18{block} = D18{1} * {block}
         if (worst > before) before = worst;
 
         // ... - 1 + lastIssRate gives us division rounding up, instead of down.
+        // so, read this as:
+        // finished = before + div(uint192((FIX_ONE_256 * amtRToken), lastIssRate, CEIL)
+        // finished: D18{block} = D18{block} + D18{1} * D18{RTok} / D18{rtok/block}
+        // uint192() downcast here is safe because:
+        //   lastIssRate is at least 1e24 (from MIN_ISS_RATE), and
+        //   amtRToken is at most 1e48, so
+        //   what's downcast is at most (1e18 * 1e48 / 1e24) = 1e38 < 2^192-1
         finished = before + uint192((FIX_ONE_256 * amtRToken - 1 + lastIssRate) / lastIssRate);
         allVestAt = finished;
     }
@@ -245,7 +262,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @return A non-inclusive ending index
     function endIdForVest(address account) external view returns (uint256) {
         IssueQueue storage queue = issueQueues[account];
-        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block number}
+        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
 
         // Handle common edge cases in O(1)
         if (queue.left == queue.right) return queue.left;
@@ -260,6 +277,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 right = queue.right;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
+            // In this condition: D18{block} < D18{block}
             if (queue.items[test].when < blockNumber) left = test;
             else right = test;
         }
@@ -309,6 +327,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 basketsNeeded_ = basketsNeeded; // gas optimization
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        // downcast is safe: amount < totalSupply and basketsNeeded_ < 1e57 < 2^190 (just barely)
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
         emit Redemption(redeemer, amount, baskets);
 
@@ -318,6 +337,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         );
 
         // D18{1} = D18 * {qRTok} / {qRTok}
+        // downcast is safe: amount <= balanceOf(redeemer) <= totalSupply(), so prorate < 1e18
         uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
 
         // Accept and burn RToken
@@ -390,6 +410,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (totalSupply() == 0) return main.basketHandler().price();
 
         // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
+        // downcast is safe, because a reasonable price in a reasonable UoA will always be < 2^128
         return
             uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
     }
@@ -462,7 +483,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 amtRToken;
         uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
-        require(rightItem.when <= 1e18 * block.number, "issuance not ready");
+        // D18{block} ~~ D18 * {block}
+        require(rightItem.when <= FIX_ONE_256 * block.number, "issuance not ready");
 
         uint256 queueLength = queue.tokens.length;
         uint256[] memory amtDeposits = new uint256[](queueLength);
@@ -480,11 +502,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
             amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            // uint192(-) is safe for Fix.minus()
             amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
         }
 
         _mint(account, amtRToken);
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
+        // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;
 
         emit Issuance(account, amtRToken, amtBaskets);
