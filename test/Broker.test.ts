@@ -214,7 +214,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
     })
 
-    it('Should not allow to open trade if not a component', async () => {
+    it('Should not allow to open trade if a trader', async () => {
       const amount: BigNumber = bn('100e18')
 
       const tradeRequest: ITradeRequest = {
