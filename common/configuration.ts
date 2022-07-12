@@ -37,6 +37,7 @@ interface INetworkConfig {
   AAVE_EMISSIONS_MGR?: string
   COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
+  EASY_AUCTION_OWNER?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -87,6 +88,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
   },
   '3': {
     name: 'ropsten',
@@ -137,6 +139,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
   },
 }
 

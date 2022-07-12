@@ -111,7 +111,7 @@ contract FacadeWrite is IFacadeWrite {
     function setupGovernance(
         IRToken rToken,
         bool deployGovernance,
-        bool unpause,
+        bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
         address freezer,
@@ -174,8 +174,8 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Unfreeze if required
-        if (unpause) {
-            main.unpause();
+        if (unfreeze) {
+            main.unfreeze();
         }
 
         // Transfer Ownership and renounce roles

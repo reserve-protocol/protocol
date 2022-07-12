@@ -23,6 +23,8 @@ contract GnosisTrade is ITrade {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    uint256 public constant FEE_DENOMINATOR = 1000;
+
     IGnosis public gnosis;
 
     uint256 public auctionId; // An auction id from gnosis
@@ -80,16 +82,22 @@ contract GnosisTrade is ITrade {
             shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
         );
 
+        // Downsize our sell amount to adjust for fee
+        // {qTok} = {qTok} * {1} / {1}
+        uint96 sellAmount = uint96(
+            mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
+        ); // Safe downcast; require'd < uint96.max
+
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), req.sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
             endTime,
             endTime,
-            uint96(req.sellAmount), // Safe downcast; require'd
+            sellAmount,
             minBuyAmount,
             Math.min(minBuyAmount, uint96(minBidSize)), // Safe downcast; require'd
             0,

@@ -77,7 +77,7 @@ interface IFacadeWrite {
     function setupGovernance(
         IRToken rToken,
         bool deployGovernance,
-        bool unpause,
+        bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
         address freezer,
