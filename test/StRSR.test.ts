@@ -1281,7 +1281,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
     })
 
-    it('Should round down at or below MIN_EXCHANGE_RATE - Epsilon mayhem scenario', async () => {
+    it('Should round down below MIN_EXCHANGE_RATE - Epsilon mayhem scenario', async () => {
       const amount: BigNumber = bn('10e18')
 
       // Stake
@@ -1303,7 +1303,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
 
       const dustAmt = bn('20e9')
-      const toSeize = amount.mul(2).sub(dustAmt)
+      const toSeize = amount.mul(2).sub(dustAmt).add(1)
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
@@ -1322,7 +1322,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(fp('1'))
     })
 
-    it('Should not round down above MIN_EXCHANGE_RATE - Hyperinflation scenario', async () => {
+    it('Should not round down at or above MIN_EXCHANGE_RATE - Hyperinflation scenario', async () => {
       const amount: BigNumber = bn('10e18')
 
       // Stake 10 RSR
@@ -1344,7 +1344,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount })
 
       const dustAmt = bn('20e9')
-      const toSeize = amount.mul(2).sub(dustAmt).sub(1)
+      const toSeize = amount.mul(2).sub(dustAmt)
 
       // Seize all but dustAmt qRSR
       await whileImpersonating(backingManager.address, async (signer) => {
