@@ -43,4 +43,7 @@ interface IGnosis {
     /// @dev See here for decoding: https://git.io/JMang
     /// @return encodedOrder The order, encoded in a bytes 32
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder);
+
+    /// @return The numerator over a 1000-valued denominator
+    function feeNumerator() external returns (uint256);
 }
