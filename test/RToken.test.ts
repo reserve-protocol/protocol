@@ -616,11 +616,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      // Default one of the tokens - 50% price reduction and mark default as probable
-      await setOraclePrice(collateral1.address, bn('0.5e8'))
-
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
+
+      // Default one of the tokens - 50% price reduction and mark default as probable
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+      await main.poke()
+
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
 

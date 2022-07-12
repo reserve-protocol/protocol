@@ -120,7 +120,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status != CollateralStatus.DISABLED, "basket disabled");
+        require(status == CollateralStatus.SOUND, "basket disabled");
 
         main.furnace().melt();
 

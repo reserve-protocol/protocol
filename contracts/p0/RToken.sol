@@ -87,7 +87,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket disabled");
 
         address issuer = _msgSender();
         refundAndClearStaleIssuances(issuer);
