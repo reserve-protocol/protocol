@@ -540,7 +540,7 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
-          expect(await main.paused()).to.equal(false)
+          expect(await main.frozen()).to.equal(false)
         })
       })
 
@@ -646,7 +646,7 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
-          expect(await main.paused()).to.equal(false)
+          expect(await main.frozen()).to.equal(false)
         })
       })
     })
