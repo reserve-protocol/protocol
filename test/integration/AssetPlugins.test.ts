@@ -6,7 +6,12 @@ import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, networkConfig } from '../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS, MAX_ORACLE_TIMEOUT } from '../../common/constants'
+import {
+  CollateralStatus,
+  ZERO_ADDRESS,
+  MAX_ORACLE_TIMEOUT,
+  BN_SCALE_FACTOR,
+} from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {
@@ -31,6 +36,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   OracleLib,
+  NonFiatCollateral,
   RTokenAsset,
   StaticATokenLM,
   StaticATokenMock,
@@ -38,6 +44,10 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
+  WETH9,
+  SelfReferentialCollateral,
+  CTokenNonFiatCollateral,
+  CTokenSelfReferentialCollateral,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -103,6 +113,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cUsdc: CTokenMock
   let cUsdt: CTokenMock
 
+  let wbtc: ERC20Mock
+  let cWBTC: CTokenMock
+  let weth: ERC20Mock
+  let cETH: CTokenMock
+
   let daiCollateral: FiatCollateral
   let usdcCollateral: FiatCollateral
   let usdtCollateral: FiatCollateral
@@ -116,6 +131,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cDaiCollateral: CTokenFiatCollateral
   let cUsdcCollateral: CTokenFiatCollateral
   let cUsdtCollateral: CTokenFiatCollateral
+
+  let wbtcCollateral: NonFiatCollateral
+  let cWBTCCollateral: CTokenNonFiatCollateral
+  let wethCollateral: SelfReferentialCollateral
+  let cETHCollateral: CTokenSelfReferentialCollateral
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
@@ -174,6 +194,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       stataUsdc = <StaticATokenLM>erc20s[8] // static aUSDC
       stataUsdt = <StaticATokenLM>erc20s[9] // static aUSDT
       stataBusd = <StaticATokenLM>erc20s[10] // static aBUSD
+      wbtc = <ERC20Mock>erc20s[11] // wBTC
+      cWBTC = <CTokenMock>erc20s[12] // cWBTC
+      weth = <ERC20Mock>erc20s[13] // wETH
+      cETH = <CTokenMock>erc20s[14] // cETH
 
       // Get plain aTokens
       aDai = <IAToken>(
@@ -214,6 +238,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       aUsdcCollateral = <ATokenFiatCollateral>collateral[8] // aUSDC
       aUsdtCollateral = <ATokenFiatCollateral>collateral[9] // aUSDT
       aBusdCollateral = <ATokenFiatCollateral>collateral[10] // aBUSD
+      wbtcCollateral = <NonFiatCollateral>collateral[11] // wBTC
+      cWBTCCollateral = <CTokenNonFiatCollateral>collateral[12] // cWBTC
+      wethCollateral = <SelfReferentialCollateral>collateral[13] // wETH
+      cETHCollateral = <CTokenSelfReferentialCollateral>collateral[14] // cETH
     })
 
     it('Should setup assets correctly', async () => {
@@ -292,7 +320,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collateral correctly - CTokens', async () => {
+    it('Should setup collateral correctly - CTokens Fiat', async () => {
       // Define interface required for each ctoken
       interface CTokenInfo {
         token: ERC20Mock
@@ -356,7 +384,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should setup collateral correctly - ATokens', async () => {
+    it('Should setup collateral correctly - ATokens Fiat', async () => {
       // Define interface required for each aToken
       interface ATokenInfo {
         token: ERC20Mock
@@ -448,6 +476,238 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
         expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
+      }
+    })
+
+    it('Should setup collateral correctly - Non-Fiatcoins', async () => {
+      // Define interface required for each non-fiat coin
+      interface TokenInfo {
+        nonFiatToken: ERC20Mock
+        nonFiatTokenDecimals: number
+        nonFiatTokenAddress: string
+        nonFiatTokenCollateral: NonFiatCollateral
+        targetPrice: BigNumber
+        refPrice: BigNumber
+        targetName: string
+      }
+
+      // WBTC
+      const tokenInfos: TokenInfo[] = [
+        {
+          nonFiatToken: wbtc,
+          nonFiatTokenDecimals: 8,
+          nonFiatTokenAddress: networkConfig[chainId].tokens.WBTC || '',
+          nonFiatTokenCollateral: wbtcCollateral,
+          targetPrice: fp('31311.5'), // approx price June 6, 2022
+          refPrice: fp('1.00062'), // approx price wbtc-btc
+          targetName: 'BTC',
+        },
+      ]
+
+      for (const tkInf of tokenInfos) {
+        // Non-Fiat Token Assets
+        expect(await tkInf.nonFiatTokenCollateral.isCollateral()).to.equal(true)
+        expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatToken.address)
+        expect(await tkInf.nonFiatTokenCollateral.erc20()).to.equal(tkInf.nonFiatTokenAddress)
+        expect(await tkInf.nonFiatToken.decimals()).to.equal(tkInf.nonFiatTokenDecimals)
+        expect(await tkInf.nonFiatTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(tkInf.targetName)
+        )
+
+        // Get priceable info
+        await tkInf.nonFiatTokenCollateral.refresh()
+        expect(await tkInf.nonFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
+        expect(await tkInf.nonFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await tkInf.nonFiatTokenCollateral.pricePerTarget()).to.be.closeTo(
+          tkInf.targetPrice,
+          fp('0.5')
+        )
+        expect(await tkInf.nonFiatTokenCollateral.price()).to.be.closeTo(
+          tkInf.targetPrice.mul(tkInf.refPrice).div(BN_SCALE_FACTOR),
+          fp('0.5')
+        ) // ref price approx 1.00062
+        expect(await tkInf.nonFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+        expect(await tkInf.nonFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      }
+    })
+
+    it('Should setup collateral correctly - CTokens Non-Fiat', async () => {
+      // Define interface required for each ctoken
+      interface CTokenInfo {
+        token: ERC20Mock
+        tokenAddress: string
+        cToken: CTokenMock
+        cTokenAddress: string
+        cTokenCollateral: CTokenNonFiatCollateral
+        targetPrice: BigNumber
+        refPrice: BigNumber
+        refPerTok: BigNumber
+        targetName: string
+      }
+
+      // Compound - cUSDC and cUSDT
+      const cTokenInfos: CTokenInfo[] = [
+        {
+          token: wbtc,
+          tokenAddress: networkConfig[chainId].tokens.WBTC || '',
+          cToken: cWBTC,
+          cTokenAddress: networkConfig[chainId].tokens.cWBTC || '',
+          cTokenCollateral: cWBTCCollateral,
+          targetPrice: fp('31311.5'), // approx price June 6, 2022
+          refPrice: fp('1.00062'), // approx price wbtc-btc
+          refPerTok: fp('0.02020'), // for wbtc on June 2022
+          targetName: 'BTC',
+        },
+      ]
+
+      for (const ctkInf of cTokenInfos) {
+        // CToken
+        expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
+        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+          await ctkInf.token.decimals()
+        )
+        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cToken.address)
+        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenAddress)
+        expect(await ctkInf.cToken.decimals()).to.equal(8)
+        expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(ctkInf.targetName)
+        )
+
+        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+          ctkInf.refPerTok,
+          fp('0.001')
+        )
+        expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await ctkInf.cTokenCollateral.pricePerTarget()).to.be.closeTo(
+          ctkInf.targetPrice,
+          fp('0.5')
+        ) // cWBTC price
+        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+          await ctkInf.cTokenCollateral.refPerTok()
+        )
+        expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(
+          ctkInf.targetPrice.mul(ctkInf.refPrice).mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR.pow(2)),
+          fp('0.5')
+        ) // close to $633 usd
+
+        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
+        expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
+          compoundMock.address,
+          calldata,
+        ])
+        expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+      }
+    })
+
+    it('Should setup collateral correctly - Self-Referential', async () => {
+      // Define interface required for each self-referential coin
+      interface TokenInfo {
+        selfRefToken: ERC20Mock | WETH9
+        selfRefTokenDecimals: number
+        selfRefTokenAddress: string
+        selfRefTokenCollateral: SelfReferentialCollateral
+        price: BigNumber
+        targetName: string
+      }
+
+      // WBTC
+      const tokenInfos: TokenInfo[] = [
+        {
+          selfRefToken: weth,
+          selfRefTokenDecimals: 18,
+          selfRefTokenAddress: networkConfig[chainId].tokens.WETH || '',
+          selfRefTokenCollateral: wethCollateral,
+          price: fp('1859'), //approx price June 2022
+          targetName: 'ETH',
+        },
+      ]
+
+      for (const tkInf of tokenInfos) {
+        // Non-Fiat Token Assets
+        expect(await tkInf.selfRefTokenCollateral.isCollateral()).to.equal(true)
+        expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefToken.address)
+        expect(await tkInf.selfRefTokenCollateral.erc20()).to.equal(tkInf.selfRefTokenAddress)
+        expect(await tkInf.selfRefToken.decimals()).to.equal(tkInf.selfRefTokenDecimals)
+        expect(await tkInf.selfRefTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(tkInf.targetName)
+        )
+        // Get priceable info
+        await tkInf.selfRefTokenCollateral.refresh()
+        expect(await tkInf.selfRefTokenCollateral.refPerTok()).to.equal(fp('1'))
+        expect(await tkInf.selfRefTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await tkInf.selfRefTokenCollateral.pricePerTarget()).to.be.closeTo(
+          tkInf.price,
+          fp('0.5')
+        )
+        expect(await tkInf.selfRefTokenCollateral.price()).to.be.closeTo(tkInf.price, fp('0.5'))
+        expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+        expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      }
+    })
+
+    it('Should setup collateral correctly - CTokens Self-Referential', async () => {
+      // Define interface required for each ctoken
+      interface CTokenInfo {
+        token: ERC20Mock
+        tokenAddress: string
+        cToken: CTokenMock
+        cTokenAddress: string
+        cTokenCollateral: CTokenSelfReferentialCollateral
+        price: BigNumber
+        refPerTok: BigNumber
+        targetName: string
+      }
+
+      // Compound - cUSDC and cUSDT
+      const cTokenInfos: CTokenInfo[] = [
+        {
+          token: weth,
+          tokenAddress: networkConfig[chainId].tokens.WETH || '',
+          cToken: cETH,
+          cTokenAddress: networkConfig[chainId].tokens.cETH || '',
+          cTokenCollateral: cETHCollateral,
+          price: fp('1859'), // approx price June 6, 2022
+          refPerTok: fp('0.02020'), // for weth on June 2022
+          targetName: 'ETH',
+        },
+      ]
+
+      for (const ctkInf of cTokenInfos) {
+        // CToken
+        expect(await ctkInf.cTokenCollateral.isCollateral()).to.equal(true)
+        expect(await ctkInf.cTokenCollateral.referenceERC20Decimals()).to.equal(
+          await ctkInf.token.decimals()
+        )
+        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cToken.address)
+        expect(await ctkInf.cTokenCollateral.erc20()).to.equal(ctkInf.cTokenAddress)
+        expect(await ctkInf.cToken.decimals()).to.equal(8)
+        expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(ctkInf.targetName)
+        )
+
+        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+          ctkInf.refPerTok,
+          fp('0.001')
+        )
+        expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await ctkInf.cTokenCollateral.pricePerTarget()).to.be.closeTo(
+          ctkInf.price,
+          fp('0.5')
+        ) // cWBTC price
+        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+          await ctkInf.cTokenCollateral.refPerTok()
+        )
+        expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(
+          ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
+          fp('0.5')
+        ) // close to $633 usd
+
+        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
+        expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
+          compoundMock.address,
+          calldata,
+        ])
+        expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
       }
     })
 

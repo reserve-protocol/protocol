@@ -7,9 +7,11 @@ import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../common/const
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
+  ATokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
@@ -64,14 +66,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let backupToken2: ERC20Mock
   let backupToken3: ERC20Mock
   let backupToken4: ERC20Mock
-  let collateral0: Collateral
-  let collateral1: Collateral
+  let collateral0: FiatCollateral
+  let collateral1: FiatCollateral
   // let collateral2: ATokenFiatCollateral
   // let collateral3: CTokenFiatCollateral
-  let backupCollateral1: Collateral
-  let backupCollateral2: Collateral
-  let backupCollateral3: Collateral
-  let backupCollateral4: Collateral
+  let backupCollateral1: FiatCollateral
+  let backupCollateral2: ATokenFiatCollateral
+  let backupCollateral3: ATokenFiatCollateral
+  let backupCollateral4: ATokenFiatCollateral
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
 
@@ -143,20 +145,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
     // Set Aave revenue token
     await token2.setAaveToken(aaveToken.address)
 
-    collateral0 = <Collateral>basket[0]
-    collateral1 = <Collateral>basket[1]
+    collateral0 = <FiatCollateral>basket[0]
+    collateral1 = <FiatCollateral>basket[1]
     // collateral2 = <ATokenFiatCollateral>basket[2]
     // collateral3 = <CTokenFiatCollateral>basket[3]
 
     // Backup tokens and collaterals - USDT - aUSDT - aUSDC - aBUSD
     backupToken1 = erc20s[2] // USDT
-    backupCollateral1 = <Collateral>collateral[2]
+    backupCollateral1 = <FiatCollateral>collateral[2]
     backupToken2 = erc20s[9] // aUSDT
-    backupCollateral2 = <Collateral>collateral[9]
+    backupCollateral2 = <ATokenFiatCollateral>collateral[9]
     backupToken3 = erc20s[8] // aUSDC
-    backupCollateral3 = <Collateral>collateral[8]
+    backupCollateral3 = <ATokenFiatCollateral>collateral[8]
     backupToken4 = erc20s[10] // aBUSD
-    backupCollateral4 = <Collateral>collateral[10]
+    backupCollateral4 = <ATokenFiatCollateral>collateral[10]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -581,7 +583,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
     context('With multiple targets', function () {
       let issueAmount: BigNumber
-      let newEURCollateral: Collateral
+      let newEURCollateral: FiatCollateral
       let backupEURCollateral: Collateral
       let initialTokens: string[]
       let initialQuantities: BigNumber[]
@@ -600,7 +602,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const ChainlinkFeedFactory = await ethers.getContractFactory('MockV3Aggregator')
 
         const newEURFeed = await ChainlinkFeedFactory.deploy(8, bn('1e8'))
-        newEURCollateral = <Collateral>(
+        newEURCollateral = <FiatCollateral>(
           await FiatCollateralFactory.deploy(
             newEURFeed.address,
             token1.address,
@@ -1386,7 +1388,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           'FiatCollateral',
           { libraries: { OracleLib: oracleLib.address } }
         )
-        const newCollateral0: Collateral = <Collateral>(
+        const newCollateral0: FiatCollateral = <FiatCollateral>(
           await CollateralFactory.deploy(
             chainlinkFeed.address,
             token0.address,
