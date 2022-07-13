@@ -527,7 +527,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await rToken.price()).to.equal(fp('1'))
     })
 
-    it('should be able to scoop entire auction when minBuyAmount = 0', async () => {
+    it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
       // Default collateral0
       await setOraclePrice(collateral0.address, bn('0.5e8')) // depeg
       await collateral0.refresh()
@@ -563,9 +563,24 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Auction should not be able to be settled
       await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
 
-      // Bid
-      const bidAmt = 2
       await token1.connect(addr1).approve(easyAuction.address, issueAmount)
+
+      // Bid with a too-small order and fail.
+      const lowBidAmt = 2
+      await expect(
+        easyAuction
+          .connect(addr1)
+          .placeSellOrders(
+            auctionId,
+            [issueAmount],
+            [lowBidAmt],
+            [QUEUE_START],
+            ethers.constants.HashZero
+          )
+      ).to.be.revertedWith('order too small')
+
+      // Bid with a nontheless pretty small order, and succeed.
+      const bidAmt = await trade.DEFAULT_MIN_BID()
       await easyAuction
         .connect(addr1)
         .placeSellOrders(
