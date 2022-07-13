@@ -66,37 +66,31 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             return;
         } else {
             /*
-             * Recapitalization Strategy
+             * Recapitalization
              *
-             * Trading one at a time:
-             *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
-             *     a. Sell non-RSR assets first
-             *     b. Seize and sell RSR when no asset has a surplus > dust amount
-             *   2. If rToken.basketsNeeded() can't be reached after seizing all RSR,
-             *     -  Sell non-RSR surplus assets towards the Fallen Target
-             *   3. If all trades are less than the dust amount,
-             *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
+             * Strategy: iteratively move the system on a forgiving path towards capitalization
+             * through a narrowing BU price band. The initial large spread reflects the
+             * uncertainty associated with the market price of defaulted/volatile collateral, as
+             * well as losses due to trading slippage. In the absence of further collateral
+             * default, the size of the BU price band should decrease with each trade until it is
+             * 0, at which point capitalization is restored.
              *
-             * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
-             *   Note that the Fallen Target is freshly calculated during each pass
+             * In the first round of trading we exclude RSR from consideration.
+             *
+             * If we run out of trades to perform, and are still undercapitalized, we compromise
+             * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
-
-            //                  | non-RSR | RSR |
-            // |----------------|---------|-----|
-            // | Baskets Needed | 1a      | 1b  |
-            // | Fallen Target  | 2       |     |
 
             bool doTrade;
             TradeRequest memory req;
 
-            // 1a
-            (doTrade, req) = TradingLibP1.nonRSRTrade(false);
-            // 1b
-            if (!doTrade) (doTrade, req) = TradingLibP1.rsrTrade();
-            // 2
-            if (!doTrade) (doTrade, req) = TradingLibP1.nonRSRTrade(true);
+            // DON'T sell RSR
+            (doTrade, req) = TradingLibP1.prepareTradeRecapitalize(false);
 
-            // 3
+            // DO sell RSR
+            if (!doTrade) (doTrade, req) = TradingLibP1.prepareTradeRecapitalize(true);
+
+            // Haircut time
             if (!doTrade) {
                 compromiseBasketsNeeded();
                 return;
