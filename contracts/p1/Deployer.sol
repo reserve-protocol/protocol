@@ -167,12 +167,7 @@ contract DeployerP1 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(
-            main,
-            gnosis,
-            implementations.trade,
-            params.auctionLength
-        );
+        main.broker().init(main, gnosis, implementations.trade, params.auctionLength);
 
         // Init StRSR
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

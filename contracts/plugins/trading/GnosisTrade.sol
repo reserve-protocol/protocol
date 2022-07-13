@@ -28,7 +28,7 @@ contract GnosisTrade is ITrade {
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
     uint96 private constant MAX_ORDERS = 1e5; // TODO: choose a good value here; Measure gas.
-    uint192 private constant DEFAULT_MIN_BID = FIX_ONE / 100; // raw "/" for compile-time const
+    uint192 private constant DEFAULT_MIN_BID = FIX_ONE / 100; // raw "/" for compile-time const {tok}
 
     IGnosis public gnosis;
 
@@ -91,9 +91,10 @@ contract GnosisTrade is ITrade {
             mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
         ); // Safe downcast; require'd < uint96.max
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
+
         uint256 minBuyAmtPerOrder = Math.max(
             minBuyAmount / MAX_ORDERS,
-            DEFAULT_MIN_BID.shiftl_toUint(int8(sell.decimals()))
+            DEFAULT_MIN_BID.shiftl_toUint(int8(buy.decimals()))
         );
 
         // == Interactions ==
