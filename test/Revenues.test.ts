@@ -35,6 +35,7 @@ import {
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  FiatCollateral,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -78,8 +79,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let collateral0: Collateral
-  let collateral1: Collateral
+  let collateral0: FiatCollateral
+  let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let collateral: Collateral[]
@@ -142,8 +143,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     await backingManager.connect(owner).setBackingBuffer(0)
 
     // Get assets and tokens
-    collateral0 = <Collateral>basket[0]
-    collateral1 = <Collateral>basket[1]
+    collateral0 = <FiatCollateral>basket[0]
+    collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())

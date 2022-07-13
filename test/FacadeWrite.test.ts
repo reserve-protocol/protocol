@@ -19,11 +19,13 @@ import snapshotGasCost from './utils/snapshotGasCost'
 
 import {
   Asset,
+  CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   IBasketHandler,
   Facade,
   FacadeWrite,
+  FiatCollateral,
   Governance,
   IAssetRegistry,
   RTokenAsset,
@@ -65,9 +67,9 @@ describe('FacadeWrite contract', () => {
   let compToken: ERC20Mock
 
   // Assets
-  let tokenAsset: Collateral
-  let usdcAsset: Collateral
-  let cTokenAsset: Collateral
+  let tokenAsset: FiatCollateral
+  let usdcAsset: FiatCollateral
+  let cTokenAsset: CTokenFiatCollateral
   let compAsset: Asset
   let rTokenAsset: RTokenAsset
 
@@ -119,7 +121,9 @@ describe('FacadeWrite contract', () => {
     ))
 
     // Get assets and tokens
-    ;[tokenAsset, usdcAsset, , cTokenAsset] = basket
+    tokenAsset = <FiatCollateral>basket[0]
+    usdcAsset = <FiatCollateral>basket[1]
+    cTokenAsset = <CTokenFiatCollateral>basket[3]
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())

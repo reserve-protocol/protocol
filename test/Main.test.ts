@@ -22,6 +22,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
@@ -81,8 +82,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let collateral0: Collateral
-  let collateral1: Collateral
+  let collateral0: FiatCollateral
+  let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let erc20s: ERC20Mock[]
@@ -148,8 +149,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
 
-    collateral0 = <Collateral>basket[0]
-    collateral1 = <Collateral>basket[1]
+    collateral0 = <FiatCollateral>basket[0]
+    collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
 
