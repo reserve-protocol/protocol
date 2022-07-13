@@ -25,7 +25,6 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         dustAmount: fp('0.01'), // 0.01 UoA (USD)
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
         oneshotFreezeDuration: bn('864000'), // 10 days
-        minBidSize: fp('1'), // 1 UoA (USD)
       },
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks

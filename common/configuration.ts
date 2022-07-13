@@ -166,7 +166,6 @@ export interface IConfig {
   dustAmount: BigNumber
   issuanceRate: BigNumber
   oneshotFreezeDuration: BigNumber
-  minBidSize: BigNumber
 }
 
 export interface IRevenueShare {

@@ -28,7 +28,9 @@ contract GnosisTrade is ITrade {
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
     uint96 private constant MAX_ORDERS = 1e5; // TODO: choose a good value here; Measure gas.
-    uint192 private constant DEFAULT_MIN_BID = FIX_ONE / 100; // raw "/" for compile-time const {tok}
+
+    // raw "/" for compile-time const
+    uint192 private constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
 
     IGnosis public gnosis;
 
