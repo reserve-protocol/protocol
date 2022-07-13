@@ -16,6 +16,7 @@ import {
   EasyAuction,
   ERC20Mock,
   Facade,
+  FiatCollateral,
   IAssetRegistry,
   IBasketHandler,
   TestIBackingManager,
@@ -48,7 +49,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
   let basket: Collateral[]
   let collateral: Collateral[]
-  let collateral0: Collateral
+  let collateral0: FiatCollateral
   let token0: ERC20Mock
   let token1: ERC20Mock
 
@@ -82,7 +83,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <ERC20Mock>erc20s[collateral.indexOf(basket[1])]
-    collateral0 = collateral[0]
+    collateral0 = <FiatCollateral> collateral[0]
   })
 
   context('RSR -> token0', function () {
