@@ -18,7 +18,6 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
         dustAmount: FixLib.divu(toFix(1), 100), // 0.01 UoA (USD)
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
-        oneshotFreezeDuration: 864000, // 10 days
-        minBidSize: toFix(1) // 1 UoA (USD)
+        oneshotFreezeDuration: 864000 // 10 days
     });
 }

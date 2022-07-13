@@ -171,8 +171,7 @@ contract DeployerP1 is IDeployer {
             main,
             gnosis,
             implementations.trade,
-            params.auctionLength,
-            params.minBidSize
+            params.auctionLength
         );
 
         // Init StRSR

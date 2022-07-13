@@ -120,8 +120,7 @@ contract DeployerP0 is IDeployer {
             main,
             gnosis,
             ITrade(address(0)),
-            params.auctionLength,
-            params.minBidSize
+            params.auctionLength
         );
 
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

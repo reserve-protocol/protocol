@@ -21,7 +21,6 @@ struct TradeRequest {
  */
 interface IBroker is IComponent {
     event AuctionLengthSet(uint32 indexed oldVal, uint32 indexed newVal);
-    event MinBidSizeSet(uint192 indexed oldVal, uint192 indexed newVal);
     event DisabledSet(bool indexed prevVal, bool indexed newVal);
 
     // Initialization
@@ -29,8 +28,7 @@ interface IBroker is IComponent {
         IMain main_,
         IGnosis gnosis_,
         ITrade tradeImplementation_,
-        uint32 auctionLength_,
-        uint192 minBidSize_
+        uint32 auctionLength_
     ) external;
 
     /// Request a trade from the broker
@@ -50,10 +48,6 @@ interface TestIBroker is IBroker {
     function auctionLength() external view returns (uint32);
 
     function setAuctionLength(uint32 newAuctionLength) external;
-
-    function minBidSize() external view returns (uint192);
-
-    function setMinBidSize(uint192 minBidSize) external;
 
     function setDisabled(bool disabled_) external;
 }
