@@ -451,7 +451,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         {
           contract: rToken,
           name: 'IssuancesCompleted',
-          args: [addr1.address, 0, 1],
+          args: [addr1.address, 0, 1, issueAmount],
           emitted: true,
         },
         {
@@ -545,7 +545,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         {
           contract: rToken,
           name: 'IssuancesCompleted',
-          args: [addr1.address, 0, 1],
+          args: [addr1.address, 0, 1, issueAmount],
           emitted: true,
         },
         {
@@ -1052,7 +1052,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const expectedTkn2: BigNumber = quotes[2]
       const expectedTkn3: BigNumber = quotes[3]
 
-      // launch 5 issuances of increasing size (1e24, 2e24, ... 5e24)
+      // launch 5 issuances of increasing size (1e24, 2e24, ... 16e24)
       for (let i = 0; i < 5; i++) await rToken.connect(addr1).issue(bn('1e24').mul(2 ** i))
 
       const before0 = bn('32e24').sub(expectedTkn0.mul(31))
@@ -1072,7 +1072,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel the last 3 issuances
       await expect(rToken.connect(addr1).cancel(2, false))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 2, 5)
+        .withArgs(addr1.address, 2, 5, bn('28e24'))
 
       // Check that the last 3 issuances were refunded
       // (28 = 4 + 8 + 16)
@@ -1117,7 +1117,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancel(1, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 1)
+        .withArgs(addr1.address, 0, 1, issueAmount)
 
       // Check minting was cancelled but not tokens minted
       await expectIssuance(addr1.address, 0, {
@@ -1192,7 +1192,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancel(2, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 1, 2)
+        .withArgs(addr1.address, 1, 2, issueAmount)
 
       // Check minting was cancelled and not tokens minted
       await expectIssuance(addr1.address, 1, {
@@ -1258,7 +1258,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel slow issuances
       await expect(rToken.connect(addr1).cancel(0, false))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 1)
+        .withArgs(addr1.address, 0, 1, issueAmount)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
