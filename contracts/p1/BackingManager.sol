@@ -54,7 +54,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
-        // Only trade when SOUND
+        // Only trade when all the collateral assets in the basket are SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
@@ -63,7 +63,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (main.basketHandler().fullyCapitalized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
-            return;
         } else {
             /*
              * Recapitalization
@@ -71,33 +70,36 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
              * uncertainty associated with the market price of defaulted/volatile collateral, as
-             * well as losses due to trading slippage. In the absence of further collateral
-             * default, the size of the BU price band should decrease with each trade until it is
-             * 0, at which point capitalization is restored.
+             * well as potential losses due to trading slippage. In the absence of further
+             * collateral default, the size of the BU price band should decrease with each trade
+             * until it is 0, at which point capitalization is restored.
              *
-             * In the first round of trading we exclude RSR from consideration.
+             * TODO
+             * Argument for why this converges
              *
-             * If we run out of trades to perform, and are still undercapitalized, we compromise
+             * ======
+             *
+             * If we run out of capital and are still undercapitalized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
+             *
+             * TODO
+             * Argument for why this is ok and won't accidentally hurt RToken holders
              */
 
-            bool doTrade;
-            TradeRequest memory req;
+            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();
 
-            // DON'T sell RSR
-            (doTrade, req) = TradingLibP1.prepareTradeRecapitalize(false);
+            if (doTrade) {
+                // Seize RSR if needed
+                if (req.sell.erc20() == main.rsr()) {
+                    uint256 bal = req.sell.erc20().balanceOf(address(this));
+                    if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+                }
 
-            // DO sell RSR
-            if (!doTrade) (doTrade, req) = TradingLibP1.prepareTradeRecapitalize(true);
-
-            // Haircut time
-            if (!doTrade) {
+                tryTrade(req);
+            } else {
+                // Haircut time
                 compromiseBasketsNeeded();
-                return;
             }
-
-            // == Interaction ==
-            if (doTrade) tryTrade(req);
         }
     }
 

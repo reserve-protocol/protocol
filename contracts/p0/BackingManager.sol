@@ -63,59 +63,39 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
             handoutExcessAssets(erc20s);
         } else {
             /*
-             * Recapitalization Strategy
+             * Recapitalization
              *
-             * Trading one at a time...
-             *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
-             *     a. Sell non-RSR assets first
-             *     b. Sell RSR when no asset has a surplus > dust amount
-             *   2. When RSR holdings < dust:
-             *     -  Sell non-RSR surplus assets towards the Fallen Target
-             *   3. When this produces trade sizes < dust:
-             *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
+             * Strategy: iteratively move the system on a forgiving path towards capitalization
+             * through a narrowing BU price band. The initial large spread reflects the
+             * uncertainty associated with the market price of defaulted/volatile collateral, as
+             * well as potential losses due to trading slippage. In the absence of further
+             * collateral default, the size of the BU price band should decrease with each trade
+             * until it is 0, at which point capitalization is restored.
              *
-             * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
-             *   Note that the Fallen Target is freshly calculated during each pass
+             * TODO
+             * Argument for why this converges
+             *
+             * ======
+             *
+             * If we run out of capital and are still undercapitalized, we compromise
+             * rToken.basketsNeeded to the current basket holdings. Haircut time.
+             *
+             * TODO
+             * Argument for why this is ok and won't accidentally hurt RToken holders
              */
 
-            ///                       Baskets Needed
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             1a               |            1b
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///  non-RSR ------------------------------------------ RSR
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///             2                |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                              |
-            ///                        Fallen Target
-
-            // 1a
-            (bool doTrade, TradeRequest memory req) = nonRSRTrade(false);
-
-            if (!doTrade) {
-                // 1b
-                (doTrade, req) = rsrTrade();
-            }
-
-            if (!doTrade) {
-                // 2
-                (doTrade, req) = nonRSRTrade(true);
-            }
+            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareTradeRecapitalize();
 
             if (doTrade) {
+                // Seize RSR if needed
+                if (req.sell.erc20() == main.rsr()) {
+                    uint256 bal = req.sell.erc20().balanceOf(address(this));
+                    if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+                }
+
                 tryTrade(req);
             } else {
-                // 3
+                // Haircut time
                 compromiseBasketsNeeded();
             }
         }
@@ -177,83 +157,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 }
             }
         }
-    }
-
-    /// Prepare asset-for-collateral trade
-    /// @param useFallenTarget When true, trade towards a reduced BU target based on holdings
-    /// @return doTrade If the trade request should be performed
-    /// @return req The prepared trade request
-    function nonRSRTrade(bool useFallenTarget)
-        private
-        view
-        returns (bool doTrade, TradeRequest memory req)
-    {
-        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
-
-        (
-            IAsset surplus,
-            ICollateral deficit,
-            uint192 surplusAmount,
-            uint192 deficitAmount
-        ) = TradingLibP0.largestSurplusAndDeficit(useFallenTarget);
-
-        if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
-
-        // Of primary concern here is whether we can trust the prices for the assets
-        // we are selling. If we cannot, then we should not `prepareTradeToCoverDeficit`
-
-        if (
-            surplus.isCollateral() &&
-            main.assetRegistry().toColl(surplus.erc20()).status() == CollateralStatus.DISABLED
-        ) {
-            (doTrade, req) = TradingLibP0.prepareTradeSell(surplus, deficit, surplusAmount);
-            req.minBuyAmount = 0;
-        } else {
-            (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
-                surplus,
-                deficit,
-                surplusAmount,
-                deficitAmount
-            );
-        }
-
-        if (req.sellAmount == 0) return (false, req);
-
-        return (doTrade, req);
-    }
-
-    /// Prepare a trade with seized RSR to buy for missing collateral
-    /// @return doTrade If the trade request should be performed
-    /// @return req The prepared trade request
-    function rsrTrade() private returns (bool doTrade, TradeRequest memory req) {
-        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
-        require(main.assetRegistry().isRegistered(main.rsr()), "rsr unregistered");
-
-        IStRSR stRSR = main.stRSR();
-        IAsset rsrAsset = main.assetRegistry().toAsset(main.rsr());
-
-        (, ICollateral deficit, , uint192 deficitAmount) = TradingLibP0.largestSurplusAndDeficit(
-            false
-        );
-        if (address(deficit) == address(0)) return (false, req);
-
-        uint192 availableRSR = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR)));
-
-        (doTrade, req) = TradingLibP0.prepareTradeToCoverDeficit(
-            rsrAsset,
-            deficit,
-            availableRSR,
-            deficitAmount
-        );
-
-        if (doTrade) {
-            int8 decimals = int8(IERC20Metadata(address(main.rsr())).decimals());
-            uint256 rsrBal = rsrAsset.bal(address(this)).shiftl_toUint(decimals);
-            if (req.sellAmount > rsrBal) {
-                stRSR.seizeRSR(req.sellAmount - rsrBal);
-            }
-        }
-        return (doTrade, req);
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
