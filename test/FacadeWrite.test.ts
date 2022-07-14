@@ -158,10 +158,15 @@ describe('FacadeWrite contract', () => {
     govParams = {
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks
-      proposalThresholdAsMicroPercent: bn(1e6), // 1&
+      proposalThresholdAsMicroPercent: bn(1e6), // 1%
       quorumPercent: bn(4), // 4%
       minDelay: bn(60 * 60 * 24), // 1 day
     }
+  })
+
+  it('Should validate parameters', async () => {
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite')
+    await expect(FacadeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith('Invalid address')
   })
 
   it('Should setup values correctly', async () => {

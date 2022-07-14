@@ -20,6 +20,7 @@ contract FacadeWrite is IFacadeWrite {
     IDeployer public immutable deployer;
 
     constructor(IDeployer deployer_) {
+        require(address(deployer_) != address(0), "Invalid address");
         deployer = deployer_;
     }
 

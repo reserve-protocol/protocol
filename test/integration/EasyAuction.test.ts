@@ -83,7 +83,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <ERC20Mock>erc20s[collateral.indexOf(basket[1])]
-    collateral0 = <FiatCollateral> collateral[0]
+    collateral0 = <FiatCollateral>collateral[0]
   })
 
   context('RSR -> token0', function () {
