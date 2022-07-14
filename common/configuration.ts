@@ -68,7 +68,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      WBTC: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+      WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {
@@ -119,7 +119,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      WBTC: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599',
+      WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {

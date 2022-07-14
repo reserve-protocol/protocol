@@ -516,7 +516,7 @@ describe('Collateral contracts', () => {
       )
       expect(await nonFiatCollateral.refUnitChainlinkFeed()).to.equal(referenceUnitOracle.address)
       expect(await nonFiatCollateral.erc20()).to.equal(nonFiatToken.address)
-      expect(await nonFiatToken.decimals()).to.equal(18)
+      expect(await nonFiatToken.decimals()).to.equal(18) // Due to Mock, wbtc has 8 decimals (covered in integration test)
       expect(await nonFiatCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('BTC'))
       // Get priceable info
       await nonFiatCollateral.refresh()

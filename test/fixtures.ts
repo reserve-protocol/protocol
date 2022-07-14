@@ -49,6 +49,8 @@ import {
   TradingLibP0,
   TradingLibP1,
   USDCMock,
+  NonFiatCollateral,
+  SelfReferentialCollateral,
 } from '../typechain'
 
 export enum Implementation {
@@ -63,7 +65,12 @@ export const SLOW = !!process.env.SLOW
 
 export const ORACLE_TIMEOUT = bn('86400000') // 1000d -- way too long for an actual deployment
 
-export type Collateral = FiatCollateral | CTokenFiatCollateral | ATokenFiatCollateral
+export type Collateral =
+  | FiatCollateral
+  | CTokenFiatCollateral
+  | ATokenFiatCollateral
+  | NonFiatCollateral
+  | SelfReferentialCollateral
 
 interface RSRFixture {
   rsr: ERC20Mock
