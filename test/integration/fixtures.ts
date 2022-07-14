@@ -595,7 +595,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotFreezeDuration: bn('864000'), // 10 days
-    minBidSize: fp('0.001'), // 0.1% of the minBuyAmount
   }
 
   // Deploy TradingLib external library

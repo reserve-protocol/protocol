@@ -200,12 +200,3 @@ The number of seconds a freeze performed by a non-governance freezer. Governance
 
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
-
-### `minBidSize`
-
-Dimension: `{UoA}`
-
-The minimum bid size in a dutch auction (such as Gnosis EasyAuction) in terms of the unit of account. This prevents auction bidders from performing gas-griefing attacks against the protocol.
-
-Antipicated value: `1e19` = $10
-Reasonable range: 1e18 to 1e24
