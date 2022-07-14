@@ -37,6 +37,13 @@ contract DeployerP0 is IDeployer {
         IFacade facade_,
         IAsset rsrAsset_
     ) {
+        require(
+            address(rsr_) != address(0) &&
+                address(gnosis_) != address(0) &&
+                address(facade_) != address(0) &&
+                address(rsrAsset_) != address(0),
+            "invalid address"
+        );
         rsr = rsr_;
         gnosis = gnosis_;
         facade = facade_;
