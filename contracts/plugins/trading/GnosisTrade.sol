@@ -25,6 +25,13 @@ contract GnosisTrade is ITrade {
 
     uint256 public constant FEE_DENOMINATOR = 1000;
 
+    // Upper bound for the max number of orders we're happy to have the auction clear in;
+    // When we have good price information, this determines the minimum buy amount per order.
+    uint96 private constant MAX_ORDERS = 1e5; // TODO: choose a good value here; Measure gas.
+
+    // raw "/" for compile-time const
+    uint192 private constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
+
     IGnosis public gnosis;
 
     uint256 public auctionId; // An auction id from gnosis
@@ -58,7 +65,6 @@ contract GnosisTrade is ITrade {
         address origin_,
         IGnosis gnosis_,
         uint32 auctionLength,
-        uint256 minBidSize,
         TradeRequest memory req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
@@ -74,7 +80,6 @@ contract GnosisTrade is ITrade {
         require(sell.balanceOf(address(this)) < type(uint96).max, "initBal too large");
         require(req.sellAmount < type(uint96).max, "sellAmount too large");
         require(req.minBuyAmount < type(uint96).max, "minBuyAmount too large");
-        require(minBidSize < type(uint96).max, "minBidSize too large");
         initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
@@ -87,11 +92,17 @@ contract GnosisTrade is ITrade {
         uint96 sellAmount = uint96(
             mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
         ); // Safe downcast; require'd < uint96.max
+        uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
+
+        uint256 minBuyAmtPerOrder = Math.max(
+            minBuyAmount / MAX_ORDERS,
+            DEFAULT_MIN_BID.shiftl_toUint(int8(buy.decimals()))
+        );
 
         // == Interactions ==
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
-        uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
+
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
@@ -99,7 +110,7 @@ contract GnosisTrade is ITrade {
             endTime,
             sellAmount,
             minBuyAmount,
-            Math.min(minBuyAmount, uint96(minBidSize)), // Safe downcast; require'd
+            minBuyAmtPerOrder,
             0,
             false,
             address(0),

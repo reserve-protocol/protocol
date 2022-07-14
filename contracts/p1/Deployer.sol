@@ -43,6 +43,26 @@ contract DeployerP1 is IDeployer {
         IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
+        require(
+            address(rsr_) != address(0) &&
+                address(gnosis_) != address(0) &&
+                address(facade_) != address(0) &&
+                address(rsrAsset_) != address(0) &&
+                address(implementations_.main) != address(0) &&
+                address(implementations_.trade) != address(0) &&
+                address(implementations_.components.assetRegistry) != address(0) &&
+                address(implementations_.components.backingManager) != address(0) &&
+                address(implementations_.components.basketHandler) != address(0) &&
+                address(implementations_.components.broker) != address(0) &&
+                address(implementations_.components.distributor) != address(0) &&
+                address(implementations_.components.furnace) != address(0) &&
+                address(implementations_.components.rsrTrader) != address(0) &&
+                address(implementations_.components.rTokenTrader) != address(0) &&
+                address(implementations_.components.rToken) != address(0) &&
+                address(implementations_.components.stRSR) != address(0),
+            "invalid address"
+        );
+
         rsr = rsr_;
         gnosis = gnosis_;
         facade = facade_;
@@ -167,13 +187,7 @@ contract DeployerP1 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(
-            main,
-            gnosis,
-            implementations.trade,
-            params.auctionLength,
-            params.minBidSize
-        );
+        main.broker().init(main, gnosis, implementations.trade, params.auctionLength);
 
         // Init StRSR
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));

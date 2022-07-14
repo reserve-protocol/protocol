@@ -37,6 +37,13 @@ contract DeployerP0 is IDeployer {
         IFacade facade_,
         IAsset rsrAsset_
     ) {
+        require(
+            address(rsr_) != address(0) &&
+                address(gnosis_) != address(0) &&
+                address(facade_) != address(0) &&
+                address(rsrAsset_) != address(0),
+            "invalid address"
+        );
         rsr = rsr_;
         gnosis = gnosis_;
         facade = facade_;
@@ -116,13 +123,7 @@ contract DeployerP0 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(
-            main,
-            gnosis,
-            ITrade(address(0)),
-            params.auctionLength,
-            params.minBidSize
-        );
+        main.broker().init(main, gnosis, ITrade(address(0)), params.auctionLength);
 
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
