@@ -204,7 +204,7 @@ describe('Assets contracts #fast', () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
-      ).to.be.revertedWith('maxTradeVolume zero')
+      ).to.be.revertedWith('invalid maxTradeVolume')
     })
     it('Should not allow 0 oracleTimeout', async () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')

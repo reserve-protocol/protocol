@@ -20,7 +20,7 @@ import {
   TestIStRSR,
 } from '../typechain'
 import { IConfig } from '../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
+import { CollateralStatus, MAX_UINT256, MAX_UINT32, ZERO_ADDRESS } from '../common/constants'
 import {
   advanceBlocks,
   advanceTime,
@@ -227,6 +227,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expect(stRSR.connect(owner).setUnstakingDelay(config.rewardPeriod)).to.be.revertedWith(
         'unstakingDelay/rewardPeriod incompatible'
       )
+
+      // Cannot update with zero unstaking delay
+      await expect(stRSR.connect(owner).setUnstakingDelay(bn(0))).to.be.revertedWith(
+        'invalid unstakingDelay'
+      )
+
+      // Cannot update with unstaking delay > max
+      await expect(stRSR.connect(owner).setUnstakingDelay(bn(MAX_UINT32 + 1))).to.be.reverted //revertedWith('invalid unstakingDelay')
     })
 
     it('Should allow to update rewardPeriod if Owner and perform validations', async () => {
@@ -248,9 +256,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await expect(stRSR.connect(owner).setRewardPeriod(config.unstakingDelay)).to.be.revertedWith(
         'unstakingDelay/rewardPeriod incompatible'
       )
+
+      // Cannot update with period = 0
+      await expect(stRSR.connect(owner).setRewardPeriod(bn(0))).to.be.revertedWith(
+        'invalid rewardPeriod'
+      )
     })
 
-    it('Should allow to update rewardRatio if Owner', async () => {
+    it('Should allow to update rewardRatio if Owner and perform validations', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
@@ -263,6 +276,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Try to update again if not owner
       await expect(stRSR.connect(addr1).setRewardRatio(bn('0'))).to.be.revertedWith(
         'governance only'
+      )
+
+      // Cannot update with rewardRatio > max
+      await expect(stRSR.connect(owner).setRewardRatio(fp('1.1'))).to.be.revertedWith(
+        'invalid rewardRatio'
       )
     })
   })
@@ -602,7 +620,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         const erc20s = await facade.basketTokens(rToken.address)
 
         // Set not fully capitalized by changing basket
-        await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1e18')])
+        await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
 

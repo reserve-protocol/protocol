@@ -7,6 +7,7 @@ export const ONE_ADDRESS = '0x0000000000000000000000000000000000000001'
 export const ONE_ETH = BigNumber.from('1000000000000000000')
 
 export const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1)
+export const MAX_UINT32 = 2 ** 32 - 1
 export const MAX_UINT16 = 2 ** 16 - 1
 
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(32).sub(1)

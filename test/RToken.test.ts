@@ -218,7 +218,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
     })
 
-    it('Should allow to update issuanceRate if Owner', async () => {
+    it('Should allow to update issuanceRate if Owner and perform validations', async () => {
       const newValue: BigNumber = fp('0.1')
 
       // Check existing value
@@ -239,6 +239,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await rToken.issuanceRate()).to.equal(newValue)
+
+      // Cannot update with issuanceRate > max
+      await expect(rToken.connect(owner).setIssuanceRate(fp('1.1'))).to.be.revertedWith(
+        'invalid issuanceRate'
+      )
     })
   })
 

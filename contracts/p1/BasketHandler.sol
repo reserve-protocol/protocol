@@ -96,6 +96,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
 
+    uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
+
     BasketConfig private config;
     Basket private basket;
 
@@ -140,6 +142,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // an ERC20 in the prime basket to have its asset unregistered.
             // In that case the basket is set to disabled.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];

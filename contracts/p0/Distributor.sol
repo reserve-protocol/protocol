@@ -21,8 +21,11 @@ contract DistributorP0 is ComponentP0, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
+
     function init(IMain main_, RevenueShare memory dist) public initializer {
         __Component_init(main_);
+        _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
     }
@@ -31,6 +34,8 @@ contract DistributorP0 is ComponentP0, IDistributor {
     /// main.furnace() and main.stRSR().
     function setDistribution(address dest, RevenueShare memory share) external governance {
         _setDistribution(dest, share);
+        RevenueTotals memory revTotals = totals();
+        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
     /// Distribute revenue, in rsr or rtoken, per the distribution table.
@@ -91,7 +96,14 @@ contract DistributorP0 is ComponentP0, IDistributor {
         require(share.rTokenDist <= 10000, "RToken distribution too high");
 
         destinations.add(dest);
+        require(destinations.length() <= MAX_DESTINATIONS_ALLOWED, "Too many destinations");
+
         distribution[dest] = share;
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
+    }
+
+    /// Ensures distribution values are non-zero
+    function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
+        require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
     }
 }

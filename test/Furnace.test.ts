@@ -20,6 +20,7 @@ import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fi
 import { makeDecayFn } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
+import { MAX_UINT32 } from '../common/constants'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -122,7 +123,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
       await expect(
         newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
-      ).to.be.revertedWith('period cannot be zero')
+      ).to.be.revertedWith('invalid period')
     })
   })
 
@@ -143,12 +144,13 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       )
 
       // Cannot update with period zero
-      await expect(furnace.connect(owner).setPeriod(bn('0'))).to.be.revertedWith(
-        'period cannot be zero'
-      )
+      await expect(furnace.connect(owner).setPeriod(bn('0'))).to.be.revertedWith('invalid period')
+
+      // Cannot update with period > max
+      await expect(furnace.connect(owner).setPeriod(bn(MAX_UINT32 + 1))).to.be.reverted //revertedWith('invalid period')
     })
 
-    it('Should allow to update ratio correctly if Owner', async () => {
+    it('Should allow to update ratio correctly if Owner and perform validations', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
@@ -160,6 +162,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith('governance only')
+
+      // Cannot update with ratio > max
+      await expect(furnace.connect(owner).setRatio(fp('1.1'))).to.be.revertedWith('invalid ratio')
     })
   })
 
