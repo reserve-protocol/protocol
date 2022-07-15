@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, upgrades, waffle } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import { IConfig, MAX_PERIOD, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
 import { whileImpersonating } from './utils/impersonation'
 import {
@@ -122,7 +122,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
       await expect(
         newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
-      ).to.be.revertedWith('period cannot be zero')
+      ).to.be.revertedWith('invalid period')
     })
   })
 
@@ -143,12 +143,15 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       )
 
       // Cannot update with period zero
-      await expect(furnace.connect(owner).setPeriod(bn('0'))).to.be.revertedWith(
-        'period cannot be zero'
+      await expect(furnace.connect(owner).setPeriod(bn('0'))).to.be.revertedWith('invalid period')
+
+      // Cannot update with period > max
+      await expect(furnace.connect(owner).setPeriod(MAX_PERIOD + 1)).to.be.revertedWith(
+        'invalid period'
       )
     })
 
-    it('Should allow to update ratio correctly if Owner', async () => {
+    it('Should allow to update ratio correctly if Owner and perform validations', async () => {
       // Setup a new value
       const newRatio: BigNumber = bn('100000')
 
@@ -160,6 +163,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Try to update again if not owner
       await expect(furnace.connect(addr1).setRatio(bn('0'))).to.be.revertedWith('governance only')
+
+      // Cannot update with ratio > max
+      await expect(furnace.connect(owner).setRatio(MAX_RATIO.add(1))).to.be.revertedWith(
+        'invalid ratio'
+      )
     })
   })
 
@@ -391,8 +399,8 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     }
 
     it('Should not revert at extremes', async () => {
-      // max: // 2^32 - 1
-      const periods = [bn('4294967295'), bn('1'), bn('604800')]
+      // max: 1 year
+      const periods = [bn(MAX_PERIOD), bn('1'), bn('604800')]
 
       const ratios = [fp('1'), fp('0'), fp('0.02284')]
 

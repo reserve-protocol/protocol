@@ -9,6 +9,8 @@ import "./OracleLib.sol";
 contract Asset is IAsset {
     using OracleLib for AggregatorV3Interface;
 
+    uint192 public constant MAX_TRADE_VOLUME = 1e48; // {UoA}
+
     AggregatorV3Interface public immutable chainlinkFeed;
 
     IERC20Metadata public immutable erc20;
@@ -31,7 +33,10 @@ contract Asset is IAsset {
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(maxTradeVolume_ > 0, "maxTradeVolume zero");
+        require(
+            maxTradeVolume_ > 0 && maxTradeVolume_ <= MAX_TRADE_VOLUME,
+            "invalid maxTradeVolume"
+        );
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;

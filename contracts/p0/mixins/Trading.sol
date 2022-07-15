@@ -14,6 +14,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
+    uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
+    uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
+
     // All trades
     mapping(IERC20 => ITrade) public trades;
     uint32 public tradesOpen;
@@ -30,8 +33,8 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         internal
         onlyInitializing
     {
-        maxTradeSlippage = maxTradeSlippage_;
-        dustAmount = dustAmount_;
+        setMaxTradeSlippage(maxTradeSlippage_);
+        setDustAmount(dustAmount_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -65,13 +68,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === Setters ===
 
     /// @custom:governance
-    function setMaxTradeSlippage(uint192 val) external governance {
+    function setMaxTradeSlippage(uint192 val) public governance {
+        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }
 
     /// @custom:governance
-    function setDustAmount(uint192 val) external governance {
+    function setDustAmount(uint192 val) public governance {
+        require(val <= MAX_DUST_AMOUNT, "invalid dustAmount");
         emit DustAmountSet(dustAmount, val);
         dustAmount = val;
     }

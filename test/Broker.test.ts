@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import { TradeStatus } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
@@ -103,6 +103,22 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // Check value was updated
       expect(await broker.auctionLength()).to.equal(newValue)
+    })
+
+    it('Should perform validations on auctionLength', async () => {
+      let invalidValue: BigNumber = bn(0)
+
+      // Attempt to update
+      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid auctionLength'
+      )
+
+      invalidValue = bn(MAX_AUCTION_LENGTH + 1)
+
+      // Attempt to update
+      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid auctionLength'
+      )
     })
 
     it('Should allow to update disabled if Owner', async () => {

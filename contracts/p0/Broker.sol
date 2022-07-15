@@ -19,6 +19,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // The fraction of the supply of the bidding token that is the min bid size in case of default
     uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
+    uint32 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
 
     IGnosis public gnosis;
 
@@ -36,7 +37,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
-        auctionLength = auctionLength_;
+        setAuctionLength(auctionLength_);
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
@@ -74,7 +75,11 @@ contract BrokerP0 is ComponentP0, IBroker {
     // === Setters ===
 
     /// @custom:governance
-    function setAuctionLength(uint32 newAuctionLength) external governance {
+    function setAuctionLength(uint32 newAuctionLength) public governance {
+        require(
+            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            "invalid auctionLength"
+        );
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
     }

@@ -12,6 +12,9 @@ import "contracts/p1/mixins/Component.sol";
 contract FurnaceP1 is ComponentP1, IFurnace {
     using FixLib for uint192;
 
+    uint192 public constant MAX_RATIO = 1e18;
+    uint32 public constant MAX_PERIOD = 31536000; // {s} 1 year
+
     uint192 public ratio; // {1} What fraction of balance to melt each period
     uint32 public period; // {seconds} How often to melt
     uint32 public lastPayout; // {seconds} The last time we did a payout
@@ -23,11 +26,10 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         uint192 ratio_
     ) external initializer {
         __Component_init(main_);
-        period = period_;
-        ratio = ratio_;
+        setPeriod(period_);
+        setRatio(ratio_);
         lastPayout = uint32(block.timestamp);
         lastPayoutBal = main_.rToken().balanceOf(address(this));
-        require(period != 0, "period cannot be zero");
     }
 
     /// Performs any melting that has vested since last call.
@@ -51,15 +53,16 @@ contract FurnaceP1 is ComponentP1, IFurnace {
 
     /// Period setting
     /// @custom:governance
-    function setPeriod(uint32 period_) external governance {
-        require(period_ != 0, "period cannot be zero");
+    function setPeriod(uint32 period_) public governance {
+        require(period_ > 0 && period_ <= MAX_PERIOD, "invalid period");
         emit PeriodSet(period, period_);
         period = period_;
     }
 
     /// Ratio setting
     /// @custom:governance
-    function setRatio(uint192 ratio_) external governance {
+    function setRatio(uint192 ratio_) public governance {
+        require(ratio_ <= MAX_RATIO, "invalid ratio");
         // The ratio can safely be set to 0
         emit RatioSet(ratio, ratio_);
         ratio = ratio_;

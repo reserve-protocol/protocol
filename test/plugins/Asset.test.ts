@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../../common/configuration'
+import { IConfig, MAX_TRADE_VOLUME } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -204,8 +204,15 @@ describe('Assets contracts #fast', () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
-      ).to.be.revertedWith('maxTradeVolume zero')
+      ).to.be.revertedWith('invalid maxTradeVolume')
     })
+    it('Should not allow maxTradeVolume > max allowed', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, MAX_TRADE_VOLUME.add(1), 1)
+      ).to.be.revertedWith('invalid maxTradeVolume')
+    })
+
     it('Should not allow 0 oracleTimeout', async () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       await expect(
