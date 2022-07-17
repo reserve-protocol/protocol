@@ -37,11 +37,13 @@ library TradingLibP0 {
         trade.sell = sell;
         trade.buy = buy;
 
-        // Don't sell dust.
+        // Don't sell dust
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
 
         // {sellTok}
         uint192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
+
+        // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
 
         // Do not consider 1 qTok a viable sell amount
@@ -52,7 +54,6 @@ library TradingLibP0 {
             trade.sellAmount = GNOSIS_MAX_TOKENS;
             s = shiftl_toFix(trade.sellAmount, -int8(sell.erc20().decimals()));
         }
-
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
             sell.price(),
@@ -148,6 +149,86 @@ library TradingLibP0 {
         range.bottom = basketTargetLow.div(basketPrice, CEIL);
     }
 
+    /// Total value of all assets under management by BackingManager
+    /// This includes all assets that the BackingManager holds directly + staked RSR
+    /// @return assetsHigh {UoA} The high estimate of the eventual backing, in UoA terms
+    /// @return assetsLow {UoA} The low estimate of the eventual backing, in UoA terms
+    function totalAssetValue(IERC20[] memory erc20s)
+        private
+        view
+        returns (uint192 assetsHigh, uint192 assetsLow)
+    {
+        // The low estimate is lower than the high estimate due to:
+        // - Discounting unsound collateral
+        // - Discounting dust amounts for collateral in the basket
+
+        IERC20 rsrERC20 = rsr();
+        IBasketHandler bh = basket();
+        uint192 dust = dustValue();
+        uint256 potentialDustTraps; // {num assets}
+
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            IAsset asset = assetRegistry().toAsset(erc20s[i]);
+            uint192 bal = asset.bal(address(this));
+
+            // For RSR, include the staking balance
+            if (erc20s[i] == rsrERC20) bal = bal.plus(asset.bal(address(stRSR())));
+
+            // Ignore dust amounts for assets not in the basket; their value is inaccessible
+            bool inBasket = bh.quantity(erc20s[i]).gt(FIX_ZERO);
+            if (!inBasket && bal.lt(dustThreshold(asset))) {
+                continue;
+            }
+
+            // {UoA} = {UoA} + {UoA/tok} * {tok}
+            uint192 val = asset.price().mul(bal, FLOOR);
+
+            // Consider all managed assets at face-value prices
+            assetsHigh = assetsHigh.plus(val);
+            potentialDustTraps++;
+
+            // Consider only reliable sources of value for the assetsLow estimate
+            bool danger = asset.isCollateral() &&
+                ICollateral(address(asset)).status() != CollateralStatus.SOUND;
+            if (!danger) {
+                assetsLow = assetsLow.plus(val);
+            }
+        }
+
+        // Account for all the places dust could get stuck, which should be equal to the number
+        // of basket collateral plus the number of assets with non-dust balances, minus 1
+        uint192 dustUncertainty = dust.mulu(potentialDustTraps - 1);
+        assetsLow = assetsLow.gt(dustUncertainty) ? assetsLow.minus(dustUncertainty) : FIX_ZERO;
+    }
+
+    /// @param backing {UoA} An amount of backing in UoA terms
+    /// @return shortfall {UoA} The missing re-collateralization in UoA terms
+    function collateralShortfall(IERC20[] memory erc20s, uint192 backing)
+        private
+        view
+        returns (uint192 shortfall)
+    {
+        IBasketHandler bh = basket();
+
+        uint192 basketPrice = bh.price(); // {UoA/BU}
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            uint192 quantity = bh.quantity(erc20s[i]); // {tok/BU}
+            if (quantity.eq(FIX_ZERO)) continue;
+
+            // Cast: if the quantity is nonzero, then it must be collateral
+            ICollateral coll = assetRegistry().toColl(erc20s[i]);
+
+            // {tok} = {UoA} * {tok/BU} / {UoA/BU}
+            uint192 needed = backing.mulDiv(quantity, basketPrice, CEIL); // {tok}
+            uint192 held = coll.bal(address(this)); // {tok}
+
+            if (held.lt(needed)) {
+                // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
+                shortfall = shortfall.plus(needed.minus(held).mul(coll.price(), FLOOR));
+            }
+        }
+    }
+
     // Choose next sell/buy pair to trade, with reference to the basket range
     // Exclude dust amounts for surplus
     /// @return surplus Surplus asset OR address(0)
@@ -213,79 +294,6 @@ library TradingLibP0 {
             if (rsrAvailable.gt(dustThreshold(rsrAsset))) {
                 surplus = rsrAsset;
                 surplusAmt = rsrAvailable;
-            }
-        }
-    }
-
-    /// Total value of all assets under management by BackingManager
-    /// This includes all assets that the BackingManager holds directly + staked RSR
-    /// @return assetsHigh {UoA} The high estimate of the eventual backing, in UoA terms
-    /// @return assetsLow {UoA} The low estimate of the eventual backing, in UoA terms
-    function totalAssetValue(IERC20[] memory erc20s)
-        private
-        view
-        returns (uint192 assetsHigh, uint192 assetsLow)
-    {
-        IERC20 rsrERC20 = rsr();
-        IBasketHandler bh = basket();
-
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            IAsset asset = assetRegistry().toAsset(erc20s[i]);
-            uint192 bal = asset.bal(address(this));
-
-            // For RSR, include the staking balance
-            if (erc20s[i] == rsrERC20) bal = bal.plus(asset.bal(address(stRSR())));
-
-            // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (bh.quantity(erc20s[i]).eq(FIX_ZERO) && bal.lt(dustThreshold(asset))) {
-                continue;
-            }
-
-            // {UoA} = {UoA} + {UoA/tok} * {tok}
-            uint192 val = asset.price().mul(bal, FLOOR);
-
-            // Consider all managed assets at face-value prices
-            assetsHigh = assetsHigh.plus(val);
-
-            // Consider only reliable sources of value for the assetsLow estimate
-            bool danger = asset.isCollateral() &&
-                ICollateral(address(asset)).status() != CollateralStatus.SOUND;
-
-            if (!danger) {
-                uint192 dust = dustValue();
-
-                // This is slightly overconservative; we don't know yet whether a collateral
-                // is in deficit or not; here we assume it is in surplus
-                uint192 valMinusDust = val.gt(dust) ? val.minus(dust) : 0; // {UoA}
-                assetsLow = assetsLow.plus(valMinusDust);
-            }
-        }
-    }
-
-    /// @param backing {UoA} An amount of backing in UoA terms
-    /// @return shortfall {UoA} The missing re-collateralization in UoA terms
-    function collateralShortfall(IERC20[] memory erc20s, uint192 backing)
-        private
-        view
-        returns (uint192 shortfall)
-    {
-        IBasketHandler bh = basket();
-
-        uint192 basketPrice = bh.price(); // {UoA/BU}
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            uint192 quantity = bh.quantity(erc20s[i]); // {tok/BU}
-            if (quantity.eq(FIX_ZERO)) continue;
-
-            // Cast: if the quantity is nonzero, then it must be collateral
-            ICollateral coll = assetRegistry().toColl(erc20s[i]);
-
-            // {tok} = {UoA} * {tok/BU} / {UoA/BU}
-            uint192 needed = backing.mulDiv(quantity, basketPrice, CEIL); // {tok}
-            uint192 held = coll.bal(address(this)); // {tok}
-
-            if (held.lt(needed)) {
-                // {UoA} = {UoA} + ({tok} - {tok}) * {UoA/tok}
-                shortfall = shortfall.plus(needed.minus(held).mul(coll.price(), FLOOR));
             }
         }
     }
