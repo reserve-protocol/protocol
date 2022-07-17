@@ -38,15 +38,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
      * a new era begins.
      */
 
-    /// @param fromBlock The block number at which the exchange rate was first reached
-    /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
-    struct HistoricalExchangeRate {
-        uint32 fromBlock;
-        uint192 rate;
-    }
+    // /// @param fromBlock The block number at which the exchange rate was first reached
+    // /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
+    // struct HistoricalExchangeRate {
+    //     uint32 fromBlock;
+    //     uint192 rate;
+    // }
 
-    // History of all past exchange rates, recorded on each payoutRewards + seizeRSR
-    HistoricalExchangeRate[] internal exchangeRateHistory;
+    // // History of all past exchange rates, recorded on each payoutRewards + seizeRSR
+    // HistoricalExchangeRate[] internal exchangeRateHistory;
 
     // === ERC20 ===
 

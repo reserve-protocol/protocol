@@ -116,7 +116,32 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     function exchangeRate() external view returns (uint192);
 }
 
-interface TestIStRSR is IStRSR {
+interface IStRSRVotes is IStRSR, IVotesUpgradeable {
+    // /// @return The current era
+    // function currentEra() external view returns (uint256);
+
+    // /// @return The era at a past block number
+    // function getPastEra(uint256 blockNumber) external view returns (uint256);
+
+    // /// @return blockNumber The block number at which the exchange rate was first reached
+    // /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
+    // function getPastExchangeRate(uint256 index)
+    //     external
+    //     view
+    //     returns (uint32 blockNumber, uint192 rate);
+
+    /// @custom:governance
+    function lockTokensForMilestone(
+        address account,
+        uint256 amount,
+        uint256 milestone
+    ) external;
+
+    /// @custom:governance
+    function releaseMilestone(uint256 milestone) external;
+}
+
+interface TestIStRSR is IStRSRVotes {
     function rewardPeriod() external view returns (uint32);
 
     function setRewardPeriod(uint32) external;
