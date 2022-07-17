@@ -779,7 +779,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       beforeEach(async function () {
         // Issue some RTokens to user
         issueAmount = bn('100e18')
-        stakeAmount = bn('100e18')
+        stakeAmount = bn('10000e18')
 
         // Setup new basket with single token
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
@@ -962,7 +962,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
-      it.only('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
+      it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
         // Empty out the staking pool
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
@@ -1002,7 +1002,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = minBuyAmt.mul(100).div(99).add(1)
         // const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
-        console.log('sellAmt', sellAmt, minBuyAmt)
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
@@ -1077,7 +1076,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('0.99').sub(dustPriceImpact))
       })
 
-      it.skip('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
+      it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
         // Set prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -1166,8 +1165,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // End current auction, should start a new one to sell RSR for collateral
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
-        const buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
+        const buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt).mul(99).div(100)
+        let sellAmtRSR: BigNumber = sellAmt.sub(minBuyAmt) // Due to trade slippage 1% - Calculation to match Solidity
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1178,7 +1177,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6).add(1)],
+            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
             emitted: true,
           },
         ])
@@ -1224,12 +1223,51 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // End current auction, should  not start any new auctions
+        // End current auction, should start final dust auction
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
             args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: true,
+          },
+        ])
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        const fracMissing = BN_SCALE_FACTOR.mul(config.dustAmount).div(issueAmount)
+        const amtMissing = issueAmount.mul(fracMissing).div(BN_SCALE_FACTOR)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(
+          toBNDecimals(issueAmount.sub(amtMissing), 6)
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Cover buyAmtBidRSR which is all the RSR required
+        sellAmtRSR = amtMissing.mul(100).div(99)
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmtRSR, 6))
+        await gnosis.placeBid(2, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRSR,
+          buyAmount: toBNDecimals(amtMissing, 6),
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // End current auction, should not start another auction
+        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(amtMissing, 6)],
             emitted: true,
           },
           {
@@ -1252,7 +1290,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
-      it.skip('Should recapitalize correctly in case of default - Taking Haircut - No RSR', async () => {
+      it('Should not trade if only held asset is DISABLED and no RSR available', async () => {
         // Undo the RSR stake
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
@@ -1311,79 +1349,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check price in USD of the current RTokenc- Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
 
-        // Running auctions will trigger recapitalization - All balance will be redeemed
-        const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
-
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
-          .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
-
-        const auctionTimestamp = await getLatestBlockTimestamp()
-
-        // Token0 -> Backup Token Auction
-        await expectTrade(backingManager, {
-          sell: token0.address,
-          buy: backupToken1.address,
-          endTime: auctionTimestamp + Number(config.auctionLength),
-          externalId: bn('0'),
-        })
-
-        // Another call should not create any new auctions if still ongoing
+        // Running auctions should not trigger recapitalization
         await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
-
-        // Check state
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
-        // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
-
-        // Check price in USD of the current RToken - Reduced 50%
-        expect(await rToken.price()).to.equal(fp('1'))
-
-        // Perform Mock Bids for the new Token (addr1 has balance)
-        // Assume fair price, get half of the tokens (because price reduction was 50%)
-        const minBuyAmt: BigNumber = sellAmt.div(2)
-        await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt)
-        await gnosis.placeBid(0, {
-          bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
-        })
-
-        // Advance time till auction ended
-        await advanceTime(config.auctionLength.add(100).toString())
-
-        // Run auctions - will end current, will not open any new auctions (no RSR)
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
-          {
-            contract: backingManager,
-            name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
-            emitted: true,
-          },
-          {
-            contract: backingManager,
-            name: 'TradeStarted',
-            emitted: false,
-          },
-        ])
-
-        // Check state - Haircut taken, price of RToken has been reduced
-        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt)
-        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
-        expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
-
-        // Check price in USD of the current RToken - Haircut of 50% taken
-        expect(await rToken.price()).to.equal(fp('1').div(2))
       })
 
       it.skip('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
@@ -1420,6 +1390,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await assetRegistry.connect(owner).swapRegistered(newCollateral0.address)
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         await basketHandler.refreshBasket()
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1431,11 +1402,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
-
-        // Perform stake
-        const stakeAmount: BigNumber = bn('100e18')
-        await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
-        await stRSR.connect(addr1).stake(stakeAmount)
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -1560,8 +1526,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // End current auction, should start a new one to sell RSR for collateral
         // 50e18 Tokens left to buy - Sets Buy amount as independent value
-        const buyAmtBidRSR: BigNumber = sellAmt
-        const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(BN_SCALE_FACTOR).div(fp('0.99')).add(1) // Due to trade slippage 1% - Calculation to match Solidity
+        const sellAmtRSR: BigNumber = issueAmount.sub(sellAmt)
+        const buyAmtBidRSR: BigNumber = sellAmtRSR.mul(99).div(100)
 
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
@@ -1616,6 +1582,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
+        const newSellAmtRSR = issueAmount.sub(sellAmt).sub(buyAmtBidRSR)
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1626,19 +1593,70 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            emitted: false,
+            args: [
+              rsr.address,
+              backupToken1.address,
+              newSellAmtRSR,
+              newSellAmtRSR.mul(99).div(100),
+            ],
+            emitted: true,
           },
         ])
 
         // Should have seized RSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmtRSR)) // Sent to market (auction)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(
+          stakeAmount.sub(sellAmtRSR).sub(newSellAmtRSR)
+        ) // Sent to market (auction)
 
-        // Check final state - All back to normal
+        // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCapitalized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           minBuyAmt.mul(2).add(buyAmtBidRSR)
         )
+        const backupTokenBal = buyAmtBidRSR.add(minBuyAmt.mul(2))
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(backupTokenBal)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check price in USD of the current RToken - Remains the same
+        expect(await rToken.price()).to.equal(fp('1'))
+
+        // Place bids
+        await backupToken1.connect(addr1).approve(gnosis.address, newSellAmtRSR.mul(99).div(100))
+        await gnosis.placeBid(3, {
+          bidder: addr1.address,
+          sellAmount: newSellAmtRSR,
+          buyAmount: newSellAmtRSR.mul(99).div(100),
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // End current auction; should not start new one
+        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [
+              rsr.address,
+              backupToken1.address,
+              newSellAmtRSR,
+              newSellAmtRSR.mul(99).div(100),
+            ],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -1648,7 +1666,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.price()).to.equal(fp('1'))
       })
 
-      it.skip('Should recapitalize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
+      it('Should recapitalize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
         // Set backing buffer and max slippage to zero for simplification
         await backingManager.connect(owner).setMaxTradeSlippage(0)
         await backingManager.connect(owner).setBackingBuffer(0)
@@ -1682,11 +1700,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check price in USD of the current RToken
         expect(await rToken.price()).to.equal(fp('1'))
-
-        // Perform stake
-        const stakeAmount: BigNumber = bn('10000e18')
-        await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
-        await stRSR.connect(addr1).stake(stakeAmount)
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -3088,7 +3101,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const requiredBkpToken1: BigNumber = newTotalAssetValue.mul(75).div(100)
         const minBuyAmtRebalance: BigNumber = requiredBkpToken1.sub(
           minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3)
-        ) // in 18 decimals, buy token - no trade slippage
+        )
+
         const sellAmtRebalance: BigNumber = toBNDecimals(minBuyAmtRebalance, 6) // convert to decimals of sell token - no trade slippage
 
         await backupToken1.connect(addr1).approve(gnosis.address, minBuyAmt3)
