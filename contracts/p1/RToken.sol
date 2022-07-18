@@ -23,8 +23,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Immutable: expected to be an IPFS link but could be anything
     string public manifestoURI;
 
-    // MIN_ISS_RATE: {rTok/block} 10k whole RTok
-    uint192 public constant MIN_ISS_RATE = 10_000 * FIX_ONE;
+    // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
+    uint192 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+    // MAX_ISSUANCE_RATE
+    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     uint192 public lastIssRate; // D18{rTok/block}
@@ -85,8 +88,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         manifestoURI = manifestoURI_;
-        issuanceRate = issuanceRate_;
-        emit IssuanceRateSet(FIX_ZERO, issuanceRate_);
+        setIssuanceRate(issuanceRate_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -213,7 +215,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             // uint192 downcast is safe, max value representations are 1e18 * 1e48 / 1e18
             lastIssRate = uint192((issuanceRate * totalSupply()) / FIX_ONE);
             // uint192(<) is equivalent to Fix.lt
-            if (lastIssRate < MIN_ISS_RATE) lastIssRate = MIN_ISS_RATE;
+            if (lastIssRate < MIN_BLOCK_ISSUANCE_LIMIT) lastIssRate = MIN_BLOCK_ISSUANCE_LIMIT;
         }
 
         // Add amtRToken's worth of issuance delay to allVestAt
@@ -400,7 +402,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setIssuanceRate(uint192 val) external governance {
+    function setIssuanceRate(uint192 val) public governance {
+        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }

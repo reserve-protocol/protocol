@@ -2,7 +2,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import {
+  IConfig,
+  MAX_DUST_AMOUNT,
+  MAX_TRADING_DELAY,
+  MAX_TRADE_SLIPPAGE,
+  MAX_BACKING_BUFFER,
+  MAX_TARGET_AMT,
+} from '../common/configuration'
 import {
   CollateralStatus,
   ZERO_ADDRESS,
@@ -368,14 +375,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should perform validations on init', async () => {
-      // Set invalid RSRPayPeriod
-      const newConfig = { ...config }
-      newConfig.rewardPeriod = config.unstakingDelay
+      // StRSR validation - Set invalid RSRPayPeriod
+      const invalidPeriodConfig = { ...config }
+      invalidPeriodConfig.rewardPeriod = config.unstakingDelay
 
-      // Deploy new system instance
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, newConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidPeriodConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
+
+      // Distributor validation - Set invalid distribution
+      const invalidDistConfig = { ...config }
+      invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
+
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidDistConfig)
+      ).to.be.revertedWith('no distribution defined')
     })
 
     it('Should emit events on init', async () => {
@@ -642,7 +656,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Configuration/State #fast', () => {
-    it('Should allow to update tradingDelay if OWNER', async () => {
+    it('Should allow to update tradingDelay if OWNER and perform validations', async () => {
       const newValue: BigNumber = bn('360')
 
       // Check existing value
@@ -661,9 +675,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await backingManager.tradingDelay()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setTradingDelay(MAX_TRADING_DELAY + 1)
+      ).to.be.revertedWith('invalid tradingDelay')
     })
 
-    it('Should allow to update maxTradeSlippage if OWNER', async () => {
+    it('Should allow to update maxTradeSlippage if OWNER and perform validations', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
@@ -682,9 +701,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await backingManager.maxTradeSlippage()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE.add(1))
+      ).to.be.revertedWith('invalid maxTradeSlippage')
     })
 
-    it('Should allow to update dustAmount if OWNER', async () => {
+    it('Should allow to update dustAmount if OWNER and perform validations', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
@@ -703,9 +727,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await backingManager.dustAmount()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setDustAmount(MAX_DUST_AMOUNT.add(1))
+      ).to.be.revertedWith('invalid dustAmount')
     })
 
-    it('Should allow to update backingBuffer if OWNER', async () => {
+    it('Should allow to update backingBuffer if OWNER and perform validations', async () => {
       const newValue: BigNumber = fp('0.02')
 
       // Check existing value
@@ -724,6 +753,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await backingManager.backingBuffer()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setBackingBuffer(MAX_BACKING_BUFFER.add(1))
+      ).to.be.revertedWith('invalid backingBuffer')
     })
 
     it('Should perform validations on for granting allowances', async () => {
@@ -1035,6 +1069,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([compToken.address], [fp('1')])
       ).to.be.revertedWith('token is not collateral')
+    })
+
+    it('Should not allow to set prime Basket with invalid target amounts', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
+      ).to.be.revertedWith('invalid target amount')
     })
 
     it('Should allow to set prime Basket if OWNER', async () => {

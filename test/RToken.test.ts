@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IConfig } from '../common/configuration'
+import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { setOraclePrice } from './utils/oracles'
@@ -218,7 +218,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
     })
 
-    it('Should allow to update issuanceRate if Owner', async () => {
+    it('Should allow to update issuanceRate if Owner and perform validations', async () => {
       const newValue: BigNumber = fp('0.1')
 
       // Check existing value
@@ -239,6 +239,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await rToken.issuanceRate()).to.equal(newValue)
+
+      // Cannot update with issuanceRate > max
+      await expect(
+        rToken.connect(owner).setIssuanceRate(MAX_ISSUANCE_RATE.add(1))
+      ).to.be.revertedWith('invalid issuanceRate')
     })
   })
 

@@ -29,6 +29,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
+    uint32 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
+    uint192 public constant MAX_REWARD_RATIO = 1e18;
+
     // ==== ERC20Permit ====
 
     using Counters for Counters.Counter;
@@ -102,16 +106,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     ) public initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
-        require(unstakingDelay_ > 0, "unstaking delay cannot be zero");
-        require(rewardPeriod_ * 2 <= unstakingDelay_, "unstakingDelay/rewardPeriod incompatible");
-
         _name = name_;
         _symbol = symbol_;
         payoutLastPaid = block.timestamp;
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
-        unstakingDelay = unstakingDelay_;
-        rewardPeriod = rewardPeriod_;
-        rewardRatio = rewardRatio_;
+        setUnstakingDelay(unstakingDelay_);
+        setRewardPeriod(rewardPeriod_);
+        setRewardRatio(rewardRatio_);
         era = 1;
     }
 
@@ -508,20 +509,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint32 val) external governance {
-        require(val > 0, "unstaking delay cannot be zero");
+    function setUnstakingDelay(uint32 val) public governance {
+        require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) external governance {
+    function setRewardPeriod(uint32 val) public governance {
+        require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(uint192 val) external governance {
+    function setRewardRatio(uint192 val) public governance {
+        require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

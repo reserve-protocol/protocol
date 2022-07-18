@@ -42,8 +42,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
-    // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
-    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * FIX_ONE;
+    // MIN_BLOCK_ISSUANCE_LIMIT: {qRTok/block} 10k whole RTok
+    uint256 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+    // MAX_ISSUANCE_RATE
+    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
@@ -69,11 +72,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         manifestoURI = manifestoURI_;
-        issuanceRate = issuanceRate_;
-        emit IssuanceRateSet(FIX_ZERO, issuanceRate);
+        setIssuanceRate(issuanceRate_);
     }
 
-    function setIssuanceRate(uint192 val) external governance {
+    function setIssuanceRate(uint192 val) public governance {
+        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
@@ -321,7 +324,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Calculate the issuance rate if this is the first issue in the block
         if (blockIssuanceRates[block.number] == 0) {
             blockIssuanceRates[block.number] = Math.max(
-                MIN_ISSUANCE_RATE,
+                MIN_BLOCK_ISSUANCE_LIMIT,
                 issuanceRate.mulu_toUint(totalSupply())
             );
         }

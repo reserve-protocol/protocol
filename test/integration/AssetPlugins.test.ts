@@ -5,13 +5,8 @@ import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
-import { IConfig, networkConfig } from '../../common/configuration'
-import {
-  CollateralStatus,
-  ZERO_ADDRESS,
-  MAX_ORACLE_TIMEOUT,
-  BN_SCALE_FACTOR,
-} from '../../common/constants'
+import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configuration'
+import { CollateralStatus, ZERO_ADDRESS, BN_SCALE_FACTOR } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import {

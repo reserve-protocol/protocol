@@ -32,6 +32,10 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    uint32 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
+    uint192 public constant MAX_REWARD_RATIO = 1e18;
+
     // === History ===
     /*
      * When the stakeRate falls below the MIN_EXCHANGE_RATE, all balances are wiped and
@@ -129,17 +133,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     ) external initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
-
-        require(unstakingDelay_ > 0, "unstaking delay cannot be zero");
-        require(rewardPeriod_ * 2 <= unstakingDelay_, "unstakingDelay/rewardPeriod incompatible");
-
         name = name_;
         symbol = symbol_;
         payoutLastPaid = uint32(block.timestamp);
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
-        unstakingDelay = unstakingDelay_;
-        rewardPeriod = rewardPeriod_;
-        rewardRatio = rewardRatio_;
+        setUnstakingDelay(unstakingDelay_);
+        setRewardPeriod(rewardPeriod_);
+        setRewardRatio(rewardRatio_);
 
         // Add initial exchange rate
         exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), FIX_ONE));
@@ -633,22 +633,24 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// @custom:governance
-    function setUnstakingDelay(uint32 val) external governance {
-        require(val > 0, "unstaking delay cannot be zero");
+    function setUnstakingDelay(uint32 val) public governance {
+        require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// @custom:governance
-    function setRewardPeriod(uint32 val) external governance {
+    function setRewardPeriod(uint32 val) public governance {
+        require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
     /// @custom:governance
-    function setRewardRatio(uint192 val) external governance {
+    function setRewardRatio(uint192 val) public governance {
+        require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

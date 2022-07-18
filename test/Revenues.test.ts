@@ -231,6 +231,36 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RToken distribution too high')
+
+      // Cannot set both distributions = 0
+      await distributor
+        .connect(owner)
+        .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      ).to.be.revertedWith('no distribution defined')
+    })
+
+    it('Should validate number of destinations', async () => {
+      // Cannot set more than Max (100)
+      const maxDestinations = 100
+
+      for (let i = 0; i < maxDestinations - 2; i++) {
+        const usr: Wallet = await ethers.Wallet.createRandom()
+        await distributor
+          .connect(owner)
+          .setDistribution(usr.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+      }
+
+      // Attempt to add an additional destination will revert
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+      ).to.be.revertedWith('Too many destinations')
     })
   })
 

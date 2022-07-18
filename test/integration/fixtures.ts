@@ -2,10 +2,16 @@ import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
+import {
+  IConfig,
+  IImplementations,
+  IRevenueShare,
+  MAX_ORACLE_TIMEOUT,
+  networkConfig,
+} from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import { ZERO_ADDRESS, MAX_ORACLE_TIMEOUT } from '../../common/constants'
+import { ZERO_ADDRESS } from '../../common/constants'
 import {
   AaveLendingPoolMock,
   Asset,
