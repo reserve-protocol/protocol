@@ -2,14 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../common/configuration'
-import {
-  FURNACE_DEST,
-  STRSR_DEST,
-  MAX_UINT256,
-  ZERO_ADDRESS,
-  MAX_ORACLE_TIMEOUT,
-} from '../common/constants'
+import { IConfig, MAX_ORACLE_TIMEOUT } from '../common/configuration'
+import { FURNACE_DEST, STRSR_DEST, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   Asset,
