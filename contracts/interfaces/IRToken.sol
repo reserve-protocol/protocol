@@ -37,17 +37,25 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @param issuer The account of the issuer
     /// @param firstId The first of the cancelled issuances in the issuer's queue
     /// @param endId The index _after_ the last of the cancelled issuances in the issuer's queue
+    /// @param amount {qRTok} The amount of RTokens canceled
     /// That is, id was cancelled iff firstId <= id < endId
-    event IssuancesCanceled(address indexed issuer, uint256 indexed firstId, uint256 indexed endId);
+    event IssuancesCanceled(
+        address indexed issuer,
+        uint256 indexed firstId,
+        uint256 indexed endId,
+        uint256 amount
+    );
 
     /// Emitted when an RToken issuance is completed successfully
     /// @param issuer The account of the issuer
     /// @param firstId The first of the completed issuances in the issuer's queue
     /// @param endId The id directly after the last of the completed issuances
+    /// @param amount {qRTok} The amount of RTokens canceled
     event IssuancesCompleted(
         address indexed issuer,
         uint256 indexed firstId,
-        uint256 indexed endId
+        uint256 indexed endId,
+        uint256 amount
     );
 
     /// Emitted when an issuance of RToken occurs, whether it occurs via slow minting or not
@@ -60,7 +68,8 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @param redeemer The address of the account redeeeming RTokens
     /// @param amount The quantity of RToken being redeemed
     /// @param baskets The corresponding number of baskets
-    event Redemption(address indexed redeemer, uint256 indexed amount, uint192 indexed baskets);
+    /// @param amount {qRTok} The amount of RTokens canceled
+    event Redemption(address indexed redeemer, uint256 indexed amount, uint192 baskets);
 
     /// Emitted when the number of baskets needed changes
     /// @param oldBasketsNeeded Previous number of baskets units needed

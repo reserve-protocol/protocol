@@ -439,15 +439,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // compute total deposits to refund
         uint256 tokensLen = queue.tokens.length;
         uint256[] memory amt = new uint256[](tokensLen);
+        uint256 amtRToken; // {qRTok}
         IssueItem storage rightItem = queue.items[right - 1];
 
         // we could dedup this logic but it would take more SLOADS, so I think this is best
         if (left == 0) {
+            amtRToken = rightItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[left - 1];
+            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -465,7 +468,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             revert("Bad refundSpan");
         }
 
-        emit IssuancesCanceled(account, left, right);
+        emit IssuancesCanceled(account, left, right, amtRToken);
 
         // == Interactions ==
         for (uint256 i = 0; i < queue.tokens.length; ++i) {
@@ -515,7 +518,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         basketsNeeded = basketsNeeded + amtBaskets;
 
         emit Issuance(account, amtRToken, amtBaskets);
-        emit IssuancesCompleted(account, queue.left, endId);
+        emit IssuancesCompleted(account, queue.left, endId, amtRToken);
         queue.left = endId;
 
         // == Interactions ==

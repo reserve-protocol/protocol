@@ -139,7 +139,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         ) {
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, index);
-            emit IssuancesCompleted(issuer, index, index);
+            emit IssuancesCompleted(issuer, index, index, vestedAmount);
             assert(vestedAmount == iss.amount);
             delete issuances[issuer][index];
         }
@@ -166,18 +166,20 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
         uint256 left;
+        uint256 amtRToken; // {qRTok}
         for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                 }
+                amtRToken += iss.amount;
                 iss.processed = true;
 
                 if (left == 0) left = n;
             }
         }
-        emit IssuancesCanceled(account, left, last);
+        emit IssuancesCanceled(account, left, last, amtRToken);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -198,7 +200,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             totalVested += vestedAmount;
             if (first == 0 && vestedAmount > 0) first = i;
         }
-        if (totalVested > 0) emit IssuancesCompleted(account, first, endId);
+        if (totalVested > 0) emit IssuancesCompleted(account, first, endId, totalVested);
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.

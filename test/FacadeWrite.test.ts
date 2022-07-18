@@ -158,10 +158,15 @@ describe('FacadeWrite contract', () => {
     govParams = {
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks
-      proposalThresholdAsMicroPercent: bn(1e6), // 1&
+      proposalThresholdAsMicroPercent: bn(1e6), // 1%
       quorumPercent: bn(4), // 4%
       minDelay: bn(60 * 60 * 24), // 1 day
     }
+  })
+
+  it('Should validate parameters', async () => {
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite')
+    await expect(FacadeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith('invalid address')
   })
 
   it('Should setup values correctly', async () => {
@@ -194,14 +199,14 @@ describe('FacadeWrite contract', () => {
     rTokenSetup.primaryBasket = []
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('No collateral')
+    ).to.be.revertedWith('no collateral')
 
     // Cannot deploy with invalid length in weights
     rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
     rTokenSetup.weights = [fp('1')]
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('Invalid length')
+    ).to.be.revertedWith('invalid length')
 
     // Cannot deploy backup info with no collateral tokens
     rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
@@ -209,7 +214,7 @@ describe('FacadeWrite contract', () => {
     rTokenSetup.backups[0].backupCollateral = []
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('No backup collateral')
+    ).to.be.revertedWith('no backup collateral')
   })
 
   describe('Deployment Process', () => {
@@ -378,7 +383,7 @@ describe('FacadeWrite contract', () => {
               ZERO_ADDRESS,
               ZERO_ADDRESS
             )
-        ).to.be.revertedWith('Not initial deployer')
+        ).to.be.revertedWith('not initial deployer')
       })
 
       it('Should validate owner param when deploying governance in final setup', async () => {
@@ -394,7 +399,7 @@ describe('FacadeWrite contract', () => {
               ZERO_ADDRESS,
               ZERO_ADDRESS
             )
-        ).to.be.revertedWith('Owner should be empty')
+        ).to.be.revertedWith('owner should be empty')
       })
     })
 
@@ -507,7 +512,7 @@ describe('FacadeWrite contract', () => {
                 ZERO_ADDRESS,
                 ZERO_ADDRESS
               )
-          ).to.be.revertedWith('Ownership already transferred')
+          ).to.be.revertedWith('ownership already transferred')
         })
       })
 

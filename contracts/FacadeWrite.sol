@@ -20,6 +20,7 @@ contract FacadeWrite is IFacadeWrite {
     IDeployer public immutable deployer;
 
     constructor(IDeployer deployer_) {
+        require(address(deployer_) != address(0), "invalid address");
         deployer = deployer_;
     }
 
@@ -28,12 +29,12 @@ contract FacadeWrite is IFacadeWrite {
         returns (address)
     {
         // Perform validations
-        require(setup.primaryBasket.length > 0, "No collateral");
-        require(setup.primaryBasket.length == setup.weights.length, "Invalid length");
+        require(setup.primaryBasket.length > 0, "no collateral");
+        require(setup.primaryBasket.length == setup.weights.length, "invalid length");
 
         // Validate backups
         for (uint256 i = 0; i < setup.backups.length; ++i) {
-            require(setup.backups[i].backupCollateral.length > 0, "No backup collateral");
+            require(setup.backups[i].backupCollateral.length > 0, "no backup collateral");
         }
 
         // Deploy contracts
@@ -120,8 +121,8 @@ contract FacadeWrite is IFacadeWrite {
         // Get Main
         IMain main = rToken.main();
 
-        require(main.hasRole(OWNER, address(this)), "Ownership already transferred");
-        require(main.hasRole(OWNER, msg.sender), "Not initial deployer");
+        require(main.hasRole(OWNER, address(this)), "ownership already transferred");
+        require(main.hasRole(OWNER, msg.sender), "not initial deployer");
 
         // Remove ownership to sender
         main.revokeRole(OWNER, msg.sender);
@@ -130,7 +131,7 @@ contract FacadeWrite is IFacadeWrite {
         address newOwner;
 
         if (deployGovernance) {
-            require(owner == address(0), "Owner should be empty");
+            require(owner == address(0), "owner should be empty");
 
             // Deploy Governance
             TimelockController timelock = new TimelockController(
@@ -158,7 +159,7 @@ contract FacadeWrite is IFacadeWrite {
             // Setup new owner - Timelock
             newOwner = address(timelock);
         } else {
-            require(owner != address(0), "Owner not defined");
+            require(owner != address(0), "owner not defined");
 
             newOwner = owner;
         }
