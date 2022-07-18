@@ -1331,11 +1331,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
   })
 
-  // Skip explanation:
   // - Aave hasn't run their reward program in a while
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
-  describe.skip('Claim Rewards', () => {
+  describe('Claim Rewards', () => {
     before(async () => {
       await setup(forkBlockNumber['aave-compound-rewards'])
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
