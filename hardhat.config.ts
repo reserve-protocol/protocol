@@ -22,7 +22,7 @@ const MNEMONIC = process.env.MNEMONIC || ''
 const TIMEOUT = process.env.SLOW ? 3_000_000 : 300_000
 
 const src_dir = process.env.PROTO ? './contracts/' + process.env.PROTO : './contracts'
-const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 2000 } }
+const settings = process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } }
 
 const config: any = {
   defaultNetwork: 'hardhat',
@@ -80,18 +80,6 @@ const config: any = {
       'contracts/FacadeWrite.sol': {
         version: '0.8.9',
         settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
-      },
-      'contracts/p1/RToken.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 400 } },
-      },
-      'contracts/p1/StRSRVotes.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 800 } },
-      },
-      'contracts/plugins/aave/StaticATokenLM.sol': {
-        version: '0.6.12',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 200 } },
       },
     },
   },
