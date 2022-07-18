@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Delete fuzz contracts 
+        run: rm -rf contracts/fuzz
+
       - name: Compile
         run: yarn compile
 
@@ -72,6 +75,9 @@ jobs:
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
+
+      - name: Delete fuzz contracts 
+        run: rm -rf contracts/fuzz
 
       - name: Compile
         run: yarn compile
