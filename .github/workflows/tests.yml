@@ -17,6 +17,10 @@ jobs:
         with:
           node-version: 16.x
 
+      - name: Delete fuzz contracts 
+        run: rm -rf contracts/fuzz
+
+
       - id: yarn-cache
         run: echo "::set-output name=dir::$(yarn cache dir)"
 
@@ -29,9 +33,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
-
-      - name: Delete fuzz contracts 
-        run: rm -rf contracts/fuzz
 
       - name: Compile
         run: yarn compile
@@ -51,6 +52,9 @@ jobs:
         uses: actions/checkout@v2
         with:
           fetch-depth: 1
+
+      - name: Delete fuzz contracts 
+        run: rm -rf contracts/fuzz
 
       - name: Cache node modules
         uses: actions/cache@v2
@@ -75,9 +79,6 @@ jobs:
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
-
-      - name: Delete fuzz contracts 
-        run: rm -rf contracts/fuzz
 
       - name: Compile
         run: yarn compile
