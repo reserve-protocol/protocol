@@ -5,4 +5,4 @@ while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
 git ls-files | # List all files in git
     egrep '\.(ts|sol|json)$' | # Filter down to files with source-code extensions
-    xargs -J % yarn exec prettier --write % "$@" # Run prettier on those files
+    xargs -J % yarn exec prettier -l --write % "$@" # Run prettier on those files

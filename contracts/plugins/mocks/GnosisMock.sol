@@ -41,10 +41,13 @@ struct Bid {
     uint256 buyAmount; // Mauction.buy
 }
 
-/// A very simple trading partner that only supports 1 bid per auction
+/// A very simple trading partner that only supports 1 bid per auction, without fees
+/// It does not mimic the behavior of EasyAuction directly
 contract GnosisMock is IGnosis, IBiddable {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
+
+    uint256 public constant feeNumerator = 0; // Does not support a fee
 
     Mauction[] public auctions;
     mapping(uint256 => Bid) public bids; // auctionId -> Bid
@@ -65,6 +68,8 @@ contract GnosisMock is IGnosis, IBiddable {
     ) external returns (uint256 auctionId) {
         require(auctionedSellAmount > 0, "sell amount is zero");
         auctionId = auctions.length;
+
+        // Keep the fee
         auctioningToken.safeTransferFrom(msg.sender, address(this), auctionedSellAmount);
         auctions.push(
             Mauction(
@@ -92,8 +97,8 @@ contract GnosisMock is IGnosis, IBiddable {
     /// Can only be called by the origin of the auction and only after auction.endTime is past
     function settleAuction(uint256 auctionId) external returns (bytes32 encodedOrder) {
         Mauction storage auction = auctions[auctionId];
-        require(auction.status == MauctionStatus.OPEN, "auction already closed");
         require(auction.endTime <= block.timestamp, "too early to close auction");
+        require(auction.status == MauctionStatus.OPEN, "auction already closed");
         auction.status = MauctionStatus.DONE;
         auction.endTime = 0;
 

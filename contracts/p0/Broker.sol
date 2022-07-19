@@ -19,6 +19,7 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     // The fraction of the supply of the bidding token that is the min bid size in case of default
     uint192 public constant MIN_BID_SHARE_OF_TOTAL_SUPPLY = 1e9; // (1} = 1e-7%
+    uint32 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration -1 week
 
     IGnosis public gnosis;
 
@@ -26,27 +27,23 @@ contract BrokerP0 is ComponentP0, IBroker {
 
     uint32 public auctionLength; // {s} the length of an auction
 
-    uint192 public minBidSize; // {UoA} The minimum size of a bid during auctions
-
     bool public disabled;
 
     function init(
         IMain main_,
         IGnosis gnosis_,
         ITrade, // Added for Interface compatibility with P1
-        uint32 auctionLength_,
-        uint192 minBidSize_
+        uint32 auctionLength_
     ) public initializer {
         __Component_init(main_);
         gnosis = gnosis_;
-        auctionLength = auctionLength_;
-        minBidSize = minBidSize_;
+        setAuctionLength(auctionLength_);
     }
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeRequest memory req) external notPaused returns (ITrade) {
+    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
@@ -63,54 +60,28 @@ contract BrokerP0 is ComponentP0, IBroker {
         trades[address(trade)] = true;
         req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
 
-        trade.init(this, caller, gnosis, auctionLength, minBidAmt(req.buy), req);
+        trade.init(this, caller, gnosis, auctionLength, req);
         return trade;
     }
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
-    function reportViolation() external notPaused {
+    function reportViolation() external notPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;
     }
 
-    // === Private ===
-
-    /// @return minBidAmt_ {qTok} The minimum bid size for an asset
-    function minBidAmt(IAsset asset) private view returns (uint256 minBidAmt_) {
-        if (
-            asset.isCollateral() &&
-            ICollateral(address(asset)).status() != CollateralStatus.DISABLED
-        ) {
-            // {tok} = {UoA} / {UoA/tok}
-            uint192 minBidSize_ = minBidSize.div(asset.price(), CEIL);
-
-            // {qTok} = {tok} * {qTok/tok}
-            minBidAmt_ = minBidSize_.shiftl_toUint(int8(asset.erc20().decimals()), CEIL);
-        }
-
-        if (minBidAmt_ == 0) {
-            // {qTok} = {1} * {qTok}
-            minBidAmt_ = MIN_BID_SHARE_OF_TOTAL_SUPPLY.mulu_toUint(
-                asset.erc20().totalSupply(),
-                CEIL
-            );
-        }
-    }
-
     // === Setters ===
 
     /// @custom:governance
-    function setAuctionLength(uint32 newAuctionLength) external governance {
+    function setAuctionLength(uint32 newAuctionLength) public governance {
+        require(
+            newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
+            "invalid auctionLength"
+        );
         emit AuctionLengthSet(auctionLength, newAuctionLength);
         auctionLength = newAuctionLength;
-    }
-
-    /// @custom:governance
-    function setMinBidSize(uint192 newMinBidSize) external governance {
-        emit MinBidSizeSet(minBidSize, newMinBidSize);
-        minBidSize = newMinBidSize;
     }
 
     /// @custom:governance

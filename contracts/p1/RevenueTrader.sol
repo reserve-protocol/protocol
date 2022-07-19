@@ -29,7 +29,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     /// Processes a single token; unpermissioned
     /// @dev Intended to be used with multicall
     /// @custom:interaction CEI
-    function manageToken(IERC20 erc20) external interaction {
+    function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
         uint256 bal = erc20.balanceOf(address(this));
@@ -42,15 +42,28 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             return;
         }
 
-        // If not dust, trade the non-target asset for the target asset
         IAssetRegistry reg = main.assetRegistry();
+        IAsset sell = reg.toAsset(erc20);
+
+        // If not dust, trade the non-target asset for the target asset
+        // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
-            reg.toAsset(erc20),
+            sell,
             reg.toAsset(tokenToBuy),
-            reg.toAsset(erc20).bal(address(this))
+            sell.bal(address(this))
         );
 
-        // == Interactions then return ==
-        if (launch) tryTrade(trade);
+        if (launch) {
+            if (sell.isCollateral()) {
+                CollateralStatus status = ICollateral(address(sell)).status();
+
+                // UNPRICED cannot occur at this point due to earlier TradingLib call reverting
+                if (status == CollateralStatus.IFFY) return;
+                if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
+            }
+
+            // == Interactions then return ==
+            tryTrade(trade);
+        }
     }
 }

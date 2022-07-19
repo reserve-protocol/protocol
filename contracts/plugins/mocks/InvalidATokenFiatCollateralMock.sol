@@ -1,48 +1,34 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/Collateral.sol";
-import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/ATokenFiatCollateral.sol";
 
-contract InvalidATokenFiatCollateralMock is AaveOracleMixin, Collateral {
-    using FixLib for uint192;
-
-    IERC20 public override rewardERC20;
-
+contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
+    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
+    /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
+        uint32 oracleTimeout_,
+        bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
-        IERC20 rewardERC20_
+        uint256 delayUntilDefault_
     )
-        Collateral(
+        ATokenFiatCollateral(
+            chainlinkFeed_,
             erc20_,
+            rewardERC20_,
             maxTradeVolume_,
+            oracleTimeout_,
+            targetName_,
             defaultThreshold_,
-            delayUntilDefault_,
-            referenceERC20_,
-            bytes32(bytes("USD"))
+            delayUntilDefault_
         )
-        AaveOracleMixin(comptroller_, aaveLendingPool_)
-    {
-        rewardERC20 = rewardERC20_;
-    }
-
-    /// Dummy implementation
-    function price() public view virtual returns (uint192) {
-        return FIX_ONE;
-    }
-
-    /// Dummy implementation
-    function isReferenceDepegged() private pure returns (bool) {
-        return false;
-    }
+    {}
 
     /// Invalid claim calldata
     function getClaimCalldata() external pure override returns (address _to, bytes memory _cd) {

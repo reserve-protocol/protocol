@@ -65,7 +65,8 @@ library TradingLibP1 {
     }
 
     /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare an trade to
-    /// cover as much of our deficit as possible, given expected trade slippage.
+    /// cover as much of our deficit as possible, given expected trade slippage and
+    /// the sell asset's maxTradeVolume().
     /// @param maxSellAmount {sellTok}
     /// @param deficitAmount {buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading

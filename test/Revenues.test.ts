@@ -2,37 +2,53 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import { IConfig } from '../common/configuration'
+import {
+  BN_SCALE_FACTOR,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  ONE_ADDRESS,
+} from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AavePricedAsset,
+  Asset,
   ATokenFiatCollateral,
-  CompoundPricedAsset,
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   Facade,
   GnosisMock,
+  IAssetRegistry,
   IBasketHandler,
+  MockV3Aggregator,
+  OracleLib,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
   TestIFurnace,
   TestIRevenueTrader,
+  TestIMain,
   TestIRToken,
   TestIStRSR,
   USDCMock,
+  FiatCollateral,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
-import { expectTrade } from './utils/trades'
+import {
+  Collateral,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+  ORACLE_TIMEOUT,
+} from './fixtures'
+import { setOraclePrice } from './utils/oracles'
+import { expectTrade, getTrade } from './utils/trades'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -50,7 +66,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
-  let aaveMock: AaveLendingPoolMock
 
   // Trading
   let gnosis: GnosisMock
@@ -64,8 +79,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let collateral0: Collateral
-  let collateral1: Collateral
+  let collateral0: FiatCollateral
+  let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
   let collateral: Collateral[]
@@ -80,10 +95,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
+  let oracleLib: OracleLib
+  let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -102,7 +119,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       compToken,
       aaveToken,
       compoundMock,
-      aaveMock,
       erc20s,
       collateral,
       basket,
@@ -119,14 +135,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
+      main,
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
 
     // Get assets and tokens
-    collateral0 = <Collateral>basket[0]
-    collateral1 = <Collateral>basket[1]
+    collateral0 = <FiatCollateral>basket[0]
+    collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
@@ -168,7 +186,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         distributor
           .connect(other)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-      ).to.be.revertedWith('unpaused or by owner')
+      ).to.be.revertedWith('governance only')
 
       // Update with owner - Set f = 1
       await expect(
@@ -213,6 +231,36 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .connect(owner)
           .setDistribution(FURNACE_DEST, { rTokenDist: bn(10001), rsrDist: bn(0) })
       ).to.be.revertedWith('RToken distribution too high')
+
+      // Cannot set both distributions = 0
+      await distributor
+        .connect(owner)
+        .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+      ).to.be.revertedWith('no distribution defined')
+    })
+
+    it('Should validate number of destinations', async () => {
+      // Cannot set more than Max (100)
+      const maxDestinations = 100
+
+      for (let i = 0; i < maxDestinations - 2; i++) {
+        const usr: Wallet = await ethers.Wallet.createRandom()
+        await distributor
+          .connect(owner)
+          .setDistribution(usr.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+      }
+
+      // Attempt to add an additional destination will revert
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(other.address, { rTokenDist: bn(40), rsrDist: bn(60) })
+      ).to.be.revertedWith('Too many destinations')
     })
   })
 
@@ -236,6 +284,63 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Mint some RSR
         await rsr.connect(owner).mint(addr1.address, initialBal)
+      })
+
+      it('Should not trade if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rsrTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not trade if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not claim rewards if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not claim rewards if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not settle trade if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not settle trade if frozen', async () => {
+        await main.connect(owner).freeze()
+        await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not launch revenue auction if IFFY', async () => {
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(rTokenTrader.manageToken(rsr.address)).to.not.emit(
+          rTokenTrader,
+          'TradeStarted'
+        )
+      })
+
+      it('Should not launch revenue auction if UNPRICED', async () => {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith('StalePrice()')
+      })
+
+      it('Should launch revenue auction if DISABLED with minBuyAmount = 0', async () => {
+        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        await collateral0.refresh()
+        await advanceTime((await collateral0.delayUntilDefault()).toString())
+        await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
+        await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
+
+        // Trade should have near-zero price worst-case price
+        const trade = await getTrade(rTokenTrader, token0.address)
+        expect(await trade.worstCasePrice()).to.be.lt(fp('0.0001'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -481,13 +586,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+        const newAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            chainlinkFeed.address,
+            compToken.address,
+            ZERO_ADDRESS,
+            fp('1'),
+            ORACLE_TIMEOUT
+          )
         )
 
         // Perform asset swap
-        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAsset.address)
         await basketHandler.refreshBasket()
 
         // Set f = 1
@@ -665,18 +779,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with f=0 (RToken only)', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('AavePricedAsset')
-        const newAaveAsset: AavePricedAsset = <AavePricedAsset>(
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+        const newAsset: Asset = <Asset>(
           await AssetFactory.deploy(
+            chainlinkFeed.address,
+            aaveToken.address,
             aaveToken.address,
             fp('1'),
-            compoundMock.address,
-            aaveMock.address
+            ORACLE_TIMEOUT
           )
         )
 
         // Perform asset swap
-        await assetRegistry.connect(owner).swapRegistered(newAaveAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAsset.address)
         await basketHandler.refreshBasket()
 
         // Set f = 0, avoid dropping tokens
@@ -841,13 +959,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-        const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-          await AssetFactory.deploy(compToken.address, fp('1'), compoundMock.address)
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+        const newAsset: Asset = <Asset>(
+          await AssetFactory.deploy(
+            chainlinkFeed.address,
+            compToken.address,
+            compToken.address,
+            fp('1'),
+            ORACLE_TIMEOUT
+          )
         )
 
         // Perform asset swap
-        await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+        await assetRegistry.connect(owner).swapRegistered(newAsset.address)
         await basketHandler.refreshBasket()
 
         // Set f = 0.8 (0.2 for Rtoken)
@@ -1064,7 +1191,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await whileImpersonating(backingManager.address, async (bmSigner) => {
           await rsr.connect(bmSigner).approve(distributor.address, distAmount)
         })
-        await distributor.distribute(rsr.address, backingManager.address, distAmount)
+        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount))
+          .to.emit(distributor, 'RevenueDistributed')
+          .withArgs(rsr.address, backingManager.address, distAmount)
 
         //  Check all funds distributed to StRSR
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
@@ -1567,18 +1696,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should handle properly assets with invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateralMock'
+          'InvalidATokenFiatCollateralMock',
+          { libraries: { OracleLib: oracleLib.address } }
         )
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(
+            ONE_ADDRESS,
             token2.address,
+            aaveToken.address,
             await collateral2.maxTradeVolume(),
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
             await collateral2.defaultThreshold(),
-            await collateral2.delayUntilDefault(),
-            token0.address,
-            compoundMock.address,
-            aaveMock.address,
-            aaveToken.address
+            await collateral2.delayUntilDefault()
           )
         )
 
@@ -2323,13 +2453,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
     it('Settle Trades / Manage Funds', async () => {
       // Set max auction size for asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('CompoundPricedAsset')
-      const newCompAsset: CompoundPricedAsset = <CompoundPricedAsset>(
-        await AssetFactory.deploy(compToken.address, bn('1e18'), compoundMock.address)
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const newAsset: Asset = <Asset>(
+        await AssetFactory.deploy(
+          chainlinkFeed.address,
+          compToken.address,
+          compToken.address,
+          fp('1'),
+          ORACLE_TIMEOUT
+        )
       )
 
       // Perform asset swap
-      await assetRegistry.connect(owner).swapRegistered(newCompAsset.address)
+      await assetRegistry.connect(owner).swapRegistered(newAsset.address)
       await basketHandler.refreshBasket()
 
       // Set f = 0.8 (0.2 for Rtoken)

@@ -18,8 +18,14 @@ contract MainMock is MainP0 {
         IERC20,
         uint32
     ) public virtual override(MainP0) initializer {
-        __Pausable_init(0);
+        __Auth_init(0);
+
         emit MainInitialized();
+    }
+
+    function setRToken(IRToken rToken_) external {
+        emit RTokenSet(rToken, rToken_);
+        rToken = rToken_;
     }
 
     event TestError(string message);

@@ -42,8 +42,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
-    // MIN_ISSUANCE_RATE: {qRTok/block} 10k whole RTok
-    uint256 public constant MIN_ISSUANCE_RATE = 10_000 * FIX_ONE;
+    // MIN_BLOCK_ISSUANCE_LIMIT: {qRTok/block} 10k whole RTok
+    uint256 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+    // MAX_ISSUANCE_RATE
+    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
 
     // List of accounts. If issuances[user].length > 0 then (user is in accounts)
     EnumerableSet.AddressSet internal accounts;
@@ -69,11 +72,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         manifestoURI = manifestoURI_;
-        issuanceRate = issuanceRate_;
-        emit IssuanceRateSet(FIX_ZERO, issuanceRate);
+        setIssuanceRate(issuanceRate_);
     }
 
-    function setIssuanceRate(uint192 val) external governance {
+    function setIssuanceRate(uint192 val) public governance {
+        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
@@ -81,13 +84,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) external interaction {
+    function issue(uint256 amount) external notPausedOrFrozen {
         require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "basket disabled");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket disabled");
 
         address issuer = _msgSender();
         refundAndClearStaleIssuances(issuer);
@@ -136,7 +139,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         ) {
             // At this point all checks have been done to ensure the issuance should vest
             uint256 vestedAmount = tryVestIssuance(issuer, index);
-            emit IssuancesCompleted(issuer, index, index);
+            emit IssuancesCompleted(issuer, index, index, vestedAmount);
             assert(vestedAmount == iss.amount);
             delete issuances[issuer][index];
         }
@@ -149,9 +152,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param endId One end of the range of issuance IDs to cancel
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction
-    function cancel(uint256 endId, bool earliest) external interaction {
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         // Call collective state keepers.
-        main.poke();
+        // notFrozen modifier requires we use only a subset of main.poke()
+        main.assetRegistry().refresh();
+
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         address account = _msgSender();
 
@@ -159,24 +166,26 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
         uint256 left;
+        uint256 amtRToken; // {qRTok}
         for (uint256 n = first; n < last; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                 }
+                amtRToken += iss.amount;
                 iss.processed = true;
 
                 if (left == 0) left = n;
             }
         }
-        emit IssuancesCanceled(account, left, last);
+        emit IssuancesCanceled(account, left, last, amtRToken);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
     /// @param account The address of the account to vest issuances for
     /// @custom:interaction
-    function vest(address account, uint256 endId) external interaction {
+    function vest(address account, uint256 endId) external notPausedOrFrozen {
         // Call collective state keepers.
         main.poke();
 
@@ -191,7 +200,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             totalVested += vestedAmount;
             if (first == 0 && vestedAmount > 0) first = i;
         }
-        if (totalVested > 0) emit IssuancesCompleted(account, first, endId);
+        if (totalVested > 0) emit IssuancesCompleted(account, first, endId, totalVested);
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -207,12 +216,17 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// Redeem RToken for basket collateral
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
-    function redeem(uint256 amount) external interaction {
+    function redeem(uint256 amount) external notFrozen {
         require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
-        main.poke();
+        // notFrozen modifier requires we use only a subset of main.poke()
+        main.assetRegistry().refresh();
+
+        // Failure to melt results in a lower redemption price, so we can allow it when paused
+        // solhint-disable-next-line no-empty-blocks
+        try main.furnace().melt() {} catch {}
 
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
@@ -251,21 +265,21 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amount) external notPaused {
+    function mint(address recipient, uint256 amount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
-    function melt(uint256 amount) external notPaused {
+    function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
         emit Melted(amount);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPaused {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -310,12 +324,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Calculate the issuance rate if this is the first issue in the block
         if (blockIssuanceRates[block.number] == 0) {
             blockIssuanceRates[block.number] = Math.max(
-                MIN_ISSUANCE_RATE,
+                MIN_BLOCK_ISSUANCE_LIMIT,
                 issuanceRate.mulu_toUint(totalSupply())
             );
         }
         uint256 perBlock = blockIssuanceRates[block.number];
-        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock));
+        allVestAt = before.plus(FIX_ONE.muluDivu(amount, perBlock, CEIL));
         return allVestAt;
     }
 

@@ -16,7 +16,7 @@ import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p1/Main.sol";
 
@@ -30,9 +30,8 @@ contract DeployerP1 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IComptroller public immutable comptroller;
-    IAaveLendingPool public immutable aaveLendingPool;
     IFacade public immutable facade;
+    IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
     Implementations public implementations;
@@ -40,16 +39,34 @@ contract DeployerP1 is IDeployer {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
         IFacade facade_,
+        IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
+        require(
+            address(rsr_) != address(0) &&
+                address(gnosis_) != address(0) &&
+                address(facade_) != address(0) &&
+                address(rsrAsset_) != address(0) &&
+                address(implementations_.main) != address(0) &&
+                address(implementations_.trade) != address(0) &&
+                address(implementations_.components.assetRegistry) != address(0) &&
+                address(implementations_.components.backingManager) != address(0) &&
+                address(implementations_.components.basketHandler) != address(0) &&
+                address(implementations_.components.broker) != address(0) &&
+                address(implementations_.components.distributor) != address(0) &&
+                address(implementations_.components.furnace) != address(0) &&
+                address(implementations_.components.rsrTrader) != address(0) &&
+                address(implementations_.components.rTokenTrader) != address(0) &&
+                address(implementations_.components.rToken) != address(0) &&
+                address(implementations_.components.stRSR) != address(0),
+            "invalid address"
+        );
+
         rsr = rsr_;
         gnosis = gnosis_;
-        comptroller = comptroller_;
-        aaveLendingPool = aaveLendingPool_;
         facade = facade_;
+        rsrAsset = rsrAsset_;
         implementations = implementations_;
     }
 
@@ -59,7 +76,7 @@ contract DeployerP1 is IDeployer {
     /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
-    /// @return The address of the newly deployed Main instance.
+    /// @return The address of the newly deployed RToken.
     function deploy(
         string memory name,
         string memory symbol,
@@ -128,17 +145,17 @@ contract DeployerP1 is IDeployer {
             )
         });
 
+        // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
+            main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume,
-            main
+            params.maxTradeVolume
         );
-
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.oneshotPauseDuration);
+        main.init(components, rsr, params.oneshotFreezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -170,13 +187,7 @@ contract DeployerP1 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(
-            main,
-            gnosis,
-            implementations.trade,
-            params.auctionLength,
-            params.minBidSize
-        );
+        main.broker().init(main, gnosis, implementations.trade, params.auctionLength);
 
         // Init StRSR
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
@@ -194,10 +205,14 @@ contract DeployerP1 is IDeployer {
         main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
-        main.setOneshotPauser(owner);
-        main.transferOwnership(owner);
+        main.grantRole(OWNER, owner);
+        main.grantRole(FREEZER, owner);
+        main.grantRole(PAUSER, owner);
+        main.renounceRole(OWNER, address(this));
+        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
-        return (address(main));
+        return (address(components.rToken));
     }
 }

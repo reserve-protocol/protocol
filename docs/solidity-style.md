@@ -28,7 +28,7 @@ These operations mostly come in a few classes:
 
 Criticially, all of these operations are written so that they only fail with overflow errors if their result is outside the range of the return type. This is what motivates the chained operations, which are typically more expensive than their unchained analogues, but which do whatever work is necessary to avoid intermediate overflow. For instance:
 
-``` solidity
+```solidity
 uint192 one = FIX_ONE;
 uint256 big = type(uint256).max;
 // This would trivially overflow:
@@ -54,17 +54,15 @@ Reintroducing this custom type should be mostly mechanicanizable, but now that P
 
 ### Developer discipline
 
-We don't have static checking for the following properties, so we have to maintain them through review. 
+We don't have static checking for the following properties, so we have to maintain them through review.
 
 Outside of Fixed.sol:
 
 - NEVER allow a `uint192` to be implicitly upcast to `uint256`, without a comment explaining what is happening and why.
 - NEVER explcitily cast between `uint192` and `uint256` without doing the appropriate numeric conversion (e.g, `toUint()` or `toFix()`.)
 - ONLY use standard arithmetic operations on `uint192` values IF:
-    - you're gas-optimizing a hotspot in P1 and need to remove Fixlib calls
-    - in inline comments, you explain what you're doing and why
-
-
+  - you're gas-optimizing a hotspot in P1 and need to remove Fixlib calls
+  - in inline comments, you explain what you're doing and why
 
 ## Units in comments
 
@@ -89,14 +87,14 @@ Thoroughout our code, we use [dimensional analysis][] to guard against mistakes 
 
 - All declarations of state variables and interface parameters that represent a value with one of the above dimensions MUST have a comment naming their unit.
 - Wherever those values are used in assignments in our code, the sides of the assignemnt MUST have the same dimensions.
-    - Amid complex arithmetic, that the dimension are the same SHOULD be demonstrated in a nearby comment.
+  - Amid complex arithmetic, that the dimension are the same SHOULD be demonstrated in a nearby comment.
 
 [atto]: https://en.wikipedia.org/wiki/Atto-
 [dimensional analysis]: https://en.wikipedia.org/wiki/Dimensional_analysis
 
-## Ranges of reasonable values
+## Ranges of supported values
 
-We want to ensure that handling large but reasonable values can never cause a revert due to overflow, but supporting arbitrary, unreasonable values would be very costly in terms of gas. To that end, this is our policy for the ranges of values that the protocol is intended to support.
+We want to ensure that handling large but reasonable values can never cause a revert due to overflow, but supporting arbitrary values would be very costly in terms of gas. To that end, this is our policy for the ranges of values that the protocol is intended to support.
 
 The system should not revert due to overflow for any combination of values within the following ranges; any such reversion is an error.
 
@@ -108,28 +106,28 @@ Ranges here are formatted like "[min, max, granularity]" For instance, the range
 - the StRSR exchange rate: [1e-9, 1e9, 1e-9] `{stRSR/rsr}`
 - the RToken exchange rate: [1e-9, 1e9, 1e-9] `{BU/rTok}`
 - a result of `Collateral.pricePerTarget()`: [1e-9, 1e9, 1e-9] `{UoA/target}`
-    - e.g UoA per USD
+  - e.g UoA per USD
 - a result of `Collateral.targetPerRef()`: [1e-9, 1e9, 1e-9] `{target/ref}`
-    - e.g USD per USDC
+  - e.g USD per USDC
 - a result of `Collateral.refPerTok()`: [1e-9, 1e9, 1e-9] `{ref/tok}`
-    - e.g USDC per cUSDC
+  - e.g USDC per cUSDC
 
 ### Financial Quantities
 
 - `{attoUoA}`: [0, 1e47]
-    - That's 1e29 `UoA`. When UoA is USD, this is about 250x the _square_ of the current M2 money supply. 
+  - That's 1e29 `UoA`. When UoA is USD, this is about 250x the _square_ of the current M2 money supply.
 - `{qRSR}`: [0, 1e29]
-    - 1e29 is the fixed, total supply
+  - 1e29 is the fixed, total supply
 - `{qStRSR}`: [0, 1e38]
-    - 1e38 is 1e29 `{qRSR}` * 1e9 (the max StRSR exchange rate)
+  - 1e38 is 1e29 `{qRSR}` \* 1e9 (the max StRSR exchange rate)
 - `{qRTok}`: [0, 1e48]
-    - 10x the `attoUoA` maximum.
+  - 10x the `attoUoA` maximum.
 - `{qBU}`: [0, 1e57]
-    - 1e57 is 1e48 `{qRTok}` * 1e9 (the max RToken exchange rate)
+  - 1e57 is 1e48 `{qRTok}` \* 1e9 (the max RToken exchange rate)
 - `{qTok}` of collateral tokens: [0, 2^256-1]
-    - Just assume that collateral token quantities are any possible `uint256`.
+  - Just assume that collateral token quantities are any possible `uint256`.
 - `{qTok}` of reward tokens: [0, 1e29]
-    - These are typically fixed-supply, and 1e11 total tokens is the largest fixed supply we've encountered.
+  - These are typically fixed-supply, and 1e11 total tokens is the largest fixed supply we've encountered.
 
 ### Time
 
@@ -147,11 +145,11 @@ All core functions that can be called from outside our system are classified int
 2. `@custom:governance` - Governance change. Allowed while paused.
 3. `@custom:refresher` - Non-system-critical state transitions. Disallowed while paused, with the exception of `refresh()`.
 
-All execution flows through the protocol should contain at most a single (1) action or (2) governance change. These 
+All execution flows through the protocol should contain at most a single (1) action or (2) governance change. These
 
 Functions that are not system-external, but are `external` and can be called by other contracts in the system, are tagged with `@custom:protected`. It is governance's job to ensure a malicious contract is never allowed to masquerade as a component and call one of these. They do not execute when paused.
 
-For each `external` or `public` function, one of these tags MUST be in the correponding function's natSpec comments. We don't have a static checker for this property, but it needs to be maintained by all developers. 
+For each `external` or `public` function, one of these tags MUST be in the correponding function's natSpec comments. We don't have a static checker for this property, but it needs to be maintained by all developers.
 
 ### `@custom:interaction`
 
@@ -198,11 +196,11 @@ A function must be classed as an interaction if it:
 - Makes a non-view call to any contract outside our system, or
 - Calls a function classed as an interaction
 
-### Structuring interactions 
+### Structuring interactions
 
 As matters of policy, here are the three generic options for structuring interactions so that they're reentrancy-safe:
 
-#### CEI pattern ####
+#### CEI pattern
 
 Per the Checks-Effects-Interactions pattern, all interactions called by a function in our system must occur after any other:
 
@@ -218,11 +216,11 @@ At the start of the Interactions block in a CEI-pattern function, set them off v
 
 When a function is an interaction made reentrancy-safe by the CEI pattern, follow its `@custom:interaction` mark with `CEI`, or with `RCEI` (R is for "Refresh") if it starts by calling `AssetRegistry.refresh()`.
 
-#### ReentrancyGuard ####
+#### ReentrancyGuard
 
 Where using the CEI pattern is impractical, every function on that contract that is `external`, and can write to the relevant state elements, should use `reentrancyGuard`. That is, the contract should inherit from either `ReentrancyGuard` (or `ReentrancyGuardUpgradable` as needed), and every external function that can either modify contract state, or read it when it's inconsistent, should be marked with the `nonReentrant` modifier.
 
-#### Exceptions ####
+#### Exceptions
 
 Anything that doesn't fit these two policies precisely must be carefully and fully documented inline, and added to this list:
 
@@ -234,7 +232,7 @@ Anything that doesn't fit these two policies precisely must be carefully and ful
 
 - The entire `GnosisTrade` contract is using the moral equivalent of `ReentrancyGuard` to ensure its own reentrancy-safety, but since it's also using the state machine pattern, it can do both with the same state varible and save gas on SLOADs and SSTOREs.
 
-### Reentrancy risk from collateral 
+### Reentrancy risk from collateral
 
 For some collateral, we can only trust that we have up-to-date prices after we've called `refresh()` on that Collateral contract, during the same transaction. These functions can modify the state of external contracts, so in the usual security model in which we reason about reentrancy, they are potential vectors for reentrancy attacks.
 
@@ -251,9 +249,9 @@ Necessarily, we leave it to the deployers of any further Collateral plugins to e
 
 - If an `external` or `public` function makes a non-view call to any contract outside our system, or otherwise calls a function annotated with `@custom:interaction`, the function is an interaction, and MUST be annotated with `@custom:interaction`.
 - Every interaction MUST either:
-    - follow the CEI pattern,
-    - have the `nonReentrant` modifier AND be part of a contract that uses `ReentrancyGuard`, or
-    - be listed in [Exceptions](#exceptions) above and contain comments explaining why it's reentrancy-safe.
+  - follow the CEI pattern,
+  - have the `nonReentrant` modifier AND be part of a contract that uses `ReentrancyGuard`, or
+  - be listed in [Exceptions](#exceptions) above and contain comments explaining why it's reentrancy-safe.
 
 ## Upgrades
 
@@ -271,7 +269,6 @@ Prior to initial launch, the most glaring consequence of keeping this upgrade pa
 
 [writing-upgradable]: https://docs.openzeppelin.com/upgrades-plugins/1.x/writing-upgradeable
 
-
 ### Performing upgrades
 
 When upgrading smart contracts it is crucial to keep in mind the limitations of what can be changed/modified to avoid breaking the contracts. As OZ recommends, we use their upgrades plugin for Hardhat to ensure that implementations are upgrade-safe before upgrading any smart contract.
@@ -286,15 +283,14 @@ The recommended process to perform an upgrade is the following:
 
 - Create a deployemnt script to the required network (Mainnet), using `upgradeProxy`. Ensure the new version of the `.openzeppelin` files are checked into `git` for future reference.
 
-For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the [OZ docs][upgrades-docs]. 
+For additional information on how to use the plugins and how to perform upgrades on smart contracts please refer to the [OZ docs][upgrades-docs].
 
 [upgrades-docs]: https://docs.openzeppelin.com/upgrades
-
-[forceImport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
+[forceimport]: https://docs.openzeppelin/upgrades-plugins/1.x/api-hardhat-upgrades#force-import
 
 ### Why it's safe to use multicall on our upgradable contracts
 
-In our P1 implementation both our RevenueTrader and BackingManager components contain `delegatecall`, even though they are themselves implementations that sit behind an ERC1967Proxy (UUPSUpgradeable). This is disallowed by default by OZ's upgradable plugin. 
+In our P1 implementation both our RevenueTrader and BackingManager components contain `delegatecall`, even though they are themselves implementations that sit behind an ERC1967Proxy (UUPSUpgradeable). This is disallowed by default by OZ's upgradable plugin.
 
 In this case, we think it is acceptable. The special danger of containing a `delegatecall` in a proxy implementation contract is that the `delegatecall` can self-destruct the proxy if the executed code contains `selfdestruct`. In this case `Multicall` executes `delegatecall` on `address(this)`, which resolves to the address of its caller, the proxy. This executes the `fallback` function, which results in another `delegatecall` to the implementation contract. So the only way for a `selfdestruct` to happen is if the implementation contract itself contains a `selfdestruct`, which it does not.
 

@@ -26,10 +26,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
-    /// Update the state of all collateral
+    /// Update the state of all assets
     /// @custom:refresher
     function refresh() external {
-        // It's a waste of gas to require notPaused because assets can be updated directly
+        // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
             IAsset asset = assets[IERC20(_erc20s.at(i))];

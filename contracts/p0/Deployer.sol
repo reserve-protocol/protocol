@@ -2,11 +2,8 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/AavePricedAsset.sol";
-import "contracts/plugins/assets/CompoundPricedAsset.sol";
+import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/plugins/assets/abstract/AaveOracleMixin.sol";
-import "contracts/plugins/assets/abstract/CompoundOracleMixin.sol";
 import "contracts/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
@@ -31,22 +28,26 @@ contract DeployerP0 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IComptroller public immutable comptroller;
-    IAaveLendingPool public immutable aaveLendingPool;
     IFacade public immutable facade;
+    IAsset public immutable rsrAsset;
 
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IComptroller comptroller_,
-        IAaveLendingPool aaveLendingPool_,
-        IFacade facade_
+        IFacade facade_,
+        IAsset rsrAsset_
     ) {
+        require(
+            address(rsr_) != address(0) &&
+                address(gnosis_) != address(0) &&
+                address(facade_) != address(0) &&
+                address(rsrAsset_) != address(0),
+            "invalid address"
+        );
         rsr = rsr_;
         gnosis = gnosis_;
-        comptroller = comptroller_;
-        aaveLendingPool = aaveLendingPool_;
         facade = facade_;
+        rsrAsset = rsrAsset_;
     }
 
     /// Deploys an instance of the entire system
@@ -55,7 +56,7 @@ contract DeployerP0 is IDeployer {
     /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
-    /// @return The address of the newly deployed Main instance.
+    /// @return The address of the newly deployed RToken.
     function deploy(
         string memory name,
         string memory symbol,
@@ -80,17 +81,17 @@ contract DeployerP0 is IDeployer {
             broker: new BrokerP0()
         });
 
+        // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new RTokenAsset(
+            main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume,
-            main
+            params.maxTradeVolume
         );
-
-        assets[1] = new AavePricedAsset(rsr, params.maxTradeVolume, comptroller, aaveLendingPool);
+        assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.oneshotPauseDuration);
+        main.init(components, rsr, params.oneshotFreezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -122,13 +123,7 @@ contract DeployerP0 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(
-            main,
-            gnosis,
-            ITrade(address(0)),
-            params.auctionLength,
-            params.minBidSize
-        );
+        main.broker().init(main, gnosis, ITrade(address(0)), params.auctionLength);
 
         string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
         string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
@@ -144,10 +139,14 @@ contract DeployerP0 is IDeployer {
         main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
-        main.setOneshotPauser(owner);
-        main.transferOwnership(owner);
+        main.grantRole(OWNER, owner);
+        main.grantRole(FREEZER, owner);
+        main.grantRole(PAUSER, owner);
+        main.renounceRole(OWNER, address(this));
+        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
-        return (address(main));
+        return (address(components.rToken));
     }
 }

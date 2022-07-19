@@ -23,8 +23,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
 
+    uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
+
     function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
+        _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
     }
@@ -34,6 +37,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// @custom:governance
     function setDistribution(address dest, RevenueShare memory share) external governance {
         _setDistribution(dest, share);
+        RevenueTotals memory revTotals = totals();
+        _ensureNonZeroDistribution(revTotals.rTokenTotal, revTotals.rsrTotal);
     }
 
     struct Transfer {
@@ -50,7 +55,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         IERC20 erc20,
         address from,
         uint256 amount
-    ) external notPaused {
+    ) external notPausedOrFrozen {
         IERC20 rsr = main.rsr();
 
         require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
@@ -92,6 +97,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
             });
             numTransfers++;
         }
+        emit RevenueDistributed(erc20, from, amount);
 
         // == Interactions ==
         for (uint256 i = 0; i < numTransfers; i++) {
@@ -118,7 +124,14 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(share.rTokenDist <= 10000, "RToken distribution too high");
 
         destinations.add(dest);
+        require(destinations.length() <= MAX_DESTINATIONS_ALLOWED, "Too many destinations");
+
         distribution[dest] = share;
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);
+    }
+
+    /// Ensures distribution values are non-zero
+    function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
+        require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
     }
 }

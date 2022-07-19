@@ -9,8 +9,6 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
-import "hardhat/console.sol";
-
 enum TradeStatus {
     NOT_STARTED, // before init()
     OPEN, // after init() and before settle()
@@ -24,6 +22,15 @@ enum TradeStatus {
 contract GnosisTrade is ITrade {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    uint256 public constant FEE_DENOMINATOR = 1000;
+
+    // Upper bound for the max number of orders we're happy to have the auction clear in;
+    // When we have good price information, this determines the minimum buy amount per order.
+    uint96 public constant MAX_ORDERS = 1e5; // TODO: choose a good value here; Measure gas.
+
+    // raw "/" for compile-time const
+    uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
 
     IGnosis public gnosis;
 
@@ -58,7 +65,6 @@ contract GnosisTrade is ITrade {
         address origin_,
         IGnosis gnosis_,
         uint32 auctionLength,
-        uint256 minBidSize,
         TradeRequest memory req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
@@ -71,8 +77,9 @@ contract GnosisTrade is ITrade {
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
-        require(sell.balanceOf(address(this)) <= type(uint96).max, "order too large");
-        require(req.minBuyAmount <= type(uint96).max, "order too large");
+        require(sell.balanceOf(address(this)) < type(uint96).max, "initBal too large");
+        require(req.sellAmount < type(uint96).max, "sellAmount too large");
+        require(req.minBuyAmount < type(uint96).max, "minBuyAmount too large");
         initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
@@ -80,17 +87,30 @@ contract GnosisTrade is ITrade {
             shiftl_toFix(req.sellAmount, -int8(sell.decimals()))
         );
 
+        // Downsize our sell amount to adjust for fee
+        // {qTok} = {qTok} * {1} / {1}
+        uint96 sellAmount = uint96(
+            mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
+        ); // Safe downcast; require'd < uint96.max
+        uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
+
+        uint256 minBuyAmtPerOrder = Math.max(
+            minBuyAmount / MAX_ORDERS,
+            DEFAULT_MIN_BID.shiftl_toUint(int8(buy.decimals()))
+        );
+
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), req.sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+
         auctionId = gnosis.initiateAuction(
             sell,
             buy,
             endTime,
             endTime,
-            uint96(req.sellAmount),
-            uint96(req.minBuyAmount),
-            Math.max(1, minBidSize),
+            sellAmount,
+            minBuyAmount,
+            minBuyAmtPerOrder,
             0,
             false,
             address(0),

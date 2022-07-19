@@ -29,6 +29,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
+    uint32 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
+    uint192 public constant MAX_REWARD_RATIO = 1e18;
+
     // ==== ERC20Permit ====
 
     using Counters for Counters.Counter;
@@ -102,29 +106,26 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     ) public initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
-        require(unstakingDelay_ > 0, "unstaking delay cannot be zero");
-        require(rewardPeriod_ * 2 <= unstakingDelay_, "unstakingDelay/rewardPeriod incompatible");
-
         _name = name_;
         _symbol = symbol_;
         payoutLastPaid = block.timestamp;
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
-        unstakingDelay = unstakingDelay_;
-        rewardPeriod = rewardPeriod_;
-        rewardRatio = rewardRatio_;
+        setUnstakingDelay(unstakingDelay_);
+        setRewardPeriod(rewardPeriod_);
+        setRewardRatio(rewardRatio_);
         era = 1;
     }
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPaused {
+    function payoutRewards() external notPausedOrFrozen {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
     /// @custom:interaction
-    function stake(uint256 rsrAmount) external interaction {
+    function stake(uint256 rsrAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -151,7 +152,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// Begins a delayed unstaking for `amount` stRSR
     /// @param stakeAmount {qStRSR}
     /// @custom:interaction
-    function unstake(uint256 stakeAmount) external interaction {
+    function unstake(uint256 stakeAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
         require(balances[account] >= stakeAmount, "Not enough balance");
@@ -182,7 +183,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Complete delayed staking for an account, up to but not including draft ID `endId`
     /// @custom:interaction
-    function withdraw(address account, uint256 endId) external interaction {
+    function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         IBasketHandler bh = main.basketHandler();
         require(bh.fullyCapitalized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
@@ -225,7 +226,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR might be dust-larger than rsrAmount due to rounding.
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
-    function seizeRSR(uint256 rsrAmount) external notPaused {
+    function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initialExchangeRate = exchangeRate();
@@ -233,30 +234,30 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
-        // Calculate dust RSR threshold, the point at which we might as well call it a wipeout
-        uint256 allStakes = totalStaked + stakeBeingWithdrawn(); // {qStRSR}
-        uint256 dustRSRAmt = MIN_EXCHANGE_RATE.mulu_toUint(allStakes); // {qRSR}
-
         uint256 seizedRSR;
-        if (rsrBalance <= rsrAmount + dustRSRAmt) {
-            // Everyone's wiped out! Doom! Mayhem!
-            // Zero all balances and withdrawals
-            seizedRSR = rsrBalance;
-            rsrBacking = 0;
-            for (uint256 i = 0; i < accounts.length(); i++) {
-                address account = accounts.at(i);
-                delete withdrawals[account];
-                balances[account] = 0;
-            }
-            totalStaked = 0;
-            era++;
-            emit AllBalancesReset(era);
+
+        // ==== Remove RSR evenly from stakers, withdrawals, and the reward pool ====
+
+        // Remove RSR from backing for stRSR
+        uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+
+        // {qRSR} - {qRSR} < Fix {qRSR/qStRSR} * {qStRSR}
+        if (rsrBacking - backingToTake < MIN_EXCHANGE_RATE.mulu_toUint(totalStaked)) {
+            seizedRSR = bankruptStakers();
         } else {
-            // Remove RSR evenly from stakers, withdrawals, and the reward pool
-            uint256 backingToTake = (rsrBacking * rsrAmount + (rsrBalance - 1)) / rsrBalance;
             rsrBacking -= backingToTake;
             seizedRSR = backingToTake;
+        }
 
+        // Remove RSR from RSR being withdrawn
+        uint256 withdrawalRSRtoTake = (rsrBeingWithdrawn() * rsrAmount + (rsrBalance - 1)) /
+            rsrBalance;
+        if (
+            rsrBeingWithdrawn() - withdrawalRSRtoTake <
+            MIN_EXCHANGE_RATE.mulu_toUint(stakeBeingWithdrawn())
+        ) {
+            seizedRSR += bankruptWithdrawals();
+        } else {
             for (uint256 i = 0; i < accounts.length(); i++) {
                 Withdrawal[] storage queue = withdrawals[accounts.at(i)];
                 for (uint256 j = 0; j < queue.length; j++) {
@@ -267,17 +268,37 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
                     seizedRSR += amtToTake;
                 }
             }
-
-            // Removing from unpaid rewards is implicit
-            uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
-            seizedRSR += rewardsToTake;
-
-            assert(rsrAmount <= seizedRSR);
         }
+
+        // Removing RSR from yet unpaid rewards
+        uint256 rewardsToTake = (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
+        seizedRSR += rewardsToTake;
+
+        assert(rsrAmount <= seizedRSR);
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
         main.rsr().safeTransfer(_msgSender(), seizedRSR);
+    }
+
+    function bankruptStakers() internal returns (uint256 seizedRSR) {
+        seizedRSR = rsrBacking;
+        rsrBacking = 0;
+        totalStaked = 0;
+        era++;
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            address account = accounts.at(i);
+            balances[account] = 0;
+        }
+        emit AllBalancesReset(era);
+    }
+
+    function bankruptWithdrawals() internal returns (uint256 seizedRSR) {
+        seizedRSR = rsrBeingWithdrawn();
+        for (uint256 i = 0; i < accounts.length(); i++) {
+            address account = accounts.at(i);
+            delete withdrawals[account];
+        }
     }
 
     function exchangeRate() public view returns (uint192) {
@@ -488,20 +509,22 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint32 val) external governance {
-        require(val > 0, "unstaking delay cannot be zero");
+    function setUnstakingDelay(uint32 val) public governance {
+        require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) external governance {
+    function setRewardPeriod(uint32 val) public governance {
+        require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardRatio(uint192 val) external governance {
+    function setRewardRatio(uint192 val) public governance {
+        require(val <= MAX_REWARD_RATIO, "invalid rewardRatio");
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }

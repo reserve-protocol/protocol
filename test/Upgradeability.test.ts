@@ -1,7 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, upgrades, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
+import { IComponents, IConfig } from '../common/configuration'
+import { OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -20,6 +22,7 @@ import {
   FurnaceP1V2,
   GnosisMock,
   GnosisTrade,
+  IAssetRegistry,
   IBasketHandler,
   MainP1,
   MainP1V2,
@@ -31,7 +34,6 @@ import {
   RTokenP1V2,
   StRSRP1Votes,
   StRSRP1VotesV2,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIBroker,
   TestIDistributor,
@@ -42,7 +44,7 @@ import {
   TestIStRSR,
   TradingLibP1,
 } from '../typechain'
-import { defaultFixture, IComponents, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -68,7 +70,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let main: TestIMain
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
@@ -94,8 +96,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let wallet: Wallet
 
   before('create fixture loader', async () => {
-    // Reset network for clean execution
-    await hre.network.provider.send('hardhat_reset')
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
   })
@@ -190,11 +190,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newMain.deployed()
 
-      // Owner/Pauser - Paused by default
-      expect(await newMain.paused()).to.equal(true)
-      expect(await newMain.owner()).to.equal(owner.address)
-      expect(await newMain.oneshotPauser()).to.equal(owner.address)
-
       // Components
       expect(await newMain.stRSR()).to.equal(stRSR.address)
       expect(await newMain.rToken()).to.equal(rToken.address)
@@ -269,7 +264,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newBroker: BrokerP1 = <BrokerP1>await upgrades.deployProxy(
         BrokerFactory,
-        [main.address, gnosis.address, trade.address, config.auctionLength, config.minBidSize],
+        [main.address, gnosis.address, trade.address, config.auctionLength],
         {
           initializer: 'init',
           kind: 'uups',
@@ -279,7 +274,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       expect(await newBroker.gnosis()).to.equal(gnosis.address)
       expect(await newBroker.auctionLength()).to.equal(config.auctionLength)
-      expect(await newBroker.minBidSize()).to.equal(config.minBidSize)
       expect(await newBroker.disabled()).to.equal(false)
       expect(await newBroker.main()).to.equal(main.address)
     })
@@ -396,8 +390,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       // Check state is preserved
       expect(await mainV2.paused()).to.equal(false)
-      expect(await mainV2.owner()).to.equal(owner.address)
-      expect(await mainV2.oneshotPauser()).to.equal(owner.address)
+      expect(await mainV2.frozen()).to.equal(false)
+      expect(await mainV2.pausedOrFrozen()).to.equal(false)
+      expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(FREEZER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
 
       // Components
       expect(await mainV2.stRSR()).to.equal(stRSR.address)
@@ -512,7 +512,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Check state is preserved
       expect(await brokerV2.gnosis()).to.equal(gnosis.address)
       expect(await brokerV2.auctionLength()).to.equal(config.auctionLength)
-      expect(await brokerV2.minBidSize()).to.equal(config.minBidSize)
       expect(await brokerV2.disabled()).to.equal(false)
       expect(await brokerV2.main()).to.equal(main.address)
 

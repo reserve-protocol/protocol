@@ -2,24 +2,24 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
+import { setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString } from '../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AavePricedFiatCollateral,
-  AaveOracleMock,
   ATokenFiatCollateral,
   CTokenFiatCollateral,
   CTokenMock,
-  ComptrollerMock,
   ERC20Mock,
   Facade,
+  FiatCollateral,
+  IAssetRegistry,
   IBasketHandler,
+  MockV3Aggregator,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
-  TestIAssetRegistry,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -31,10 +31,10 @@ import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
 import {
   Collateral,
   defaultFixture,
-  IConfig,
   Implementation,
   IMPLEMENTATION,
   SLOW,
+  ORACLE_TIMEOUT,
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
@@ -73,16 +73,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   // Config values
   let config: IConfig
 
-  // Aave / Compound
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
-  let compoundMock: ComptrollerMock
-
   // Main
   let main: TestIMain
   let rToken: TestIRToken
   let facade: Facade
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
 
@@ -151,19 +146,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({
-      aaveMock,
-      aaveOracleInternal,
-      assetRegistry,
-      backingManager,
-      basket,
-      basketHandler,
-      compoundMock,
-      config,
-      facade,
-      main,
-      rToken,
-    } = await loadFixture(defaultFixture))
+    ;({ assetRegistry, backingManager, basket, basketHandler, config, facade, main, rToken } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = <Collateral>basket[0]
@@ -234,7 +218,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(fp('1'))
     })
 
-    it('Should allow to update issuanceRate if Owner', async () => {
+    it('Should allow to update issuanceRate if Owner and perform validations', async () => {
       const newValue: BigNumber = fp('0.1')
 
       // Check existing value
@@ -242,7 +226,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // If not owner cannot update
       await expect(rToken.connect(other).setIssuanceRate(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
@@ -255,6 +239,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check value was updated
       expect(await rToken.issuanceRate()).to.equal(newValue)
+
+      // Cannot update with issuanceRate > max
+      await expect(
+        rToken.connect(owner).setIssuanceRate(MAX_ISSUANCE_RATE.add(1))
+      ).to.be.revertedWith('invalid issuanceRate')
     })
   })
 
@@ -268,10 +257,122 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).pause()
 
       // Try to issue
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused')
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not issue RTokens if frozen', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if paused', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'paused or frozen'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if frozen', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'paused or frozen'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not vest RTokens if UNPRICED collateral', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Try to vest
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'collateral default'
+      )
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
+    it('Should not be able to cancel vesting if frozen', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Freeze Main
+      await main.connect(owner).freeze()
+
+      // Try to vest
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('frozen')
+    })
+
+    it('Should be able to cancel vesting if paused', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Pause Main
+      await main.connect(owner).pause()
+
+      // Cancel
+      await rToken.connect(addr1).cancel(1, true)
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -355,7 +456,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         {
           contract: rToken,
           name: 'IssuancesCompleted',
-          args: [addr1.address, 0, 1],
+          args: [addr1.address, 0, 1, issueAmount],
           emitted: true,
         },
         {
@@ -449,7 +550,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         {
           contract: rToken,
           name: 'IssuancesCompleted',
-          args: [addr1.address, 0, 1],
+          args: [addr1.address, 0, 1, issueAmount],
           emitted: true,
         },
         {
@@ -520,11 +621,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
 
-      // Default one of the tokens - 50% price reduction and mark default as probable
-      await aaveOracleInternal.setPrice(token1.address, bn('1.25e14'))
-
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
+
+      // Default one of the tokens - 50% price reduction and mark default as probable
+      await setOraclePrice(collateral1.address, bn('0.5e8'))
+      await main.poke()
+
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
 
@@ -934,6 +1037,59 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should allow the issuer to rollback some, but not all, issuances', async () => {
+      // Regression test for TOB-RES-8
+
+      // Mint more tokens! Wind up with 32e24 of each token.
+      await token0.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token1.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token2.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token3.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+
+      await token0.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token1.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token2.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token3.connect(addr1).approve(rToken.address, bn('32e24'))
+
+      const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e24'))
+      const expectedTkn0: BigNumber = quotes[0]
+      const expectedTkn1: BigNumber = quotes[1]
+      const expectedTkn2: BigNumber = quotes[2]
+      const expectedTkn3: BigNumber = quotes[3]
+
+      // launch 5 issuances of increasing size (1e24, 2e24, ... 16e24)
+      for (let i = 0; i < 5; i++) await rToken.connect(addr1).issue(bn('1e24').mul(2 ** i))
+
+      const before0 = bn('32e24').sub(expectedTkn0.mul(31))
+      const before1 = bn('32e24').sub(expectedTkn1.mul(31))
+      const before2 = bn('32e24').sub(expectedTkn2.mul(31))
+      const before3 = bn('32e24').sub(expectedTkn3.mul(31))
+
+      expect(await token0.balanceOf(addr1.address)).to.equal(before0)
+      expect(await token1.balanceOf(addr1.address)).to.equal(before1)
+      expect(await token2.balanceOf(addr1.address)).to.equal(before2)
+      expect(await token3.balanceOf(addr1.address)).to.equal(before3)
+
+      // Check initial state
+      await expectIssuance(addr1.address, 0, { processed: false })
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+
+      // Cancel the last 3 issuances
+      await expect(rToken.connect(addr1).cancel(2, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 2, 5, bn('28e24'))
+
+      // Check that the last 3 issuances were refunded
+      // (28 = 4 + 8 + 16)
+      expect((await token0.balanceOf(addr1.address)).sub(before0).div(expectedTkn0)).to.equal(28)
+      expect((await token1.balanceOf(addr1.address)).sub(before1).div(expectedTkn1)).to.equal(28)
+      expect((await token2.balanceOf(addr1.address)).sub(before2).div(expectedTkn2)).to.equal(28)
+      expect((await token3.balanceOf(addr1.address)).sub(before3).div(expectedTkn3)).to.equal(28)
+
+      // Check total asset value did not change
+      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    })
+
     it('Should allow the issuer to rollback minting', async function () {
       const issueAmount: BigNumber = bn('50000e18')
 
@@ -966,7 +1122,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancel(1, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 1)
+        .withArgs(addr1.address, 0, 1, issueAmount)
 
       // Check minting was cancelled but not tokens minted
       await expectIssuance(addr1.address, 0, {
@@ -1041,7 +1197,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel with issuer
       await expect(rToken.connect(addr1).cancel(2, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 1, 2)
+        .withArgs(addr1.address, 1, 2, issueAmount)
 
       // Check minting was cancelled and not tokens minted
       await expectIssuance(addr1.address, 1, {
@@ -1107,7 +1263,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Cancel slow issuances
       await expect(rToken.connect(addr1).cancel(0, false))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 0, 1)
+        .withArgs(addr1.address, 0, 1, issueAmount)
 
       // Check Balances after - Funds returned to minter
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -1241,10 +1397,33 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should redeem if basket is IFFY #fast', async function () {
         // Default one of the tokens - 50% price reduction and mark default as probable
-        await aaveOracleInternal.setPrice(token3.address, bn('1.25e14'))
+        await setOraclePrice(collateral3.address, bn('0.5e8'))
 
         await rToken.connect(addr1).redeem(issueAmount)
         expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should redeem if basket is UNPRICED #fast', async function () {
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should redeem if paused #fast', async function () {
+        await main.connect(owner).pause()
+        await rToken.connect(addr1).redeem(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(0)
+      })
+
+      it('Should not redeem if frozen #fast', async function () {
+        await main.connect(owner).freeze()
+
+        // Try to redeem
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('frozen')
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
       it('Should revert if basket is DISABLED #fast', async function () {
@@ -1254,17 +1433,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
           'collateral default'
         )
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
-      })
-
-      it('Should not redeem if paused', async function () {
-        // Pause Main
-        await main.connect(owner).pause()
-
-        // Try to redeem
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('paused')
-
-        // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })
@@ -1288,6 +1456,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Issue tokens
       await rToken.connect(addr1).issue(issueAmount)
+    })
+
+    it('Should not melt if paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not melt if frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
     })
 
     it('Should allow to melt tokens if caller', async () => {
@@ -1330,27 +1508,39 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
     })
   })
+
+  describe('Reward Claiming #fast', () => {
+    it('should not claim rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not claim rewards when frozen', async () => {
+      await main.connect(owner).freeze()
+      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+  })
   context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const AaveCollateralFactory: ContractFactory = await ethers.getContractFactory(
-        'AavePricedFiatCollateral'
-      )
-      const coll: AavePricedFiatCollateral = <AavePricedFiatCollateral>(
-        await AaveCollateralFactory.deploy(
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+      const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
+      const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
+      const coll: FiatCollateral = <FiatCollateral>(
+        await CollateralFactory.deploy(
+          oracle.address,
           erc20.address,
           fp('1e36'),
+          ethers.utils.formatBytes32String('USD'),
           fp('0.05'),
-          bn(86400),
-          compoundMock.address,
-          aaveMock.address
+          bn(86400)
         )
       )
-      await assetRegistry.register(coll.address) // SHOULD BE LINTED
+      await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
-      await aaveOracleInternal.setPrice(erc20.address, price)
+      await setOraclePrice(coll.address, price)
       return erc20
     }
 

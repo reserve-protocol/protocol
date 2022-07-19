@@ -20,6 +20,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    uint32 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
+
     uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
@@ -32,13 +35,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     ) external initializer {
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_, dustAmount_);
-        tradingDelay = tradingDelay_;
-        backingBuffer = backingBuffer_;
+        setTradingDelay(tradingDelay_);
+        setBackingBuffer(backingBuffer_);
     }
 
     // Give RToken max allowance over a registered token
     /// @custom:interaction CEI
-    function grantRTokenAllowance(IERC20 erc20) external interaction {
+    function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
         erc20.approve(address(main.rToken()), type(uint256).max);
@@ -46,12 +49,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction RCEI
-    function manageTokens(IERC20[] calldata erc20s) external interaction {
+    function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
-        // Do not trade when DISABLED or IFFY
+        // Only trade when SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
@@ -180,13 +183,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === Setters ===
 
     /// @custom:governance
-    function setTradingDelay(uint32 val) external governance {
+    function setTradingDelay(uint32 val) public governance {
+        require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;
     }
 
     /// @custom:governance
-    function setBackingBuffer(uint192 val) external governance {
+    function setBackingBuffer(uint192 val) public governance {
+        require(val <= MAX_BACKING_BUFFER, "invalid backingBuffer");
         emit BackingBufferSet(backingBuffer, val);
         backingBuffer = val;
     }

@@ -2,8 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
 import { TradeStatus } from '../common/constants'
-import { fp, bn, toBNDecimals } from '../common/numbers'
+import { bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
   GnosisMock,
@@ -15,7 +16,7 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, IConfig, Implementation, IMPLEMENTATION } from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
@@ -89,7 +90,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
       // If not owner cannot update
       await expect(broker.connect(other).setAuctionLength(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+        'governance only'
       )
 
       // Check value did not change
@@ -104,27 +105,20 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.auctionLength()).to.equal(newValue)
     })
 
-    it('Should allow to update minBidSize if Owner', async () => {
-      const newValue: BigNumber = fp('10')
+    it('Should perform validations on auctionLength', async () => {
+      let invalidValue: BigNumber = bn(0)
 
-      // Check existing value
-      expect(await broker.minBidSize()).to.equal(config.minBidSize)
-
-      // If not owner cannot update
-      await expect(broker.connect(other).setMinBidSize(newValue)).to.be.revertedWith(
-        'unpaused or by owner'
+      // Attempt to update
+      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid auctionLength'
       )
 
-      // Check value did not change
-      expect(await broker.minBidSize()).to.equal(config.minBidSize)
+      invalidValue = bn(MAX_AUCTION_LENGTH + 1)
 
-      // Update with owner
-      await expect(broker.connect(owner).setMinBidSize(newValue))
-        .to.emit(broker, 'MinBidSizeSet')
-        .withArgs(config.minBidSize, newValue)
-
-      // Check value was updated
-      expect(await broker.minBidSize()).to.equal(newValue)
+      // Attempt to update
+      await expect(broker.connect(owner).setAuctionLength(invalidValue)).to.be.revertedWith(
+        'invalid auctionLength'
+      )
     })
 
     it('Should allow to update disabled if Owner', async () => {
@@ -132,9 +126,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.disabled()).to.equal(false)
 
       // If not owner cannot update
-      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith(
-        'unpaused or by owner'
-      )
+      await expect(broker.connect(other).setDisabled(true)).to.be.revertedWith('governance only')
 
       // Check value did not change
       expect(await broker.disabled()).to.equal(false)
@@ -179,7 +171,43 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       })
     })
 
-    it('Should not allow to open trade if not a component', async () => {
+    it('Should not allow to open trade if paused', async () => {
+      await main.connect(owner).pause()
+
+      // Attempt to open trade
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
+    it('Should not allow to open trade if frozen', async () => {
+      await main.connect(owner).pause()
+
+      // Attempt to open trade
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: bn('100e18'),
+        minBuyAmount: bn('0'),
+      }
+
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(broker.connect(bmSigner).openTrade(tradeRequest)).to.be.revertedWith(
+          'paused or frozen'
+        )
+      })
+    })
+
+    it('Should not allow to open trade if a trader', async () => {
       const amount: BigNumber = bn('100e18')
 
       const tradeRequest: ITradeRequest = {
@@ -267,7 +295,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -294,7 +321,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           await trade.origin(),
           await trade.gnosis(),
           await broker.auctionLength(),
-          await broker.minBidSize(),
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
@@ -325,7 +351,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       ).to.be.revertedWith('unfunded trade')
@@ -363,7 +388,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -419,7 +443,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -500,7 +523,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       ).to.not.be.reverted
@@ -605,7 +627,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           backingManager.address,
           gnosis.address,
           config.auctionLength,
-          config.minBidSize,
           tradeRequest
         )
       )
@@ -619,7 +640,6 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
         backingManager.address,
         gnosis.address,
         config.auctionLength,
-        config.minBidSize,
         tradeRequest
       )
 

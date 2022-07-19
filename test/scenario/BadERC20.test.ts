@@ -2,23 +2,25 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
+import { IConfig } from '../../common/configuration'
+import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
-  AaveLendingPoolMock,
-  AaveOracleMock,
   BadERC20,
-  ComptrollerMock,
   ERC20Mock,
+  IAssetRegistry,
   IBasketHandler,
-  TestIAssetRegistry,
+  MockV3Aggregator,
+  OracleLib,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
+import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IConfig, IMPLEMENTATION } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -32,11 +34,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
   // Assets
   let collateral: Collateral[]
-
-  // Non-backing assets
-  let compoundMock: ComptrollerMock
-  let aaveMock: AaveLendingPoolMock
-  let aaveOracleInternal: AaveOracleMock
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -53,9 +50,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rsr: ERC20Mock
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let assetRegistry: TestIAssetRegistry
+  let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -73,9 +71,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     ;({
       rsr,
       stRSR,
-      compoundMock,
-      aaveMock,
-      aaveOracleInternal,
       erc20s,
       collateral,
       config,
@@ -84,19 +79,27 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
     token0 = await (await ethers.getContractFactory('BadERC20')).deploy('Bad ERC20', 'BERC20')
+    const chainlinkFeed = <MockV3Aggregator>(
+      await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+    )
     collateral0 = await (
-      await ethers.getContractFactory('AavePricedFiatCollateral')
+      await ethers.getContractFactory('FiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
     ).deploy(
+      chainlinkFeed.address,
       token0.address,
+      ZERO_ADDRESS,
       config.maxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT,
-      compoundMock.address,
-      aaveMock.address
+      DELAY_UNTIL_DEFAULT
     )
 
     // Backup
@@ -104,7 +107,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     backupCollateral = <Collateral>collateral[2]
 
     // Basket configuration
-    await aaveOracleInternal.setPrice(token0.address, bn('2.5e14'))
     await assetRegistry.connect(owner).register(collateral0.address)
     await assetRegistry.connect(owner).register(backupCollateral.address)
     await basketHandler.setPrimeBasket([token0.address], [fp('1')])
@@ -179,7 +181,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should revert during trading', async () => {
-      await aaveOracleInternal.setPrice(token0.address, bn('1e10')) // default
+      await setOraclePrice(collateral0.address, bn('1e7')) // default
       await assetRegistry.refresh()
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
@@ -251,6 +253,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
+      await token0.setCensored(rToken.address, false)
       await rToken.connect(addr2).issue(issueAmt)
     })
 
@@ -260,6 +263,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await expect(rToken.connect(addr2).issue(issueAmt)).to.be.revertedWith('censored')
 
       // Should work now
+      await token0.setCensored(backingManager.address, false)
       await token0.setCensored(rToken.address, false)
       await rToken.connect(addr2).issue(issueAmt)
     })
@@ -269,11 +273,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
       // Should work now
       await token0.setCensored(backingManager.address, false)
+      await token0.setCensored(rToken.address, false)
       await rToken.connect(addr1).redeem(issueAmt)
     })
 
     it('should revert during trading', async () => {
-      await aaveOracleInternal.setPrice(token0.address, bn('1e10')) // default
+      await setOraclePrice(collateral0.address, bn('1e7')) // default
       await collateral0.refresh()
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())

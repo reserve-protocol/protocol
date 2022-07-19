@@ -27,6 +27,12 @@ interface IDistributor is IComponent {
     /// @param rsrDist The distribution of RSR that should go to `dest`
     event DistributionSet(address dest, uint16 rTokenDist, uint16 rsrDist);
 
+    /// Emitted when revenue is distributed
+    /// @param erc20 The token being distributed, either RSR or the RToken itself
+    /// @param source The address providing the revenue
+    /// @param amount The amount of the revenue
+    event RevenueDistributed(IERC20 indexed erc20, address indexed source, uint256 indexed amount);
+
     // Initialization
     function init(IMain main_, RevenueShare memory dist) external;
 
