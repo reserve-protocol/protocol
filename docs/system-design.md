@@ -200,3 +200,13 @@ The number of seconds a freeze performed by a non-governance freezer. Governance
 
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
+
+## System States
+
+- `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions
+- `frozen`: all interactions disabled EXCEPT ERC20 functions. Only lasts a finite period when performed by a non-owning FREEZER, called a "oneshot" freeze.
+
+Design intentions:
+
+- The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since exit of the system remains enabled.
+- The FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a oneshot freeze can be triggered which will automatically expire if the owner (governance) does not step in and upgrade the system or extend the freeze.
