@@ -12,7 +12,6 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  */
 contract EURFiatCollateral is Collateral {
     using FixLib for uint192;
-    using OracleLib for AggregatorV3Interface;
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
     AggregatorV3Interface public immutable uoaPerRefFeed; // {UoA/ref}
@@ -68,7 +67,7 @@ contract EURFiatCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok} (1)
-        return uoaPerRefFeed.price(oracleTimeout).mul(refPerTok());
+        return price(uoaPerRefFeed, oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -80,10 +79,10 @@ contract EURFiatCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // p1 {UoA/ref}
-        try uoaPerRefFeed.price_(oracleTimeout) returns (uint192 p1) {
+        try this.price_(uoaPerRefFeed, oracleTimeout) returns (uint192 p1) {
             // We don't need the return value from this next feed, but it should still function
             // p2 {UoA/target}
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
+            try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192 p2) {
                 priceable = true;
 
                 // {target/ref}
@@ -125,6 +124,6 @@ contract EURFiatCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return uoaPerTargetFeed.price(oracleTimeout);
+        return price(uoaPerTargetFeed, oracleTimeout);
     }
 }
