@@ -1,4 +1,0 @@
-node_modules
-
-# The Fixed library defines a custom type and crashes the solhint parser
-contracts/libraries/Fixed.sol

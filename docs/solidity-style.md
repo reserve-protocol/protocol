@@ -81,7 +81,7 @@ Otherwise, the unit is assumed to be whole. The meaning of a "whole" token chang
 - `{BU}` = whole basket unit
 - `{UoA}` = whole unit of the Unit of Account (which is probably USD)
 
-Thoroughout our code, we use [dimensional analysis][] to guard against mistakes of reasoning, similar to type checking. (Except we don't have a type system that will actually do the static checking for us, so we have to be careful and verbose instead.)
+Throughout our code, we use [dimensional analysis][] to guard against mistakes of reasoning, similar to type checking. (Except we don't have a type system that will actually do the static checking for us, so we have to be careful and verbose instead.)
 
 ### Developer discipline
 

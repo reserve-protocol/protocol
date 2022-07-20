@@ -10,6 +10,17 @@ First, you need solc-select and slither, Echidna requires both. These are part o
 
 If you're using the "mostly-static" precompiled binaries for MacOS, putting the contents of that build somewhere in your `PATH` will install it. However, that build is a binary plus a handful of dynamic libs that it's expecting to find as siblings in its directory. To keep things clean, I recommend installing the binary to its own directory somewhere, and then putting an executable symlink in your PATH.
 
+## Avoiding Dynamic Libraries
+
+For Echidna to run, our Solidity code [cannot contain dynamic libraries](https://github.com/crytic/echidna/#limitations-and-known-issues). Our deployment code contains dynamic libraries, so something must be done.
+
+In order to support this:
+
+- All of our fuzzing work happens in the `fuzz` branch, which is a long-lived branch downstream of `master`.
+- The contract code in `fuzz` is rearranged as needed to be static-libraries. This should be the only reason why target-system contract code is different between `fuzz` and `master`. 
+
+Given all that, **never merge `fuzz` into `master`**.
+
 ## Usage
 
     yarn compile && echdina-test . --contract ${CONTRACT} \
@@ -27,19 +38,11 @@ In interactive testing, the command I've been using is:
 
 Some notes:
 
-- echidna-test will _not_ compile your changes for you. You've got to re-run `yarn compile` anytime you've changed any solidity contracts, either the test driver or your target contracts.
+- It seems like echidna-test will _not_ reliably compile your changes for you. (Even though it's definitely doing _something_ like compilation... curious...) You've got to re-run `yarn compile` anytime you've changed any solidity contracts, either the test driver or your target contracts.
 - echidna-test accepts a single test driver contract. You'll need to do a separate run to test separate test contracts.
-- the contract name to specify after `--contract` is just the base contract name; it's not qualified by, say, its import path.
-- If you're using a corpus-dir -- and you probably should -- then any time you've changed a contract ABI in any important way, make sure you delete it before you continue!
+- The contract name to specify after `--contract` is just the base contract name. It's not qualified by its import path.
+- If you're using a corpus-dir -- and you probably should, so that you get visibility into fuzzing coverage -- then any time you've changed a contract ABI in any important way, make sure you delete it before you continue!
 
-The [Echidna tutorial](https://github.com/crytic/building-secure-contracts/tree/master/program-analysis/echidna#echidna-tutorial) is a little out-of-date, but excellent background material, and well worth reading. When I last looked, it hadn't been updated with new features and interface descriptions, so you should also check out the 2.0 [release notes](https://github.com/crytic/echidna/releases/tag/v2.0.0).
+The [Echidna tutorial](https://github.com/crytic/building-secure-contracts/tree/master/program-analysis/echidna#echidna-tutorial) is a little out-of-date, but excellent background material, and well worth reading. When I last looked, it hadn't been updated with new features and interface descriptions, so you should also check out a >=2.0 [release notes](https://github.com/crytic/echidna/releases/tag/v2.0.0).
 
 Among the release notes, especially note the use of `--testMode`! Very important!
-
-### Avoiding Dynamic Libraries
-
-For Echidna to run, our Solidity code [cannot contain dynamic libraries](https://github.com/crytic/echidna/#limitations-and-known-issues). Our deployment code contains dynamic libraries, so something must be done.
-
-The change required is relatively small, and doesn't change all that often, so we're just keeping the needed patch in the repository as `tools/static.diff`. You can go from static to dynamic by running `git apply tools/static.diff`, and you can go from dynamic to static by running `git apply -R tools/static.diff`. Both should compile and pass our general test suite.
-
-You can only run echidna in static mode; you can only commit changes to the repo in dynamic mode.
