@@ -7,15 +7,15 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 
 /**
- * @title NonFiatCollateral
- * @notice Collateral plugin for a nonfiat collateral that requires default checks, such as WBTC.
+ * @title EURFiatCollateral
+ * @notice Collateral plugin for a EURO fiatcoin collateral, such as EURT
  */
-contract NonFiatCollateral is Collateral {
+contract EURFiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
-    AggregatorV3Interface public immutable targetPerRefFeed; // {target/ref}
+    AggregatorV3Interface public immutable uoaPerRefFeed; // {UoA/ref}
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -29,14 +29,14 @@ contract NonFiatCollateral is Collateral {
 
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
-    /// @param targetPerRefFeed_ {target/ref}
+    /// @param uoaPerRefFeed_ {UoA/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
-        AggregatorV3Interface targetPerRefFeed_,
+        AggregatorV3Interface uoaPerRefFeed_,
         AggregatorV3Interface uoaPerTargetFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
@@ -58,17 +58,17 @@ contract NonFiatCollateral is Collateral {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
-        require(address(targetPerRefFeed_) != address(0), "missing targetPerRef chainlink feed");
+        require(address(uoaPerRefFeed_) != address(0), "missing uoaPerRef feed");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
-        targetPerRefFeed = targetPerRefFeed_;
+        uoaPerRefFeed = uoaPerRefFeed_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
-        return uoaPerTargetFeed.price(oracleTimeout).mul(targetPerRefFeed.price(oracleTimeout));
+        // {UoA/tok} = {UoA/ref} * {ref/tok} (1)
+        return uoaPerRefFeed.price(oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -79,10 +79,11 @@ contract NonFiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
-        // p {target/ref}
-        try targetPerRefFeed.price_(oracleTimeout) returns (uint192 p) {
+        // p1 {UoA/ref}
+        try uoaPerRefFeed.price_(oracleTimeout) returns (uint192 p1) {
             // We don't need the return value from this next feed, but it should still function
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192) {
+            // p2 {UoA/target}
+            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
                 priceable = true;
 
                 // {target/ref}
@@ -90,6 +91,9 @@ contract NonFiatCollateral is Collateral {
 
                 // D18{target/ref}= D18{target/ref} * D18{1} / D18
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+
+                // {target/ref} = {UoA/ref} / {UoA/target}
+                uint192 p = p1.div(p2);
 
                 // If the price is below the default-threshold price, default eventually
                 if (p < peg - delta || p > peg + delta) {
