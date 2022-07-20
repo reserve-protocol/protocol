@@ -139,11 +139,10 @@ library TradingLibP0 {
         uint192 shortfall = collateralShortfall(erc20s, basketTargetHigh); // {UoA}
 
         // Further adjust the low backing estimate downwards to account for trading frictions
-        uint192 basketTargetLow = fixMin(basketTargetHigh, assetsLow);
         uint192 shortfallSlippage = maxTradeSlippage().mul(shortfall);
-        basketTargetLow = basketTargetLow.gt(shortfallSlippage)
-            ? basketTargetLow.minus(shortfallSlippage)
-            : FIX_ZERO;
+        uint192 basketTargetLow = assetsLow.gt(shortfallSlippage)
+            ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
+            : 0;
 
         // {BU} = {UoA} / {BU/UoA}
         range.top = basketTargetHigh.div(basketPrice, CEIL);
