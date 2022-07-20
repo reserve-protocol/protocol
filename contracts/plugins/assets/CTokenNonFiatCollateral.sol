@@ -28,8 +28,8 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
-    AggregatorV3Interface public immutable targetUnitUSDChainlinkFeed;
-    AggregatorV3Interface public immutable refUnitChainlinkFeed;
+    AggregatorV3Interface public immutable refUnitChainlinkFeed; // {target/ref}
+    AggregatorV3Interface public immutable targetUnitUSDChainlinkFeed; // {UoA/target}
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
