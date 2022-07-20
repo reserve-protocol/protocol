@@ -511,10 +511,8 @@ describe('Collateral contracts', () => {
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await nonFiatCollateral.isCollateral()).to.equal(true)
-      expect(await nonFiatCollateral.targetUnitUSDChainlinkFeed()).to.equal(
-        targetUnitOracle.address
-      )
-      expect(await nonFiatCollateral.refUnitChainlinkFeed()).to.equal(referenceUnitOracle.address)
+      expect(await nonFiatCollateral.uoaPerTargetFeed()).to.equal(targetUnitOracle.address)
+      expect(await nonFiatCollateral.targetPerRefFeed()).to.equal(referenceUnitOracle.address)
       expect(await nonFiatCollateral.erc20()).to.equal(nonFiatToken.address)
       expect(await nonFiatToken.decimals()).to.equal(18) // Due to Mock, wbtc has 8 decimals (covered in integration test)
       expect(await nonFiatCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('BTC'))
@@ -600,7 +598,7 @@ describe('Collateral contracts', () => {
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await cTokenNonFiatCollateral.isCollateral()).to.equal(true)
-      expect(await cTokenNonFiatCollateral.targetUnitUSDChainlinkFeed()).to.equal(
+      expect(await cTokenNonFiatCollateral.targetUnitChainlinkFeed()).to.equal(
         targetUnitOracle.address
       )
       expect(await cTokenNonFiatCollateral.refUnitChainlinkFeed()).to.equal(

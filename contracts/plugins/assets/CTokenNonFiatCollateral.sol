@@ -29,8 +29,8 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
-    AggregatorV3Interface public immutable targetUnitUSDChainlinkFeed;
-    AggregatorV3Interface public immutable refUnitChainlinkFeed;
+    AggregatorV3Interface public immutable refUnitChainlinkFeed; // {target/ref}
+    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -88,7 +88,7 @@ contract CTokenNonFiatCollateral is Collateral {
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
-        targetUnitUSDChainlinkFeed = targetUnitUSDChainlinkFeed_;
+        targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
         refUnitChainlinkFeed = refUnitChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
@@ -99,7 +99,7 @@ contract CTokenNonFiatCollateral is Collateral {
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
-            targetUnitUSDChainlinkFeed
+            targetUnitChainlinkFeed
                 .price(oracleTimeout)
                 .mul(refUnitChainlinkFeed.price(oracleTimeout))
                 .mul(refPerTok());
@@ -124,7 +124,7 @@ contract CTokenNonFiatCollateral is Collateral {
             // p {target/ref}
             try refUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 // We don't need the return value from this next feed, but it should still function
-                try targetUnitUSDChainlinkFeed.price_(oracleTimeout) returns (uint192) {
+                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192) {
                     priceable = true;
 
                     // {target/ref}
@@ -175,7 +175,7 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return targetUnitUSDChainlinkFeed.price(oracleTimeout);
+        return targetUnitChainlinkFeed.price(oracleTimeout);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
