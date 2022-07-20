@@ -3266,7 +3266,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it.skip('Should recapitalize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
+      it('Should recapitalize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
         await assetRegistry.connect(owner).register(backupCollateral2.address)
@@ -3595,8 +3595,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // 1.5625e18 tokens should be transferred from backup 1 to backup 2
         const sellAmtRebalanceBkp: BigNumber = (
           await backupToken1.balanceOf(backingManager.address)
-        ).sub(requiredBkpTokens.div(2))
-        const minBuyAmtRebalanceBkp: BigNumber = sellAmtRebalanceBkp // no trade slippage
+        )
+          .sub(requiredBkpTokens.div(2))
+          .mul(fp('0.9952'))
+          .div(BN_SCALE_FACTOR)
+        const minBuyAmtRebalanceBkp: BigNumber = sellAmtRebalanceBkp
+        // no trade slippage
+
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -3715,13 +3720,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - Haircut of 37.5% taken
-        expect(await rToken.price()).to.equal(fp('0.625'))
+        // Check price in USD of the current RToken - Haircut of 37.52% taken
+        expect(await rToken.price()).to.equal(fp('0.6248'))
 
-        // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
+        // Check quotes - reduced by 37.52% as well (less collateral is required to match the new price)
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
-          return q.mul(625).div(1000)
+          return q.mul(6248).div(10000)
         })
         expect(quotes).to.eql(finalQuotes)
 
