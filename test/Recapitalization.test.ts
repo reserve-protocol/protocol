@@ -2895,7 +2895,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it.skip('Should recapitalize correctly in case of default - Taking Haircut - Single backup token', async () => {
+      it('Should recapitalize correctly in case of default - Taking Haircut - Single backup token', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -3134,9 +3134,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // We will need to rebalance our backing, we have an excess of Token1 now and we need more backupToken1
         // We need 3.75e18 to reach the 75% of backup token 1
         const requiredBkpToken1: BigNumber = newTotalAssetValue.mul(75).div(100)
-        const minBuyAmtRebalance: BigNumber = requiredBkpToken1.sub(
-          minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3)
-        )
+
+        const minBuyAmtRebalance: BigNumber = requiredBkpToken1
+          .sub(minBuyAmt0.add(minBuyAmt2).add(minBuyAmt3))
+          .mul(499)
+          .div(500)
 
         const sellAmtRebalance: BigNumber = toBNDecimals(minBuyAmtRebalance, 6) // convert to decimals of sell token - no trade slippage
 
@@ -3248,13 +3250,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - Haircut of 15% taken (5% lost of each of the three defaulted tokens)
-        expect(await rToken.price()).to.equal(fp('0.85'))
+        // Check price in USD of the current RToken - Haircut of 15.01% taken (5% lost of each of the three defaulted tokens)
+        expect(await rToken.price()).to.equal(fp('0.8499'))
 
-        // Check quotes - reduced by 15% as well (less collateral is required to match the new price)
+        // Check quotes - reduced by 15.01% as well (less collateral is required to match the new price)
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         const finalQuotes = newQuotes.map((q) => {
-          return q.mul(85).div(100)
+          return q.mul(8499).div(10000)
         })
         expect(quotes).to.eql(finalQuotes)
 
