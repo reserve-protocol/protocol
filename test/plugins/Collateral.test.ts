@@ -17,7 +17,6 @@ import {
   FiatCollateral,
   MockV3Aggregator,
   NonFiatCollateral,
-  OracleLib,
   SelfReferentialCollateral,
   StaticATokenMock,
   TestIBackingManager,

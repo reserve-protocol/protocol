@@ -99,7 +99,7 @@ contract CTokenNonFiatCollateral is Collateral {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
             price(targetUnitUSDChainlinkFeed, oracleTimeout)
-            .mul(price(refUnitChainlinkFeed, oracleTimeout))
+                .mul(price(refUnitChainlinkFeed, oracleTimeout))
                 .mul(refPerTok());
     }
 
