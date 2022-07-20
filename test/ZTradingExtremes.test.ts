@@ -541,12 +541,15 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       let uncapitalized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
-      // For small cases, we should be able to do `basketSize` non-RSR trades, and then 1 RSR trade
-      // For big cases, the gnosis trade uint sizing prevents us from completing recapitalization
-      // in a reasonable amount of time.
-
       // Run recap auctions
       const erc20s = await assetRegistry.erc20s()
+
+      // Refresh oracle prices
+      for (const erc20 of erc20s) {
+        // Refresh oracle prices
+        await setOraclePrice(await assetRegistry.toAsset(erc20), bn('1e8'))
+      }
+
       for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
         // Close any open auctions and launch new ones
         await facade.runAuctionsForAllTraders(rToken.address)
@@ -561,7 +564,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, minBuyAmt] = await gnosis.auctions(auctionId)
-          const actualBuyAmt = minBuyAmt.eq(0) ? sellAmt : minBuyAmt
+          const actualBuyAmt = sellAmt.gt(minBuyAmt) ? sellAmt : minBuyAmt
           const buyERC20 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', buy)
           await buyERC20.connect(addr1).approve(gnosis.address, actualBuyAmt)
           expect(sellAmt.gt(0)).to.equal(true)
@@ -580,11 +583,11 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Should not have taken a haircut
       expect((await rToken.basketsNeeded()).gte(basketsNeeded)).to.equal(true)
-      if (rTokenSupply.lt(bn('1e40'))) {
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      } else {
-        expect(await backingManager.tradesOpen()).to.equal(1) // it should have tried
-      }
+
+      // Should be capitalized or still capitalizing
+      expect(
+        (await basketHandler.fullyCapitalized()) || Boolean(await backingManager.tradesOpen())
+      ).to.equal(true)
     }
 
     // STORY

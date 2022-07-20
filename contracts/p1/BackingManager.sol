@@ -54,7 +54,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
-        // Only trade when SOUND
+        // Only trade when all the collateral assets in the basket are SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
@@ -63,47 +63,43 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         if (main.basketHandler().fullyCapitalized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
-            return;
         } else {
             /*
-             * Recapitalization Strategy
+             * Recapitalization
              *
-             * Trading one at a time:
-             *   1. Make largest purchase possible on path towards rToken.basketsNeeded()
-             *     a. Sell non-RSR assets first
-             *     b. Seize and sell RSR when no asset has a surplus > dust amount
-             *   2. If rToken.basketsNeeded() can't be reached after seizing all RSR,
-             *     -  Sell non-RSR surplus assets towards the Fallen Target
-             *   3. If all trades are less than the dust amount,
-             *     -  Set rToken.basketsNeeded() to basketsHeldBy(address(this))
+             * Strategy: iteratively move the system on a forgiving path towards capitalization
+             * through a narrowing BU price band. The initial large spread reflects the
+             * uncertainty associated with the market price of defaulted/volatile collateral, as
+             * well as potential losses due to trading slippage. In the absence of further
+             * collateral default, the size of the BU price band should decrease with each trade
+             * until it is 0, at which point capitalization is restored.
              *
-             * Fallen Target: The market-equivalent of all current holdings, in terms of BUs
-             *   Note that the Fallen Target is freshly calculated during each pass
+             * TODO
+             * Argument for why this converges
+             *
+             * ======
+             *
+             * If we run out of capital and are still undercapitalized, we compromise
+             * rToken.basketsNeeded to the current basket holdings. Haircut time.
+             *
+             * TODO
+             * Argument for why this is ok and won't accidentally hurt RToken holders
              */
 
-            //                  | non-RSR | RSR |
-            // |----------------|---------|-----|
-            // | Baskets Needed | 1a      | 1b  |
-            // | Fallen Target  | 2       |     |
+            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();
 
-            bool doTrade;
-            TradeRequest memory req;
+            if (doTrade) {
+                // Seize RSR if needed
+                if (req.sell.erc20() == main.rsr()) {
+                    uint256 bal = req.sell.erc20().balanceOf(address(this));
+                    if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+                }
 
-            // 1a
-            (doTrade, req) = TradingLibP1.nonRSRTrade(false);
-            // 1b
-            if (!doTrade) (doTrade, req) = TradingLibP1.rsrTrade();
-            // 2
-            if (!doTrade) (doTrade, req) = TradingLibP1.nonRSRTrade(true);
-
-            // 3
-            if (!doTrade) {
+                tryTrade(req);
+            } else {
+                // Haircut time
                 compromiseBasketsNeeded();
-                return;
             }
-
-            // == Interaction ==
-            if (doTrade) tryTrade(req);
         }
     }
 

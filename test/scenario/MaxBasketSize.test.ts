@@ -14,6 +14,7 @@ import {
   FiatCollateral,
   IAssetRegistry,
   IBasketHandler,
+  TestIStRSR,
   MockV3Aggregator,
   OracleLib,
   StaticATokenMock,
@@ -51,6 +52,8 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
+  let rsr: ERC20Mock
+  let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
   let facade: Facade
@@ -247,6 +250,8 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       aaveToken,
       config,
       rToken,
+      rsr,
+      stRSR,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -314,6 +319,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Issue
       const issueAmt = initialBal.div(100)
       await rToken.connect(addr1).issue(issueAmt)
+
+      // Stake RSR
+      await rsr.connect(owner).mint(addr1.address, issueAmt.mul(1e9))
+      await rsr.connect(addr1).approve(stRSR.address, issueAmt.mul(1e9))
+      await stRSR.connect(addr1).stake(issueAmt.mul(1e9))
 
       // Basket Swapping
       const firstCollateral = await ethers.getContractAt(
