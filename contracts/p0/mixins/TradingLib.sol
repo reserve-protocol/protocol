@@ -89,7 +89,7 @@ library TradingLibP0 {
         // Compute basket range
         BasketRange memory range = basketRange(erc20s); // {BU}
 
-        // Select a trade pair using the Determine the largest surplus and largest deficit relative to the basket range
+        // Determine the largest surplus and largest deficit relative to the basket range
         (
             IAsset surplus,
             ICollateral deficit,
