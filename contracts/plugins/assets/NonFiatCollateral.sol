@@ -12,7 +12,6 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  */
 contract NonFiatCollateral is Collateral {
     using FixLib for uint192;
-    using OracleLib for AggregatorV3Interface;
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
@@ -74,8 +73,8 @@ contract NonFiatCollateral is Collateral {
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
         return
-            targetUnitUSDChainlinkFeed.price(oracleTimeout).mul(
-                refUnitChainlinkFeed.price(oracleTimeout)
+            price(targetUnitUSDChainlinkFeed, oracleTimeout).mul(
+                price(refUnitChainlinkFeed, oracleTimeout)
             );
     }
 
@@ -88,9 +87,9 @@ contract NonFiatCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // p {target/ref}
-        try refUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(refUnitChainlinkFeed, oracleTimeout) returns (uint192 p) {
             // We don't need the return value from this next feed, but it should still function
-            try targetUnitUSDChainlinkFeed.price_(oracleTimeout) returns (uint192) {
+            try this.price_(targetUnitUSDChainlinkFeed, oracleTimeout) returns (uint192) {
                 priceable = true;
 
                 // {target/ref}
@@ -129,6 +128,6 @@ contract NonFiatCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return targetUnitUSDChainlinkFeed.price(oracleTimeout);
+        return price(targetUnitUSDChainlinkFeed, oracleTimeout);
     }
 }

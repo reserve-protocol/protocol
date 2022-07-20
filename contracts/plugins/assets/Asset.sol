@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
 import "./OracleLib.sol";
 
-contract Asset is IAsset {
-    using OracleLib for AggregatorV3Interface;
-
+contract Asset is IAsset, OracleLib {
     uint192 public constant MAX_TRADE_VOLUME = 1e48; // {UoA}
 
     AggregatorV3Interface public immutable chainlinkFeed;
@@ -47,7 +45,7 @@ contract Asset is IAsset {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        return price(chainlinkFeed, oracleTimeout);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

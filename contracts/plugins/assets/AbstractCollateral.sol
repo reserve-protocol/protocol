@@ -11,8 +11,6 @@ import "./OracleLib.sol";
  * @notice Parent class for all collateral
  */
 abstract contract Collateral is ICollateral, Asset {
-    using OracleLib for AggregatorV3Interface;
-
     bool public priceable;
 
     // targetName: The canonical name of this collateral's target unit.
@@ -35,13 +33,13 @@ abstract contract Collateral is ICollateral, Asset {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override(Asset, IAsset) returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        return price(chainlinkFeed, oracleTimeout);
     }
 
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
         CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192) {
             priceable = true;
         } catch {
             priceable = false;

@@ -13,7 +13,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 /// @dev See docs/security for discussion of Multicall safety
-abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, ITrading {
+abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeable, RewardableLibP1, ITrading {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -54,14 +54,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
         emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
-    }
-
-    /// Claim all rewards and sweep to BackingManager
-    /// Collective Action
-    /// @custom:interaction CEI
-    function claimAndSweepRewards() external notPausedOrFrozen {
-        // == Interaction ==
-        RewardableLibP1.claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker

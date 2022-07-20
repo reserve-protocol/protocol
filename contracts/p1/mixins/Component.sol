@@ -15,7 +15,7 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // solhint-disable-next-line no-empty-blocks
-    constructor() initializer {}
+    // constructor() initializer {}
 
     // Sets main for the component - Can only be called during initialization
     // solhint-disable-next-line func-name-mixedcase

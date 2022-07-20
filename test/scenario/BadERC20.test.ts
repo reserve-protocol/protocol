@@ -11,7 +11,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
@@ -53,7 +52,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -79,7 +77,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -88,9 +85,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     collateral0 = await (
-      await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('FiatCollateral')
     ).deploy(
       chainlinkFeed.address,
       token0.address,

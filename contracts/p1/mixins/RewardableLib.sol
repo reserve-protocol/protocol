@@ -13,12 +13,9 @@ import "contracts/interfaces/IRewardable.sol";
  * @notice A library that allows a contract to claim rewards
  * @dev The caller must implement the IRewardable interface!
  */
-library RewardableLibP1 {
+abstract contract RewardableLibP1 is IRewardable {
     using AddressUpgradeable for address;
     using SafeERC20Upgradeable for IERC20Upgradeable;
-
-    /// Redefines event for when rewards are claimed, to be able to emit from library
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
     struct Claim {
         IERC20 reward;

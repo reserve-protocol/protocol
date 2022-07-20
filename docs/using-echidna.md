@@ -12,17 +12,8 @@ If you're using the "mostly-static" precompiled binaries for MacOS, putting the 
 
 ## Usage
 
-Summary:
-
-    # once per commit, apply the static patch
-    git apply tools/static.diff
-    
-    # many times
     yarn compile && echdina-test . --contract ${CONTRACT} \
       --config tools/echidna.config.yml
-    
-    # before committing, reverse the static patch
-    git apply -R tools/static.diff
 
 ### Running Echidna
 
@@ -47,7 +38,7 @@ Among the release notes, especially note the use of `--testMode`! Very important
 
 ### Avoiding Dynamic Libraries
 
-For Echidna to run, our Solidity code [cannot contain dynamic libraries](https://github.com/crytic/echidna/#limitations-and-known-issues). Our deployment code absolutely does contain dynamic libraries, so something must be done.
+For Echidna to run, our Solidity code [cannot contain dynamic libraries](https://github.com/crytic/echidna/#limitations-and-known-issues). Our deployment code contains dynamic libraries, so something must be done.
 
 The change required is relatively small, and doesn't change all that often, so we're just keeping the needed patch in the repository as `tools/static.diff`. You can go from static to dynamic by running `git apply tools/static.diff`, and you can go from dynamic to static by running `git apply -R tools/static.diff`. Both should compile and pass our general test suite.
 

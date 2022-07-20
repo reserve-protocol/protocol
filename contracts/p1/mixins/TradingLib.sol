@@ -27,7 +27,7 @@ library TradingLibP1 {
         IAsset sell,
         IAsset buy,
         uint192 sellAmount
-    ) public view returns (bool notDust, TradeRequest memory trade) {
+    ) internal view returns (bool notDust, TradeRequest memory trade) {
         trade.sell = sell;
         trade.buy = buy;
 
@@ -76,7 +76,7 @@ library TradingLibP1 {
         IAsset buy,
         uint192 maxSellAmount,
         uint192 deficitAmount
-    ) public view returns (bool notDust, TradeRequest memory trade) {
+    ) internal view returns (bool notDust, TradeRequest memory trade) {
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
 
@@ -101,7 +101,7 @@ library TradingLibP1 {
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
     function largestSurplusAndDeficit(bool useFallenTarget)
-        public
+        internal
         view
         returns (
             IAsset surplus,
@@ -195,7 +195,7 @@ library TradingLibP1 {
     /// Prepare a trade with seized RSR to buy for missing collateral
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
-    function rsrTrade() external returns (bool doTrade, TradeRequest memory req) {
+    function rsrTrade() internal returns (bool doTrade, TradeRequest memory req) {
         IERC20 rsr_ = rsr();
         IStRSR stRSR_ = stRSR();
         IAsset rsrAsset = assetRegistry().toAsset(rsr_);
@@ -226,7 +226,7 @@ library TradingLibP1 {
     /// @return doTrade If the trade request should be performed
     /// @return req The prepared trade request
     function nonRSRTrade(bool useFallenTarget)
-        external
+        internal
         view
         returns (bool doTrade, TradeRequest memory req)
     {

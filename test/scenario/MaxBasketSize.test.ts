@@ -15,7 +15,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
@@ -55,7 +54,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let facade: Facade
   let backingManager: TestIBackingManager
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -111,9 +109,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   const makeToken = async (tokenName: string): Promise<ERC20Mock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
 
     const erc20: ERC20Mock = <ERC20Mock>(
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
@@ -142,10 +138,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
     const ATokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'ATokenFiatCollateral',
-      {
-        libraries: { OracleLib: oracleLib.address },
-      }
+      'ATokenFiatCollateral'
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -184,10 +177,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenFiatCollateral',
-      {
-        libraries: { OracleLib: oracleLib.address },
-      }
+      'CTokenFiatCollateral'
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -251,7 +241,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       facade,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Mint initial balances

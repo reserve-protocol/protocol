@@ -17,7 +17,6 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  * Self-referential collateral cannot default, though it can become UNPRICED.
  */
 contract SelfReferentialCollateral is Collateral {
-    using OracleLib for AggregatorV3Interface;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
@@ -45,6 +44,6 @@ contract SelfReferentialCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        return price(chainlinkFeed, oracleTimeout);
     }
 }

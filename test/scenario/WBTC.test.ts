@@ -12,7 +12,6 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   NonFiatCollateral,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIStRSR,
@@ -59,7 +58,6 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -88,7 +86,6 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       basketHandler,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -103,9 +100,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
     )
     wbtcCollateral = await (
-      await ethers.getContractFactory('NonFiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('NonFiatCollateral')
     ).deploy(
       referenceUnitOracle.address,
       targetUnitOracle.address,

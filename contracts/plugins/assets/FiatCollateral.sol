@@ -12,7 +12,6 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  */
 contract FiatCollateral is Collateral {
     using FixLib for uint192;
-    using OracleLib for AggregatorV3Interface;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -63,7 +62,7 @@ contract FiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             priceable = true;
 
             // {UoA/ref} = {UoA/target} * {target/ref}

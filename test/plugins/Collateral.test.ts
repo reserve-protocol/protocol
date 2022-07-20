@@ -65,9 +65,6 @@ describe('Collateral contracts', () => {
   // Main
   let backingManager: TestIBackingManager
 
-  // Oracle
-  let oracleLib: OracleLib
-
   // Facade
   let facade: Facade
 
@@ -87,17 +84,8 @@ describe('Collateral contracts', () => {
     let basket: Collateral[]
 
       // Deploy fixture
-    ;({
-      compToken,
-      compoundMock,
-      aaveToken,
-      basket,
-      config,
-      backingManager,
-      rToken,
-      facade,
-      oracleLib,
-    } = await loadFixture(defaultFixture))
+    ;({ compToken, compoundMock, aaveToken, basket, config, backingManager, rToken, facade } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenCollateral = <FiatCollateral>basket[0]
@@ -489,9 +477,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
       )
       nonFiatCollateral = await (
-        await ethers.getContractFactory('NonFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('NonFiatCollateral')
       ).deploy(
         referenceUnitOracle.address,
         targetUnitOracle.address,
@@ -576,9 +562,7 @@ describe('Collateral contracts', () => {
       ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
 
       cTokenNonFiatCollateral = await (
-        await ethers.getContractFactory('CTokenNonFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('CTokenNonFiatCollateral')
       ).deploy(
         referenceUnitOracle.address,
         targetUnitOracle.address,
@@ -677,9 +661,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
       selfReferentialCollateral = await (
-        await ethers.getContractFactory('SelfReferentialCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('SelfReferentialCollateral')
       ).deploy(
         chainlinkFeed.address,
         selfRefToken.address,
@@ -748,9 +730,7 @@ describe('Collateral contracts', () => {
       ).deploy('cETH Token', 'cETH', selfRefToken.address)
 
       cTokenSelfReferentialCollateral = await (
-        await ethers.getContractFactory('CTokenSelfReferentialCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('CTokenSelfReferentialCollateral')
       ).deploy(
         chainlinkFeed.address,
         cSelfRefToken.address,

@@ -28,7 +28,7 @@ library TradingLibP0 {
         IAsset sell,
         IAsset buy,
         uint192 sellAmount
-    ) public view returns (bool notDust, TradeRequest memory trade) {
+    ) internal view returns (bool notDust, TradeRequest memory trade) {
         assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         trade.sell = sell;
         trade.buy = buy;
@@ -77,7 +77,7 @@ library TradingLibP0 {
         IAsset buy,
         uint192 maxSellAmount,
         uint192 deficitAmount
-    ) public view returns (bool notDust, TradeRequest memory trade) {
+    ) internal view returns (bool notDust, TradeRequest memory trade) {
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
 
@@ -102,7 +102,7 @@ library TradingLibP0 {
     /// @return sellAmount {sellTok} Surplus amount (whole tokens)
     /// @return buyAmount {buyTok} Deficit amount (whole tokens)
     function largestSurplusAndDeficit(bool useFallenTarget)
-        external
+        internal
         view
         returns (
             IAsset surplus,

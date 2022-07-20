@@ -19,7 +19,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
@@ -67,7 +66,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -110,18 +108,13 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       rsrAsset,
       aaveAsset,
       compAsset,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
     ATokenMockFactory = await ethers.getContractFactory('StaticATokenMock')
     CTokenMockFactory = await ethers.getContractFactory('CTokenMock')
-    ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
-    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
+    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
@@ -715,9 +708,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       targetPerRefs: BigNumber,
       basketTargetAmt: BigNumber
     ) => {
-      CollateralFactory = await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      CollateralFactory = await ethers.getContractFactory('FiatCollateral')
 
       let firstCollateral: undefined | FiatCollateral = undefined
       const makeToken = async (

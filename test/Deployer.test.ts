@@ -22,7 +22,6 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  TradingLibP0,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
@@ -81,12 +80,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     implementations?: IImplementations
   ): Promise<TestIDeployer> => {
     if (IMPLEMENTATION == Implementation.P0) {
-      const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
-      const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
-
-      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-        libraries: { TradingLibP0: tradingLib.address },
-      })
+      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
       return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')

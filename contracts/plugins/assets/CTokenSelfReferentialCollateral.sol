@@ -23,7 +23,6 @@ interface ICToken {
  */
 contract CTokenSelfReferentialCollateral is Collateral {
     using FixLib for uint192;
-    using OracleLib for AggregatorV3Interface;
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -72,7 +71,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        return price(chainlinkFeed, oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -91,7 +90,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192) {
                 priceable = true;
             } catch {
                 priceable = false;
@@ -126,7 +125,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        return price(chainlinkFeed, oracleTimeout);
     }
 
     /// Get the message needed to call in order to claim rewards for holding this asset.

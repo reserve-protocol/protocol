@@ -37,9 +37,7 @@ import {
   IERC20Metadata,
   IGnosis,
   MainP1,
-  OracleLib,
   RevenueTraderP1,
-  RewardableLibP1,
   RTokenAsset,
   RTokenP1,
   SelfReferentialCollateral,
@@ -54,8 +52,6 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  TradingLibP0,
-  TradingLibP1,
   NonFiatCollateral,
 } from '../../typechain'
 
@@ -141,7 +137,7 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  oracleLib: OracleLib,
+  // oracleLib: OracleLib,
   comptroller: ComptrollerMock,
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
@@ -154,36 +150,18 @@ async function collateralFixture(
   }
 
   const StaticATokenFactory: ContractFactory = await ethers.getContractFactory('StaticATokenLM')
-  const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
-  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
-  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
+  const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
+  const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
 
-  const NonFiatCollateralFactory = await ethers.getContractFactory('NonFiatCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const NonFiatCollateralFactory = await ethers.getContractFactory('NonFiatCollateral')
 
-  const CTokenNonFiatCollateralFactory = await ethers.getContractFactory(
-    'CTokenNonFiatCollateral',
-    {
-      libraries: { OracleLib: oracleLib.address },
-    }
-  )
+  const CTokenNonFiatCollateralFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
-  const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
   const CTokenSelfReferentialCollateralFactory = await ethers.getContractFactory(
-    'CTokenSelfReferentialCollateral',
-    {
-      libraries: { OracleLib: oracleLib.address },
-    }
+    'CTokenSelfReferentialCollateral'
   )
 
   const defaultThreshold = fp('0.05') // 5%
@@ -567,7 +545,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
-  oracleLib: OracleLib
+  // oracleLib: OracleLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -603,14 +581,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     oneshotFreezeDuration: bn('864000'), // 10 days
   }
 
-  // Deploy TradingLib external library
-  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
-  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
-
-  // Deploy OracleLib external library
-  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
-  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
-
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
@@ -628,9 +598,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address },
-  })
+  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosis.address, facade.address, rsrAsset.address)
   )
@@ -640,20 +608,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const MainImplFactory: ContractFactory = await ethers.getContractFactory('MainP1')
     const mainImpl: MainP1 = <MainP1>await MainImplFactory.deploy()
 
-    // Deploy TradingLib external library
-    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
-    const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
-
-    // Deploy RewardableLib external library
-    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
-
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
 
     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
-      'BackingManagerP1',
-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+      'BackingManagerP1'
     )
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 
@@ -665,10 +624,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const DistribImplFactory: ContractFactory = await ethers.getContractFactory('DistributorP1')
     const distribImpl: DistributorP1 = <DistributorP1>await DistribImplFactory.deploy()
 
-    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
-      'RevenueTraderP1',
-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
-    )
+    const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory('RevenueTraderP1')
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 
     const FurnaceImplFactory: ContractFactory = await ethers.getContractFactory('FurnaceP1')
@@ -680,9 +636,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const BrokerImplFactory: ContractFactory = await ethers.getContractFactory('BrokerP1')
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
-    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
-    })
+    const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1')
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
     const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
@@ -783,7 +737,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    oracleLib,
+    // oracleLib,
     compoundMock,
     aaveMock,
     aaveToken,
@@ -852,6 +806,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facade,
     rsrTrader,
     rTokenTrader,
-    oracleLib,
+    // oracleLib,
   }
 }

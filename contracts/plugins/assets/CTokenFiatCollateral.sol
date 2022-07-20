@@ -20,7 +20,6 @@ interface ICToken {
 // ==== End External Interfaces ====
 
 contract CTokenFiatCollateral is Collateral {
-    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
@@ -84,7 +83,7 @@ contract CTokenFiatCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        return price(chainlinkFeed, oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -103,7 +102,7 @@ contract CTokenFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 priceable = true;
 
                 // Check for soft default of underlying reference token

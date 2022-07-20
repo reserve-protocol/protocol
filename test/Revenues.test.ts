@@ -24,7 +24,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIBroker,
@@ -99,7 +98,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
-  let oracleLib: OracleLib
   let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -135,7 +133,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
       main,
     } = await loadFixture(defaultFixture))
 
@@ -1696,8 +1693,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should handle properly assets with invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateralMock',
-          { libraries: { OracleLib: oracleLib.address } }
+          'InvalidATokenFiatCollateralMock'
         )
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(

@@ -30,7 +30,6 @@ import {
   IERC20,
   IAssetRegistry,
   IBasketHandler,
-  OracleLib,
   NonFiatCollateral,
   RTokenAsset,
   StaticATokenLM,
@@ -123,7 +122,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let config: IConfig
-  let oracleLib: OracleLib
 
   let initialBal: BigNumber
   let basket: Collateral[]
@@ -147,17 +145,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
     beforeEach(async () => {
       ;[owner] = await ethers.getSigners()
-      ;({
-        compToken,
-        aaveToken,
-        compAsset,
-        aaveAsset,
-        compoundMock,
-        erc20s,
-        collateral,
-        config,
-        oracleLib,
-      } = await loadFixture(defaultFixture))
+      ;({ compToken, aaveToken, compAsset, aaveAsset, compoundMock, erc20s, collateral, config } =
+        await loadFixture(defaultFixture))
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
@@ -719,19 +708,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Fiat collateral
-      const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        nonpriceToken.address,
-        aaveToken.address,
-        config.maxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
+      const nonPriceCollateral: FiatCollateral = <FiatCollateral>(
+        await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy(
+          NO_PRICE_DATA_FEED,
+          nonpriceToken.address,
+          aaveToken.address,
+          config.maxTradeVolume,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
       )
 
       // Set next block timestamp - for deterministic result
@@ -769,19 +758,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // AToken collateral
-      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-        await ethers.getContractFactory('ATokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        staticNonPriceErc20.address,
-        aaveToken.address,
-        config.maxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
+      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          NO_PRICE_DATA_FEED,
+          staticNonPriceErc20.address,
+          aaveToken.address,
+          config.maxTradeVolume,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
       )
 
       // Setup CToken (use mock for this purpose)
@@ -796,21 +785,21 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens Collateral
-      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        nonpriceCtoken.address,
-        compToken.address,
-        config.maxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        await nonpriceToken.decimals(),
-        compoundMock.address
+      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          NO_PRICE_DATA_FEED,
+          nonpriceCtoken.address,
+          compToken.address,
+          config.maxTradeVolume,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          await nonpriceToken.decimals(),
+          compoundMock.address
+        )
       )
 
       // Set next block timestamp - for deterministic result
@@ -845,19 +834,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Fiat collateral
-      const fiatCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        underlyingToken.address,
-        aaveToken.address,
-        config.maxTradeVolume,
-        oracleTimeout,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
+      const fiatCollateral: FiatCollateral = <FiatCollateral>(
+        await (
+          await ethers.getContractFactory('FiatCollateral')
+        ).deploy(
+          networkConfig[chainId].chainlinkFeeds.DAI || '',
+          underlyingToken.address,
+          aaveToken.address,
+          config.maxTradeVolume,
+          oracleTimeout,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
       )
 
       // Wrap in Static AToken (use mock in this case)
@@ -872,19 +861,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // AToken collateral
-      const aTokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-        await ethers.getContractFactory('ATokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        staticNonPriceErc20.address,
-        aaveToken.address,
-        config.maxTradeVolume,
-        oracleTimeout,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
+      const aTokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('ATokenFiatCollateral')
+        ).deploy(
+          networkConfig[chainId].chainlinkFeeds.DAI || '',
+          staticNonPriceErc20.address,
+          aaveToken.address,
+          config.maxTradeVolume,
+          oracleTimeout,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault
+        )
       )
 
       // Setup CToken (use mock for this purpose)
@@ -899,21 +888,21 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens Collateral
-      const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        cToken.address,
-        compToken.address,
-        config.maxTradeVolume,
-        oracleTimeout,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        await underlyingToken.decimals(),
-        compoundMock.address
+      const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
+        await (
+          await ethers.getContractFactory('CTokenFiatCollateral')
+        ).deploy(
+          networkConfig[chainId].chainlinkFeeds.DAI || '',
+          cToken.address,
+          compToken.address,
+          config.maxTradeVolume,
+          oracleTimeout,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          await underlyingToken.decimals(),
+          compoundMock.address
+        )
       )
 
       // Advance time past oracleTimeout

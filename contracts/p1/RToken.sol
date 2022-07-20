@@ -17,7 +17,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
  */
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
-contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, RewardableLibP1, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Immutable: expected to be an IPFS link but could be anything
@@ -393,12 +393,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
-    }
-
-    /// Claim all rewards and sweep to BackingManager
-    /// @custom:interaction
-    function claimAndSweepRewards() external notPausedOrFrozen {
-        RewardableLibP1.claimAndSweepRewards();
     }
 
     /// @custom:governance

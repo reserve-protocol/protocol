@@ -8,7 +8,7 @@ error StalePrice();
 error PriceOutsideRange();
 
 /// Used by asset plugins to price their collateral
-library OracleLib {
+abstract contract OracleLib {
     /// External fn available for try-catch
 
     /// @dev Use for on-the-fly calculations that should revert

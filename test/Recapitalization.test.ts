@@ -16,7 +16,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIMain,
@@ -87,7 +86,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
   let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -134,7 +132,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
       main,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
@@ -596,8 +593,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Swap asset to have EUR target for token1
         const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
-          'FiatCollateral',
-          { libraries: { OracleLib: oracleLib.address } }
+          'FiatCollateral'
         )
         const ChainlinkFeedFactory = await ethers.getContractFactory('MockV3Aggregator')
 
@@ -1384,10 +1380,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
-        const CollateralFactory: ContractFactory = await ethers.getContractFactory(
-          'FiatCollateral',
-          { libraries: { OracleLib: oracleLib.address } }
-        )
+        const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
         const newCollateral0: FiatCollateral = <FiatCollateral>(
           await CollateralFactory.deploy(
             chainlinkFeed.address,
