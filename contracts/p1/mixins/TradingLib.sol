@@ -7,8 +7,6 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 // Gnosis: uint96 ~= 7e28
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 
@@ -36,8 +34,6 @@ library TradingLibP1 {
     ) public view returns (bool notDust, TradeRequest memory trade) {
         trade.sell = sell;
         trade.buy = buy;
-
-        console.log("prepareTradeSell", sellAmount);
 
         // Don't sell dust
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
@@ -71,6 +67,7 @@ library TradingLibP1 {
             trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
             trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
+
         return (true, trade);
     }
 
@@ -91,8 +88,6 @@ library TradingLibP1 {
 
         // Compute basket range
         BasketRange memory range = basketRange(erc20s); // {BU}
-
-        console.log("prepareTradeRecapitalize", range.top, range.bottom);
 
         // Determine the largest surplus and largest deficit relative to the basket range
         (
@@ -140,8 +135,6 @@ library TradingLibP1 {
          */
         (uint192 assetsHigh, uint192 assetsLow) = totalAssetValue(erc20s); // {UoA}
 
-        console.log("basketRange", assetsHigh, assetsLow);
-
         // {UoA} - Optimistic estimate of the value of the target number of basket units
         uint192 basketTargetHigh = fixMin(assetsHigh, rToken().basketsNeeded().mul(basketPrice));
 
@@ -156,8 +149,6 @@ library TradingLibP1 {
         basketTargetLow = basketTargetLow.gt(shortfallSlippage)
             ? basketTargetLow.minus(shortfallSlippage)
             : 0;
-
-        console.log("basketRange2", basketTargetHigh, shortfall, basketTargetLow);
 
         // {BU} = {UoA} / {BU/UoA}
         range.top = basketTargetHigh.div(basketPrice, CEIL);
@@ -328,8 +319,6 @@ library TradingLibP1 {
         uint192 maxSellAmount,
         uint192 deficitAmount
     ) private view returns (bool notDust, TradeRequest memory trade) {
-        console.log("prepareTradeToCoverDeficit", maxSellAmount, deficitAmount);
-
         // Don't sell dust.
         if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
 
