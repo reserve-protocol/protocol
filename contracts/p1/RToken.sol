@@ -395,6 +395,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         basketsNeeded = basketsNeeded_;
     }
 
+    /// Claim all rewards and sweep to BackingManager
+    /// @custom:interaction
+    function claimAndSweepRewards() external notPausedOrFrozen {
+        RewardableLibP1._claimAndSweepRewards();
+    }
+
     /// @custom:governance
     function setIssuanceRate(uint192 val) public governance {
         require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");

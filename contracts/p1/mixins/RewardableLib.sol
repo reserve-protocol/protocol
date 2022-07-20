@@ -26,7 +26,7 @@ abstract contract RewardableLibP1 is IRewardable {
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     /// @custom:interaction mostly CEI but see comments
-    function claimAndSweepRewards() external {
+    function _claimAndSweepRewards() internal {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();
 
