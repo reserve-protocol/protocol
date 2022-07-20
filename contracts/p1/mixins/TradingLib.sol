@@ -7,8 +7,6 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 // Gnosis: uint96 ~= 7e28
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 
@@ -36,8 +34,6 @@ library TradingLibP1 {
     ) public view returns (bool notDust, TradeRequest memory trade) {
         trade.sell = sell;
         trade.buy = buy;
-
-        console.log("prepareTradeSell", sellAmount);
 
         // Don't sell dust
         if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
@@ -72,7 +68,6 @@ library TradingLibP1 {
             trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
 
-        console.log("prepareTradeSell", trade.sellAmount, trade.minBuyAmount);
         return (true, trade);
     }
 
@@ -93,8 +88,6 @@ library TradingLibP1 {
 
         // Compute basket range
         BasketRange memory range = basketRange(erc20s); // {BU}
-
-        console.log("prepareTradeRecapitalize", range.top, range.bottom);
 
         // Determine the largest surplus and largest deficit relative to the basket range
         (
@@ -142,8 +135,6 @@ library TradingLibP1 {
          */
         (uint192 assetsHigh, uint192 assetsLow) = totalAssetValue(erc20s); // {UoA}
 
-        console.log("basketRange", assetsHigh, assetsLow);
-
         // {UoA} - Optimistic estimate of the value of the target number of basket units
         uint192 basketTargetHigh = fixMin(assetsHigh, rToken().basketsNeeded().mul(basketPrice));
 
@@ -157,8 +148,6 @@ library TradingLibP1 {
         uint192 basketTargetLow = assetsLow.gt(shortfallSlippage)
             ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
             : 0;
-
-        console.log("basketRange2", basketTargetHigh, basketTargetLow, shortfall);
 
         // {BU} = {UoA} / {BU/UoA}
         range.top = basketTargetHigh.div(basketPrice, CEIL);
@@ -343,7 +332,6 @@ library TradingLibP1 {
         uint192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), CEIL);
 
         uint192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
-        console.log("prepareTradeToCoverDeficit", sellAmount, maxSellAmount, deficitAmount);
 
         return prepareTradeSell(sell, buy, sellAmount);
     }
