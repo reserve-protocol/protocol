@@ -564,7 +564,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const gnosis = <GnosisMock>await ethers.getContractAt('GnosisMock', await trade.gnosis())
           const auctionId = await trade.auctionId()
           const [, , buy, sellAmt, minBuyAmt] = await gnosis.auctions(auctionId)
-          const actualBuyAmt = minBuyAmt.eq(0) ? sellAmt : minBuyAmt
+          const actualBuyAmt = sellAmt.gt(minBuyAmt) ? sellAmt : minBuyAmt
           const buyERC20 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', buy)
           await buyERC20.connect(addr1).approve(gnosis.address, actualBuyAmt)
           expect(sellAmt.gt(0)).to.equal(true)
