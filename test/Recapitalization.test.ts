@@ -33,7 +33,7 @@ import {
   ORACLE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { expectTrade } from './utils/trades'
+import { expectTrade, getTrade } from './utils/trades'
 import { setOraclePrice } from './utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -1356,7 +1356,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it.skip('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
+      it('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -1633,7 +1633,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // End current auction; should not start new one
+        // End current auction; should start final auction
         await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1649,6 +1649,39 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
+            emitted: true,
+          },
+        ])
+
+        const trade = await getTrade(backingManager, rsr.address)
+        expect(await trade.sell()).to.equal(rsr.address)
+        expect(await trade.buy()).to.equal(backupToken1.address)
+
+        // Place bids
+        const finalSellAmt = await trade.initBal()
+        // {buyTok} = {buyTok/sellTok} * {sellTok}
+        const finalBuyAmt = finalSellAmt.mul(await trade.worstCasePrice()).div(BN_SCALE_FACTOR)
+        await backupToken1.connect(addr1).approve(gnosis.address, finalBuyAmt)
+        await gnosis.placeBid(4, {
+          bidder: addr1.address,
+          sellAmount: finalSellAmt,
+          buyAmount: finalBuyAmt,
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // End current auction; should not start a new one
+        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [rsr.address, backupToken1.address, finalSellAmt, finalBuyAmt],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'TradeStarted',
             emitted: false,
           },
         ])
@@ -1656,11 +1689,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
-        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
+
+        // Should have small excess now
+        const newIssueAmount = issueAmount.mul(20001).div(20000)
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(newIssueAmount)
+        expect(await backupToken1.balanceOf(backingManager.address)).to.equal(newIssueAmount)
+        expect(await rToken.totalSupply()).to.equal(newIssueAmount)
 
         // Check price in USD of the current RToken - Remains the same
         expect(await rToken.price()).to.equal(fp('1'))
