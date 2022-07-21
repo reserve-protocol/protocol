@@ -419,7 +419,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // downcast is safe: basketsNeeded is <= 1e39
         // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE) / totalSupply());
+        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply());
         (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
             amtBUs,
             FLOOR
@@ -444,7 +444,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // downcast is safe: total attoUoA from any single asset is well under 1e47
             // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.price() * q) / FIX_ONE);
+            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
         }
     }
 
