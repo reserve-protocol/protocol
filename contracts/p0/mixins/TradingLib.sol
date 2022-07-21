@@ -311,9 +311,6 @@ library TradingLibP0 {
         uint192 maxSellAmount,
         uint192 deficitAmt
     ) private view returns (bool notDust, TradeRequest memory trade) {
-        // Don't sell dust.
-        if (maxSellAmount.lt(dustThreshold(sell))) return (false, trade);
-
         // Don't buy dust.
         deficitAmt = fixMax(deficitAmt, dustThreshold(buy));
 
