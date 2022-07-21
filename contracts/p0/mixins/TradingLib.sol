@@ -80,7 +80,7 @@ library TradingLibP0 {
     /// Select and prepare a trade that moves us closer to capitalization using the
     /// basket range to avoid overeager/duplicate trading.
     function prepareTradeRecapitalize()
-        external
+        internal
         view
         returns (bool doTrade, TradeRequest memory req)
     {
