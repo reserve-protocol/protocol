@@ -413,7 +413,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         issuanceRate = val;
     }
 
-    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken in UoA
+    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() external view returns (uint192 p) {
         require(totalSupply() > 0, "no supply");
 
