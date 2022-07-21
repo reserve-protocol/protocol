@@ -43,7 +43,7 @@ contract BrokerP0 is ComponentP0, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     /// @custom:protected
-    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
+    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade trade) {
         require(!disabled, "broker disabled");
         assert(req.sellAmount > 0);
 
@@ -55,12 +55,15 @@ contract BrokerP0 is ComponentP0, IBroker {
             "only traders"
         );
 
+        trade = _openTrade(req);
+        trades[address(trade)] = true;
+    }
+
+    function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
         // In the future we'll have more sophisticated choice logic here, probably by trade size
         GnosisTrade trade = new GnosisTrade();
-        trades[address(trade)] = true;
-        req.sell.erc20().safeTransferFrom(caller, address(trade), req.sellAmount);
-
-        trade.init(this, caller, gnosis, auctionLength, req);
+        req.sell.erc20().safeTransferFrom(_msgSender(), address(trade), req.sellAmount);
+        trade.init(this, _msgSender(), gnosis, auctionLength, req);
         return trade;
     }
 

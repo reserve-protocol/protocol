@@ -45,8 +45,8 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
-    /// @custom:interaction CEI
-    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
+    /// @dev This implementation for fuzzing breaks CEI, but fuzzing doesn't care
+    function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade trade) {
         require(!disabled, "broker disabled");
 
         address caller = _msgSender();
@@ -57,18 +57,19 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
             "only traders"
         );
 
-        // In the future we'll have more sophisticated choice logic here, probably by trade size
-        GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
+        trade = _openTrade(req);
         trades[address(trade)] = true;
+    }
 
-        // == Interactions ==
+    // Create trade; transfer tokens to trade; launch auction.
+    function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
+        GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
-            caller,
+            _msgSender(),
             address(trade),
             req.sellAmount
         );
-
-        trade.init(this, caller, gnosis, auctionLength, req);
+        trade.init(this, _msgSender(), gnosis, auctionLength, req);
         return trade;
     }
 
