@@ -25,11 +25,12 @@ import {
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenSelfReferentialCollateral,
-  ERC20Mock,
   DeployerP0,
   DeployerP1,
-  Facade,
   DistributorP1,
+  ERC20Mock,
+  EURFiatCollateral,
+  Facade,
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
@@ -37,6 +38,7 @@ import {
   IERC20Metadata,
   IGnosis,
   MainP1,
+  NonFiatCollateral,
   OracleLib,
   RevenueTraderP1,
   RewardableLibP1,
@@ -56,7 +58,6 @@ import {
   TestIStRSR,
   TradingLibP0,
   TradingLibP1,
-  NonFiatCollateral,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
@@ -185,6 +186,10 @@ async function collateralFixture(
       libraries: { OracleLib: oracleLib.address },
     }
   )
+
+  const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
@@ -404,6 +409,32 @@ async function collateralFixture(
     ]
   }
 
+  const makeEURFiatCollateral = async (
+    eurFiatTokenAddress: string,
+    referenceUnitOracleAddr: string,
+    targetUnitOracleAddr: string,
+    targetName: string
+  ): Promise<[IERC20Metadata, EURFiatCollateral]> => {
+    const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', eurFiatTokenAddress)
+
+    return [
+      erc20,
+      <EURFiatCollateral>(
+        await EURFiatCollateralFactory.deploy(
+          referenceUnitOracleAddr,
+          targetUnitOracleAddr,
+          erc20.address,
+          ZERO_ADDRESS,
+          config.maxTradeVolume,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
+  }
+
   // Create all possible collateral
   const DAI_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.DAI as string
   const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
@@ -495,6 +526,13 @@ async function collateralFixture(
     'ETH'
   )
 
+  const eurt = await makeEURFiatCollateral(
+    networkConfig[chainId].tokens.EURT as string,
+    networkConfig[chainId].chainlinkFeeds.EURT as string,
+    networkConfig[chainId].chainlinkFeeds.EUR as string,
+    'EURO'
+  )
+
   const erc20s = [
     dai[0],
     usdc[0],
@@ -511,6 +549,7 @@ async function collateralFixture(
     cWBTC[0],
     weth[0],
     cETH[0],
+    eurt[0],
   ]
   const collateral = [
     dai[1],
@@ -528,6 +567,7 @@ async function collateralFixture(
     cWBTC[1],
     weth[1],
     cETH[1],
+    eurt[1],
   ]
 
   // Create the initial basket

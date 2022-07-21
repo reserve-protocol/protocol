@@ -23,7 +23,10 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
+  CTokenNonFiatCollateral,
+  CTokenSelfReferentialCollateral,
   ERC20Mock,
+  EURFiatCollateral,
   Facade,
   FiatCollateral,
   IAToken,
@@ -33,6 +36,7 @@ import {
   OracleLib,
   NonFiatCollateral,
   RTokenAsset,
+  SelfReferentialCollateral,
   StaticATokenLM,
   StaticATokenMock,
   TestIBackingManager,
@@ -40,9 +44,6 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  SelfReferentialCollateral,
-  CTokenNonFiatCollateral,
-  CTokenSelfReferentialCollateral,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -94,6 +95,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cWBTC: CTokenMock
   let weth: ERC20Mock
   let cETH: CTokenMock
+  let eurt: ERC20Mock
 
   let daiCollateral: FiatCollateral
   let usdcCollateral: FiatCollateral
@@ -113,6 +115,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cWBTCCollateral: CTokenNonFiatCollateral
   let wethCollateral: SelfReferentialCollateral
   let cETHCollateral: CTokenSelfReferentialCollateral
+  let eurtCollateral: EURFiatCollateral
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
@@ -175,6 +178,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       cWBTC = <CTokenMock>erc20s[12] // cWBTC
       weth = <ERC20Mock>erc20s[13] // wETH
       cETH = <CTokenMock>erc20s[14] // cETH
+      eurt = <ERC20Mock>erc20s[15] // eurt
 
       // Get plain aTokens
       aDai = <IAToken>(
@@ -219,6 +223,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       cWBTCCollateral = <CTokenNonFiatCollateral>collateral[12] // cWBTC
       wethCollateral = <SelfReferentialCollateral>collateral[13] // wETH
       cETHCollateral = <CTokenSelfReferentialCollateral>collateral[14] // cETH
+      eurtCollateral = <EURFiatCollateral>collateral[15] // EURT
     })
 
     it('Should setup assets correctly', async () => {
@@ -685,6 +690,55 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+      }
+    })
+
+    it('Should setup collateral correctly - EURO Fiatcoins', async () => {
+      // Define interface required for each Eur-fiat coin
+      interface TokenInfo {
+        eurFiatToken: ERC20Mock
+        eurFiatTokenDecimals: number
+        eurFiatTokenAddress: string
+        eurFiatTokenCollateral: EURFiatCollateral
+        targetPrice: BigNumber
+        refPrice: BigNumber
+        targetName: string
+      }
+
+      // EURT
+      const tokenInfos: TokenInfo[] = [
+        {
+          eurFiatToken: eurt,
+          eurFiatTokenDecimals: 6,
+          eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
+          eurFiatTokenCollateral: eurtCollateral,
+          targetPrice: fp('1.07'), // approx price EUR-USD June 6, 2022
+          refPrice: fp('1.07'), // approx price EURT-USD June 6, 2022
+          targetName: 'EURO',
+        },
+      ]
+
+      for (const tkInf of tokenInfos) {
+        // Non-Fiat Token Assets
+        expect(await tkInf.eurFiatTokenCollateral.isCollateral()).to.equal(true)
+        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatToken.address)
+        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatTokenAddress)
+        expect(await tkInf.eurFiatToken.decimals()).to.equal(tkInf.eurFiatTokenDecimals)
+        expect(await tkInf.eurFiatTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(tkInf.targetName)
+        )
+
+        // Get priceable info
+        await tkInf.eurFiatTokenCollateral.refresh()
+        expect(await tkInf.eurFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
+        expect(await tkInf.eurFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await tkInf.eurFiatTokenCollateral.pricePerTarget()).to.be.closeTo(
+          tkInf.targetPrice,
+          fp('0.01')
+        )
+        expect(await tkInf.eurFiatTokenCollateral.price()).to.be.closeTo(tkInf.refPrice, fp('0.01')) // ref price approx 1.07
+        expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+        expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
       }
     })
 
