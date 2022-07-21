@@ -187,6 +187,23 @@ async function main() {
   assetCollDeployments.collateral.WETH = wETHCollateral
   deployedCollateral.push(wETHCollateral.toString())
 
+  /********  Deploy EURO Fiat Collateral  - EURT **************************/
+  const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
+    referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
+    targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
+    tokenAddress: networkConfig[chainId].tokens.EURT,
+    rewardToken: ZERO_ADDRESS,
+    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    maxOracleTimeout: bn('86400').toString(), // 24h
+    targetName: ethers.utils.formatBytes32String('EURO'),
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    oracleLibrary: ORACLE_LIB_ADDRESS,
+  })
+
+  assetCollDeployments.collateral.EURT = eurtCollateral
+  deployedCollateral.push(eurtCollateral.toString())
+
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   console.log(`Deployed collateral to ${hre.network.name} (${chainId})

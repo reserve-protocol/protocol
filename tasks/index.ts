@@ -1,5 +1,6 @@
 import './deployment/assets/deploy-asset'
 import './deployment/collateral/deploy-fiat-collateral'
+import './deployment/collateral/deploy-eurfiat-collateral'
 import './deployment/collateral/deploy-nonfiat-collateral'
 import './deployment/collateral/deploy-atoken-fiat-collateral'
 import './deployment/collateral/deploy-ctoken-fiat-collateral'
