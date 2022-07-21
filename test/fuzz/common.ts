@@ -15,7 +15,7 @@ export interface PriceModel {
   high: BigNumberish
 }
 
-const onePM: PriceModel = {
+export const onePM: PriceModel = {
   kind: PriceModelKind.CONSTANT,
   curr: fp(1),
   low: fp(1),
@@ -23,7 +23,7 @@ const onePM: PriceModel = {
 }
 
 // TODO: test me a little
-function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel {
+export function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel {
   // e.g, aroundPM(fp(100), fp(0.05)) should give a BAND PriceModel [fp(95), fp(105)].
 
   const v = BigNumber.from(value)

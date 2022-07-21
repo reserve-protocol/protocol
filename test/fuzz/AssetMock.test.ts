@@ -2,10 +2,10 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { fp } from '../../common/numbers'
-import { PriceModelKind, PriceModel } from './common'
+import { PriceModelKind, PriceModel, onePM, aroundPM } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
-describe(`AssetMock`, () => {
+describe(`PriceModels in AssetMock`, () => {
   let token: sc.ERC20Mock
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
@@ -32,6 +32,15 @@ describe(`AssetMock`, () => {
     expect(await asset.price()).to.equal(fp(1.02))
     await asset.update(0)
     expect(await asset.price()).to.equal(fp(1.02))
+  })
+
+  it('returns price 1 from p.m. onePM', async () => {
+    const asset: sc.AssetMock = await newAsset(onePM)
+    expect(await asset.price()).to.equal(fp(1))
+    await asset.update(123)
+    expect(await asset.price()).to.equal(fp(1))
+    await asset.update(96523976243)
+    expect(await asset.price()).to.equal(fp(1))
   })
 
   it('sets prices as expected in MANUAL mode', async () => {
