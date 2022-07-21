@@ -27,3 +27,5 @@ typechain/
 .\#*
 
 *.sol.original
+
+.idea

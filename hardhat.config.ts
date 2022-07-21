@@ -99,7 +99,7 @@ const config: any = {
     except: ['Extension'],
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS ? true : false,
+    enabled: !!process.env.REPORT_GAS,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
