@@ -114,7 +114,7 @@ async function main() {
 
   console.log(`Deployment file created for ${hre.network.name} (${chainId}):
     RSR: ${rsrAddr}
-    RSR FEEF: ${rsrFeedAddr}
+    RSR FEED: ${rsrFeedAddr}
     AAVE_LENDING_POOL: ${aaveLendPoolAddr}
     stkAAVE: ${aaveTokenAddr}
     COMPTROLLER: ${comptrollerAddr}

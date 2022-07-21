@@ -8,10 +8,10 @@ import { IConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import {
   ERC20Mock,
+  EURFiatCollateral,
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  EURFiatCollateral,
   OracleLib,
   StaticATokenMock,
   TestIBackingManager,
@@ -183,7 +183,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       expect(await eurtCollateral.price()).to.equal(fp('0.475'))
     })
 
-    it('should redeem after BTC price increase for same quantities', async () => {
+    it('should redeem after EUR price increase for same quantities', async () => {
       // doubling
       await referenceUnitOracle.updateAnswer(bn('1e8'))
       await targetUnitOracle.updateAnswer(bn('1e8'))

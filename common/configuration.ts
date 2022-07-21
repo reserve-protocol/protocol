@@ -4,6 +4,7 @@ import { fp, pow10 } from './numbers'
 interface ICurrencies {
   ETH?: string
   BTC?: string
+  EUR?: string
 }
 
 export interface ITokens {
@@ -26,6 +27,7 @@ export interface ITokens {
   COMP?: string
   WETH?: string
   WBTC?: string
+  EURT?: string
   RSR?: string
 }
 
@@ -70,6 +72,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {
@@ -83,6 +86,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
+      EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
+      EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -121,6 +126,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {
@@ -134,6 +140,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
+      EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
+      EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
