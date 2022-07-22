@@ -41,7 +41,7 @@ library TradingLibP0 {
         if (sellAmount.lt(sell.minTradeSize())) return (false, trade);
 
         // {sellTok}
-        uint192 s = fixMin(sellAmount, sell.minTradeSize());
+        uint192 s = fixMin(sellAmount, sell.maxTradeSize());
 
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
@@ -262,7 +262,7 @@ library TradingLibP0 {
                 uint192 delta = bal.minus(needed).mul(asset.price(), FLOOR);
 
                 // {tok} = {UoA} / {UoA/tok}
-                uint192 amt = delta.div(surplus.price());
+                uint192 amt = delta.div(asset.price());
                 if (delta.gt(maxSurplus) && amt.gt(asset.minTradeSize())) {
                     surplus = asset;
                     maxSurplus = delta;
