@@ -1704,7 +1704,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ONE_ADDRESS,
             token2.address,
             aaveToken.address,
-            await collateral2.maxTradeVolume(),
+            config.tradingRange,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),
             await collateral2.defaultThreshold(),

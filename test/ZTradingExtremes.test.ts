@@ -739,7 +739,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
             chainlinkFeed.address,
             erc20.address,
             aaveToken.address,
-            config.maxTradeVolume,
+            config.tradingRange,
             MAX_ORACLE_TIMEOUT,
             targetUnit,
             fp('0.05'),

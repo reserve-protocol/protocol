@@ -234,7 +234,6 @@ export interface IGovParams {
 }
 
 // System constants
-export const MAX_DUST_AMOUNT = pow10(29)
 export const MAX_TRADE_SLIPPAGE = fp('1')
 export const MAX_BACKING_BUFFER = fp('1')
 export const MAX_TARGET_AMT = fp(1e3)
