@@ -36,10 +36,10 @@ library TradingLibP1 {
         trade.buy = buy;
 
         // Don't sell dust
-        if (sellAmount.lt(dustThreshold(sell))) return (false, trade);
+        if (sellAmount.lt(sell.minTradeSize())) return (false, trade);
 
         // {sellTok}
-        uint192 s = fixMin(sellAmount, sell.maxTradeVolume().div(sell.price(), FLOOR));
+        uint192 s = fixMin(sellAmount, sell.minTradeSize());
 
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
@@ -169,8 +169,7 @@ library TradingLibP1 {
 
         IERC20 rsrERC20 = rsr();
         IBasketHandler bh = basket();
-        uint192 dust = dustValue();
-        uint32 potentialDustTraps; // {num assets}
+        uint192 potentialDustLoss; // {UoA}
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
@@ -181,7 +180,7 @@ library TradingLibP1 {
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             bool inBasket = bh.quantity(erc20s[i]).gt(FIX_ZERO);
-            if (!inBasket && bal.lt(dustThreshold(asset))) {
+            if (!inBasket && bal.lt(asset.minTradeSize())) {
                 continue;
             }
 
@@ -190,7 +189,9 @@ library TradingLibP1 {
 
             // Consider all managed assets at face-value prices
             assetsHigh = assetsHigh.plus(val);
-            ++potentialDustTraps;
+
+            // Accumulate potential losses to dust
+            potentialDustLoss = potentialDustLoss.plus(asset.minTradeSize());
 
             // Consider only reliable sources of value for the assetsLow estimate
             if (
@@ -201,10 +202,8 @@ library TradingLibP1 {
             }
         }
 
-        // Account for all the places dust could get stuck, which should be equal to the number
-        // of basket collateral plus the number of assets with non-dust balances, minus 1
-        uint192 dustUncertainty = dust.mulu(potentialDustTraps - 1);
-        assetsLow = assetsLow.gt(dustUncertainty) ? assetsLow.minus(dustUncertainty) : FIX_ZERO;
+        // Account for all the places dust could get stuck
+        assetsLow = assetsLow.gt(potentialDustLoss) ? assetsLow.minus(potentialDustLoss) : FIX_ZERO;
     }
 
     /// @param backing {UoA} An amount of backing in UoA terms
@@ -268,7 +267,10 @@ library TradingLibP1 {
             if (bal.gt(needed)) {
                 // {UoA} = ({tok} - {tok}) * {UoA/tok}
                 uint192 delta = bal.minus(needed).mul(asset.price(), FLOOR);
-                if (delta.gt(maxSurplus) && delta.gt(dustValue())) {
+
+                // {tok} = {UoA} / {UoA/tok}
+                uint192 amt = delta.div(surplus.price());
+                if (delta.gt(maxSurplus) && amt.gt(asset.minTradeSize())) {
                     surplus = asset;
                     maxSurplus = delta;
 
@@ -298,7 +300,7 @@ library TradingLibP1 {
             IAsset rsrAsset = assetRegistry().toAsset(rsr());
 
             uint192 rsrAvailable = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR())));
-            if (rsrAvailable.gt(dustThreshold(rsrAsset))) {
+            if (rsrAvailable.gt(rsrAsset.minTradeSize())) {
                 surplus = rsrAsset;
                 surplusAmt = rsrAvailable;
             }
@@ -319,7 +321,7 @@ library TradingLibP1 {
         uint192 deficitAmount
     ) private view returns (bool notDust, TradeRequest memory trade) {
         // Don't buy dust.
-        deficitAmount = fixMax(deficitAmount, dustThreshold(buy));
+        deficitAmount = fixMax(deficitAmount, buy.minTradeSize());
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
         uint192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
@@ -338,17 +340,6 @@ library TradingLibP1 {
     /// @return {%}
     function maxTradeSlippage() private view returns (uint192) {
         return ITrading(address(this)).maxTradeSlippage();
-    }
-
-    /// @return {tok} The least amount of whole tokens ever worth trying to sell
-    function dustThreshold(IAsset asset) private view returns (uint192) {
-        // {tok} = {UoA} / {UoA/tok}
-        return ITrading(address(this)).dustAmount().div(asset.price());
-    }
-
-    /// @return {UoA} The least amount of whole tokens ever worth trying to sell, in UoA
-    function dustValue() private view returns (uint192) {
-        return ITrading(address(this)).dustAmount();
     }
 
     /// @return The AssetRegistry

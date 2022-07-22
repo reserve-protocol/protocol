@@ -20,8 +20,8 @@ struct DeploymentParams {
     // === Pausing ===
     uint32 oneshotFreezeDuration; // {s} how long a oneshot pause lasts
     //
-    // === RToken asset ===
-    uint192 maxTradeVolume; // {UoA}
+    // === RToken trade sizing ===
+    TradingRange rTokenTradingRange; // {rTok}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR
@@ -38,7 +38,6 @@ struct DeploymentParams {
     uint32 auctionLength; // {s} the length of an auction
     uint192 backingBuffer; // {%} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {%} max slippage acceptable in a trade
-    uint192 dustAmount; // {UoA} value below which it is not worth wasting time trading
     //
     // === RToken ===
     uint192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
