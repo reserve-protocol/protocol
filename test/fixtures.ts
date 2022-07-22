@@ -386,7 +386,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotFreezeDuration: bn('864000'), // 10 days
   }

@@ -21,7 +21,7 @@ struct DeploymentParams {
     uint32 oneshotFreezeDuration; // {s} how long a oneshot pause lasts
     //
     // === RToken trade sizing ===
-    TradingRange rTokenTradingRange; // {rTok}
+    TradingRange tradingRange; // {rTok}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR

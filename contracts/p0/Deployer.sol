@@ -86,7 +86,7 @@ contract DeployerP0 is IDeployer {
         assets[0] = new RTokenAsset(
             main,
             IERC20Metadata(address(components.rToken)),
-            params.rTokenTradingRange
+            params.tradingRange
         );
         assets[1] = rsrAsset;
 
