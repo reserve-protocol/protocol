@@ -94,7 +94,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external notPausedOrFrozen {
+    function issue(uint256 amtRToken) public notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
@@ -479,7 +479,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     /// Vest all RToken issuance in queue = queues[account], from queue.left to < endId
     /// Fixes up queue.left and queue.right
     /// @custom:interaction
-    function vestUpTo(address account, uint256 endId) private {
+    function vestUpTo(address account, uint256 endId) internal {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 

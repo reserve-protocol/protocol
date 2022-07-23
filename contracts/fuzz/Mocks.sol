@@ -29,11 +29,6 @@ contract MainMock is MainP0 {
     }
 
     event TestError(string message);
-
-    function echidna_mainmock_sender_is_always_zero() external returns (bool) {
-        emit TestError("Write your tests so that sender is 0 at the end of each transaction.");
-        return sender == address(0);
-    }
 }
 
 abstract contract ComponentMock is ComponentP0 {
