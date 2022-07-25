@@ -6,6 +6,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
+/// A range of whole token quantities to bound trading
+struct TradingRange {
+    uint192 min; // {tok}
+    uint192 max; // {tok}
+}
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -25,8 +31,11 @@ interface IAsset {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
 
-    /// @return {UoA}
-    function maxTradeVolume() external view returns (uint192);
+    /// @return {tok} The minimium trade size
+    function minTradeSize() external view returns (uint192);
+
+    /// @return {tok} The maximum trade size
+    function maxTradeSize() external view returns (uint192);
 
     // ==== Rewards ====
 

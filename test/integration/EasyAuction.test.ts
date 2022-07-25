@@ -414,8 +414,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       await backingManager.settleTrade(rsr.address)
 
       // $0.007 RSR at $4k ETH
-      await setOraclePrice(await assetRegistry.toAsset(rsr.address), bn('0.007e8'))
-      sellAmt = issueAmount.mul(bn('2.5e14')).mul(100).div(99).div(bn('1.75e12')).add(2)
+      const rsrPrice = bn('0.007e8')
+      await setOraclePrice(await assetRegistry.toAsset(rsr.address), rsrPrice)
+      sellAmt = BigNumber.from(config.tradingRange.max) // maxes out sell size for RSR
+      buyAmt = sellAmt.mul(rsrPrice).div(bn('1e8')).mul(99).div(100)
 
       // Start next auction
       await expectEvents(backingManager.manageTokens([]), [
@@ -454,7 +456,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCapitalized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
