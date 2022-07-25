@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig, MAX_TRADE_VOLUME } from '../../common/configuration'
+import { IConfig } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
