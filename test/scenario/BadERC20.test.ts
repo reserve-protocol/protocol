@@ -95,7 +95,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,
@@ -211,10 +211,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).claimAndSweepRewards()
     })
 
-    it('should still have price', async () => {
-      await rToken.connect(addr1).price()
-    })
-
     it('should still melt', async () => {
       await rToken.connect(addr1).transfer(furnace.address, issueAmt)
       await furnace.melt()
@@ -233,6 +229,10 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.status()).to.equal(1) // OPEN state
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(backupToken.address)
+    })
+
+    it('should revert on rToken.price', async () => {
+      await expect(rToken.connect(addr1).price()).to.be.revertedWith('No Decimals')
     })
   })
 
