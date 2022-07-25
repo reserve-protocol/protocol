@@ -150,7 +150,7 @@ contract DeployerP1 is IDeployer {
         assets[0] = new RTokenAsset(
             main,
             IERC20Metadata(address(components.rToken)),
-            params.maxTradeVolume
+            params.tradingRange
         );
         assets[1] = rsrAsset;
 
@@ -162,21 +162,15 @@ contract DeployerP1 is IDeployer {
             main,
             params.tradingDelay,
             params.backingBuffer,
-            params.maxTradeSlippage,
-            params.dustAmount
+            params.maxTradeSlippage
         );
 
         // Init Basket Handler
         main.basketHandler().init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.dustAmount);
-        main.rTokenTrader().init(
-            main,
-            IERC20(address(rToken)),
-            params.maxTradeSlippage,
-            params.dustAmount
-        );
+        main.rsrTrader().init(main, rsr, params.maxTradeSlippage);
+        main.rTokenTrader().init(main, IERC20(address(rToken)), params.maxTradeSlippage);
 
         // Init Asset Registry
         main.assetRegistry().init(main, assets);

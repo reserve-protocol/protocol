@@ -8,17 +8,17 @@ import "contracts/interfaces/IMain.sol";
 contract RTokenAsset is Asset {
     IMain public immutable main;
 
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     constructor(
         IMain main_,
         IERC20Metadata erc20_,
-        uint192 maxTradeVolume_
+        TradingRange memory tradingRange_
     )
         Asset(
             AggregatorV3Interface(address(1)),
             erc20_,
             IERC20Metadata(address(0)),
-            maxTradeVolume_,
+            tradingRange_,
             1
         )
     {

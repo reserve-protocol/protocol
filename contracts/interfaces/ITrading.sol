@@ -46,9 +46,6 @@ interface ITrading is IRewardable {
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view returns (uint192);
 
-    /// @return {UoA} The smallest amount of value worth trading
-    function dustAmount() external view returns (uint192);
-
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
 }

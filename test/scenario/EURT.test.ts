@@ -109,7 +109,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       targetUnitOracle.address,
       eurt.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('EURO'),
       DEFAULT_THRESHOLD,

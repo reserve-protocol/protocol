@@ -20,8 +20,7 @@ interface IBackingManager is IComponent, ITrading {
         IMain main_,
         uint32 tradingDelay_,
         uint192 backingBuffer_,
-        uint192 maxTradeSlippage_,
-        uint192 dustAmount_
+        uint192 maxTradeSlippage_
     ) external;
 
     // Give RToken max allowance over a registered token

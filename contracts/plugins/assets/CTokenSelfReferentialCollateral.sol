@@ -40,27 +40,18 @@ contract CTokenSelfReferentialCollateral is Collateral {
     address public immutable comptrollerAddr;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         int8 referenceERC20Decimals_,
         address comptrollerAddr_
-    )
-        Collateral(
-            chainlinkFeed_,
-            erc20_,
-            rewardERC20_,
-            maxTradeVolume_,
-            oracleTimeout_,
-            targetName_
-        )
-    {
+    ) Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_) {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");

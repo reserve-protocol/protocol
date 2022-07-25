@@ -223,13 +223,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BackingManager', async () => {
       const newBackingMgr: BackingManagerP1 = <BackingManagerP1>await upgrades.deployProxy(
         BackingManagerFactory,
-        [
-          main.address,
-          config.tradingDelay,
-          config.backingBuffer,
-          config.maxTradeSlippage,
-          config.dustAmount,
-        ],
+        [main.address, config.tradingDelay, config.backingBuffer, config.maxTradeSlippage],
         {
           initializer: 'init',
           kind: 'uups',
@@ -241,7 +235,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await newBackingMgr.tradingDelay()).to.equal(config.tradingDelay)
       expect(await newBackingMgr.backingBuffer()).to.equal(config.backingBuffer)
       expect(await newBackingMgr.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await newBackingMgr.dustAmount()).to.equal(config.dustAmount)
       expect(await newBackingMgr.main()).to.equal(main.address)
     })
 
@@ -315,7 +308,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [main.address, rsr.address, config.maxTradeSlippage, config.dustAmount],
+        [main.address, rsr.address, config.maxTradeSlippage],
         {
           initializer: 'init',
           kind: 'uups',
@@ -326,7 +319,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       expect(await newRevenueTrader.tokenToBuy()).to.equal(rsr.address)
       expect(await newRevenueTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await newRevenueTrader.dustAmount()).to.equal(config.dustAmount)
       expect(await newRevenueTrader.main()).to.equal(main.address)
     })
 
@@ -465,7 +457,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await backingMgrV2.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingMgrV2.backingBuffer()).to.equal(config.backingBuffer)
       expect(await backingMgrV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await backingMgrV2.dustAmount()).to.equal(config.dustAmount)
       expect(await backingMgrV2.main()).to.equal(main.address)
 
       // Check new version is implemented
@@ -602,12 +593,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Check state is preserved
       expect(await rsrTraderV2.tokenToBuy()).to.equal(rsr.address)
       expect(await rsrTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await rsrTraderV2.dustAmount()).to.equal(config.dustAmount)
       expect(await rsrTraderV2.main()).to.equal(main.address)
 
       expect(await rTokenTraderV2.tokenToBuy()).to.equal(rToken.address)
       expect(await rTokenTraderV2.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await rTokenTraderV2.dustAmount()).to.equal(config.dustAmount)
       expect(await rTokenTraderV2.main()).to.equal(main.address)
 
       // Check new version is implemented

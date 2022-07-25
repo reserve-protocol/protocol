@@ -9,39 +9,34 @@ import "./OracleLib.sol";
 contract Asset is IAsset {
     using OracleLib for AggregatorV3Interface;
 
-    uint192 public constant MAX_TRADE_VOLUME = 1e48; // {UoA}
-
     AggregatorV3Interface public immutable chainlinkFeed;
 
     IERC20Metadata public immutable erc20;
 
     IERC20 public immutable override rewardERC20;
 
-    uint192 public immutable maxTradeVolume; // {UoA}
-
     uint32 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
+    TradingRange public tradingRange;
+
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an individual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint32 oracleTimeout_
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(
-            maxTradeVolume_ > 0 && maxTradeVolume_ <= MAX_TRADE_VOLUME,
-            "invalid maxTradeVolume"
-        );
+        require(tradingRange_.max > 0, "invalid maxTradeSize");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         rewardERC20 = rewardERC20_;
-        maxTradeVolume = maxTradeVolume_;
+        tradingRange = tradingRange_;
         oracleTimeout = oracleTimeout_;
     }
 
@@ -58,6 +53,16 @@ contract Asset is IAsset {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external pure virtual returns (bool) {
         return false;
+    }
+
+    /// @return {tok} The minimium trade size
+    function minTradeSize() external view returns (uint192) {
+        return tradingRange.min;
+    }
+
+    /// @return {tok} The maximum trade size
+    function maxTradeSize() external view returns (uint192) {
+        return tradingRange.max;
     }
 
     /// (address, calldata) to call in order to claim rewards for holding this asset

@@ -338,19 +338,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             FLOOR
         );
 
+        // ==== Prorate redemption ====
+        IBackingManager backingMgr = main.backingManager();
+        uint256 erc20length = erc20s.length;
+
         // D18{1} = D18 * {qRTok} / {qRTok}
         // downcast is safe: amount <= balanceOf(redeemer) <= totalSupply(), so prorate < 1e18
         uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
-
-        // Accept and burn RToken
-        _burn(redeemer, amount);
-
-        basketsNeeded = basketsNeeded_ - baskets;
-        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
-
-        // ==== Send back collateral tokens ====
-        IBackingManager backingMgr = main.backingManager();
-        uint256 erc20length = erc20s.length;
 
         // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20length; ++i) {
@@ -359,6 +353,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))) / FIX_ONE;
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
+
+        // Accept and burn RToken
+        _burn(redeemer, amount);
+
+        basketsNeeded = basketsNeeded_ - baskets;
+        emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // == Interactions ==
         bool nonzero = false;
@@ -413,14 +413,39 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         issuanceRate = val;
     }
 
-    /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (uint192) {
-        if (totalSupply() == 0) return main.basketHandler().price();
+    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
+    function price() external view returns (uint192 p) {
+        require(totalSupply() > 0, "no supply");
 
-        // D18{UoA/rTok} = D18{UoA/BU} * D18{BU} / D18{rTok}
-        // downcast is safe, because a reasonable price in a reasonable UoA will always be < 2^128
-        return
-            uint192(mulDiv256(main.basketHandler().price(), basketsNeeded, totalSupply(), ROUND));
+        // downcast is safe: basketsNeeded is <= 1e39
+        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
+        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply());
+        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
+            amtBUs,
+            FLOOR
+        );
+
+        uint256 erc20length = erc20s.length;
+        address backingMgr = address(main.backingManager());
+        IAssetRegistry assetRegistry = main.assetRegistry();
+
+        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+        for (uint256 i = 0; i < erc20length; ++i) {
+            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
+
+            // {qTok} =  {qRTok} * {qTok} / {qRTok}
+            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
+                (totalSupply());
+
+            if (prorated < quantities[i]) quantities[i] = prorated;
+
+            // D18{tok} = D18 * {qTok} / {qTok/tok}
+            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
+
+            // downcast is safe: total attoUoA from any single asset is well under 1e47
+            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
+            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
+        }
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
