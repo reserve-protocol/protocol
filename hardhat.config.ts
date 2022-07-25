@@ -18,6 +18,7 @@ require('./tasks')
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
+const TESTNET_RPC_URL = process.env.TESTNET_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
 const TIMEOUT = process.env.SLOW ? 3_000_000 : 300_000
 
@@ -33,6 +34,13 @@ const config: any = {
         blockNumber: forkBlockNumber['default'],
         enabled: !!process.env.FORK,
       },
+      gas: 0x1ffffffff,
+      blockGasLimit: 0x1fffffffffffff,
+      allowUnlimitedContractSize: true,
+    },
+    testnet: {
+      chainId: 31337,
+      url: TESTNET_RPC_URL,
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,

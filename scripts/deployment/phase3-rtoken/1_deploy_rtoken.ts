@@ -57,16 +57,17 @@ async function main() {
     ],
     primaryBasket: [
       assetCollDeployments.collateral.DAI as string,
+      assetCollDeployments.collateral.USDC as string,
       assetCollDeployments.collateral.aDAI as string,
       assetCollDeployments.collateral.cDAI as string,
     ],
-    weights: [fp('0.25'), fp('0.25'), fp('0.5')],
+    weights: [fp('0.25'), fp('0.25'), fp('0.25'),fp('0.25')],
     backups: [
-      {
-        backupUnit: ethers.utils.formatBytes32String('USD'),
-        diversityFactor: bn(1),
-        backupCollateral: [assetCollDeployments.collateral.USDC as string],
-      },
+      // {
+      //   backupUnit: ethers.utils.formatBytes32String('USD'),
+      //   diversityFactor: bn(1),
+      //   backupCollateral: [assetCollDeployments.collateral.USDC as string],
+      // },
     ],
   }
 

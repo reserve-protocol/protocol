@@ -88,10 +88,10 @@ async function main() {
       .connect(burner)
       .setupGovernance(
         rToken.address,
-        true,
         false,
+        true,
         govParams,
-        ZERO_ADDRESS,
+        burner.address,
         ZERO_ADDRESS,
         ZERO_ADDRESS
       )
