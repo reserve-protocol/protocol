@@ -6,7 +6,7 @@ import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { setOraclePrice } from './utils/oracles'
-import { bn, fp, shortString } from '../common/numbers'
+import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
   CTokenFiatCollateral,
@@ -1416,11 +1416,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(0)
       })
 
-      it('Should not redeem if frozen #fast', async function () {
+      it('Should revert if frozen #fast', async function () {
         await main.connect(owner).freeze()
 
         // Try to redeem
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('frozen')
+
+        // Check values
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+      })
+
+      it('Should revert if empty redemption #fast', async function () {
+        // Eliminate all token balances
+        const bal = issueAmount.div(4)
+        await token0.connect(owner).burn(backingManager.address, bal)
+        await token1.connect(owner).burn(backingManager.address, toBNDecimals(bal, 6))
+        await token2.connect(owner).burn(backingManager.address, bal)
+        await token3.connect(owner).burn(backingManager.address, toBNDecimals(bal, 8).mul(50))
+
+        // Try to redeem
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+          'Empty redemption'
+        )
 
         // Check values
         expect(await rToken.totalSupply()).to.equal(issueAmount)

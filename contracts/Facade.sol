@@ -157,6 +157,61 @@ contract Facade is IFacade {
         IMain main = rToken.main();
         stTokenAddress = main.stRSR();
     }
+
+    /// @return backing The worst-case collaterazation % the protocol will have after done trading
+    /// @return insurance The insurance value relative to the fully-backed value
+    function backingOverview(IRToken rToken)
+        external
+        view
+        returns (uint192 backing, uint192 insurance)
+    {
+        uint256 supply = rToken.totalSupply();
+        if (supply == 0) return (0, 0);
+
+        // {UoA} = {BU} * {UoA/BU}
+        uint192 uoaNeeded = rToken.basketsNeeded().mul(rToken.main().basketHandler().price());
+
+        // Useful abbreviations
+        IAssetRegistry assetRegistry = rToken.main().assetRegistry();
+        address backingMgr = address(rToken.main().backingManager());
+        IERC20 rsr = rToken.main().rsr();
+
+        // Compute backing
+        {
+            IERC20[] memory erc20s = assetRegistry.erc20s();
+
+            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+            uint192 uoaHeld;
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                if (erc20s[i] == rsr) continue;
+
+                IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
+
+                // {UoA} = {tok} * {UoA/tok}
+                uint192 uoa = asset.bal(backingMgr).mul(asset.price());
+                uoaHeld = uoaHeld.plus(uoa);
+            }
+
+            // {1} = {UoA} / {UoA}
+            backing = uoaHeld.div(uoaNeeded);
+        }
+
+        // Compute insurance
+        {
+            IAsset rsrAsset = assetRegistry.toAsset(rsr);
+
+            // {tok} = {tok} + {tok}
+            uint192 rsrBal = rsrAsset.bal(backingMgr).plus(
+                rsrAsset.bal(address(rToken.main().stRSR()))
+            );
+
+            // {UoA} = {tok} * {UoA/tok}
+            uint192 rsrUoA = rsrBal.mul(rsrAsset.price());
+
+            // {1} = {UoA} / {UoA}
+            insurance = rsrUoA.div(uoaNeeded);
+        }
+    }
 }
 
 /**

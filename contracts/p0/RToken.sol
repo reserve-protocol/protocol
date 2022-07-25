@@ -250,6 +250,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
 
+        bool nonzero = false;
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
@@ -258,7 +259,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
             IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
+
+            if (!nonzero && amounts[i] > 0) nonzero = true;
         }
+
+        if (!nonzero) revert("Empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
