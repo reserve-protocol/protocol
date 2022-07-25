@@ -112,11 +112,9 @@ async function main() {
     Governance:  ${governanceAddr}
     Timelock:  ${timelockAddr}
     Deployment file: ${rTokenDeploymentFilename}`)
-  } else 
-  {
+  } else {
     console.log(`Owner setup for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
     Owner:  ${OWNER_ADDR}`)
-
   }
 }
 

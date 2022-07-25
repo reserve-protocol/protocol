@@ -61,7 +61,7 @@ async function main() {
       assetCollDeployments.collateral.aDAI as string,
       assetCollDeployments.collateral.cDAI as string,
     ],
-    weights: [fp('0.25'), fp('0.25'), fp('0.25'),fp('0.25')],
+    weights: [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')],
     backups: [
       // {
       //   backupUnit: ethers.utils.formatBytes32String('USD'),

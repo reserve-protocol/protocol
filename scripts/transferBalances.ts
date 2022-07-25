@@ -96,7 +96,7 @@ async function main() {
   console.log(await cDai.balanceOf(OWNER_ADDR))
 
   const initialBal = bn('250000e18')
- 
+
   // RSR
   await whileImpersonating(holderRSR, async (rsrSigner) => {
     await rsr.connect(rsrSigner).transfer(OWNER_ADDR, initialBal)
