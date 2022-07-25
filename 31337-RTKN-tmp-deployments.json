@@ -1,0 +1,19 @@
+{
+  "facadeWrite": "0xAdE429ba898c34722e722415D722A70a297cE3a2",
+  "main": "0x2f663C00A026A416802A629fb44490E3F276cF04",
+  "components": {
+    "assetRegistry": "0xaebeB3c564b83BBa221F13559474F63B0F674D17",
+    "backingManager": "0xB491d5354192b5bAFbAfD42dB64dc61BFc7a4c33",
+    "basketHandler": "0xe5f974b5303be27432E75a04390a377Fe43878Dd",
+    "broker": "0x49cD9bc30f63103256B95d92EC798489D65Fc268",
+    "distributor": "0xAf02141Bac06623e5EEe8df8d7e6d7b01b6C2F81",
+    "furnace": "0x3a7406b2a40cC4901AE308846Aaf286D8c8C0AbE",
+    "rsrTrader": "0x7E5edB5706EEc28775bA53Fe1aA221738BE50f50",
+    "rTokenTrader": "0xF5A02F4a42A40ca888514AB50683f68bA952cc19",
+    "rToken": "0x0bdB19551E641D25ea56AD1C66927313B331a955",
+    "stRSR": "0xeBdE3401d7E6EFEfaf2A0c6674Fc0d362B456926"
+  },
+  "rTokenAsset": "0x0855553215430696Fb8351987c64da6441260A60",
+  "governance": "",
+  "timelock": ""
+}
