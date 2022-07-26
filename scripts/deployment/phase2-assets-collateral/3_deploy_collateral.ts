@@ -67,6 +67,23 @@ async function main() {
   assetCollDeployments.collateral.USDC = usdcCollateral
   deployedCollateral.push(usdcCollateral.toString())
 
+  /********  Deploy Fiat Collateral - USDT  **************************/
+  const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
+    priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+    tokenAddress: networkConfig[chainId].tokens.USDT,
+    rewardToken: ZERO_ADDRESS,
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
+    maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    oracleLibrary: ORACLE_LIB_ADDRESS,
+  })
+
+  assetCollDeployments.collateral.USDT = usdtCollateral
+  deployedCollateral.push(usdtCollateral.toString())
+
   /********  Deploy AToken Fiat Collateral - aDAI  **************************/
 
   // Get AToken to retrieve name and symbol
