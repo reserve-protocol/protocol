@@ -7,7 +7,8 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('maxTradeVolume', 'Max trade volume')
+  .addParam('tradingMin', 'Trade Range - Min')
+  .addParam('tradingMax', 'Trade Range - Max')
   .addParam('maxOracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('oracleLibrary', 'Oracle library address')
@@ -28,7 +29,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
         params.priceFeed,
         params.tokenAddress,
         params.rewardToken,
-        params.maxTradeVolume,
+        { min: params.tradingMin, max: params.tradingMax },
         params.maxOracleTimeout,
         params.targetName
       )

@@ -15,6 +15,9 @@ import { FacadeWrite, MainP1, RTokenP1, StRSRP1 } from '../../../typechain'
 // Define the Token to use
 const RTOKEN_NAME = 'RTKN'
 
+// Specify if governance will be deployed
+const DEPLOY_GOVERNANCE = true
+
 // Address to be used as external owner or pauser (if desired)
 const OWNER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
@@ -83,33 +86,52 @@ async function main() {
   }
 
   // Setup Governance in RToken
-  const receipt = await (
-    await facadeWrite
-      .connect(burner)
-      .setupGovernance(
-        rToken.address,
-        true,
-        false,
-        govParams,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS,
-        ZERO_ADDRESS
-      )
-  ).wait()
+  if (DEPLOY_GOVERNANCE) {
+    const receipt = await (
+      await facadeWrite
+        .connect(burner)
+        .setupGovernance(
+          rToken.address,
+          DEPLOY_GOVERNANCE,
+          false,
+          govParams,
+          ZERO_ADDRESS,
+          ZERO_ADDRESS,
+          ZERO_ADDRESS
+        )
+    ).wait()
 
-  const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
-  const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
+    const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
+    const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
 
-  // Write temporary deployments file
-  rTokenDeployments.governance = governanceAddr
-  rTokenDeployments.timelock = timelockAddr
+    // Write temporary deployments file
+    rTokenDeployments.governance = governanceAddr
+    rTokenDeployments.timelock = timelockAddr
 
-  fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
+    fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
 
-  console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
-    Governance:  ${governanceAddr}
-    Timelock:  ${timelockAddr}
-    Deployment file: ${rTokenDeploymentFilename}`)
+    console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
+      Governance:  ${governanceAddr}
+      Timelock:  ${timelockAddr}
+      Deployment file: ${rTokenDeploymentFilename}`)
+  } else {
+    await (
+      await facadeWrite
+        .connect(burner)
+        .setupGovernance(
+          rToken.address,
+          DEPLOY_GOVERNANCE,
+          false,
+          govParams,
+          OWNER_ADDR,
+          ZERO_ADDRESS,
+          ZERO_ADDRESS
+        )
+    ).wait()
+
+    console.log(`Owner setup for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
+    Owner:  ${OWNER_ADDR}`)
+  }
 }
 
 main().catch((error) => {

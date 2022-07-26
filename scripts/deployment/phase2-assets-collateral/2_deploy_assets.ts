@@ -33,7 +33,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 1 day
   })
 
@@ -45,7 +46,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 1 day
   })
 
