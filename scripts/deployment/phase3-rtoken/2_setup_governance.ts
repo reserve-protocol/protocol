@@ -23,7 +23,7 @@ const OWNER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
 
 async function main() {
   // ==== Read Configuration ====
-  const [burner] = await hre.ethers.getSigners()
+  const [deployerUser] = await hre.ethers.getSigners()
 
   const chainId = await getChainId(hre)
 
@@ -31,7 +31,7 @@ async function main() {
   const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
 
   console.log(`Deploying Governance for RToken ${rTokenConf.symbol} to network ${hre.network.name} (${chainId})
-   with burner account: ${burner.address}`)
+   with deployer account: ${deployerUser.address}`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -89,7 +89,7 @@ async function main() {
   if (DEPLOY_GOVERNANCE) {
     const receipt = await (
       await facadeWrite
-        .connect(burner)
+        .connect(deployerUser)
         .setupGovernance(
           rToken.address,
           DEPLOY_GOVERNANCE,
@@ -117,7 +117,7 @@ async function main() {
   } else {
     await (
       await facadeWrite
-        .connect(burner)
+        .connect(deployerUser)
         .setupGovernance(
           rToken.address,
           DEPLOY_GOVERNANCE,

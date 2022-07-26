@@ -20,7 +20,7 @@ const RTOKEN_NAME = 'RTKN'
 
 async function main() {
   // ==== Read Configuration ====
-  const [burner] = await hre.ethers.getSigners()
+  const [deployerUser] = await hre.ethers.getSigners()
 
   const chainId = await getChainId(hre)
 
@@ -28,7 +28,7 @@ async function main() {
   const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
 
   console.log(`Deploying RToken ${rTokenConf.symbol} to network ${hre.network.name} (${chainId})
-  with burner account: ${burner.address}`)
+  with deployer account: ${deployerUser.address}`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
