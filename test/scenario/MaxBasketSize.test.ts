@@ -129,7 +129,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -171,7 +171,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         chainlinkFeed.address,
         atoken.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -209,7 +209,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         chainlinkFeed.address,
         ctoken.address,
         compToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -285,9 +285,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-
-      // Check RToken price
-      expect(await rToken.price()).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -416,9 +413,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-
-      // Check RToken price
-      expect(await rToken.price()).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)

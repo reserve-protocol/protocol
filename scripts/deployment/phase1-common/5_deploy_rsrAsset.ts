@@ -32,13 +32,15 @@ async function main() {
 
   await validateImplementations(deployments)
 
+  const ORACLE_TIMEOUT = bn('86400') // 1 day
   // ******************** Deploy RSR Asset ****************************************/
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
     priceFeed: deployments.prerequisites.RSR_FEED,
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
-    maxOracleTimeout: bn('86400').toString(), // 1 day
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
+    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

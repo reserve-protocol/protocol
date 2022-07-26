@@ -437,8 +437,8 @@ describe('FacadeWrite contract', () => {
           expect(await basketHandler.price()).to.equal(fp('1'))
           expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
-          // Check RToken price
-          expect(await rToken.price()).to.equal(fp('1'))
+          // Check BU price
+          expect(await basketHandler.price()).to.equal(fp('1'))
         })
 
         it('Should setup backup basket correctly', async () => {

@@ -19,11 +19,10 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        uint192 maxTradeSlippage_,
-        uint192 dustAmount_
+        uint192 maxTradeSlippage_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, dustAmount_);
+        __Trading_init(maxTradeSlippage_);
         tokenToBuy = tokenToBuy_;
     }
 

@@ -47,7 +47,7 @@ contract ATokenFiatCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
@@ -55,21 +55,12 @@ contract ATokenFiatCollateral is Collateral {
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
-    )
-        Collateral(
-            chainlinkFeed_,
-            erc20_,
-            rewardERC20_,
-            maxTradeVolume_,
-            oracleTimeout_,
-            targetName_
-        )
-    {
+    ) Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_) {
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");

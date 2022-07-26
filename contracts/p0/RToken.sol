@@ -290,13 +290,40 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         basketsNeeded = basketsNeeded_;
     }
 
-    /// @return {UoA/rTok} The protocol's best guess of the RToken price on markets
-    function price() external view returns (uint192) {
-        if (totalSupply() == 0) return main.basketHandler().price();
+    /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken in UoA
+    function price() external view returns (uint192 p) {
+        require(totalSupply() > 0, "no supply");
 
-        // {UoA/rTok} = {UoA/BU} * {BU} / {rTok}
-        uint192 supply = shiftl_toFix(totalSupply(), -int8(decimals()));
-        return main.basketHandler().price().mulDiv(basketsNeeded, supply);
+        // {qRTok} = {qRTok}
+        uint256 rTokAmt = 10**decimals();
+
+        // {BU} = {BU} * {qRTok} / {qRTok}
+        uint192 amtBUs = basketsNeeded.muluDivu(rTokAmt, totalSupply());
+        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
+            amtBUs,
+            FLOOR
+        );
+
+        address backingMgr = address(main.backingManager());
+
+        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            IAsset asset = main.assetRegistry().toAsset(IERC20(erc20s[i]));
+
+            // {qTok} = {qRTok} * {qTok} / {qRTok}
+            uint256 prorated = mulDiv256(
+                FIX_ONE_256,
+                IERC20(erc20s[i]).balanceOf(backingMgr),
+                totalSupply()
+            );
+            if (prorated < quantities[i]) quantities[i] = prorated;
+
+            // {tok} = {qTok} / {qTok/tok}
+            uint192 q = shiftl_toFix(quantities[i], -int8(asset.erc20().decimals()));
+
+            // {UoA} = {UoA} + ({UoA/tok} * {tok})
+            p = p.plus(asset.price().mul(q));
+        }
     }
 
     /// Tries to vest an issuance

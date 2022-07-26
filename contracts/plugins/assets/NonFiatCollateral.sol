@@ -31,7 +31,7 @@ contract NonFiatCollateral is Collateral {
 
     /// @param targetPerRefFeed_ {target/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
@@ -40,7 +40,7 @@ contract NonFiatCollateral is Collateral {
         AggregatorV3Interface uoaPerTargetFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint32 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
@@ -50,7 +50,7 @@ contract NonFiatCollateral is Collateral {
             AggregatorV3Interface(address(1)),
             erc20_,
             rewardERC20_,
-            maxTradeVolume_,
+            tradingRange_,
             oracleTimeout_,
             targetName_
         )

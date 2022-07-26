@@ -44,13 +44,6 @@ const describeGas =
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-// eslint suggests I drop this. I think it's probably confused.
-// enum RoundingApproach {
-//   FLOOR,
-//   ROUND,
-//   CEIL,
-// }
-
 describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -185,6 +178,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.basketsNeeded()).to.equal(0)
 
       // Check RToken price
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await rToken.connect(addr1).issue(fp('1'))
       expect(await rToken.price()).to.equal(fp('1'))
     })
   })
@@ -415,8 +413,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // Check RToken price
-      expect(await rToken.price()).to.equal(fp('1'))
+      // RToken price should revert pre-issuae
+      await expect(rToken.price()).to.be.revertedWith('no supply')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)

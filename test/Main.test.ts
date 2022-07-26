@@ -4,7 +4,6 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import {
   IConfig,
-  MAX_DUST_AMOUNT,
   MAX_TRADING_DELAY,
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
@@ -213,7 +212,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
-      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
     })
 
@@ -277,8 +275,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
-      // Check RToken price
-      expect(await rToken.price()).to.equal(fp('1'))
+      // Check BU price
+      expect(await basketHandler.price()).to.equal(fp('1'))
     })
   })
 
@@ -319,8 +317,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           main.address,
           config.tradingDelay,
           config.backingBuffer,
-          config.maxTradeSlippage,
-          config.dustAmount
+          config.maxTradeSlippage
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -336,12 +333,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RSR Trader
       await expect(
-        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage, config.dustAmount)
+        rsrTrader.init(main.address, rsr.address, config.maxTradeSlippage)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - RToken Trader
       await expect(
-        rTokenTrader.init(main.address, rToken.address, config.maxTradeSlippage, config.dustAmount)
+        rTokenTrader.init(main.address, rToken.address, config.maxTradeSlippage)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - Furnace
@@ -708,32 +705,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid maxTradeSlippage')
     })
 
-    it('Should allow to update dustAmount if OWNER and perform validations', async () => {
-      const newValue: BigNumber = fp('0.02')
-
-      // Check existing value
-      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
-
-      // If not owner cannot update
-      await expect(backingManager.connect(other).setDustAmount(newValue)).to.be.reverted
-
-      // Check value did not change
-      expect(await backingManager.dustAmount()).to.equal(config.dustAmount)
-
-      // Update with owner
-      await expect(backingManager.connect(owner).setDustAmount(newValue))
-        .to.emit(backingManager, 'DustAmountSet')
-        .withArgs(config.dustAmount, newValue)
-
-      // Check value was updated
-      expect(await backingManager.dustAmount()).to.equal(newValue)
-
-      // Cannot update with value > max
-      await expect(
-        backingManager.connect(owner).setDustAmount(MAX_DUST_AMOUNT.add(1))
-      ).to.be.revertedWith('invalid dustAmount')
-    })
-
     it('Should allow to update backingBuffer if OWNER and perform validations', async () => {
       const newValue: BigNumber = fp('0.02')
 
@@ -838,19 +809,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
+          config.tradingRange,
           1
         )
       )
 
       const duplicateAsset: Asset = <Asset>(
-        await AssetFactory.deploy(
-          ONE_ADDRESS,
-          token0.address,
-          ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
-          1
-        )
+        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
 
       // Get previous length for assets
@@ -889,13 +854,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(
-          ONE_ADDRESS,
-          token0.address,
-          ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
-          1
-        )
+        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
 
       // Setup new asset with new ERC20
@@ -906,7 +865,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           newToken.address,
           ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
+          config.tradingRange,
           1
         )
       )
@@ -953,13 +912,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Setup new Asset - Reusing token
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(
-          ONE_ADDRESS,
-          token0.address,
-          ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
-          1
-        )
+        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
 
       // Setup another one with new token (cannot be used in swap)
@@ -968,7 +921,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
+          config.tradingRange,
           1
         )
       )
@@ -1254,13 +1207,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap a token for a non-collateral asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(
-          ONE_ADDRESS,
-          token1.address,
-          ZERO_ADDRESS,
-          await collateral1.maxTradeVolume(),
-          1
-        )
+        await AssetFactory.deploy(ONE_ADDRESS, token1.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
       // Swap Asset
       await expectEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
@@ -1391,7 +1338,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
+          config.tradingRange,
           1
         )
       )
@@ -1400,7 +1347,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[6].address,
           ZERO_ADDRESS,
-          await collateral0.maxTradeVolume(),
+          config.tradingRange,
           1
         )
       )

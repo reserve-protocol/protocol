@@ -20,25 +20,18 @@ contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param maxTradeVolume_ {UoA} The max amount of value to trade in an indivudual trade
+    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     // solhint-disable no-empty-blocks
     constructor(
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint32 oracleTimeout_,
         bytes32 targetName_
     )
-        Collateral(
-            chainlinkFeed_,
-            erc20_,
-            rewardERC20_,
-            maxTradeVolume_,
-            oracleTimeout_,
-            targetName_
-        )
+        Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_)
     {}
 
     // solhint-enable no-empty-blocks

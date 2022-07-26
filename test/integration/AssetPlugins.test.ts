@@ -754,7 +754,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           nonpriceToken.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT
         )
       )
@@ -781,7 +781,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         NO_PRICE_DATA_FEED,
         nonpriceToken.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -831,7 +831,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         NO_PRICE_DATA_FEED,
         staticNonPriceErc20.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -858,7 +858,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         NO_PRICE_DATA_FEED,
         nonpriceCtoken.address,
         compToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -907,7 +907,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         networkConfig[chainId].chainlinkFeeds.DAI || '',
         underlyingToken.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         oracleTimeout,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -934,7 +934,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         networkConfig[chainId].chainlinkFeeds.DAI || '',
         staticNonPriceErc20.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         oracleTimeout,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -961,7 +961,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         networkConfig[chainId].chainlinkFeeds.DAI || '',
         cToken.address,
         compToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         oracleTimeout,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1103,6 +1103,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check RToken price
+      const issueAmount: BigNumber = bn('10000e18')
+      await dai.connect(addr1).approve(rToken.address, issueAmount)
+      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
