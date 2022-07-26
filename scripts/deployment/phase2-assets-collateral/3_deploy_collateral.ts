@@ -38,7 +38,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     tokenAddress: networkConfig[chainId].tokens.DAI,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -54,7 +55,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     tokenAddress: networkConfig[chainId].tokens.USDC,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -90,7 +92,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     staticAToken: staticAToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -107,7 +110,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     cToken: networkConfig[chainId].tokens.cDAI,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -126,7 +130,8 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     cToken: networkConfig[chainId].tokens.cWBTC,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -144,7 +149,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     cToken: networkConfig[chainId].tokens.cETH,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     decimals: bn(18).toString(),
@@ -161,7 +167,8 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -178,7 +185,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     tokenAddress: networkConfig[chainId].tokens.WETH,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     oracleLibrary: ORACLE_LIB_ADDRESS,
@@ -193,7 +201,8 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
     tokenAddress: networkConfig[chainId].tokens.EURT,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 24h
     targetName: ethers.utils.formatBytes32String('EURO'),
     defaultThreshold: fp('0.05').toString(), // 5%

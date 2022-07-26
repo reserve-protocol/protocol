@@ -8,7 +8,8 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('maxTradeVolume', 'Max trade volume')
+  .addParam('tradingMin', 'Trade Range - Min')
+  .addParam('tradingMax', 'Trade Range - Max')
   .addParam('maxOracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
@@ -32,7 +33,7 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
         params.targetUnitFeed,
         params.tokenAddress,
         params.rewardToken,
-        params.maxTradeVolume,
+        { min: params.tradingMin, max: params.tradingMax },
         params.maxOracleTimeout,
         params.targetName,
         params.defaultThreshold,

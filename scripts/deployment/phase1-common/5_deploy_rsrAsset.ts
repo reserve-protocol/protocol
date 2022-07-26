@@ -37,7 +37,8 @@ async function main() {
     priceFeed: deployments.prerequisites.RSR_FEED,
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp('1e6').toString(), // max trade volume
+    tradingMin: fp('0.01').toString(), // min trade
+    tradingMax: fp('1e6').toString(), // max trade
     maxOracleTimeout: bn('86400').toString(), // 1 day
   })
 
