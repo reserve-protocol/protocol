@@ -26,6 +26,7 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
+  const ORACLE_TIMEOUT = bn('86400') // 1 day
   let deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
@@ -35,7 +36,7 @@ async function main() {
     rewardToken: ZERO_ADDRESS,
     tradingMin: fp('0.01').toString(), // min trade
     tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: bn('86400').toString(), // 1 day
+    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -48,7 +49,7 @@ async function main() {
     rewardToken: ZERO_ADDRESS,
     tradingMin: fp('0.01').toString(), // min trade
     tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: bn('86400').toString(), // 1 day
+    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
   })
 
   assetCollDeployments.assets.COMP = compAsset
