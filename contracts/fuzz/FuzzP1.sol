@@ -13,15 +13,9 @@ import "contracts/p1/Main.sol";
 import "contracts/p1/RToken.sol";
 
 // ================ Components ================
+// Every component must override _msgSender() in this one, common way!
 
-// The P1 system contract overrides
-abstract contract ComponentP1Fuzz is ComponentP1 {
-    function _msgSender() internal view virtual override(ContextUpgradeable) returns (address) {
-        return IMainFuzz(address(main)).sender();
-    }
-}
-
-contract BrokerP1Fuzz is ComponentP1Fuzz, BrokerP1 {
+contract BrokerP1Fuzz is BrokerP1 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
@@ -34,9 +28,13 @@ contract BrokerP1Fuzz is ComponentP1Fuzz, BrokerP1 {
         trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
         return trade;
     }
+
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).sender();
+    }
 }
 
-contract RTokenP1Fuzz is IRTokenFuzz, ComponentP1Fuzz, RTokenP1 {
+contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     using FixLib for uint192;
 
     // To be called only from MarketMock; this only works if MarketMock never enqueues any other
@@ -67,10 +65,13 @@ contract RTokenP1Fuzz is IRTokenFuzz, ComponentP1Fuzz, RTokenP1 {
 
         return main.basketHandler().quote(baskets, roundingMode);
     }
+
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).sender();
+    }
 }
 
 // ================ Main ================
-
 // prettier-ignore
 contract MainP1Fuzz is IMainFuzz, MainP1 {
     address public sender;
@@ -81,12 +82,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     function setSeed(uint256 seed_) public { seed = seed_; }
 
     function init(Components memory, IERC20, uint32)
-        public
-        virtual
-        override(MainP1, IMain)
-        initializer {
+        public virtual override(MainP1, IMain) initializer {
         __Auth_init(0);
         emit MainInitialized();
+        // init marketMock
     }
 
 }

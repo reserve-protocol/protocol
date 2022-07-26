@@ -24,15 +24,14 @@ contract CollateralMock is Collateral {
         uint256 delayUntilDefault_,
         IERC20Metadata referenceERC20_,
         bytes32 targetName_,
-
         // Price Models
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
         PriceModel memory deviationModel_
+    )
         // deviationModel is the deviation of price() from the combination of the above.
         // that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
-    )
         Collateral(
             AggregatorV3Interface(address(1)), // Stub out expected Chainlink feed
             erc20_,
