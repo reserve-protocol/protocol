@@ -31,7 +31,7 @@ async function main() {
   const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
 
   console.log(`Deploying Governance for RToken ${rTokenConf.symbol} to network ${hre.network.name} (${chainId})
-   with burner account: ${burner.address}`)
+   with deployer account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
