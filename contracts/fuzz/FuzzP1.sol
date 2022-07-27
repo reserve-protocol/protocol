@@ -41,7 +41,6 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     // issuances.
     function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
-        // TODO: Accept tokens first
         issue(amtRToken);
 
         IssueQueue storage queue = issueQueues[_msgSender()];

@@ -110,6 +110,7 @@ contract MarketMock is IMarketMock {
         (address[] memory tokens, uint256[] memory amts) = rtoken.quote(rtokenAmt, CEIL);
         for (uint256 i = 0; i < tokens.length; i++) {
             ERC20Mock(tokens[i]).mint(address(this), amts[i]);
+            ERC20Mock(tokens[i]).approve(address(rtoken), amts[i]);
         }
 
         // Issue the RToken we want
