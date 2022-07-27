@@ -15,6 +15,7 @@ import {
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
+  TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
@@ -52,6 +53,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let rTokenTrader: TestIRevenueTrader
+  let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
   let oracleLib: OracleLib
 
@@ -80,6 +83,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       oracleLib,
+      rTokenTrader,
+      rsrTrader,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -337,19 +342,15 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.buy()).to.equal(backupToken.address)
     })
 
-    // TODO
-    // it('should be able to process revenues already accumulated at RevenueTraders', async () => {})
+    it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
+      await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
+      await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
+      await expect(rTokenTrader.manageToken(rToken.address))
+        .to.emit(rToken, 'Transfer')
+        .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
+      await expect(rsrTrader.manageToken(rToken.address))
+        .to.emit(rsrTrader, 'TradeStarted')
+        .withArgs(rToken.address, rsr.address, issueAmt.div(2), issueAmt.div(2).mul(99).div(100))
+    })
   })
-
-  // describe('without default detection for defi invariants', function () {
-  //   it('should force a prorata redemption basket as collateral loses value', async () => {})
-  //   it('should increase the issuance basket as collateral loses value', async () => {})
-  //   it('should use RSR to recapitalize', async () => {})
-  // })
-
-  // describe('without default detection for the peg', function () {
-  //   it('should provide the market free money during redemption', async () => {})
-  //   it('should not change the issuance basket', async () => {})
-  //   it('should not be undercapitalized from its perspective', async () => {})
-  // })
 })
