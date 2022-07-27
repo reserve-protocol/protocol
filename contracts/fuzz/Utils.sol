@@ -3,7 +3,8 @@ pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
-import "contracts/p0/Deployer.sol";
+import "contracts/interfaces/IDeployer.sol";
+
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
@@ -29,4 +30,8 @@ function between(
     uint256 seed
 ) pure returns (uint256) {
     return low + (seed % (high - low + 1));
+}
+
+function concat(string memory a, string memory b) pure returns (string memory) {
+    return string(abi.encodePacked(a, b));
 }
