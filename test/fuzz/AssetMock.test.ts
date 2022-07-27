@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { fp } from '../../common/numbers'
-import { PriceModelKind, PriceModel, onePM, aroundPM } from './common'
+import { PriceModelKind, PriceModel, onePM } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
 describe(`PriceModels in AssetMock`, () => {

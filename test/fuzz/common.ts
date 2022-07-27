@@ -1,6 +1,7 @@
 import { BigNumber, BigNumberish } from 'ethers'
 import { IConfig } from '../../common/configuration'
 import { bn, fp } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../../common/constants'
 
 export enum PriceModelKind {
   CONSTANT,
@@ -57,7 +58,7 @@ export const CONFIG: IConfig = {
   oneshotFreezeDuration: bn('864000'), // 10 days
 }
 
-const ZERO_COMPONENTS = {
+export const ZERO_COMPONENTS = {
   rToken: ZERO_ADDRESS,
   stRSR: ZERO_ADDRESS,
   assetRegistry: ZERO_ADDRESS,

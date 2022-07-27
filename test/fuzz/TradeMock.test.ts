@@ -1,12 +1,15 @@
 import { expect, assert } from 'chai'
 import { ethers } from 'hardhat'
-import { BigNumber, Wallet } from 'ethers'
+import { Wallet } from 'ethers'
 
 import { fp } from '../../common/numbers'
-import { ZERO_ADDRESS, OWNER } from '../../common/constants'
+import { ZERO_ADDRESS } from '../../common/constants'
+import { whileImpersonating } from '../../test/utils/impersonation'
+import { advanceTime } from '../../test/utils/time'
+
 import * as sc from '../../typechain' // All smart contract types
 
-import { PriceModelKind, PriceModel, CONFIG } from './common'
+import { CONFIG, onePM, ZERO_COMPONENTS } from './common'
 
 const OneShotFreezeDuration = 1209600 // 2 weeks
 
@@ -18,12 +21,17 @@ describe('TradeMock', () => {
   let market: sc.MarketMock
   let broker: sc.BrokerP1Fuzz
 
+  let rsrAsset: sc.AssetMock
+  let usdaAsset: sc.AssetMock
+  let rtokenAsset: sc.AssetMock
+
   let trade: sc.TradeMock
 
   let owner: Wallet
+  let alice: Wallet
 
   before('Get signers', async () => {
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+    ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
   })
 
   beforeEach('Deploy contracts', async () => {
@@ -34,6 +42,7 @@ describe('TradeMock', () => {
     const erc20Factory: sc.ERC20Mock__factory = await F('ERC20Mock')
     const tradeFactory: sc.TradeMock__factory = await F('TradeMock')
     const marketFactory: sc.MarketMock__factory = await F('MarketMock')
+    const assetFactory: sc.AssetMock__factory = await F('AssetMock')
 
     main = await mainFactory.deploy()
 
@@ -45,7 +54,11 @@ describe('TradeMock', () => {
     broker = await brokerFactory.deploy()
     trade = await tradeFactory.deploy()
 
-    let components = ZERO_COMPONENTS
+    rsrAsset = await assetFactory.deploy(rsr.address, fp('1e18'), onePM)
+    usdaAsset = await assetFactory.deploy(usda.address, fp('1e18'), onePM)
+    rtokenAsset = await assetFactory.deploy(rtoken.address, fp('1e18'), onePM)
+
+    const components = ZERO_COMPONENTS
     components.rToken = rtoken.address
     components.broker = broker.address
     await main.initForFuzz(components, rsr.address, OneShotFreezeDuration, market.address)
@@ -57,7 +70,7 @@ describe('TradeMock', () => {
   })
 
   it('test setup worked', async () => {
-    for (let comp of [main, rsr, rtoken, usda, market, broker, trade]) {
+    for (const comp of [main, rsr, rtoken, usda, market, broker, trade]) {
       assert.isOk(comp)
       assert.isOk(comp.address)
       assert.isString(comp.address)
@@ -66,5 +79,87 @@ describe('TradeMock', () => {
     expect(await main.broker()).to.equal(broker.address)
   })
 
-  it('can trade two tokens at a specified rate')
+  it('can trade two tokens', async () => {
+    // Alice starts with 123 USDA
+    await usda.mint(alice.address, fp(123))
+    expect(await usda.balanceOf(alice.address)).to.equal(fp(123))
+    expect(await rsr.balanceOf(alice.address)).to.equal(0)
+
+    // Alice sends 123 USDA to the trade
+    await whileImpersonating(alice.address, async (signer) => {
+      await usda.connect(signer).transfer(trade.address, fp(123))
+    })
+
+    // Init the trade
+    const tradeReq = {
+      buy: rsrAsset.address,
+      sell: usdaAsset.address,
+      minBuyAmount: fp(456),
+      sellAmount: fp(123),
+    }
+    await trade.init(main.address, alice.address, 5, tradeReq)
+
+    expect(await trade.canSettle()).to.be.false
+    await whileImpersonating(alice.address, async (signer) => {
+      await expect(trade.connect(signer).settle()).to.be.reverted
+    })
+
+    // Wait and settle the trade
+    await advanceTime(5)
+
+    expect(await trade.canSettle()).to.be.true
+    await whileImpersonating(alice.address, async (signer) => {
+      await trade.connect(signer).settle()
+    })
+
+    // Alice now has no USDA and 456 RSR.
+    expect(await usda.balanceOf(alice.address)).to.equal(0)
+    expect(await rsr.balanceOf(alice.address)).to.equal(fp(456))
+  })
+
+  it.skip('can trade a token for RToken', async () => {
+    // Alice starts with 123 USDA
+    await usda.mint(alice.address, fp(123))
+    expect(await usda.balanceOf(alice.address)).to.equal(fp(123))
+    expect(await rtoken.balanceOf(alice.address)).to.equal(0)
+
+    // Alice sends 123 USDA to the trade
+    await whileImpersonating(alice.address, async (signer) => {
+      await usda.connect(signer).transfer(trade.address, fp(123))
+    })
+
+    // Init the trade
+    const tradeReq = {
+      buy: rtokenAsset.address,
+      sell: usdaAsset.address,
+      minBuyAmount: fp(456),
+      sellAmount: fp(123),
+    }
+    await trade.init(main.address, alice.address, 5, tradeReq)
+
+    expect(await trade.canSettle()).to.be.false
+    await whileImpersonating(alice.address, async (signer) => {
+      await expect(trade.connect(signer).settle()).to.be.reverted
+    })
+
+    // Wait and settle the trade
+    await advanceTime(5)
+
+    expect(await trade.canSettle()).to.be.true
+    await whileImpersonating(alice.address, async (signer) => {
+      await trade.connect(signer).settle()
+    })
+
+    // Alice now has no USDA and 456 rtoken.
+    expect(await usda.balanceOf(alice.address)).to.equal(0)
+    expect(await rtoken.balanceOf(alice.address)).to.equal(fp(456))
+  })
+
+  it.skip('can trade an RToken for a token', async () => {
+    // Alice has with 123 RToken...
+    // Alice sends 123 RToken to the trade
+    // Init the trade for 456 USDA
+    // Wait and settle the trade
+    // Assert: Alice now has no RToken and 456 USDA
+  })
 })

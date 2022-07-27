@@ -20,9 +20,9 @@ contract CollateralMock is Collateral {
         // Collateral base-class arguments
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
-        uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IERC20Metadata referenceERC20_,
+        uint192, //defaultThreshold_,
+        uint256, //delayUntilDefault_,
+        IERC20Metadata, //referenceERC20_,
         bytes32 targetName_,
         // Price Models
         PriceModel memory refPerTokModel_, // Ref units per token

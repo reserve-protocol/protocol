@@ -53,16 +53,19 @@ contract TradeMock is ITrade {
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(msg.sender == origin, "only origin can settle");
-        require(status == TradeMockStatus.OPEN);
+        require(status == TradeMockStatus.OPEN, "trade not OPEN");
+        require(uint32(block.timestamp) >= endTime, "trade not yet closed");
         status = TradeMockStatus.CLOSED;
 
         // ==== Trade tokens ====
-
-        // go ahead and move what will "get traded" now.
+        // Move tokens to-be-sold to the market mock
         sell.transfer(address(IMainFuzz(main).marketMock()), requestedSellAmt);
+        // Have the "market" transform those tokens
         main.marketMock().execute(sell, buy, requestedSellAmt, requestedBuyAmt);
-        soldAmt = requestedSellAmt;
-        boughtAmt = requestedBuyAmt;
+        // Move the tokens to-be-bought to the original address
+        buy.transfer(origin, requestedBuyAmt);
+
+        return (requestedSellAmt, requestedBuyAmt);
     }
 }
 
