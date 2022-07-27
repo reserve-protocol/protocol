@@ -3,6 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
+import { expectEvents } from '../../common/events'
 import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
@@ -238,6 +239,30 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
+
+      // Should not launch auctions or create revenue
+      await expectEvents(backingManager.manageTokens([token0.address]), [
+        {
+          contract: backingManager,
+          name: 'TradeStarted',
+          emitted: false,
+        },
+        {
+          contract: token0,
+          name: 'Transfer',
+          emitted: false,
+        },
+        {
+          contract: rsr,
+          name: 'Transfer',
+          emitted: false,
+        },
+        {
+          contract: rToken,
+          name: 'Transfer',
+          emitted: false,
+        },
+      ])
     })
   })
 })
