@@ -102,7 +102,7 @@ async function main() {
     )
   )
   await staticAToken.deployed()
-  
+
   console.log(
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${staticAToken.address} `
   )
