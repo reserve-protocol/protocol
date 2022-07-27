@@ -3,12 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import {
-  ZERO_ADDRESS,
-  CollateralStatus,
-  RoundingMode,
-  BN_SCALE_FACTOR,
-} from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   BadCollateralPlugin,
@@ -19,13 +14,11 @@ import {
   OracleLib,
   StaticATokenMock,
   TestIBackingManager,
-  TestIFurnace,
   TestIStRSR,
   TestIRToken,
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
-import { advanceTime } from '../utils/time'
 import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
@@ -55,7 +48,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rsr: ERC20Mock
-  let furnace: TestIFurnace
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -82,7 +74,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       collateral,
       config,
       rToken,
-      furnace,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -190,14 +181,13 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await token0.balanceOf(addr1.address)).to.be.gt(initialBal.div(6))
     })
 
-    it('should use RSR to recapitalize', async () => {
+    it('should use RSR to recapitalize, breaking the economic model fundamentally', async () => {
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
       const trade = await getTrade(backingManager, rsr.address)
-      const naiveShortfall = initialBal.div(10)
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(token0.address)
-      expect(await trade.initBal()).to.be.gt(naiveShortfall)
-      expect(await trade.worstCasePrice()).to.be.gt(fp('0.99'))
+      expect(await trade.initBal()).to.be.gt(initialBal.div(10))
+      expect(await trade.worstCasePrice()).to.equal(fp('1.1').sub(1))
     })
   })
 
