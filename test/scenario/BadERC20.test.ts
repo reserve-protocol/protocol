@@ -131,6 +131,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     await stRSR.connect(addr1).stake(initialBal)
   })
 
+  // This test is mostly to check that our BadERC20 implementation works like a regular ERC20
   it('should act honestly without modification', async () => {
     const issueAmt = initialBal.div(100)
     await token0.connect(addr1).approve(rToken.address, issueAmt)
@@ -335,5 +336,20 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(backupToken.address)
     })
+
+    // TODO
+    // it('should be able to process revenues already accumulated at RevenueTraders', async () => {})
   })
+
+  // describe('without default detection for defi invariants', function () {
+  //   it('should force a prorata redemption basket as collateral loses value', async () => {})
+  //   it('should increase the issuance basket as collateral loses value', async () => {})
+  //   it('should use RSR to recapitalize', async () => {})
+  // })
+
+  // describe('without default detection for the peg', function () {
+  //   it('should provide the market free money during redemption', async () => {})
+  //   it('should not change the issuance basket', async () => {})
+  //   it('should not be undercapitalized from its perspective', async () => {})
+  // })
 })
