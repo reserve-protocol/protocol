@@ -27,7 +27,7 @@ contract MainP1 is
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     // solhint-disable-next-line no-empty-blocks
-    constructor() initializer {}
+    // constructor() initializer {}
 
     /// Initializer
     function init(

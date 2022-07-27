@@ -1,5 +1,6 @@
 import { BigNumber, BigNumberish } from 'ethers'
-import { fp } from '../../common/numbers'
+import { IConfig } from '../../common/configuration'
+import { bn, fp } from '../../common/numbers'
 
 export enum PriceModelKind {
   CONSTANT,
@@ -39,4 +40,32 @@ export function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel 
     low: low,
     high: high,
   }
+}
+
+export const CONFIG: IConfig = {
+  maxTradeVolume: fp('1e6'), // $1M
+  dist: { rTokenDist: bn(40), rsrDist: bn(60) },
+  rewardPeriod: bn('604800'), // 1 week
+  rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+  unstakingDelay: bn('1209600'), // 2 weeks
+  tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
+  auctionLength: bn('900'), // 15 minutes
+  backingBuffer: fp('0.0001'), // 0.01%
+  maxTradeSlippage: fp('0.01'), // 1%
+  dustAmount: fp('0.01'), // 0.01 UoA (USD)
+  issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+  oneshotFreezeDuration: bn('864000'), // 10 days
+}
+
+const ZERO_COMPONENTS = {
+  rToken: ZERO_ADDRESS,
+  stRSR: ZERO_ADDRESS,
+  assetRegistry: ZERO_ADDRESS,
+  basketHandler: ZERO_ADDRESS,
+  backingManager: ZERO_ADDRESS,
+  distributor: ZERO_ADDRESS,
+  furnace: ZERO_ADDRESS,
+  broker: ZERO_ADDRESS,
+  rsrTrader: ZERO_ADDRESS,
+  rTokenTrader: ZERO_ADDRESS,
 }

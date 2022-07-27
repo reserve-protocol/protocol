@@ -41,6 +41,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     // issuances.
     function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
+        // TODO: Accept tokens first
         issue(amtRToken);
 
         IssueQueue storage queue = issueQueues[_msgSender()];
@@ -81,11 +82,14 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     function setSender(address sender_) public { sender = sender_; }
     function setSeed(uint256 seed_) public { seed = seed_; }
 
-    function init(Components memory, IERC20, uint32)
-        public virtual override(MainP1, IMain) initializer {
-        __Auth_init(0);
-        emit MainInitialized();
-        // init marketMock
+    // Avoiding overloading here, just because it's super annoying to deal with in ethers.js
+    function initForFuzz(
+        Components memory components,
+        IERC20 rsr,
+        uint32 freezerDuration,
+        IMarketMock marketMock_
+    ) public virtual {
+        init(components, rsr, freezerDuration);
+        marketMock = marketMock_;
     }
-
 }
