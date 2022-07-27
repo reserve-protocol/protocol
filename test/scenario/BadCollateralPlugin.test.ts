@@ -3,7 +3,12 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
+import {
+  ZERO_ADDRESS,
+  CollateralStatus,
+  RoundingMode,
+  BN_SCALE_FACTOR,
+} from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   BadCollateralPlugin,
@@ -147,14 +152,53 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     await stRSR.connect(addr1).stake(initialBal)
   })
 
-  describe.only('without default detection for defi invariants', function () {
+  describe('without default detection for defi invariants', function () {
     beforeEach(async () => {
       await collateral0.setHardDefaultCheck(false)
+      await token0.setExchangeRate(fp('0.9'))
+      await collateral0.refresh()
+
+      // Status should remain SOUND even in the face of a falling exchange rate
+      expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCapitalized()).to.equal(false)
     })
 
-    it('should force a prorata redemption basket as collateral loses value', async () => {})
-    it('should increase the issuance basket as collateral loses value', async () => {})
-    it('should use RSR to recapitalize', async () => {})
+    it('should keep a constant redemption basket as collateral loses value', async () => {
+      // Redemption should be restrained to be prorata
+      expect(await token0.balanceOf(addr1.address)).to.equal(0)
+      await rToken.connect(addr1).redeem(initialBal.div(2))
+      expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
+      expect(await rToken.price()).to.equal(fp('0.9'))
+    })
+
+    it('should increase the issuance basket as collateral loses value', async () => {
+      // Should be able to redeem half the RToken at-par
+      await rToken.connect(addr1).redeem(initialBal.div(2))
+      expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
+
+      // Should not be able to re-issue at the same quantities
+      expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
+      await token0.connect(addr1).approve(rToken.address, initialBal.div(2))
+      await expect(rToken.connect(addr1).issue(initialBal.div(2))).to.be.reverted
+
+      // Should be able to issue at larger quantities
+      await rToken.connect(addr1).issue(initialBal.div(4))
+      expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.mul(3).div(4))
+      expect(await token0.balanceOf(addr1.address)).to.be.lt(initialBal.div(4))
+      expect(await token0.balanceOf(addr1.address)).to.be.gt(initialBal.div(6))
+    })
+
+    it('should use RSR to recapitalize', async () => {
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+      const trade = await getTrade(backingManager, rsr.address)
+      const naiveShortfall = initialBal.div(10)
+      expect(await trade.sell()).to.equal(rsr.address)
+      expect(await trade.buy()).to.equal(token0.address)
+      expect(await trade.initBal()).to.be.gt(naiveShortfall)
+      expect(await trade.worstCasePrice()).to.be.gt(fp('0.99'))
+    })
   })
 
   describe('without default detection for the peg', function () {
