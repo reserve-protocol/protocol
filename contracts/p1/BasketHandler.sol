@@ -131,7 +131,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         external
         governance
     {
-        // withLockable not required: no external calls
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -163,7 +162,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external governance {
-        // withLockable not required: no external calls
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
