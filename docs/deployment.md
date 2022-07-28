@@ -42,13 +42,13 @@ const networkConfig = {
 FORK=true npx hardhat node
 ```
 
-The deploymen process consists of three main phases. The scripts required for each phase are located in the `scripts/deployment` folder.
+The deployment process consists of three main phases. The scripts required for each phase are located in the `scripts/deployment` folder.
 
-* **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only once for all RTokens. Scripts are located in `deployments/scripts/phase1-common`.
+* **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only **once** for all RTokens. Scripts are located in `/scripts/deployment/phase1-common`.
 
-* **Phase 2 - Assets/Collareral:** Required to deploy new asset and collateral contracts that will be used for the deployment of a new RToken. The exact setup to deploy will depend on each case and can be customized for each particular RToken. Once an asset/collateral is deployed it can be reused for several RTokens. Scripts are located in `deployments/scripts/phase2-assets-collateral`.
+* **Phase 2 - Assets/Collateral:** Required to deploy new asset and collateral contracts that will be used for the deployment of a new RToken. The exact setup to deploy will depend on each case and can be customized for each particular RToken. Once an asset/collateral is deployed it can be reused for several RTokens. Scripts are located in `scripts/deployment/phase2-assets-collateral`.
 
-* **Phase 3 - RToken:**  Required to deploy a new RToken. Uses a configuration file and can be customized with the required parameters. Deployments are done via public functions in the `FacadeWrite` contract. Scripts are located in `deployments/scripts/phase3-rtoken`.
+* **Phase 3 - RToken:**  Required to deploy a new RToken. Uses a configuration file and can be customized with the required parameters. Deployments are done via public functions in the `FacadeWrite` contract. Scripts are located in `scripts/deployment/phase3-rtoken`.
 
 
 ### Phase 1 - Common Components
@@ -204,14 +204,14 @@ This will create a local `31337-{RTOKEN SYMBOL}-tmp-deployments.json` file with 
 npx hardhat run scripts/deployment/phase3-rtoken/0_setup_deployments.ts --network localhost
 ```
 
-**1.Deploy RToken:** Run the script which deploys the *RToken* contracts through the FacadeWrite interface. You can *customize* the assets/collateral to use in this script. This will update the local`31337-{RTOKEN SYMBOL}-tmp-assets-collateral.json` file with the new addresses.
+**1.Deploy RToken:** Run the script which deploys the *RToken* contracts through the FacadeWrite interface. You can *customize* the assets/collateral to use in this script. This will update the local`31337-{RTOKEN SYMBOL}-tmp-deployments.json` file with the new addresses.
 
 ```bash
 npx hardhat run scripts/deployment/phase3-rtoken/1_deploy_rtoken.ts --network localhost
 ```
 
 
-**2.Setup Governance:** Run the script which setups the governance settings for an *RToken* contract, through the FacadeWrite interface. You can *customize* the settings in the configuration file and also in the script. This will update the local`31337-{RTOKEN SYMBOL}-tmp-assets-collateral.json` file with the new addresses.
+**2.Setup Governance:** Run the script which setups the governance settings for an *RToken* contract, through the FacadeWrite interface. You can *customize* the settings in the configuration file and also in the script. This will update the local`31337-{RTOKEN SYMBOL}-tmp-deployments.json` file with the new addresses.
 
 ```bash
 npx hardhat run scripts/deployment/phase3-rtoken/2_setup_governance.ts --network localhost

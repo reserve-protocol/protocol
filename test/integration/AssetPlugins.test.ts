@@ -62,6 +62,11 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
+
+  // RSR
+  let rsr: ERC20Mock
+  let rsrAsset: Asset
 
   // Assets
   let collateral: Collateral[]
@@ -137,7 +142,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   let chainId: number
 
-  describe('Assets/Collateral Setup', () => {
+  describe('Assets/Collateral', () => {
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
@@ -149,8 +154,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
 
     beforeEach(async () => {
-      ;[owner] = await ethers.getSigners()
+      ;[owner, addr1, addr2] = await ethers.getSigners()
       ;({
+        rsr,
+        rsrAsset,
         compToken,
         aaveToken,
         compAsset,
@@ -158,6 +165,14 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         compoundMock,
         erc20s,
         collateral,
+        basket,
+        main,
+        assetRegistry,
+        backingManager,
+        basketHandler,
+        rToken,
+        rTokenAsset,
+        facade,
         config,
         oracleLib,
       } = await loadFixture(defaultFixture))
@@ -224,6 +239,43 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       wethCollateral = <SelfReferentialCollateral>collateral[13] // wETH
       cETHCollateral = <CTokenSelfReferentialCollateral>collateral[14] // cETH
       eurtCollateral = <EURFiatCollateral>collateral[15] // EURT
+
+      // Get assets and tokens for default basket
+      daiCollateral = <FiatCollateral>basket[0]
+      aDaiCollateral = <ATokenFiatCollateral>basket[1]
+      cDaiCollateral = <CTokenFiatCollateral>basket[2]
+
+      dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await daiCollateral.erc20())
+      stataDai = <StaticATokenLM>(
+        await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
+      )
+      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiCollateral.erc20())
+
+      // Get plain aToken
+      aDai = <IAToken>(
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
+      )
+
+      // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
+      // DAI
+      initialBal = bn('20000e18')
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+      })
+      // aDAI
+      await whileImpersonating(holderADAI, async (adaiSigner) => {
+        // Wrap ADAI into static ADAI
+        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
+        await aDai.connect(addr1).approve(stataDai.address, initialBal)
+        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
+      })
+      // cDAI
+      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
+        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+      })
     })
 
     it('Should setup assets correctly', async () => {
@@ -980,79 +1032,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await fiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-    })
-  })
-
-  describe('Basket/Issue/Redeem', () => {
-    let addr2: SignerWithAddress
-
-    // RSR
-    let rsr: ERC20Mock
-    let rsrAsset: Asset
-
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-    })
-
-    beforeEach(async () => {
-      ;[owner, addr1, addr2] = await ethers.getSigners()
-      ;({
-        rsr,
-        rsrAsset,
-        compToken,
-        aaveToken,
-        compAsset,
-        aaveAsset,
-        compoundMock,
-        erc20s,
-        collateral,
-        basket,
-        main,
-        assetRegistry,
-        backingManager,
-        basketHandler,
-        rToken,
-        rTokenAsset,
-        facade,
-      } = await loadFixture(defaultFixture))
-
-      // Get assets and tokens for default basket
-      daiCollateral = <FiatCollateral>basket[0]
-      aDaiCollateral = <ATokenFiatCollateral>basket[1]
-      cDaiCollateral = <CTokenFiatCollateral>basket[2]
-
-      dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await daiCollateral.erc20())
-      stataDai = <StaticATokenLM>(
-        await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
-      )
-      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiCollateral.erc20())
-
-      // Get plain aToken
-      aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
-      )
-
-      // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
-      // DAI
-      initialBal = bn('20000e18')
-      await whileImpersonating(holderDAI, async (daiSigner) => {
-        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
-      })
-      // aDAI
-      await whileImpersonating(holderADAI, async (adaiSigner) => {
-        // Wrap ADAI into static ADAI
-        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
-        await aDai.connect(addr1).approve(stataDai.address, initialBal)
-        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
-      })
-      // cDAI
-      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
-        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
-      })
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
