@@ -440,6 +440,8 @@ async function collateralFixture(
   const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
   const USDT_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDT as string
   const BUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.BUSD as string
+  const USDP_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDP as string
+  const TUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.TUSD as string
 
   const dai = await makeVanillaCollateral(
     networkConfig[chainId].tokens.DAI as string,
@@ -449,7 +451,7 @@ async function collateralFixture(
     networkConfig[chainId].tokens.USDC as string,
     USDC_USD_PRICE_FEED
   )
-  const usdt = await makeVanillaCollateral(
+  const usdt = await makeSixDecimalCollateral(
     networkConfig[chainId].tokens.USDT as string,
     USDT_USD_PRICE_FEED
   )
@@ -457,6 +459,15 @@ async function collateralFixture(
     networkConfig[chainId].tokens.BUSD as string,
     BUSD_USD_PRICE_FEED
   )
+  const usdp = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.USDP as string,
+    USDP_USD_PRICE_FEED
+  )
+  const tusd = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.TUSD as string,
+    TUSD_USD_PRICE_FEED
+  )
+
   const cdai = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cDAI as string,
     dai[0],
@@ -538,6 +549,8 @@ async function collateralFixture(
     usdc[0],
     usdt[0],
     busd[0],
+    usdp[0],
+    tusd[0],
     cdai[0],
     cusdc[0],
     cusdt[0],
@@ -556,6 +569,8 @@ async function collateralFixture(
     usdc[1],
     usdt[1],
     busd[1],
+    usdp[1],
+    tusd[1],
     cdai[1],
     cusdc[1],
     cusdt[1],
