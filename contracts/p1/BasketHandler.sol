@@ -136,6 +136,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
         bytes32[] memory names = new bytes32[](erc20s.length);
+        IERC20 rToken = IERC20(address(main.rToken()));
+        IERC20 rsr = main.rsr();
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
@@ -143,6 +145,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // In that case the basket is set to disabled.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
+            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -165,11 +168,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         conf.max = max;
         delete conf.erc20s;
         IAssetRegistry reg = main.assetRegistry();
+        IERC20 rToken = IERC20(address(main.rToken()));
+        IERC20 rsr = main.rsr();
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
 
             conf.erc20s.push(erc20s[i]);
         }
