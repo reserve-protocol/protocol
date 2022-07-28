@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { ZERO_ADDRESS } from '../../common/constants'
+import { ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -163,8 +163,9 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it('should remain stable and not become undercapitalized or produce revenue', async () => {
+      it('should not produce revenue', async () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await rToken.price()).to.equal(fp('2')) // sum of target amounts
         await expectEvents(
           backingManager
@@ -198,6 +199,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
             },
           ]
         )
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await rToken.price()).to.equal(fp('2')) // sum of target amounts
       })
