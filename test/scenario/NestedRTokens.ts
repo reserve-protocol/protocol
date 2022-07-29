@@ -12,6 +12,7 @@
 // })
 
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
+import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
@@ -35,12 +36,30 @@ import {
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
-import { defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT, Collateral } from '../fixtures'
+import {
+  defaultFixture,
+  DefaultFixture,
+  IMPLEMENTATION,
+  ORACLE_TIMEOUT,
+  Collateral,
+} from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+interface DualFixture {
+  one: DefaultFixture
+  two: DefaultFixture
+}
+
+const dualFixture: Fixture<DualFixture> = async function ([owner]): Promise<DualFixture> {
+  return {
+    one: await createFixtureLoader([owner])(defaultFixture),
+    two: await createFixtureLoader([owner])(defaultFixture),
+  }
+}
 
 describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -55,92 +74,42 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let aTokenCollateral: ATokenFiatCollateral
   let rTokenCollateral: RTokenCollateral
 
-  // Config values
-  let config: IConfig
+  // Whole system instances
+  let one: DefaultFixture
+  let two: DefaultFixture
 
-  // First deployment
-  let stRSR0: TestIStRSR
-  let rsr0: ERC20Mock
-  let rToken0: TestIRToken
-  let assetRegistry0: IAssetRegistry
-  let backingManager0: TestIBackingManager
-  let basketHandler0: IBasketHandler
-  let oracleLib0: OracleLib
-  let rsrTrader0: TestIRevenueTrader
-  let rTokenTrader0: TestIRevenueTrader
-  let aaveToken0: ERC20Mock
+  let loadFixtureDual: ReturnType<typeof createFixtureLoader>
 
-  // Second deployment
-  let stRSR1: TestIStRSR
-  let rsr1: ERC20Mock
-  let rToken1: TestIRToken
-  let assetRegistry1: IAssetRegistry
-  let backingManager1: TestIBackingManager
-  let basketHandler1: IBasketHandler
-  let oracleLib1: OracleLib
-  let rsrTrader1: TestIRevenueTrader
-  let rTokenTrader1: TestIRevenueTrader
-
-  let loadFixture0: ReturnType<typeof createFixtureLoader>
-  let loadFixture1: ReturnType<typeof createFixtureLoader>
-  let wallet0: Wallet
-  let wallet1: Wallet
+  let wallet: Wallet
 
   before('create fixture loader', async () => {
-    ;[wallet0, wallet1] = (await ethers.getSigners()) as unknown as Wallet[]
-    loadFixture0 = createFixtureLoader([wallet0])
-    loadFixture1 = createFixtureLoader([wallet1])
+    ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
+    loadFixtureDual = createFixtureLoader([wallet])
   })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-
-    // Deploy two system instances -- naive destructuring fails here so we get this ugliness
-    const fix0 = await loadFixture0(defaultFixture)
-    stRSR0 = fix0.stRSR
-    rsr0 = fix0.rsr
-    rToken0 = fix0.rToken
-    assetRegistry0 = fix0.assetRegistry
-    backingManager0 = fix0.backingManager
-    basketHandler0 = fix0.basketHandler
-    oracleLib0 = fix0.oracleLib
-    rsrTrader0 = fix0.rsrTrader
-    rTokenTrader0 = fix0.rTokenTrader
-    aaveToken0 = fix0.aaveToken
-
-    const fix1 = await loadFixture1(defaultFixture)
-    stRSR1 = fix1.stRSR
-    rsr1 = fix1.rsr
-    rToken1 = fix1.rToken
-    assetRegistry1 = fix1.assetRegistry
-    backingManager1 = fix1.backingManager
-    basketHandler1 = fix1.basketHandler
-    oracleLib1 = fix1.oracleLib
-    rsrTrader1 = fix1.rsrTrader
-    rTokenTrader1 = fix1.rTokenTrader
-
-    // Config will be the same for both
-    config = fix1.config
+    ;({ one, two } = await loadFixtureDual(dualFixture))
   })
 
   // this is mostly a check on our testing suite
   it('should deploy two actually different instances', async () => {
-    expect(stRSR0.address).to.not.equal(stRSR1.address)
-    expect(rsr0.address).to.not.equal(rsr1.address) // ideally these would be the same
-    expect(rToken0.address).to.not.equal(rToken1.address)
-    expect(assetRegistry0.address).to.not.equal(assetRegistry1.address)
-    expect(backingManager0.address).to.not.equal(backingManager1.address)
-    expect(basketHandler0.address).to.not.equal(basketHandler1.address)
-    expect(oracleLib0.address).to.not.equal(oracleLib1.address)
-    expect(rsrTrader0.address).to.not.equal(rsrTrader1.address)
-    expect(rTokenTrader0.address).to.not.equal(rTokenTrader1.address)
+    expect(one.stRSR.address).to.not.equal(two.stRSR.address)
+    expect(one.rsr.address).to.not.equal(two.rsr.address) // ideally these would be the same
+    expect(one.rToken.address).to.not.equal(two.rToken.address)
+    expect(one.assetRegistry.address).to.not.equal(two.assetRegistry.address)
+    expect(one.backingManager.address).to.not.equal(two.backingManager.address)
+    expect(one.basketHandler.address).to.not.equal(two.basketHandler.address)
+    expect(one.oracleLib.address).to.not.equal(two.oracleLib.address)
+    expect(one.rsrTrader.address).to.not.equal(two.rsrTrader.address)
+    expect(one.rTokenTrader.address).to.not.equal(two.rTokenTrader.address)
   })
 
   context('with nesting', function () {
     beforeEach(async () => {
       const openTradingRange = {
         min: 0,
-        max: config.tradingRange.max,
+        max: one.config.tradingRange.max,
       }
 
       // Deploy ERC20s + Collateral
@@ -155,12 +124,12 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
       aTokenCollateral = await (
         await ethers.getContractFactory('ATokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib0.address },
+          libraries: { OracleLib: one.oracleLib.address },
         })
       ).deploy(
         chainlinkFeed.address,
         staticATokenERC20.address,
-        aaveToken0.address,
+        one.aaveToken.address,
         openTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -169,49 +138,38 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
       const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       const rTokenCollateral = await RTokenCollateralFactory.deploy(
-        await rToken0.main(),
+        await one.rToken.main(),
         openTradingRange,
         ethers.utils.formatBytes32String('RTK')
       )
 
       // Set up aToken to back RToken0
-      await assetRegistry0.connect(owner).register(aTokenCollateral.address)
-      await basketHandler0.connect(owner).setPrimeBasket([staticATokenERC20.address], [fp('1')])
-      await basketHandler0.refreshBasket()
+      await one.assetRegistry.connect(owner).register(aTokenCollateral.address)
+      await one.basketHandler.connect(owner).setPrimeBasket([staticATokenERC20.address], [fp('1')])
+      await one.basketHandler.refreshBasket()
       await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
-      await staticATokenERC20.connect(addr1).approve(rToken0.address, issueAmt)
-      await rToken0.connect(addr1).issue(issueAmt)
-      expect(await rToken0.balanceOf(addr1.address)).to.equal(issueAmt)
+      await staticATokenERC20.connect(addr1).approve(one.rToken.address, issueAmt)
+      await one.rToken.connect(addr1).issue(issueAmt)
+      expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Set up RToken0 to back RToken1
-      await assetRegistry1.connect(owner).register(rTokenCollateral.address)
-      await basketHandler1.connect(owner).setPrimeBasket([rToken0.address], [fp('1')])
-      await basketHandler1.refreshBasket()
-      await rToken0.connect(addr1).approve(rToken1.address, issueAmt)
-      console.log(rToken0.address, rToken1.address)
-      console.log(rToken1)
-      await rToken1.connect(addr1).issue(issueAmt)
-      console.log('1', rToken1.address, await rToken1.symbol())
-      expect(await rToken1.balanceOf(addr1.address)).to.equal(issueAmt)
-      console.log('2')
-
-      // Sanity checks
-      console.log(await rTokenCollateral.price())
-      console.log(await basketHandler0.price())
-      console.log(await rToken0.price())
-      console.log(await basketHandler1.price())
-      console.log(await rToken1.price())
-      console.log(await basketHandler1.quote(fp('1'), 2))
-      expect(await rToken0.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken1.balanceOf(addr1.address)).to.equal(issueAmt)
-      expect(await rToken0.totalSupply()).to.equal(issueAmt)
-      expect(await rToken1.totalSupply()).to.equal(issueAmt)
-      expect(await basketHandler0.fullyCapitalized()).to.equal(true)
-      expect(await basketHandler1.fullyCapitalized()).to.equal(true)
-      expect(await basketHandler0.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler1.status()).to.equal(CollateralStatus.SOUND)
+      await two.assetRegistry.connect(owner).register(rTokenCollateral.address)
+      await two.basketHandler.connect(owner).setPrimeBasket([one.rToken.address], [fp('1')])
+      await two.basketHandler.refreshBasket()
+      await one.rToken.connect(addr1).approve(two.rToken.address, issueAmt)
+      await two.rToken.connect(addr1).issue(issueAmt)
+      expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     })
 
-    it('should do something', async () => {})
+    it('should pass sanity checks', async () => {
+      expect(await one.rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
+      expect(await one.rToken.totalSupply()).to.equal(issueAmt)
+      expect(await two.rToken.totalSupply()).to.equal(issueAmt)
+      expect(await one.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await one.basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
+    })
   })
 })
