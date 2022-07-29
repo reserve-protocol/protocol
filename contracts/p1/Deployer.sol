@@ -147,11 +147,7 @@ contract DeployerP1 is IDeployer {
 
         // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(
-            main,
-            IERC20Metadata(address(components.rToken)),
-            params.tradingRange
-        );
+        assets[0] = new RTokenAsset(components.rToken, params.tradingRange);
         assets[1] = rsrAsset;
 
         // Init Main
