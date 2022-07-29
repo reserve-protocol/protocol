@@ -1,4 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers'
+import { ethers } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { bn, fp } from '../../common/numbers'
 import { ZERO_ADDRESS } from '../../common/constants'
@@ -69,4 +70,8 @@ export const ZERO_COMPONENTS = {
   broker: ZERO_ADDRESS,
   rsrTrader: ZERO_ADDRESS,
   rTokenTrader: ZERO_ADDRESS,
+}
+
+export function addr(n: BigNumberish): string {
+  return ethers.utils.hexZeroPad(BigNumber.from(n).toHexString(), 20)
 }

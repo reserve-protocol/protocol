@@ -5,7 +5,6 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/interfaces/IDeployer.sol";
 
-
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
         maxTradeVolume: 1e24,
@@ -21,6 +20,10 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
         oneshotFreezeDuration: 864000 // 10 days
     });
+}
+
+function defaultFreezeDuration() pure returns (uint32 duration) {
+    return 1209600; // 2 weeks
 }
 
 // Assuming "seed" is an arbitrary value, return an arbitrary value in [low, high]

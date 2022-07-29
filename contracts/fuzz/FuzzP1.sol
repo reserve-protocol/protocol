@@ -8,10 +8,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
+import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
+import "contracts/fuzz/AssetMock.sol";
+import "contracts/fuzz/PriceModel.sol";
 
 import "contracts/p1/AssetRegistry.sol";
 import "contracts/p1/BackingManager.sol";
@@ -24,6 +27,7 @@ import "contracts/p1/RToken.sol";
 import "contracts/p1/RevenueTrader.sol";
 import "contracts/p1/StRSR.sol";
 import "contracts/plugins/mocks/ERC20Mock.sol";
+import "contracts/plugins/assets/RTokenAsset.sol";
 
 // ================ Components ================
 // Every component must override _msgSender() in this one, common way!
@@ -128,11 +132,15 @@ contract StRSRP1Fuzz is StRSRP1 {
 
 // ================ Main ================
 contract MainP1Fuzz is IMainFuzz, MainP1 {
+    IMarketMock public marketMock;
+
+    // ==== Scenario variables ====
     address public sender;
     uint256 public seed;
-    IMarketMock public marketMock;
-    ERC20Mock[] public tokens;
+    IERC20[] public tokens; // token addresses, not including RSR or RToken
+    address[] public users; // "registered" user addresses
 
+    // ==== Scenario handles ====
     function setSender(address sender_) public {
         sender = sender_;
     }
@@ -141,7 +149,26 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         seed = seed_;
     }
 
-    constructor(uint8 numTokens) {
+    function numTokens() public view returns (uint256) {
+        return tokens.length;
+    }
+
+    // Add a token to this system's tiny token registry
+    function addToken(IERC20Metadata token) public {
+        tokens.push(token);
+    }
+
+    function numUsers() public view returns (uint256) {
+        return users.length;
+    }
+
+    function addUser(address user) public {
+        users.push(user);
+    }
+
+    constructor() {
+        // Design: maybe pass the RSR token in as an arg here?
+
         // Construct components
         rsr = new ERC20Mock("Reserve Rights", "RSR");
         rToken = new RTokenP1Fuzz();
@@ -154,10 +181,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader = new RevenueTraderP1Fuzz();
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
-        for (uint8 i = 0; i < numTokens; i++) {
-            string memory num = Strings.toString(i);
-            tokens.push(new ERC20Mock(concat("Token ", num), concat("T_", num)));
-        }
     }
 
     // Initialize self and components
@@ -171,9 +194,20 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         __Auth_init(freezerDuration);
         __UUPSUpgradeable_init();
         emit MainInitialized();
+        marketMock = marketMock_;
 
         // ==== Initialize components ====
         // This is pretty much the matching section from p1/Deployer.sol
+        rToken.init(this, "RToken", "Rtkn", "fnord", FIX_ONE / 10);
+        stRSR.init(
+            this,
+            "Staked RSR",
+            "stRSR",
+            params.unstakingDelay,
+            params.rewardPeriod,
+            params.rewardRatio
+        );
+
         backingManager.init(
             this,
             params.tradingDelay,
@@ -191,8 +225,18 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             params.dustAmount
         );
 
-        // Init Asset Registry
-        assetRegistry.init(this, new IAsset[](0));
+        // Init Asset Registry, with default assets for all tokens
+        // 1e48 is Asset.MAX_TRADE_VOLUME
+        uint192 maxTradeVolume = 1e48;
+
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = new AssetMock(
+            IERC20Metadata(address(rsr)),
+            maxTradeVolume,
+            PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
+        );
+        assets[1] = new RTokenAsset(this, IERC20Metadata(address(rToken)), maxTradeVolume);
+        assetRegistry.init(this, assets);
 
         // Init Distributor
         distributor.init(this, params.dist);

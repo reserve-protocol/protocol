@@ -8,6 +8,13 @@ describe('CollateralMock', () => {
   let token: sc.ERC20Mock
   let underToken: sc.ERC20Mock
 
+  const manualPM = {
+    kind: PriceModelKind.MANUAL,
+    curr: fp(1),
+    low: fp(0.1),
+    high: fp(10),
+  }
+
   async function newColl(
     refPerTok: PriceModel,
     targetPerRef: PriceModel,
@@ -37,14 +44,12 @@ describe('CollateralMock', () => {
     }
   })
 
-  it('combines price models ', async () => {
-    const manualPM = {
-      kind: PriceModelKind.MANUAL,
-      curr: fp(1),
-      low: fp(0.1),
-      high: fp(10),
-    }
+  it('has isCollateral() == true', async () => {
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    expect(await coll.isCollateral()).equal(true)
+  })
 
+  it('combines price models ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
     expect(await coll.price()).equal(fp(1))
     expect(await coll.refPerTok()).equal(fp(1))

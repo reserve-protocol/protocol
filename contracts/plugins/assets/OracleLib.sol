@@ -17,6 +17,7 @@ abstract contract OracleLib {
     function price(AggregatorV3Interface chainlinkFeed, uint32 timeout)
         internal
         view
+        virtual
         returns (uint192)
     {
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed

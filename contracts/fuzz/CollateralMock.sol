@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 import "contracts/interfaces/IAsset.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/fuzz/PriceModel.sol";
+import "contracts/fuzz/OracleErrorMock.sol";
 
-contract CollateralMock is Collateral {
+contract CollateralMock is OracleErrorMock, Collateral {
     using FixLib for uint192;
     using PriceModelLib for PriceModel;
 
@@ -47,7 +50,8 @@ contract CollateralMock is Collateral {
         deviationModel = deviationModel_;
     }
 
-    function price() public view virtual override returns (uint192) {
+    function price(AggregatorV3Interface, uint32) internal view virtual override returns (uint192) {
+        maybeFail();
         return
             deviationModel
                 .price()
