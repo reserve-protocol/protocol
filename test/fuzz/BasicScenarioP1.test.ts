@@ -2,8 +2,8 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 
 import { fp } from '../../common/numbers'
-// import { whileImpersonating } from '../../test/utils/impersonation'
-import { advanceBlocks } from '../../test/utils/time'
+import { whileImpersonating } from '../../test/utils/impersonation'
+import { advanceTime, advanceBlocks } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -87,8 +87,6 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await comp.rTokenTrader.main()).to.equal(main.address)
     expect(await comp.furnace.main()).to.equal(main.address)
     expect(await comp.broker.main()).to.equal(main.address)
-
-    // All collateral initially sound?
   })
 
   it('allows basic issuance and redemption', async () => {
@@ -102,5 +100,44 @@ describe('Basic Scenario with FuzzP1', () => {
 
     await scenario.redeem()
     expect(await comp.rToken.balanceOf(alice)).to.equal(0)
+  })
+
+  it('BackingManager can buy RTokens in trade', async () => {
+    const usda = await ConAt('ERC20Mock', await main.tokens(3))
+    const bm_addr = comp.backingManager.address
+
+    // BackingMgr starts with 123 USDA
+    await usda.mint(bm_addr, fp(123))
+    expect(await usda.balanceOf(bm_addr)).to.equal(fp(123))
+    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
+
+    // BackingMgr sends 123 USDA to the trade
+    await whileImpersonating(bm_addr, async (signer) => {
+      await usda.connect(signer).approve(comp.broker.address, fp(123))
+    })
+
+    const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
+    const usda_asset = await comp.assetRegistry.toAsset(usda.address)
+
+    // Init the trade
+    const tradeReq = {
+      buy: rtoken_asset,
+      sell: usda_asset,
+      minBuyAmount: fp(456),
+      sellAmount: fp(123),
+    }
+
+    await main.setSender(bm_addr)
+    await comp.broker.openTrade(tradeReq)
+
+    // Wait and settle the trade
+    await advanceTime(5)
+
+    await comp.broker.settleTrades()
+    await main.setSender(addr(0))
+
+    // BackingMgr now has no USDA and 456 rToken.
+    expect(await usda.balanceOf(bm_addr)).to.equal(0)
+    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
   })
 })

@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
@@ -52,6 +53,9 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
 
 contract BrokerP1Fuzz is BrokerP1 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
+    using EnumerableSet for EnumerableSet.AddressSet;
+
+    EnumerableSet.AddressSet private tradeSet;
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
@@ -61,7 +65,16 @@ contract BrokerP1Fuzz is BrokerP1 {
             req.sellAmount
         );
         trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
+        tradeSet.add(address(trade));
         return trade;
+    }
+
+    function settleTrades() public {
+        uint256 length = tradeSet.length();
+        for (uint256 i = 0; i < length; i++) {
+            TradeMock trade = TradeMock(tradeSet.at(i));
+            if (trade.canSettle()) trade.settle();
+        }
     }
 
     function _msgSender() internal view virtual override returns (address) {
