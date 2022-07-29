@@ -226,7 +226,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
     const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
     const newRTokenAsset: Asset = <Asset>(
-      await RTokenAssetFactory.deploy(main.address, rToken.address, { min: fp('0'), max: MAX_UOA })
+      await RTokenAssetFactory.deploy(rToken.address, { min: fp('0'), max: MAX_UOA })
     )
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
