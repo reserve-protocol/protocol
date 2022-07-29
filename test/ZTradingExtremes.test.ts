@@ -23,7 +23,6 @@ import {
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
-  TestIMain,
   TestIRevenueTrader,
   TestIRToken,
   StaticATokenMock,
@@ -61,7 +60,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rToken: TestIRToken
-  let main: TestIMain
   let facade: Facade
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -97,7 +95,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       aaveToken,
       compoundMock,
       config,
-      main,
       assetRegistry,
       stRSR,
       backingManager,
