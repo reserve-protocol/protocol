@@ -3,6 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
+import "hardhat/console.sol";
+
 import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -52,7 +54,7 @@ contract TradeMock is ITrade {
     }
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
-        require(msg.sender == origin, "only origin can settle");
+        require(main.sender() == origin, "only origin can settle");
         require(status == TradeMockStatus.OPEN, "trade not OPEN");
         require(uint32(block.timestamp) >= endTime, "trade not yet closed");
         status = TradeMockStatus.CLOSED;
@@ -60,10 +62,13 @@ contract TradeMock is ITrade {
         // ==== Trade tokens ====
         // Move tokens to-be-sold to the market mock
         sell.transfer(address(IMainFuzz(main).marketMock()), requestedSellAmt);
-        // Have the "market" transform those tokens
+        // Have the "market" transform those tokens and send them back here
         main.marketMock().execute(sell, buy, requestedSellAmt, requestedBuyAmt);
+
         // Move the tokens to-be-bought to the original address
+        main.pushSender(address(this)); // Dude, just act like yourself.
         buy.transfer(origin, requestedBuyAmt);
+        main.popSender();
 
         return (requestedSellAmt, requestedBuyAmt);
     }
@@ -71,9 +76,9 @@ contract TradeMock is ITrade {
 
 // A simple external actor to "be the market", taking the other side of TradeMock trades.
 contract MarketMock is IMarketMock {
-    IMain public main;
+    IMainFuzz public main;
 
-    constructor(IMain main_) {
+    constructor(IMainFuzz main_) {
         main = main_;
     }
 
@@ -102,7 +107,10 @@ contract MarketMock is IMarketMock {
         } else {
             ERC20Mock(address(buy)).mint(address(this), buyAmt);
         }
+
+        main.pushSender(address(this));
         buy.transfer(trader, buyAmt);
+        main.popSender();
     }
 
     // Procure `amt` RTokens
@@ -117,7 +125,9 @@ contract MarketMock is IMarketMock {
         }
 
         // Issue the RToken we want
+        main.pushSender(address(this));
         rtoken.fastIssue(rtokenAmt);
+        main.popSender();
 
         // Clean up any stray backing tokens
         for (uint256 i = 0; i < tokens.length; i++) {

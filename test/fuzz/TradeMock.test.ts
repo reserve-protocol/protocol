@@ -23,7 +23,6 @@ describe('TradeMock', () => {
 
   let rsrAsset: sc.AssetMock
   let usdaAsset: sc.AssetMock
-  let rtokenAsset: sc.AssetMock
 
   let trade: sc.TradeMock
 
@@ -56,17 +55,16 @@ describe('TradeMock', () => {
 
     rsrAsset = await assetFactory.deploy(rsr.address, fp('1e18'), onePM)
     usdaAsset = await assetFactory.deploy(usda.address, fp('1e18'), onePM)
-    rtokenAsset = await assetFactory.deploy(rtoken.address, fp('1e18'), onePM)
 
     const components = ZERO_COMPONENTS
     components.rToken = rtoken.address
     components.broker = broker.address
-    await main.initForFuzz(components, rsr.address, OneShotFreezeDuration, market.address)
+    await main.initFuzz(components, rsr.address, OneShotFreezeDuration, market.address)
 
-    await main.setSender(owner.address)
+    await main.pushSender(owner.address)
     await broker.init(main.address, ZERO_ADDRESS, trade.address, CONFIG.auctionLength)
     await rtoken.init(main.address, 'Reserve', 'R', 'sometimes I just sits', CONFIG.issuanceRate)
-    await main.setSender(ZERO_ADDRESS)
+    await main.popSender()
   })
 
   it('test setup worked', async () => {

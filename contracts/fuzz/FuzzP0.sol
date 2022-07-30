@@ -41,24 +41,28 @@ contract BrokerP0Fuzz is BrokerP0 {
 
 // ================ Main ================
 contract MainP0Fuzz is IMainFuzz, MainP0 {
-    address public sender;
+    address[] internal senders;
     uint256 public seed;
     IMarketMock public marketMock;
 
     address[] public USERS = [address(0x10000), address(0x20000), address(0x30000)];
 
-    function setSender(address sender_) public {
-        sender = sender_;
+    // ==== Scenario handles ====
+    function sender() public view returns (address) {
+        if (senders.length == 0) revert("IFuzz error: No sender set");
+        return senders[senders.length - 1];
+    }
+
+    function pushSender(address s) public {
+        senders.push(s);
+    }
+
+    function popSender() public {
+        senders.pop();
     }
 
     function setSeed(uint256 seed_) public {
         seed = seed_;
-    }
-
-    // Honestly, I imagine I don't really need this. Come back later anyhow...
-    function setRToken(IRToken rToken_) external {
-        emit RTokenSet(rToken, rToken_);
-        rToken = rToken_;
     }
 
     function initForFuzz(

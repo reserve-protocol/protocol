@@ -41,7 +41,9 @@ interface IMainFuzz is IMain {
     // Emulated sender
     function sender() external view returns (address);
 
-    function setSender(address sender_) external;
+    function pushSender(address) external;
+
+    function popSender() external;
 
     // A seed that other Fuzz mocks can base arbirary behaviors on
     function seed() external view returns (uint256);

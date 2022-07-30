@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -55,7 +57,8 @@ contract BrokerP1Fuzz is BrokerP1 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    EnumerableSet.AddressSet private tradeSet;
+    ITrade public lastOpenedTrade;
+    EnumerableSet.AddressSet internal tradeSet;
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
@@ -66,6 +69,7 @@ contract BrokerP1Fuzz is BrokerP1 {
         );
         trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
         tradeSet.add(address(trade));
+        lastOpenedTrade = trade;
         return trade;
     }
 
@@ -127,7 +131,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     {
         uint192 baskets = (totalSupply() > 0)
             ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
-            : shiftl_toFix(amount, -int8(decimals())); // {qRTok / qRTok}
+            : uint192(amount); // {qRTok / qRTok}
 
         return main.basketHandler().quote(baskets, roundingMode);
     }
@@ -148,14 +152,23 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     IMarketMock public marketMock;
 
     // ==== Scenario variables ====
-    address public sender;
+    address[] internal senders; // The stack of senders
     uint256 public seed;
     IERC20[] public tokens; // token addresses, not including RSR or RToken
     address[] public users; // "registered" user addresses
 
     // ==== Scenario handles ====
-    function setSender(address sender_) public {
-        sender = sender_;
+    function sender() public view returns (address) {
+        if (senders.length == 0) revert("IFuzz error: No sender set");
+        return senders[senders.length - 1];
+    }
+
+    function pushSender(address s) public {
+        senders.push(s);
+    }
+
+    function popSender() public {
+        senders.pop();
     }
 
     function setSeed(uint256 seed_) public {

@@ -34,9 +34,9 @@ contract BasicP1Scenario {
         main = new MainP1Fuzz();
 
         // Have components believe that owner is calling them during init.
-        main.setSender(address(this));
+        main.pushSender(address(this));
 
-        main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(IMain(main)));
+        main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(main));
 
         uint192 maxTradeVolume = 1e48;
 
@@ -109,7 +109,7 @@ contract BasicP1Scenario {
         main.assetRegistry().refresh();
         main.unfreeze();
 
-        main.setSender(address(0));
+        main.popSender();
     }
 
     // function _setupTokens internal virtual
@@ -122,9 +122,9 @@ contract BasicP1Scenario {
         ERC20Mock(address(main.tokens(1))).adminApprove(alice, address(main.rToken()), 1e24);
         ERC20Mock(address(main.tokens(2))).adminApprove(alice, address(main.rToken()), 1e24);
 
-        main.setSender(alice);
+        main.pushSender(alice);
         main.rToken().issue(1e24);
-        main.setSender(address(0));
+        main.popSender();
     }
 
     function finishIssue() public {
@@ -132,13 +132,13 @@ contract BasicP1Scenario {
     }
 
     function redeem() public {
-        main.setSender(main.users(0));
+        main.pushSender(main.users(0));
 
         main.backingManager().grantRTokenAllowance(main.tokens(0));
         main.backingManager().grantRTokenAllowance(main.tokens(1));
         main.backingManager().grantRTokenAllowance(main.tokens(2));
         main.rToken().redeem(1e24);
 
-        main.setSender(address(0));
+        main.popSender();
     }
 }

@@ -1,5 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
+import { Wallet } from 'ethers'
+import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
@@ -11,6 +13,7 @@ import { addr } from './common'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
+const F = ethers.getContractFactory
 
 const componentsOf = async (main: sc.IMain) => ({
   rsr: await ConAt('ERC20Mock', await main.rsr()),
@@ -27,19 +30,23 @@ const componentsOf = async (main: sc.IMain) => ({
 })
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
+// { gasLimit: 0x1ffffffff }
+
 describe('Basic Scenario with FuzzP1', () => {
   let scenario: sc.BasicP1Scenario
   let main: sc.MainP1Fuzz
   let comp: Components
+  let startState: Awaited<ReturnType<typeof helpers.takeSnapshot>>
 
-  beforeEach('Deploy Scenario', async () => {
-    const F = ethers.getContractFactory
-    const scenarioFactory: sc.BasicP1Scenario__factory = await F('BasicP1Scenario')
-
-    // {gas
-    scenario = await scenarioFactory.deploy({ gasLimit: 0x1ffffffff })
-    main = await ethers.getContractAt('MainP1Fuzz', await scenario.main())
+  before('Deploy Scenario', async () => {
+    scenario = await (await F('BasicP1Scenario')).deploy()
+    main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
+    startState = await helpers.takeSnapshot()
+  })
+
+  beforeEach(async () => {
+    startState.restore()
   })
 
   it('deploys as intended', async () => {
@@ -102,9 +109,56 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await comp.rToken.balanceOf(alice)).to.equal(0)
   })
 
+  it('can trade two fiatcoins', async () => {
+    const usda = await ConAt('ERC20Mock', await main.tokens(3))
+    const rsr = comp.rsr
+    const bm_addr = comp.backingManager.address
+    let alice: Wallet
+    ;[, alice] = (await ethers.getSigners()) as unknown as Wallet[]
+
+    // Alice starts with 123 USDA
+    await usda.mint(alice.address, fp(123))
+    expect(await usda.balanceOf(alice.address)).to.equal(fp(123))
+    expect(await rsr.balanceOf(alice.address)).to.equal(0)
+
+    // Init the trade
+    const tradeReq = {
+      buy: await comp.assetRegistry.toAsset(comp.rsr.address),
+      sell: await comp.assetRegistry.toAsset(usda.address),
+      minBuyAmount: fp(456),
+      sellAmount: fp(123),
+    }
+
+    const trade = await (await F('TradeMock')).deploy()
+
+    // Alice sends 123 USDA to the trade
+    await usda.connect(alice).transfer(trade.address, fp(123))
+    expect(await usda.balanceOf(trade.address)).to.equal(fp(123))
+
+    await trade.init(main.address, alice.address, 5, tradeReq)
+
+    expect(await trade.canSettle()).to.be.false
+    await expect(trade.settle()).to.be.reverted
+
+    // Wait and settle the trade
+    await advanceTime(5)
+
+    expect(await trade.canSettle()).to.be.true
+
+    main.pushSender(alice.address)
+    await trade.settle()
+    main.popSender()
+
+    // Alice now has no USDA and 456 RSR.
+    expect(await usda.balanceOf(alice.address)).to.equal(0)
+    expect(await rsr.balanceOf(alice.address)).to.equal(fp(456))
+  })
+
   it('BackingManager can buy RTokens in trade', async () => {
     const usda = await ConAt('ERC20Mock', await main.tokens(3))
     const bm_addr = comp.backingManager.address
+
+    await main.pushSender(bm_addr)
 
     // BackingMgr starts with 123 USDA
     await usda.mint(bm_addr, fp(123))
@@ -127,17 +181,22 @@ describe('Basic Scenario with FuzzP1', () => {
       sellAmount: fp(123),
     }
 
-    await main.setSender(bm_addr)
     await comp.broker.openTrade(tradeReq)
 
-    // Wait and settle the trade
-    await advanceTime(5)
+    // trade should have the usd0
+    const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+    expect(await trade.origin()).to.equal(bm_addr)
+    expect(await usda.balanceOf(trade.address)).to.equal(fp(123))
 
-    await comp.broker.settleTrades()
-    await main.setSender(addr(0))
+    // Wait and settle the trade
+    await advanceTime(31 * 60)
+
+    await comp.broker.settleTrades() // msg.Sender: owner, _msgSender: BackingManager
 
     // BackingMgr now has no USDA and 456 rToken.
     expect(await usda.balanceOf(bm_addr)).to.equal(0)
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
+
+    await main.popSender()
   })
 })
