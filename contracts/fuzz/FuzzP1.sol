@@ -62,11 +62,24 @@ contract BrokerP1Fuzz is BrokerP1 {
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
+
+        console.log("==== Opening Trade, with");
+        console.log("_msgSender:", _msgSender());
+        console.log("main.sender:", IMainFuzz(address(main)).sender());
+        console.log("req.sellAmount:", req.sellAmount);
+        console.log(
+            "_msgSender allowance:",
+            req.sell.erc20().allowance(_msgSender(), address(this))
+        );
+
+        IMainFuzz(address(main)).pushSender(address(this));
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
             address(trade),
             req.sellAmount
         );
+        IMainFuzz(address(main)).popSender();
+
         trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
         tradeSet.add(address(trade));
         lastOpenedTrade = trade;

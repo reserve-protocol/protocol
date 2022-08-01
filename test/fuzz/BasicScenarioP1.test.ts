@@ -46,7 +46,7 @@ describe('Basic Scenario with FuzzP1', () => {
   })
 
   beforeEach(async () => {
-    startState.restore()
+    await startState.restore()
   })
 
   it('deploys as intended', async () => {
@@ -110,30 +110,29 @@ describe('Basic Scenario with FuzzP1', () => {
   })
 
   it('can trade two fiatcoins', async () => {
-    const usda = await ConAt('ERC20Mock', await main.tokens(3))
+    const usd0 = await ConAt('ERC20Mock', await main.tokens(3))
     const rsr = comp.rsr
-    const bm_addr = comp.backingManager.address
-    let alice: Wallet
+    const alice: Wallet
     ;[, alice] = (await ethers.getSigners()) as unknown as Wallet[]
 
-    // Alice starts with 123 USDA
-    await usda.mint(alice.address, fp(123))
-    expect(await usda.balanceOf(alice.address)).to.equal(fp(123))
+    // Alice starts with 123 USD0
+    await usd0.mint(alice.address, fp(123))
+    expect(await usd0.balanceOf(alice.address)).to.equal(fp(123))
     expect(await rsr.balanceOf(alice.address)).to.equal(0)
 
     // Init the trade
     const tradeReq = {
       buy: await comp.assetRegistry.toAsset(comp.rsr.address),
-      sell: await comp.assetRegistry.toAsset(usda.address),
+      sell: await comp.assetRegistry.toAsset(usd0.address),
       minBuyAmount: fp(456),
       sellAmount: fp(123),
     }
 
     const trade = await (await F('TradeMock')).deploy()
 
-    // Alice sends 123 USDA to the trade
-    await usda.connect(alice).transfer(trade.address, fp(123))
-    expect(await usda.balanceOf(trade.address)).to.equal(fp(123))
+    // Alice sends 123 USD0 to the trade
+    await usd0.connect(alice).transfer(trade.address, fp(123))
+    expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
     await trade.init(main.address, alice.address, 5, tradeReq)
 
@@ -145,38 +144,37 @@ describe('Basic Scenario with FuzzP1', () => {
 
     expect(await trade.canSettle()).to.be.true
 
-    main.pushSender(alice.address)
+    await main.pushSender(alice.address)
     await trade.settle()
-    main.popSender()
+    await main.popSender()
 
-    // Alice now has no USDA and 456 RSR.
-    expect(await usda.balanceOf(alice.address)).to.equal(0)
+    // Alice now has no USD0 and 456 RSR.
+    expect(await usd0.balanceOf(alice.address)).to.equal(0)
     expect(await rsr.balanceOf(alice.address)).to.equal(fp(456))
   })
 
-  it('BackingManager can buy RTokens in trade', async () => {
-    const usda = await ConAt('ERC20Mock', await main.tokens(3))
+  it('BackingManager can buy and sell RTokens in trades', async () => {
+    const usd0 = await ConAt('ERC20Mock', await main.tokens(3))
     const bm_addr = comp.backingManager.address
+    const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
+    const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
 
     await main.pushSender(bm_addr)
 
-    // BackingMgr starts with 123 USDA
-    await usda.mint(bm_addr, fp(123))
-    expect(await usda.balanceOf(bm_addr)).to.equal(fp(123))
+    // BackingMgr starts with 123 USD0
+    await usd0.mint(bm_addr, fp(123))
+    expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 
-    // BackingMgr sends 123 USDA to the trade
+    // BackingMgr appoves the broker for 123 USD0
     await whileImpersonating(bm_addr, async (signer) => {
-      await usda.connect(signer).approve(comp.broker.address, fp(123))
+      await usd0.connect(signer).approve(comp.broker.address, fp(123))
     })
-
-    const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
-    const usda_asset = await comp.assetRegistry.toAsset(usda.address)
 
     // Init the trade
     const tradeReq = {
       buy: rtoken_asset,
-      sell: usda_asset,
+      sell: usd0_asset,
       minBuyAmount: fp(456),
       sellAmount: fp(123),
     }
@@ -186,16 +184,45 @@ describe('Basic Scenario with FuzzP1', () => {
     // trade should have the usd0
     const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
     expect(await trade.origin()).to.equal(bm_addr)
-    expect(await usda.balanceOf(trade.address)).to.equal(fp(123))
+    expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
     // Wait and settle the trade
     await advanceTime(31 * 60)
 
-    await comp.broker.settleTrades() // msg.Sender: owner, _msgSender: BackingManager
+    await comp.broker.settleTrades()
 
-    // BackingMgr now has no USDA and 456 rToken.
-    expect(await usda.balanceOf(bm_addr)).to.equal(0)
+    // BackingMgr now has no USD0 and 456 rToken.
+    expect(await usd0.balanceOf(bm_addr)).to.equal(0)
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
+
+    // ================ Now, we sell the USD0 back, for RToken! wheee
+
+    // BackingMgr approves the broker for 456 RTokens
+    await whileImpersonating(bm_addr, async (s) => {
+      await comp.rToken.connect(s).approve(comp.broker.address, fp(456))
+    })
+
+    // Open a trade!
+    const tradeReq2 = {
+      buy: usd0_asset,
+      sell: rtoken_asset,
+      minBuyAmount: fp(789),
+      sellAmount: fp(456),
+    }
+    await comp.broker.openTrade(tradeReq2)
+
+    // now the new trade contract should have that rtoken
+    const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+    expect(await trade2.origin()).to.equal(bm_addr)
+    expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
+
+    // Wait and settle the trade
+    await advanceTime(31 * 60)
+    await comp.broker.settleTrades()
+
+    // Check: Backing Manager now has no RTokens and 789 USD0
+    expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
+    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 
     await main.popSender()
   })
