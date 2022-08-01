@@ -15,6 +15,7 @@ import {
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
+  TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
@@ -52,6 +53,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
+  let rTokenTrader: TestIRevenueTrader
+  let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
   let oracleLib: OracleLib
 
@@ -80,6 +83,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       oracleLib,
+      rTokenTrader,
+      rsrTrader,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -131,6 +136,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     await stRSR.connect(addr1).stake(initialBal)
   })
 
+  // This test is mostly to check that our BadERC20 implementation works like a regular ERC20
   it('should act honestly without modification', async () => {
     const issueAmt = initialBal.div(100)
     await token0.connect(addr1).approve(rToken.address, issueAmt)
@@ -334,6 +340,17 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.status()).to.equal(1) // OPEN state
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(backupToken.address)
+    })
+
+    it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
+      await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
+      await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
+      await expect(rTokenTrader.manageToken(rToken.address))
+        .to.emit(rToken, 'Transfer')
+        .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
+      await expect(rsrTrader.manageToken(rToken.address))
+        .to.emit(rsrTrader, 'TradeStarted')
+        .withArgs(rToken.address, rsr.address, issueAmt.div(2), issueAmt.div(2).mul(99).div(100))
     })
   })
 })

@@ -23,7 +23,6 @@ import {
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
-  TestIMain,
   TestIRevenueTrader,
   TestIRToken,
   StaticATokenMock,
@@ -61,7 +60,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rToken: TestIRToken
-  let main: TestIMain
   let facade: Facade
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -97,7 +95,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       aaveToken,
       compoundMock,
       config,
-      main,
       assetRegistry,
       stRSR,
       backingManager,
@@ -226,7 +223,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
     const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
     const newRTokenAsset: Asset = <Asset>(
-      await RTokenAssetFactory.deploy(main.address, rToken.address, { min: fp('0'), max: MAX_UOA })
+      await RTokenAssetFactory.deploy(rToken.address, { min: fp('0'), max: MAX_UOA })
     )
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
