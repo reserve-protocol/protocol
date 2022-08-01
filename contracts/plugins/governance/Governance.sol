@@ -16,6 +16,8 @@ import "contracts/p1/StRSRVotes.sol";
  * Note that due to the elastic supply of StRSR, proposalThreshold is handled
  *   very differently than the typical approach. It is in terms of micro %,
  *   as is _getVotes().
+ *
+ * 1 * {micro %} = 1e8
  */
 contract Governance is
     Governor,
@@ -126,6 +128,33 @@ contract Governance is
         _cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
     }
 
+    /// TODO decide if we are keeping alternativeCancel
+    ///
+    /// Worry:
+    /// - It makes it possible to DoS governance proposals from getting through if the
+    ///   pool is losing RSR over time, say due to an oracle reporting incorrect values.
+    ///   In this case plausibly governance cannot act to change course. Honestly it almost
+    ///   seems expected there will be something like this over the next 5-10 years.
+    ///
+    /// This seems pretty bad. I think it's probably reason enough to get rid of it. And this
+    /// seems even _more_ correct in the world with a guardian, considering they can step in
+    /// to fill the hole.
+    ///
+    /// If this is right, then we could consider making the move from Compound-style governance
+    /// (what we have here: costly storage of the proposal details) back to OZ-style governance.
+    /// TODO decide if cancel is worth keeping, or whether we can be gas efficient.
+    ///
+    /// -----
+    ///
+    /// Also, OZ has an 80/20 solution we should seriously consider as a substitute for our
+    /// guardian role:
+    /// https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/governance/extensions/GovernorPreventLateQuorum.sol
+    ///
+    /// The issue is that you can have a malicious proposal that reaches an honest quorum with verdict no,
+    /// and then before the final block of voting much more stake can be deposited to switch the vote to yes.
+    /// I think we keep our current plan.
+    ///
+    /// ---
     /// An alternate way to cancel: anyone can cancel a proposal if the StRSR exchange rate has
     /// inflated more than 50%.
     /// @param startIndex The index of the `IStRSRVotes.getPastExchangeRate` that begins the span
@@ -202,20 +231,19 @@ contract Governance is
         return super._executor();
     }
 
-    /// @return The percent of the StRSR supply the account has in terms of micro %: 1e5 = 0.1%
+    /// @return {micro %} The portion of the StRSR supply the account had at a previous blocknumber
     function _getVotes(
         address account,
         uint256 blockNumber,
         bytes memory /*params*/
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
-        uint256 bal = token.getPastVotes(account, blockNumber);
-        uint256 totalSupply = token.getPastTotalSupply(blockNumber);
+        uint256 bal = token.getPastVotes(account, blockNumber); // {qStRSR}
+        uint256 totalSupply = token.getPastTotalSupply(blockNumber); // {qStRSR}
 
-        if (totalSupply > 0) {
-            return (bal * 1e8) / totalSupply;
-        } else {
-            return 0;
-        }
+        if (totalSupply == 0) return 0;
+
+        // {micro %} = {qStRSR} * {micro %} / {qStRSR}
+        return (bal * 1e8) / totalSupply;
     }
 
     function supportsInterface(bytes4 interfaceId)

@@ -9,19 +9,25 @@ import "contracts/interfaces/IMain.sol";
  * @notice Provides fine-grained access controls and exports frozen/paused states to Components.
  */
 abstract contract Auth is AccessControlUpgradeable, IAuth {
+    /// To generate getters
+    bytes32 public constant OWNER_ROLE = OWNER;
+    bytes32 public constant FREEZER_ROLE = FREEZER;
+    bytes32 public constant FREEZE_EXTENDER_ROLE = FREEZE_EXTENDER;
+    bytes32 public constant PAUSER_ROLE = PAUSER;
+
     /**
      * System-wide states
      *  - Frozen: only allow OWNER actions
-     *  - Paused: only allow OWNER actions and redemption
+     *  - Paused: only allow OWNER actions and redemption (+ issuance cancellation)
      *
      * Freezing lasts a finite period when performed by the FREEZER, called a oneshot freeze.
      * This also renounces their role as FREEZER, while allowing them to perform the unfreeze.
+     * After this, the FREEZE_EXTENDER can extend the freeze arbitrarily or unfreeze.
+     *
      * Freezing can also be performed by the OWNER indefinitely. They may also unfreeze anytime.
      */
 
     // === Freezing ===
-
-    address private frozenBy; // only applies when frozen() is true
 
     uint32 public unfreezeAt; // {s} uint32.max to pause indefinitely
 
@@ -39,9 +45,11 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         // Role setup
         _setRoleAdmin(OWNER, OWNER);
         _setRoleAdmin(FREEZER, OWNER);
+        _setRoleAdmin(FREEZE_EXTENDER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
         _grantRole(OWNER, _msgSender());
         _grantRole(FREEZER, _msgSender());
+        _grantRole(FREEZE_EXTENDER, _msgSender());
         _grantRole(PAUSER, _msgSender());
 
         // begin frozen
@@ -73,12 +81,11 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     function freeze() external onlyRole(OWNER) {
         emit UnfreezeAtSet(unfreezeAt, type(uint32).max);
         unfreezeAt = type(uint32).max;
-        frozenBy = address(0);
     }
 
     function unfreeze() external {
         require(frozen(), "not frozen");
-        require(hasRole(OWNER, _msgSender()) || frozenBy == _msgSender(), "not original freezer");
+        require(hasRole(FREEZE_EXTENDER, _msgSender()), "not freeze extender");
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
         unfreezeAt = uint32(block.timestamp);
     }
@@ -88,7 +95,13 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         if (!hasRole(OWNER, _msgSender())) _revokeRole(FREEZER, _msgSender());
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
         unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
-        frozenBy = _msgSender();
+    }
+
+    function extendFreeze() external onlyRole(FREEZE_EXTENDER) {
+        require(frozen(), "not frozen");
+        require(hasRole(FREEZE_EXTENDER, _msgSender()), "not freeze extender");
+        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
+        unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
     }
 
     // === Gov params ===

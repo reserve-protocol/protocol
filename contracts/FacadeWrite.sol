@@ -116,7 +116,8 @@ contract FacadeWrite is IFacadeWrite {
         GovernanceParams calldata govParams,
         address owner,
         address freezer,
-        address pauser
+        address pauser,
+        address guardian
     ) external returns (address) {
         // Get Main
         IMain main = rToken.main();
@@ -153,6 +154,7 @@ contract FacadeWrite is IFacadeWrite {
 
             // Setup Roles
             timelock.grantRole(timelock.PROPOSER_ROLE(), address(governance)); // Gov only proposer
+            timelock.grantRole(timelock.CANCELLER_ROLE(), guardian); // Guardian as canceller
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
@@ -174,6 +176,11 @@ contract FacadeWrite is IFacadeWrite {
             main.grantRole(PAUSER, pauser);
         }
 
+        // Setup freeze extender
+        if (guardian != address(0)) {
+            main.grantRole(FREEZE_EXTENDER, guardian);
+        }
+
         // Unfreeze if required
         if (unfreeze) {
             main.unfreeze();
@@ -182,9 +189,11 @@ contract FacadeWrite is IFacadeWrite {
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
         main.grantRole(FREEZER, newOwner);
+        main.grantRole(FREEZE_EXTENDER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
         main.renounceRole(FREEZER, address(this));
+        main.renounceRole(FREEZE_EXTENDER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         // Return new owner address

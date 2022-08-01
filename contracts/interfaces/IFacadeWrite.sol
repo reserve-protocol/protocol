@@ -81,6 +81,7 @@ interface IFacadeWrite {
         GovernanceParams calldata govParams,
         address owner,
         address freezer,
-        address pauser
+        address pauser,
+        address guardian
     ) external returns (address);
 }

@@ -21,6 +21,7 @@ import "./ITrading.sol";
 
 bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
 bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // disable everything except OWNER actions
+bytes32 constant FREEZE_EXTENDER = bytes32(bytes("FREEZE_EXTENDER"));
 bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // disable everything except OWNER + redeem
 
 /**

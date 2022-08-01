@@ -44,6 +44,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     // ===
 
     /// Rebase hook
+    /// No need to override beginDraftEra: we are only concerned with raw balances (stakes)
     function beginEra() internal override {
         super.beginEra();
 
