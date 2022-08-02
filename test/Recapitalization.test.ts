@@ -755,7 +755,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs([], [], true)
 
-        // Check state - Basket is disabled but fully capitalized
+        // Check state - Basket is disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCapitalized()).to.equal(false)
 
