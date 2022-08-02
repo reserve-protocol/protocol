@@ -2462,7 +2462,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           chainlinkFeed.address,
           compToken.address,
           compToken.address,
-          fp('1'),
+          config.tradingRange,
           ORACLE_TIMEOUT
         )
       )
