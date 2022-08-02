@@ -192,6 +192,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.swapRegistered(fiatUSD)
@@ -216,6 +217,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.register(fiatEUR)
@@ -237,6 +239,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.swapRegistered(cUSDCollateral)
@@ -257,6 +260,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.swapRegistered(aUSDCollateral)
@@ -280,6 +284,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.register(wBTCCollateral)
@@ -302,6 +307,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.register(cWBTCCollateral)
@@ -321,6 +327,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       maxOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       oracleLibrary: oracleLib.address,
+      noOutput: true,
     })
 
     await assetRegistry.register(wETHCollateral)
@@ -343,6 +350,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         decimals: bn(18).toString(),
         comptroller: compoundMock.address,
         oracleLibrary: oracleLib.address,
+        noOutput: true,
       }
     )
     await assetRegistry.register(cETHCollateral)
