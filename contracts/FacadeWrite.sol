@@ -116,8 +116,8 @@ contract FacadeWrite is IFacadeWrite {
         GovernanceParams calldata govParams,
         address owner,
         address freezer,
-        address pauser,
-        address guardian
+        address guardian,
+        address pauser
     ) external returns (address) {
         // Get Main
         IMain main = rToken.main();

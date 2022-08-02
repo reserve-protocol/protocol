@@ -8,6 +8,7 @@ import {
   FREEZER,
   MAX_UINT256,
   OWNER,
+  THAWER,
   PAUSER,
   ZERO_ADDRESS,
 } from '../common/constants'
@@ -52,6 +53,7 @@ describe('FacadeWrite contract', () => {
   let deployerUser: SignerWithAddress
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
 
   // RSR
   let rsr: ERC20Mock
@@ -113,7 +115,7 @@ describe('FacadeWrite contract', () => {
   })
 
   beforeEach(async () => {
-    ;[deployerUser, owner, addr1] = await ethers.getSigners()
+    ;[deployerUser, owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ rsr, compToken, compAsset, basket, config, facade, deployer } = await loadFixture(
@@ -381,6 +383,7 @@ describe('FacadeWrite contract', () => {
               govParams,
               owner.address,
               ZERO_ADDRESS,
+              ZERO_ADDRESS,
               ZERO_ADDRESS
             )
         ).to.be.revertedWith('not initial deployer')
@@ -396,6 +399,7 @@ describe('FacadeWrite contract', () => {
               false,
               govParams,
               owner.address,
+              ZERO_ADDRESS,
               ZERO_ADDRESS,
               ZERO_ADDRESS
             )
@@ -414,6 +418,7 @@ describe('FacadeWrite contract', () => {
               false,
               govParams,
               owner.address,
+              ZERO_ADDRESS,
               ZERO_ADDRESS,
               ZERO_ADDRESS
             )
@@ -483,17 +488,20 @@ describe('FacadeWrite contract', () => {
           expect(tokens).to.eql([token.address, cToken.address])
         })
 
-        it('Should setup owner and pauser correctly', async () => {
+        it('Should setup roles correctly', async () => {
           expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
           expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, owner.address)).to.equal(true)
           expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, facadeWrite.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(true)
@@ -509,6 +517,7 @@ describe('FacadeWrite contract', () => {
                 false,
                 govParams,
                 owner.address,
+                ZERO_ADDRESS,
                 ZERO_ADDRESS,
                 ZERO_ADDRESS
               )
@@ -528,6 +537,7 @@ describe('FacadeWrite contract', () => {
               govParams,
               owner.address,
               addr1.address,
+              addr2.address,
               addr1.address
             )
         })
@@ -535,18 +545,27 @@ describe('FacadeWrite contract', () => {
         it('Should setup owner, freezer and pauser correctly', async () => {
           expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
           expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, owner.address)).to.equal(true)
           expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, addr1.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, addr1.address)).to.equal(true)
+
+          expect(await main.hasRole(OWNER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+          expect(await main.hasRole(PAUSER, addr2.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, facadeWrite.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
@@ -566,6 +585,7 @@ describe('FacadeWrite contract', () => {
                 govParams,
                 ZERO_ADDRESS,
                 addr1.address,
+                addr2.address,
                 ZERO_ADDRESS
               )
           ).wait()
@@ -582,18 +602,27 @@ describe('FacadeWrite contract', () => {
         it('Should setup owner, freezer and pauser correctly', async () => {
           expect(await main.hasRole(OWNER, timelock.address)).to.equal(true)
           expect(await main.hasRole(FREEZER, timelock.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, timelock.address)).to.equal(true)
           expect(await main.hasRole(PAUSER, timelock.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, addr1.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, addr1.address)).to.equal(false)
+
+          expect(await main.hasRole(OWNER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+          expect(await main.hasRole(PAUSER, addr2.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, facadeWrite.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(true)
@@ -625,6 +654,7 @@ describe('FacadeWrite contract', () => {
                 govParams,
                 ZERO_ADDRESS,
                 ZERO_ADDRESS,
+                ZERO_ADDRESS,
                 ZERO_ADDRESS
               )
           ).wait()
@@ -641,18 +671,27 @@ describe('FacadeWrite contract', () => {
         it('Should setup owner, freezer and pauser correctly', async () => {
           expect(await main.hasRole(OWNER, timelock.address)).to.equal(true)
           expect(await main.hasRole(FREEZER, timelock.address)).to.equal(true)
+          expect(await main.hasRole(THAWER, timelock.address)).to.equal(true)
           expect(await main.hasRole(PAUSER, timelock.address)).to.equal(true)
 
           expect(await main.hasRole(OWNER, addr1.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, addr1.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, addr1.address)).to.equal(false)
+
+          expect(await main.hasRole(OWNER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, addr2.address)).to.equal(false)
+          expect(await main.hasRole(PAUSER, addr2.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, facadeWrite.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, facadeWrite.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(false)
 
           expect(await main.hasRole(OWNER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(FREEZER, deployerUser.address)).to.equal(false)
+          expect(await main.hasRole(THAWER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
@@ -679,6 +718,7 @@ describe('FacadeWrite contract', () => {
               govParams,
               owner.address,
               addr1.address,
+              addr2.address,
               addr1.address
             )
         )
@@ -696,6 +736,7 @@ describe('FacadeWrite contract', () => {
               govParams,
               ZERO_ADDRESS,
               addr1.address,
+              addr2.address,
               addr1.address
             )
         )
