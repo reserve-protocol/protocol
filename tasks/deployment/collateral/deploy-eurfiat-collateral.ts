@@ -42,9 +42,10 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed EURO Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
-
+    if (!params.noOutput) {
+      console.log(
+        `Deployed EURO Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
     return { collateral: collateral.address }
   })
