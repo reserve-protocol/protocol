@@ -4,27 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "contracts/p1/StRSR.sol";
 
-interface IStRSRVotes is IVotesUpgradeable {
-    /// @return The current era
-    function currentEra() external view returns (uint256);
-
-    /// @return The era at a past block number
-    function getPastEra(uint256 blockNumber) external view returns (uint256);
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate);
-}
-
 /*
  * @title StRSRP1Votes
  * @notice StRSRP1Votes is an extension of StRSRP1 that makes it IVotesUpgradeable.
  *   It is heavily based on OZ's ERC20VotesUpgradeable
  */
-contract StRSRP1Votes is StRSRP1, IStRSRVotes {
+contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
     struct Checkpoint {
         uint32 fromBlock;
         uint224 val;
@@ -35,11 +20,13 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
 
     mapping(address => address) private _delegates;
 
-    Checkpoint[] private _eras; // {era}
-
     // {era} => ...
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
+
+    // When RSR is seized, stakeholders are divested not only of their economic position,
+    // but also of their governance position. This occurs retroactively, such that upon
+    // era change it is expected that
 
     // ===
 
@@ -47,8 +34,6 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     /// No need to override beginDraftEra: we are only concerned with raw balances (stakes)
     function beginEra() internal override {
         super.beginEra();
-
-        _writeCheckpoint(_eras, _add, 1);
     }
 
     function currentEra() external view returns (uint256) {
@@ -74,30 +59,12 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
 
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
-        return _checkpointsLookup(_checkpoints[pastEra][account], blockNumber);
+        return _checkpointsLookup(_checkpoints[era][account], blockNumber);
     }
 
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
-        return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], blockNumber);
-    }
-
-    function getPastEra(uint256 blockNumber) public view returns (uint256) {
-        require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        return _checkpointsLookup(_eras, blockNumber);
-    }
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate)
-    {
-        HistoricalExchangeRate storage record = exchangeRateHistory[index];
-        return (record.fromBlock, record.rate);
+        return _checkpointsLookup(_totalSupplyCheckpoints[era], blockNumber);
     }
 
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)

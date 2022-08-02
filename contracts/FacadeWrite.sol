@@ -141,7 +141,7 @@ contract FacadeWrite is IFacadeWrite {
                 new address[](0)
             );
             Governance governance = new Governance(
-                IStRSRVotes(address(main.stRSR())),
+                IVotes(address(main.stRSR())),
                 timelock,
                 govParams.votingDelay,
                 govParams.votingPeriod,
