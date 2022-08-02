@@ -20,9 +20,9 @@ import "./ITrading.sol";
 // === Roles ===
 
 bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
-bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // disable everything except OWNER actions
-bytes32 constant FREEZE_EXTENDER = bytes32(bytes("FREEZE_EXTENDER"));
-bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // disable everything except OWNER + redeem
+bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // can enter freeze state
+bytes32 constant THAWER = bytes32(bytes("THAWER")); // can extend or exit freeze state
+bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // can enter or exit paused state
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -63,8 +63,8 @@ interface IAuth {
     event PausedSet(bool indexed oldVal, bool indexed newVal);
 
     /**
-     * Paused = Everything is disabled except for OWNER actions and RToken.redeem/cancel
-     * Frozen = Everything disabled except for OWNER actions
+     * Paused: Disable everything except for OWNER actions and RToken.redeem/cancel
+     * Frozen: Disable everything except for OWNER actions
      */
 
     function pausedOrFrozen() external view returns (bool);
@@ -73,15 +73,23 @@ interface IAuth {
 
     function oneshotFreezeDuration() external view returns (uint32);
 
+    // ====
+
+    // onlyRole(OWNER)
     function freeze() external;
 
+    // onlyRole(FREEZER)
+    function oneshotFreeze() external;
+
+    // onlyRole(THAWER)
+    function extendOneshotFreeze() external;
+
+    // onlyRole(THAWER)
     function unfreeze() external;
 
     function pause() external;
 
     function unpause() external;
-
-    function oneshotFreeze() external;
 }
 
 interface IComponentRegistry {

@@ -176,9 +176,9 @@ contract FacadeWrite is IFacadeWrite {
             main.grantRole(PAUSER, pauser);
         }
 
-        // Setup freeze extender
+        // Setup Thawer
         if (guardian != address(0)) {
-            main.grantRole(FREEZE_EXTENDER, guardian);
+            main.grantRole(THAWER, guardian);
         }
 
         // Unfreeze if required
@@ -189,11 +189,11 @@ contract FacadeWrite is IFacadeWrite {
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
         main.grantRole(FREEZER, newOwner);
-        main.grantRole(FREEZE_EXTENDER, newOwner);
+        main.grantRole(THAWER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
         main.renounceRole(FREEZER, address(this));
-        main.renounceRole(FREEZE_EXTENDER, address(this));
+        main.renounceRole(THAWER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         // Return new owner address

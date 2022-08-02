@@ -197,9 +197,11 @@ contract DeployerP1 is IDeployer {
         // Transfer Ownership
         main.grantRole(OWNER, owner);
         main.grantRole(FREEZER, owner);
+        main.grantRole(THAWER, owner);
         main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
         main.renounceRole(FREEZER, address(this));
+        main.renounceRole(THAWER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);
