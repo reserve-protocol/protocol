@@ -16,6 +16,7 @@ import {
   MAX_UINT256,
   OWNER,
   FREEZER,
+  THAWER,
   PAUSER,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -542,58 +543,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set FREEZER
       await main.connect(owner).grantRole(FREEZER, addr1.address)
 
+      // Set THAWER
+      await main.connect(owner).grantRole(THAWER, addr2.address)
+
       // Check initial status
       expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
       expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(THAWER, owner.address)).to.equal(true)
+      expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(false)
       expect(await main.pausedOrFrozen()).to.equal(false)
     })
 
-    it('Should not allow permanent freeze from FREEZER', async () => {
+    it('Should only permit owner to freeze indefinitely', async () => {
       await expect(main.connect(addr1).freeze()).to.be.reverted
-    })
-
-    it('Should not allow unfreeze from FREEZER after permanent freeze', async () => {
-      // Freeze with owner FREEZER
-      await main.connect(owner).freeze()
-      expect(await main.frozen()).to.equal(true)
-      await expect(main.connect(addr1).unfreeze()).to.be.reverted
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-    })
-
-    it('Should not allow unfreeze from FREEZER after oneshotFreeze by owner', async () => {
-      // Freeze with owner FREEZER
-      await main.connect(owner).oneshotFreeze()
-      expect(await main.frozen()).to.equal(true)
-      await expect(main.connect(addr1).unfreeze()).to.be.reverted
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-    })
-
-    it('Should allow original oneshotFreezer to unfreeze', async () => {
-      // Freeze with non-owner FREEZER
-      await main.connect(addr1).oneshotFreeze()
-      expect(await main.frozen()).to.equal(true)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-
-      // Unfreeze with original freezer
-      await main.connect(addr1).unfreeze()
-
-      // Should not have role
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
-    })
-
-    it('Should allow unfreeze by owner', async () => {
-      // Freeze with non-owner FREEZER
-      await main.connect(addr1).oneshotFreeze()
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-
-      // Unfreeze
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
+      await expect(main.connect(addr2).freeze()).to.be.reverted
+      await expect(main.connect(other).freeze()).to.be.reverted
     })
 
     it('Freezing by owner should last indefinitely', async () => {
@@ -605,23 +570,115 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.frozen()).to.equal(true)
     })
 
-    it('Oneshot freezing should eventually thaw', async () => {
+    it('Should allow unfreeze by owner after oneshot freeze', async () => {
+      // Freeze with non-owner FREEZER
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+
+      // Unfreeze
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+    })
+
+    it('Should allow unfreeze by thawer after oneshot freeze', async () => {
+      // Freeze with non-owner FREEZER
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+
+      // Unfreeze
+      await main.connect(addr2).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+      expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+    })
+
+    it('Should not allow unfreeze from FREEZER/THAWER after freeze-by-owner', async () => {
+      // Freeze with owner FREEZER
+      await main.connect(owner).freeze()
+      expect(await main.frozen()).to.equal(true)
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+      await expect(main.connect(addr2).unfreeze()).to.be.reverted
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
+    })
+
+    it('Should allow unfreeze by THAWER after oneshot freeze', async () => {
+      // Freeze with non-owner FREEZER
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.frozen()).to.equal(true)
+      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+
+      // Fail to unfreeze with original freezer
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+
+      // Should not have role
+      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
+      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
+
+      // Unfreeze with THAWER
+      await expect(main.connect(addr2).unfreeze()).to.emit(main, 'UnfreezeAtSet')
+      expect(await main.frozen()).to.equal(false)
+      expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+    })
+
+    it('Should allow extension of oneshot freeze', async () => {
+      // Oneshot freeze
+      expect(await main.frozen()).to.equal(false)
+      await main.connect(addr1).oneshotFreeze()
+      expect(await main.frozen()).to.equal(true)
+
+      // Should extend
+      await expect(main.connect(addr2).extendOneshotFreeze()).to.emit(main, 'UnfreezeAtSet')
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(config.oneshotFreezeDuration.sub(10).toString())
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime('10')
+      expect(await main.frozen()).to.equal(false)
+    })
+
+    it('Should fail to extend an indefinite freeze', async () => {
+      // Freeze
+      expect(await main.frozen()).to.equal(false)
+      await main.connect(owner).freeze()
+      expect(await main.frozen()).to.equal(true)
+
+      await expect(main.connect(addr2).extendOneshotFreeze()).to.be.reverted
+    })
+
+    it('Oneshot freezing should eventually thaw on its own', async () => {
       // Freeze with freezer
       await main.connect(owner).oneshotFreeze()
       expect(await main.frozen()).to.equal(true)
       await advanceTime(config.oneshotFreezeDuration.toString())
 
       expect(await main.frozen()).to.equal(false)
+
+      // Should not be able to extend freezing
+      await expect(main.connect(addr2).extendOneshotFreeze()).to.be.reverted
     })
 
     it('Should not allow to set FREEZER if not OWNER', async () => {
       // Set FREEZER from non-owner
       await expect(main.connect(addr1).grantRole(FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(FREEZER, other.address)).to.be.reverted
       await expect(main.connect(other).grantRole(FREEZER, other.address)).to.be.reverted
 
       // Check FREEZER not updated
       expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
       expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+    })
+
+    it('Should not allow to set THAWER if not OWNER', async () => {
+      // Set THAWER from non-owner
+      await expect(main.connect(addr1).grantRole(THAWER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(THAWER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(THAWER, other.address)).to.be.reverted
+
+      // Check THAWER not updated
+      expect(await main.hasRole(THAWER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(THAWER, other.address)).to.equal(false)
     })
 
     it('Should allow to renounce FREEZER', async () => {
@@ -634,6 +691,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Owner should still be OWNER
       expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce THAWER', async () => {
+      // Renounce role with thawer
+      await main.connect(addr2).renounceRole(THAWER, addr2.address)
+
+      // Check THAWER renounced
+      expect(await main.hasRole(THAWER, addr2.address)).to.equal(false)
+      await expect(main.connect(addr2).oneshotFreeze()).to.be.reverted
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(THAWER, owner.address)).to.equal(true)
     })
 
     it('Should allow to renounce FREEZER if OWNER without losing OWNER', async () => {
@@ -649,6 +718,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Can re-grant to self
       await main.connect(owner).grantRole(FREEZER, owner.address)
       expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce THAWER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(THAWER, owner.address)
+
+      // Check THAWER renounced
+      expect(await main.hasRole(THAWER, owner.address)).to.equal(false)
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
+
+      // Can re-grant to self
+      await main.connect(owner).grantRole(THAWER, owner.address)
+      expect(await main.hasRole(THAWER, owner.address)).to.equal(true)
     })
   })
 
