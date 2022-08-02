@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/mocks/ERC20Mock.sol";
-
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/TradeMock.sol";
 
@@ -35,30 +33,37 @@ contract BrokerP0Fuzz is BrokerP0 {
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 // ================ Main ================
 contract MainP0Fuzz is IMainFuzz, MainP0 {
-    address[] internal senders;
+    address public deployer;
+
+    address[] internal senderStack;
     uint256 public seed;
     IMarketMock public marketMock;
 
     address[] public USERS = [address(0x10000), address(0x20000), address(0x30000)];
 
     // ==== Scenario handles ====
-    function sender() public view returns (address) {
-        if (senders.length == 0) revert("IFuzz error: No sender set");
-        return senders[senders.length - 1];
+    // Components and mocks relying on _msgSender call this to find out what to return.
+    // msgSender: the value of msg.sender from the calling contract.
+    function sender(address msgSender) public view returns (address) {
+        if (msgSender == deployer) {
+            if (senderStack.length == 0) revert("IFuzz error: No sender set");
+            return senderStack[senderStack.length - 1];
+        }
+        return msgSender;
     }
 
     function pushSender(address s) public {
-        senders.push(s);
+        senderStack.push(s);
     }
 
     function popSender() public {
-        senders.pop();
+        senderStack.pop();
     }
 
     function setSeed(uint256 seed_) public {

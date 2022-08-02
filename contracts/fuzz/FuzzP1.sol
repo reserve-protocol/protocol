@@ -14,6 +14,7 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
+import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
 import "contracts/fuzz/AssetMock.sol";
@@ -29,7 +30,6 @@ import "contracts/p1/Main.sol";
 import "contracts/p1/RToken.sol";
 import "contracts/p1/RevenueTrader.sol";
 import "contracts/p1/StRSR.sol";
-import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 
 // ================ Components ================
@@ -37,19 +37,19 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 
 contract AssetRegistryP1Fuzz is AssetRegistryP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract BasketHandlerP1Fuzz is BasketHandlerP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract BackingManagerP1Fuzz is BackingManagerP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
@@ -63,22 +63,11 @@ contract BrokerP1Fuzz is BrokerP1 {
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
 
-        console.log("==== Opening Trade, with");
-        console.log("_msgSender:", _msgSender());
-        console.log("main.sender:", IMainFuzz(address(main)).sender());
-        console.log("req.sellAmount:", req.sellAmount);
-        console.log(
-            "_msgSender allowance:",
-            req.sell.erc20().allowance(_msgSender(), address(this))
-        );
-
-        IMainFuzz(address(main)).pushSender(address(this));
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
             address(trade),
             req.sellAmount
         );
-        IMainFuzz(address(main)).popSender();
 
         trade.init(IMainFuzz(address(main)), _msgSender(), auctionLength, req);
         tradeSet.add(address(trade));
@@ -95,25 +84,25 @@ contract BrokerP1Fuzz is BrokerP1 {
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract DistributorP1Fuzz is DistributorP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract FurnaceP1Fuzz is FurnaceP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract RevenueTraderP1Fuzz is RevenueTraderP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
@@ -150,38 +139,44 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 contract StRSRP1Fuzz is StRSRP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender();
+        return IMainFuzz(address(main)).sender(msg.sender);
     }
 }
 
 // ================ Main ================
 contract MainP1Fuzz is IMainFuzz, MainP1 {
+    address public deployer;
     IMarketMock public marketMock;
 
     // ==== Scenario variables ====
-    address[] internal senders; // The stack of senders
+    address[] internal senderStack; // The stack of senders
     uint256 public seed;
     IERC20[] public tokens; // token addresses, not including RSR or RToken
     address[] public users; // "registered" user addresses
 
     // ==== Scenario handles ====
-    function sender() public view returns (address) {
-        if (senders.length == 0) revert("IFuzz error: No sender set");
-        return senders[senders.length - 1];
+    // Components and mocks relying on _msgSender call this to find out what to return.
+    // msgSender: the value of msg.sender from the calling contract.
+    function sender(address msgSender) public view returns (address) {
+        if (msgSender == deployer) {
+            if (senderStack.length == 0) revert("IFuzz error: No sender set");
+            return senderStack[senderStack.length - 1];
+        }
+        return msgSender;
     }
 
     function pushSender(address s) public {
-        senders.push(s);
+        senderStack.push(s);
     }
 
     function popSender() public {
-        senders.pop();
+        senderStack.pop();
     }
 
     function setSeed(uint256 seed_) public {
@@ -207,9 +202,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     constructor() {
         // Design: maybe pass the RSR token in as an arg here?
+        deployer = msg.sender;
 
         // Construct components
-        rsr = new ERC20Mock("Reserve Rights", "RSR");
+        rsr = new ERC20Fuzz("Reserve Rights", "RSR", this);
         rToken = new RTokenP1Fuzz();
         stRSR = new StRSRP1Fuzz();
         assetRegistry = new AssetRegistryP1Fuzz();
@@ -233,6 +229,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         __Auth_init(freezerDuration);
         __UUPSUpgradeable_init();
         emit MainInitialized();
+
         marketMock = marketMock_;
 
         // ==== Initialize components ====

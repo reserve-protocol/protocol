@@ -16,7 +16,7 @@ const ConAt = ethers.getContractAt
 const F = ethers.getContractFactory
 
 const componentsOf = async (main: sc.IMain) => ({
-  rsr: await ConAt('ERC20Mock', await main.rsr()),
+  rsr: await ConAt('ERC20Fuzz', await main.rsr()),
   rToken: await ConAt('RTokenP1Fuzz', await main.rToken()),
   stRSR: await ConAt('StRSRP1Fuzz', await main.stRSR()),
   assetRegistry: await ConAt('AssetRegistryP1Fuzz', await main.assetRegistry()),
@@ -38,11 +38,15 @@ describe('Basic Scenario with FuzzP1', () => {
   let comp: Components
   let startState: Awaited<ReturnType<typeof helpers.takeSnapshot>>
 
+  let owner: Wallet
+  let alice: Wallet
+
   before('Deploy Scenario', async () => {
-    scenario = await (await F('BasicP1Scenario')).deploy()
+    scenario = await (await F('BasicP1Scenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
     startState = await helpers.takeSnapshot()
+    ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
   })
 
   beforeEach(async () => {
@@ -59,7 +63,7 @@ describe('Basic Scenario with FuzzP1', () => {
     // tokens and user balances
     expect(await main.numTokens()).to.equal(6)
     for (let t = 0; t < 6; t++) {
-      const token = await ethers.getContractAt('ERC20Mock', await main.tokens(t))
+      const token = await ConAt('ERC20Fuzz', await main.tokens(t))
       const sym = t < 3 ? 'C' + t : 'USD' + (t - 3)
       expect(await token.symbol()).to.equal(sym)
 
@@ -97,23 +101,21 @@ describe('Basic Scenario with FuzzP1', () => {
   })
 
   it('allows basic issuance and redemption', async () => {
-    const alice = user(0)
+    const norma = user(0)
     await scenario.startIssue()
-    expect(await comp.rToken.balanceOf(alice)).to.equal(0)
+    expect(await comp.rToken.balanceOf(norma)).to.equal(0)
 
     await advanceBlocks(100)
     await scenario.finishIssue()
-    expect(await comp.rToken.balanceOf(alice)).to.equal(fp(1e6))
+    expect(await comp.rToken.balanceOf(norma)).to.equal(fp(1e6))
 
     await scenario.redeem()
-    expect(await comp.rToken.balanceOf(alice)).to.equal(0)
+    expect(await comp.rToken.balanceOf(norma)).to.equal(0)
   })
 
   it('can trade two fiatcoins', async () => {
-    const usd0 = await ConAt('ERC20Mock', await main.tokens(3))
+    const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
     const rsr = comp.rsr
-    const alice: Wallet
-    ;[, alice] = (await ethers.getSigners()) as unknown as Wallet[]
 
     // Alice starts with 123 USD0
     await usd0.mint(alice.address, fp(123))
@@ -154,24 +156,27 @@ describe('Basic Scenario with FuzzP1', () => {
   })
 
   it('BackingManager can buy and sell RTokens in trades', async () => {
-    const usd0 = await ConAt('ERC20Mock', await main.tokens(3))
+    const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
     const bm_addr = comp.backingManager.address
     const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
     const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
 
-    await main.pushSender(bm_addr)
+    // This is a little bit confusing here -- we're pretending to be the backingManager here
+    // just so that we are a trader registered with the Broker. RToken trader would work too, I
+    // think, and would be a somewhat cleaner test.
 
-    // BackingMgr starts with 123 USD0
+    // As owner, mint 123 USD0 to BackingMgr
+    await main.pushSender(owner.address)
     await usd0.mint(bm_addr, fp(123))
     expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
+    await main.popSender()
 
-    // BackingMgr appoves the broker for 123 USD0
-    await whileImpersonating(bm_addr, async (signer) => {
-      await usd0.connect(signer).approve(comp.broker.address, fp(123))
-    })
+    // As BackingMgr, approve the broker for 123 USD0
+    await main.pushSender(bm_addr)
+    await usd0.approve(comp.broker.address, fp(123))
 
-    // Init the trade
+    // As BackingMgr, init the trade
     const tradeReq = {
       buy: rtoken_asset,
       sell: usd0_asset,
@@ -181,28 +186,25 @@ describe('Basic Scenario with FuzzP1', () => {
 
     await comp.broker.openTrade(tradeReq)
 
-    // trade should have the usd0
+    // (trade has 123 usd0)
     const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
     expect(await trade.origin()).to.equal(bm_addr)
     expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
-    // Wait and settle the trade
+    // As BackingMgr, settle the trade.
     await advanceTime(31 * 60)
-
     await comp.broker.settleTrades()
 
-    // BackingMgr now has no USD0 and 456 rToken.
+    // (BackingMgr has no USD0 and 456 rToken.)
     expect(await usd0.balanceOf(bm_addr)).to.equal(0)
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
 
-    // ================ Now, we sell the USD0 back, for RToken! wheee
+    // ================ Now, we sell the USD0 back, for RToken!
 
-    // BackingMgr approves the broker for 456 RTokens
-    await whileImpersonating(bm_addr, async (s) => {
-      await comp.rToken.connect(s).approve(comp.broker.address, fp(456))
-    })
+    // As BackingMgr, approve the broker for 456 RTokens
+    await comp.rToken.approve(comp.broker.address, fp(456))
 
-    // Open a trade!
+    // As BackingMgr, init the trade
     const tradeReq2 = {
       buy: usd0_asset,
       sell: rtoken_asset,
@@ -211,16 +213,16 @@ describe('Basic Scenario with FuzzP1', () => {
     }
     await comp.broker.openTrade(tradeReq2)
 
-    // now the new trade contract should have that rtoken
+    // (new trade should have 456 rtoken)
     const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
     expect(await trade2.origin()).to.equal(bm_addr)
     expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
 
-    // Wait and settle the trade
+    // As BackingMgr, settle the trade
     await advanceTime(31 * 60)
     await comp.broker.settleTrades()
 
-    // Check: Backing Manager now has no RTokens and 789 USD0
+    // (Backing Manager has no RTokens and 789 USD0)
     expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 

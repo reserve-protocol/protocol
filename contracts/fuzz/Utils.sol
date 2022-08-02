@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/interfaces/IDeployer.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {

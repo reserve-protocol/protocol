@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/CollateralMock.sol";
+import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
@@ -43,7 +44,7 @@ contract BasicP1Scenario {
         // Create three "standard" collateral tokens
         for (uint256 i = 0; i < 3; i++) {
             string memory num = Strings.toString(i);
-            ERC20Mock token = new ERC20Mock(concat("Collateral ", num), concat("C", num));
+            ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
             main.addToken(token);
 
             main.assetRegistry().register(
@@ -66,7 +67,7 @@ contract BasicP1Scenario {
         // Create three "standard" backup USD tokens
         for (uint256 i = 0; i < 3; i++) {
             string memory num = Strings.toString(i);
-            ERC20Mock token = new ERC20Mock(concat("Stable USD ", num), concat("USD", num));
+            ERC20Fuzz token = new ERC20Fuzz(concat("Stable USD ", num), concat("USD", num), main);
             main.addToken(token);
 
             main.assetRegistry().register(
@@ -99,9 +100,9 @@ contract BasicP1Scenario {
         for (uint256 u = 1; u <= 3; u++) {
             address user = address(uint160(u * 0x10000));
             main.addUser(user);
-            ERC20Mock(address(main.rsr())).mint(user, 1e24);
+            ERC20Fuzz(address(main.rsr())).mint(user, 1e24);
             for (uint256 t = 0; t < main.numTokens(); t++) {
-                ERC20Mock(address(main.tokens(t))).mint(user, 1e24);
+                ERC20Fuzz(address(main.tokens(t))).mint(user, 1e24);
             }
         }
 
@@ -118,9 +119,9 @@ contract BasicP1Scenario {
 
     function startIssue() public {
         address alice = main.users(0);
-        ERC20Mock(address(main.tokens(0))).adminApprove(alice, address(main.rToken()), 1e24);
-        ERC20Mock(address(main.tokens(1))).adminApprove(alice, address(main.rToken()), 1e24);
-        ERC20Mock(address(main.tokens(2))).adminApprove(alice, address(main.rToken()), 1e24);
+        ERC20Fuzz(address(main.tokens(0))).adminApprove(alice, address(main.rToken()), 1e24);
+        ERC20Fuzz(address(main.tokens(1))).adminApprove(alice, address(main.rToken()), 1e24);
+        ERC20Fuzz(address(main.tokens(2))).adminApprove(alice, address(main.rToken()), 1e24);
 
         main.pushSender(alice);
         main.rToken().issue(1e24);

@@ -3,8 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "hardhat/console.sol";
-
 contract ERC20Mock is ERC20 {
     // solhint-disable-next-line no-empty-blocks
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -16,26 +14,6 @@ contract ERC20Mock is ERC20 {
     function burn(address sender, uint256 amount) external {
         _burn(sender, amount);
     }
-
-    /*
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        console.log("==== Transferring", amount, symbol());
-        console.log("  from:", from, "to:", to);
-    }
-
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal virtual override {
-        console.log(" ", from, "balance now", balanceOf(from));
-        console.log(" ", to, "balance now", balanceOf(to));
-    }
-    */
 
     function adminApprove(
         address owner,

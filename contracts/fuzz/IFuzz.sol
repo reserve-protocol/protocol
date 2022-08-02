@@ -38,8 +38,8 @@ interface IMarketMock {
 interface IMainFuzz is IMain {
     event TestError(string message);
 
-    // Emulated sender
-    function sender() external view returns (address);
+    // Aspect: emulated sender
+    function sender(address) external view returns (address);
 
     function pushSender(address) external;
 

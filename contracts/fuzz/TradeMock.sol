@@ -54,7 +54,7 @@ contract TradeMock is ITrade {
     }
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
-        require(main.sender() == origin, "only origin can settle");
+        require(main.sender(msg.sender) == origin, "only origin can settle");
         require(status == TradeMockStatus.OPEN, "trade not OPEN");
         require(uint32(block.timestamp) >= endTime, "trade not yet closed");
         status = TradeMockStatus.CLOSED;
@@ -66,9 +66,7 @@ contract TradeMock is ITrade {
         main.marketMock().execute(sell, buy, requestedSellAmt, requestedBuyAmt);
 
         // Move the tokens to-be-bought to the original address
-        main.pushSender(address(this)); // Dude, just act like yourself.
         buy.transfer(origin, requestedBuyAmt);
-        main.popSender();
 
         return (requestedSellAmt, requestedBuyAmt);
     }
@@ -94,7 +92,7 @@ contract MarketMock is IMarketMock {
         uint256 sellAmt,
         uint256 buyAmt
     ) external {
-        address trader = msg.sender;
+        address trader = main.sender(msg.sender);
 
         if (address(sell) == address(main.rToken())) {
             vanishRTokens(sellAmt);
@@ -108,9 +106,7 @@ contract MarketMock is IMarketMock {
             ERC20Mock(address(buy)).mint(address(this), buyAmt);
         }
 
-        main.pushSender(address(this));
         buy.transfer(trader, buyAmt);
-        main.popSender();
     }
 
     // Procure `amt` RTokens
@@ -125,9 +121,7 @@ contract MarketMock is IMarketMock {
         }
 
         // Issue the RToken we want
-        main.pushSender(address(this));
         rtoken.fastIssue(rtokenAmt);
-        main.popSender();
 
         // Clean up any stray backing tokens
         for (uint256 i = 0; i < tokens.length; i++) {
