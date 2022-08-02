@@ -40,9 +40,11 @@ task('deploy-fiat-collateral', 'Deploys a Fiat Collateral')
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
+    if (!params.noOutput) {
+      console.log(
+        `Deployed Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
 
     return { collateral: collateral.address }
   })

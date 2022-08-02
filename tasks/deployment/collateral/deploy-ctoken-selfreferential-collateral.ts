@@ -39,9 +39,10 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed CToken Self-referential Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
-
+    if (!params.noOutput) {
+      console.log(
+        `Deployed CToken Self-referential Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
     return { collateral: collateral.address }
   })

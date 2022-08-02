@@ -36,9 +36,10 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed Self Referential Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
-
+    if (!params.noOutput) {
+      console.log(
+        `Deployed Self Referential Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
     return { collateral: collateral.address }
   })

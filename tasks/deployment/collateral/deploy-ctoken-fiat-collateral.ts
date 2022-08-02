@@ -47,9 +47,10 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed CToken Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
-
+    if (!params.noOutput) {
+      console.log(
+        `Deployed CToken Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
     return { collateral: collateral.address }
   })
