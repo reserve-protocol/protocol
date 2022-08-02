@@ -55,7 +55,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
   let initialBal: BigNumber
 
-  const MIN_DELAY = 60 * 60 * 24 // 1 day
+  const MIN_DELAY = 7 * 60 * 60 * 24 // 7 days
   const VOTING_DELAY = 5 // 5 blocks
   const VOTING_PERIOD = 100 // 100 blocks
   const PROPOSAL_THRESHOLD = 1e6 // 1%
@@ -379,6 +379,79 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
       // Check value was updated
       expect(await backingManager.tradingDelay()).to.equal(newValue)
+    })
+
+    it('Should be cancellable by guardian during timelock delay', async () => {
+      // Check current value
+      expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
+
+      // Propose
+      const proposeTx = await governor
+        .connect(addr1)
+        .propose([backingManager.address], [0], [encodedFunctionCall], proposalDescription)
+
+      const proposeReceipt = await proposeTx.wait(1)
+      const proposalId = proposeReceipt.events![0].args!.proposalId
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Pending)
+
+      // Advance time to start voting
+      await advanceBlocks(VOTING_DELAY + 1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      const voteWay = 1 // for
+
+      // vote
+      await governor.connect(addr1).castVote(proposalId, voteWay)
+      await advanceBlocks(1)
+
+      await governor.connect(addr2).castVoteWithReason(proposalId, voteWay, 'I vote for')
+      await advanceBlocks(1)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Active)
+
+      // Advance time till voting is complete
+      await advanceBlocks(VOTING_PERIOD + 1)
+
+      // Finished voting - Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Succeeded)
+
+      // Queue propoal
+      await governor
+        .connect(addr1)
+        .queue([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Queued)
+
+      // Advance time required by timelock
+      await advanceTime(MIN_DELAY + 1)
+      await advanceBlocks(1)
+
+      // Should be cancellable by guardian before execute
+      const timelockId = await timelock.hashOperationBatch(
+        [backingManager.address],
+        [0],
+        [encodedFunctionCall],
+        ethers.utils.formatBytes32String(''),
+        proposalDescHash
+      )
+      await expect(timelock.connect(owner).cancel(timelockId)).to.be.reverted // even owner can't cancel
+      await timelock.connect(guardian).cancel(timelockId)
+
+      // Check proposal state
+      expect(await governor.state(proposalId)).to.equal(ProposalState.Canceled)
+
+      // Try to execute
+      await expect(
+        governor
+          .connect(addr1)
+          .execute([backingManager.address], [0], [encodedFunctionCall], proposalDescHash)
+      ).to.be.reverted
     })
 
     it('Should handle multiple proposals with different rates', async () => {
