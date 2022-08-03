@@ -189,7 +189,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     function aliasValues() external view returns (address[] memory from, address[] memory to) {
         from = aliasedAddrs.values();
         to = new address[](aliasedAddrs.length());
-        for (uint i = 0; i < aliasedAddrs.length(); i++) {
+        for (uint256 i = 0; i < aliasedAddrs.length(); i++) {
             to[i] = aliases[aliasedAddrs.at(i)];
         }
     }
@@ -269,7 +269,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         basketHandler.init(this);
         rsrTrader.init(this, rsr, params.maxTradeSlippage);
-        rTokenTrader.init(this, IERC20(address(rToken)), params.maxTradeSlippage );
+        rTokenTrader.init(this, IERC20(address(rToken)), params.maxTradeSlippage);
 
         // Init Asset Registry, with default assets for all tokens
         IAsset[] memory assets = new IAsset[](2);

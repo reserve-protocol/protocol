@@ -7,7 +7,7 @@ import "contracts/interfaces/IAsset.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
-        tradingRange: TradingRange({min: toFix(1)/100, max: toFix(1e6)}), // 0.01 UoA (USD)
+        tradingRange: TradingRange({ min: toFix(1) / 100, max: toFix(1e6) }), // 0.01 UoA (USD)
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         rewardPeriod: 604800, // 1 week
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods

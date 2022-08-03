@@ -42,11 +42,10 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal aliasedAddrs;
-    mapping(address => address) aliases; // The map of senders
+    mapping(address => address) public aliases; // The map of senders
 
     uint256 public seed;
     IMarketMock public marketMock;
-
 
     // ==== Scenario handles ====
     function translateAddr(address addr) public view returns (address) {
@@ -69,7 +68,7 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     function aliasValues() external view returns (address[] memory from, address[] memory to) {
         from = aliasedAddrs.values();
         to = new address[](aliasedAddrs.length());
-        for (uint i = 0; i < aliasedAddrs.length(); i++) {
+        for (uint256 i = 0; i < aliasedAddrs.length(); i++) {
             to[i] = aliases[aliasedAddrs.at(i)];
         }
     }
