@@ -3,7 +3,14 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { ProposalState, ZERO_ADDRESS, OWNER, FREEZER, PAUSER } from '../common/constants'
+import {
+  ProposalState,
+  ZERO_ADDRESS,
+  OWNER,
+  FREEZE_STARTER,
+  FREEZE_EXTENDER,
+  PAUSER,
+} from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import {
   ERC20Mock,
@@ -117,12 +124,14 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
 
     // Transfer ownership of Main to the Timelock (and thus, Governor)
     await main.grantRole(OWNER, timelock.address)
-    await main.grantRole(FREEZER, timelock.address)
+    await main.grantRole(FREEZE_STARTER, timelock.address)
+    await main.grantRole(FREEZE_EXTENDER, timelock.address)
     await main.grantRole(PAUSER, timelock.address)
 
     // Renounce all roles from owner
     await main.renounceRole(OWNER, owner.address)
-    await main.renounceRole(FREEZER, owner.address)
+    await main.renounceRole(FREEZE_STARTER, owner.address)
+    await main.renounceRole(FREEZE_EXTENDER, owner.address)
     await main.renounceRole(PAUSER, owner.address)
   })
 
@@ -541,12 +550,12 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       })
 
       // Create another proposal to replace broker
-      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, other.address)).to.equal(false)
       const newEncodedFunctionCall = main.interface.encodeFunctionData('grantRole', [
-        FREEZER,
+        FREEZE_STARTER,
         other.address,
       ])
-      const proposalDescription2 = 'Proposal #2 - Grant new freezer'
+      const proposalDescription2 = 'Proposal #2 - Grant new freeze starter'
       const proposalDescHash2 = ethers.utils.keccak256(
         ethers.utils.toUtf8Bytes(proposalDescription2)
       )
@@ -638,7 +647,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.state(proposalId2)).to.equal(ProposalState.Executed)
 
       // Check role was granted
-      expect(await main.hasRole(FREEZER, other.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, other.address)).to.equal(true)
     })
   })
 })

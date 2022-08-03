@@ -20,7 +20,8 @@ import "./ITrading.sol";
 // === Auth roles ===
 
 bytes32 constant OWNER = bytes32(bytes("OWNER"));
-bytes32 constant FREEZER = bytes32(bytes("FREEZER"));
+bytes32 constant FREEZE_STARTER = bytes32(bytes("FREEZE_STARTER"));
+bytes32 constant FREEZE_EXTENDER = bytes32(bytes("FREEZE_EXTENDER"));
 bytes32 constant PAUSER = bytes32(bytes("PAUSER"));
 
 /**
@@ -82,7 +83,7 @@ interface IAuth {
     // onlyRole(OWNER)
     function freezeForever() external;
 
-    // onlyRole(FREEZER)
+    // onlyRole(FREEZE*)
     function freeze() external;
 
     // onlyRole(OWNER)

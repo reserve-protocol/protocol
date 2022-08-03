@@ -165,9 +165,12 @@ contract FacadeWrite is IFacadeWrite {
             newOwner = owner;
         }
 
-        // Setup guardian as freezer + pauser
+        // Setup guardian as freeze starter / extender + pauser
         if (guardian != address(0)) {
-            main.grantRole(FREEZER, guardian);
+            // As a further decentralization step it is suggested to further differentiate between
+            // these two roles. But this is what will make sense for simple system setup.
+            main.grantRole(FREEZE_STARTER, guardian);
+            main.grantRole(FREEZE_EXTENDER, guardian);
             main.grantRole(PAUSER, guardian);
         }
 
@@ -183,10 +186,12 @@ contract FacadeWrite is IFacadeWrite {
 
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
-        main.grantRole(FREEZER, newOwner);
+        main.grantRole(FREEZE_STARTER, newOwner);
+        main.grantRole(FREEZE_EXTENDER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(FREEZE_STARTER, address(this));
+        main.renounceRole(FREEZE_EXTENDER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         // Return new owner address

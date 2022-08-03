@@ -18,9 +18,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
      *   However, OWNER can also freeze forever.
      */
 
-    /// The rest of the contract uses the shorthand; these declarations are here to for getters
+    /// The rest of the contract uses the shorthand; these declarations are here for getters
     bytes32 public constant OWNER_ROLE = OWNER;
-    bytes32 public constant FREEZER_ROLE = FREEZER;
+    bytes32 public constant FREEZE_STARTER_ROLE = FREEZE_STARTER;
+    bytes32 public constant FREEZE_EXTENDER_ROLE = FREEZE_EXTENDER;
     bytes32 public constant PAUSER_ROLE = PAUSER;
 
     // === Freezing ===
@@ -42,10 +43,12 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
         // Role setup
         _setRoleAdmin(OWNER, OWNER);
-        _setRoleAdmin(FREEZER, OWNER);
+        _setRoleAdmin(FREEZE_STARTER, OWNER);
+        _setRoleAdmin(FREEZE_EXTENDER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
         _grantRole(OWNER, _msgSender());
-        _grantRole(FREEZER, _msgSender());
+        _grantRole(FREEZE_STARTER, _msgSender());
+        _grantRole(FREEZE_EXTENDER, _msgSender());
         _grantRole(PAUSER, _msgSender());
     }
 
@@ -69,8 +72,15 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     /// Enter a fixed-duration freeze and revoke freezership
-    function freeze() external onlyRole(FREEZER) {
-        _revokeRole(FREEZER, _msgSender());
+    /// onlyRole(FREEZE_STARTER or FREEZE_EXTENDER)
+    function freeze() external {
+        if (block.timestamp < unfreezeAt) {
+            require(hasRole(FREEZE_EXTENDER, _msgSender()), "not freeze extender");
+        } else {
+            // Revoke role if starting the freeze
+            require(hasRole(FREEZE_STARTER, _msgSender()), "not freeze starter");
+            _revokeRole(FREEZE_STARTER, _msgSender());
+        }
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + freezeDuration);
         unfreezeAt = uint32(block.timestamp) + freezeDuration;
     }

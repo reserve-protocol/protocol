@@ -15,7 +15,8 @@ import {
   ONE_ADDRESS,
   MAX_UINT256,
   OWNER,
-  FREEZER,
+  FREEZE_STARTER,
+  FREEZE_EXTENDER,
   PAUSER,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -177,13 +178,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should setup Main correctly', async () => {
       // Auth roles
       expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(true)
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(OWNER, deployer.address)).to.equal(false)
-      expect(await main.hasRole(FREEZER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, deployer.address)).to.equal(false)
       expect(await main.hasRole(PAUSER, deployer.address)).to.equal(false)
       expect(await main.getRoleAdmin(OWNER)).to.equal(OWNER)
-      expect(await main.getRoleAdmin(FREEZER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(FREEZE_STARTER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(FREEZE_EXTENDER)).to.equal(OWNER)
       expect(await main.getRoleAdmin(PAUSER)).to.equal(OWNER)
 
       // Should start unfrozen and unpaused
@@ -539,12 +543,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
   describe('Freeze/Unfreeze #fast', () => {
     beforeEach(async () => {
-      // Set FREEZER
-      await main.connect(owner).grantRole(FREEZER, addr2.address)
+      // Set FREEZE_STARTER + FREEZE_EXTENDER
+      await main.connect(owner).grantRole(FREEZE_STARTER, addr2.address)
+      await main.connect(owner).grantRole(FREEZE_EXTENDER, addr2.address)
 
       // Check initial status
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(false)
       expect(await main.pausedOrFrozen()).to.equal(false)
     })
@@ -571,19 +578,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.frozen()).to.equal(true)
     })
 
-    it('Should allow unfreeze after fixed-duration freeze', async () => {
-      // Freeze with non-owner FREEZER
+    it('Should allow unfreeze during fixed-duration freeze', async () => {
+      // Freeze with non-owner FREEZE_STARTER
       await main.connect(addr2).freeze()
 
       // Role revoked
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(false)
 
       // Unfreeze
       await main.connect(owner).unfreeze()
       expect(await main.frozen()).to.equal(false)
     })
 
-    it('Should not allow unfreeze from FREEZER after forever freeze', async () => {
+    it('Should not allow unfreeze from FREEZE_STARTER or FREEZE_EXTENDER', async () => {
       // Freeze with OWNER
       await main.connect(owner).freezeForever()
       expect(await main.frozen()).to.equal(true)
@@ -593,79 +600,119 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.frozen()).to.equal(false)
     })
 
-    it('Should allow extension of fixed-duraration freeze', async () => {
-      // Fixed-duration freeze
-      expect(await main.frozen()).to.equal(false)
-      await expect(main.connect(addr2).freeze()).to.emit(main, 'UnfreezeAtSet')
-      expect(await main.frozen()).to.equal(true)
-
-      // Regrant FREEZER since revoked
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
-      await main.connect(owner).grantRole(FREEZER, addr2.address)
-
-      // Should extend
-      await expect(main.connect(addr2).freeze()).to.emit(main, 'UnfreezeAtSet')
-      expect(await main.frozen()).to.equal(true)
-      await advanceTime(config.freezeDuration.sub(10).toString())
-      expect(await main.frozen()).to.equal(true)
-      await advanceTime('10')
-      expect(await main.frozen()).to.equal(false)
-    })
-
-    it('Freezing should revoke role + eventually thaw on its own', async () => {
+    it('Freezing should revoke FREEZE_STARTER + eventually thaw on its own', async () => {
       // Freeze with freezer
       await main.connect(addr2).freeze()
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(true)
+
+      // Extend freeze using FREEZE_EXTENDER role
+      await advanceTime(config.freezeDuration.div(2).toString())
+      expect(await main.frozen()).to.equal(true)
+      await main.connect(addr2).freeze()
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
+      expect(await main.frozen()).to.equal(true)
+
+      // Should not be able to re-initiate freezing
       await advanceTime(config.freezeDuration.toString())
-
       expect(await main.frozen()).to.equal(false)
-
-      // Should not be able to extend freezing
       await expect(main.connect(addr2).freeze()).to.be.reverted
+
+      // Cannot grant to self
+      await expect(main.connect(addr2).grantRole(FREEZE_STARTER, addr2.address)).to.be.reverted
     })
 
-    it('Should not allow to set FREEZER if not OWNER', async () => {
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+    it('Should not allow to set FREEZE_STARTER if not OWNER', async () => {
+      expect(await main.hasRole(FREEZE_STARTER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, other.address)).to.equal(false)
 
-      // Set FREEZER from non-owner
-      await expect(main.connect(addr1).grantRole(FREEZER, other.address)).to.be.reverted
-      await expect(main.connect(addr2).grantRole(FREEZER, other.address)).to.be.reverted
-      await expect(main.connect(other).grantRole(FREEZER, other.address)).to.be.reverted
+      // Set FREEZE_STARTER from non-owner
+      await expect(main.connect(addr1).grantRole(FREEZE_STARTER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(FREEZE_STARTER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(FREEZE_STARTER, other.address)).to.be.reverted
 
-      // Check FREEZER not updated
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+      // Check FREEZE_STARTER not updated
+      expect(await main.hasRole(FREEZE_STARTER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, other.address)).to.equal(false)
     })
 
-    it('Should allow to renounce FREEZER', async () => {
+    it('Should not allow to set FREEZE_EXTENDER if not OWNER', async () => {
+      expect(await main.hasRole(FREEZE_EXTENDER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_EXTENDER, other.address)).to.equal(false)
+
+      // Set FREEZE_EXTENDER from non-owner
+      await expect(main.connect(addr1).grantRole(FREEZE_EXTENDER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(FREEZE_EXTENDER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(FREEZE_EXTENDER, other.address)).to.be.reverted
+
+      // Check FREEZE_EXTENDER not updated
+      expect(await main.hasRole(FREEZE_EXTENDER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_EXTENDER, other.address)).to.equal(false)
+    })
+
+    it('Should allow to renounce FREEZE_STARTER', async () => {
       // Renounce role with freezer
-      await main.connect(addr2).renounceRole(FREEZER, addr2.address)
+      await main.connect(addr2).renounceRole(FREEZE_STARTER, addr2.address)
 
-      // Check FREEZER renounced
-      expect(await main.hasRole(FREEZER, addr2.address)).to.equal(false)
+      // Check FREEZE_STARTER renounced
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(false)
       await expect(main.connect(addr2).freeze()).to.be.reverted
 
       // Owner should still be OWNER
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(FREEZE_STARTER, owner.address)).to.equal(true)
     })
 
-    it('Should allow to renounce FREEZER if OWNER without losing OWNER', async () => {
-      // Renounce role with owner
-      await main.connect(owner).renounceRole(FREEZER, owner.address)
+    it('Should allow to renounce FREEZE_EXTENDER', async () => {
+      // Start freeze
+      await main.connect(addr2).freeze()
+      expect(await main.hasRole(FREEZE_STARTER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(true)
 
-      // Check FREEZER renounced
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(false)
+      // Renounce role with freezer
+      await main.connect(addr2).renounceRole(FREEZE_EXTENDER, addr2.address)
+
+      // Check FREEZE_EXTENDER renounced
+      expect(await main.hasRole(FREEZE_EXTENDER, addr2.address)).to.equal(false)
+      await expect(main.connect(addr2).freeze()).to.be.reverted // refresh call
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce FREEZE_STARTER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(FREEZE_STARTER, owner.address)
+
+      // Check FREEZE_STARTER renounced
+      expect(await main.hasRole(FREEZE_STARTER, owner.address)).to.equal(false)
 
       // Owner should still be OWNER
       expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
 
       // Can re-grant to self
-      await main.connect(owner).grantRole(FREEZER, owner.address)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      await main.connect(owner).grantRole(FREEZE_STARTER, owner.address)
+      expect(await main.hasRole(FREEZE_STARTER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce FREEZE_EXTENDER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(FREEZE_EXTENDER, owner.address)
+
+      // Check FREEZE_EXTENDER renounced
+      expect(await main.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(false)
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
+
+      // Can re-grant to self
+      await main.connect(owner).grantRole(FREEZE_EXTENDER, owner.address)
+      expect(await main.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(true)
     })
   })
 
@@ -786,7 +833,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to update freezeDuration if OWNER', async () => {
       const newValue: BigNumber = bn(1)
-      await main.connect(owner).grantRole(FREEZER, addr1.address)
+      await main.connect(owner).grantRole(FREEZE_STARTER, addr1.address)
 
       // Check existing value
       expect(await main.freezeDuration()).to.equal(config.freezeDuration)
