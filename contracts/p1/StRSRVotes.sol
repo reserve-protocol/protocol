@@ -44,6 +44,8 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     /// No need to override beginDraftEra: we are only concerned with raw balances (stakes)
     function beginEra() internal override {
         super.beginEra();
+
+        _writeCheckpoint(_eras, _add, 1);
     }
 
     function currentEra() external view returns (uint256) {
