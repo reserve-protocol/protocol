@@ -654,7 +654,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    oneshotFreezeDuration: bn('864000'), // 10 days
+    freezeDuration: bn('864000'), // 10 days
   }
 
   // Deploy TradingLib external library

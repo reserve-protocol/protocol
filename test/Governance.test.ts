@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { ProposalState, ZERO_ADDRESS, OWNER, FREEZER, THAWER, PAUSER } from '../common/constants'
+import { ProposalState, ZERO_ADDRESS, OWNER, FREEZER, PAUSER } from '../common/constants'
 import { bn, fp } from '../common/numbers'
 import {
   ERC20Mock,
@@ -118,13 +118,11 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
     // Transfer ownership of Main to the Timelock (and thus, Governor)
     await main.grantRole(OWNER, timelock.address)
     await main.grantRole(FREEZER, timelock.address)
-    await main.grantRole(THAWER, timelock.address)
     await main.grantRole(PAUSER, timelock.address)
 
     // Renounce all roles from owner
     await main.renounceRole(OWNER, owner.address)
     await main.renounceRole(FREEZER, owner.address)
-    await main.renounceRole(THAWER, owner.address)
     await main.renounceRole(PAUSER, owner.address)
   })
 
