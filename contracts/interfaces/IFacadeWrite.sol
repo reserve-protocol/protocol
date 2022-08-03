@@ -62,6 +62,7 @@ interface IFacadeWrite {
     /// @param rToken The address of the RToken
     /// @param governance The address of the new governance
     /// @param timelock The address of the timelock
+    /// @dev Copied at FacadeWrite2
     event GovernanceCreated(
         IRToken indexed rToken,
         address indexed governance,
