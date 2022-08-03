@@ -2095,10 +2095,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Advance block
         await advanceBlocks(1)
 
-        // Should have retroactively wiped past vote
-        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
-        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
-        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+        // Should not have retroactively wiped past vote
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
         expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
 
         // Check values after changing era
@@ -2119,7 +2119,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Advance block
         await advanceBlocks(1)
 
-        // Check values after new stake - final stake is registered normally
+        // Check values after new stake - final stake is registered
         currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount)
         expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
