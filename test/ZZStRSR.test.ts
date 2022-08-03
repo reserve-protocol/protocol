@@ -2067,7 +2067,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(amount.mul(2))
       })
 
-      it.only('Should clean votes properly when changing era', async function () {
+      it('Should clean votes properly when changing era', async function () {
         // Check values before changing era
         let currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
@@ -2166,6 +2166,28 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
         expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount.mul(2))
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+      })
+
+      it('Should remove voting weight on unstaking', async function () {
+        // Check values before transfers
+        const currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Check checkpoint stored
+        expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(1)
+        expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(1)
+
+        // Unstake stRSR
+        await stRSRVotes.connect(addr2).unstake(amount)
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
       })
     })
   })
