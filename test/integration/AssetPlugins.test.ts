@@ -23,7 +23,10 @@ import {
   ComptrollerMock,
   CTokenFiatCollateral,
   CTokenMock,
+  CTokenNonFiatCollateral,
+  CTokenSelfReferentialCollateral,
   ERC20Mock,
+  EURFiatCollateral,
   Facade,
   FiatCollateral,
   IAToken,
@@ -32,6 +35,7 @@ import {
   IBasketHandler,
   NonFiatCollateral,
   RTokenAsset,
+  SelfReferentialCollateral,
   StaticATokenLM,
   StaticATokenMock,
   TestIBackingManager,
@@ -39,9 +43,6 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  SelfReferentialCollateral,
-  CTokenNonFiatCollateral,
-  CTokenSelfReferentialCollateral,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -60,6 +61,11 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
+
+  // RSR
+  let rsr: ERC20Mock
+  let rsrAsset: Asset
 
   // Assets
   let collateral: Collateral[]
@@ -75,6 +81,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let usdc: USDCMock
   let usdt: ERC20Mock
   let busd: ERC20Mock
+  let usdp: ERC20Mock
+  let tusd: ERC20Mock
 
   let aDai: IAToken
   let aUsdc: IAToken
@@ -93,11 +101,14 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cWBTC: CTokenMock
   let weth: ERC20Mock
   let cETH: CTokenMock
+  let eurt: ERC20Mock
 
   let daiCollateral: FiatCollateral
   let usdcCollateral: FiatCollateral
   let usdtCollateral: FiatCollateral
   let busdCollateral: FiatCollateral
+  let usdpCollateral: FiatCollateral
+  let tusdCollateral: FiatCollateral
 
   let aDaiCollateral: ATokenFiatCollateral
   let aUsdcCollateral: ATokenFiatCollateral
@@ -112,6 +123,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cWBTCCollateral: CTokenNonFiatCollateral
   let wethCollateral: SelfReferentialCollateral
   let cETHCollateral: CTokenSelfReferentialCollateral
+  let eurtCollateral: EURFiatCollateral
 
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
@@ -132,7 +144,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
   let chainId: number
 
-  describe('Assets/Collateral Setup', () => {
+  describe('Assets/Collateral', () => {
     before(async () => {
       ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
       loadFixture = createFixtureLoader([wallet])
@@ -144,26 +156,48 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
     })
 
     beforeEach(async () => {
-      ;[owner] = await ethers.getSigners()
-      ;({ compToken, aaveToken, compAsset, aaveAsset, compoundMock, erc20s, collateral, config } =
-        await loadFixture(defaultFixture))
+      ;[owner, addr1, addr2] = await ethers.getSigners()
+      ;({
+        rsr,
+        rsrAsset,
+        compToken,
+        aaveToken,
+        compAsset,
+        aaveAsset,
+        compoundMock,
+        erc20s,
+        collateral,
+        basket,
+        main,
+        assetRegistry,
+        backingManager,
+        basketHandler,
+        rToken,
+        rTokenAsset,
+        facade,
+        config,
+        // oracleLib,
+      } = await loadFixture(defaultFixture))
 
       // Get tokens
       dai = <ERC20Mock>erc20s[0] // DAI
       usdc = <ERC20Mock>erc20s[1] // USDC
       usdt = <ERC20Mock>erc20s[2] // USDT
       busd = <ERC20Mock>erc20s[3] // BUSD
-      cDai = <CTokenMock>erc20s[4] // cDAI
-      cUsdc = <CTokenMock>erc20s[5] // cUSDC
-      cUsdt = <CTokenMock>erc20s[6] // cUSDT
-      stataDai = <StaticATokenLM>erc20s[7] // static aDAI
-      stataUsdc = <StaticATokenLM>erc20s[8] // static aUSDC
-      stataUsdt = <StaticATokenLM>erc20s[9] // static aUSDT
-      stataBusd = <StaticATokenLM>erc20s[10] // static aBUSD
-      wbtc = <ERC20Mock>erc20s[11] // wBTC
-      cWBTC = <CTokenMock>erc20s[12] // cWBTC
-      weth = <ERC20Mock>erc20s[13] // wETH
-      cETH = <CTokenMock>erc20s[14] // cETH
+      usdp = <ERC20Mock>erc20s[4] // USDP
+      tusd = <ERC20Mock>erc20s[5] // TUSD
+      cDai = <CTokenMock>erc20s[6] // cDAI
+      cUsdc = <CTokenMock>erc20s[7] // cUSDC
+      cUsdt = <CTokenMock>erc20s[8] // cUSDT
+      stataDai = <StaticATokenLM>erc20s[9] // static aDAI
+      stataUsdc = <StaticATokenLM>erc20s[10] // static aUSDC
+      stataUsdt = <StaticATokenLM>erc20s[11] // static aUSDT
+      stataBusd = <StaticATokenLM>erc20s[12] // static aBUSD
+      wbtc = <ERC20Mock>erc20s[13] // wBTC
+      cWBTC = <CTokenMock>erc20s[14] // cWBTC
+      weth = <ERC20Mock>erc20s[15] // wETH
+      cETH = <CTokenMock>erc20s[16] // cETH
+      eurt = <ERC20Mock>erc20s[17] // eurt
 
       // Get plain aTokens
       aDai = <IAToken>(
@@ -197,17 +231,57 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       usdcCollateral = <FiatCollateral>collateral[1] // USDC
       usdtCollateral = <FiatCollateral>collateral[2] // USDT
       busdCollateral = <FiatCollateral>collateral[3] // BUSD
-      cDaiCollateral = <CTokenFiatCollateral>collateral[4] // cDAI
-      cUsdcCollateral = <CTokenFiatCollateral>collateral[5] // cUSDC
-      cUsdtCollateral = <CTokenFiatCollateral>collateral[6] // cUSDT
-      aDaiCollateral = <ATokenFiatCollateral>collateral[7] // aDAI
-      aUsdcCollateral = <ATokenFiatCollateral>collateral[8] // aUSDC
-      aUsdtCollateral = <ATokenFiatCollateral>collateral[9] // aUSDT
-      aBusdCollateral = <ATokenFiatCollateral>collateral[10] // aBUSD
-      wbtcCollateral = <NonFiatCollateral>collateral[11] // wBTC
-      cWBTCCollateral = <CTokenNonFiatCollateral>collateral[12] // cWBTC
-      wethCollateral = <SelfReferentialCollateral>collateral[13] // wETH
-      cETHCollateral = <CTokenSelfReferentialCollateral>collateral[14] // cETH
+      usdpCollateral = <FiatCollateral>collateral[4] // USDP
+      tusdCollateral = <FiatCollateral>collateral[5] // TUSD
+      cDaiCollateral = <CTokenFiatCollateral>collateral[6] // cDAI
+      cUsdcCollateral = <CTokenFiatCollateral>collateral[7] // cUSDC
+      cUsdtCollateral = <CTokenFiatCollateral>collateral[8] // cUSDT
+      aDaiCollateral = <ATokenFiatCollateral>collateral[9] // aDAI
+      aUsdcCollateral = <ATokenFiatCollateral>collateral[10] // aUSDC
+      aUsdtCollateral = <ATokenFiatCollateral>collateral[11] // aUSDT
+      aBusdCollateral = <ATokenFiatCollateral>collateral[12] // aBUSD
+      wbtcCollateral = <NonFiatCollateral>collateral[13] // wBTC
+      cWBTCCollateral = <CTokenNonFiatCollateral>collateral[14] // cWBTC
+      wethCollateral = <SelfReferentialCollateral>collateral[15] // wETH
+      cETHCollateral = <CTokenSelfReferentialCollateral>collateral[16] // cETH
+      eurtCollateral = <EURFiatCollateral>collateral[17] // EURT
+
+      // Get assets and tokens for default basket
+      daiCollateral = <FiatCollateral>basket[0]
+      aDaiCollateral = <ATokenFiatCollateral>basket[1]
+      cDaiCollateral = <CTokenFiatCollateral>basket[2]
+
+      dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await daiCollateral.erc20())
+      stataDai = <StaticATokenLM>(
+        await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
+      )
+      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiCollateral.erc20())
+
+      // Get plain aToken
+      aDai = <IAToken>(
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aDAI || ''
+        )
+      )
+
+      // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
+      // DAI
+      initialBal = bn('20000e18')
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
+      })
+      // aDAI
+      await whileImpersonating(holderADAI, async (adaiSigner) => {
+        // Wrap ADAI into static ADAI
+        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
+        await aDai.connect(addr1).approve(stataDai.address, initialBal)
+        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
+      })
+      // cDAI
+      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
+        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+      })
     })
 
     it('Should setup assets correctly', async () => {
@@ -264,6 +338,18 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tokenDecimals: 18,
           tokenAddress: networkConfig[chainId].tokens.BUSD || '',
           tokenCollateral: busdCollateral,
+        },
+        {
+          token: usdp,
+          tokenDecimals: 18,
+          tokenAddress: networkConfig[chainId].tokens.USDP || '',
+          tokenCollateral: usdpCollateral,
+        },
+        {
+          token: tusd,
+          tokenDecimals: 18,
+          tokenAddress: networkConfig[chainId].tokens.TUSD || '',
+          tokenCollateral: tusdCollateral,
         },
       ]
 
@@ -677,6 +763,55 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
+    it('Should setup collateral correctly - EURO Fiatcoins', async () => {
+      // Define interface required for each Eur-fiat coin
+      interface TokenInfo {
+        eurFiatToken: ERC20Mock
+        eurFiatTokenDecimals: number
+        eurFiatTokenAddress: string
+        eurFiatTokenCollateral: EURFiatCollateral
+        targetPrice: BigNumber
+        refPrice: BigNumber
+        targetName: string
+      }
+
+      // EURT
+      const tokenInfos: TokenInfo[] = [
+        {
+          eurFiatToken: eurt,
+          eurFiatTokenDecimals: 6,
+          eurFiatTokenAddress: networkConfig[chainId].tokens.EURT || '',
+          eurFiatTokenCollateral: eurtCollateral,
+          targetPrice: fp('1.07'), // approx price EUR-USD June 6, 2022
+          refPrice: fp('1.07'), // approx price EURT-USD June 6, 2022
+          targetName: 'EURO',
+        },
+      ]
+
+      for (const tkInf of tokenInfos) {
+        // Non-Fiat Token Assets
+        expect(await tkInf.eurFiatTokenCollateral.isCollateral()).to.equal(true)
+        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatToken.address)
+        expect(await tkInf.eurFiatTokenCollateral.erc20()).to.equal(tkInf.eurFiatTokenAddress)
+        expect(await tkInf.eurFiatToken.decimals()).to.equal(tkInf.eurFiatTokenDecimals)
+        expect(await tkInf.eurFiatTokenCollateral.targetName()).to.equal(
+          ethers.utils.formatBytes32String(tkInf.targetName)
+        )
+
+        // Get priceable info
+        await tkInf.eurFiatTokenCollateral.refresh()
+        expect(await tkInf.eurFiatTokenCollateral.refPerTok()).to.equal(fp('1'))
+        expect(await tkInf.eurFiatTokenCollateral.targetPerRef()).to.equal(fp('1'))
+        expect(await tkInf.eurFiatTokenCollateral.pricePerTarget()).to.be.closeTo(
+          tkInf.targetPrice,
+          fp('0.01')
+        )
+        expect(await tkInf.eurFiatTokenCollateral.price()).to.be.closeTo(tkInf.refPrice, fp('0.01')) // ref price approx 1.07
+        expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+        expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      }
+    })
+
     it('Should handle invalid Price - Assets', async () => {
       // Setup Assets with no price - Use stkAAVE token
       const nonpriceToken: ERC20Mock = <ERC20Mock>(
@@ -689,7 +824,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           nonpriceToken.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT
         )
       )
@@ -715,7 +850,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           nonpriceToken.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -765,7 +900,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           staticNonPriceErc20.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -792,7 +927,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           nonpriceCtoken.address,
           compToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -841,7 +976,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           networkConfig[chainId].chainlinkFeeds.DAI || '',
           underlyingToken.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           oracleTimeout,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -868,7 +1003,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           networkConfig[chainId].chainlinkFeeds.DAI || '',
           staticNonPriceErc20.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           oracleTimeout,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -895,7 +1030,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           networkConfig[chainId].chainlinkFeeds.DAI || '',
           cToken.address,
           compToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           oracleTimeout,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -915,79 +1050,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await fiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-    })
-  })
-
-  describe('Basket/Issue/Redeem', () => {
-    let addr2: SignerWithAddress
-
-    // RSR
-    let rsr: ERC20Mock
-    let rsrAsset: Asset
-
-    before(async () => {
-      ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
-      loadFixture = createFixtureLoader([wallet])
-    })
-
-    beforeEach(async () => {
-      ;[owner, addr1, addr2] = await ethers.getSigners()
-      ;({
-        rsr,
-        rsrAsset,
-        compToken,
-        aaveToken,
-        compAsset,
-        aaveAsset,
-        compoundMock,
-        erc20s,
-        collateral,
-        basket,
-        main,
-        assetRegistry,
-        backingManager,
-        basketHandler,
-        rToken,
-        rTokenAsset,
-        facade,
-      } = await loadFixture(defaultFixture))
-
-      // Get assets and tokens for default basket
-      daiCollateral = <FiatCollateral>basket[0]
-      aDaiCollateral = <ATokenFiatCollateral>basket[1]
-      cDaiCollateral = <CTokenFiatCollateral>basket[2]
-
-      dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await daiCollateral.erc20())
-      stataDai = <StaticATokenLM>(
-        await ethers.getContractAt('StaticATokenLM', await aDaiCollateral.erc20())
-      )
-      cDai = <CTokenMock>await ethers.getContractAt('CTokenMock', await cDaiCollateral.erc20())
-
-      // Get plain aToken
-      aDai = <IAToken>(
-        await ethers.getContractAt(
-          'contracts/plugins/aave/IAToken.sol:IAToken',
-          networkConfig[chainId].tokens.aDAI || ''
-        )
-      )
-
-      // Setup balances for addr1 - Transfer from Mainnet holders DAI, cDAI and aDAI (for default basket)
-      // DAI
-      initialBal = bn('20000e18')
-      await whileImpersonating(holderDAI, async (daiSigner) => {
-        await dai.connect(daiSigner).transfer(addr1.address, initialBal)
-      })
-      // aDAI
-      await whileImpersonating(holderADAI, async (adaiSigner) => {
-        // Wrap ADAI into static ADAI
-        await aDai.connect(adaiSigner).transfer(addr1.address, initialBal)
-        await aDai.connect(addr1).approve(stataDai.address, initialBal)
-        await stataDai.connect(addr1).deposit(addr1.address, initialBal, 0, false)
-      })
-      // cDAI
-      await whileImpersonating(holderCDAI, async (cdaiSigner) => {
-        await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
-      })
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -1038,6 +1100,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check RToken price
+      const issueAmount: BigNumber = bn('10000e18')
+      await dai.connect(addr1).approve(rToken.address, issueAmount)
+      await stataDai.connect(addr1).approve(rToken.address, issueAmount)
+      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 

@@ -592,7 +592,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             compToken.address,
             ZERO_ADDRESS,
-            fp('1'),
+            { min: fp('0'), max: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -785,7 +785,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             aaveToken.address,
             aaveToken.address,
-            fp('1'),
+            { min: fp('0'), max: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -965,7 +965,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             compToken.address,
             compToken.address,
-            fp('1'),
+            { min: fp('0'), max: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -1700,7 +1700,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ONE_ADDRESS,
             token2.address,
             aaveToken.address,
-            await collateral2.maxTradeVolume(),
+            config.tradingRange,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),
             await collateral2.defaultThreshold(),

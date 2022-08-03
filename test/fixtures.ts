@@ -168,7 +168,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -188,7 +188,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -211,7 +211,7 @@ async function collateralFixture(
         chainlinkAddr,
         erc20.address,
         compToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -238,7 +238,7 @@ async function collateralFixture(
         chainlinkAddr,
         erc20.address,
         aaveToken.address,
-        config.maxTradeVolume,
+        config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -329,7 +329,7 @@ type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   CollateralFixture &
   GnosisFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
+export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer
@@ -367,7 +367,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    maxTradeVolume: fp('1e6'), // $1M
+    tradingRange: { min: fp('0.01'), max: fp('1e6') }, // [0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -376,7 +376,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotFreezeDuration: bn('864000'), // 10 days
   }
@@ -400,7 +399,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsrChainlinkFeed.address,
       rsr.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -514,7 +513,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveChainlinkFeed.address,
       aaveToken.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -527,7 +526,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       compChainlinkFeed.address,
       compToken.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT
     )
   )

@@ -200,9 +200,7 @@ export const deployImplementations = async (
 
   // Assets - Can use dummy data in constructor as only logic will be used
   const RTokenAssetFactory: ContractFactory = await hre.ethers.getContractFactory('RTokenAsset')
-  const rTokenAssetImpl = <RTokenAsset>(
-    await RTokenAssetFactory.deploy(ZERO_ADDRESS, bn(0), ZERO_ADDRESS)
-  )
+  const rTokenAssetImpl = <RTokenAsset>await RTokenAssetFactory.deploy(bn(0), ZERO_ADDRESS)
   await rTokenAssetImpl.deployed()
 
   const AavePricedAssetFactory: ContractFactory = await hre.ethers.getContractFactory(

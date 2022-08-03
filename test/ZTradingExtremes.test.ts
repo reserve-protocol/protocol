@@ -22,7 +22,6 @@ import {
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
-  TestIMain,
   TestIRevenueTrader,
   TestIRToken,
   StaticATokenMock,
@@ -60,7 +59,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   // Contracts to retrieve after deploy
   let stRSR: TestIStRSR
   let rToken: TestIRToken
-  let main: TestIMain
   let facade: Facade
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -95,7 +93,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       aaveToken,
       compoundMock,
       config,
-      main,
       assetRegistry,
       stRSR,
       backingManager,
@@ -144,7 +141,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         chainlinkFeed.address,
         erc20.address,
         aaveToken.address,
-        MAX_UOA,
+        { min: fp('0'), max: MAX_UOA },
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -177,7 +174,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         chainlinkFeed.address,
         erc20.address,
         compToken.address,
-        MAX_UOA,
+        { min: fp('0'), max: MAX_UOA },
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -210,11 +207,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       .to.emit(distributor, 'DistributionSet')
       .withArgs(FURNACE_DEST, rTokenDist, bn(0))
 
-    // Eliminate auction frictions
-    await backingManager.connect(owner).setDustAmount(0)
-    await rsrTrader.connect(owner).setDustAmount(0)
-    await rTokenTrader.connect(owner).setDustAmount(0)
-
     // Set prices
     await setOraclePrice(rsrAsset.address, bn('1e8'))
     await setOraclePrice(aaveAsset.address, bn('1e8'))
@@ -224,14 +216,14 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
     const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
     const newRTokenAsset: Asset = <Asset>(
-      await RTokenAssetFactory.deploy(main.address, rToken.address, MAX_UOA)
+      await RTokenAssetFactory.deploy(rToken.address, { min: fp('0'), max: MAX_UOA })
     )
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
         await rsrAsset.chainlinkFeed(),
         rsr.address,
         ZERO_ADDRESS,
-        MAX_UOA,
+        { min: fp('0'), max: MAX_UOA },
         MAX_ORACLE_TIMEOUT
       )
     )
@@ -424,7 +416,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           await aaveAsset.chainlinkFeed(),
           aaveToken.address,
           aaveToken.address,
-          MAX_UOA,
+          { min: fp('0'), max: MAX_UOA },
           MAX_ORACLE_TIMEOUT
         )
       )
@@ -433,7 +425,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           await compAsset.chainlinkFeed(),
           compToken.address,
           compToken.address,
-          MAX_UOA,
+          { min: fp('0'), max: MAX_UOA },
           MAX_ORACLE_TIMEOUT
         )
       )
@@ -730,7 +722,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
             chainlinkFeed.address,
             erc20.address,
             aaveToken.address,
-            config.maxTradeVolume,
+            config.tradingRange,
             MAX_ORACLE_TIMEOUT,
             targetUnit,
             fp('0.05'),

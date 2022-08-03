@@ -49,6 +49,13 @@ interface IFacade {
     /// @return stTokenAddress The address of the corresponding stToken address
     /// @custom:view
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress);
+
+    /// @return backing The worst-case collaterazation % the protocol will have after done trading
+    /// @return insurance The insurance value relative to the fully-backed value
+    function backingOverview(IRToken rToken)
+        external
+        view
+        returns (uint192 backing, uint192 insurance);
 }
 
 interface IFacadeP1 is IFacade {

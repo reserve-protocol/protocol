@@ -1,13 +1,15 @@
 import { getChainId } from '../../../common/blockchain-utils'
-import { task } from 'hardhat/config'
+import { task, types } from 'hardhat/config'
 import { Asset } from '../../../typechain'
 
 task('deploy-asset', 'Deploys an Asset')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('maxTradeVolume', 'Max trade volume')
+  .addParam('tradingMin', 'Trade Range - Min')
+  .addParam('tradingMax', 'Trade Range - Max')
   .addParam('maxOracleTimeout', 'Max Oracle Timeout')
+  .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -20,13 +22,15 @@ task('deploy-asset', 'Deploys an Asset')
           params.priceFeed,
           params.tokenAddress,
           params.rewardToken,
-          params.maxTradeVolume,
+          { min: params.tradingMin, max: params.tradingMax },
           params.maxOracleTimeout
         )
     )
     await asset.deployed()
 
-    console.log(`Deployed Asset to ${hre.network.name} (${chainId}): ${asset.address}`)
+    if (!params.noOutput) {
+      console.log(`Deployed Asset to ${hre.network.name} (${chainId}): ${asset.address}`)
+    }
 
     return { asset: asset.address }
   })

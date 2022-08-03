@@ -1,15 +1,18 @@
-import { BigNumber } from 'ethers'
+import { BigNumber, BigNumberish } from 'ethers'
 import { fp, pow10 } from './numbers'
 
 interface ICurrencies {
   ETH?: string
   BTC?: string
+  EUR?: string
 }
 
 export interface ITokens {
   DAI?: string
   USDC?: string
   USDT?: string
+  USDP?: string
+  TUSD?: string
   BUSD?: string
   aDAI?: string
   aUSDC?: string
@@ -26,6 +29,7 @@ export interface ITokens {
   COMP?: string
   WETH?: string
   WBTC?: string
+  EURT?: string
   RSR?: string
 }
 
@@ -55,6 +59,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
+      USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
+      TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',
@@ -70,6 +76,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {
@@ -80,9 +87,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
       USDT: '0x3E7d1eAB13ad0104d2750B8863b489D65364e32D',
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
+      USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
+      TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
+      EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
+      EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -107,6 +118,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
+      USDP: '0x8E870D67F660D95d5be530380D0eC0bd388289E1',
+      TUSD: '0x0000000000085d4780B73119b644AE5ecd22b376',
       aDAI: '0x028171bCA77440897B824Ca71D1c56caC55b68A3',
       aUSDC: '0xBcca60bB61934080951369a648Fb03DF4F96263C',
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',
@@ -121,6 +134,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
     chainlinkFeeds: {
@@ -131,9 +145,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
       USDT: '0x3E7d1eAB13ad0104d2750B8863b489D65364e32D',
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
+      USDP: '0x09023c0DA49Aaf8fc3fA3ADF34C6A7016D38D5e3',
+      TUSD: '0xec746eCF986E2927Abd291a2A1716c940100f8Ba',
       ETH: '0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419',
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
+      EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
+      EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -153,9 +171,14 @@ export const getNetworkConfig = (chainId: string) => {
 
 export const developmentChains = ['hardhat', 'localhost']
 
+export interface TradingRange {
+  min: BigNumberish
+  max: BigNumberish
+}
+
 // Common configuration interfaces
 export interface IConfig {
-  maxTradeVolume: BigNumber
+  tradingRange: TradingRange
   dist: IRevenueShare
   rewardPeriod: BigNumber
   rewardRatio: BigNumber
@@ -164,7 +187,6 @@ export interface IConfig {
   auctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
-  dustAmount: BigNumber
   issuanceRate: BigNumber
   oneshotFreezeDuration: BigNumber
 }
@@ -222,7 +244,6 @@ export interface IGovParams {
 }
 
 // System constants
-export const MAX_DUST_AMOUNT = pow10(29)
 export const MAX_TRADE_SLIPPAGE = fp('1')
 export const MAX_BACKING_BUFFER = fp('1')
 export const MAX_TARGET_AMT = fp(1e3)

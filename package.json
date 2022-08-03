@@ -9,6 +9,7 @@
         "node": ">=12.9.0"
     },
     "scripts": {
+        "setup": "yarn --immutable",
         "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
         "deploy": "TASKS=true hardhat run scripts/deploy_all.ts --network localhost",
         "devchain": "hardhat node",
@@ -28,7 +29,7 @@
         "eslint": "eslint test/",
         "prepare": "husky install",
         "prettier": "bash tools/prettier",
-        "size": " hardhat size-contracts",
+        "size": "hardhat size-contracts",
         "slither": "bash tools/slither"
     },
     "repository": {

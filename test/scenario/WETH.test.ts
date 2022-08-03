@@ -97,7 +97,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       chainlinkFeed.address,
       weth.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH')
     )

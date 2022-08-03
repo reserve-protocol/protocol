@@ -16,6 +16,7 @@ module.exports = {
   parserOptions: {
     ecmaVersion: 12,
     project: ['./tsconfig.json'],
+    createDefaultProgram: true,
   },
   rules: {
     'node/no-unsupported-features/es-syntax': ['error', { ignores: ['modules'] }],

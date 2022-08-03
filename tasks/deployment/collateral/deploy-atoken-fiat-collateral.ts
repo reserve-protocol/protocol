@@ -7,7 +7,8 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('staticAToken', 'Static AToken address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('maxTradeVolume', 'Max trade volume')
+  .addParam('tradingMin', 'Trade Range - Min')
+  .addParam('tradingMax', 'Trade Range - Max')
   .addParam('maxOracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
@@ -30,7 +31,7 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
         params.priceFeed,
         params.staticAToken,
         params.rewardToken,
-        params.maxTradeVolume,
+        { min: params.tradingMin, max: params.tradingMax },
         params.maxOracleTimeout,
         params.targetName,
         params.defaultThreshold,
@@ -39,9 +40,11 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
     )
     await collateral.deployed()
 
-    console.log(
-      `Deployed AToken Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
-    )
+    if (!params.noOutput) {
+      console.log(
+        `Deployed AToken Fiat Collateral to ${hre.network.name} (${chainId}): ${collateral.address}`
+      )
+    }
 
     return { collateral: collateral.address }
   })

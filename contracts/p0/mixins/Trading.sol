@@ -26,15 +26,10 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
-    uint192 public dustAmount; // {UoA}
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_, uint192 dustAmount_)
-        internal
-        onlyInitializing
-    {
+    function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
         setMaxTradeSlippage(maxTradeSlippage_);
-        setDustAmount(dustAmount_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -72,12 +67,5 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
-    }
-
-    /// @custom:governance
-    function setDustAmount(uint192 val) public governance {
-        require(val <= MAX_DUST_AMOUNT, "invalid dustAmount");
-        emit DustAmountSet(dustAmount, val);
-        dustAmount = val;
     }
 }

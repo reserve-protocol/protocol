@@ -25,11 +25,12 @@ import {
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenSelfReferentialCollateral,
-  ERC20Mock,
   DeployerP0,
   DeployerP1,
-  Facade,
   DistributorP1,
+  ERC20Mock,
+  EURFiatCollateral,
+  Facade,
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
@@ -37,6 +38,7 @@ import {
   IERC20Metadata,
   IGnosis,
   MainP1,
+  NonFiatCollateral,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
@@ -52,7 +54,6 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  NonFiatCollateral,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
@@ -164,6 +165,8 @@ async function collateralFixture(
     'CTokenSelfReferentialCollateral'
   )
 
+  const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral')
+
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
 
@@ -180,7 +183,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -202,7 +205,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -228,7 +231,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           compToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -266,7 +269,7 @@ async function collateralFixture(
           chainlinkAddr,
           staticErc20.address,
           aaveToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -292,7 +295,7 @@ async function collateralFixture(
           targetUnitOracleAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
@@ -321,7 +324,7 @@ async function collateralFixture(
           targetUnitOracleAddr,
           erc20.address,
           compToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
@@ -347,7 +350,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName)
         )
@@ -372,11 +375,37 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           compToken.address,
-          config.maxTradeVolume,
+          config.tradingRange,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           (await referenceERC20.decimals()).toString(),
           comptroller.address
+        )
+      ),
+    ]
+  }
+
+  const makeEURFiatCollateral = async (
+    eurFiatTokenAddress: string,
+    referenceUnitOracleAddr: string,
+    targetUnitOracleAddr: string,
+    targetName: string
+  ): Promise<[IERC20Metadata, EURFiatCollateral]> => {
+    const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', eurFiatTokenAddress)
+
+    return [
+      erc20,
+      <EURFiatCollateral>(
+        await EURFiatCollateralFactory.deploy(
+          referenceUnitOracleAddr,
+          targetUnitOracleAddr,
+          erc20.address,
+          ZERO_ADDRESS,
+          config.tradingRange,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault
         )
       ),
     ]
@@ -387,6 +416,8 @@ async function collateralFixture(
   const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
   const USDT_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDT as string
   const BUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.BUSD as string
+  const USDP_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDP as string
+  const TUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.TUSD as string
 
   const dai = await makeVanillaCollateral(
     networkConfig[chainId].tokens.DAI as string,
@@ -396,7 +427,7 @@ async function collateralFixture(
     networkConfig[chainId].tokens.USDC as string,
     USDC_USD_PRICE_FEED
   )
-  const usdt = await makeVanillaCollateral(
+  const usdt = await makeSixDecimalCollateral(
     networkConfig[chainId].tokens.USDT as string,
     USDT_USD_PRICE_FEED
   )
@@ -404,6 +435,15 @@ async function collateralFixture(
     networkConfig[chainId].tokens.BUSD as string,
     BUSD_USD_PRICE_FEED
   )
+  const usdp = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.USDP as string,
+    USDP_USD_PRICE_FEED
+  )
+  const tusd = await makeVanillaCollateral(
+    networkConfig[chainId].tokens.TUSD as string,
+    TUSD_USD_PRICE_FEED
+  )
+
   const cdai = await makeCTokenCollateral(
     networkConfig[chainId].tokens.cDAI as string,
     dai[0],
@@ -473,11 +513,20 @@ async function collateralFixture(
     'ETH'
   )
 
+  const eurt = await makeEURFiatCollateral(
+    networkConfig[chainId].tokens.EURT as string,
+    networkConfig[chainId].chainlinkFeeds.EURT as string,
+    networkConfig[chainId].chainlinkFeeds.EUR as string,
+    'EURO'
+  )
+
   const erc20s = [
     dai[0],
     usdc[0],
     usdt[0],
     busd[0],
+    usdp[0],
+    tusd[0],
     cdai[0],
     cusdc[0],
     cusdt[0],
@@ -489,12 +538,15 @@ async function collateralFixture(
     cWBTC[0],
     weth[0],
     cETH[0],
+    eurt[0],
   ]
   const collateral = [
     dai[1],
     usdc[1],
     usdt[1],
     busd[1],
+    usdp[1],
+    tusd[1],
     cdai[1],
     cusdc[1],
     cusdt[1],
@@ -506,6 +558,7 @@ async function collateralFixture(
     cWBTC[1],
     weth[1],
     cETH[1],
+    eurt[1],
   ]
 
   // Create the initial basket
@@ -567,7 +620,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    maxTradeVolume: fp('1e6'), // $1M
+    tradingRange: { min: fp('0.01'), max: fp('1e6') }, // [0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -576,7 +629,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    dustAmount: fp('0.01'), // 0.01 UoA (USD)
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
     oneshotFreezeDuration: bn('864000'), // 10 days
   }
@@ -592,7 +644,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       networkConfig[chainId].chainlinkFeeds.RSR || '',
       rsr.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       MAX_ORACLE_TIMEOUT
     )
   )
@@ -705,7 +757,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       networkConfig[chainId].chainlinkFeeds.AAVE || '',
       aaveToken.address,
       ZERO_ADDRESS,
-      config.maxTradeVolume,
+      config.tradingRange,
       MAX_ORACLE_TIMEOUT
     )
   )
@@ -716,7 +768,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     networkConfig[chainId].chainlinkFeeds.COMP || '',
     compToken.address,
     ZERO_ADDRESS, // also uncertain about this one
-    config.maxTradeVolume,
+    config.tradingRange,
     MAX_ORACLE_TIMEOUT
   )
   const rToken: TestIRToken = <TestIRToken>(
