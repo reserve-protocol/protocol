@@ -98,13 +98,13 @@ contract CTokenSelfReferentialCollateral is Collateral {
     }
 
     /// @return The collateral's status
-    function status() public view override returns (CollateralStatus) {
+    function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
-            return CollateralStatus.SOUND;
-        } else if (whenDefault <= block.timestamp) {
-            return CollateralStatus.DISABLED;
+            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+        } else if (whenDefault > block.timestamp) {
+            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
         } else {
-            return CollateralStatus.IFFY;
+            return CollateralStatus.DISABLED;
         }
     }
 
