@@ -2,13 +2,7 @@ import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
-import {
-  IConfig,
-  IImplementations,
-  IRevenueShare,
-  MAX_ORACLE_TIMEOUT,
-  networkConfig,
-} from '../../common/configuration'
+import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import { ZERO_ADDRESS } from '../../common/constants'
@@ -61,6 +55,8 @@ import {
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
+
+export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -208,7 +204,7 @@ async function collateralFixture(
           erc20.address,
           ZERO_ADDRESS,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault
@@ -230,7 +226,7 @@ async function collateralFixture(
           erc20.address,
           ZERO_ADDRESS,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault
@@ -256,7 +252,7 @@ async function collateralFixture(
           erc20.address,
           compToken.address,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
@@ -294,7 +290,7 @@ async function collateralFixture(
           staticErc20.address,
           aaveToken.address,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault
@@ -320,7 +316,7 @@ async function collateralFixture(
           erc20.address,
           ZERO_ADDRESS,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
           delayUntilDefault
@@ -349,7 +345,7 @@ async function collateralFixture(
           erc20.address,
           compToken.address,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
           delayUntilDefault,
@@ -375,7 +371,7 @@ async function collateralFixture(
           erc20.address,
           ZERO_ADDRESS,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName)
         )
       ),
@@ -400,7 +396,7 @@ async function collateralFixture(
           erc20.address,
           compToken.address,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           (await referenceERC20.decimals()).toString(),
           comptroller.address
@@ -426,7 +422,7 @@ async function collateralFixture(
           erc20.address,
           ZERO_ADDRESS,
           config.tradingRange,
-          MAX_ORACLE_TIMEOUT,
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
           delayUntilDefault
@@ -677,7 +673,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsr.address,
       ZERO_ADDRESS,
       config.tradingRange,
-      MAX_ORACLE_TIMEOUT
+      ORACLE_TIMEOUT
     )
   )
 
@@ -806,7 +802,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveToken.address,
       ZERO_ADDRESS,
       config.tradingRange,
-      MAX_ORACLE_TIMEOUT
+      ORACLE_TIMEOUT
     )
   )
 
@@ -817,7 +813,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     compToken.address,
     ZERO_ADDRESS, // also uncertain about this one
     config.tradingRange,
-    MAX_ORACLE_TIMEOUT
+    ORACLE_TIMEOUT
   )
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
