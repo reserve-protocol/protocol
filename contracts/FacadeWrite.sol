@@ -99,8 +99,9 @@ contract FacadeWrite is IFacadeWrite {
             }
         }
 
-        // Freeze
+        // Freeze (+ regrant)
         main.freeze();
+        main.grantRole(FREEZE_STARTER, address(this));
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
@@ -115,7 +116,7 @@ contract FacadeWrite is IFacadeWrite {
         bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
-        address freezer,
+        address guardian,
         address pauser
     ) external returns (address) {
         // Get Main
@@ -153,6 +154,7 @@ contract FacadeWrite is IFacadeWrite {
 
             // Setup Roles
             timelock.grantRole(timelock.PROPOSER_ROLE(), address(governance)); // Gov only proposer
+            timelock.grantRole(timelock.CANCELLER_ROLE(), guardian); // Guardian as canceller
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
@@ -164,9 +166,13 @@ contract FacadeWrite is IFacadeWrite {
             newOwner = owner;
         }
 
-        // Setup Freezer
-        if (freezer != address(0)) {
-            main.grantRole(FREEZER, freezer);
+        // Setup guardian as freeze starter / extender + pauser
+        if (guardian != address(0)) {
+            // As a further decentralization step it is suggested to further differentiate between
+            // these two roles. But this is what will make sense for simple system setup.
+            main.grantRole(FREEZE_STARTER, guardian);
+            main.grantRole(FREEZE_EXTENDER, guardian);
+            main.grantRole(PAUSER, guardian);
         }
 
         // Setup Pauser
@@ -181,10 +187,12 @@ contract FacadeWrite is IFacadeWrite {
 
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
-        main.grantRole(FREEZER, newOwner);
+        main.grantRole(FREEZE_STARTER, newOwner);
+        main.grantRole(FREEZE_EXTENDER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(FREEZE_STARTER, address(this));
+        main.renounceRole(FREEZE_EXTENDER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         // Return new owner address

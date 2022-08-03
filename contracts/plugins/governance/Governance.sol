@@ -16,6 +16,8 @@ import "contracts/p1/StRSRVotes.sol";
  * Note that due to the elastic supply of StRSR, proposalThreshold is handled
  *   very differently than the typical approach. It is in terms of micro %,
  *   as is _getVotes().
+ *
+ * 1 * {micro %} = 1e8
  */
 contract Governance is
     Governor,
@@ -25,17 +27,6 @@ contract Governance is
     GovernorVotesQuorumFraction,
     GovernorTimelockControl
 {
-    struct ProposalDetails {
-        address proposer;
-        uint256 blockNumber;
-        address[] targets;
-        uint256[] values;
-        bytes[] calldatas;
-        bytes32 descriptionHash;
-    }
-
-    mapping(uint256 => ProposalDetails) private _proposalDetails;
-
     // solhint-disable no-empty-blocks
     constructor(
         IStRSRVotes token_,
@@ -45,7 +36,7 @@ contract Governance is
         uint256 proposalThresholdAsMicroPercent_, // e.g. 1e4 for 0.01%
         uint256 quorumPercent // e.g 4 for 4%
     )
-        Governor("MyGovernor")
+        Governor("Reserve Governor")
         GovernorSettings(votingDelay_, votingPeriod_, proposalThresholdAsMicroPercent_)
         GovernorVotes(IVotes(address(token_)))
         GovernorVotesQuorumFraction(quorumPercent)
@@ -97,77 +88,28 @@ contract Governance is
         bytes[] memory calldatas,
         string memory description
     ) public override(Governor, IGovernor) returns (uint256 proposalId) {
-        proposalId = super.propose(targets, values, calldatas, description);
-
-        ProposalDetails storage proposalDetails = _proposalDetails[proposalId];
-        proposalDetails.proposer = _msgSender();
-        proposalDetails.blockNumber = block.number;
-        proposalDetails.targets = targets;
-        proposalDetails.values = values;
-        proposalDetails.calldatas = calldatas;
-        proposalDetails.descriptionHash = keccak256(bytes(description));
+        // The super call checks that getVotes() >= proposalThreshold()
+        return super.propose(targets, values, calldatas, description);
     }
 
-    /// Three ways to cancel
-    /// 1. Be the proposer
-    /// 2. The proposer doesn't have votes anymore
-    /// 3. The StRSR era has changed
-    function cancel(uint256 proposalId) public virtual {
-        ProposalDetails storage details = _proposalDetails[proposalId];
-        IStRSRVotes token_ = IStRSRVotes(address(token));
-
-        require(
-            _msgSender() == details.proposer ||
-                getVotes(details.proposer, block.number - 1) < proposalThreshold() ||
-                token_.currentEra() != token_.getPastEra(details.blockNumber),
-            "Governor: proposer above threshold and same era"
-        );
-
-        _cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
+    function queue(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override returns (uint256 proposalId) {
+        proposalId = super.queue(targets, values, calldatas, descriptionHash);
+        require(startedInSameEra(proposalId), "same era");
     }
 
-    /// An alternate way to cancel: anyone can cancel a proposal if the StRSR exchange rate has
-    /// inflated more than 50%.
-    /// @param startIndex The index of the `IStRSRVotes.getPastExchangeRate` that begins the span
-    /// @param endIndex The index of the `IStRSRVotes.getPastExchangeRate` that ends the span
-    function alternativeCancel(
-        uint256 proposalId,
-        uint256 startIndex,
-        uint256 endIndex
-    ) public {
-        require(endIndex > startIndex, "Governor: invalid indices");
-
-        ProposalDetails storage details = _proposalDetails[proposalId];
-
-        // rates are in {qStRSR/qRSR}
-
-        (uint32 nextBlockNumber, ) = IStRSRVotes(address(token)).getPastExchangeRate(
-            startIndex + 1
-        );
-
-        // The value at `startIndex` needs to be no later than the _last_ exchange rate
-        // recorded before the proposal was created.
-        require(nextBlockNumber >= details.blockNumber, "Governor: invalid startIndex");
-
-        (, uint192 startRate) = IStRSRVotes(address(token)).getPastExchangeRate(startIndex);
-
-        (, uint192 endRate) = IStRSRVotes(address(token)).getPastExchangeRate(endIndex);
-
-        require(endRate > (startRate * 3) / 2, "Governor: rate not inflated");
-
-        _cancel(details.targets, details.values, details.calldatas, details.descriptionHash);
-    }
-
-    // Queue operation using proposalId
-    function queue(uint256 proposalId) public {
-        ProposalDetails storage details = _proposalDetails[proposalId];
-        queue(details.targets, details.values, details.calldatas, details.descriptionHash);
-    }
-
-    // Execute operation using proposalId
-    function execute(uint256 proposalId) public {
-        ProposalDetails storage details = _proposalDetails[proposalId];
-        execute(details.targets, details.values, details.calldatas, details.descriptionHash);
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external {
+        uint256 proposalId = super._cancel(targets, values, calldatas, descriptionHash);
+        require(!startedInSameEra(proposalId), "same era");
     }
 
     function _execute(
@@ -177,11 +119,8 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
-        IStRSRVotes token_ = IStRSRVotes(address(token));
-        uint256 blockNumber = _proposalDetails[proposalId].blockNumber;
-
-        require(token_.currentEra() == token_.getPastEra(blockNumber), "new era");
         super._execute(proposalId, targets, values, calldatas, descriptionHash);
+        require(startedInSameEra(proposalId), "new era");
     }
 
     function _cancel(
@@ -202,20 +141,19 @@ contract Governance is
         return super._executor();
     }
 
-    /// @return The percent of the StRSR supply the account has in terms of micro %: 1e5 = 0.1%
+    /// @return {micro %} The portion of the StRSR supply the account had at a previous blocknumber
     function _getVotes(
         address account,
         uint256 blockNumber,
         bytes memory /*params*/
     ) internal view override(Governor, GovernorVotes) returns (uint256) {
-        uint256 bal = token.getPastVotes(account, blockNumber);
-        uint256 totalSupply = token.getPastTotalSupply(blockNumber);
+        uint256 bal = token.getPastVotes(account, blockNumber); // {qStRSR}
+        uint256 totalSupply = token.getPastTotalSupply(blockNumber); // {qStRSR}
 
-        if (totalSupply > 0) {
-            return (bal * 1e8) / totalSupply;
-        } else {
-            return 0;
-        }
+        if (totalSupply == 0) return 0;
+
+        // {micro %} = {qStRSR} * {micro %} / {qStRSR}
+        return (bal * 1e8) / totalSupply;
     }
 
     function supportsInterface(bytes4 interfaceId)
@@ -225,5 +163,14 @@ contract Governance is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    // === Private ===
+
+    function startedInSameEra(uint256 proposalId) private view returns (bool) {
+        uint256 startBlock = proposalSnapshot(proposalId);
+        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startBlock);
+        uint256 currentEra = IStRSRVotes(address(token)).currentEra();
+        return currentEra == pastEra;
     }
 }
