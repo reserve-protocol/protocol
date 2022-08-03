@@ -24,7 +24,7 @@ describe('CollateralMock', () => {
     const f: sc.CollateralMock__factory = await ethers.getContractFactory('CollateralMock')
     return await f.deploy(
       token.address,
-      fp(1e6),
+      { min: fp(1e-2), max: fp(1e6) },
       fp(0.05),
       86400,
       underToken.address,

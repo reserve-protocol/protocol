@@ -272,9 +272,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader.init(this, IERC20(address(rToken)), params.maxTradeSlippage );
 
         // Init Asset Registry, with default assets for all tokens
-        // 1e48 is Asset.MAX_TRADE_VOLUME
-        uint192 maxTradeVolume = 1e48;
-
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),

@@ -45,8 +45,8 @@ export function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel 
 }
 
 export const CONFIG: IConfig = {
-  maxTradeVolume: fp('1e6'), // $1M
   dist: { rTokenDist: bn(40), rsrDist: bn(60) },
+  tradingRange: { min: fp(0.01), max: fp(1e6) },
   rewardPeriod: bn('604800'), // 1 week
   rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
   unstakingDelay: bn('1209600'), // 2 weeks
@@ -54,7 +54,6 @@ export const CONFIG: IConfig = {
   auctionLength: bn('900'), // 15 minutes
   backingBuffer: fp('0.0001'), // 0.01%
   maxTradeSlippage: fp('0.01'), // 1%
-  dustAmount: fp('0.01'), // 0.01 UoA (USD)
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
   oneshotFreezeDuration: bn('864000'), // 10 days
 }
