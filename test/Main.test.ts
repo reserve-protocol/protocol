@@ -564,6 +564,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Freezing by owner should last indefinitely', async () => {
       // Freeze with OWNER
       await main.connect(owner).freeze()
+      await expect(main.connect(owner).freeze()).to.be.revertedWith('already indefinitely frozen')
       expect(await main.frozen()).to.equal(true)
       await advanceTime(config.oneshotFreezeDuration.toString())
 

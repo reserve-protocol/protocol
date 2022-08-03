@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
 
+uint32 constant INDEFINITE_FREEZE = type(uint32).max;
+
 /**
  * @title Auth
  * @notice Provides fine-grained access controls and exports frozen/paused states to Components.
@@ -53,7 +55,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         _grantRole(PAUSER, _msgSender());
 
         // begin frozen
-        unfreezeAt = type(uint32).max;
+        unfreezeAt = INDEFINITE_FREEZE;
     }
 
     // ==== System-wide views ====
@@ -82,8 +84,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// Enter an indefinite freeze
     function freeze() external onlyRole(OWNER) {
-        emit UnfreezeAtSet(unfreezeAt, type(uint32).max);
-        unfreezeAt = type(uint32).max;
+        require(!isFrozenIndefinitely(), "already indefinitely frozen");
+        emit UnfreezeAtSet(unfreezeAt, INDEFINITE_FREEZE);
+        unfreezeAt = INDEFINITE_FREEZE;
     }
 
     /// Enter a fixed-duration freeze
@@ -98,7 +101,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// Extend an ongoing oneshot freeze
     function extendOneshotFreeze() external onlyRole(THAWER) {
-        require(frozen() && unfreezeAt != type(uint32).max, "not oneshot frozen");
+        require(frozen() && !isFrozenIndefinitely(), "not oneshot frozen");
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
         unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
     }
@@ -108,7 +111,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         require(frozen(), "not frozen");
 
         // if frozen indefinitely: require the THAWER is also OWNER
-        require(unfreezeAt != type(uint32).max || hasRole(OWNER, _msgSender()), "owner only");
+        require(!isFrozenIndefinitely() || hasRole(OWNER, _msgSender()), "owner only");
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
         unfreezeAt = uint32(block.timestamp);
     }
@@ -118,5 +121,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     function setOneshotFreezeDuration(uint32 oneshotFreezeDuration_) external onlyRole(OWNER) {
         emit OneshotFreezeDurationSet(oneshotFreezeDuration, oneshotFreezeDuration_);
         oneshotFreezeDuration = oneshotFreezeDuration_;
+    }
+
+    function isFrozenIndefinitely() private view returns (bool) {
+        return unfreezeAt == INDEFINITE_FREEZE;
     }
 }
