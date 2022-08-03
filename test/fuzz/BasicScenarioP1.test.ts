@@ -4,7 +4,6 @@ import { Wallet } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
-import { whileImpersonating } from '../../test/utils/impersonation'
 import { advanceTime, advanceBlocks } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types

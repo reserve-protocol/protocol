@@ -3,10 +3,11 @@ pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IDeployer.sol";
+import "contracts/interfaces/IAsset.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
-        maxTradeVolume: 1e24,
+        tradingRange: TradingRange({min: toFix(1)/100, max: toFix(1e6)}), // 0.01 UoA (USD)
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         rewardPeriod: 604800, // 1 week
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
@@ -15,7 +16,6 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         auctionLength: 1800, // 30 minutes
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
-        dustAmount: FixLib.divu(toFix(1), 100), // 0.01 UoA (USD)
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
         oneshotFreezeDuration: 864000 // 10 days
     });

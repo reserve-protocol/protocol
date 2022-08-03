@@ -22,7 +22,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
     constructor(
         // Collateral base-class arguments
         IERC20Metadata erc20_,
-        uint192 maxTradeVolume_,
+        TradingRange memory tradingRange_,
         uint192, //defaultThreshold_,
         uint256, //delayUntilDefault_,
         IERC20Metadata, //referenceERC20_,
@@ -39,7 +39,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
             AggregatorV3Interface(address(1)), // Stub out expected Chainlink feed
             erc20_,
             IERC20Metadata(address(0)), // no reward token
-            maxTradeVolume_,
+            tradingRange_,
             1, // stub out oracleTimeout
             targetName_
         )

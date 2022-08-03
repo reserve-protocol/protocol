@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
 
+import "contracts/interfaces/IAsset.sol";
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/CollateralMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
@@ -35,7 +36,7 @@ contract BasicP1Scenario {
         main = new MainP1Fuzz();
         main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(main));
 
-        uint192 maxTradeVolume = 1e48;
+        TradingRange memory tradingRange = defaultParams().tradingRange;
 
         // Create three "standard" collateral tokens
         for (uint256 i = 0; i < 3; i++) {
@@ -46,7 +47,7 @@ contract BasicP1Scenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    maxTradeVolume,
+                    tradingRange,
                     0,
                     0,
                     IERC20Metadata(address(0)),
@@ -69,7 +70,7 @@ contract BasicP1Scenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    maxTradeVolume,
+                    tradingRange,
                     0,
                     0,
                     IERC20Metadata(address(0)),

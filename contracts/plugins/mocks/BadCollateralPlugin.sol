@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/ATokenFiatCollateral.sol";
 
 contract BadCollateralPlugin is ATokenFiatCollateral {
-    using OracleLib for AggregatorV3Interface;
-
     bool public checkSoftDefault = true; // peg
     bool public checkHardDefault = true; // defi invariant
 
@@ -53,7 +51,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         if (checkHardDefault && referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else if (checkSoftDefault) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 priceable = true;
 
                 // Check for soft default of underlying reference token
