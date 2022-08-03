@@ -580,27 +580,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.frozen()).to.equal(false)
     })
 
-    it('Should allow unfreeze by thawer after oneshot freeze', async () => {
-      // Freeze with non-owner FREEZER
-      await main.connect(addr1).oneshotFreeze()
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-
-      // Unfreeze
-      await main.connect(addr2).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-      expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
-    })
-
-    it('Should not allow unfreeze from FREEZER/THAWER after freeze-by-owner', async () => {
-      // Freeze with owner FREEZER
-      await main.connect(owner).freeze()
-      expect(await main.frozen()).to.equal(true)
-      await expect(main.connect(addr1).unfreeze()).to.be.reverted
-      await expect(main.connect(addr2).unfreeze()).to.be.reverted
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-    })
-
     it('Should allow unfreeze by THAWER after oneshot freeze', async () => {
       // Freeze with non-owner FREEZER
       await main.connect(addr1).oneshotFreeze()
@@ -619,6 +598,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(addr2).unfreeze()).to.emit(main, 'UnfreezeAtSet')
       expect(await main.frozen()).to.equal(false)
       expect(await main.hasRole(THAWER, addr2.address)).to.equal(true)
+    })
+
+    it('Should not allow unfreeze from FREEZER/THAWER after freeze-by-owner', async () => {
+      // Freeze with owner FREEZER
+      await main.connect(owner).freeze()
+      expect(await main.frozen()).to.equal(true)
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+      await expect(main.connect(addr2).unfreeze()).to.be.reverted
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
     })
 
     it('Should allow extension of oneshot freeze', async () => {
