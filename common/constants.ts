@@ -56,5 +56,4 @@ export const QUEUE_START = '0x00000000000000000000000000000000000000000000000000
 // Auth roles
 export const OWNER = ethers.utils.formatBytes32String('OWNER')
 export const FREEZER = ethers.utils.formatBytes32String('FREEZER')
-export const THAWER = ethers.utils.formatBytes32String('THAWER')
 export const PAUSER = ethers.utils.formatBytes32String('PAUSER')

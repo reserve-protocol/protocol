@@ -18,7 +18,7 @@ import "./ITrade.sol";
  */
 struct DeploymentParams {
     // === Pausing ===
-    uint32 oneshotFreezeDuration; // {s} how long a oneshot pause lasts
+    uint32 freezeDuration; // {s} how long a oneshot pause lasts
     //
     // === RToken trade sizing ===
     TradingRange tradingRange; // {rTok}

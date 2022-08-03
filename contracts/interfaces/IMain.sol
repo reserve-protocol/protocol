@@ -17,12 +17,11 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-// === Roles ===
+// === Auth roles ===
 
-bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
-bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // can enter freeze state
-bytes32 constant THAWER = bytes32(bytes("THAWER")); // can extend or exit freeze state
-bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // can enter or exit paused state
+bytes32 constant OWNER = bytes32(bytes("OWNER"));
+bytes32 constant FREEZER = bytes32(bytes("FREEZER"));
+bytes32 constant PAUSER = bytes32(bytes("PAUSER"));
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -47,6 +46,11 @@ struct Components {
 }
 
 interface IAuth {
+    /// Emitted when `foreverFrozen` is changed
+    /// @param oldVal The old value of `foreverFrozen`
+    /// @param newVal The new value of `foreverFrozen`
+    event ForeverFrozenSet(bool indexed oldVal, bool indexed newVal);
+
     /// Emitted when `unfreezeAt` is changed
     /// @param oldVal The old value of `unfreezeAt`
     /// @param newVal The new value of `unfreezeAt`
@@ -71,20 +75,17 @@ interface IAuth {
 
     function frozen() external view returns (bool);
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    function freezeDuration() external view returns (uint32);
 
     // ====
 
     // onlyRole(OWNER)
-    function freeze() external;
+    function freezeForever() external;
 
     // onlyRole(FREEZER)
-    function oneshotFreeze() external;
+    function freeze() external;
 
-    // onlyRole(THAWER)
-    function extendOneshotFreeze() external;
-
-    // onlyRole(THAWER)
+    // onlyRole(OWNER)
     function unfreeze() external;
 
     function pause() external;
@@ -150,7 +151,7 @@ interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotFreezeDuration_
+        uint32 freezeDuration_
     ) external;
 
     function rsr() external view returns (IERC20);
@@ -160,7 +161,7 @@ interface TestIMain is IMain {
     /// @custom:governance
     function setOneshotFreezeDuration(uint32) external;
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    function freezeDuration() external view returns (uint32);
 
     function paused() external view returns (bool);
 }

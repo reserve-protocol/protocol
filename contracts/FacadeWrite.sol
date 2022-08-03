@@ -115,7 +115,6 @@ contract FacadeWrite is IFacadeWrite {
         bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
-        address freezer,
         address guardian,
         address pauser
     ) external returns (address) {
@@ -166,19 +165,15 @@ contract FacadeWrite is IFacadeWrite {
             newOwner = owner;
         }
 
-        // Setup Freezer
-        if (freezer != address(0)) {
-            main.grantRole(FREEZER, freezer);
+        // Setup guardian as freezer + pauser
+        if (guardian != address(0)) {
+            main.grantRole(FREEZER, guardian);
+            main.grantRole(PAUSER, guardian);
         }
 
         // Setup Pauser
         if (pauser != address(0)) {
             main.grantRole(PAUSER, pauser);
-        }
-
-        // Setup Thawer
-        if (guardian != address(0)) {
-            main.grantRole(THAWER, guardian);
         }
 
         // Unfreeze if required
@@ -189,11 +184,9 @@ contract FacadeWrite is IFacadeWrite {
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
         main.grantRole(FREEZER, newOwner);
-        main.grantRole(THAWER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
         main.renounceRole(FREEZER, address(this));
-        main.renounceRole(THAWER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         // Return new owner address

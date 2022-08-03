@@ -12,7 +12,7 @@ Any ERC20 token that our system knows how to deal with is wrapped and modelled i
 
 The remained solidity files in our repository are either:
 
-- `Facade.sol` and,  which is a stateless generic interface that can be used with any RToken. This enables convenient external interactions and app development. There can be multiple facades.
+- `Facade.sol` and, which is a stateless generic interface that can be used with any RToken. This enables convenient external interactions and app development. There can be multiple facades.
 - `FacadeWrite.sol`, which allows to easily deploy and configure an RToken in a few simple transactions.
 - `Deployer.sol`, which deploys the clones of implementation contracts as needed to initialize a new RToken
 - `Fixed.sol`, which provides fixed-point fractional arithmetic operations
@@ -193,7 +193,7 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-### `oneshotFreezeDuration`
+### `freezeDuration`
 
 Dimension: `{s}`
 
