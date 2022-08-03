@@ -31,7 +31,7 @@ type Components = Awaited<ReturnType<typeof componentsOf>>
 
 // { gasLimit: 0x1ffffffff }
 describe('Basic Scenario with FuzzP1', () => {
-  let scenario: sc.BasicP1Scenario
+  let scenario: sc.NormalOpsScenario
   let main: sc.MainP1Fuzz
   let comp: Components
   let startState: Awaited<ReturnType<typeof helpers.takeSnapshot>>
@@ -41,7 +41,7 @@ describe('Basic Scenario with FuzzP1', () => {
 
   before('Deploy Scenario', async () => {
     ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
-    scenario = await (await F('BasicP1Scenario')).deploy({ gasLimit: 0x1ffffffff })
+    scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
     startState = await helpers.takeSnapshot()

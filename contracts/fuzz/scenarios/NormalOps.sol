@@ -13,7 +13,7 @@ import "contracts/fuzz/Utils.sol";
 
 import "contracts/fuzz/FuzzP1.sol";
 
-contract BasicP1Scenario {
+contract NormalOpsScenario {
     MainP1Fuzz public main;
 
     PriceModel internal volatile =

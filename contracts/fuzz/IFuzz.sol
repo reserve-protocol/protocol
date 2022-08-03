@@ -47,7 +47,6 @@ interface IMainFuzz is IMain {
     // Unset spoofing for addr
     function unspoof(address realAddr) external;
 
-
     // A seed that other Fuzz mocks can base arbirary behaviors on
     function seed() external view returns (uint256);
 
