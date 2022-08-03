@@ -31,7 +31,6 @@ const componentsOf = async (main: sc.IMain) => ({
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
 // { gasLimit: 0x1ffffffff }
-
 describe('Basic Scenario with FuzzP1', () => {
   let scenario: sc.BasicP1Scenario
   let main: sc.MainP1Fuzz
@@ -42,11 +41,11 @@ describe('Basic Scenario with FuzzP1', () => {
   let alice: Wallet
 
   before('Deploy Scenario', async () => {
+    ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('BasicP1Scenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
     startState = await helpers.takeSnapshot()
-    ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
   })
 
   beforeEach(async () => {
@@ -146,9 +145,10 @@ describe('Basic Scenario with FuzzP1', () => {
 
     expect(await trade.canSettle()).to.be.true
 
-    await main.pushSender(alice.address)
+    // yeah, we could do this more simply with trade.connect(alice), but I'm testing spoof() too
+    await main.spoof(owner.address, alice.address)
     await trade.settle()
-    await main.popSender()
+    await main.unspoof(owner.address)
 
     // Alice now has no USD0 and 456 RSR.
     expect(await usd0.balanceOf(alice.address)).to.equal(0)
@@ -166,14 +166,12 @@ describe('Basic Scenario with FuzzP1', () => {
     // think, and would be a somewhat cleaner test.
 
     // As owner, mint 123 USD0 to BackingMgr
-    await main.pushSender(owner.address)
     await usd0.mint(bm_addr, fp(123))
     expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
-    await main.popSender()
 
     // As BackingMgr, approve the broker for 123 USD0
-    await main.pushSender(bm_addr)
+    await main.spoof(owner.address, bm_addr)
     await usd0.approve(comp.broker.address, fp(123))
 
     // As BackingMgr, init the trade
@@ -191,7 +189,7 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await trade.origin()).to.equal(bm_addr)
     expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
-    // As BackingMgr, settle the trade.
+    // Settle the trade.
     await advanceTime(31 * 60)
     await comp.broker.settleTrades()
 
@@ -226,6 +224,6 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 
-    await main.popSender()
+    await main.unspoof(owner.address)
   })
 })

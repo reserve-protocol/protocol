@@ -39,11 +39,14 @@ interface IMainFuzz is IMain {
     event TestError(string message);
 
     // Aspect: emulated sender
-    function sender(address) external view returns (address);
+    function translateAddr(address addr) external view returns (address);
 
-    function pushSender(address) external;
+    // Begin sppofing; translateAddr(realAddr) will return `pretendAddr` instead of realAddr
+    function spoof(address realAddr, address pretendAddr) external;
 
-    function popSender() external;
+    // Unset spoofing for addr
+    function unspoof(address realAddr) external;
+
 
     // A seed that other Fuzz mocks can base arbirary behaviors on
     function seed() external view returns (uint256);

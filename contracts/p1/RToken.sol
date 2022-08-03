@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 // solhint-disable-next-line max-line-length
-import "hardhat/console.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/interfaces/IMain.sol";

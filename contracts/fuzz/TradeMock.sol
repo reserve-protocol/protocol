@@ -54,7 +54,7 @@ contract TradeMock is ITrade {
     }
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
-        require(main.sender(msg.sender) == origin, "only origin can settle");
+        require(_msgSender() == origin, "only origin can settle");
         require(status == TradeMockStatus.OPEN, "trade not OPEN");
         require(uint32(block.timestamp) >= endTime, "trade not yet closed");
         status = TradeMockStatus.CLOSED;
@@ -70,6 +70,10 @@ contract TradeMock is ITrade {
 
         return (requestedSellAmt, requestedBuyAmt);
     }
+
+    function _msgSender() internal view virtual returns (address) {
+        return main.translateAddr(msg.sender);
+    }
 }
 
 // A simple external actor to "be the market", taking the other side of TradeMock trades.
@@ -80,7 +84,8 @@ contract MarketMock is IMarketMock {
         main = main_;
     }
 
-    // expects the sell tokens to be already sent; sends the buy tokens to `trader`.
+    // execute expects the sell tokens to be already at MarketMock.
+    // execute sends the buy tokens to `trader`.
     //
     // to make the simulation make sense, call this only from Trades
     //
@@ -92,7 +97,7 @@ contract MarketMock is IMarketMock {
         uint256 sellAmt,
         uint256 buyAmt
     ) external {
-        address trader = main.sender(msg.sender);
+        address trader = _msgSender();
 
         if (address(sell) == address(main.rToken())) {
             vanishRTokens(sellAmt);
@@ -142,5 +147,9 @@ contract MarketMock is IMarketMock {
             uint256 bal = ERC20Mock(tokens[i]).balanceOf(address(this));
             if (bal > 0) ERC20Mock(tokens[i]).burn(address(this), bal);
         }
+    }
+
+    function _msgSender() internal view virtual returns (address) {
+        return main.translateAddr(msg.sender);
     }
 }

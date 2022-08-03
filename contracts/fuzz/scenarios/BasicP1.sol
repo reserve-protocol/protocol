@@ -33,10 +33,6 @@ contract BasicP1Scenario {
     // - at least one user has plenty of starting tokens
     constructor() {
         main = new MainP1Fuzz();
-
-        // Have components believe that owner is calling them during init.
-        main.pushSender(address(this));
-
         main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(main));
 
         uint192 maxTradeVolume = 1e48;
@@ -110,7 +106,10 @@ contract BasicP1Scenario {
         main.assetRegistry().refresh();
         main.unfreeze();
 
-        main.popSender();
+        // Grant max allowances from BackingManager for RToken
+        for (uint256 t = 0; t < main.numTokens(); t++) {
+            main.backingManager().grantRTokenAllowance(main.tokens(t));
+        }
     }
 
     // function _setupTokens internal virtual
@@ -119,13 +118,14 @@ contract BasicP1Scenario {
 
     function startIssue() public {
         address alice = main.users(0);
-        ERC20Fuzz(address(main.tokens(0))).adminApprove(alice, address(main.rToken()), 1e24);
-        ERC20Fuzz(address(main.tokens(1))).adminApprove(alice, address(main.rToken()), 1e24);
-        ERC20Fuzz(address(main.tokens(2))).adminApprove(alice, address(main.rToken()), 1e24);
 
-        main.pushSender(alice);
+        main.spoof(address(this), alice);
+        ERC20Fuzz(address(main.tokens(0))).approve(address(main.rToken()), 1e24);
+        ERC20Fuzz(address(main.tokens(1))).approve(address(main.rToken()), 1e24);
+        ERC20Fuzz(address(main.tokens(2))).approve(address(main.rToken()), 1e24);
+
         main.rToken().issue(1e24);
-        main.popSender();
+        main.unspoof(address(this));
     }
 
     function finishIssue() public {
@@ -133,13 +133,13 @@ contract BasicP1Scenario {
     }
 
     function redeem() public {
-        main.pushSender(main.users(0));
+        main.spoof(address(this), main.users(0));
 
         main.backingManager().grantRTokenAllowance(main.tokens(0));
         main.backingManager().grantRTokenAllowance(main.tokens(1));
         main.backingManager().grantRTokenAllowance(main.tokens(2));
         main.rToken().redeem(1e24);
 
-        main.popSender();
+        main.unspoof(address(this));
     }
 }

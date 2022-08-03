@@ -33,37 +33,45 @@ contract BrokerP0Fuzz is BrokerP0 {
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 // ================ Main ================
 contract MainP0Fuzz is IMainFuzz, MainP0 {
-    address public deployer;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
-    address[] internal senderStack;
+    EnumerableSet.AddressSet internal aliasedAddrs;
+    mapping(address => address) aliases; // The map of senders
+
     uint256 public seed;
     IMarketMock public marketMock;
 
-    address[] public USERS = [address(0x10000), address(0x20000), address(0x30000)];
 
     // ==== Scenario handles ====
-    // Components and mocks relying on _msgSender call this to find out what to return.
-    // msgSender: the value of msg.sender from the calling contract.
-    function sender(address msgSender) public view returns (address) {
-        if (msgSender == deployer) {
-            if (senderStack.length == 0) revert("IFuzz error: No sender set");
-            return senderStack[senderStack.length - 1];
+    function translateAddr(address addr) public view returns (address) {
+        return aliases[addr] != address(0) ? aliases[addr] : addr;
+    }
+
+    // From now on, translateAddr will pretend that `realSender` is `pretendSender`
+    function spoof(address realSender, address pretendSender) external {
+        aliasedAddrs.add(realSender);
+        aliases[realSender] = pretendSender;
+    }
+
+    // Stop pretending that `realSender` is some other address
+    function unspoof(address realSender) external {
+        aliasedAddrs.remove(realSender);
+        aliases[realSender] = address(0);
+    }
+
+    // Debugging getter
+    function aliasValues() external view returns (address[] memory from, address[] memory to) {
+        from = aliasedAddrs.values();
+        to = new address[](aliasedAddrs.length());
+        for (uint i = 0; i < aliasedAddrs.length(); i++) {
+            to[i] = aliases[aliasedAddrs.at(i)];
         }
-        return msgSender;
-    }
-
-    function pushSender(address s) public {
-        senderStack.push(s);
-    }
-
-    function popSender() public {
-        senderStack.pop();
     }
 
     function setSeed(uint256 seed_) public {

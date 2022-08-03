@@ -37,19 +37,19 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 
 contract AssetRegistryP1Fuzz is AssetRegistryP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract BasketHandlerP1Fuzz is BasketHandlerP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract BackingManagerP1Fuzz is BackingManagerP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
@@ -77,32 +77,37 @@ contract BrokerP1Fuzz is BrokerP1 {
 
     function settleTrades() public {
         uint256 length = tradeSet.length();
+        IMainFuzz m = IMainFuzz(address(main));
         for (uint256 i = 0; i < length; i++) {
             TradeMock trade = TradeMock(tradeSet.at(i));
-            if (trade.canSettle()) trade.settle();
+            if (trade.canSettle()) {
+                m.spoof(address(this), trade.origin());
+                trade.settle();
+                m.unspoof(address(this));
+            }
         }
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract DistributorP1Fuzz is DistributorP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract FurnaceP1Fuzz is FurnaceP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract RevenueTraderP1Fuzz is RevenueTraderP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
@@ -139,44 +144,54 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     }
 
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 contract StRSRP1Fuzz is StRSRP1 {
     function _msgSender() internal view virtual override returns (address) {
-        return IMainFuzz(address(main)).sender(msg.sender);
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
 
 // ================ Main ================
 contract MainP1Fuzz is IMainFuzz, MainP1 {
-    address public deployer;
+    using EnumerableSet for EnumerableSet.AddressSet;
     IMarketMock public marketMock;
 
     // ==== Scenario variables ====
-    address[] internal senderStack; // The stack of senders
+    EnumerableSet.AddressSet internal aliasedAddrs;
+    mapping(address => address) public aliases; // The map of senders
     uint256 public seed;
     IERC20[] public tokens; // token addresses, not including RSR or RToken
     address[] public users; // "registered" user addresses
 
     // ==== Scenario handles ====
-    // Components and mocks relying on _msgSender call this to find out what to return.
-    // msgSender: the value of msg.sender from the calling contract.
-    function sender(address msgSender) public view returns (address) {
-        if (msgSender == deployer) {
-            if (senderStack.length == 0) revert("IFuzz error: No sender set");
-            return senderStack[senderStack.length - 1];
+    // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
+    // allowing the spoof() and unspoof() functions to work.
+    function translateAddr(address addr) public view returns (address) {
+        return aliasedAddrs.contains(addr) ? aliases[addr] : addr;
+    }
+
+    // From now on, translateAddr will pretend that `realSender` is `pretendSender`
+    function spoof(address realSender, address pretendSender) external {
+        aliasedAddrs.add(realSender);
+        aliases[realSender] = pretendSender;
+    }
+
+    // Stop pretending that `realSender` is some other address
+    function unspoof(address realSender) external {
+        aliasedAddrs.remove(realSender);
+        aliases[realSender] = address(0);
+    }
+
+    // Debugging getter
+    function aliasValues() external view returns (address[] memory from, address[] memory to) {
+        from = aliasedAddrs.values();
+        to = new address[](aliasedAddrs.length());
+        for (uint i = 0; i < aliasedAddrs.length(); i++) {
+            to[i] = aliases[aliasedAddrs.at(i)];
         }
-        return msgSender;
-    }
-
-    function pushSender(address s) public {
-        senderStack.push(s);
-    }
-
-    function popSender() public {
-        senderStack.pop();
     }
 
     function setSeed(uint256 seed_) public {
@@ -201,9 +216,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     }
 
     constructor() {
-        // Design: maybe pass the RSR token in as an arg here?
-        deployer = msg.sender;
-
         // Construct components
         rsr = new ERC20Fuzz("Reserve Rights", "RSR", this);
         rToken = new RTokenP1Fuzz();
@@ -231,6 +243,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         emit MainInitialized();
 
         marketMock = marketMock_;
+
+        // Pretend to be the OWNER during the remaining initialization
+        assert(hasRole(OWNER, _msgSender()));
+        this.spoof(address(this), _msgSender());
 
         // ==== Initialize components ====
         // This is pretty much the matching section from p1/Deployer.sol
@@ -283,5 +299,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         // Init Broker
         // `tradeImplmentation` and `gnosis` are unused in BrokerP1Fuzz
         broker.init(this, IGnosis(address(0)), ITrade(address(0)), params.auctionLength);
+
+        this.unspoof(address(this));
     }
 }
