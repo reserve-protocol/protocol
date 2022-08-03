@@ -4,12 +4,20 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "contracts/p1/StRSR.sol";
 
+interface IStRSRVotes is IVotesUpgradeable {
+    /// @return The current era
+    function currentEra() external view returns (uint256);
+
+    /// @return The era at a past block number
+    function getPastEra(uint256 blockNumber) external view returns (uint256);
+}
+
 /*
  * @title StRSRP1Votes
  * @notice StRSRP1Votes is an extension of StRSRP1 that makes it IVotesUpgradeable.
  *   It is heavily based on OZ's ERC20VotesUpgradeable
  */
-contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
+contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     struct Checkpoint {
         uint32 fromBlock;
         uint224 val;
@@ -19,6 +27,8 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
         keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
     mapping(address => address) private _delegates;
+
+    Checkpoint[] private _eras; // {era}
 
     // {era} => ...
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
@@ -59,12 +69,19 @@ contract StRSRP1Votes is StRSRP1, IVotesUpgradeable {
 
     function getPastVotes(address account, uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        return _checkpointsLookup(_checkpoints[era][account], blockNumber);
+        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
+        return _checkpointsLookup(_checkpoints[pastEra][account], blockNumber);
     }
 
     function getPastTotalSupply(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
-        return _checkpointsLookup(_totalSupplyCheckpoints[era], blockNumber);
+        uint256 pastEra = _checkpointsLookup(_eras, blockNumber);
+        return _checkpointsLookup(_totalSupplyCheckpoints[pastEra], blockNumber);
+    }
+
+    function getPastEra(uint256 blockNumber) public view returns (uint256) {
+        require(blockNumber < block.number, "ERC20Votes: block not yet mined");
+        return _checkpointsLookup(_eras, blockNumber);
     }
 
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)

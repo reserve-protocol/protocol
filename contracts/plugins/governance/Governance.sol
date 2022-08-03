@@ -2,12 +2,12 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/utils/IVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorCountingSimple.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorTimelockControl.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotes.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorVotesQuorumFraction.sol";
+import "contracts/p1/StRSRVotes.sol";
 
 /*
  * @title Governance
@@ -29,7 +29,7 @@ contract Governance is
 {
     // solhint-disable no-empty-blocks
     constructor(
-        IVotes token_,
+        IStRSRVotes token_,
         TimelockController timelock_,
         uint256 votingDelay_, // in blocks
         uint256 votingPeriod_, // in blocks
@@ -88,7 +88,28 @@ contract Governance is
         bytes[] memory calldatas,
         string memory description
     ) public override(Governor, IGovernor) returns (uint256 proposalId) {
+        // The super call checks that getVotes() >= proposalThreshold()
         return super.propose(targets, values, calldatas, description);
+    }
+
+    function queue(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public override returns (uint256 proposalId) {
+        proposalId = super.queue(targets, values, calldatas, descriptionHash);
+        require(startedInSameEra(proposalId), "same era");
+    }
+
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) external {
+        uint256 proposalId = super._cancel(targets, values, calldatas, descriptionHash);
+        require(!startedInSameEra(proposalId), "same era");
     }
 
     function _execute(
@@ -99,6 +120,7 @@ contract Governance is
         bytes32 descriptionHash
     ) internal override(Governor, GovernorTimelockControl) {
         super._execute(proposalId, targets, values, calldatas, descriptionHash);
+        require(startedInSameEra(proposalId), "new era");
     }
 
     function _cancel(
@@ -141,5 +163,14 @@ contract Governance is
         returns (bool)
     {
         return super.supportsInterface(interfaceId);
+    }
+
+    // === Private ===
+
+    function startedInSameEra(uint256 proposalId) private view returns (bool) {
+        uint256 startBlock = proposalSnapshot(proposalId);
+        uint256 pastEra = IStRSRVotes(address(token)).getPastEra(startBlock);
+        uint256 currentEra = IStRSRVotes(address(token)).currentEra();
+        return currentEra == pastEra;
     }
 }
