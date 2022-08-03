@@ -2067,7 +2067,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(amount.mul(2))
       })
 
-      it('Should clean votes properly when changing era', async function () {
+      it.only('Should clean votes properly when changing era', async function () {
         // Check values before changing era
         let currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
@@ -2094,6 +2094,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         // Advance block
         await advanceBlocks(1)
+
+        // Should have retroactively wiped past vote
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
 
         // Check values after changing era
         currentBlockNumber = (await getLatestBlockNumber()) - 1
