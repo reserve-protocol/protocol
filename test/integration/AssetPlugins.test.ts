@@ -1,21 +1,17 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
-import { defaultFixture } from './fixtures'
+import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS, BN_SCALE_FACTOR } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
-import {
-  advanceBlocks,
-  advanceTime,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from '../utils/time'
+import { advanceBlocks, advanceTime } from '../utils/time'
 import { whileImpersonating } from '../utils/impersonation'
+import { setOraclePrice } from '../utils/oracles'
 import forkBlockNumber from './fork-block-numbers'
 import {
   Asset,
@@ -34,11 +30,11 @@ import {
   IAssetRegistry,
   IBasketHandler,
   OracleLib,
+  MockV3Aggregator,
   NonFiatCollateral,
   RTokenAsset,
   SelfReferentialCollateral,
   StaticATokenLM,
-  StaticATokenMock,
   TestIBackingManager,
   TestIMain,
   TestIRToken,
@@ -136,6 +132,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let basketHandler: IBasketHandler
   let config: IConfig
   let oracleLib: OracleLib
+
+  // Factories
+  let MockV3AggregatorFactory: ContractFactory
+  let mockChainlinkFeed: MockV3Aggregator
 
   let initialBal: BigNumber
   let basket: Collateral[]
@@ -284,6 +284,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
       })
+
+      // Setup factories
+      MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+      mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     })
 
     it('Should setup assets correctly', async () => {
@@ -814,45 +818,85 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       }
     })
 
-    it('Should handle invalid Price - Assets', async () => {
-      // Setup Assets with no price - Use stkAAVE token
-      const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
-      )
+    it('Should handle invalid/stale Price - Assets', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
+
+      // Setup Assets with no price feed
       const nonpriceAsset: Asset = <Asset>(
         await (
           await ethers.getContractFactory('Asset')
         ).deploy(
           NO_PRICE_DATA_FEED,
-          nonpriceToken.address,
-          aaveToken.address,
+          networkConfig[chainId].tokens.stkAAVE || '',
+          ZERO_ADDRESS,
           config.tradingRange,
           MAX_ORACLE_TIMEOUT
         )
       )
 
-      // Assets with no price info return 0 , so they revert with Invalid Price
+      // Assets with invalid price feed will revert
       await expect(nonpriceAsset.price()).to.be.reverted
+
+      // Reverts with a feed with zero price
+      const invalidPriceAsset: Asset = <Asset>(
+        await (
+          await ethers.getContractFactory('Asset')
+        ).deploy(
+          mockChainlinkFeed.address,
+          networkConfig[chainId].tokens.stkAAVE || '',
+          ZERO_ADDRESS,
+          config.tradingRange,
+          MAX_ORACLE_TIMEOUT
+        )
+      )
+
+      await setOraclePrice(invalidPriceAsset.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceAsset.price()).to.be.revertedWith('PriceOutsideRange()')
     })
 
-    it('Should handle invalid Price - Collateral - Fiat', async () => {
+    it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      await expect(daiCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(usdcCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(usdtCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(busdCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(usdpCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(tusdCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await daiCollateral.refresh()
+      await usdcCollateral.refresh()
+      await usdtCollateral.refresh()
+      await busdCollateral.refresh()
+      await usdpCollateral.refresh()
+      await tusdCollateral.refresh()
+      expect(await daiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await usdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await busdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await usdpCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await tusdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
-      // Setup Collateral with no price - Use stkAAVE token
-      const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
-      )
-
-      // Fiat collateral
+      // Non price Fiat collateral
       const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         NO_PRICE_DATA_FEED,
-        nonpriceToken.address,
-        aaveToken.address,
+        dai.address,
+        ZERO_ADDRESS,
         config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -860,49 +904,22 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         delayUntilDefault
       )
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      // Collateral with no price info return 0, so they revert with Invalid Price
+      // Collateral with no price should revert
       await expect(nonPriceCollateral.price()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonPriceCollateral.refresh()
       expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-    })
-
-    it('Should handle invalid Price - Collateral - AToken/CToken', async () => {
-      const defaultThreshold = fp('0.05') // 5%
-      const delayUntilDefault = bn('86400') // 24h
-
-      // Setup Collateral with no price - Use stkAAVE token
-      const nonpriceToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.stkAAVE || '')
-      )
-
-      // Wrap in Static AToken (use mock in this case)
-      const staticNonPriceErc20: StaticATokenMock = <StaticATokenMock>(
-        await (
-          await ethers.getContractFactory('StaticATokenMock')
-        ).deploy(
-          'static ' + (await nonpriceToken.name()),
-          'stat' + (await nonpriceToken.symbol()),
-          nonpriceToken.address
-        )
-      )
-
-      // AToken collateral
-      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
-        await ethers.getContractFactory('ATokenFiatCollateral', {
+      // Reverts with a feed with zero price
+      const invalidFiatCollateral: FiatCollateral = <FiatCollateral>await (
+        await ethers.getContractFactory('FiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        NO_PRICE_DATA_FEED,
-        staticNonPriceErc20.address,
-        aaveToken.address,
+        mockChainlinkFeed.address,
+        dai.address,
+        ZERO_ADDRESS,
         config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -910,148 +927,505 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         delayUntilDefault
       )
 
-      // Setup CToken (use mock for this purpose)
-      const nonpriceCtoken: CTokenMock = <CTokenMock>(
-        await (
-          await ethers.getContractFactory('CTokenMock')
-        ).deploy(
-          'c' + (await nonpriceToken.name()),
-          'c' + (await nonpriceToken.symbol()),
-          nonpriceToken.address
-        )
-      )
+      await setOraclePrice(invalidFiatCollateral.address, bn(0))
 
-      // CTokens Collateral
+      // Reverts with zero price
+      await expect(invalidFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Refresh should mark status UNPRICED
+      await invalidFiatCollateral.refresh()
+      expect(await invalidFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should handle invalid/stale Price - Collateral - CTokens Fiat', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Compound
+      await expect(cDaiCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cUsdcCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cUsdtCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await cDaiCollateral.refresh()
+      await cUsdcCollateral.refresh()
+      await cUsdtCollateral.refresh()
+      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // CTokens Collateral with no price
       const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
         await ethers.getContractFactory('CTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         NO_PRICE_DATA_FEED,
-        nonpriceCtoken.address,
+        cDai.address,
         compToken.address,
         config.tradingRange,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        await nonpriceToken.decimals(),
+        await dai.decimals(),
         compoundMock.address
       )
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
+      // CTokens - Collateral with no price info should revert
+      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
 
-      // ATokens - Collateral with no price info return 0, so they revert with Invalid Price
+      // Refresh should mark status UNPRICED
+      await nonpriceCtokenCollateral.refresh()
+      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Reverts with a feed with zero price
+      const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        cDai.address,
+        compToken.address,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        await dai.decimals(),
+        compoundMock.address
+      )
+
+      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidpriceCtokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Refresh should mark status UNPRICED
+      await invalidpriceCtokenCollateral.refresh()
+      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Aave
+      await expect(aDaiCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(aUsdcCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(aUsdtCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(aBusdCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await aDaiCollateral.refresh()
+      await aUsdcCollateral.refresh()
+      await aUsdtCollateral.refresh()
+      await aBusdCollateral.refresh()
+      expect(await aDaiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aUsdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aBusdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // AToken collateral with no price
+      const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+        await ethers.getContractFactory('ATokenFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        stataDai.address,
+        aaveToken.address,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // ATokens - Collateral with no price info should revert
       await expect(nonpriceAtokenCollateral.price()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceAtokenCollateral.refresh()
       expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
 
-      // Set next block timestamp - for deterministic result
-      await setNextBlockTimestamp((await getLatestBlockTimestamp()) + 1)
-
-      // CTokens - Collateral with no price info revert with token config not found
-      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
-
-      // Refresh should mark status UNPRICED
-      await nonpriceCtokenCollateral.refresh()
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-    })
-
-    it('Should detect stale price after ORACLE_TIMEOUT - all collateral', async () => {
-      const defaultThreshold = fp('0.05') // 5%
-      const delayUntilDefault = bn('86400') // 24h
-      const oracleTimeout = bn('86400') // 24h
-
-      // Setup Collateral with valid price - Use DAI token
-      const underlyingToken: ERC20Mock = <ERC20Mock>(
-        await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
-      )
-
-      // Fiat collateral
-      const fiatCollateral: FiatCollateral = <FiatCollateral>await (
-        await ethers.getContractFactory('FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        underlyingToken.address,
-        aaveToken.address,
-        config.tradingRange,
-        oracleTimeout,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-
-      // Wrap in Static AToken (use mock in this case)
-      const staticNonPriceErc20: StaticATokenMock = <StaticATokenMock>(
-        await (
-          await ethers.getContractFactory('StaticATokenMock')
-        ).deploy(
-          'static ' + (await underlyingToken.name()),
-          'stat' + (await underlyingToken.symbol()),
-          underlyingToken.address
-        )
-      )
-
-      // AToken collateral
-      const aTokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
+      // Reverts with a feed with zero price
+      const invalidPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        staticNonPriceErc20.address,
+        mockChainlinkFeed.address,
+        stataDai.address,
         aaveToken.address,
         config.tradingRange,
-        oracleTimeout,
+        MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault
       )
 
-      // Setup CToken (use mock for this purpose)
-      const cToken: CTokenMock = <CTokenMock>(
-        await (
-          await ethers.getContractFactory('CTokenMock')
-        ).deploy(
-          'c' + (await underlyingToken.name()),
-          'c' + (await underlyingToken.symbol()),
-          underlyingToken.address
-        )
-      )
+      await setOraclePrice(invalidPriceAtokenCollateral.address, bn(0))
 
-      // CTokens Collateral
-      const cTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      // Reverts with zero price
+      await expect(invalidPriceAtokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Refresh should mark status UNPRICED
+      await invalidPriceAtokenCollateral.refresh()
+      expect(await invalidPriceAtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Aave
+      await expect(wbtcCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      await wbtcCollateral.refresh()
+      expect(await wbtcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // Non-Fiat collateral with no price
+      const nonpriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
+        await ethers.getContractFactory('NonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        networkConfig[chainId].chainlinkFeeds.DAI || '',
-        cToken.address,
+        NO_PRICE_DATA_FEED,
+        NO_PRICE_DATA_FEED,
+        wbtc.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Non-fiat Collateral with no price should revert
+      await expect(nonpriceNonFiatCollateral.price()).to.be.reverted
+
+      // Refresh should mark status UNPRICED
+      await nonpriceNonFiatCollateral.refresh()
+      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Non-Fiat collateral with zero price
+      const invalidPriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
+        await ethers.getContractFactory('NonFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        mockChainlinkFeed.address,
+        wbtc.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Set price = 0
+      const chainlinkFeedAddr = await invalidPriceNonFiatCollateral.targetPerRefFeed()
+      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+      await v3Aggregator.updateAnswer(bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Refresh should mark status UNPRICED
+      await invalidPriceNonFiatCollateral.refresh()
+      expect(await invalidPriceNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Compound
+      await expect(cWBTCCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await cWBTCCollateral.refresh()
+      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // CTokens Collateral with no price
+      const nonpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
+        await (
+          await ethers.getContractFactory('CTokenNonFiatCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(
+          NO_PRICE_DATA_FEED,
+          NO_PRICE_DATA_FEED,
+          cWBTC.address,
+          compToken.address,
+          config.tradingRange,
+          MAX_ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('BTC'),
+          defaultThreshold,
+          delayUntilDefault,
+          await wbtc.decimals(),
+          compoundMock.address
+        )
+      )
+
+      // CTokens - Collateral with no price info should revert
+      await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.reverted
+
+      // Refresh should mark status UNPRICED
+      await nonpriceCtokenNonFiatCollateral.refresh()
+      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Reverts with a feed with zero price
+      const invalidpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <
+        CTokenNonFiatCollateral
+      >await (
+        await ethers.getContractFactory('CTokenNonFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        mockChainlinkFeed.address,
+        cWBTC.address,
         compToken.address,
         config.tradingRange,
-        oracleTimeout,
-        ethers.utils.formatBytes32String('USD'),
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('BTC'),
         defaultThreshold,
         delayUntilDefault,
-        await underlyingToken.decimals(),
+        await wbtc.decimals(),
         compoundMock.address
       )
 
-      // Advance time past oracleTimeout
-      await advanceTime(oracleTimeout.toString())
-      await fiatCollateral.refresh()
-      await aTokenCollateral.refresh()
-      await cTokenCollateral.refresh()
+      // Set price = 0
+      const chainlinkFeedAddr = await invalidpriceCtokenNonFiatCollateral.targetUnitChainlinkFeed()
+      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+      await v3Aggregator.updateAnswer(bn(0))
 
-      // Should be UNPRICED
-      expect(await fiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      // Reverts with zero price
+      await expect(invalidpriceCtokenNonFiatCollateral.price()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status UNPRICED
+      await invalidpriceCtokenNonFiatCollateral.refresh()
+      expect(await invalidpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should handle invalid/stale Price - Collateral - Self-Referential', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Aave
+      await expect(wethCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      await wethCollateral.refresh()
+      expect(await wethCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Self referential collateral with no price
+      const nonpriceSelfReferentialCollateral: SelfReferentialCollateral = <
+        SelfReferentialCollateral
+      >await (
+        await ethers.getContractFactory('SelfReferentialCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        weth.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH')
+      )
+
+      // Non-fiat Collateral with no price should revert
+      await expect(nonpriceSelfReferentialCollateral.price()).to.be.reverted
+
+      // Refresh should mark status UNPRICED
+      await nonpriceSelfReferentialCollateral.refresh()
+      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Self referential collateral with zero price
+      const invalidPriceSelfReferentialCollateral: SelfReferentialCollateral = <
+        SelfReferentialCollateral
+      >await (
+        await ethers.getContractFactory('SelfReferentialCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        weth.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH')
+      )
+
+      // Set price = 0
+      await setOraclePrice(invalidPriceSelfReferentialCollateral.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceSelfReferentialCollateral.price()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status UNPRICED
+      await invalidPriceSelfReferentialCollateral.refresh()
+      expect(await invalidPriceSelfReferentialCollateral.status()).to.equal(
+        CollateralStatus.UNPRICED
+      )
+    })
+
+    it('Should handle invalid/stale Price - Collateral - CTokens Self-Referential', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Compound
+      await expect(cETHCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await cETHCollateral.refresh()
+      expect(await cETHCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // CTokens Collateral with no price
+      const nonpriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
+        CTokenSelfReferentialCollateral
+      >await (
+        await ethers.getContractFactory('CTokenSelfReferentialCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        cETH.address,
+        compToken.address,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        await weth.decimals(),
+        compoundMock.address
+      )
+
+      // CTokens - Collateral with no price info should revert
+      await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.reverted
+
+      // Refresh should mark status UNPRICED
+      await nonpriceCtokenSelfReferentialCollateral.refresh()
+      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(
+        CollateralStatus.UNPRICED
+      )
+
+      // Reverts with a feed with zero price
+      const invalidPriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
+        CTokenSelfReferentialCollateral
+      >await (
+        await ethers.getContractFactory('CTokenSelfReferentialCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        cETH.address,
+        compToken.address,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        await weth.decimals(),
+        compoundMock.address
+      )
+
+      // Set price = 0
+      await setOraclePrice(invalidPriceCtokenSelfReferentialCollateral.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceCtokenSelfReferentialCollateral.price()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status UNPRICED
+      await invalidPriceCtokenSelfReferentialCollateral.refresh()
+      expect(await invalidPriceCtokenSelfReferentialCollateral.status()).to.equal(
+        CollateralStatus.UNPRICED
+      )
+    })
+
+    it('Should handle invalid/stale Price - Collateral - EURO Fiat', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      await expect(eurtCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // Refresh should mark status UNPRICED
+      await eurtCollateral.refresh()
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      // Non price EURO Fiat collateral
+      const nonPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
+        await ethers.getContractFactory('EURFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        NO_PRICE_DATA_FEED,
+        eurt.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('EUR'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Collateral with no price should revert
+      await expect(nonPriceEURCollateral.price()).to.be.reverted
+
+      // Refresh should mark status UNPRICED
+      await nonPriceEURCollateral.refresh()
+      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Reverts with a feed with zero price
+      const invalidPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
+        await ethers.getContractFactory('EURFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        mockChainlinkFeed.address,
+        eurt.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('EUR'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+
+      // Set price = 0
+      const chainlinkFeedAddr = await invalidPriceEURCollateral.uoaPerTargetFeed()
+      const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
+      await v3Aggregator.updateAnswer(bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceEURCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Refresh should mark status UNPRICED
+      await invalidPriceEURCollateral.refresh()
+      expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -1371,7 +1745,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   // - Aave hasn't run their reward program in a while
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
-  describe.skip('Claim Rewards', () => {
+  describe('Claim Rewards', () => {
     const setup = async (blockNumber: number) => {
       ;[owner] = await ethers.getSigners()
 
