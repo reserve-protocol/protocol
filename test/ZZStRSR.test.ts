@@ -2067,7 +2067,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(amount.mul(2))
       })
 
-      it('Should clean votes properly when changing era', async function () {
+      it('Should track votes properly when changing era', async function () {
         // Check values before changing era
         let currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
