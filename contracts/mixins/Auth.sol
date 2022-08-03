@@ -30,7 +30,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     uint32 public freezeDuration; // {s} length of a oneshot use
 
-    bool public foreverFrozen = true; // starts frozen forever
+    bool public foreverFrozen;
 
     // === Pausing ===
 
@@ -50,6 +50,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         _grantRole(FREEZE_STARTER, _msgSender());
         _grantRole(FREEZE_EXTENDER, _msgSender());
         _grantRole(PAUSER, _msgSender());
+
+        // Begin forever-frozen
+        foreverFrozen = true;
     }
 
     // ==== System-wide views ====

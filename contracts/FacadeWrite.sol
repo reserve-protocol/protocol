@@ -99,8 +99,9 @@ contract FacadeWrite is IFacadeWrite {
             }
         }
 
-        // Freeze
+        // Freeze (+ regrant)
         main.freeze();
+        main.grantRole(FREEZE_STARTER, address(this));
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
