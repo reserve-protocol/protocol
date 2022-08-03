@@ -1,7 +1,7 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 1 - RToken Deployment 1`] = `5979989`;
+exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 1 - RToken Deployment 1`] = `6034674`;
 
-exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Deploy governance 1`] = `5044124`;
+exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Deploy governance 1`] = `5276635`;
 
-exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Without governance 1`] = `261595`;
+exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Without governance 1`] = `287916`;
