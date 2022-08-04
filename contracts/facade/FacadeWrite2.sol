@@ -6,7 +6,7 @@ import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/governance/Governance.sol";
 
 library FacadeWrite2 {
-    /// @return The new owner address (set to the timelock)
+    /// @return The new Governance contract address
     function deployGovernance(
         IStRSRVotes stRSR,
         TimelockController timelock,
@@ -15,7 +15,6 @@ library FacadeWrite2 {
         uint256 proposalThresholdAsMicroPercent,
         uint256 quorumPercent
     ) external returns (address) {
-        // Deploy Governance
         return
             address(
                 new Governance(
