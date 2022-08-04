@@ -106,6 +106,7 @@ contract FacadeWrite is IFacadeWrite {
     }
 
     /// Step 2
+    /// @return newOwner The address of the new owner
     function setupGovernance(
         IRToken rToken,
         bool deployGovernance,
@@ -114,16 +115,51 @@ contract FacadeWrite is IFacadeWrite {
         address owner,
         address guardian,
         address pauser
-    ) external returns (address) {
-        return
-            FacadeWrite2.setupGovernance(
-                rToken,
-                deployGovernance,
-                unfreeze,
-                govParams,
-                owner,
-                guardian,
-                pauser
-            );
+    ) external returns (address newOwner) {
+        // Get Main
+        IMain main = rToken.main();
+
+        require(main.hasRole(OWNER, address(this)), "ownership already transferred");
+        require(main.hasRole(OWNER, msg.sender), "not initial deployer");
+
+        // Remove ownership to sender
+        main.revokeRole(OWNER, msg.sender);
+
+        if (deployGovernance) {
+            require(owner == address(0), "owner should be empty");
+            newOwner = FacadeWrite2.deployGovernance(main, rToken, govParams, guardian);
+        } else {
+            require(owner != address(0), "owner not defined");
+            newOwner = owner;
+        }
+
+        // Setup guardian as freeze starter / extender + pauser
+        if (guardian != address(0)) {
+            // As a further decentralization step it is suggested to further differentiate between
+            // these two roles. But this is what will make sense for simple system setup.
+            main.grantRole(FREEZE_STARTER, guardian);
+            main.grantRole(FREEZE_EXTENDER, guardian);
+            main.grantRole(PAUSER, guardian);
+        }
+
+        // Setup Pauser
+        if (pauser != address(0)) {
+            main.grantRole(PAUSER, pauser);
+        }
+
+        // Unfreeze if required
+        if (unfreeze) {
+            main.unfreeze();
+        }
+
+        // Transfer Ownership and renounce roles
+        main.grantRole(OWNER, newOwner);
+        main.grantRole(FREEZE_STARTER, newOwner);
+        main.grantRole(FREEZE_EXTENDER, newOwner);
+        main.grantRole(PAUSER, newOwner);
+        main.renounceRole(OWNER, address(this));
+        main.renounceRole(FREEZE_STARTER, address(this));
+        main.renounceRole(FREEZE_EXTENDER, address(this));
+        main.renounceRole(PAUSER, address(this));
     }
 }
