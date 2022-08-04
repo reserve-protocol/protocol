@@ -188,7 +188,7 @@ export interface IConfig {
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
   issuanceRate: BigNumber
-  oneshotFreezeDuration: BigNumber
+  freezeDuration: BigNumber
 }
 
 export interface IRevenueShare {

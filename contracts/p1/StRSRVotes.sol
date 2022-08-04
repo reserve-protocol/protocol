@@ -10,13 +10,6 @@ interface IStRSRVotes is IVotesUpgradeable {
 
     /// @return The era at a past block number
     function getPastEra(uint256 blockNumber) external view returns (uint256);
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate);
 }
 
 /*
@@ -41,9 +34,14 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
 
+    // When RSR is seized, stakeholders are divested not only of their economic position,
+    // but also of their governance position. This occurs retroactively, such that upon
+    // era change it is expected that
+
     // ===
 
     /// Rebase hook
+    /// No need to override beginDraftEra: we are only concerned with raw balances (stakes)
     function beginEra() internal override {
         super.beginEra();
 
@@ -86,17 +84,6 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     function getPastEra(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
         return _checkpointsLookup(_eras, blockNumber);
-    }
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate)
-    {
-        HistoricalExchangeRate storage record = exchangeRateHistory[index];
-        return (record.fromBlock, record.rate);
     }
 
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)

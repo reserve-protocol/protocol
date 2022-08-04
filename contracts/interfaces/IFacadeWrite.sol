@@ -80,7 +80,7 @@ interface IFacadeWrite {
         bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
-        address freezer,
+        address guardian,
         address pauser
     ) external returns (address);
 }

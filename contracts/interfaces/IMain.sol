@@ -17,11 +17,12 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-// === Roles ===
+// === Auth roles ===
 
-bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
-bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // disable everything except OWNER actions
-bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // disable everything except OWNER + redeem
+bytes32 constant OWNER = bytes32(bytes("OWNER"));
+bytes32 constant FREEZE_STARTER = bytes32(bytes("FREEZE_STARTER"));
+bytes32 constant FREEZE_EXTENDER = bytes32(bytes("FREEZE_EXTENDER"));
+bytes32 constant PAUSER = bytes32(bytes("PAUSER"));
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -46,6 +47,11 @@ struct Components {
 }
 
 interface IAuth {
+    /// Emitted when `foreverFrozen` is changed
+    /// @param oldVal The old value of `foreverFrozen`
+    /// @param newVal The new value of `foreverFrozen`
+    event ForeverFrozenSet(bool indexed oldVal, bool indexed newVal);
+
     /// Emitted when `unfreezeAt` is changed
     /// @param oldVal The old value of `unfreezeAt`
     /// @param newVal The new value of `unfreezeAt`
@@ -62,25 +68,30 @@ interface IAuth {
     event PausedSet(bool indexed oldVal, bool indexed newVal);
 
     /**
-     * Paused = Everything is disabled except for OWNER actions and RToken.redeem/cancel
-     * Frozen = Everything disabled except for OWNER actions
+     * Paused: Disable everything except for OWNER actions and RToken.redeem/cancel
+     * Frozen: Disable everything except for OWNER actions
      */
 
     function pausedOrFrozen() external view returns (bool);
 
     function frozen() external view returns (bool);
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    function freezeDuration() external view returns (uint32);
 
+    // ====
+
+    // onlyRole(OWNER)
+    function freezeForever() external;
+
+    // onlyRole(FREEZE*)
     function freeze() external;
 
+    // onlyRole(OWNER)
     function unfreeze() external;
 
     function pause() external;
 
     function unpause() external;
-
-    function oneshotFreeze() external;
 }
 
 interface IComponentRegistry {
@@ -141,7 +152,7 @@ interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotFreezeDuration_
+        uint32 freezeDuration_
     ) external;
 
     function rsr() external view returns (IERC20);
@@ -151,7 +162,7 @@ interface TestIMain is IMain {
     /// @custom:governance
     function setOneshotFreezeDuration(uint32) external;
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    function freezeDuration() external view returns (uint32);
 
     function paused() external view returns (bool);
 }

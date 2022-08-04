@@ -12,7 +12,7 @@ Any ERC20 token that our system knows how to deal with is wrapped and modelled i
 
 The remained solidity files in our repository are either:
 
-- `Facade.sol` and,  which is a stateless generic interface that can be used with any RToken. This enables convenient external interactions and app development. There can be multiple facades.
+- `Facade.sol` and, which is a stateless generic interface that can be used with any RToken. This enables convenient external interactions and app development. There can be multiple facades.
 - `FacadeWrite.sol`, which allows to easily deploy and configure an RToken in a few simple transactions.
 - `Deployer.sol`, which deploys the clones of implementation contracts as needed to initialize a new RToken
 - `Fixed.sol`, which provides fixed-point fractional arithmetic operations
@@ -193,11 +193,11 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-### `oneshotFreezeDuration`
+### `freezeDuration`
 
 Dimension: `{s}`
 
-The number of seconds a freeze performed by a non-governance freezer. Governance can freeze indefinitely.
+The number of seconds a (non-forever) freeze lasts. Governance can freeze forever.
 
 Anticipated value: `864000` = 10 days
 Reasonable range: 3600 to 31536000
@@ -205,9 +205,10 @@ Reasonable range: 3600 to 31536000
 ## System States
 
 - `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions
-- `frozen`: all interactions disabled EXCEPT ERC20 functions. Only lasts a finite period when performed by a non-owning FREEZER, called a "oneshot" freeze.
+- `frozen`: all interactions disabled EXCEPT ERC20 functions
 
 Design intentions:
 
-- The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since exit of the system remains enabled.
-- The FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a oneshot freeze can be triggered which will automatically expire if the owner (governance) does not step in and upgrade the system or extend the freeze.
+- The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
+- The FREEZE_STARTER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a freeze can be triggered which will automatically expire if it is not renewed by FREEZE_EXTENDER. The OWNER (governance) may also step in and unfreeze at anytime. It's important that the FREEZE_STARTER is assigned to an address that can be expected to produce few-to-zero false positives, as compromising on redemption should be strongly avoided.
+- The FREEZE_EXTENDER role can eventually be assigned to a different address, or perhaps renounced, once there is confidence in the ability of governance to act (honestly + aligned) within a fixed time window.

@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
-import { OWNER, FREEZER, PAUSER } from '../common/constants'
+import { OWNER, FREEZE_STARTER, FREEZE_EXTENDER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -386,8 +386,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await mainV2.pausedOrFrozen()).to.equal(false)
       expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
-      expect(await mainV2.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(FREEZER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(FREEZE_STARTER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(FREEZE_EXTENDER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(FREEZE_STARTER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(FREEZE_EXTENDER, main.address)).to.equal(false)
       expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
 

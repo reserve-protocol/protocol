@@ -12,53 +12,92 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     /**
      * System-wide states
      *  - Frozen: only allow OWNER actions
-     *  - Paused: only allow OWNER actions and redemption
+     *  - Paused: only allow OWNER actions and redemption (and issuance cancellation)
      *
-     * Freezing lasts a finite period when performed by the FREEZER, called a oneshot freeze.
-     * This also renounces their role as FREEZER, while allowing them to perform the unfreeze.
-     * Freezing can also be performed by the OWNER indefinitely. They may also unfreeze anytime.
+     * Typically freezing thaws on its own in a predetemined number of blocks.
+     *   However, OWNER can also freeze forever.
      */
+
+    /// The rest of the contract uses the shorthand; these declarations are here for getters
+    bytes32 public constant OWNER_ROLE = OWNER;
+    bytes32 public constant FREEZE_STARTER_ROLE = FREEZE_STARTER;
+    bytes32 public constant FREEZE_EXTENDER_ROLE = FREEZE_EXTENDER;
+    bytes32 public constant PAUSER_ROLE = PAUSER;
 
     // === Freezing ===
 
-    address private frozenBy; // only applies when frozen() is true
-
     uint32 public unfreezeAt; // {s} uint32.max to pause indefinitely
 
-    uint32 public oneshotFreezeDuration; // {s} length of a oneshot use
+    uint32 public freezeDuration; // {s} length of a oneshot use
+
+    bool public foreverFrozen;
 
     // === Pausing ===
 
     bool public paused;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Auth_init(uint32 oneshotFreezeDuration_) internal onlyInitializing {
+    function __Auth_init(uint32 freezeDuration_) internal onlyInitializing {
         __AccessControl_init();
-        oneshotFreezeDuration = oneshotFreezeDuration_;
+        freezeDuration = freezeDuration_;
 
         // Role setup
         _setRoleAdmin(OWNER, OWNER);
-        _setRoleAdmin(FREEZER, OWNER);
+        _setRoleAdmin(FREEZE_STARTER, OWNER);
+        _setRoleAdmin(FREEZE_EXTENDER, OWNER);
         _setRoleAdmin(PAUSER, OWNER);
         _grantRole(OWNER, _msgSender());
-        _grantRole(FREEZER, _msgSender());
+        _grantRole(FREEZE_STARTER, _msgSender());
+        _grantRole(FREEZE_EXTENDER, _msgSender());
         _grantRole(PAUSER, _msgSender());
 
-        // begin frozen
-        unfreezeAt = type(uint32).max;
+        // Begin forever-frozen
+        foreverFrozen = true;
     }
 
-    // ==== System-wide states ====
-
-    function pausedOrFrozen() public view returns (bool) {
-        return paused || block.timestamp < unfreezeAt;
-    }
+    // ==== System-wide views ====
 
     function frozen() public view returns (bool) {
-        return block.timestamp < unfreezeAt;
+        return foreverFrozen || block.timestamp < unfreezeAt;
     }
 
-    // ==== Access-controlled state transitions ====
+    /// @dev This -or- condition is a performance optimization for the consuming Component
+    function pausedOrFrozen() public view returns (bool) {
+        return paused || foreverFrozen || block.timestamp < unfreezeAt;
+    }
+
+    // === Freezing ===
+
+    /// Enter a forever-freeze
+    function freezeForever() external onlyRole(OWNER) {
+        emit ForeverFrozenSet(foreverFrozen, true);
+        foreverFrozen = true;
+    }
+
+    /// Enter a fixed-duration freeze and revoke freezership
+    /// onlyRole(FREEZE_STARTER or FREEZE_EXTENDER)
+    function freeze() external {
+        if (block.timestamp < unfreezeAt) {
+            require(hasRole(FREEZE_EXTENDER, _msgSender()), "not freeze extender");
+        } else {
+            // Revoke role if starting the freeze
+            require(hasRole(FREEZE_STARTER, _msgSender()), "not freeze starter");
+            _revokeRole(FREEZE_STARTER, _msgSender());
+        }
+        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + freezeDuration);
+        unfreezeAt = uint32(block.timestamp) + freezeDuration;
+    }
+
+    /// End all freezes
+    function unfreeze() external onlyRole(OWNER) {
+        emit ForeverFrozenSet(foreverFrozen, false);
+        foreverFrozen = false;
+
+        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
+        unfreezeAt = uint32(block.timestamp);
+    }
+
+    // === Pausing ===
 
     function pause() external onlyRole(PAUSER) {
         emit PausedSet(paused, true);
@@ -70,31 +109,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         paused = false;
     }
 
-    function freeze() external onlyRole(OWNER) {
-        emit UnfreezeAtSet(unfreezeAt, type(uint32).max);
-        unfreezeAt = type(uint32).max;
-        frozenBy = address(0);
-    }
-
-    function unfreeze() external {
-        require(frozen(), "not frozen");
-        require(hasRole(OWNER, _msgSender()) || frozenBy == _msgSender(), "not original freezer");
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
-        unfreezeAt = uint32(block.timestamp);
-    }
-
-    function oneshotFreeze() external onlyRole(FREEZER) {
-        // Revoke role if not also OWNER
-        if (!hasRole(OWNER, _msgSender())) _revokeRole(FREEZER, _msgSender());
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + oneshotFreezeDuration);
-        unfreezeAt = uint32(block.timestamp) + oneshotFreezeDuration;
-        frozenBy = _msgSender();
-    }
-
     // === Gov params ===
 
-    function setOneshotFreezeDuration(uint32 oneshotFreezeDuration_) external onlyRole(OWNER) {
-        emit OneshotFreezeDurationSet(oneshotFreezeDuration, oneshotFreezeDuration_);
-        oneshotFreezeDuration = oneshotFreezeDuration_;
+    function setOneshotFreezeDuration(uint32 freezeDuration_) external onlyRole(OWNER) {
+        emit OneshotFreezeDurationSet(freezeDuration, freezeDuration_);
+        freezeDuration = freezeDuration_;
     }
 }
