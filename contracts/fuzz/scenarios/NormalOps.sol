@@ -13,6 +13,10 @@ import "contracts/fuzz/Utils.sol";
 
 import "contracts/fuzz/FuzzP1.sol";
 
+// The "normal operations" fuzzing scenario, in which:
+// - Tokens never default, or even threaten to default
+// - The basket, once initialized, is never changed
+// - No "significant" governance changes occur
 contract NormalOpsScenario {
     MainP1Fuzz public main;
 
@@ -113,10 +117,13 @@ contract NormalOpsScenario {
         }
     }
 
-    // function _setupTokens internal virtual
+    modifier asSender() {
+        main.spoof(address(this), msg.sender);
+        _;
+        main.unspoof(address(this));
+    }
 
     // ==== tiny, stupid-simple example of all this ====
-
     function startIssue() public {
         address alice = main.users(0);
 
@@ -143,4 +150,48 @@ contract NormalOpsScenario {
 
         main.unspoof(address(this));
     }
+
+    // ================ real mutators ================
+
+    // ==== user functions: token ops ====
+    // Send some token as the calling user.
+    function transfer(uint8 addrID, uint8 tokenID, uint256 amount) public asSender{
+        IERC20 token = main.someToken(tokenID);
+        address to = main.someAddr(addrID);
+        token.transfer(to, amount);
+    }
+    /* function allow(address spender, uint8 tokenID, uint256 amount); */
+    /* function transferFrom(address from, address to, uint8 tokenID, uint256 amount); */
+
+    // user functions: rtoken
+    /* function issueRToken(uint256 amount); */
+    /* function cancelIssuance(uint256 endID, bool earliest); // filter endIDs mostly to valid IDs*/
+    /* function vestIssuance(uint256 endID); // filter endIDs mostly to valid IDs */
+    /* function issueAndVestRToken(uint256 amount); */
+    /* function redeemRToken(uint256 amount); */
+
+    // user functions: strsr
+    /* function stake(uint256 amount); */
+    /* function unstake(uint256 amount); */
+    /* function withdraw(uint256 endID); */
+
+    // ==== keeper functions ====
+    // function claimRewards(uint256 tokenID)
+    // function settleTrades()
+    // function manageBackingToken(uint256 tokenID)
+    // function grantAllowances(uint256 tokenID)
+    // function payRSRRewards() // do strsr rewards
+    // function payRTokenRewards() // do rtoken rewards
+
+    // ==== governance changes ====
+    /* function setDistribution(address dest, uint16 rTokenDist, uint16 rsrDist) */
+
+    // ================ System Properties ================
+    // A few example properties to start with:
+    /* function echidna_isFullyCapitalized() //include "total redemption is affordable" */
+    /* function echidna_quoteProportionalToBasket() */
+    /* how would I check that prepareTradeRecacapitalize(), compromiseBasketsNeeded(),
+     * and stRSR.seizeRSR() are never called? I could override them in the scenario with a function
+     * that just reverts with echidna-stopping error */
+    /* stRSR.exchangeRate only increases */
 }

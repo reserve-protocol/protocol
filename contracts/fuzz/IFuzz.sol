@@ -47,11 +47,23 @@ interface IMainFuzz is IMain {
     // Unset spoofing for addr
     function unspoof(address realAddr) external;
 
-    // A seed that other Fuzz mocks can base arbirary behaviors on
-    function seed() external view returns (uint256);
-
-    function setSeed(uint256 seed) external;
-
-    // Retrive the MarketMock contract, i.e, for trading
+    // Retrieve the MarketMock contract, i.e, for trading
     function marketMock() external view returns (IMarketMock);
+
+    // Tokens and Users by "ID"
+
+    function numTokens() external view returns (uint256);
+    function addToken(IERC20 token) external;
+    // lookup an added token at index; error if index >= numTokens()
+    function tokens(uint256 index) external view returns (IERC20);
+    // return an arbitrary token: added, RSR, or RToken
+    function someToken(uint256 seed) external view returns (IERC20);
+
+
+    function numUsers() external view returns (uint256);
+    function addUser(address user) external;
+    // lookup user at index; error if index >= numUsers()
+    function users(uint256 index) external view returns (address);
+    // return an arbitrary address: a contract, an added user, 0x0, or 0x1
+    function someAddr(uint256 seed) external view returns (address);
 }

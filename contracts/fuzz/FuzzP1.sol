@@ -159,12 +159,12 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     using EnumerableSet for EnumerableSet.AddressSet;
     IMarketMock public marketMock;
 
-    // ==== Scenario variables ====
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders
-    uint256 public seed;
+
     IERC20[] public tokens; // token addresses, not including RSR or RToken
     address[] public users; // "registered" user addresses
+    address[] public constAddrs; // constant addresses, for "addrById"
 
     // ==== Scenario handles ====
     // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
@@ -194,17 +194,23 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         }
     }
 
-    function setSeed(uint256 seed_) public {
-        seed = seed_;
-    }
-
     function numTokens() public view returns (uint256) {
         return tokens.length;
     }
 
     // Add a token to this system's tiny token registry
-    function addToken(IERC20Metadata token) public {
+    function addToken(IERC20 token) public {
         tokens.push(token);
+    }
+
+    function someToken(uint256 seed) public view returns (IERC20) {
+        uint256 id = seed % (tokens.length + 2);
+        if (id < tokens.length) return tokens[id];
+        else id -= tokens.length;
+
+        if (id == 0) return IERC20(address(rsr));
+        if (id == 1) return IERC20(address(rToken));
+        revert("invalid id in someToken");
     }
 
     function numUsers() public view returns (uint256) {
@@ -213,6 +219,23 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     function addUser(address user) public {
         users.push(user);
+    }
+
+    function someAddr(uint256 seed) public view returns (address) {
+        // constAddrs.length: constant addresses, mostly deployed contracts
+        // numUsers: addresses from the user registry
+        // 1: broker's "last deployed address"
+        uint256 numIDs = numUsers() + constAddrs.length + 1;
+        uint256 id = seed % numIDs;
+
+        if (id < numUsers()) return users[id];
+        else id -= numUsers();
+
+        if (id < constAddrs.length) return constAddrs[id];
+        else id -= constAddrs.length;
+
+        if (id == 0) return address(BrokerP1Fuzz(address(broker)).lastOpenedTrade());
+        revert("invalid id in someAddr");
     }
 
     constructor() {
@@ -228,6 +251,19 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader = new RevenueTraderP1Fuzz();
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
+
+        constAddrs.push(address(rsr));
+        constAddrs.push(address(rToken));
+        constAddrs.push(address(assetRegistry));
+        constAddrs.push(address(basketHandler));
+        constAddrs.push(address(backingManager));
+        constAddrs.push(address(distributor));
+        constAddrs.push(address(rsrTrader));
+        constAddrs.push(address(rTokenTrader));
+        constAddrs.push(address(furnace));
+        constAddrs.push(address(broker));
+        constAddrs.push(address(0));
+        constAddrs.push(address(1));
     }
 
     // Initialize self and components

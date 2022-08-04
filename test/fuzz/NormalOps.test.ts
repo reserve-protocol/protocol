@@ -2,6 +2,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { Wallet } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
+import { whileImpersonating } from '../utils/impersonation'
 
 import { fp } from '../../common/numbers'
 import { advanceTime, advanceBlocks } from '../../test/utils/time'
@@ -30,7 +31,7 @@ const componentsOf = async (main: sc.IMain) => ({
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
 // { gasLimit: 0x1ffffffff }
-describe('Basic Scenario with FuzzP1', () => {
+describe('The Normal Operations scenario', () => {
   let scenario: sc.NormalOpsScenario
   let main: sc.MainP1Fuzz
   let comp: Components
@@ -39,7 +40,7 @@ describe('Basic Scenario with FuzzP1', () => {
   let owner: Wallet
   let alice: Wallet
 
-  before('Deploy Scenario', async () => {
+  before('deploy...', async () => {
     ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
@@ -51,7 +52,7 @@ describe('Basic Scenario with FuzzP1', () => {
     await startState.restore()
   })
 
-  it('deploys as intended', async () => {
+  it('deploys as expected', async () => {
     // users
     expect(await main.numUsers()).to.equal(3)
     expect(await main.users(0)).to.equal(user(0))
@@ -98,20 +99,7 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await comp.broker.main()).to.equal(main.address)
   })
 
-  it('allows basic issuance and redemption', async () => {
-    const norma = user(0)
-    await scenario.startIssue()
-    expect(await comp.rToken.balanceOf(norma)).to.equal(0)
-
-    await advanceBlocks(100)
-    await scenario.finishIssue()
-    expect(await comp.rToken.balanceOf(norma)).to.equal(fp(1e6))
-
-    await scenario.redeem()
-    expect(await comp.rToken.balanceOf(norma)).to.equal(0)
-  })
-
-  it('can trade two fiatcoins', async () => {
+  it('lets users trade two fiatcoins', async () => {
     const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
     const rsr = comp.rsr
 
@@ -154,7 +142,7 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await rsr.balanceOf(alice.address)).to.equal(fp(456))
   })
 
-  it('BackingManager can buy and sell RTokens in trades', async () => {
+  it('lets BackingManager buy and sell RTokens', async () => {
     const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
     const bm_addr = comp.backingManager.address
     const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
@@ -224,5 +212,38 @@ describe('Basic Scenario with FuzzP1', () => {
     expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 
     await main.unspoof(owner.address)
+  })
+
+  it('guarantees that someTokens = tokens and someAddr = users on their shared range', async () => {
+    const numTokens = await main.numTokens()
+    for (let i = 0; numTokens.gt(i); i++) {
+      expect(await main.tokens(i)).to.equal(await main.someToken(i))
+    }
+    const numUsers = await main.numUsers()
+    for (let i = 0; numUsers.gt(i); i++) {
+      expect(await main.users(i)).to.equal(await main.someAddr(i))
+    }
+  })
+
+  it('lets users transfer tokens', async () => {
+    const zed_addr = user(0)
+    const dest_addr = await main.someAddr(1)
+    const token = await ConAt('ERC20Fuzz', await main.someToken(0))
+
+    await whileImpersonating(zed_addr, async (zed) => {
+      const dest_bal_0 = await token.balanceOf(dest_addr)
+      const zed_bal_0 = await token.balanceOf(zed_addr)
+
+      expect(await main.tokens(0)).to.equal(await main.someToken(0))
+      expect(await main.someAddr(0)).to.equal(zed_addr)
+
+      await scenario.connect(zed).transfer(1, 0, fp(3))
+
+      const dest_bal = await token.balanceOf(dest_addr)
+      const zed_bal = await token.balanceOf(zed_addr)
+
+      expect(dest_bal.sub(dest_bal_0)).to.equal(fp(3))
+      expect(zed_bal_0.sub(zed_bal)).to.equal(fp(3))
+    })
   })
 })
