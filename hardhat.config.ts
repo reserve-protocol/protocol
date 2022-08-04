@@ -72,16 +72,6 @@ const config: any = {
         settings: { optimizer: { enabled: false } },
       },
     ],
-    overrides: {
-      'contracts/p1/aux/Deployer.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
-      },
-      'contracts/FacadeWrite.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
-      },
-    },
   },
   paths: {
     sources: src_dir,
