@@ -22,7 +22,6 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
 
-/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -63,7 +62,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * TotalIssue items in an IssueQueue.
      *
      * The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
-     * "fencpost" in the queue of actual issuances. The true issuances are the spans between the
+     * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
      *    queue.items[queue.right].amtRToken == 6000,
@@ -95,7 +94,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
     function issue(uint256 amtRToken) external notPausedOrFrozen {
-        require(amtRToken > 0, "Cannot issue zero");
+        if (amtRToken == 0) revert ZeroAmount();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -122,7 +121,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status == CollateralStatus.SOUND, "unsound");
+        if (status != CollateralStatus.SOUND) revert UnsoundBasket(status);
 
         main.furnace().melt();
 
@@ -246,7 +245,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().refresh();
 
         // == Checks ==
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "unsound");
+        CollateralStatus status = main.basketHandler().status();
+        if (status != CollateralStatus.SOUND) revert UnsoundBasket(status);
 
         // Refund old issuances if there are any
         IssueQueue storage queue = issueQueues[account];
@@ -296,7 +296,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId <= queue.right, "out of range");
+        if (queue.left < endId || endId < queue.right) revert OutOfRange();
 
         // == Interactions ==
         if (earliest) {
@@ -311,16 +311,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:action
     /// @custom:interaction CEI
     function redeem(uint256 amount) external notFrozen {
-        require(amount > 0, "Cannot redeem zero");
+        if (amount == 0) revert ZeroAmount();
 
         // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        require(balanceOf(redeemer) >= amount, "not enough RToken");
+        if (balanceOf(redeemer) < amount) revert InsufficientBalance();
         // Allow redemption during IFFY + UNPRICED
-        require(main.basketHandler().status() != CollateralStatus.DISABLED, "unsound");
+        if (main.basketHandler().status() == CollateralStatus.DISABLED) {
+            revert UnsoundBasket(CollateralStatus.DISABLED);
+        }
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
@@ -373,7 +375,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (!nonzero) revert("Empty redemption");
+        if (!nonzero) revert EmptyRedemption();
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
@@ -381,7 +383,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        if (_msgSender() != address(main.backingManager())) revert OnlyBackingManager();
         _mint(recipient, amtRToken);
     }
 
@@ -395,7 +397,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        if (_msgSender() != address(main.backingManager())) revert OnlyBackingManager();
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
@@ -408,14 +410,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @custom:governance
     function setIssuanceRate(uint192 val) public governance {
-        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
+        if (val > MAX_ISSUANCE_RATE) revert InvalidIssuanceRate();
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
     /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() external view returns (uint192 p) {
-        require(totalSupply() > 0, "no supply");
+        if (totalSupply() == 0) revert TotalSupplyZero();
 
         // downcast is safe: basketsNeeded is <= 1e39
         // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
@@ -495,7 +497,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             queue.right = left;
         } else {
             // error: can't remove [left,right) from the queue, and leave just one interval
-            revert("Bad refundSpan");
+            revert BadRefundSpan();
         }
 
         emit IssuancesCanceled(account, left, right, amtRToken);
@@ -513,14 +515,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        require(queue.left <= endId && endId <= queue.right, "out of range");
+        if (queue.left < endId || endId < queue.right) revert OutOfRange();
 
         // Vest the span up to `endId`.
         uint256 amtRToken;
         uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
         // D18{block} ~~ D18 * {block}
-        require(rightItem.when <= FIX_ONE_256 * block.number, "issuance not ready");
+        if (rightItem.when > FIX_ONE_256 * block.number) revert IssuanceNotReady();
 
         uint256 queueLength = queue.tokens.length;
         uint256[] memory amtDeposits = new uint256[](queueLength);

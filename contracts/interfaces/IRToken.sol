@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "contracts/libraries/Fixed.sol";
+import "./IAsset.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
@@ -15,6 +16,18 @@ import "./IRewardable.sol";
  *   exchange rate against a single unit: baskets, or {BU} in our type notation.
  */
 interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgradeable {
+    // Errors
+    error ZeroAmount();
+    error UnsoundBasket(CollateralStatus);
+    error OutOfRange();
+    error InsufficientBalance();
+    error OnlyBackingManager();
+    error IssuanceNotReady();
+    error InvalidIssuanceRate();
+    error TotalSupplyZero();
+    error EmptyRedemption();
+    error BadRefundSpan();
+
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue

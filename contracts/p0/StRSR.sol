@@ -227,7 +227,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// seizedRSR will _not_ be smaller than rsrAmount.
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backingManager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initialExchangeRate = exchangeRate();
         uint256 rewards = rsrRewards();

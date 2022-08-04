@@ -254,7 +254,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Must seize at least `rsrAmount`, or revert
     /// @custom:protected
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backingManager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initRate = stakeRate;
 

@@ -85,7 +85,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
     function issue(uint256 amount) external notPausedOrFrozen {
-        require(amount > 0, "Cannot issue zero");
+        require(amount > 0, "zero amount");
         // Call collective state keepers.
         main.poke();
 
@@ -217,7 +217,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
     function redeem(uint256 amount) external notFrozen {
-        require(amount > 0, "Cannot redeem zero");
+        require(amount > 0, "zero amount");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
@@ -271,7 +271,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qRTok} The amount to be minted
     /// @custom:protected
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backingManager");
         _mint(recipient, amount);
     }
 
@@ -285,7 +285,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(main.backingManager()), "not backingManager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
@@ -331,7 +331,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
         if (!iss.processed) {
