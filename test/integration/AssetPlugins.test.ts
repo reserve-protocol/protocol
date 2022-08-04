@@ -49,12 +49,22 @@ const createFixtureLoader = waffle.createFixtureLoader
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
+// Complex Basket holders
+const holderWBTC = '0xbf72da2bd84c5170618fbe5914b0eca9638d5eb5'
+const holdercWBTC = '0x7132ad0a72b5ba50bdaa005fad19caae029ae699'
+const holderWETH = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e'
+const holdercETH = '0x10d88638be3c26f3a47d861b8b5641508501035d'
+const holderEURT = '0x5754284f345afc66a98fbb0a0afe71e0f007b949'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 let owner: SignerWithAddress
 
 const describeFork = process.env.FORK ? describe : describe.skip
+
+const point1Pct = (value: BigNumber): BigNumber => {
+  return value.div(1000)
+}
 
 describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
@@ -138,6 +148,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let mockChainlinkFeed: MockV3Aggregator
 
   let initialBal: BigNumber
+  let initialBalBtcEth: BigNumber
   let basket: Collateral[]
   let erc20s: IERC20[]
 
@@ -283,6 +294,39 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // cDAI
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+      })
+
+      // Setup balances for complex basket
+      initialBalBtcEth = bn('10e18')
+      // WBTC
+      await whileImpersonating(holderWBTC, async (wbtcSigner) => {
+        await wbtc.connect(wbtcSigner).transfer(addr1.address, toBNDecimals(initialBalBtcEth, 8))
+      })
+
+      // cWBTC
+      await whileImpersonating(holdercWBTC, async (cwbtcSigner) => {
+        await cWBTC
+          .connect(cwbtcSigner)
+          .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+      })
+
+      // WETH
+      await whileImpersonating(holderWETH, async (wethSigner) => {
+        await weth.connect(wethSigner).transfer(addr1.address, initialBalBtcEth)
+      })
+
+      //  cWETH
+      await whileImpersonating(holdercETH, async (cethSigner) => {
+        await cETH
+          .connect(cethSigner)
+          .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 8).mul(1000))
+      })
+
+      //EURT
+      await whileImpersonating(holderEURT, async (eurtSigner) => {
+        await eurt
+          .connect(eurtSigner)
+          .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 6).mul(1000))
       })
 
       // Setup factories
@@ -758,7 +802,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(
           ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
           fp('0.5')
-        ) // close to $633 usd
+        )
 
         const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
         expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
@@ -1459,7 +1503,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await assetRegistry.toColl(ERC20s[6])).to.equal(cDaiCollateral.address)
     })
 
-    it('Should register Basket correctly', async () => {
+    it('Should register simple Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCapitalized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
@@ -1485,7 +1529,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
-    it('Should issue/reedem correctly', async function () {
+    it('Should issue/reedem correctly with simple basket ', async function () {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
@@ -1739,13 +1783,257 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('150')
       ) // approx 10K in value
     })
+
+    context('With Complex basket', function () {
+      let newBasket: Collateral[]
+      let newBasketsNeededAmts: BigNumber[]
+
+      beforeEach(async () => {
+        // Set new basket
+        newBasket = [
+          wbtcCollateral,
+          cWBTCCollateral,
+          wethCollateral,
+          cETHCollateral,
+          eurtCollateral,
+        ]
+        newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000')]
+
+        // Register prime collateral and grant allowances
+        const newBasketERC20s = []
+        for (let i = 0; i < newBasket.length; i++) {
+          await assetRegistry.connect(owner).register(newBasket[i].address)
+          newBasketERC20s.push(await newBasket[i].erc20())
+          // Grant allowance
+          await backingManager.grantRTokenAllowance(await newBasket[i].erc20())
+        }
+        // Set non-empty basket
+        await basketHandler.connect(owner).setPrimeBasket(newBasketERC20s, newBasketsNeededAmts)
+        await basketHandler.connect(owner).refreshBasket()
+
+        // Approve all balances for user
+        await wbtc.connect(addr1).approve(rToken.address, await wbtc.balanceOf(addr1.address))
+        await cWBTC.connect(addr1).approve(rToken.address, await cWBTC.balanceOf(addr1.address))
+        await weth.connect(addr1).approve(rToken.address, await weth.balanceOf(addr1.address))
+        await cETH.connect(addr1).approve(rToken.address, await cETH.balanceOf(addr1.address))
+        await eurt.connect(addr1).approve(rToken.address, await eurt.balanceOf(addr1.address))
+      })
+
+      it('Should Issue/Redeem (wBTC, cWBTC, wETH, cETH, EURT)', async () => {
+        // Check prices
+        // WBTC
+        const btcTargetPrice = fp('31311.5') // June 6, 2022
+        const wbtcRefPrice = fp('1.00062') // approx price wbtc-btc
+        const btcPrice = btcTargetPrice.mul(wbtcRefPrice).div(BN_SCALE_FACTOR)
+        expect(await wbtcCollateral.price()).to.be.closeTo(btcPrice, fp('0.5'))
+
+        // cWBTC
+        const cWBTCPrice = btcTargetPrice
+          .mul(wbtcRefPrice)
+          .mul(fp('0.02020'))
+          .div(BN_SCALE_FACTOR.pow(2))
+        expect(await cWBTCCollateral.price()).to.be.closeTo(cWBTCPrice, fp('0.5')) // close to $633 usd
+
+        // WETH
+        const ethTargetPrice = fp('1859') //approx price June 2022
+        expect(await wethCollateral.price()).to.be.closeTo(ethTargetPrice, fp('0.5'))
+
+        // cETH
+        const cETHPrice = ethTargetPrice.mul(fp('0.02020')).div(BN_SCALE_FACTOR)
+        expect(await cETHCollateral.price()).to.be.closeTo(cETHPrice, fp('0.5'))
+
+        // EURT
+        const eurPrice = fp('1.07') // approx price EUR-USD June 6, 2022
+        expect(await eurtCollateral.price()).to.be.closeTo(eurPrice, fp('0.01')) // ref price approx 1.07
+
+        // Aproximate total price of Basket in USD
+        const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
+
+        // Check Basket
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        const backing = await facade.basketTokens(rToken.address)
+        expect(backing[0]).to.equal(wbtc.address)
+        expect(backing[1]).to.equal(cWBTC.address)
+        expect(backing[2]).to.equal(weth.address)
+        expect(backing[3]).to.equal(cETH.address)
+        expect(backing[4]).to.equal(eurt.address)
+        expect(backing.length).to.equal(5)
+
+        // Check initial values
+        expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        await expect(rToken.price()).to.be.revertedWith('no supply')
+
+        // Check rToken balance
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances before
+        expect(await wbtc.balanceOf(backingManager.address)).to.equal(0)
+        expect(await cWBTC.balanceOf(backingManager.address)).to.equal(0)
+        expect(await weth.balanceOf(backingManager.address)).to.equal(0)
+        expect(await cETH.balanceOf(backingManager.address)).to.equal(0)
+        expect(await eurt.balanceOf(backingManager.address)).to.equal(0)
+
+        expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
+        expect(await cWBTC.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth, 8).mul(1000)
+        )
+        expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth)
+        expect(await cETH.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth, 8).mul(1000)
+        )
+        expect(await eurt.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth, 6).mul(1000)
+        )
+
+        // Issue one RToken
+        const issueAmount: BigNumber = bn('1e18')
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check Balances after
+        expect(await wbtc.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 8)) //1 full units
+        const requiredCWBTC: BigNumber = toBNDecimals(fp('49.5'), 8) // approx 49.5 cWBTC needed (~1 wbtc / 0.02020)
+        expect(await cWBTC.balanceOf(backingManager.address)).to.be.closeTo(
+          requiredCWBTC,
+          point1Pct(requiredCWBTC)
+        )
+        expect(await weth.balanceOf(backingManager.address)).to.equal(issueAmount) //1 full units
+        const requiredCETH: BigNumber = toBNDecimals(fp('49.8'), 8) // approx 49.8 cETH needed (~1 weth / 0.02020)
+        expect(await cETH.balanceOf(backingManager.address)).to.be.closeTo(
+          requiredCETH,
+          point1Pct(requiredCETH)
+        )
+        expect(await eurt.balanceOf(backingManager.address)).to.equal(bn(1000e6))
+
+        // Balances for user
+        expect(await wbtc.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth.sub(issueAmount), 8)
+        )
+        const expectedcWBTCBalance = toBNDecimals(initialBalBtcEth, 8).mul(1000).sub(requiredCWBTC)
+        expect(await cWBTC.balanceOf(addr1.address)).to.be.closeTo(
+          expectedcWBTCBalance,
+          point1Pct(expectedcWBTCBalance)
+        )
+        expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth.sub(issueAmount))
+        const expectedcETHBalance = toBNDecimals(initialBalBtcEth, 8).mul(1000).sub(requiredCETH)
+        expect(await cWBTC.balanceOf(addr1.address)).to.be.closeTo(
+          expectedcETHBalance,
+          point1Pct(expectedcETHBalance)
+        )
+        expect(await eurt.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth.mul(1000).sub(issueAmount.mul(1000)), 6)
+        )
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check asset value
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          totalPriceUSD,
+          point1Pct(totalPriceUSD)
+        )
+
+        // Redeem Rtokens
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances after - Backing Manager is empty
+        expect(await wbtc.balanceOf(backingManager.address)).to.equal(0)
+        expect(await cWBTC.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10'))
+        expect(await weth.balanceOf(backingManager.address)).to.equal(0)
+        expect(await cETH.balanceOf(backingManager.address)).to.be.closeTo(bn(0), bn('10'))
+        expect(await eurt.balanceOf(backingManager.address)).to.equal(0)
+
+        // Check funds returned to user
+        expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
+        expect(await cWBTC.balanceOf(addr1.address)).to.be.closeTo(
+          toBNDecimals(initialBalBtcEth, 8).mul(1000),
+          bn('10')
+        )
+        expect(await weth.balanceOf(addr1.address)).to.equal(initialBalBtcEth)
+        expect(await cETH.balanceOf(addr1.address)).to.be.closeTo(
+          toBNDecimals(initialBalBtcEth, 8).mul(1000),
+          bn('10')
+        )
+        expect(await eurt.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBalBtcEth, 6).mul(1000)
+        )
+
+        //  Check asset value left
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          bn(0),
+          fp('0.001')
+        ) // Near zero
+      })
+
+      it('Should claim rewards (cWBTC, cETH)', async () => {
+        // Try to claim rewards at this point - Nothing for Backing Manager
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+
+        await expectEvents(backingManager.claimAndSweepRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        // No rewards so far
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+
+        // Issue RTokens
+        const issueAmount: BigNumber = bn('10e18')
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        // Now we can claim rewards - check initial balance still 0
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+
+        // Advance Time
+        await advanceTime(8000)
+
+        // Claim rewards
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
+
+        // Check rewards both in COMP
+        const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
+        expect(rewardsCOMP1).to.be.gt(0)
+
+        // Keep moving time
+        await advanceTime(3600)
+
+        // Get additional rewards
+        await expect(backingManager.claimAndSweepRewards()).to.emit(
+          backingManager,
+          'RewardsClaimed'
+        )
+
+        const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
+        expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
+      })
+    })
   })
 
   // Skip explanation:
   // - Aave hasn't run their reward program in a while
   // - We don't expect them to soon
   // - Rewards can always be collected later through a plugin upgrade
-  describe('Claim Rewards', () => {
+  describe.skip('Claim Rewards - ATokens/CTokens Fiat', () => {
     const setup = async (blockNumber: number) => {
       ;[owner] = await ethers.getSigners()
 
@@ -1827,7 +2115,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       })
     })
 
-    it('Should claim rewards correctly', async function () {
+    it('Should claim rewards correctly- Simple basket', async function () {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
