@@ -127,7 +127,32 @@ contract FacadeWrite is IFacadeWrite {
 
         if (deployGovernance) {
             require(owner == address(0), "owner should be empty");
-            newOwner = FacadeWrite2.deployGovernance(main, rToken, govParams, guardian);
+
+            TimelockController timelock = new TimelockController(
+                govParams.minDelay,
+                new address[](0),
+                new address[](0)
+            );
+
+            // Deploy Governance contract
+            address governance = FacadeWrite2.deployGovernance(
+                IStRSRVotes(address(main.stRSR())),
+                timelock,
+                govParams.votingDelay,
+                govParams.votingPeriod,
+                govParams.proposalThresholdAsMicroPercent,
+                govParams.quorumPercent
+            );
+            emit GovernanceCreated(rToken, governance, address(timelock));
+
+            // Setup Roles
+            timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
+            timelock.grantRole(timelock.CANCELLER_ROLE(), guardian); // Guardian as canceller
+            timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
+            timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
+
+            // Set new owner to timelock
+            newOwner = address(timelock);
         } else {
             require(owner != address(0), "owner not defined");
             newOwner = owner;
