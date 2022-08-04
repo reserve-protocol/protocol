@@ -27,17 +27,17 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     // === See docs/security.md ===
 
     modifier notPausedOrFrozen() {
-        if (main.pausedOrFrozen()) revert PausedOrFrozen();
+        require(!main.pausedOrFrozen(), "paused or frozen");
         _;
     }
 
     modifier notFrozen() {
-        if (main.frozen()) revert Frozen();
+        require(!main.frozen(), "frozen");
         _;
     }
 
     modifier governance() {
-        if (!main.hasRole(OWNER, _msgSender())) revert GovernanceOnly();
+        require(main.hasRole(OWNER, _msgSender()), "governance only");
         _;
     }
 

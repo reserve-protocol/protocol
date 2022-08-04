@@ -16,18 +16,6 @@ import "./IRewardable.sol";
  *   exchange rate against a single unit: baskets, or {BU} in our type notation.
  */
 interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgradeable {
-    // Errors
-    error ZeroAmount();
-    error UnsoundBasket(CollateralStatus);
-    error OutOfRange();
-    error InsufficientBalance();
-    error OnlyBackingManager();
-    error IssuanceNotReady();
-    error InvalidIssuanceRate();
-    error TotalSupplyZero();
-    error EmptyRedemption();
-    error BadRefundSpan();
-
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue

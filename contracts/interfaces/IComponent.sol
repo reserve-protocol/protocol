@@ -10,10 +10,5 @@ import "./IMain.sol";
  *   their ownership to Main's owner.
  */
 interface IComponent {
-    // Errors
-    error PausedOrFrozen();
-    error Frozen();
-    error GovernanceOnly();
-
     function main() external view returns (IMain);
 }

@@ -88,8 +88,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external notPausedOrFrozen {
-        if (amtRToken == 0) revert ZeroAmount();
+    function issue(uint256 amtRToken) external {
+        require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -116,7 +116,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        if (status != CollateralStatus.SOUND) revert UnsoundBasket(status);
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         main.furnace().melt();
 
@@ -235,13 +235,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
     /// @custom:interaction CEI
-    function vest(address account, uint256 endId) external notPausedOrFrozen {
+    function vest(address account, uint256 endId) external {
+        revertIfPausedOrFrozen();
         // == Keepers ==
         main.assetRegistry().refresh();
 
         // == Checks ==
         CollateralStatus status = main.basketHandler().status();
-        if (status != CollateralStatus.SOUND) revert UnsoundBasket(status);
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         // Refund old issuances if there are any
         IssueQueue storage queue = issueQueues[account];
@@ -291,7 +292,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        if (queue.left < endId || endId < queue.right) revert OutOfRange();
+        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         // == Interactions ==
         if (earliest) {
@@ -306,18 +307,16 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:action
     /// @custom:interaction CEI
     function redeem(uint256 amount) external notFrozen {
-        if (amount == 0) revert ZeroAmount();
+        require(amount > 0, "Cannot redeem zero");
 
         // == Refresh ==
         main.assetRegistry().refresh();
 
         // == Checks and Effects ==
         address redeemer = _msgSender();
-        if (balanceOf(redeemer) < amount) revert InsufficientBalance();
+        require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
-        if (main.basketHandler().status() == CollateralStatus.DISABLED) {
-            revert UnsoundBasket(CollateralStatus.DISABLED);
-        }
+        require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
@@ -370,49 +369,53 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (!nonzero) revert EmptyRedemption();
+        if (!nonzero) revert("Empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
-        if (_msgSender() != address(main.backingManager())) revert OnlyBackingManager();
+    function mint(address recipient, uint256 amtRToken) external {
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        revertIfPausedOrFrozen();
         _mint(recipient, amtRToken);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external notPausedOrFrozen {
+    function melt(uint256 amtRToken) external {
+        revertIfPausedOrFrozen();
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        if (_msgSender() != address(main.backingManager())) revert OnlyBackingManager();
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        revertIfPausedOrFrozen();
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external notPausedOrFrozen {
+    function claimAndSweepRewards() external {
+        revertIfPausedOrFrozen();
         RewardableLibP1.claimAndSweepRewards();
     }
 
     /// @custom:governance
     function setIssuanceRate(uint192 val) public governance {
-        if (val > MAX_ISSUANCE_RATE) revert InvalidIssuanceRate();
+        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
     /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() external view returns (uint192 p) {
-        if (totalSupply() == 0) revert TotalSupplyZero();
+        require(totalSupply() > 0, "no supply");
 
         // downcast is safe: basketsNeeded is <= 1e39
         // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
@@ -490,7 +493,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             // refund from end of queue
             queue.right = left;
-        } else revert BadRefundSpan();
+        } else revert("Bad refundSpan");
         // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
@@ -508,14 +511,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        if (queue.left < endId || endId < queue.right) revert OutOfRange();
+        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRToken;
         uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
         // D18{block} ~~ D18 * {block}
-        if (rightItem.when > FIX_ONE_256 * block.number) revert IssuanceNotReady();
+        require(rightItem.when <= FIX_ONE_256 * block.number, "issuance not ready");
 
         uint256 queueLength = queue.tokens.length;
         uint256[] memory amtDeposits = new uint256[](queueLength);
@@ -555,4 +558,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
     }
+
+    /// solhint-disable no-empty-blocks
+    function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }
