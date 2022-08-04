@@ -11,6 +11,12 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
 
+// MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
+uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+// MAX_ISSUANCE_RATE: 100%
+uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
+
 /**
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
@@ -22,12 +28,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Immutable: expected to be an IPFS link but could be anything
     string public manifestoURI;
-
-    // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
-    uint192 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
-
-    // MAX_ISSUANCE_RATE
-    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     uint192 public lastIssRate; // D18{rTok/block}
@@ -122,7 +122,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status == CollateralStatus.SOUND, "collateral default");
+        require(status == CollateralStatus.SOUND, "unsound");
 
         main.furnace().melt();
 
@@ -246,7 +246,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().refresh();
 
         // == Checks ==
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "unsound");
 
         // Refund old issuances if there are any
         IssueQueue storage queue = issueQueues[account];
@@ -320,7 +320,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address redeemer = _msgSender();
         require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
-        require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
+        require(main.basketHandler().status() != CollateralStatus.DISABLED, "unsound");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
