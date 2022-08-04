@@ -331,9 +331,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Try to vest
-      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
-        'collateral default'
-      )
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith('unsound')
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -633,7 +631,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceBlocks(1)
       await expect(
         rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.be.revertedWith('collateral default')
+      ).to.be.revertedWith('unsound')
 
       // Check previous minting was not processed
       await expectIssuance(addr1.address, 0, {
@@ -1445,9 +1443,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Default immediately
         await token3.setExchangeRate(fp('0.999999'))
 
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
-          'collateral default'
-        )
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('unsound')
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })

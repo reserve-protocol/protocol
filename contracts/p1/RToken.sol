@@ -122,7 +122,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status == CollateralStatus.SOUND, "basket disabled");
+        require(status == CollateralStatus.SOUND, "collateral default");
 
         main.furnace().melt();
 
@@ -296,7 +296,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // == Interactions ==
         if (earliest) {
@@ -513,7 +513,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRToken;

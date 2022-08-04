@@ -90,7 +90,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket disabled");
+        require(basketHandler.status() == CollateralStatus.SOUND, "unsound");
 
         address issuer = _msgSender();
         refundAndClearStaleIssuances(issuer);
@@ -189,7 +189,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Call collective state keepers.
         main.poke();
 
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "unsound");
 
         refundAndClearStaleIssuances(account);
 
@@ -229,7 +229,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         try main.furnace().melt() {} catch {}
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "unsound");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         uint192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
