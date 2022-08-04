@@ -25,6 +25,9 @@ contract MainP1 is
 {
     IERC20 public rsr;
 
+    /// Immutable: expected to be an IPFS link but could be anything
+    string public manifestoURI;
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     // solhint-disable-next-line no-empty-blocks
     constructor() initializer {}
@@ -33,6 +36,7 @@ contract MainP1 is
     function init(
         Components memory components,
         IERC20 rsr_,
+        string memory manifestoURI_,
         uint32 freezeDuration_
     ) public virtual initializer {
         __Auth_init(freezeDuration_);
@@ -40,6 +44,7 @@ contract MainP1 is
         __UUPSUpgradeable_init();
 
         rsr = rsr_;
+        manifestoURI = manifestoURI_;
         emit MainInitialized();
     }
 

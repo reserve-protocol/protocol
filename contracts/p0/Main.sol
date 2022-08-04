@@ -18,16 +18,21 @@ contract MainP0 is Initializable, Auth, ComponentRegistry, IMain {
 
     IERC20 public rsr;
 
+    /// Immutable: expected to be an IPFS link but could be anything
+    string public manifestoURI;
+
     /// Initializer
     function init(
         Components memory components,
         IERC20 rsr_,
+        string memory manifestoURI_,
         uint32 freezeDuration_
     ) public virtual initializer {
         __Auth_init(freezeDuration_);
         __ComponentRegistry_init(components);
 
         rsr = rsr_;
+        manifestoURI = manifestoURI_;
         emit MainInitialized();
     }
 

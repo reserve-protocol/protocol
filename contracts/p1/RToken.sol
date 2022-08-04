@@ -25,16 +25,17 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable: expected to be an IPFS link but could be anything
-    string public manifestoURI;
-
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint192 public lastIssRate; // D18{rTok/block}
     uint256 public lastIssRateBlock; // {block number}
+    uint192 public lastIssRate; // D18{rTok/block}
 
     // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
     uint192 public allVestAt; // D18{fractional block number}
+
+    uint192 public basketsNeeded; // D18{BU}
+
+    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
@@ -72,21 +73,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
-    uint192 public basketsNeeded; // D18{BU}
-
-    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
-
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata manifestoURI_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
         setIssuanceRate(issuanceRate_);
     }
 
@@ -475,14 +470,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[right - 1];
 
         // we could dedup this logic but it would take more SLOADS, so I think this is best
+        amtRToken = rightItem.amtRToken;
         if (left == 0) {
-            amtRToken = rightItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[left - 1];
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -495,10 +490,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             // refund from end of queue
             queue.right = left;
-        } else {
-            // error: can't remove [left,right) from the queue, and leave just one interval
-            revert BadRefundSpan();
-        }
+        } else revert BadRefundSpan();
+        // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
@@ -528,20 +521,20 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256[] memory amtDeposits = new uint256[](queueLength);
 
         // we could dedup this logic but it would take more SLOADS, so this seems best
+        amtRToken = rightItem.amtRToken;
+        amtBaskets = rightItem.amtBaskets;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken;
-            amtBaskets = rightItem.amtBaskets;
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             // uint192(-) is safe for Fix.minus()
-            amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
+            amtBaskets = amtBaskets - leftItem.amtBaskets;
         }
 
         _mint(account, amtRToken);
