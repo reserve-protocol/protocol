@@ -90,6 +90,7 @@ async function main() {
     rewardableLib: '',
     tradingLib: '',
     facade: '',
+    facadeWriteLib: '',
     facadeWrite: '',
     deployer: '',
     rsrAsset: '',

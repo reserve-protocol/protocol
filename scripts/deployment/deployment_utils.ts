@@ -18,6 +18,7 @@ export interface IDeployments {
   rewardableLib: string
   tradingLib: string
   facade: string
+  facadeWriteLib: string
   facadeWrite: string
   deployer: string
   rsrAsset: string
