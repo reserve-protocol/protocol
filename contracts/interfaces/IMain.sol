@@ -150,7 +150,6 @@ interface IMain is IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        string memory manifestoURI_,
         uint32 freezeDuration_
     ) external;
 

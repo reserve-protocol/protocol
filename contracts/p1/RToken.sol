@@ -25,13 +25,16 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    /// Immutable: expected to be an IPFS link but could be anything
+    string public manifestoURI;
+
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint256 public lastIssRateBlock; // {block number}
-    uint192 public lastIssRate; // D18{rTok/block}
+    uint256 private lastIssRateBlock; // {block number}
+    uint192 private lastIssRate; // D18{rTok/block}
 
     // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
-    uint192 public allVestAt; // D18{fractional block number}
+    uint192 private allVestAt; // D18{fractional block number}
 
     uint192 public basketsNeeded; // D18{BU}
 
@@ -77,11 +80,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IMain main_,
         string calldata name_,
         string calldata symbol_,
+        string calldata manifestoURI_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+        manifestoURI = manifestoURI_;
         setIssuanceRate(issuanceRate_);
     }
 
@@ -289,11 +294,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external notFrozen {
+    function cancel(uint256 endId, bool earliest) external {
+        revertIfFrozen();
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // == Interactions ==
         if (earliest) {
@@ -307,8 +313,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external notFrozen {
+    function redeem(uint256 amount) external {
         require(amount > 0, "Cannot redeem zero");
+        revertIfFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -512,7 +519,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRToken;
@@ -561,5 +568,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     // solhint-disable no-empty-blocks
+    function revertIfFrozen() private view notFrozen {}
+
     function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }

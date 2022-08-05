@@ -87,7 +87,7 @@ contract DeployerP0 is IDeployer {
         assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, manifestoURI, params.freezeDuration);
+        main.init(components, rsr, params.freezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -126,7 +126,7 @@ contract DeployerP0 is IDeployer {
             params.rewardRatio
         );
 
-        main.rToken().init(main, name, symbol, params.issuanceRate);
+        main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
