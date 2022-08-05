@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp, shortString } from '../../common/numbers'
+import { fp } from '../../common/numbers'
 import { RoundingMode } from '../../common/constants'
 import { advanceTime } from '../../test/utils/time'
 
@@ -393,4 +393,73 @@ describe('The Normal Operations scenario', () => {
     const bal3 = await comp.rToken.balanceOf(aliceAddr)
     expect(bal3.sub(bal2)).to.equal(-2n * exa)
   })
+
+  it('lets users stake rsr', async () => {
+    const rsr0 = await comp.rsr.balanceOf(aliceAddr)
+    const st0 = await comp.stRSR.balanceOf(aliceAddr)
+
+    await scenario.connect(alice).stake(5n * exa)
+    const rsr1 = await comp.rsr.balanceOf(aliceAddr)
+    const st1 = await comp.stRSR.balanceOf(aliceAddr)
+
+    expect(rsr1.sub(rsr0)).to.equal(-5n * exa)
+    expect(st1.sub(st0)).to.equal(5n * exa)
+  })
+
+  it('lets user stake rsr without doing the approval for them', async () => {
+    const rsr0 = await comp.rsr.balanceOf(aliceAddr)
+
+    await expect(scenario.connect(alice).justStake(5n * exa)).to.be.reverted
+
+    await comp.rsr.connect(alice).approve(comp.stRSR.address, 5n * exa)
+    await scenario.connect(alice).justStake(5n * exa)
+
+    const rsr1 = await comp.rsr.balanceOf(aliceAddr)
+
+    expect(rsr0.sub(rsr1)).to.equal(5n * exa)
+  })
+
+  it('lets users unstake and then withdraw rsr', async () => {
+    await scenario.connect(alice).stake(5n * exa)
+
+    await scenario.connect(alice).unstake(3n * exa)
+    const rsr1 = await comp.rsr.balanceOf(aliceAddr)
+
+    // withdraw everything available (which is nothing, because we have to wait first)
+    await scenario.connect(alice).withdrawAvailable()
+    expect(await comp.rsr.balanceOf(aliceAddr)).to.equal(rsr1)
+
+    // wait
+    await helpers.time.increase(await comp.stRSR.unstakingDelay())
+
+    // withdraw everything available ( which is 3 RToken )
+    await scenario.connect(alice).withdrawAvailable()
+    const rsr2 = await comp.rsr.balanceOf(aliceAddr)
+
+    expect(rsr1.add(3n * exa)).to.equal(rsr2)
+  })
+
+  it('allows general withdrawing', async () => {
+    const addr = await main.someAddr(7) // be a system contract for some reason
+    const acct = await ethers.getSigner(addr)
+    await helpers.impersonateAccount(addr)
+    await helpers.setBalance(addr, exa * exa)
+
+    await comp.rsr.mint(addr, 100n * exa)
+
+    const rsr0 = await comp.rsr.balanceOf(addr)
+    await scenario.connect(acct).stake(99n * exa)
+    const rsr1 = await comp.rsr.balanceOf(addr)
+    expect(rsr1).to.equal(rsr0.sub(99n * exa))
+
+    await scenario.connect(acct).unstake(99n * exa)
+    await helpers.time.increase(await comp.stRSR.unstakingDelay())
+    await scenario.connect(acct).withdrawAvailable()
+
+    const rsr2 = await comp.rsr.balanceOf(addr)
+    expect(rsr2).to.equal(rsr1.add(99n * exa))
+
+    await helpers.stopImpersonatingAccount(addr)
+  })
+  // Tests other strsr mutators...
 })

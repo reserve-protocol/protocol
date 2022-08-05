@@ -184,7 +184,7 @@ contract NormalOpsScenario {
         main.rToken().issue(amount);
     }
 
-    // do issuance after allowances
+    // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
         address[] memory tokens;
         uint256[] memory tokenAmounts;
@@ -223,10 +223,32 @@ contract NormalOpsScenario {
         main.rToken().redeem(amount);
     }
 
-    // user functions: strsr
-    /* function stake(uint256 amount); */
-    /* function unstake(uint256 amount); */
-    /* function withdraw(uint256 seedID); */
+    // ==== user functions: strsr ====
+    function justStake(uint256 amount) public asSender {
+        main.stRSR().stake(amount);
+    }
+
+    function stake(uint256 amount) public asSender {
+        main.rsr().approve(address(main.stRSR()), amount);
+        main.stRSR().stake(amount);
+    }
+
+    function unstake(uint256 amount) public asSender {
+        main.stRSR().unstake(amount);
+    }
+
+    function withdraw(uint256 seedAddr, uint256 seedID) public asSender {
+        address user = main.someAddr(seedAddr);
+        (uint256 left, uint256 right) = StRSRP1Fuzz(address(main.stRSR())).idRange(user);
+        uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
+        main.stRSR().withdraw(user, id);
+    }
+
+    function withdrawAvailable() public asSender {
+        address user = msg.sender;
+        uint256 id = main.stRSR().endIdForWithdraw(user);
+        main.stRSR().withdraw(user, id);
+    }
 
     // ==== keeper functions ====
     // function claimRewards(uint256 tokenID)
@@ -238,6 +260,7 @@ contract NormalOpsScenario {
 
     // ==== governance changes ====
     /* function setDistribution(address dest, uint16 rTokenDist, uint16 rsrDist) */
+    // Search for others that can change in this setup!
 
     // ================ System Properties ================
     // A few example properties to start with:

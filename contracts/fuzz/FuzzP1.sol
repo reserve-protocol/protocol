@@ -155,6 +155,12 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
 }
 
 contract StRSRP1Fuzz is StRSRP1 {
+    // A range of plausibly-valid IDs for withdraw()
+    function idRange(address user) external view returns (uint256 left, uint256 right) {
+        left = firstRemainingDraft[draftEra][user];
+        right = draftQueues[draftEra][user].length;
+    }
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
