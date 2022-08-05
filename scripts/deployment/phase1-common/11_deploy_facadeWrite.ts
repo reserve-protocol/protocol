@@ -40,16 +40,30 @@ async function main() {
   }
 
   // ******************** Deploy FacadeWrite ****************************************/
-  const FacadeWriteFactory = await ethers.getContractFactory('FacadeWrite')
+
+  // Deploy FacadeWriteLib
+  const FacadeWriteLibFactory = await ethers.getContractFactory('FacadeWriteLib')
+  const facadeWriteLib = await FacadeWriteLibFactory.connect(burner).deploy()
+  await facadeWriteLib.deployed()
+
+  // Deploy FacadeWrite
+  const FacadeWriteFactory = await ethers.getContractFactory('FacadeWrite', {
+    libraries: {
+      FacadeWriteLib: facadeWriteLib.address,
+    },
+  })
+
   facadeWrite = <FacadeWrite>await FacadeWriteFactory.connect(burner).deploy(deployments.deployer)
   await facadeWrite.deployed()
 
   // Write temporary deployments file
+  deployments.facadeWriteLib = facadeWriteLib.address
   deployments.facadeWrite = facadeWrite.address
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId})
     FacadeWrite:  ${facadeWrite.address}
+    FacadeWriteLib:  ${facadeWriteLib.address}
     Deployment file: ${deploymentFilename}`)
 }
 
