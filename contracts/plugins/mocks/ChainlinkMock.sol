@@ -39,6 +39,11 @@ contract MockV3Aggregator is AggregatorV3Interface {
         getStartedAt[latestRound] = block.timestamp;
     }
 
+    // Additional function to be able to test invalid Chainlink behavior
+    function setInvalidTimestamp() public {
+        getTimestamp[latestRound] = 0;
+    }
+
     function updateRoundData(
         uint80 _roundId,
         int256 _answer,
