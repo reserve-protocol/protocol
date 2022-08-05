@@ -101,8 +101,6 @@ contract CTokenSelfReferentialCollateral is Collateral {
     function status() public view virtual override returns (CollateralStatus) {
         if (whenDefault == NEVER) {
             return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
         } else {
             return CollateralStatus.DISABLED;
         }
