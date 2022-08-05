@@ -560,6 +560,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
     }
 
-    /// solhint-disable no-empty-blocks
+    // solhint-disable no-empty-blocks
     function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }
