@@ -199,7 +199,7 @@ Dimension: `{s}`
 
 The number of seconds a (non-forever) freeze lasts. Governance can freeze forever.
 
-Anticipated value: `864000` = 10 days
+Anticipated value: `432000` = 5 days
 Reasonable range: 3600 to 31536000
 
 ## System States

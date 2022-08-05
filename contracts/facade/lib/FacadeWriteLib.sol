@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/governance/TimelockController.sol";
-import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/governance/Governance.sol";
 
-library FacadeWrite2 {
+library FacadeWriteLib {
     /// @return The new Governance contract address
     function deployGovernance(
         IStRSRVotes stRSR,

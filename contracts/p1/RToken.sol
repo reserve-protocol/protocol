@@ -90,6 +90,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction almost but not quite CEI
     function issue(uint256 amtRToken) external {
         require(amtRToken > 0, "Cannot issue zero");
+        revertIfPausedOrFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();

@@ -3,12 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IAsset.sol";
 import "./IAssetRegistry.sol";
-import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
+import "./IBackingManager.sol";
 import "./IBroker.sol";
-import "./IDeployer.sol";
 import "./IGnosis.sol";
 import "./IFurnace.sol";
 import "./IDistributor.sol";
@@ -46,7 +44,7 @@ struct Components {
     IRevenueTrader rTokenTrader;
 }
 
-interface IAuth {
+interface IAuth is IAccessControlUpgradeable {
     /// Emitted when `foreverFrozen` is changed
     /// @param oldVal The old value of `foreverFrozen`
     /// @param newVal The new value of `foreverFrozen`
@@ -142,7 +140,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
+interface IMain is IAuth, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===

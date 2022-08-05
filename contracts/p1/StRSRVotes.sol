@@ -1,16 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import "contracts/interfaces/IStRSRVotes.sol";
 import "contracts/p1/StRSR.sol";
-
-interface IStRSRVotes is IVotesUpgradeable {
-    /// @return The current era
-    function currentEra() external view returns (uint256);
-
-    /// @return The era at a past block number
-    function getPastEra(uint256 blockNumber) external view returns (uint256);
-}
 
 /*
  * @title StRSRP1Votes

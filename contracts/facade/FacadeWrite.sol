@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IFacadeWrite.sol";
-import "./FacadeWrite2.sol";
+import "contracts/facade/lib/FacadeWriteLib.sol";
 
 /**
  * @title FacadeWrite
@@ -11,6 +10,8 @@ import "./FacadeWrite2.sol";
  * @dev Under the hood, uses two external libs to deal with blocksize limits.
  */
 contract FacadeWrite is IFacadeWrite {
+    using FacadeWriteLib for address;
+
     IDeployer public immutable deployer;
 
     constructor(IDeployer deployer_) {
@@ -135,7 +136,7 @@ contract FacadeWrite is IFacadeWrite {
             );
 
             // Deploy Governance contract
-            address governance = FacadeWrite2.deployGovernance(
+            address governance = FacadeWriteLib.deployGovernance(
                 IStRSRVotes(address(main.stRSR())),
                 timelock,
                 govParams.votingDelay,

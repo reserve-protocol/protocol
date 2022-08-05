@@ -80,7 +80,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
     function issue(uint256 amount) external notPausedOrFrozen {
-        require(amount > 0, "zero amount");
+        require(amount > 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
 
@@ -212,7 +212,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction
     function redeem(uint256 amount) external notFrozen {
-        require(amount > 0, "zero amount");
+        require(amount > 0, "Cannot redeem zero");
         require(balanceOf(_msgSender()) >= amount, "not enough RToken");
 
         // Call collective state keepers.
@@ -224,7 +224,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         try main.furnace().melt() {} catch {}
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() != CollateralStatus.DISABLED, "unsound");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // {BU} = {BU} * {qRTok} / {qRTok}
         uint192 baskets = basketsNeeded.muluDivu(amount, totalSupply());
@@ -266,7 +266,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @param amount {qRTok} The amount to be minted
     /// @custom:protected
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backingManager");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
     }
 
@@ -280,7 +280,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backingManager");
+        require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }

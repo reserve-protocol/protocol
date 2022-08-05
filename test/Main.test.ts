@@ -303,7 +303,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to initialize Main twice', async () => {
-      await expect(main.init(components, rsr.address, 0)).to.be.revertedWith(
+      await expect(main.init(components, rsr.address, 'manifesto', 0)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
@@ -359,7 +359,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RToken
       await expect(
-        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'manifesto', config.issuanceRate)
+        rToken.init(main.address, 'RTKN RToken', 'RTKN', config.issuanceRate)
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - StRSR

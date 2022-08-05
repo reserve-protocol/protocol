@@ -656,7 +656,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Attempt to vest
-      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('issuance not ready')
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('not ready')
 
       await advanceBlocks(1)
 
@@ -1443,7 +1443,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Default immediately
         await token3.setExchangeRate(fp('0.999999'))
 
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('unsound')
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+          'collateral default'
+        )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
     })
