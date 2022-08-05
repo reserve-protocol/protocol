@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "contracts/interfaces/IAsset.sol";
+import "contracts/libraries/Fixed.sol";
+
 import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/CollateralMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
@@ -117,63 +119,114 @@ contract NormalOpsScenario {
         }
     }
 
+    // In the modified function, send transactions from *this* contract as if they were from
+    // msg.sender, which is presumably the echdina-chosen user.
     modifier asSender() {
         main.spoof(address(this), msg.sender);
         _;
         main.unspoof(address(this));
     }
 
-    // ==== tiny, stupid-simple example of all this ====
-    function startIssue() public {
-        address alice = main.users(0);
-
-        main.spoof(address(this), alice);
-        ERC20Fuzz(address(main.tokens(0))).approve(address(main.rToken()), 1e24);
-        ERC20Fuzz(address(main.tokens(1))).approve(address(main.rToken()), 1e24);
-        ERC20Fuzz(address(main.tokens(2))).approve(address(main.rToken()), 1e24);
-
-        main.rToken().issue(1e24);
-        main.unspoof(address(this));
-    }
-
-    function finishIssue() public {
-        main.rToken().vest(main.users(0), 1);
-    }
-
-    function redeem() public {
-        main.spoof(address(this), main.users(0));
-
-        main.backingManager().grantRTokenAllowance(main.tokens(0));
-        main.backingManager().grantRTokenAllowance(main.tokens(1));
-        main.backingManager().grantRTokenAllowance(main.tokens(2));
-        main.rToken().redeem(1e24);
-
-        main.unspoof(address(this));
-    }
-
-    // ================ real mutators ================
+    // ================ mutators ================
 
     // ==== user functions: token ops ====
-    // Send some token as the calling user.
-    function transfer(uint8 addrID, uint8 tokenID, uint256 amount) public asSender{
+    function transfer(
+        uint8 userID,
+        uint8 tokenID,
+        uint256 amount
+    ) public asSender {
         IERC20 token = main.someToken(tokenID);
-        address to = main.someAddr(addrID);
-        token.transfer(to, amount);
+        token.transfer(main.someAddr(userID), amount);
     }
-    /* function allow(address spender, uint8 tokenID, uint256 amount); */
-    /* function transferFrom(address from, address to, uint8 tokenID, uint256 amount); */
 
-    // user functions: rtoken
-    /* function issueRToken(uint256 amount); */
-    /* function cancelIssuance(uint256 endID, bool earliest); // filter endIDs mostly to valid IDs*/
-    /* function vestIssuance(uint256 endID); // filter endIDs mostly to valid IDs */
-    /* function issueAndVestRToken(uint256 amount); */
-    /* function redeemRToken(uint256 amount); */
+    function approve(
+        uint8 spenderID,
+        uint8 tokenID,
+        uint256 amount
+    ) public asSender {
+        IERC20 token = main.someToken(tokenID);
+        token.approve(main.someAddr(spenderID), amount);
+    }
+
+    function transferFrom(
+        uint8 fromID,
+        uint8 toID,
+        uint8 tokenID,
+        uint256 amount
+    ) public asSender {
+        IERC20 token = main.someToken(tokenID);
+        token.transferFrom(main.someAddr(fromID), main.someAddr(toID), amount);
+    }
+
+    function mint(
+        uint8 userID,
+        uint8 tokenID,
+        uint256 amount
+    ) public {
+        IERC20 token = main.someToken(tokenID);
+        require(address(token) != address(main.rToken()), "Do not just mint RTokens");
+        ERC20Fuzz(address(token)).mint(main.someAddr(userID), amount);
+    }
+
+    function burn(
+        uint8 userID,
+        uint8 tokenID,
+        uint256 amount
+    ) public {
+        IERC20 token = main.someToken(tokenID);
+        require(address(token) != address(main.rToken()), "Do not just mint RTokens");
+        ERC20Fuzz(address(token)).burn(main.someAddr(userID), amount);
+    }
+
+    // ==== user functions: rtoken ====
+    // do issuance without doing allowances first
+    function justIssue(uint256 amount) public asSender {
+        main.rToken().issue(amount);
+    }
+
+    // do issuance after allowances
+    function issue(uint256 amount) public asSender {
+        address[] memory tokens;
+        uint256[] memory tokenAmounts;
+        (tokens, tokenAmounts) = (RTokenP1Fuzz(address(main.rToken()))).quote(amount, CEIL);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
+        }
+
+        main.rToken().issue(amount);
+    }
+
+    function cancelIssuance(uint256 seedID, bool earliest) public asSender {
+        // filter endIDs mostly to valid IDs
+        address user = msg.sender;
+        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+        (uint256 left, uint256 right) = rtoken.idRange(user);
+        uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
+
+        // Do cancel
+        rtoken.cancel(id, earliest);
+    }
+
+    function vestIssuance(uint256 seedID) public asSender {
+        // filter endIDs mostly to valid IDs
+        address user = msg.sender;
+        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+        (uint256 left, ) = rtoken.idRange(user);
+        uint256 endIDForVest = rtoken.endIdForVest(user);
+        uint256 id = between(left == 0 ? 0 : left - 1, endIDForVest + 1, seedID);
+
+        // Do vest
+        rtoken.vest(user, id);
+    }
+
+    function redeem(uint256 amount) public asSender {
+        main.rToken().redeem(amount);
+    }
 
     // user functions: strsr
     /* function stake(uint256 amount); */
     /* function unstake(uint256 amount); */
-    /* function withdraw(uint256 endID); */
+    /* function withdraw(uint256 seedID); */
 
     // ==== keeper functions ====
     // function claimRewards(uint256 tokenID)

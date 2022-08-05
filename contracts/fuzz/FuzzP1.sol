@@ -114,6 +114,12 @@ contract RevenueTraderP1Fuzz is RevenueTraderP1 {
 contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     using FixLib for uint192;
 
+    // The range of IDs that would be valid as endID in cancel() or vest()
+    function idRange(address user) external view returns (uint256 left, uint256 right) {
+        left = issueQueues[user].left;
+        right = issueQueues[user].right;
+    }
+
     // To be called only from MarketMock; this only works if MarketMock never enqueues any other
     // issuances.
     function fastIssue(uint256 amtRToken) external notPausedOrFrozen {

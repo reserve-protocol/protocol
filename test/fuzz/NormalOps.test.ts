@@ -1,11 +1,11 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { Wallet } from 'ethers'
+import { Wallet, Signer } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
-import { whileImpersonating } from '../utils/impersonation'
 
-import { fp } from '../../common/numbers'
-import { advanceTime, advanceBlocks } from '../../test/utils/time'
+import { fp, shortString } from '../../common/numbers'
+import { RoundingMode } from '../../common/constants'
+import { advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -14,6 +14,9 @@ import { addr } from './common'
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
 const F = ethers.getContractFactory
+const exa = 10n ** 18n // 1e18 in bigInt. "exa" is the SI prefix for 1000 ** 6
+
+// { gasLimit: 0x1ffffffff }
 
 const componentsOf = async (main: sc.IMain) => ({
   rsr: await ConAt('ERC20Fuzz', await main.rsr()),
@@ -30,7 +33,6 @@ const componentsOf = async (main: sc.IMain) => ({
 })
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
-// { gasLimit: 0x1ffffffff }
 describe('The Normal Operations scenario', () => {
   let scenario: sc.NormalOpsScenario
   let main: sc.MainP1Fuzz
@@ -38,14 +40,43 @@ describe('The Normal Operations scenario', () => {
   let startState: Awaited<ReturnType<typeof helpers.takeSnapshot>>
 
   let owner: Wallet
-  let alice: Wallet
+  let alice: Signer
+  let bob: Signer
+  let carol: Signer
 
-  before('deploy...', async () => {
-    ;[owner, alice] = (await ethers.getSigners()) as unknown as Wallet[]
+  let aliceAddr: string
+  let bobAddr: string
+  let carolAddr: string
+
+  before('deploy and setup', async () => {
+    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
+
+    alice = await ethers.getSigner(await main.users(0))
+    bob = await ethers.getSigner(await main.users(1))
+    carol = await ethers.getSigner(await main.users(2))
+
+    aliceAddr = await alice.getAddress()
+    bobAddr = await bob.getAddress()
+    carolAddr = await carol.getAddress()
+
+    await helpers.setBalance(aliceAddr, exa * exa)
+    await helpers.setBalance(bobAddr, exa * exa)
+    await helpers.setBalance(carolAddr, exa * exa)
+
+    await helpers.impersonateAccount(aliceAddr)
+    await helpers.impersonateAccount(bobAddr)
+    await helpers.impersonateAccount(carolAddr)
+
     startState = await helpers.takeSnapshot()
+  })
+
+  after('stop impersonations', async () => {
+    await helpers.stopImpersonatingAccount(aliceAddr)
+    await helpers.stopImpersonatingAccount(bobAddr)
+    await helpers.stopImpersonatingAccount(carolAddr)
   })
 
   beforeEach(async () => {
@@ -99,119 +130,128 @@ describe('The Normal Operations scenario', () => {
     expect(await comp.broker.main()).to.equal(main.address)
   })
 
-  it('lets users trade two fiatcoins', async () => {
-    const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
-    const rsr = comp.rsr
+  describe('contains a mock Broker, TradingMock, and MarketMock, which...', () => {
+    it('lets users trade two fiatcoins', async () => {
+      const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
+      const rsr = comp.rsr
 
-    // Alice starts with 123 USD0
-    await usd0.mint(alice.address, fp(123))
-    expect(await usd0.balanceOf(alice.address)).to.equal(fp(123))
-    expect(await rsr.balanceOf(alice.address)).to.equal(0)
+      const alice_usd0_0 = await usd0.balanceOf(aliceAddr)
+      const alice_rsr_0 = await rsr.balanceOf(aliceAddr)
 
-    // Init the trade
-    const tradeReq = {
-      buy: await comp.assetRegistry.toAsset(comp.rsr.address),
-      sell: await comp.assetRegistry.toAsset(usd0.address),
-      minBuyAmount: fp(456),
-      sellAmount: fp(123),
-    }
+      // Alice starts with 123 USD0
+      await usd0.mint(aliceAddr, fp(123))
 
-    const trade = await (await F('TradeMock')).deploy()
+      const alice_usd0_1 = await usd0.balanceOf(aliceAddr)
+      expect(alice_usd0_1.sub(alice_usd0_0)).to.equal(fp(123))
 
-    // Alice sends 123 USD0 to the trade
-    await usd0.connect(alice).transfer(trade.address, fp(123))
-    expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
+      // Init the trade
+      const tradeReq = {
+        buy: await comp.assetRegistry.toAsset(comp.rsr.address),
+        sell: await comp.assetRegistry.toAsset(usd0.address),
+        minBuyAmount: fp(456),
+        sellAmount: fp(123),
+      }
 
-    await trade.init(main.address, alice.address, 5, tradeReq)
+      const trade = await (await F('TradeMock')).deploy()
 
-    expect(await trade.canSettle()).to.be.false
-    await expect(trade.settle()).to.be.reverted
+      // Alice sends 123 USD0 to the trade
+      await usd0.connect(alice).transfer(trade.address, fp(123))
+      expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
-    // Wait and settle the trade
-    await advanceTime(5)
+      await trade.init(main.address, aliceAddr, 5, tradeReq)
 
-    expect(await trade.canSettle()).to.be.true
+      expect(await trade.canSettle()).to.be.false
+      await expect(trade.settle()).to.be.reverted
 
-    // yeah, we could do this more simply with trade.connect(alice), but I'm testing spoof() too
-    await main.spoof(owner.address, alice.address)
-    await trade.settle()
-    await main.unspoof(owner.address)
+      // Wait and settle the trade
+      await advanceTime(5)
 
-    // Alice now has no USD0 and 456 RSR.
-    expect(await usd0.balanceOf(alice.address)).to.equal(0)
-    expect(await rsr.balanceOf(alice.address)).to.equal(fp(456))
-  })
+      expect(await trade.canSettle()).to.be.true
 
-  it('lets BackingManager buy and sell RTokens', async () => {
-    const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
-    const bm_addr = comp.backingManager.address
-    const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
-    const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
+      // yeah, we could do this more simply with trade.connect(alice), but I'm testing spoof() too
+      await main.spoof(owner.address, aliceAddr)
+      await trade.settle()
+      await main.unspoof(owner.address)
 
-    // This is a little bit confusing here -- we're pretending to be the backingManager here
-    // just so that we are a trader registered with the Broker. RToken trader would work too, I
-    // think, and would be a somewhat cleaner test.
+      // Alice now has no extra USD0 and 456 RSR.
+      expect(await usd0.balanceOf(aliceAddr)).to.equal(alice_usd0_0)
+      expect(await rsr.balanceOf(aliceAddr)).to.equal(fp(456).add(alice_rsr_0))
+    })
 
-    // As owner, mint 123 USD0 to BackingMgr
-    await usd0.mint(bm_addr, fp(123))
-    expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
-    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
+    it('lets BackingManager buy and sell RTokens', async () => {
+      // Note: this isn't the usual pattern for testing some mutations. Really, this is specifically
+      // testing TradingMock and MarketMock, but those need a deployment to be properly tested. :/
 
-    // As BackingMgr, approve the broker for 123 USD0
-    await main.spoof(owner.address, bm_addr)
-    await usd0.approve(comp.broker.address, fp(123))
+      const usd0 = await ConAt('ERC20Fuzz', await main.tokens(3))
+      const bm_addr = comp.backingManager.address
+      const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
+      const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
 
-    // As BackingMgr, init the trade
-    const tradeReq = {
-      buy: rtoken_asset,
-      sell: usd0_asset,
-      minBuyAmount: fp(456),
-      sellAmount: fp(123),
-    }
+      // This is a little bit confusing here -- we're pretending to be the backingManager here
+      // just so that we are a trader registered with the Broker. RToken trader would work too, I
+      // think, and would be a somewhat cleaner test.
 
-    await comp.broker.openTrade(tradeReq)
+      // As owner, mint 123 USD0 to BackingMgr
+      await usd0.mint(bm_addr, fp(123))
+      expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
+      expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
 
-    // (trade has 123 usd0)
-    const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-    expect(await trade.origin()).to.equal(bm_addr)
-    expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
+      // As BackingMgr, approve the broker for 123 USD0
+      await main.spoof(owner.address, bm_addr)
+      await usd0.approve(comp.broker.address, fp(123))
 
-    // Settle the trade.
-    await advanceTime(31 * 60)
-    await comp.broker.settleTrades()
+      // As BackingMgr, init the trade
+      const tradeReq = {
+        buy: rtoken_asset,
+        sell: usd0_asset,
+        minBuyAmount: fp(456),
+        sellAmount: fp(123),
+      }
 
-    // (BackingMgr has no USD0 and 456 rToken.)
-    expect(await usd0.balanceOf(bm_addr)).to.equal(0)
-    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
+      await comp.broker.openTrade(tradeReq)
 
-    // ================ Now, we sell the USD0 back, for RToken!
+      // (trade has 123 usd0)
+      const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      expect(await trade.origin()).to.equal(bm_addr)
+      expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
 
-    // As BackingMgr, approve the broker for 456 RTokens
-    await comp.rToken.approve(comp.broker.address, fp(456))
+      // Settle the trade.
+      await advanceTime(31 * 60)
+      await comp.broker.settleTrades()
 
-    // As BackingMgr, init the trade
-    const tradeReq2 = {
-      buy: usd0_asset,
-      sell: rtoken_asset,
-      minBuyAmount: fp(789),
-      sellAmount: fp(456),
-    }
-    await comp.broker.openTrade(tradeReq2)
+      // (BackingMgr has no USD0 and 456 rToken.)
+      expect(await usd0.balanceOf(bm_addr)).to.equal(0)
+      expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
 
-    // (new trade should have 456 rtoken)
-    const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-    expect(await trade2.origin()).to.equal(bm_addr)
-    expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
+      // ================ Now, we sell the USD0 back, for RToken!
 
-    // As BackingMgr, settle the trade
-    await advanceTime(31 * 60)
-    await comp.broker.settleTrades()
+      // As BackingMgr, approve the broker for 456 RTokens
+      await comp.rToken.approve(comp.broker.address, fp(456))
 
-    // (Backing Manager has no RTokens and 789 USD0)
-    expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
-    expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
+      // As BackingMgr, init the trade
+      const tradeReq2 = {
+        buy: usd0_asset,
+        sell: rtoken_asset,
+        minBuyAmount: fp(789),
+        sellAmount: fp(456),
+      }
+      await comp.broker.openTrade(tradeReq2)
 
-    await main.unspoof(owner.address)
+      // (new trade should have 456 rtoken)
+      const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      expect(await trade2.origin()).to.equal(bm_addr)
+      expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
+
+      // As BackingMgr, settle the trade
+      await advanceTime(31 * 60)
+      await comp.broker.settleTrades()
+
+      // (Backing Manager has no RTokens and 789 USD0)
+      expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
+      expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
+
+      await main.unspoof(owner.address)
+    })
   })
 
   it('guarantees that someTokens = tokens and someAddr = users on their shared range', async () => {
@@ -226,24 +266,131 @@ describe('The Normal Operations scenario', () => {
   })
 
   it('lets users transfer tokens', async () => {
-    const zed_addr = user(0)
-    const dest_addr = await main.someAddr(1)
     const token = await ConAt('ERC20Fuzz', await main.someToken(0))
 
-    await whileImpersonating(zed_addr, async (zed) => {
-      const dest_bal_0 = await token.balanceOf(dest_addr)
-      const zed_bal_0 = await token.balanceOf(zed_addr)
+    const alice_bal_init = await token.balanceOf(aliceAddr)
+    const bob_bal_init = await token.balanceOf(bobAddr)
 
-      expect(await main.tokens(0)).to.equal(await main.someToken(0))
-      expect(await main.someAddr(0)).to.equal(zed_addr)
+    await scenario.connect(alice).transfer(1, 0, fp(3))
 
-      await scenario.connect(zed).transfer(1, 0, fp(3))
+    const bob_bal = await token.balanceOf(bobAddr)
+    const alice_bal = await token.balanceOf(aliceAddr)
 
-      const dest_bal = await token.balanceOf(dest_addr)
-      const zed_bal = await token.balanceOf(zed_addr)
+    expect(bob_bal.sub(bob_bal_init)).to.equal(3n * exa)
+    expect(alice_bal_init.sub(alice_bal)).to.equal(3n * exa)
+  })
 
-      expect(dest_bal.sub(dest_bal_0)).to.equal(fp(3))
-      expect(zed_bal_0.sub(zed_bal)).to.equal(fp(3))
-    })
+  it('lets users approve and then transfer tokens', async () => {
+    const token = await ConAt('ERC20Fuzz', await main.someToken(0))
+
+    const alice_bal_init = await token.balanceOf(aliceAddr)
+    const carol_bal_init = await token.balanceOf(carolAddr)
+
+    await scenario.connect(alice).approve(1, 0, 3n * exa)
+    await scenario.connect(bob).transferFrom(0, 2, 0, 3n * exa)
+
+    const alice_bal = await token.balanceOf(aliceAddr)
+    const carol_bal = await token.balanceOf(carolAddr)
+
+    expect(alice_bal_init.sub(alice_bal)).to.equal(3n * exa)
+    expect(carol_bal.sub(carol_bal_init)).to.equal(3n * exa)
+  })
+
+  it('allows minting mutations', async () => {
+    const token = await ConAt('ERC20Fuzz', await main.someToken(0))
+    const alice_bal_init = await token.balanceOf(aliceAddr)
+    await scenario.mint(0, 0, 3n * exa)
+    const alice_bal = await token.balanceOf(aliceAddr)
+    expect(alice_bal.sub(alice_bal_init)).to.equal(3n * exa)
+  })
+
+  it('allows burning mutations', async () => {
+    const token = await ConAt('ERC20Fuzz', await main.someToken(0))
+    const alice_bal_init = await token.balanceOf(aliceAddr)
+    await scenario.burn(0, 0, 3n * exa)
+    const alice_bal = await token.balanceOf(aliceAddr)
+    expect(alice_bal.sub(alice_bal_init)).to.equal(-3n * exa)
+  })
+
+  it('allows users to try to issue rtokens without forcing approvals first', async () => {
+    const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
+
+    // Try to issue rtokens, and fail due to insufficient allowances
+    await expect(scenario.connect(alice).justIssue(7n * exa)).to.be.reverted
+
+    // As Alice, make allowances
+    const [tokenAddrs, amts] = await comp.rToken.quote(7n * exa, RoundingMode.CEIL)
+    for (let i = 0; i < amts.length; i++) {
+      const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
+      await token.connect(alice).approve(comp.rToken.address, amts[i])
+    }
+    // Issue RTokens and succeed
+    await scenario.connect(alice).justIssue(7n * exa)
+    const alice_bal = await comp.rToken.balanceOf(aliceAddr)
+
+    expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
+  })
+
+  it('allows users to issue rtokens', async () => {
+    const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
+    await scenario.connect(alice).issue(7n * exa)
+    const alice_bal = await comp.rToken.balanceOf(aliceAddr)
+    expect(alice_bal.sub(alice_bal_init)).to.equal(7n * exa)
+  })
+
+  it('allows users to cancel rtoken issuance', async () => {
+    let [left, right] = await comp.rToken.idRange(aliceAddr)
+    expect(right).to.equal(left)
+
+    // 1e6 > the min block issuance limit, so this is a slow issuance
+    await scenario.connect(alice).issue(1_000_000n * exa)
+
+    // ensure that there's soemthing to cancel
+    ;[left, right] = await comp.rToken.idRange(aliceAddr)
+    expect(right.sub(left)).to.equal(1)
+
+    await scenario.connect(alice).cancelIssuance(1, true)
+    ;[left, right] = await comp.rToken.idRange(aliceAddr)
+    expect(right).to.equal(left)
+  })
+
+  it('allows users to vest rtoken issuance', async () => {
+    const alice_bal_init = await comp.rToken.balanceOf(aliceAddr)
+
+    // As Alice, issue 1e6 rtoken
+    // 1e6 > 1e5, the min block issuance limit, so this is a slow issuance
+    await scenario.connect(alice).issue(1_000_000n * exa)
+
+    // Now there are outstanding issuances
+    let [left, right] = await comp.rToken.idRange(aliceAddr)
+    expect(right.sub(left)).to.equal(1)
+
+    // Wait, then vest as Alice
+    // 1e6 / 1e5 == 10 blocks
+    await helpers.mine(100)
+    await scenario.connect(alice).vestIssuance(1)
+
+    // Now there are no outstanding issuances
+    ;[left, right] = await comp.rToken.idRange(aliceAddr)
+    expect(right).to.equal(left)
+    // and Alice has her tokens
+    const alice_bal = await comp.rToken.balanceOf(aliceAddr)
+    expect(alice_bal.sub(alice_bal_init)).to.equal(1_000_000n * exa)
+  })
+
+  it('allows users to redeem rtokens', async () => {
+    const bal0 = await comp.rToken.balanceOf(aliceAddr)
+
+    await scenario.connect(alice).issue(7n * exa)
+    const bal1 = await comp.rToken.balanceOf(aliceAddr)
+    expect(bal1.sub(bal0)).to.equal(7n * exa)
+
+    await scenario.connect(alice).redeem(5n * exa)
+    const bal2 = await comp.rToken.balanceOf(aliceAddr)
+    expect(bal2.sub(bal1)).to.equal(-5n * exa)
+
+    await scenario.connect(alice).redeem(2n * exa)
+    const bal3 = await comp.rToken.balanceOf(aliceAddr)
+    expect(bal3.sub(bal2)).to.equal(-2n * exa)
   })
 })

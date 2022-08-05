@@ -52,7 +52,6 @@ contract BrokerP0Fuzz is BrokerP0 {
         }
     }
 
-
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
@@ -70,7 +69,6 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     IERC20[] public tokens; // token addresses, not including RSR or RToken
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
-
 
     // ==== Scenario handles ====
     function translateAddr(address addr) public view returns (address) {
