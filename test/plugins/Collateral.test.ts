@@ -13,6 +13,7 @@ import {
   CTokenMock,
   CTokenSelfReferentialCollateral,
   ERC20Mock,
+  EURFiatCollateral,
   Facade,
   FiatCollateral,
   MockV3Aggregator,
@@ -27,7 +28,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
-import { setOraclePrice } from '../utils/oracles'
+import { setInvalidOracleTimestamp, setOraclePrice } from '../utils/oracles'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -285,6 +286,21 @@ describe('Collateral contracts', () => {
 
       // Check price of token
       await expect(tokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await tokenCollateral.refresh()
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
+    it('Should revert in case of invalid timestamp', async () => {
+      await setInvalidOracleTimestamp(tokenCollateral.address)
+
+      // Check price of token
+      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
+
+      // When refreshed, sets status to Unpriced
+      await tokenCollateral.refresh()
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -558,6 +574,23 @@ describe('Collateral contracts', () => {
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
       await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await nonFiatCollateral.refresh()
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Restore price
+      await targetUnitOracle.updateAnswer(bn('20000e8'))
+      await nonFiatCollateral.refresh()
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check the other oracle
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await nonFiatCollateral.refresh()
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -674,6 +707,22 @@ describe('Collateral contracts', () => {
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
       await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await cTokenNonFiatCollateral.refresh()
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      // Restore
+      await targetUnitOracle.updateAnswer(bn('22000e8'))
+      await cTokenNonFiatCollateral.refresh()
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Revert if price is zero - Update the other Oracle
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await cTokenNonFiatCollateral.refresh()
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -738,6 +787,10 @@ describe('Collateral contracts', () => {
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
       await expect(selfReferentialCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await selfReferentialCollateral.refresh()
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
@@ -838,6 +891,104 @@ describe('Collateral contracts', () => {
       await expect(cTokenSelfReferentialCollateral.price()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
+
+      // When refreshed, sets status to Unpriced
+      await cTokenSelfReferentialCollateral.refresh()
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+  })
+
+  // Tests specific to EURFiatCollateral.sol contract, not used by default in fixture
+  describe('EUR fiat Collateral #fast', () => {
+    let eurFiatCollateral: EURFiatCollateral
+    let eurFiatToken: ERC20Mock
+    let targetUnitOracle: MockV3Aggregator
+    let referenceUnitOracle: MockV3Aggregator
+
+    beforeEach(async () => {
+      eurFiatToken = await (
+        await ethers.getContractFactory('ERC20Mock')
+      ).deploy('EUR Token', 'EURT')
+      targetUnitOracle = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // $1
+      )
+      referenceUnitOracle = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // $1
+      )
+      eurFiatCollateral = await (
+        await ethers.getContractFactory('EURFiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        referenceUnitOracle.address,
+        targetUnitOracle.address,
+        eurFiatToken.address,
+        ZERO_ADDRESS,
+        config.tradingRange,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('EUR'),
+        DEFAULT_THRESHOLD,
+        DELAY_UNTIL_DEFAULT
+      )
+
+      // Mint some tokens
+      await eurFiatToken.connect(owner).mint(owner.address, amt)
+    })
+
+    it('Should setup collateral correctly', async function () {
+      // Non-Fiat Token
+      expect(await eurFiatCollateral.isCollateral()).to.equal(true)
+      expect(await eurFiatCollateral.uoaPerTargetFeed()).to.equal(targetUnitOracle.address)
+      expect(await eurFiatCollateral.uoaPerRefFeed()).to.equal(referenceUnitOracle.address)
+      expect(await eurFiatCollateral.erc20()).to.equal(eurFiatToken.address)
+      expect(await eurFiatToken.decimals()).to.equal(18)
+      expect(await eurFiatCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('EUR'))
+      // Get priceable info
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await eurFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await eurFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+      expect(await eurFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.tradingRange.min)
+      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.tradingRange.max)
+      expect(await eurFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+      expect(await eurFiatCollateral.bal(owner.address)).to.equal(amt)
+      expect(await eurFiatCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await eurFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+    })
+
+    it('Should calculate prices correctly', async function () {
+      // Check initial prices
+      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+
+      // Update values in Oracle = double price
+      await referenceUnitOracle.updateAnswer(bn('2e8'))
+      await targetUnitOracle.updateAnswer(bn('2e8'))
+
+      // Check new prices
+      expect(await eurFiatCollateral.price()).to.equal(fp('2'))
+
+      // Revert if price is zero - Update Oracles and check prices
+      await referenceUnitOracle.updateAnswer(bn('0'))
+      await expect(eurFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+
+      // Restore
+      await referenceUnitOracle.updateAnswer(bn('2e8'))
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check the other oracle - When refreshed, sets status to Unpriced
+      await targetUnitOracle.updateAnswer(bn('0'))
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
   })
 
