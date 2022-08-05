@@ -5,7 +5,7 @@ import { IConfig } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { setOraclePrice } from '../utils/oracles'
+import { setInvalidOracleTimestamp, setOraclePrice } from '../utils/oracles'
 import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
@@ -175,6 +175,17 @@ describe('Assets contracts #fast', () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Check new prices
+      await expect(rsrAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
+    })
+
+    it('Should revert in case of invalid timestamp', async () => {
+      await setInvalidOracleTimestamp(rsrAsset.address)
+      await setInvalidOracleTimestamp(compAsset.address)
+      await setInvalidOracleTimestamp(aaveAsset.address)
+
+      // Check price of token
       await expect(rsrAsset.price()).to.be.revertedWith('StalePrice()')
       await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
       await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
