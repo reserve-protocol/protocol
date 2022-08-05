@@ -78,10 +78,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     /// onlyRole(FREEZE_STARTER or FREEZE_EXTENDER)
     function freeze() external {
         if (block.timestamp < unfreezeAt) {
-            require(hasRole(FREEZE_EXTENDER, _msgSender()), "not freeze extender");
+            _checkRole(FREEZE_EXTENDER);
         } else {
             // Revoke role if starting the freeze
-            require(hasRole(FREEZE_STARTER, _msgSender()), "not freeze starter");
+            _checkRole(FREEZE_STARTER);
             _revokeRole(FREEZE_STARTER, _msgSender());
         }
         emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + freezeDuration);

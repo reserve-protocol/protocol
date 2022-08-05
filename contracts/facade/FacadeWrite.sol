@@ -1,22 +1,17 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IFacadeWrite.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRToken.sol";
-
-import "@openzeppelin/contracts/governance/TimelockController.sol";
-import "contracts/plugins/governance/Governance.sol";
+import "contracts/facade/lib/FacadeWriteLib.sol";
 
 /**
  * @title FacadeWrite
  * @notice A UX-friendly layer to interact with the protocol
+ * @dev Under the hood, uses two external libs to deal with blocksize limits.
  */
 contract FacadeWrite is IFacadeWrite {
+    using FacadeWriteLib for address;
+
     IDeployer public immutable deployer;
 
     constructor(IDeployer deployer_) {
@@ -24,6 +19,7 @@ contract FacadeWrite is IFacadeWrite {
         deployer = deployer_;
     }
 
+    /// Step 1
     function deployRToken(ConfigurationParams calldata config, SetupParams calldata setup)
         external
         returns (address)
@@ -110,6 +106,8 @@ contract FacadeWrite is IFacadeWrite {
         return address(rToken);
     }
 
+    /// Step 2
+    /// @return newOwner The address of the new owner
     function setupGovernance(
         IRToken rToken,
         bool deployGovernance,
@@ -118,7 +116,7 @@ contract FacadeWrite is IFacadeWrite {
         address owner,
         address guardian,
         address pauser
-    ) external returns (address) {
+    ) external returns (address newOwner) {
         // Get Main
         IMain main = rToken.main();
 
@@ -128,19 +126,17 @@ contract FacadeWrite is IFacadeWrite {
         // Remove ownership to sender
         main.revokeRole(OWNER, msg.sender);
 
-        // New owner
-        address newOwner;
-
         if (deployGovernance) {
             require(owner == address(0), "owner should be empty");
 
-            // Deploy Governance
             TimelockController timelock = new TimelockController(
                 govParams.minDelay,
                 new address[](0),
                 new address[](0)
             );
-            Governance governance = new Governance(
+
+            // Deploy Governance contract
+            address governance = FacadeWriteLib.deployGovernance(
                 IStRSRVotes(address(main.stRSR())),
                 timelock,
                 govParams.votingDelay,
@@ -148,21 +144,18 @@ contract FacadeWrite is IFacadeWrite {
                 govParams.proposalThresholdAsMicroPercent,
                 govParams.quorumPercent
             );
-
-            // Emit event
-            emit GovernanceCreated(rToken, address(governance), address(timelock));
+            emit GovernanceCreated(rToken, governance, address(timelock));
 
             // Setup Roles
-            timelock.grantRole(timelock.PROPOSER_ROLE(), address(governance)); // Gov only proposer
+            timelock.grantRole(timelock.PROPOSER_ROLE(), governance); // Gov only proposer
             timelock.grantRole(timelock.CANCELLER_ROLE(), guardian); // Guardian as canceller
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // Anyone as executor
             timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this)); // Revoke admin role
 
-            // Setup new owner - Timelock
+            // Set new owner to timelock
             newOwner = address(timelock);
         } else {
             require(owner != address(0), "owner not defined");
-
             newOwner = owner;
         }
 
@@ -194,8 +187,5 @@ contract FacadeWrite is IFacadeWrite {
         main.renounceRole(FREEZE_STARTER, address(this));
         main.renounceRole(FREEZE_EXTENDER, address(this));
         main.renounceRole(PAUSER, address(this));
-
-        // Return new owner address
-        return newOwner;
     }
 }

@@ -17,7 +17,6 @@ import { bn, fp } from '../common/numbers'
 import { setOraclePrice } from './utils/oracles'
 import { advanceTime } from './utils/time'
 import snapshotGasCost from './utils/snapshotGasCost'
-
 import {
   Asset,
   CTokenFiatCollateral,
@@ -87,6 +86,7 @@ describe('FacadeWrite contract', () => {
 
   // Facade
   let facade: Facade
+  let facadeWriteLibAddr: string
 
   // Core contracts
   let main: TestIMain
@@ -131,8 +131,16 @@ describe('FacadeWrite contract', () => {
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenAsset.erc20())
 
+    // Deploy DFacadeWriteLib lib
+    const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
+    facadeWriteLibAddr = facadeWriteLib.address
+
     // Deploy Facade
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite')
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite', {
+      libraries: {
+        FacadeWriteLib: facadeWriteLibAddr,
+      },
+    })
     facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
     // Set parameters
@@ -167,7 +175,11 @@ describe('FacadeWrite contract', () => {
   })
 
   it('Should validate parameters', async () => {
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite')
+    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeWrite', {
+      libraries: {
+        FacadeWriteLib: facadeWriteLibAddr,
+      },
+    })
     await expect(FacadeFactory.deploy(ZERO_ADDRESS)).to.be.revertedWith('invalid address')
   })
 

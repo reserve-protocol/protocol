@@ -11,31 +11,31 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
 
+// MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
+uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+// MAX_ISSUANCE_RATE: 100%
+uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
+
 /**
  * @title RTokenP1
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
 
-/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable: expected to be an IPFS link but could be anything
-    string public manifestoURI;
-
-    // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
-    uint192 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
-
-    // MAX_ISSUANCE_RATE
-    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
-
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint192 public lastIssRate; // D18{rTok/block}
     uint256 public lastIssRateBlock; // {block number}
+    uint192 public lastIssRate; // D18{rTok/block}
 
     // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
     uint192 public allVestAt; // D18{fractional block number}
+
+    uint192 public basketsNeeded; // D18{BU}
+
+    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
@@ -63,7 +63,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * TotalIssue items in an IssueQueue.
      *
      * The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
-     * "fencpost" in the queue of actual issuances. The true issuances are the spans between the
+     * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
      *    queue.items[queue.right].amtRToken == 6000,
@@ -73,29 +73,24 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
-    uint192 public basketsNeeded; // D18{BU}
-
-    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
-
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata manifestoURI_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
         setIssuanceRate(issuanceRate_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external notPausedOrFrozen {
+    function issue(uint256 amtRToken) external {
         require(amtRToken > 0, "Cannot issue zero");
+        revertIfPausedOrFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -122,7 +117,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status == CollateralStatus.SOUND, "basket disabled");
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         main.furnace().melt();
 
@@ -241,12 +236,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
     /// @custom:interaction CEI
-    function vest(address account, uint256 endId) external notPausedOrFrozen {
+    function vest(address account, uint256 endId) external {
+        revertIfPausedOrFrozen();
         // == Keepers ==
         main.assetRegistry().refresh();
 
         // == Checks ==
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        CollateralStatus status = main.basketHandler().status();
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         // Refund old issuances if there are any
         IssueQueue storage queue = issueQueues[account];
@@ -380,29 +377,33 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
+    function mint(address recipient, uint256 amtRToken) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        revertIfPausedOrFrozen();
         _mint(recipient, amtRToken);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external notPausedOrFrozen {
+    function melt(uint256 amtRToken) external {
+        revertIfPausedOrFrozen();
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
+        revertIfPausedOrFrozen();
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external notPausedOrFrozen {
+    function claimAndSweepRewards() external {
+        revertIfPausedOrFrozen();
         RewardableLibP1.claimAndSweepRewards();
     }
 
@@ -473,14 +474,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem storage rightItem = queue.items[right - 1];
 
         // we could dedup this logic but it would take more SLOADS, so I think this is best
+        amtRToken = rightItem.amtRToken;
         if (left == 0) {
-            amtRToken = rightItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[left - 1];
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -493,10 +494,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         } else if (queue.left < left && right == queue.right) {
             // refund from end of queue
             queue.right = left;
-        } else {
-            // error: can't remove [left,right) from the queue, and leave just one interval
-            revert("Bad refundSpan");
-        }
+        } else revert("Bad refundSpan");
+        // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
@@ -526,20 +525,20 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256[] memory amtDeposits = new uint256[](queueLength);
 
         // we could dedup this logic but it would take more SLOADS, so this seems best
+        amtRToken = rightItem.amtRToken;
+        amtBaskets = rightItem.amtBaskets;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken;
-            amtBaskets = rightItem.amtBaskets;
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             // uint192(-) is safe for Fix.minus()
-            amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
+            amtBaskets = amtBaskets - leftItem.amtBaskets;
         }
 
         _mint(account, amtRToken);
@@ -560,4 +559,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
     }
+
+    // solhint-disable no-empty-blocks
+    function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }

@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/Facade.sol";
+import "contracts/facade/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
@@ -87,7 +87,7 @@ contract DeployerP0 is IDeployer {
         assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.freezeDuration);
+        main.init(components, rsr, manifestoURI, params.freezeDuration);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -126,7 +126,7 @@ contract DeployerP0 is IDeployer {
             params.rewardRatio
         );
 
-        main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
+        main.rToken().init(main, name, symbol, params.issuanceRate);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

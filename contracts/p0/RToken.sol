@@ -36,9 +36,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    /// Expected to be an IPFS hash
-    string public manifestoURI;
-
     // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
 
@@ -65,13 +62,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory manifestoURI_,
         uint192 issuanceRate_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
         setIssuanceRate(issuanceRate_);
     }
 
@@ -90,7 +85,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
-        require(basketHandler.status() == CollateralStatus.SOUND, "basket disabled");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
 
         address issuer = _msgSender();
         refundAndClearStaleIssuances(issuer);
@@ -189,7 +184,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Call collective state keepers.
         main.poke();
 
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket unsound");
 
         refundAndClearStaleIssuances(account);
 
@@ -331,7 +326,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
         if (!iss.processed) {

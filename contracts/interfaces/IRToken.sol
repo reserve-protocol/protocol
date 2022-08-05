@@ -5,6 +5,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20Metadat
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "contracts/libraries/Fixed.sol";
+import "./IAsset.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
@@ -88,7 +89,6 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string memory manifestoURI_,
         uint192 issuanceRate_
     ) external;
 

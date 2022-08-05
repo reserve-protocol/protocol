@@ -2,8 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IDeployer.sol";
-import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/Governor.sol";
+
 /**
  * @title ConfigurationParams
  * @notice The set of protocol params needed to deploy an RToken
