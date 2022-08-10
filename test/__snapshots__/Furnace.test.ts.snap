@@ -1,35 +1,35 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 1`] = `80620`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 1`] = `80664`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 2`] = `81869`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 2`] = `81913`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 1`] = `80620`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 1`] = `80664`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 2`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 2`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 3`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 3`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 4`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 4`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 5`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 5`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 6`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 6`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 7`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 7`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 8`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 8`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 9`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 9`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 10`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 10`] = `79747`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 11`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 11`] = `79747`;
 
 exports[`FurnaceP1 contract Gas Reporting Melt - One period  1`] = `41244`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - One period  2`] = `80620`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  2`] = `80664`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - One period  3`] = `79703`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  3`] = `79747`;
 
 exports[`FurnaceP1 contract Gas Reporting Melt - One period  4`] = `41244`;
