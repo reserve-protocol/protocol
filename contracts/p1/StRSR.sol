@@ -131,14 +131,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external notPausedOrFrozen {
+    function payoutRewards() external {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
+    /// @dev Staking continues while paused/frozen
     /// @custom:interaction CEI
-    function stake(uint256 rsrAmount) external notPausedOrFrozen {
+    function stake(uint256 rsrAmount) external {
         require(rsrAmount > 0, "Cannot stake zero");
 
         _payoutRewards();
