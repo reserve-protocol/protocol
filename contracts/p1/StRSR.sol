@@ -36,22 +36,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
 
-    // === History ===
-    /*
-     * When the stakeRate falls below the MIN_EXCHANGE_RATE, all balances are wiped and
-     * a new era begins.
-     */
-
-    /// @param fromBlock The block number at which the exchange rate was first reached
-    /// @param rate {qStRSR/qRSR} The exchange rate at the time as a Fix
-    struct HistoricalExchangeRate {
-        uint32 fromBlock;
-        uint192 rate;
-    }
-
-    // History of all past exchange rates, recorded on each payoutRewards + seizeRSR
-    HistoricalExchangeRate[] internal exchangeRateHistory;
-
     // === ERC20 ===
 
     string public name; // mutable
@@ -140,9 +124,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         setUnstakingDelay(unstakingDelay_);
         setRewardPeriod(rewardPeriod_);
         setRewardRatio(rewardRatio_);
-
-        // Add initial exchange rate
-        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), FIX_ONE));
 
         beginEra();
         beginDraftEra();
@@ -301,7 +282,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, stakeRate);
-        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), stakeRate));
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
@@ -373,7 +353,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
 
         emit ExchangeRateSet(initRate, stakeRate);
-        exchangeRateHistory.push(HistoricalExchangeRate(uint32(block.number), stakeRate));
     }
 
     /// @param rsrAmount {qRSR}
