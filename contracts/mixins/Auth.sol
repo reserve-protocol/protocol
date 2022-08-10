@@ -10,9 +10,9 @@ import "contracts/interfaces/IMain.sol";
  */
 abstract contract Auth is AccessControlUpgradeable, IAuth {
     /**
-     * System-wide states
-     *  - Frozen: only allow OWNER actions
-     *  - Paused: only allow OWNER actions and redemption (and issuance cancellation)
+     * System-wide states (does not impact ERC20 functions)
+     *  - Frozen: only allow OWNER actions and staking
+     *  - Paused: only allow OWNER actions, redemption, issuance cancellation, and staking
      *
      * Typically freezing thaws on its own in a predetemined number of blocks.
      *   However, OWNER can also freeze forever.

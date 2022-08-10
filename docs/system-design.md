@@ -204,8 +204,8 @@ Reasonable range: 3600 to 31536000
 
 ## System States
 
-- `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions
-- `frozen`: all interactions disabled EXCEPT ERC20 functions
+- `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions + StRSR.stake
+- `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
 
 Design intentions:
 
