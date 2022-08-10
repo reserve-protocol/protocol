@@ -309,7 +309,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
     })
 
-    it('Should not allow to stake if Main is Paused', async () => {
+    it('Should allow to stake if Main is Paused', async () => {
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -318,16 +318,16 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(amount)
 
-      // Check deposit not registered
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      // Check deposit registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it('Should not allow to stake if Main is Frozen', async () => {
+    it('Should allow to stake if Main is Frozen', async () => {
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -336,13 +336,13 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(amount)
 
-      // Check deposit not registered
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      // Check deposit registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to stake/deposit in RSR', async () => {
@@ -913,20 +913,24 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should not be handed out when paused', async () => {
-      await main.connect(owner).pause()
-
+    it('Rewards should be handed out when paused', async () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
-      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should not be handed out when frozen', async () => {
-      await main.connect(owner).freeze()
-
+    it('Rewards should be handed out when frozen', async () => {
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
-      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
     it('Should allow to add RSR - Single staker', async () => {
