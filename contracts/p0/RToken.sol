@@ -36,8 +36,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    /// Immutable: expected to be an IPFS link but could be anything
-    string public manifestoURI;
+    /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
+    string public mandate;
 
     // To enforce a fixed issuanceRate throughout the entire block
     mapping(uint256 => uint256) private blockIssuanceRates; // block.number => {qRTok/block}
@@ -65,13 +65,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         IMain main_,
         string memory name_,
         string memory symbol_,
-        string calldata manifestoURI_,
+        string calldata mandate_,
         uint192 issuanceRate_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
+        mandate = mandate_;
         setIssuanceRate(issuanceRate_);
     }
 
