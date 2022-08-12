@@ -8,7 +8,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
     RTKN: {
       name: 'RToken',
       symbol: 'RTKN',
-      manifestoURI: 'manifesto',
+      mandate: 'mandate',
       params: {
         tradingRange: { min: fp('0.01'), max: fp('1e6') }, // [0.01 tok, 1M tok]
         dist: {

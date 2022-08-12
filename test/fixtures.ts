@@ -519,7 +519,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
