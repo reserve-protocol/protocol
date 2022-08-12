@@ -11,7 +11,7 @@ struct ConfigurationParams {
     // === RToken info ===
     string name;
     string symbol;
-    string manifestoURI;
+    string mandate;
     // === Deployer params ===
     DeploymentParams params;
 }

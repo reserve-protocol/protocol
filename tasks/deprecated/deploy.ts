@@ -56,13 +56,7 @@ task('deploy', 'Deploy protocol smart contracts').setAction(async (params, hre) 
 
   console.log('Deploying RToken...')
   const receipt = await (
-    await rtokenDeployer.deploy(
-      'Reserve Dollar Plus',
-      'RSDP',
-      'manifesto',
-      deployer.address,
-      config
-    )
+    await rtokenDeployer.deploy('Reserve Dollar Plus', 'RSDP', 'mandate', deployer.address, config)
   ).wait()
 
   // Get main and facade addresses

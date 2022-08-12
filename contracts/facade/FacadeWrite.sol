@@ -38,7 +38,7 @@ contract FacadeWrite is IFacadeWrite {
             deployer.deploy(
                 config.name,
                 config.symbol,
-                config.manifestoURI,
+                config.mandate,
                 address(this), // set as owner
                 config.params
             )

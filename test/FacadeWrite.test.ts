@@ -147,7 +147,7 @@ describe('FacadeWrite contract', () => {
     rTokenConfig = {
       name: 'RTKN RToken',
       symbol: 'RTKN',
-      manifestoURI: 'manifesto',
+      mandate: 'mandate',
       params: config,
     }
 
@@ -192,7 +192,7 @@ describe('FacadeWrite contract', () => {
     rTokenConfig = {
       name: 'RTKN RToken',
       symbol: 'RTKN',
-      manifestoURI: 'manifesto',
+      mandate: 'mandate',
       params: config,
     }
 

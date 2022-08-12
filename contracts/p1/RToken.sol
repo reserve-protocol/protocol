@@ -25,8 +25,8 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable: expected to be an IPFS link but could be anything
-    string public manifestoURI;
+    /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
+    string public mandate;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     uint256 private lastIssRateBlock; // {block number}
@@ -80,13 +80,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata manifestoURI_,
+        string calldata mandate_,
         uint192 issuanceRate_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
+        mandate = mandate_;
         setIssuanceRate(issuanceRate_);
     }
 

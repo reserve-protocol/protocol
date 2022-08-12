@@ -45,7 +45,7 @@ task('P0-deploy', 'Deploys all Protocol components and an RToken').setAction(
       await rtokenDeployer.deploy(
         'Reserve Dollar Plus',
         'RSDP',
-        'manifesto',
+        'mandate',
         deployer.address,
         config
       )
