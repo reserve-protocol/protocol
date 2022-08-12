@@ -142,7 +142,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.proposalThreshold()).to.equal(PROPOSAL_THRESHOLD)
       expect(await governor.name()).to.equal('Reserve Governor')
       // Quorum
-      expect(await governor.quorumNumerator()).to.equal(QUORUM_PERCENTAGE)
+      expect(await governor['quorumNumerator()']()).to.equal(QUORUM_PERCENTAGE)
       expect(await governor.quorumDenominator()).to.equal(100)
       expect(await governor.quorum((await getLatestBlockNumber()) - 1)).to.equal(
         QUORUM_PERCENTAGE * 1e6

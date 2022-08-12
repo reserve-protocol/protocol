@@ -644,7 +644,7 @@ describe('FacadeWrite contract', () => {
           )
           expect(await governor.name()).to.equal('Reserve Governor')
           // Quorum
-          expect(await governor.quorumNumerator()).to.equal(govParams.quorumPercent)
+          expect(await governor['quorumNumerator()']()).to.equal(govParams.quorumPercent)
           expect(await governor.timelock()).to.equal(timelock.address)
           expect(await governor.token()).to.equal(stRSR.address)
         })
