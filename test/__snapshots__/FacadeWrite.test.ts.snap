@@ -2,6 +2,6 @@
 
 exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 1 - RToken Deployment 1`] = `5989516`;
 
-exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Deploy governance 1`] = `5350458`;
+exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Deploy governance 1`] = `5624746`;
 
 exports[`FacadeWrite contract Deployment Process Gas Reporting Phase 2 - Without governance 1`] = `287875`;
