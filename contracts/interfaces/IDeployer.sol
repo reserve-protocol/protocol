@@ -75,14 +75,14 @@ interface IDeployer {
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
-    /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
+    /// @param mandate An IPFS link or direct string; describes what the RToken _should be_
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed Main instance.
     function deploy(
         string calldata name,
         string calldata symbol,
-        string calldata manifestoURI,
+        string calldata mandate,
         address owner,
         DeploymentParams calldata params
     ) external returns (address);

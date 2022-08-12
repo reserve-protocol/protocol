@@ -73,14 +73,14 @@ contract DeployerP1 is IDeployer {
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
-    /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
+    /// @param mandate An IPFS link or direct string; describes what the RToken _should be_
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed RToken.
     function deploy(
         string memory name,
         string memory symbol,
-        string memory manifestoURI,
+        string calldata mandate,
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
@@ -192,7 +192,7 @@ contract DeployerP1 is IDeployer {
         );
 
         // Init RToken
-        main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
+        main.rToken().init(main, name, symbol, mandate, params.issuanceRate);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
