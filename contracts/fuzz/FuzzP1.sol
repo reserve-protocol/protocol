@@ -42,8 +42,25 @@ contract AssetRegistryP1Fuzz is AssetRegistryP1 {
 }
 
 contract BasketHandlerP1Fuzz is BasketHandlerP1 {
+    using BasketLib for Basket;
+    Basket internal prev;
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function savePrev() external {
+        prev.copy(basket);
+    }
+
+    function prevEqualsCurr() external view returns (bool) {
+        uint n = basket.erc20s.length;
+        if (n != prev.erc20s.length) return false;
+        for(uint i = 0; i < n; i++) {
+            if (prev.erc20s[i] != basket.erc20s[i]) return false;
+            if (prev.refAmts[prev.erc20s[i]] != basket.refAmts[basket.erc20s[i]]) return false;
+        }
+        return true;
     }
 }
 
@@ -233,6 +250,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         users.push(user);
     }
 
+    function someUser(uint256 seed) public view returns (address) {
+        return users[seed % users.length];
+    }
+
     function someAddr(uint256 seed) public view returns (address) {
         // constAddrs.length: constant addresses, mostly deployed contracts
         // numUsers: addresses from the user registry
@@ -243,7 +264,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         if (id < numUsers()) return users[id];
         else id -= numUsers();
 
-        if (id < constAddrs.length) return constAddrs[id];
+        if (id < constAddrs.len.gth) return constAddrs[id];
         else id -= constAddrs.length;
 
         if (id == 0) return address(BrokerP1Fuzz(address(broker)).lastOpenedTrade());
@@ -289,6 +310,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         __Auth_init(freezerDuration);
         __UUPSUpgradeable_init();
         emit MainInitialized();
+
 
         marketMock = marketMock_;
 

@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "contracts/interfaces/IAsset.sol";
+import "contracts/interfaces/IDistributor.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
@@ -40,6 +41,7 @@ contract NormalOpsScenario {
     // - at least one user has plenty of starting tokens
     constructor() {
         main = new MainP1Fuzz();
+
         main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(main));
 
         TradingRange memory tradingRange = defaultParams().tradingRange;
@@ -121,6 +123,7 @@ contract NormalOpsScenario {
 
     // In the modified function, send transactions from *this* contract as if they were from
     // msg.sender, which is presumably the echdina-chosen user.
+
     modifier asSender() {
         main.spoof(address(this), msg.sender);
         _;
@@ -165,7 +168,7 @@ contract NormalOpsScenario {
     ) public {
         IERC20 token = main.someToken(tokenID);
         require(address(token) != address(main.rToken()), "Do not just mint RTokens");
-        ERC20Fuzz(address(token)).mint(main.someAddr(userID), amount);
+        ERC20Fuzz(address(token)).mint(main.someUser(userID), amount);
     }
 
     function burn(
@@ -175,7 +178,7 @@ contract NormalOpsScenario {
     ) public {
         IERC20 token = main.someToken(tokenID);
         require(address(token) != address(main.rToken()), "Do not just mint RTokens");
-        ERC20Fuzz(address(token)).burn(main.someAddr(userID), amount);
+        ERC20Fuzz(address(token)).burn(main.someUser(userID), amount);
     }
 
     // ==== user functions: rtoken ====
@@ -251,23 +254,110 @@ contract NormalOpsScenario {
     }
 
     // ==== keeper functions ====
-    // function claimRewards(uint256 tokenID)
-    // function settleTrades()
-    // function manageBackingToken(uint256 tokenID)
-    // function grantAllowances(uint256 tokenID)
-    // function payRSRRewards() // do strsr rewards
-    // function payRTokenRewards() // do rtoken rewards
+    // function claimRewards(uint256 tokenID) // ignoring for now
+
+    function updatePrice(
+        uint256 seedID,
+        uint192 a,
+        uint192 b,
+        uint192 c,
+        uint192 d
+    ) public {
+        IERC20 erc20 = main.someToken(seedID);
+        IAssetRegistry reg = main.assetRegistry();
+        if (!reg.isRegistered(erc20)) return;
+        IAsset asset = reg.toAsset(erc20);
+        if (asset.isCollateral()) {
+            CollateralMock(address(asset)).update(a, b, c, d);
+        } else {
+            AssetMock(address(asset)).update(a);
+        }
+    }
+
+    function settleTrades() public {
+        BrokerP1Fuzz(address(main.broker())).settleTrades();
+    }
+
+    // TODO: actually fuzz the array-input version of this
+    function manageBackingToken(uint256 tokenID) public {
+        IERC20[] memory tokens = new IERC20[](1);
+        tokens[0] = main.someToken(tokenID);
+        main.backingManager().manageTokens(tokens);
+    }
+
+    function grantAllowances(uint256 tokenID) public {
+        main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
+    }
+
+    function payRSRRewards() public {
+        main.stRSR().payoutRewards();
+    }
+
+    function payRTokenRewards() public {
+        main.furnace().melt();
+    }
 
     // ==== governance changes ====
-    /* function setDistribution(address dest, uint16 rTokenDist, uint16 rsrDist) */
-    // Search for others that can change in this setup!
+    function setDistribution(
+        uint256 seedID,
+        uint16 rTokenDist,
+        uint16 rsrDist
+    ) public {
+        RevenueShare memory dist = RevenueShare(rTokenDist, rsrDist);
+        main.distributor().setDistribution(main.someAddr(seedID), dist);
+    }
+
+    // Search for others that can change in this setup?
 
     // ================ System Properties ================
-    // A few example properties to start with:
-    /* function echidna_isFullyCapitalized() //include "total redemption is affordable" */
-    /* function echidna_quoteProportionalToBasket() */
-    /* how would I check that prepareTradeRecacapitalize(), compromiseBasketsNeeded(),
-     * and stRSR.seizeRSR() are never called? I could override them in the scenario with a function
-     * that just reverts with echidna-stopping error */
-    /* stRSR.exchangeRate only increases */
+
+    // The system is always fully capitalized
+    function echidna_isFullyCapitalized() external view returns (bool) {
+        return main.basketHandler().fullyCapitalized();
+    }
+
+    // The system is always fully capitalized (implemented a little more manually)
+    function echidna_quoteProportionalToBasket() external view returns (bool) {
+        // rtoken.quote() * rtoken.totalSupply < basketHolder balances
+        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+        (address[] memory tokens, uint256[] memory amts) = rtoken.quote(
+            rtoken.totalSupply(),
+            RoundingMode.FLOOR
+        );
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            uint256 bal = IERC20(tokens[i]).balanceOf(address(main.backingManager()));
+            if (bal < amts[i]) return false;
+        }
+        return true;
+    }
+
+    // Calling basketHandler.refereshBasket() yields an identical basket.
+    function echidna_refreshBasketIsNoop() external returns (bool) {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        bh.savePrev();
+        bh.refreshBasket();
+        return bh.prevEqualsCurr();
+    }
+
+    // RSR and RToken rates never fall
+    uint192 internal prevRSRRate; // {StRSR/RSR}
+    uint256 internal prevRTokenRate; // {RTok/BU}
+
+    // pseudo-mutator for saving old rates...
+    function saveRates() external {
+        prevRSRRate = main.stRSR().exchangeRate();
+        prevRTokenRate = divFix(main.rToken().totalSupply(), main.rToken().basketsNeeded());
+    }
+
+    function echidna_ratesNeverFall() external view returns (bool) {
+        uint192 rsrRate = main.stRSR().exchangeRate();
+        uint256 rTokenRate = divFix(main.rToken().totalSupply(), main.rToken().basketsNeeded());
+
+        if (rsrRate > prevRSRRate) return false;
+        if (rTokenRate > prevRTokenRate) return false;
+        return true;
+    }
+    // TODO: prepareTradeRecacapitalize(), compromiseBasketsNeeded(), and stRSR.seizeRSR() are
+    // never called
 }

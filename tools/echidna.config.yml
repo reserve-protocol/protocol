@@ -1,10 +1,34 @@
+# For possible settings values, see:
+# https://github.com/crytic/echidna/blob/master/tests/solidity/basic/default.yaml
+
 # format can be "text" or "json" for different output (human or machine readable)
 # format: 'text'
-#seqLen defines how many transactions are in a test sequence
+
+# select the mode to test, which can be property, assertion, overflow, exploration, optimization
+testMode: "property"
+
+# prefix is the prefix for Boolean functions that are properties to be checked
+prefix: echidna_
+
+# seqLen defines how many transactions are in a test sequence
 seqLen: 200
-#prefix is the prefix for Boolean functions that are properties to be checked
-prefix: 'echidna'
-#testLimit is the number of test sequences to run
+# testLimit is the number of test sequences to run
 testLimit: 1000
-#estimateGas makes echidna perform analysis of maximum gas costs for functions (experimental)
-estimateGas: true
+# estimateGas makes echidna perform analysis of maximum gas costs for functions (experimental)
+# estimateGas: false
+
+# propMaxGas defines gas cost at which a property fails
+propMaxGas: 1000000000
+# testMaxGas is a gas limit; does not cause failure, but terminates sequence
+testMaxGas: 1000000000
+# maxGasprice is the maximum gas price
+maxGasprice: 0
+
+# directory to save the corpus; by default is disabled
+corpusDir: "echidna-corpus"
+
+# solcArgs allows special args to solc
+solcArgs: "optimize"
+
+# codeSize max code size for deployed contratcs (default 24576, per EIP-170)
+codeSize: 0xffffffffff

@@ -68,7 +68,7 @@ const config: any = {
         settings: { optimizer: { enabled: false } },
       },
       {
-        version: '0.4.24',
+        version: '0.4.25',
         settings: { optimizer: { enabled: false } },
       },
     ],

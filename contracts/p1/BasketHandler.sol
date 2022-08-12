@@ -99,7 +99,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
     BasketConfig private config;
-    Basket private basket;
+    Basket internal basket;
 
     function init(IMain main_) external initializer {
         __Component_init(main_);
