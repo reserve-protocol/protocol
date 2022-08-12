@@ -218,7 +218,7 @@ export interface IImplementations {
 export interface IRTokenConfig {
   name: string
   symbol: string
-  manifestoURI: string
+  mandate: string
   params: IConfig
 }
 

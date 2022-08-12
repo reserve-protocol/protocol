@@ -381,7 +381,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidPeriodConfig.rewardPeriod = config.unstakingDelay
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidPeriodConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidPeriodConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
 
       // Distributor validation - Set invalid distribution
@@ -389,14 +389,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidDistConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
       ).to.be.revertedWith('no distribution defined')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
