@@ -118,13 +118,13 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     /// Assign reward payouts to the staker pool
     /// @custom:refresher
-    function payoutRewards() external {
+    function payoutRewards() external notPausedOrFrozen {
         _payoutRewards();
     }
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
-    /// @dev Staking continues while paused/frozen
+    /// @dev Staking continues while paused/frozen, without reward handouts
     /// @custom:interaction
     function stake(uint256 rsrAmount) external {
         address account = _msgSender();
@@ -132,7 +132,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         // Call state keepers -- only subset that work while paused/frozen
         main.assetRegistry().refresh();
-        _payoutRewards();
+        if (!main.pausedOrFrozen()) _payoutRewards();
 
         uint256 stakeAmount = rsrAmount;
         // The next line is _not_ an overflow risk, in our expected ranges:

@@ -654,7 +654,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(addr2).grantRole(SHORT_FREEZER, addr1.address)).to.be.reverted
     })
 
-    it.only('Should be able to chain short freeze into long freeze', async () => {
+    it('Should be able to chain short freeze into long freeze', async () => {
       // Freeze with short freezer
       await main.connect(addr1).freezeShort()
       expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false) // revoked
@@ -781,6 +781,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Can re-grant to self
       await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
       expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to set short freeze properly', async () => {
+      await expect(main.connect(addr2).setShortFreeze(1)).to.be.reverted
+      await expect(main.connect(owner).setShortFreeze(0)).to.be.reverted
+      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.reverted
+      await main.connect(owner).setShortFreeze(2)
+      expect(await main.shortFreeze()).to.equal(2)
+    })
+
+    it('Should allow to set long freeze properly', async () => {
+      await expect(main.connect(addr2).setLongFreeze(1)).to.be.reverted
+      await expect(main.connect(owner).setLongFreeze(0)).to.be.reverted
+      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.reverted
+      await main.connect(owner).setLongFreeze(2)
+      expect(await main.longFreeze()).to.equal(2)
     })
   })
 

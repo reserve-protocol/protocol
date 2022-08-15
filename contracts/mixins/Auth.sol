@@ -6,6 +6,8 @@ import "contracts/interfaces/IMain.sol";
 
 uint256 constant LONG_FREEZE_CHARGES = 6; // 6 uses
 uint32 constant MAX_UNFREEZE_AT = type(uint32).max;
+uint32 constant MAX_SHORT_FREEZE = 2592000; // 1 month
+uint32 constant MAX_LONG_FREEZE = 31536000; // 1 year
 
 /**
  * @title Auth
@@ -41,7 +43,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // solhint-disable-next-line func-name-mixedcase
     function __Auth_init(uint32 shortFreeze_, uint32 longFreeze_) internal onlyInitializing {
-        require(shortFreeze_ > 0 && longFreeze_ > 0, "freeze length cannot be 0");
+        require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
+        require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         __AccessControl_init();
         shortFreeze = shortFreeze_;
         longFreeze = longFreeze_;
@@ -134,12 +137,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// @custom:governance
     function setShortFreeze(uint32 shortFreeze_) external onlyRole(OWNER) {
+        require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
         emit ShortFreezeDurationSet(shortFreeze, shortFreeze_);
         shortFreeze = shortFreeze_;
     }
 
     /// @custom:governance
     function setLongFreeze(uint32 longFreeze_) external onlyRole(OWNER) {
+        require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         emit LongFreezeDurationSet(longFreeze, longFreeze_);
         longFreeze = longFreeze_;
     }

@@ -913,7 +913,26 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should not be handed out when paused', async () => {
+    it('Rewards should be handed out on subsequent staking', async () => {
+      // Stake 1
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      await advanceTime(Number(config.rewardPeriod) + 1)
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
+
+      // Stake 2
+      await rsr.connect(addr2).approve(stRSR.address, stake)
+      await stRSR.connect(addr2).stake(stake)
+
+      // Should get new exchange rate
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await stRSR.balanceOf(addr2.address)).to.be.lt(stake)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.mul(2).add(amountAdded))
+      expect(await stRSR.exchangeRate()).to.be.lt(initialRate)
+    })
+
+    it('Rewards should not be handed out when paused but staking should still work', async () => {
       await main.connect(owner).pause()
       await advanceTime(Number(config.rewardPeriod) + 1)
 
@@ -926,8 +945,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should be handed out when frozen', async () => {
-      await main.connect(owner).freezeShort()
+    it('Rewards should not be handed out when frozen but staking should still work', async () => {
+      await main.connect(owner).freezeLong()
       await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Stake
