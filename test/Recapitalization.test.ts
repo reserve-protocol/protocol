@@ -803,7 +803,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
       })
 

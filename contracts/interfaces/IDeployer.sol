@@ -17,9 +17,6 @@ import "./ITrade.sol";
  * meaning that after deployment there is freedom to allow parametrizations to deviate.
  */
 struct DeploymentParams {
-    // === Pausing ===
-    uint32 freezeDuration; // {s} how long a oneshot pause lasts
-    //
     // === RToken trade sizing ===
     TradingRange tradingRange; // {rTok}
     //
@@ -41,6 +38,9 @@ struct DeploymentParams {
     //
     // === RToken ===
     uint192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+    // === Pausing ===
+    uint32 shortFreeze; // {s} how long an initial freeze lasts
+    uint32 longFreeze; // {s} how long each freeze extension lasts
 }
 
 /**

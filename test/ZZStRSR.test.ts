@@ -332,7 +332,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const amount: BigNumber = bn('1000e18')
 
       // Freeze Main
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
@@ -420,7 +420,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not unstake if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
     })
 
@@ -581,7 +581,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Freeze Main
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
@@ -913,7 +913,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should be handed out when paused', async () => {
+    it('Rewards should not be handed out when paused', async () => {
+      await main.connect(owner).pause()
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
@@ -924,6 +927,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Rewards should be handed out when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
       await stRSR.connect(addr1).stake(stake)
@@ -1087,7 +1093,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to remove RSR if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
       })

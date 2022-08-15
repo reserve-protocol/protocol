@@ -18,8 +18,8 @@ import "./ITrading.sol";
 // === Auth roles ===
 
 bytes32 constant OWNER = bytes32(bytes("OWNER"));
-bytes32 constant FREEZE_STARTER = bytes32(bytes("FREEZE_STARTER"));
-bytes32 constant FREEZE_EXTENDER = bytes32(bytes("FREEZE_EXTENDER"));
+bytes32 constant SHORT_FREEZER = bytes32(bytes("SHORT_FREEZER"));
+bytes32 constant LONG_FREEZER = bytes32(bytes("LONG_FREEZER"));
 bytes32 constant PAUSER = bytes32(bytes("PAUSER"));
 
 /**
@@ -45,20 +45,20 @@ struct Components {
 }
 
 interface IAuth is IAccessControlUpgradeable {
-    /// Emitted when `foreverFrozen` is changed
-    /// @param oldVal The old value of `foreverFrozen`
-    /// @param newVal The new value of `foreverFrozen`
-    event ForeverFrozenSet(bool indexed oldVal, bool indexed newVal);
-
     /// Emitted when `unfreezeAt` is changed
     /// @param oldVal The old value of `unfreezeAt`
     /// @param newVal The new value of `unfreezeAt`
     event UnfreezeAtSet(uint32 indexed oldVal, uint32 indexed newVal);
 
-    /// Emitted when the oneshot freeze duration governance param is changed
-    /// @param oldDuration The old oneshot freeze duration
-    /// @param newDuration The new oneshot freeze duration
-    event OneshotFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+    /// Emitted when the short freeze duration governance param is changed
+    /// @param oldDuration The old short freeze duration
+    /// @param newDuration The new short freeze duration
+    event ShortFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+
+    /// Emitted when the long freeze duration governance param is changed
+    /// @param oldDuration The old long freeze duration
+    /// @param newDuration The new long freeze duration
+    event LongFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
 
     /// Emitted when the system is paused or unpaused
     /// @param oldVal The old value of `paused`
@@ -74,15 +74,20 @@ interface IAuth is IAccessControlUpgradeable {
 
     function frozen() external view returns (bool);
 
-    function freezeDuration() external view returns (uint32);
+    function shortFreeze() external view returns (uint32);
+
+    function longFreeze() external view returns (uint32);
 
     // ====
 
     // onlyRole(OWNER)
     function freezeForever() external;
 
-    // onlyRole(FREEZE*)
-    function freeze() external;
+    // onlyRole(SHORT_FREEZER)
+    function freezeShort() external;
+
+    // onlyRole(LONG_FREEZER)
+    function freezeLong() external;
 
     // onlyRole(OWNER)
     function unfreeze() external;
@@ -150,7 +155,8 @@ interface IMain is IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 freezeDuration_
+        uint32 shortFreeze_,
+        uint32 longFreeze_
     ) external;
 
     function rsr() external view returns (IERC20);
@@ -158,9 +164,16 @@ interface IMain is IAuth, IComponentRegistry {
 
 interface TestIMain is IMain {
     /// @custom:governance
-    function setOneshotFreezeDuration(uint32) external;
+    function setShortFreeze(uint32) external;
 
-    function freezeDuration() external view returns (uint32);
+    /// @custom:governance
+    function setLongFreeze(uint32) external;
+
+    function shortFreeze() external view returns (uint32);
+
+    function longFreeze() external view returns (uint32);
+
+    function longFreezes(address account) external view returns (uint256);
 
     function paused() external view returns (bool);
 }

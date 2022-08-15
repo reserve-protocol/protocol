@@ -196,7 +196,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not melt if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await expect(furnace.connect(addr1).melt()).to.be.revertedWith('paused or frozen')
     })
 

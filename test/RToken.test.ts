@@ -265,7 +265,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('10e18')
 
       // Freeze Main
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
 
       // Try to issue
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('paused or frozen')
@@ -307,7 +307,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Freeze Main
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
 
       // Try to vest
       await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
@@ -348,7 +348,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Freeze Main
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
 
       // Try to vest
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('frozen')
@@ -1413,7 +1413,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should revert if frozen #fast', async function () {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
 
         // Try to redeem
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith('frozen')
@@ -1477,7 +1477,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not melt if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await expect(rToken.connect(addr1).melt(issueAmount)).to.be.revertedWith('paused or frozen')
     })
 
@@ -1529,7 +1529,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('should not claim rewards when frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
     })
   })

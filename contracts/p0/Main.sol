@@ -22,9 +22,10 @@ contract MainP0 is Initializable, Auth, ComponentRegistry, IMain {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 freezeDuration_
+        uint32 shortFreeze_,
+        uint32 longFreeze_
     ) public virtual initializer {
-        __Auth_init(freezeDuration_);
+        __Auth_init(shortFreeze_, longFreeze_);
         __ComponentRegistry_init(components);
 
         rsr = rsr_;

@@ -193,14 +193,23 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-### `freezeDuration`
+### `shortFreeze`
 
 Dimension: `{s}`
 
-The number of seconds a (non-forever) freeze lasts. Governance can freeze forever.
+The number of seconds an initial freeze lasts. Governance can freeze forever.
 
-Anticipated value: `432000` = 5 days
-Reasonable range: 3600 to 31536000
+Anticipated value: `259200` = 3 days
+Reasonable range: 3600 to 2592000 (1 hour to 1 month)
+
+### `longFreeze`
+
+Dimension: `{s}`
+
+The number of seconds a freeze extensions freeze lasts. A long freeze / extension can only occur during a short freeze.
+
+Anticipated value: `2592000` = 30 days
+Reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 ## System States
 
@@ -210,5 +219,5 @@ Reasonable range: 3600 to 31536000
 Design intentions:
 
 - The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
-- The FREEZE_STARTER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a freeze can be triggered which will automatically expire if it is not renewed by FREEZE_EXTENDER. The OWNER (governance) may also step in and unfreeze at anytime. It's important that the FREEZE_STARTER is assigned to an address that can be expected to produce few-to-zero false positives, as compromising on redemption should be strongly avoided.
-- The FREEZE_EXTENDER role can eventually be assigned to a different address, or perhaps renounced, once there is confidence in the ability of governance to act (honestly + aligned) within a fixed time window.
+- The SHORT_FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a freeze can be triggered which will automatically expire if it is not renewed by LONG_FREEZER. The OWNER (governance) may also step in and unfreeze at anytime. It's important that the SHORT_FREEZER is assigned to an address that can be expected to produce few-to-zero false positives, as compromising on redemption should be strongly avoided.
+- The LONG_FREEZER role can eventually be assigned to a different address, or perhaps renounced, once there is confidence in the ability of governance to act (honestly + aligned) within a fixed time window.

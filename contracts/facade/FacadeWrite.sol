@@ -96,8 +96,8 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Freeze (+ regrant)
-        main.freeze();
-        main.grantRole(FREEZE_STARTER, address(this));
+        main.freezeShort();
+        main.grantRole(SHORT_FREEZER, address(this));
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
@@ -163,8 +163,8 @@ contract FacadeWrite is IFacadeWrite {
         if (guardian != address(0)) {
             // As a further decentralization step it is suggested to further differentiate between
             // these two roles. But this is what will make sense for simple system setup.
-            main.grantRole(FREEZE_STARTER, guardian);
-            main.grantRole(FREEZE_EXTENDER, guardian);
+            main.grantRole(SHORT_FREEZER, guardian);
+            main.grantRole(LONG_FREEZER, guardian);
             main.grantRole(PAUSER, guardian);
         }
 
@@ -180,12 +180,12 @@ contract FacadeWrite is IFacadeWrite {
 
         // Transfer Ownership and renounce roles
         main.grantRole(OWNER, newOwner);
-        main.grantRole(FREEZE_STARTER, newOwner);
-        main.grantRole(FREEZE_EXTENDER, newOwner);
+        main.grantRole(SHORT_FREEZER, newOwner);
+        main.grantRole(LONG_FREEZER, newOwner);
         main.grantRole(PAUSER, newOwner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(FREEZE_STARTER, address(this));
-        main.renounceRole(FREEZE_EXTENDER, address(this));
+        main.renounceRole(SHORT_FREEZER, address(this));
+        main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
     }
 }

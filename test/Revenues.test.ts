@@ -292,7 +292,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
@@ -302,7 +302,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not claim rewards if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
       })
 
@@ -312,7 +312,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not settle trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
