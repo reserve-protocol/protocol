@@ -11,6 +11,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
+  RTokenAsset,
   OracleLib,
   TestIBackingManager,
   TestIFurnace,
@@ -42,6 +43,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let backupToken: ERC20Mock
   let collateral0: Collateral
   let backupCollateral: Collateral
+  let rTokenAsset: RTokenAsset
 
   // Config values
   let config: IConfig
@@ -85,6 +87,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       oracleLib,
       rTokenTrader,
       rsrTrader,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -237,8 +240,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.buy()).to.equal(backupToken.address)
     })
 
-    it('should revert on rToken.price', async () => {
-      await expect(rToken.connect(addr1).price()).to.be.revertedWith('No Decimals')
+    it('should revert on RTokenAsset.price', async () => {
+      await expect(rTokenAsset.price()).to.be.revertedWith('No Decimals')
     })
   })
 
@@ -319,7 +322,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still have price', async () => {
-      await rToken.connect(addr1).price()
+      await rTokenAsset.price()
     })
 
     it('should still melt', async () => {
