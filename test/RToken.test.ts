@@ -1490,7 +1490,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
-      context.only('And redemption throttling', function () {
+      context('And redemption throttling', function () {
         let redemptionVirtualSupply: BigNumber
         let redeemAmount: BigNumber
 
@@ -1502,6 +1502,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
           // Charge battery
           await advanceBlocks(277)
+        })
+
+        it('Should calculate redemption limit correctly', async function () {
+          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
+          expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
         })
 
         it('Should be able to do geometric redemptions to scale down supply', async function () {
@@ -1534,7 +1539,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.div(2))).to.be.reverted
+          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.reverted
         })
       })
     })
