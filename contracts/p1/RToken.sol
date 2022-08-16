@@ -104,7 +104,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setMaxRedemption(maxRedemptionCharge_);
-        setDustSupply(redemptionVirtualSupply_);
+        setRedemptionVirtualSupply(redemptionVirtualSupply_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -381,7 +381,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             if (supply < redemptionVirtualSupply) supply = redemptionVirtualSupply;
 
             // {1} = {qRTok} / {qRTok}
-            uint192 dischargeAmt = divuu(amount, supply);
+            uint192 dischargeAmt = uint192((FIX_ONE_256 * amount + (supply - 1)) / supply);
             battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
         }
 
@@ -449,8 +449,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
-    function setDustSupply(uint256 val) public governance {
-        emit DustSupplySet(redemptionVirtualSupply, val);
+    function setRedemptionVirtualSupply(uint256 val) public governance {
+        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
         redemptionVirtualSupply = val;
     }
 

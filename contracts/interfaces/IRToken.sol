@@ -88,7 +88,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     event MaxRedemptionSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted when the dust supply is set
-    event DustSupplySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event RedemptionVirtualSupplySet(uint256 indexed oldVal, uint256 indexed newVal);
 
     // Initialization
     function init(
@@ -165,7 +165,7 @@ interface TestIRToken is IRToken {
     function maxRedemptionCharge() external view returns (uint192);
 
     /// Set the RToken supply at which full redemptions become enabled
-    function setDustSupply(uint256 val) external;
+    function setRedemptionVirtualSupply(uint256 val) external;
 
     /// @return {qRTok} The RToken supply at which full redemptions are enabled
     function redemptionVirtualSupply() external view returns (uint256);

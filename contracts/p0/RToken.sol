@@ -87,7 +87,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setMaxRedemption(maxRedemptionCharge_);
-        setDustSupply(redemptionVirtualSupply_);
+        setRedemptionVirtualSupply(redemptionVirtualSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
@@ -104,8 +104,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// @custom:governance
-    function setDustSupply(uint256 val) public governance {
-        emit DustSupplySet(redemptionVirtualSupply, val);
+    function setRedemptionVirtualSupply(uint256 val) public governance {
+        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
         redemptionVirtualSupply = val;
     }
 
@@ -275,7 +275,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Revert if redemption exceeds battery capacity
         if (maxRedemptionCharge > 0) {
             // {1} = {qRTok} / {qRTok}
-            uint192 dischargeAmt = divuu(amount, Math.max(redemptionVirtualSupply, totalSupply()));
+            uint192 dischargeAmt = FIX_ONE.muluDivu(
+                amount,
+                Math.max(redemptionVirtualSupply, totalSupply()),
+                CEIL
+            );
             battery.discharge(dischargeAmt, maxRedemptionCharge);
         }
 
