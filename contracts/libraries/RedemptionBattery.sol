@@ -33,6 +33,7 @@ library RedemptionBatteryLib {
 
             // {qRTok} = {1} * {qRTok}
             uint256 hourly = maxRedemption.mulu_toUint(battery.lastSupply);
+            if (hourly < dustSupply) hourly = dustSupply;
 
             // {qRTok} = {qRTok} + {qRTok} * {blocknumber} / {blocknumber}
             uint256 newCharge = battery.charge + (hourly * blocks) / ONE_HOUR_IN_BLOCKS;
