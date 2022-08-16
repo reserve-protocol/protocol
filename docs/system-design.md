@@ -230,7 +230,7 @@ The issuance rate is a percentage value that describes what proportion of the RT
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-### `maxRedemption`
+### `maxRedemptionCharge`
 
 Dimension: `{1}`
 
@@ -241,14 +241,14 @@ Set to 0 to disable redemption throttling altogether.
 Anticipated value: `5e16` = 5% per hour
 Reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
 
-### `dustSupply`
+### `redemptionVirtualSupply`
 
 Dimension: `{qRTok}`
 
-The dust supply represents an amount of RToken below which the redemption throttle battery should be disengaged. It exists so that an RToken can eventually zero out its supply effectively.
+The redemption virtual supply is the minimum value to use to size the redemption battery. The redemption capacity is at least maxRedemptionCharge \* redemptionVirtualSupply.
 
-Anticipated value: `1e24` = $1,000,000 at $1 an RToken
-Reasonable range: 1e18 to 1e25
+Anticipated value: `2e25` = $20,000,000 at $1 an RToken
+Reasonable range: 1e21 to 1e27
 
 ### Governance Parameters
 
