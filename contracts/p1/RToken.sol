@@ -78,11 +78,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
+    // === Redemption battery ===
+
     RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
 
+    // set to 0 to disable
     uint192 public maxRedemption; // {1} fraction of supply that can be redeemed at once
 
-    // set to 0 to ignore
+    uint256 public dustSupply; // {qRTok} quantity of RToken at which to offer full redemption
 
     function init(
         IMain main_,
@@ -90,7 +93,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         string calldata symbol_,
         string calldata mandate_,
         uint192 issuanceRate_,
-        uint192 maxRedemption_
+        uint192 maxRedemption_,
+        uint256 dustSupply_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
@@ -98,6 +102,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setMaxRedemption(maxRedemption_);
+        setDustSupply(dustSupply_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -156,7 +161,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         ) {
             // Complete issuance
             _mint(issuer, amtRToken);
-            battery.update(maxRedemption);
+            battery.update(maxRedemption, dustSupply);
 
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
@@ -368,7 +373,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // Accept and burn RToken
         _burn(redeemer, amount);
-        battery.update(maxRedemption);
+        battery.update(maxRedemption, dustSupply);
 
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
@@ -396,14 +401,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amtRToken);
-        battery.update(maxRedemption);
+        battery.update(maxRedemption, dustSupply);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
-        battery.update(maxRedemption);
+        battery.update(maxRedemption, dustSupply);
+
         emit Melted(amtRToken);
     }
 
@@ -433,6 +439,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(val <= FIX_ONE, "invalid fraction");
         emit MaxRedemptionSet(maxRedemption, val);
         maxRedemption = val;
+    }
+
+    /// @custom:governance
+    function setDustSupply(uint256 val) public governance {
+        emit DustSupplySet(dustSupply, val);
+        dustSupply = val;
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
@@ -528,7 +540,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         _mint(account, amtRToken);
-        battery.update(maxRedemption);
+        battery.update(maxRedemption, dustSupply);
+
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;

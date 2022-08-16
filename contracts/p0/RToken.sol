@@ -13,6 +13,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
@@ -34,6 +35,7 @@ struct SlowIssuance {
 contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
+    using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20 for IERC20;
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
@@ -61,27 +63,50 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     uint192 public issuanceRate; // {1/block} of RToken supply to issue per block
 
+    // === Redemption battery ===
+
+    RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
+
+    // set to 0 to disable
+    uint192 public maxRedemption; // {1} fraction of supply that can be redeemed at once
+
+    uint256 public dustSupply; // {qRTok} quantity of RToken at which to offer full redemption
+
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
         string calldata mandate_,
         uint192 issuanceRate_,
-        uint192
+        uint192 maxRedemption_,
+        uint256 dustSupply_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-
-        // TODO
+        setMaxRedemption(maxRedemption_);
+        setDustSupply(dustSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
         require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
+    }
+
+    /// @custom:governance
+    function setMaxRedemption(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit MaxRedemptionSet(maxRedemption, val);
+        maxRedemption = val;
+    }
+
+    /// @custom:governance
+    function setDustSupply(uint256 val) public governance {
+        emit DustSupplySet(dustSupply, val);
+        dustSupply = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -246,6 +271,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // Accept and burn RToken
         _burn(_msgSender(), amount);
+        battery.update(maxRedemption, dustSupply);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -276,12 +302,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
+        battery.update(maxRedemption, dustSupply);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
+        battery.update(maxRedemption, dustSupply);
         emit Melted(amount);
     }
 
@@ -306,6 +334,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);
+            battery.update(maxRedemption, dustSupply);
+
             issued = iss.amount;
 
             emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));

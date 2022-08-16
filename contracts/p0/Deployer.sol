@@ -115,18 +115,30 @@ contract DeployerP0 is IDeployer {
 
         main.broker().init(main, gnosis, ITrade(address(0)), params.auctionLength);
 
-        string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-        string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        main.stRSR().init(
-            main,
-            stRSRName,
-            stRSRSymbol,
-            params.unstakingDelay,
-            params.rewardPeriod,
-            params.rewardRatio
-        );
+        // Init StRSR
+        {
+            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
+            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            main.stRSR().init(
+                main,
+                stRSRName,
+                stRSRSymbol,
+                params.unstakingDelay,
+                params.rewardPeriod,
+                params.rewardRatio
+            );
+        }
 
-        main.rToken().init(main, name, symbol, mandate, params.issuanceRate, params.maxRedemption);
+        // Init RToken
+        main.rToken().init(
+            main,
+            name,
+            symbol,
+            mandate,
+            params.issuanceRate,
+            params.maxRedemption,
+            params.dustSupply
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

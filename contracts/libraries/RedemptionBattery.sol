@@ -19,25 +19,30 @@ library RedemptionBatteryLib {
     }
 
     /// @param maxRedemption {1} The maximum fraction of the supply that can be redeemed at once
+    /// @param dustSupply {qRTok} The RToken supply at which full redemption becomes emabled
     /// @dev Call after any and all changes to the total supply
-    function update(Battery storage battery, uint192 maxRedemption) internal {
-        // Fix.eq is ==
-        if (maxRedemption == 0) return;
-
-        uint256 blocks = block.number - battery.lastBlock; // {blocknumber}
-
-        // {qRTok} = {1} * {qRTok}
-        uint256 hourly = maxRedemption.mulu_toUint(battery.lastSupply);
-
-        // {qRTok} = {qRTok} + {qRTok} * {blocknumber} / {blocknumber}
-        uint256 newCharge = battery.charge + (hourly * blocks) / ONE_HOUR_IN_BLOCKS;
-        battery.charge = newCharge > hourly ? hourly : newCharge;
-
-        // Deduct any usage
+    function update(
+        Battery storage battery,
+        uint192 maxRedemption,
+        uint256 dustSupply
+    ) internal {
         uint256 currentSupply = IRToken(address(this)).totalSupply();
-        if (currentSupply < battery.lastSupply) {
-            uint256 redemption = battery.lastSupply - currentSupply;
-            battery.charge -= redemption; // reverts on underflow
+
+        if (maxRedemption > 0 && currentSupply > dustSupply) {
+            uint256 blocks = block.number - battery.lastBlock; // {blocknumber}
+
+            // {qRTok} = {1} * {qRTok}
+            uint256 hourly = maxRedemption.mulu_toUint(battery.lastSupply);
+
+            // {qRTok} = {qRTok} + {qRTok} * {blocknumber} / {blocknumber}
+            uint256 newCharge = battery.charge + (hourly * blocks) / ONE_HOUR_IN_BLOCKS;
+            battery.charge = newCharge > hourly ? hourly : newCharge;
+
+            // Deduct any usage
+            if (currentSupply < battery.lastSupply) {
+                uint256 redemption = battery.lastSupply - currentSupply;
+                battery.charge -= redemption; // reverts on underflow
+            }
         }
 
         // Update cached values
