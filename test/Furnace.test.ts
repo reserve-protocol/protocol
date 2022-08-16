@@ -396,7 +396,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       }
 
       // Charge battery
-      await rToken.connect(owner).setDustSupply(bal)
+      await rToken.connect(owner).setRedemptionVirtualSupply(bal)
       await advanceBlocks(277)
 
       return furnace

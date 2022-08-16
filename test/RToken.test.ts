@@ -272,16 +272,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should allow to update redemptionVirtualSupply if Owner', async () => {
-      await expect(rToken.connect(addr1).setDustSupply(0)).to.be.reverted
-      await rToken.connect(owner).setDustSupply(0)
+      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(0)).to.be.reverted
+      await rToken.connect(owner).setRedemptionVirtualSupply(0)
       expect(await rToken.redemptionVirtualSupply()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setDustSupply(fp('0.15'))).to.be.reverted
-      await rToken.connect(owner).setDustSupply(fp('0.15'))
+      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('0.15'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionVirtualSupply(fp('0.15'))
       expect(await rToken.redemptionVirtualSupply()).to.equal(fp('0.15'))
 
-      await expect(rToken.connect(addr1).setDustSupply(fp('1'))).to.be.reverted
-      await rToken.connect(owner).setDustSupply(fp('1'))
+      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('1'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionVirtualSupply(fp('1'))
       expect(await rToken.redemptionVirtualSupply()).to.equal(fp('1'))
     })
   })
@@ -1490,15 +1490,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
 
-      context('And redemption throttling', function () {
+      context.only('And redemption throttling', function () {
         let redemptionVirtualSupply: BigNumber
         let redeemAmount: BigNumber
 
         beforeEach(async function () {
-          redemptionVirtualSupply = issueAmount.div(10)
+          redemptionVirtualSupply = issueAmount
 
-          // Decrease the dust supply to 1/10th of the issueAmount
-          await rToken.connect(owner).setDustSupply(redemptionVirtualSupply)
+          await rToken.connect(owner).setRedemptionVirtualSupply(redemptionVirtualSupply)
           expect(await rToken.redemptionVirtualSupply()).to.equal(redemptionVirtualSupply)
 
           // Charge battery
@@ -1506,15 +1505,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should be able to do geometric redemptions to scale down supply', async function () {
-          for (let i = 0; i < 50; i++) {
+          for (let i = 0; i < 30; i++) {
             const totalSupply = await rToken.totalSupply()
             if (totalSupply.eq(0)) break
 
             // Charge + redeem
-            redeemAmount = totalSupply.lt(redemptionVirtualSupply)
-              ? totalSupply
-              : issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
             await advanceBlocks(277)
+            redeemAmount = await rToken.redemptionLimit()
 
             await rToken.connect(addr1).redeem(redeemAmount)
             issueAmount = issueAmount.sub(redeemAmount)
@@ -1522,18 +1519,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             expect(await rToken.totalSupply()).to.equal(issueAmount)
 
             // Should reach dust supply before exhausting loop iterations
-            expect(i < 49).to.equal(true)
+            expect(i < 29).to.equal(true)
           }
 
           expect(await rToken.totalSupply()).to.equal(0)
         })
 
-        it('Should revert on larger redemption', async function () {
+        it('Should revert on overly-large redemption #fast', async function () {
           redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
         })
 
-        it('Should allow two redemptions of half value', async function () {
+        it('Should allow two redemptions of half value #fast', async function () {
           redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
