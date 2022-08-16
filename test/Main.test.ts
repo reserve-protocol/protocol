@@ -590,7 +590,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await main.frozen()).to.equal(true)
 
       // Should not be able to change this via fixed-duration freezing
-      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('permanently frozen')
+      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('frozen')
       expect(await main.frozen()).to.equal(true)
       await advanceTime(bn('2').pow(29).toString())
       expect(await main.frozen()).to.equal(true)
@@ -637,7 +637,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Should not be able to start finite-duration freezes either
       await expect(main.connect(addr1).freezeShort()).to.be.revertedWith('frozen')
-      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('permanently frozen')
+      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('frozen')
 
       // Unfreeze
       await main.connect(owner).unfreeze()
