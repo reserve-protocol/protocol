@@ -187,10 +187,11 @@ export interface IConfig {
   auctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
-  issuanceRate: BigNumber
-  maxRedemption: BigNumber
   shortFreeze: BigNumber
   longFreeze: BigNumber
+  issuanceRate: BigNumber
+  maxRedemption: BigNumber
+  dustSupply: BigNumber
 }
 
 export interface IRevenueShare {

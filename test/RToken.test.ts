@@ -254,6 +254,36 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         rToken.connect(owner).setIssuanceRate(MAX_ISSUANCE_RATE.add(1))
       ).to.be.revertedWith('invalid issuanceRate')
     })
+
+    it('Should allow to update maxRedemption if Owner', async () => {
+      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.reverted
+      await rToken.connect(owner).setMaxRedemption(0)
+      expect(await rToken.maxRedemption()).to.equal(0)
+
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.reverted
+      await rToken.connect(owner).setMaxRedemption(fp('0.15'))
+      expect(await rToken.maxRedemption()).to.equal(fp('0.15'))
+
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.reverted
+      await rToken.connect(owner).setMaxRedemption(fp('1'))
+      expect(await rToken.maxRedemption()).to.equal(fp('1'))
+
+      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.reverted
+    })
+
+    it('Should allow to update dustSupply if Owner', async () => {
+      await expect(rToken.connect(addr1).setDustSupply(0)).to.be.reverted
+      await rToken.connect(owner).setDustSupply(0)
+      expect(await rToken.dustSupply()).to.equal(0)
+
+      await expect(rToken.connect(addr1).setDustSupply(fp('0.15'))).to.be.reverted
+      await rToken.connect(owner).setDustSupply(fp('0.15'))
+      expect(await rToken.dustSupply()).to.equal(fp('0.15'))
+
+      await expect(rToken.connect(addr1).setDustSupply(fp('1'))).to.be.reverted
+      await rToken.connect(owner).setDustSupply(fp('1'))
+      expect(await rToken.dustSupply()).to.equal(fp('1'))
+    })
   })
 
   describe('Issuance and Slow Minting', function () {
@@ -1459,6 +1489,57 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
         expect(await rToken.totalSupply()).to.equal(issueAmount)
       })
+
+      context('And redemption throttling', function () {
+        let dustSupply: BigNumber
+        let redeemAmount: BigNumber
+
+        beforeEach(async function () {
+          dustSupply = issueAmount.div(10)
+
+          // Decrease the dust supply to 1/10th of the issueAmount
+          await rToken.connect(owner).setDustSupply(dustSupply)
+          expect(await rToken.dustSupply()).to.equal(dustSupply)
+
+          // Charge battery
+          await advanceBlocks(277)
+        })
+
+        it('Should be able to do geometric redemptions to scale down supply', async function () {
+          for (let i = 0; i < 50; i++) {
+            const totalSupply = await rToken.totalSupply()
+            if (totalSupply.eq(0)) break
+
+            // Charge + redeem
+            redeemAmount = totalSupply.lt(dustSupply)
+              ? totalSupply
+              : issueAmount.mul(config.maxRedemption).div(fp('1'))
+            await advanceBlocks(277)
+
+            await rToken.connect(addr1).redeem(redeemAmount)
+            issueAmount = issueAmount.sub(redeemAmount)
+            expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+            expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+            // Should reach dust supply before exhausting loop iterations
+            expect(i < 49).to.equal(true)
+          }
+
+          expect(await rToken.totalSupply()).to.equal(0)
+        })
+
+        it('Should revert on larger redemption', async function () {
+          redeemAmount = issueAmount.mul(config.maxRedemption).div(fp('1'))
+          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
+        })
+
+        it('Should allow two redemptions of half value', async function () {
+          redeemAmount = issueAmount.mul(config.maxRedemption).div(fp('1'))
+          await rToken.connect(addr1).redeem(redeemAmount.div(2))
+          await rToken.connect(addr1).redeem(redeemAmount.div(2))
+          await expect(rToken.connect(addr1).redeem(redeemAmount.div(2))).to.be.reverted
+        })
+      })
     })
   })
 
@@ -1544,6 +1625,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
     })
   })
+
   context(`Extreme Values`, () => {
     // makeColl: Deploy and register a new constant-price collateral
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {

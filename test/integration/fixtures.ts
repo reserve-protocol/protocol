@@ -649,10 +649,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
-    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    maxRedemption: fp('0'), // disable
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
+    issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+    maxRedemption: fp('0.1'), // 10%
+    dustSupply: fp('1e6'), // 1e6 whole RToken
   }
 
   // Deploy TradingLib external library

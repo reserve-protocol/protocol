@@ -332,6 +332,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           'Manifesto',
           config.issuanceRate,
           config.maxRedemption,
+          config.dustSupply,
         ],
         {
           initializer: 'init',

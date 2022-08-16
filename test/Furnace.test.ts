@@ -15,7 +15,7 @@ import {
   TestIRToken,
   USDCMock,
 } from '../typechain'
-import { advanceTime } from './utils/time'
+import { advanceBlocks, advanceTime } from './utils/time'
 import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import { makeDecayFn } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -443,6 +443,9 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = bn('100e18')
       await rToken.connect(addr1).issue(issueAmount)
       await rToken.connect(addr2).issue(issueAmount)
+
+      // Advance blocks to fill battery
+      await advanceBlocks(277)
     })
 
     it('Melt - One period ', async () => {
