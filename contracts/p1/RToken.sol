@@ -8,6 +8,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
 
@@ -15,7 +16,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
 
 // MAX_ISSUANCE_RATE: 100%
-uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
+uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
 
 /**
  * @title RTokenP1
@@ -23,6 +24,7 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
  */
 
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
+    using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
@@ -38,7 +40,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     uint192 public basketsNeeded; // D18{BU}
 
-    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
+    uint192 public issuanceRate; // D18{1} of RToken supply to issue per block
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
@@ -76,18 +78,24 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
+    RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
+
+    uint192 public maxRedemption; // {1} fraction of supply that can be redeemed at once
+
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
         string calldata mandate_,
-        uint192 issuanceRate_
+        uint192 issuanceRate_,
+        uint192 maxRedemption_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
+        setMaxRedemption(maxRedemption_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -147,6 +155,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         ) {
             // Complete issuance
             _mint(issuer, amtRToken);
+            battery.update(maxRedemption);
+
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -360,6 +370,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // Accept and burn RToken
         _burn(redeemer, amount);
+        battery.update(maxRedemption);
 
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
@@ -388,6 +399,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         revertIfPausedOrFrozen();
         _mint(recipient, amtRToken);
+        battery.update(maxRedemption);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -395,6 +407,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     function melt(uint256 amtRToken) external {
         revertIfPausedOrFrozen();
         _burn(_msgSender(), amtRToken);
+        battery.update(maxRedemption);
         emit Melted(amtRToken);
     }
 
@@ -419,6 +432,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
+    }
+
+    /// @custom:governance
+    function setMaxRedemption(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit MaxRedemptionSet(maxRedemption, val);
+        maxRedemption = val;
     }
 
     /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
@@ -549,6 +569,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         _mint(account, amtRToken);
+        battery.update(maxRedemption);
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;

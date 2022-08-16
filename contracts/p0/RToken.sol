@@ -66,13 +66,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         string memory name_,
         string memory symbol_,
         string calldata mandate_,
-        uint192 issuanceRate_
+        uint192 issuanceRate_,
+        uint192
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
+
+        // TODO
     }
 
     function setIssuanceRate(uint192 val) public governance {

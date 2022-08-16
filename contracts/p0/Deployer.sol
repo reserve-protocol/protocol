@@ -126,7 +126,7 @@ contract DeployerP0 is IDeployer {
             params.rewardRatio
         );
 
-        main.rToken().init(main, name, symbol, mandate, params.issuanceRate);
+        main.rToken().init(main, name, symbol, mandate, params.issuanceRate, params.maxRedemption);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
