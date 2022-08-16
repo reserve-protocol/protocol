@@ -331,8 +331,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
           'RTKN',
           'Manifesto',
           config.issuanceRate,
-          config.maxRedemption,
-          config.dustSupply,
+          config.maxRedemptionCharge,
+          config.redemptionVirtualSupply,
         ],
         {
           initializer: 'init',

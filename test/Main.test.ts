@@ -367,8 +367,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'RTKN',
           'Manifesto',
           config.issuanceRate,
-          config.maxRedemption,
-          config.dustSupply
+          config.maxRedemptionCharge,
+          config.redemptionVirtualSupply
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 

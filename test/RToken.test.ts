@@ -255,34 +255,34 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid issuanceRate')
     })
 
-    it('Should allow to update maxRedemption if Owner', async () => {
+    it('Should allow to update maxRedemptionCharge if Owner', async () => {
       await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.reverted
       await rToken.connect(owner).setMaxRedemption(0)
-      expect(await rToken.maxRedemption()).to.equal(0)
+      expect(await rToken.maxRedemptionCharge()).to.equal(0)
 
       await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.reverted
       await rToken.connect(owner).setMaxRedemption(fp('0.15'))
-      expect(await rToken.maxRedemption()).to.equal(fp('0.15'))
+      expect(await rToken.maxRedemptionCharge()).to.equal(fp('0.15'))
 
       await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.reverted
       await rToken.connect(owner).setMaxRedemption(fp('1'))
-      expect(await rToken.maxRedemption()).to.equal(fp('1'))
+      expect(await rToken.maxRedemptionCharge()).to.equal(fp('1'))
 
       await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.reverted
     })
 
-    it('Should allow to update dustSupply if Owner', async () => {
+    it('Should allow to update redemptionVirtualSupply if Owner', async () => {
       await expect(rToken.connect(addr1).setDustSupply(0)).to.be.reverted
       await rToken.connect(owner).setDustSupply(0)
-      expect(await rToken.dustSupply()).to.equal(0)
+      expect(await rToken.redemptionVirtualSupply()).to.equal(0)
 
       await expect(rToken.connect(addr1).setDustSupply(fp('0.15'))).to.be.reverted
       await rToken.connect(owner).setDustSupply(fp('0.15'))
-      expect(await rToken.dustSupply()).to.equal(fp('0.15'))
+      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('0.15'))
 
       await expect(rToken.connect(addr1).setDustSupply(fp('1'))).to.be.reverted
       await rToken.connect(owner).setDustSupply(fp('1'))
-      expect(await rToken.dustSupply()).to.equal(fp('1'))
+      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('1'))
     })
   })
 
@@ -1491,15 +1491,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       context('And redemption throttling', function () {
-        let dustSupply: BigNumber
+        let redemptionVirtualSupply: BigNumber
         let redeemAmount: BigNumber
 
         beforeEach(async function () {
-          dustSupply = issueAmount.div(10)
+          redemptionVirtualSupply = issueAmount.div(10)
 
           // Decrease the dust supply to 1/10th of the issueAmount
-          await rToken.connect(owner).setDustSupply(dustSupply)
-          expect(await rToken.dustSupply()).to.equal(dustSupply)
+          await rToken.connect(owner).setDustSupply(redemptionVirtualSupply)
+          expect(await rToken.redemptionVirtualSupply()).to.equal(redemptionVirtualSupply)
 
           // Charge battery
           await advanceBlocks(277)
@@ -1511,9 +1511,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             if (totalSupply.eq(0)) break
 
             // Charge + redeem
-            redeemAmount = totalSupply.lt(dustSupply)
+            redeemAmount = totalSupply.lt(redemptionVirtualSupply)
               ? totalSupply
-              : issueAmount.mul(config.maxRedemption).div(fp('1'))
+              : issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
             await advanceBlocks(277)
 
             await rToken.connect(addr1).redeem(redeemAmount)
@@ -1529,12 +1529,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should revert on larger redemption', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemption).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
         })
 
         it('Should allow two redemptions of half value', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemption).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await expect(rToken.connect(addr1).redeem(redeemAmount.div(2))).to.be.reverted
