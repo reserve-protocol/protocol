@@ -182,7 +182,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newMain: MainP1 = <MainP1>await upgrades.deployProxy(
         MainFactory,
-        [components, rsr.address, 0],
+        [components, rsr.address, 1, 1],
         {
           initializer: 'init',
           kind: 'uups',
@@ -325,7 +325,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RToken', async () => {
       const newRToken: RTokenP1 = <RTokenP1>await upgrades.deployProxy(
         RTokenFactory,
-        [main.address, 'RTKN RToken', 'RTKN', 'Manifesto', config.issuanceRate],
+        [
+          main.address,
+          'RTKN RToken',
+          'RTKN',
+          'Manifesto',
+          config.issuanceRate,
+          config.maxRedemption,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
