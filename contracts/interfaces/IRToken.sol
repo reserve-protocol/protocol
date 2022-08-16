@@ -146,6 +146,9 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// @return {BU} How many baskets are being targeted
     function basketsNeeded() external view returns (uint192);
+
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256);
 }
 
 interface TestIRToken is IRToken {

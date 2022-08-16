@@ -25,13 +25,7 @@ library RedemptionBatteryLib {
         uint192 chargeToUse,
         uint192 maxCapacity
     ) internal {
-        uint48 blocks = uint48(block.number) - battery.lastBlock; // {blocks}
-
-        // {1} = {1} + {1/hour} * {blocks} / {blocks/hour}
-        uint192 charge = battery.lastCharge + ((maxCapacity * blocks) / BLOCKS_PER_HOUR);
-        // maxCapacity is <= FIX_ONE; maxCapacity * blocks <= 1e37
-
-        if (charge > maxCapacity) charge = maxCapacity;
+        uint192 charge = currentCharge(battery, maxCapacity);
 
         // Deduct any usage
         charge -= chargeToUse; // reverts on underflow
@@ -39,5 +33,20 @@ library RedemptionBatteryLib {
         // Update battery
         battery.lastCharge = charge;
         battery.lastBlock = uint48(block.number);
+    }
+
+    /// @param maxCapacity {1/hour} The max fraction of the supply that can be used in <=1 hour
+    /// @return charge {1} The current battery charge, after accumulation
+    function currentCharge(Battery storage battery, uint192 maxCapacity)
+        internal
+        view
+        returns (uint192 charge)
+    {
+        uint48 blocks = uint48(block.number) - battery.lastBlock; // {blocks}
+
+        // maxCapacity is <= FIX_ONE; maxCapacity * blocks <= 1e37
+        // {1} = {1} + {1/hour} * {blocks} / {blocks/hour}
+        charge = battery.lastCharge + ((maxCapacity * blocks) / BLOCKS_PER_HOUR);
+        if (charge > maxCapacity) charge = maxCapacity;
     }
 }

@@ -80,7 +80,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // === Redemption battery ===
 
-    RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
+    RedemptionBatteryLib.Battery private battery;
 
     // set to 0 to disable
     uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
@@ -457,6 +457,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
+    }
+
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
+
+        // {qRTok} = D18{1} * {qRTok} / D18
+        return (battery.currentCharge(maxRedemptionCharge) * supply) / FIX_ONE;
     }
 
     // ==== private ====

@@ -65,7 +65,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     // === Redemption battery ===
 
-    RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
+    RedemptionBatteryLib.Battery private battery;
 
     // set to 0 to disable
     uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
@@ -323,6 +323,15 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+    }
+
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
+
+        // {qRTok} = {1} * {qRTok}
+        return battery.currentCharge(maxRedemptionCharge).mulu_toUint(supply);
     }
 
     /// Tries to vest an issuance
