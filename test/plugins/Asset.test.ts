@@ -119,7 +119,7 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.maxTradeSize()).to.equal(config.tradingRange.max)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenAsset.price()).to.equal(await rToken.price())
+      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
       expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
@@ -143,7 +143,7 @@ describe('Assets contracts #fast', () => {
       expect(await compAsset.price()).to.equal(fp('1.1'))
       expect(await aaveAsset.price()).to.equal(fp('1.2'))
       expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
-      expect(await rTokenAsset.price()).to.equal(await rToken.price())
+      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
     })
 
     it('Should calculate RToken price correctly', async () => {
@@ -156,7 +156,7 @@ describe('Assets contracts #fast', () => {
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
-      expect(await rTokenAsset.price()).to.equal(await rToken.price())
+      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
     })
 
     it('Should revert if price is zero', async () => {

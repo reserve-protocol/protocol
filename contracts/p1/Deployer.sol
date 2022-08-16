@@ -151,7 +151,7 @@ contract DeployerP1 is IDeployer {
         assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.freezeDuration);
+        main.init(components, rsr, params.shortFreeze, params.longFreeze);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -180,28 +180,38 @@ contract DeployerP1 is IDeployer {
         main.broker().init(main, gnosis, implementations.trade, params.auctionLength);
 
         // Init StRSR
-        string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-        string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        main.stRSR().init(
-            main,
-            stRSRName,
-            stRSRSymbol,
-            params.unstakingDelay,
-            params.rewardPeriod,
-            params.rewardRatio
-        );
+        {
+            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
+            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            main.stRSR().init(
+                main,
+                stRSRName,
+                stRSRSymbol,
+                params.unstakingDelay,
+                params.rewardPeriod,
+                params.rewardRatio
+            );
+        }
 
         // Init RToken
-        main.rToken().init(main, name, symbol, mandate, params.issuanceRate);
+        main.rToken().init(
+            main,
+            name,
+            symbol,
+            mandate,
+            params.issuanceRate,
+            params.maxRedemptionCharge,
+            params.redemptionVirtualSupply
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(FREEZE_STARTER, owner);
-        main.grantRole(FREEZE_EXTENDER, owner);
+        main.grantRole(SHORT_FREEZER, owner);
+        main.grantRole(LONG_FREEZER, owner);
         main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(FREEZE_STARTER, address(this));
-        main.renounceRole(FREEZE_EXTENDER, address(this));
+        main.renounceRole(SHORT_FREEZER, address(this));
+        main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);

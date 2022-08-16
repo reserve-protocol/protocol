@@ -137,11 +137,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Stakes an RSR `amount` on the corresponding RToken to earn yield and insure the system
     /// @param rsrAmount {qRSR}
+    /// @dev Staking continues while paused/frozen, without reward handouts
     /// @custom:interaction CEI
-    function stake(uint256 rsrAmount) external notPausedOrFrozen {
+    function stake(uint256 rsrAmount) external {
         require(rsrAmount > 0, "Cannot stake zero");
 
-        _payoutRewards();
+        if (!main.pausedOrFrozen()) _payoutRewards();
 
         // Compute stake amount
         // This is not an overflow risk according to our expected ranges:
@@ -348,6 +349,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // stakeRate else case: D18{qStRSR/qRSR} = {qStRSR} * D18 / {qRSR}
         // downcast is safe: it's at most 1e38 * 1e18 = 1e56
+
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
             : uint192((totalStakes * FIX_ONE_256) / stakeRSR);

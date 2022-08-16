@@ -84,13 +84,21 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// Emitted when the IssuanceRate is set
     event IssuanceRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
+    /// Emitted when the redemption battery max charge is set
+    event MaxRedemptionSet(uint192 indexed oldVal, uint192 indexed newVal);
+
+    /// Emitted when the dust supply is set
+    event RedemptionVirtualSupplySet(uint256 indexed oldVal, uint256 indexed newVal);
+
     // Initialization
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
         string memory mandate_,
-        uint192 issuanceRate_
+        uint192 issuanceRate_,
+        uint192 redemptionBattery_,
+        uint256 redemptionVirtualSupply_
     ) external;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -139,14 +147,26 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @return {BU} How many baskets are being targeted
     function basketsNeeded() external view returns (uint192);
 
-    /// @return p {UoA/rTok} The redemption price of 1 whole RToken in the unit of account
-    function price() external view returns (uint192 p);
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256);
 }
 
 interface TestIRToken is IRToken {
     /// Set the issuance rate as a % of RToken supply
     function setIssuanceRate(uint192) external;
 
-    /// @return {%} The issuance rate as a percentage of the RToken supply
+    /// @return {1} The issuance rate as a percentage of the RToken supply
     function issuanceRate() external view returns (uint192);
+
+    /// Set the fraction of the RToken supply that can be reedemed at once
+    function setMaxRedemption(uint192 val) external;
+
+    /// @return {1} The maximum fraction of the RToken supply that can be redeemed at once
+    function maxRedemptionCharge() external view returns (uint192);
+
+    /// Set the RToken supply at which full redemptions become enabled
+    function setRedemptionVirtualSupply(uint256 val) external;
+
+    /// @return {qRTok} The RToken supply at which full redemptions are enabled
+    function redemptionVirtualSupply() external view returns (uint256);
 }

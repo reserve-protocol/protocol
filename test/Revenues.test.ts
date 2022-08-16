@@ -25,6 +25,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIBroker,
@@ -86,6 +87,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let collateral: Collateral[]
   let erc20s: ERC20Mock[]
   let basket: Collateral[]
+  let rTokenAsset: RTokenAsset
 
   // Config values
   let config: IConfig
@@ -137,6 +139,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rTokenTrader,
       oracleLib,
       main,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Set backingBuffer to 0 to make math easy
@@ -292,7 +295,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.manageToken(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
@@ -302,7 +305,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not claim rewards if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
       })
 
@@ -312,7 +315,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not settle trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
@@ -1761,7 +1764,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should sell collateral as it appreciates and handle revenue auction correctly', async () => {
         // Check Price and Assets value
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1771,7 +1774,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessValue)
         )
@@ -1808,7 +1811,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1886,7 +1889,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value (unchanged)
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -1902,7 +1905,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1913,7 +1916,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
-        expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenAsset.price(), fp('1'), 1)).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessValue)
         )
@@ -1954,7 +1957,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenAsset.price(), fp('1'), 1)).to.equal(true)
         expect(
           near(await facade.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
         ).to.equal(true)
@@ -2040,7 +2043,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         //  Check Price (unchanged) and Assets value (unchanged)
-        expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenAsset.price(), fp('1'), 1)).to.equal(true)
         expect(
           near(await facade.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
         ).to.equal(true)
@@ -2058,7 +2061,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
         // Check Price and Assets value
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2067,7 +2070,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.setExchangeRate(fp('2'))
 
         // Check Price (unchanged) and Assets value (now doubled)
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2103,7 +2106,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value - Supply has doubled
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
         expect(await rToken.totalSupply()).to.equal(newTotalSupply)
 
@@ -2156,7 +2159,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rToken.price()).to.equal(updatedRTokenPrice)
+        expect(await rTokenAsset.price()).to.equal(updatedRTokenPrice)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
 
         // Check no funds in Market
@@ -2169,7 +2172,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should mint RTokens and handle remainder when collateral appreciates - Uneven quantity', async () => {
         // Check Price and Assets value
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2179,7 +2182,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
-        expect(near(await rToken.price(), fp('1'), 1)).to.equal(true)
+        expect(near(await rTokenAsset.price(), fp('1'), 1)).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessTotalValue)
         )
@@ -2256,7 +2259,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessRToken)
         )
@@ -2384,7 +2387,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rToken.price()).to.equal(updatedRTokenPrice)
+        expect(await rTokenAsset.price()).to.equal(updatedRTokenPrice)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessRToken)
         )

@@ -13,6 +13,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIStRSR,
@@ -34,6 +35,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
   // Assets
   let collateral: Collateral[]
+  let rTokenAsset: RTokenAsset
 
   // Tokens and Assets
   let initialBal: BigNumber
@@ -80,6 +82,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       basketHandler,
       oracleLib,
       aaveToken,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Token0
@@ -161,7 +164,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
-      expect(await rToken.price()).to.equal(fp('0.9'))
+      expect(await rTokenAsset.price()).to.equal(fp('0.9'))
     })
 
     it('should increase the issuance basket as collateral loses value', async () => {
@@ -204,9 +207,9 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
       // RToken price should follow depegging
-      expect(await rToken.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1'))
       await setOraclePrice(collateral0.address, bn('2e8')) // 100% increase, would normally trigger soft default
-      expect(await rToken.price()).to.equal(fp('2'))
+      expect(await rTokenAsset.price()).to.equal(fp('2'))
 
       // Should remain SOUND because missing soft default checks
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)

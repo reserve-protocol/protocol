@@ -101,15 +101,43 @@ While an issuance is pending in the mempool, the quantities of tokens that will 
 
 On the other hand, while a redemption is pending in the mempool, the quantities of collateral tokens the redeemer will receive steadily decreases. If a furnace melting happens in that time the quantities will be increased, causing the redeemer to get more than they expected.
 
+## System States
+
+- `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions + StRSR.stake
+- `frozen`: all interactions disabled EXCEPT ERC20 functions + StRSR.stake
+
+Freezing can occur over two timescales: short freezing + long freezing.
+
+Non-owner roles:
+
+- `PAUSER`
+- `SHORT_FREEZER`
+- `LONG_FREEZER`
+
+Design intentions:
+
+- The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
+- The SHORT_FREEZER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code and can act quickly, and with some tolerance for false positives though less than in pausing. If a bug is detected, a short freeze can be triggered which will automatically expire if it is not renewed by LONG_FREEZER. The OWNER (governance) may also step in and unfreeze at anytime.
+- The LONG_FREEZER role should be assigned to an address that will highly optimize for no false positives. It is much longer than the short freeze. It exists so that in the case of a zero-day exploit, governance can act before the system unfreezes and resumes functioning.
+
 ## Deployment Parameters
 
-### `maxTradeVolume`
+### `TradingRange.max`
 
-Dimension: `{UoA}`
+Dimension: `{qRTok}`
 
-In general the max trade volume is a value in the unit of account that caps how many tokens are traded at once. Generally each asset plugin has its own `maxTradeVolume`, and both assets that are part of the trade participate to constrain trade volume. However, in this case the deployment parameter is just for the RToken asset. At deployment-time the RSR asset is already immutably deployed and it is up to the user to specify `maxTradeVolume` for further individual collateral deployments.
+The max of the trading range is how many RTokens can be traded at once. Each asset plugin has its own `TradingRange`; this deployment param only parametrizes the RToken asset. During a trade, both the selling and buying token contribute sizing constraints.
 
-Anticipated value: `1e6` = $1m
+Anticipated value: `1e24` = $1m RToken at $1 an RToken
+Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
+
+### `TradingRange.min`
+
+Dimension: `{qRTok}`
+
+The min of the trading range is a value in the unit of account that sets a floor on how many RTokens can be traded at oncen. Each asset plugin has its own `TradingRange`; this deployment param only parametrizes the RToken asset. During a trade, both the selling and buying token contribute sizing constraints.
+
+Anticipated value: `1e22` = $10k RToken at $1 an RToken
 Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
 
 ### `rewardPeriod`
@@ -123,7 +151,7 @@ Reasonable range: 10 to 31536000 (1 year)
 
 ### `rewardRatio`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
@@ -134,9 +162,9 @@ Reasonable range: 1e9 to 1e18
 
 Dimension: `{seconds}`
 
-The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It may also be influenced by the length of governance votes.
+The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It must be longer than governance cycle, and must be long enough that RSR stakers do not unstake in advance of foreseeable basket change.
 
-Anticipated value: `604800` = 1 week
+Anticipated value: `1209600` = 2 weeks
 Reasonable range: 1 to 31536000
 
 ### `tradingDelay`
@@ -159,7 +187,7 @@ Reasonable range: 60 to 3600
 
 ### `backingBuffer`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This helps cause collateral tokens to more reliably be converted into RToken, which is the most efficient form of revenue production.
 
@@ -168,47 +196,64 @@ Reasonable range: 1e12 to 1e18
 
 ### `maxTradeSlippage`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
 
 Anticipated value: `0.01e18` = 1%
 Reasonable range: 1e12 to 1e18
 
-### `dustAmount`
+### `shortFreeze`
 
-Dimension: `{UoA}`
+Dimension: `{s}`
 
-The dust amount is a value in the unit of account that represents the smallest amount of value that it is worth executing a trade for. This parameter is a function of the strength of time preferences during recapitalization. It should be set such that the protocol is happy to accept donated assets and run a recapitalization auction with them, rather than proceed to RSR seizure.
+The number of seconds an initial freeze lasts. Governance can freeze forever.
 
-Anticipated value: `1000e18` = $1,000
-Reasonable range: 1e18 to 1e24
+Anticipated value: `259200` = 3 days
+Reasonable range: 3600 to 2592000 (1 hour to 1 month)
+
+### `longFreeze`
+
+Dimension: `{s}`
+
+The number of seconds a freeze extensions freeze lasts. A long freeze / extension can only occur during a short freeze.
+
+Anticipated value: `2592000` = 30 days
+Reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 ### `issuanceRate`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
 
-### `freezeDuration`
+### `maxRedemptionCharge`
 
-Dimension: `{s}`
+Dimension: `{1}`
 
-The number of seconds a (non-forever) freeze lasts. Governance can freeze forever.
+The max redemption is a percentage value that describes what proportion of the RToken supply to allow redemption of per-hour. It controls how quickly the protocol can scale down RToken supply.
 
-Anticipated value: `432000` = 5 days
-Reasonable range: 3600 to 31536000
+Set to 0 to disable redemption throttling altogether.
 
-## System States
+Anticipated value: `5e16` = 5% per hour
+Reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
 
-- `paused`: all interactions disabled EXCEPT RToken.redeem + RToken.cancel + ERC20 functions
-- `frozen`: all interactions disabled EXCEPT ERC20 functions
+### `redemptionVirtualSupply`
 
-Design intentions:
+Dimension: `{qRTok}`
 
-- The PAUSER role should be assigned to an address that is able to act quickly in response to off-chain events, such as a Chainlink feed failing. It is acceptable for there to be false positives, since redemption remains enabled.
-- The FREEZE_STARTER role should be assigned to an address that might reasonably be expected to be the first to detect a bug in the code. If a bug is detected, a freeze can be triggered which will automatically expire if it is not renewed by FREEZE_EXTENDER. The OWNER (governance) may also step in and unfreeze at anytime. It's important that the FREEZE_STARTER is assigned to an address that can be expected to produce few-to-zero false positives, as compromising on redemption should be strongly avoided.
-- The FREEZE_EXTENDER role can eventually be assigned to a different address, or perhaps renounced, once there is confidence in the ability of governance to act (honestly + aligned) within a fixed time window.
+The redemption virtual supply is the minimum value to use to size the redemption battery. The redemption capacity is at least maxRedemptionCharge \* redemptionVirtualSupply.
+
+Anticipated value: `2e25` = $20,000,000 at $1 an RToken
+Reasonable range: 1e21 to 1e27
+
+### Governance Parameters
+
+Governance is 7 days end-to-end.
+
+- Voting delay: 1 day
+- Voting period: 2 days
+- Execution delay: 4 days

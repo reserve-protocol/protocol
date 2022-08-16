@@ -17,9 +17,6 @@ import "./ITrade.sol";
  * meaning that after deployment there is freedom to allow parametrizations to deviate.
  */
 struct DeploymentParams {
-    // === Pausing ===
-    uint32 freezeDuration; // {s} how long a oneshot pause lasts
-    //
     // === RToken trade sizing ===
     TradingRange tradingRange; // {rTok}
     //
@@ -36,11 +33,18 @@ struct DeploymentParams {
     // === BackingManager ===
     uint32 tradingDelay; // {s} how long to wait until starting auctions after switching basket
     uint32 auctionLength; // {s} the length of an auction
-    uint192 backingBuffer; // {%} how much extra backing collateral to keep
-    uint192 maxTradeSlippage; // {%} max slippage acceptable in a trade
+    uint192 backingBuffer; // {1} how much extra backing collateral to keep
+    uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
+    // === Pausing ===
+    uint32 shortFreeze; // {s} how long an initial freeze lasts
+    uint32 longFreeze; // {s} how long each freeze extension lasts
     // === RToken ===
-    uint192 issuanceRate; // {%} number of RToken to issue per block / (RToken value)
+    uint192 issuanceRate; // {1} number of RToken to issue per block / (RToken value)
+    uint192 maxRedemptionCharge; // {1} max fraction of RToken supply that can be redeemed at once
+    uint256 redemptionVirtualSupply; // {qRTok}
+    // The min value of total supply to use for redemption throttling
+    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
 }
 
 /**

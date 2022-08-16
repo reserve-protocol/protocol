@@ -13,6 +13,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
 
@@ -34,6 +35,7 @@ struct SlowIssuance {
 contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
+    using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20 for IERC20;
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
@@ -61,24 +63,50 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     uint192 public issuanceRate; // {1/block} of RToken supply to issue per block
 
+    // === Redemption battery ===
+
+    RedemptionBatteryLib.Battery private battery;
+
+    // set to 0 to disable
+    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
+
+    uint256 public redemptionVirtualSupply; // {qRTok}
+
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
         string calldata mandate_,
-        uint192 issuanceRate_
+        uint192 issuanceRate_,
+        uint192 maxRedemptionCharge_,
+        uint256 redemptionVirtualSupply_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
+        setMaxRedemption(maxRedemptionCharge_);
+        setRedemptionVirtualSupply(redemptionVirtualSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
         require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
+    }
+
+    /// @custom:governance
+    function setMaxRedemption(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit MaxRedemptionSet(maxRedemptionCharge, val);
+        maxRedemptionCharge = val;
+    }
+
+    /// @custom:governance
+    function setRedemptionVirtualSupply(uint256 val) public governance {
+        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
+        redemptionVirtualSupply = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -244,6 +272,17 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // Accept and burn RToken
         _burn(_msgSender(), amount);
 
+        // Revert if redemption exceeds battery capacity
+        if (maxRedemptionCharge > 0) {
+            // {1} = {qRTok} / {qRTok}
+            uint192 dischargeAmt = FIX_ONE.muluDivu(
+                amount,
+                Math.max(redemptionVirtualSupply, totalSupply()),
+                CEIL
+            );
+            battery.discharge(dischargeAmt, maxRedemptionCharge);
+        }
+
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
 
@@ -290,40 +329,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         basketsNeeded = basketsNeeded_;
     }
 
-    /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken in UoA
-    function price() external view returns (uint192 p) {
-        require(totalSupply() > 0, "no supply");
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
 
-        // {qRTok} = {qRTok}
-        uint256 rTokAmt = 10**decimals();
-
-        // {BU} = {BU} * {qRTok} / {qRTok}
-        uint192 amtBUs = basketsNeeded.muluDivu(rTokAmt, totalSupply());
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        address backingMgr = address(main.backingManager());
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20s.length; i++) {
-            IAsset asset = main.assetRegistry().toAsset(IERC20(erc20s[i]));
-
-            // {qTok} = {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = mulDiv256(
-                FIX_ONE_256,
-                IERC20(erc20s[i]).balanceOf(backingMgr),
-                totalSupply()
-            );
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // {tok} = {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(asset.erc20().decimals()));
-
-            // {UoA} = {UoA} + ({UoA/tok} * {tok})
-            p = p.plus(asset.price().mul(q));
-        }
+        // {qRTok} = {1} * {qRTok}
+        return battery.currentCharge(maxRedemptionCharge).mulu_toUint(supply);
     }
 
     /// Tries to vest an issuance
@@ -339,6 +351,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);
+
             issued = iss.amount;
 
             emit BasketsNeededChanged(basketsNeeded, basketsNeeded.plus(iss.baskets));

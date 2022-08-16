@@ -17,6 +17,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIMain,
@@ -76,6 +77,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let backupCollateral4: ATokenFiatCollateral
   let basket: Collateral[]
   let basketsNeededAmts: BigNumber[]
+  let rTokenAsset: RTokenAsset
 
   // Config values
   let config: IConfig
@@ -136,6 +138,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       basketHandler,
       oracleLib,
       main,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -803,7 +806,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not trade if frozen', async () => {
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
       })
 
@@ -868,7 +871,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -883,7 +886,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         // Check price in USD of the current redemption basket (0)
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Trigger recapitalization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -914,7 +917,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current redemption basket (0)
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
@@ -959,7 +962,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
@@ -980,7 +983,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Switch Basket
         await expect(basketHandler.connect(owner).refreshBasket())
@@ -995,7 +998,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         // Check price in USD of the current RToken -- no backing swapped in yet
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Trigger recapitalization
         const minBuyAmt: BigNumber = issueAmount
@@ -1029,7 +1032,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
         // Check price in USD of the current RToken -- no backing currently
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(sellAmt)
@@ -1075,7 +1078,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check price in USD of the current RToken - Haircut of 1%+dust taken
         const dustPriceImpact = fp('1').mul(config.tradingRange.min).div(issueAmount)
-        expect(await rToken.price()).to.equal(fp('0.99').sub(dustPriceImpact.mul(2)))
+        expect(await rTokenAsset.price()).to.equal(fp('0.99').sub(dustPriceImpact.mul(2)))
       })
 
       it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
@@ -1091,7 +1094,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -1111,7 +1114,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken -- no backing swapped in yet
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Trigger recapitalization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
@@ -1142,7 +1145,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken -- still zero while auction ongoing
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Check Gnosis
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
@@ -1202,7 +1205,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken -- recovered 1-minTradeSlippage
-        expect(await rToken.price()).to.equal(fp('0.99'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.99'))
 
         // Check Gnosis
         expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
@@ -1250,7 +1253,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
       it('Should not trade if only held asset is DISABLED and no RSR available', async () => {
@@ -1276,7 +1279,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Set Token0 to default - 50% price reduction
         await setOraclePrice(collateral0.address, bn('0.5e8'))
@@ -1310,7 +1313,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - No backing = 0 price
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Running auctions should not trigger recapitalization
         await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
@@ -1364,7 +1367,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -1392,7 +1395,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Running auctions will trigger recapitalization - only half of the balance is available
         const sellAmt: BigNumber = (await token0.balanceOf(backingManager.address)).div(2)
@@ -1421,7 +1424,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - no backing held yet
-        expect(await rToken.price()).to.equal(fp('0'))
+        expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -1470,7 +1473,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - regained a quarter
-        expect(await rToken.price()).to.equal(fp('0.25'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.25'))
 
         // Perform Mock Bids (addr1 has balance)
         // Assume fair price, get half of the tokens (because price reduction was 50%)
@@ -1527,7 +1530,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - half now
-        expect(await rToken.price()).to.equal(fp('0.5'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.5'))
 
         // Should have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmtRSR)) // Sent to market (auction)
@@ -1570,7 +1573,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
       it('Should recapitalize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
@@ -1606,7 +1609,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -1942,7 +1945,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
       it('Should use exceeding RSR in Backing Manager before seizing - Using RSR', async () => {
@@ -1967,7 +1970,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check stakes
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
@@ -2057,7 +2060,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - still half to recapitalize
-        expect(await rToken.price()).to.equal(fp('0.5'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.5'))
 
         // Should have seized RSR  - Nothing in backing manager so far
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount.sub(sellAmtRSR)) // Sent to market (auction)
@@ -2133,7 +2136,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
     })
 
@@ -2205,7 +2208,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2257,7 +2260,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - With the new basket
-        expect(await rToken.price()).to.equal(fp('0.75'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.75'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2350,7 +2353,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - 12.5% to recapitalize
-        expect(await rToken.price()).to.equal(fp('0.875'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.875'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2409,7 +2412,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2455,7 +2458,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2518,7 +2521,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - With the new basket
-        expect(await rToken.price()).to.equal(fp('0.75'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.75'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2618,7 +2621,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('0.875'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.875'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2691,7 +2694,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - only 5% left to buy
-        expect(await rToken.price()).to.equal(fp('0.95'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.95'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2753,7 +2756,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2787,7 +2790,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2829,7 +2832,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - only 25% valuable
-        expect(await rToken.price()).to.equal(fp('0.25'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.25'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2920,7 +2923,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - 25% plus 20% of another 25%
-        expect(await rToken.price()).to.equal(fp('0.45'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.45'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -2983,7 +2986,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('0.65'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.65'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3068,7 +3071,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - almost there!
-        expect(await rToken.price()).to.equal(fp('0.81265'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.81265'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3124,7 +3127,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check price in USD of the current RToken - Haircut of 15.02% taken (5% lost of each of the three defaulted tokens)
         // plus 2 dust amounts
-        expect(await rToken.price()).to.equal(fp('0.8498'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.8498'))
 
         // Check quotes - reduced by 15.01% as well (less collateral is required to match the new price)
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3163,7 +3166,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken
-        expect(await rToken.price()).to.equal(fp('1'))
+        expect(await rTokenAsset.price()).to.equal(fp('1'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3205,7 +3208,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - only 25% collateral around
-        expect(await rToken.price()).to.equal(fp('0.25'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.25'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3291,7 +3294,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - now 37.% recapitalized
-        expect(await rToken.price()).to.equal(fp('0.375'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.375'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3355,7 +3358,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Remains the same
-        expect(await rToken.price()).to.equal(fp('0.5'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.5'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3439,7 +3442,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - small improvement but still very uncapitalized
-        expect(await rToken.price()).to.equal(fp('0.53125'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.53125'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3529,7 +3532,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - messy numbers at this point
-        expect(await rToken.price()).to.be.closeTo(fp('0.6'), fp('0.01'))
+        expect(await rTokenAsset.price()).to.be.closeTo(fp('0.6'), fp('0.01'))
 
         // Check quotes
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
@@ -3594,7 +3597,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check price in USD of the current RToken - Haircut of 37.53% taken
-        expect(await rToken.price()).to.equal(fp('0.6247'))
+        expect(await rTokenAsset.price()).to.equal(fp('0.6247'))
 
         // Check quotes - reduced by 37.53% as well (less collateral is required to match the new price)
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))

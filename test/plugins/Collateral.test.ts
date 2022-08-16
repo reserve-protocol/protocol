@@ -19,6 +19,7 @@ import {
   MockV3Aggregator,
   NonFiatCollateral,
   OracleLib,
+  RTokenAsset,
   SelfReferentialCollateral,
   StaticATokenMock,
   TestIBackingManager,
@@ -56,6 +57,7 @@ describe('Collateral contracts', () => {
   let usdcCollateral: FiatCollateral
   let aTokenCollateral: ATokenFiatCollateral
   let cTokenCollateral: CTokenFiatCollateral
+  let rTokenAsset: RTokenAsset
 
   // Aave / Compound / Chainlink
   let compoundMock: ComptrollerMock
@@ -98,6 +100,7 @@ describe('Collateral contracts', () => {
       rToken,
       facade,
       oracleLib,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
@@ -252,7 +255,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Check RToken price
-      expect(await rToken.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
@@ -277,7 +280,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.04'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await rToken.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {

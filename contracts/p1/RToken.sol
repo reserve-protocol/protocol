@@ -8,6 +8,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
 
@@ -15,7 +16,7 @@ import "contracts/p1/mixins/RewardableLib.sol";
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
 
 // MAX_ISSUANCE_RATE: 100%
-uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
+uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
 
 /**
  * @title RTokenP1
@@ -23,6 +24,7 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {%}
  */
 
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
+    using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
@@ -38,7 +40,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     uint192 public basketsNeeded; // D18{BU}
 
-    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
+    uint192 public issuanceRate; // D18{1} of RToken supply to issue per block
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
@@ -76,26 +78,40 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     mapping(address => IssueQueue) public issueQueues;
 
+    // === Redemption battery ===
+
+    RedemptionBatteryLib.Battery private battery;
+
+    // set to 0 to disable
+    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
+
+    // {qRTok} the min value of total supply to use for redemption throttling
+    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
+    uint256 public redemptionVirtualSupply;
+
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
         string calldata mandate_,
-        uint192 issuanceRate_
+        uint192 issuanceRate_,
+        uint192 maxRedemptionCharge_,
+        uint256 redemptionVirtualSupply_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
+        setMaxRedemption(maxRedemptionCharge_);
+        setRedemptionVirtualSupply(redemptionVirtualSupply_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external {
+    function issue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
-        revertIfPausedOrFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -147,6 +163,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         ) {
             // Complete issuance
             _mint(issuer, amtRToken);
+
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -241,8 +258,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
     /// @custom:interaction CEI
-    function vest(address account, uint256 endId) external {
-        revertIfPausedOrFrozen();
+    function vest(address account, uint256 endId) external notPausedOrFrozen {
         // == Keepers ==
         main.assetRegistry().refresh();
 
@@ -294,8 +310,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external {
-        revertIfFrozen();
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -313,9 +328,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external {
+    function redeem(uint256 amount) external notFrozen {
         require(amount > 0, "Cannot redeem zero");
-        revertIfFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -361,6 +375,16 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Accept and burn RToken
         _burn(redeemer, amount);
 
+        // Revert if redemption exceeds battery capacity
+        if (maxRedemptionCharge > 0) {
+            uint256 supply = totalSupply();
+            if (supply < redemptionVirtualSupply) supply = redemptionVirtualSupply;
+
+            // {1} = {qRTok} / {qRTok}
+            uint192 dischargeAmt = uint192((FIX_ONE_256 * amount + (supply - 1)) / supply);
+            battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
+        }
+
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
@@ -384,33 +408,29 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amtRToken) external {
+    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
-        revertIfPausedOrFrozen();
         _mint(recipient, amtRToken);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external {
-        revertIfPausedOrFrozen();
+    function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
-        revertIfPausedOrFrozen();
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external {
-        revertIfPausedOrFrozen();
+    function claimAndSweepRewards() external notPausedOrFrozen {
         RewardableLibP1.claimAndSweepRewards();
     }
 
@@ -421,44 +441,31 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         issuanceRate = val;
     }
 
-    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
-    function price() external view returns (uint192 p) {
-        require(totalSupply() > 0, "no supply");
+    /// @custom:governance
+    function setMaxRedemption(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit MaxRedemptionSet(maxRedemptionCharge, val);
+        maxRedemptionCharge = val;
+    }
 
-        // downcast is safe: basketsNeeded is <= 1e39
-        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply());
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        uint256 erc20length = erc20s.length;
-        address backingMgr = address(main.backingManager());
-        IAssetRegistry assetRegistry = main.assetRegistry();
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-
-            // {qTok} =  {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
-                (totalSupply());
-
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
-
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
-        }
+    /// @custom:governance
+    function setRedemptionVirtualSupply(uint256 val) public governance {
+        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
+        redemptionVirtualSupply = val;
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
+    }
+
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
+
+        // {qRTok} = D18{1} * {qRTok} / D18
+        return (battery.currentCharge(maxRedemptionCharge) * supply) / FIX_ONE;
     }
 
     // ==== private ====
@@ -549,6 +556,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         _mint(account, amtRToken);
+
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;
@@ -566,9 +574,4 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
     }
-
-    // solhint-disable no-empty-blocks
-    function revertIfFrozen() private view notFrozen {}
-
-    function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }
