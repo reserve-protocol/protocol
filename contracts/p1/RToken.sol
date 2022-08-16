@@ -101,9 +101,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Begin a time-delayed issuance of RToken for basket collateral
     /// @param amtRToken {qTok} The quantity of RToken to issue
     /// @custom:interaction almost but not quite CEI
-    function issue(uint256 amtRToken) external {
+    function issue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
-        revertIfPausedOrFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -251,8 +250,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param account The address of the account to vest issuances for
     /// @custom:completion
     /// @custom:interaction CEI
-    function vest(address account, uint256 endId) external {
-        revertIfPausedOrFrozen();
+    function vest(address account, uint256 endId) external notPausedOrFrozen {
         // == Keepers ==
         main.assetRegistry().refresh();
 
@@ -304,8 +302,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param endId The issuance index to cancel through
     /// @param earliest If true, cancel earliest issuances; else, cancel latest issuances
     /// @custom:interaction CEI
-    function cancel(uint256 endId, bool earliest) external {
-        revertIfFrozen();
+    function cancel(uint256 endId, bool earliest) external notFrozen {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
@@ -323,9 +320,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param amount {qTok} The quantity {qRToken} of RToken to redeem
     /// @custom:action
     /// @custom:interaction CEI
-    function redeem(uint256 amount) external {
+    function redeem(uint256 amount) external notFrozen {
         require(amount > 0, "Cannot redeem zero");
-        revertIfFrozen();
 
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -395,17 +391,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
-    function mint(address recipient, uint256 amtRToken) external {
+    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
-        revertIfPausedOrFrozen();
         _mint(recipient, amtRToken);
         battery.update(maxRedemption);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
-    function melt(uint256 amtRToken) external {
-        revertIfPausedOrFrozen();
+    function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         battery.update(maxRedemption);
         emit Melted(amtRToken);
@@ -413,17 +407,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
-    function setBasketsNeeded(uint192 basketsNeeded_) external {
+    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
-        revertIfPausedOrFrozen();
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
     }
 
     /// Claim all rewards and sweep to BackingManager
     /// @custom:interaction
-    function claimAndSweepRewards() external {
-        revertIfPausedOrFrozen();
+    function claimAndSweepRewards() external notPausedOrFrozen {
         RewardableLibP1.claimAndSweepRewards();
     }
 
@@ -439,41 +431,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(val <= FIX_ONE, "invalid fraction");
         emit MaxRedemptionSet(maxRedemption, val);
         maxRedemption = val;
-    }
-
-    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
-    function price() external view returns (uint192 p) {
-        require(totalSupply() > 0, "no supply");
-
-        // downcast is safe: basketsNeeded is <= 1e39
-        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply());
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        uint256 erc20length = erc20s.length;
-        address backingMgr = address(main.backingManager());
-        IAssetRegistry assetRegistry = main.assetRegistry();
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-
-            // {qTok} =  {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
-                (totalSupply());
-
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
-
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
-        }
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
@@ -587,9 +544,4 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
     }
-
-    // solhint-disable no-empty-blocks
-    function revertIfFrozen() private view notFrozen {}
-
-    function revertIfPausedOrFrozen() private view notPausedOrFrozen {}
 }

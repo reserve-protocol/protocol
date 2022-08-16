@@ -142,9 +142,6 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
 
     /// @return {BU} How many baskets are being targeted
     function basketsNeeded() external view returns (uint192);
-
-    /// @return p {UoA/rTok} The redemption price of 1 whole RToken in the unit of account
-    function price() external view returns (uint192 p);
 }
 
 interface TestIRToken is IRToken {
