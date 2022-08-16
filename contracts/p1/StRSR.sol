@@ -32,8 +32,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     using CountersUpgradeable for CountersUpgradeable.Counter;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint32 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
+    uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
 
     // === ERC20 ===
@@ -93,8 +93,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // ==== Gov Params ====
 
-    uint32 public unstakingDelay; // {s} The minimum loength of time spent in the draft queue
-    uint32 public rewardPeriod; // {s} The number of seconds between revenue payout events
+    uint48 public unstakingDelay; // {s} The minimum loength of time spent in the draft queue
+    uint48 public rewardPeriod; // {s} The number of seconds between revenue payout events
     uint192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
     // === Cache ===
@@ -103,7 +103,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal rsrRewardsAtLastPayout;
 
     // {seconds} The last tim rewards were paid out
-    uint32 internal payoutLastPaid;
+    uint48 internal payoutLastPaid;
 
     // ======================
 
@@ -111,15 +111,15 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        uint32 unstakingDelay_,
-        uint32 rewardPeriod_,
+        uint48 unstakingDelay_,
+        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) external initializer {
         __Component_init(main_);
         __EIP712_init(name_, "1");
         name = name_;
         symbol = symbol_;
-        payoutLastPaid = uint32(block.timestamp);
+        payoutLastPaid = uint48(block.timestamp);
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
         setRewardPeriod(rewardPeriod_);
@@ -332,7 +332,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @dev perhaps astonishingly, this _isn't_ a refresher
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
-        uint32 numPeriods = (uint32(block.timestamp) - payoutLastPaid) / rewardPeriod;
+        uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
         uint192 initRate = stakeRate;
 
@@ -614,7 +614,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// @custom:governance
-    function setUnstakingDelay(uint32 val) public governance {
+    function setUnstakingDelay(uint48 val) public governance {
         require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
@@ -622,7 +622,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     }
 
     /// @custom:governance
-    function setRewardPeriod(uint32 val) public governance {
+    function setRewardPeriod(uint48 val) public governance {
         require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;

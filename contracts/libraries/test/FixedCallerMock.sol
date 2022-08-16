@@ -76,7 +76,7 @@ contract FixedCallerMock {
     function divuRnd(uint192  x, uint256 y, RoundingMode rnd) public pure returns (uint192 ) {
         return FixLib.divu(x, y, rnd);
     }
-    function powu(uint192  x, uint32 y) public pure returns (uint192 ) {
+    function powu(uint192  x, uint48 y) public pure returns (uint192 ) {
         return FixLib.powu(x, y);
     }
     function lt(uint192  x, uint192  y) public pure returns (bool) {

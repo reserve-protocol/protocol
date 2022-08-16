@@ -12,19 +12,19 @@ interface IFurnace is IComponent {
     // Initialization
     function init(
         IMain main_,
-        uint32 period_,
+        uint48 period_,
         uint192 ratio_
     ) external;
 
     /// Emitted when the melting period is changed
     /// @param oldPeriod The old period
     /// @param newPeriod The new period
-    event PeriodSet(uint32 indexed oldPeriod, uint32 indexed newPeriod);
+    event PeriodSet(uint48 indexed oldPeriod, uint48 indexed newPeriod);
 
-    function period() external view returns (uint32);
+    function period() external view returns (uint48);
 
     /// @custom:governance
-    function setPeriod(uint32) external;
+    function setPeriod(uint48) external;
 
     /// Emitted when the melting ratio is changed
     /// @param oldRatio The old ratio

@@ -5,9 +5,9 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "contracts/interfaces/IMain.sol";
 
 uint256 constant LONG_FREEZE_CHARGES = 6; // 6 uses
-uint32 constant MAX_UNFREEZE_AT = type(uint32).max;
-uint32 constant MAX_SHORT_FREEZE = 2592000; // 1 month
-uint32 constant MAX_LONG_FREEZE = 31536000; // 1 year
+uint48 constant MAX_UNFREEZE_AT = type(uint48).max;
+uint48 constant MAX_SHORT_FREEZE = 2592000; // 1 month
+uint48 constant MAX_LONG_FREEZE = 31536000; // 1 year
 
 /**
  * @title Auth
@@ -33,16 +33,16 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     mapping(address => uint256) public longFreezes;
 
-    uint32 public unfreezeAt; // {s} uint32.max to pause indefinitely
-    uint32 public shortFreeze; // {s} length of an initial freeze
-    uint32 public longFreeze; // {s} length of a freeze extension
+    uint48 public unfreezeAt; // {s} uint48.max to pause indefinitely
+    uint48 public shortFreeze; // {s} length of an initial freeze
+    uint48 public longFreeze; // {s} length of a freeze extension
 
     // === Pausing ===
 
     bool public paused;
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Auth_init(uint32 shortFreeze_, uint32 longFreeze_) internal onlyInitializing {
+    function __Auth_init(uint48 shortFreeze_, uint48 longFreeze_) internal onlyInitializing {
         require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
         require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         __AccessControl_init();
@@ -89,7 +89,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     function freezeShort() external onlyRole(SHORT_FREEZER) {
         // Revoke short freezer role after one use
         _revokeRole(SHORT_FREEZER, _msgSender());
-        freezeUntil(uint32(block.timestamp) + shortFreeze);
+        freezeUntil(uint48(block.timestamp) + shortFreeze);
     }
 
     /// Enter a freeze by the `longFreeze` duration
@@ -98,7 +98,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
         // Revoke on 0 charges as a cleanup step
         if (longFreezes[_msgSender()] == 0) _revokeRole(LONG_FREEZER, _msgSender());
-        freezeUntil(uint32(block.timestamp) + longFreeze);
+        freezeUntil(uint48(block.timestamp) + longFreeze);
     }
 
     /// Enter a permanent freeze
@@ -108,8 +108,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// End all freezes
     function unfreeze() external onlyRole(OWNER) {
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp));
-        unfreezeAt = uint32(block.timestamp);
+        emit UnfreezeAtSet(unfreezeAt, uint48(block.timestamp));
+        unfreezeAt = uint48(block.timestamp);
     }
 
     // === Pausing ===
@@ -127,14 +127,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // === Gov params ===
 
     /// @custom:governance
-    function setShortFreeze(uint32 shortFreeze_) external onlyRole(OWNER) {
+    function setShortFreeze(uint48 shortFreeze_) external onlyRole(OWNER) {
         require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
         emit ShortFreezeDurationSet(shortFreeze, shortFreeze_);
         shortFreeze = shortFreeze_;
     }
 
     /// @custom:governance
-    function setLongFreeze(uint32 longFreeze_) external onlyRole(OWNER) {
+    function setLongFreeze(uint48 longFreeze_) external onlyRole(OWNER) {
         require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         emit LongFreezeDurationSet(longFreeze, longFreeze_);
         longFreeze = longFreeze_;
@@ -142,7 +142,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // === Private Helper ===
 
-    function freezeUntil(uint32 newUnfreezeAt) private {
+    function freezeUntil(uint48 newUnfreezeAt) private {
         require(newUnfreezeAt > unfreezeAt, "frozen");
         emit UnfreezeAtSet(unfreezeAt, newUnfreezeAt);
         unfreezeAt = newUnfreezeAt;

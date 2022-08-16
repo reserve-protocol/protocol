@@ -19,13 +19,13 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
 
-    uint32 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+    uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
 
     ITrade public tradeImplementation;
 
     IGnosis public gnosis;
 
-    uint32 public auctionLength; // {s} the length of an auction
+    uint48 public auctionLength; // {s} the length of an auction
 
     bool public disabled;
 
@@ -35,7 +35,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         IMain main_,
         IGnosis gnosis_,
         ITrade tradeImplementation_,
-        uint32 auctionLength_
+        uint48 auctionLength_
     ) external initializer {
         __Component_init(main_);
         gnosis = gnosis_;
@@ -83,7 +83,7 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     // === Setters ===
 
     /// @custom:governance
-    function setAuctionLength(uint32 newAuctionLength) public governance {
+    function setAuctionLength(uint48 newAuctionLength) public governance {
         require(
             newAuctionLength > 0 && newAuctionLength <= MAX_AUCTION_LENGTH,
             "invalid auctionLength"

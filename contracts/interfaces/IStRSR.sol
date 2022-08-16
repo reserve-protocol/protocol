@@ -73,8 +73,8 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Emitted if all the RSR in the unstakin pool is seized, and all ongoing unstaking is voided.
     event AllUnstakingReset(uint256 indexed newEra);
 
-    event UnstakingDelaySet(uint32 indexed oldVal, uint32 indexed newVal);
-    event RewardPeriodSet(uint32 indexed oldVal, uint32 indexed newVal);
+    event UnstakingDelaySet(uint48 indexed oldVal, uint48 indexed newVal);
+    event RewardPeriodSet(uint48 indexed oldVal, uint48 indexed newVal);
     event RewardRatioSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     // Initialization
@@ -82,8 +82,8 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
         IMain main_,
         string memory name_,
         string memory symbol_,
-        uint32 unstakingDelay_,
-        uint32 rewardPeriod_,
+        uint48 unstakingDelay_,
+        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) external;
 
@@ -117,17 +117,17 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
 }
 
 interface TestIStRSR is IStRSR {
-    function rewardPeriod() external view returns (uint32);
+    function rewardPeriod() external view returns (uint48);
 
-    function setRewardPeriod(uint32) external;
+    function setRewardPeriod(uint48) external;
 
     function rewardRatio() external view returns (uint192);
 
     function setRewardRatio(uint192) external;
 
-    function unstakingDelay() external view returns (uint32);
+    function unstakingDelay() external view returns (uint48);
 
-    function setUnstakingDelay(uint32) external;
+    function setUnstakingDelay(uint48) external;
 
     function setName(string calldata) external;
 

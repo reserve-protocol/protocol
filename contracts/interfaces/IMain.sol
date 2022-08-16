@@ -48,17 +48,17 @@ interface IAuth is IAccessControlUpgradeable {
     /// Emitted when `unfreezeAt` is changed
     /// @param oldVal The old value of `unfreezeAt`
     /// @param newVal The new value of `unfreezeAt`
-    event UnfreezeAtSet(uint32 indexed oldVal, uint32 indexed newVal);
+    event UnfreezeAtSet(uint48 indexed oldVal, uint48 indexed newVal);
 
     /// Emitted when the short freeze duration governance param is changed
     /// @param oldDuration The old short freeze duration
     /// @param newDuration The new short freeze duration
-    event ShortFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+    event ShortFreezeDurationSet(uint48 indexed oldDuration, uint48 indexed newDuration);
 
     /// Emitted when the long freeze duration governance param is changed
     /// @param oldDuration The old long freeze duration
     /// @param newDuration The new long freeze duration
-    event LongFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+    event LongFreezeDurationSet(uint48 indexed oldDuration, uint48 indexed newDuration);
 
     /// Emitted when the system is paused or unpaused
     /// @param oldVal The old value of `paused`
@@ -74,9 +74,9 @@ interface IAuth is IAccessControlUpgradeable {
 
     function frozen() external view returns (bool);
 
-    function shortFreeze() external view returns (uint32);
+    function shortFreeze() external view returns (uint48);
 
-    function longFreeze() external view returns (uint32);
+    function longFreeze() external view returns (uint48);
 
     // ====
 
@@ -155,8 +155,8 @@ interface IMain is IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 shortFreeze_,
-        uint32 longFreeze_
+        uint48 shortFreeze_,
+        uint48 longFreeze_
     ) external;
 
     function rsr() external view returns (IERC20);
@@ -164,14 +164,14 @@ interface IMain is IAuth, IComponentRegistry {
 
 interface TestIMain is IMain {
     /// @custom:governance
-    function setShortFreeze(uint32) external;
+    function setShortFreeze(uint48) external;
 
     /// @custom:governance
-    function setLongFreeze(uint32) external;
+    function setLongFreeze(uint48) external;
 
-    function shortFreeze() external view returns (uint32);
+    function shortFreeze() external view returns (uint48);
 
-    function longFreeze() external view returns (uint32);
+    function longFreeze() external view returns (uint48);
 
     function longFreezes(address account) external view returns (uint256);
 

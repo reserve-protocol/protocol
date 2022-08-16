@@ -19,15 +19,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    uint32 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
-    uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
-        uint32 tradingDelay_,
+        uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_
     ) public initializer {
@@ -168,7 +168,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Setters ===
 
     /// @custom:governance
-    function setTradingDelay(uint32 val) public governance {
+    function setTradingDelay(uint48 val) public governance {
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;

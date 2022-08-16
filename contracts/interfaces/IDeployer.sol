@@ -24,21 +24,21 @@ struct DeploymentParams {
     RevenueShare dist; // revenue sharing splits between RToken and RSR
     //
     // === Rewards (Furnace + StRSR) ===
-    uint32 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
+    uint48 rewardPeriod; // {s} the atomic unit of rewards, determines # of exponential rounds
     uint192 rewardRatio; // the fraction of available revenues that stRSR holders get each PayPeriod
     //
     // === StRSR ===
-    uint32 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
+    uint48 unstakingDelay; // {s} the "thawing time" of staked RSR before withdrawal
     //
     // === BackingManager ===
-    uint32 tradingDelay; // {s} how long to wait until starting auctions after switching basket
-    uint32 auctionLength; // {s} the length of an auction
+    uint48 tradingDelay; // {s} how long to wait until starting auctions after switching basket
+    uint48 auctionLength; // {s} the length of an auction
     uint192 backingBuffer; // {1} how much extra backing collateral to keep
     uint192 maxTradeSlippage; // {1} max slippage acceptable in a trade
     //
     // === Pausing ===
-    uint32 shortFreeze; // {s} how long an initial freeze lasts
-    uint32 longFreeze; // {s} how long each freeze extension lasts
+    uint48 shortFreeze; // {s} how long an initial freeze lasts
+    uint48 longFreeze; // {s} how long each freeze extension lasts
     // === RToken ===
     uint192 issuanceRate; // {1} number of RToken to issue per block / (RToken value)
     uint192 maxRedemptionCharge; // {1} max fraction of RToken supply that can be redeemed at once

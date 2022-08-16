@@ -15,7 +15,7 @@ contract Asset is IAsset {
 
     IERC20 public immutable override rewardERC20;
 
-    uint32 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
+    uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
     TradingRange public tradingRange;
 
@@ -27,7 +27,7 @@ contract Asset is IAsset {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_
+        uint48 oracleTimeout_
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");

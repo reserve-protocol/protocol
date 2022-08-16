@@ -1245,14 +1245,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
       await main.connect(owner).pause()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
-        'paused or frozen'
+        'basket unrefreshable'
       )
     })
 
     it('Should not allow to refresh basket if not OWNER when frozen', async () => {
       await main.connect(owner).freezeForever()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
-        'paused or frozen'
+        'basket unrefreshable'
+      )
+    })
+
+    it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
+        'basket unrefreshable'
       )
     })
 
@@ -1281,26 +1287,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-    })
-
-    it('Should allow to call refresh Basket if not paused - No changes', async () => {
-      // Switch basket - No backup nor default
-      await expect(basketHandler.connect(other).refreshBasket()).to.emit(basketHandler, 'BasketSet')
-
-      // Basket remains the same in this case
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(token0.address)
-      expect(backing[1]).to.equal(token1.address)
-      expect(backing[2]).to.equal(token2.address)
-      expect(backing[3]).to.equal(token3.address)
-
-      expect(backing.length).to.equal(4)
-
-      // Not updated so basket last changed is not set
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 

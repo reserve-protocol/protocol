@@ -29,8 +29,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
 
-    uint32 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
-    uint32 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
+    uint48 public constant MAX_UNSTAKING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_REWARD_PERIOD = 31536000; // {s} 1 year
     uint192 public constant MAX_REWARD_RATIO = 1e18;
 
     // ==== ERC20Permit ====
@@ -92,16 +92,16 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     uint192 private constant MIN_EXCHANGE_RATE = uint192(1e9); // 1e-9
 
     // ==== Gov Params ====
-    uint32 public unstakingDelay;
-    uint32 public rewardPeriod;
+    uint48 public unstakingDelay;
+    uint48 public rewardPeriod;
     uint192 public rewardRatio;
 
     function init(
         IMain main_,
         string memory name_,
         string memory symbol_,
-        uint32 unstakingDelay_,
-        uint32 rewardPeriod_,
+        uint48 unstakingDelay_,
+        uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) public initializer {
         __Component_init(main_);
@@ -427,8 +427,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint192 initialExchangeRate = exchangeRate();
 
-        uint32 numPeriods = (uint32(block.timestamp) - uint32(payoutLastPaid)) /
-            uint32(rewardPeriod);
+        uint48 numPeriods = (uint48(block.timestamp) - uint48(payoutLastPaid)) /
+            uint48(rewardPeriod);
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(rewardRatio).powu(numPeriods));
@@ -511,14 +511,14 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
     // ==== Gov Param Setters ====
 
-    function setUnstakingDelay(uint32 val) public governance {
+    function setUnstakingDelay(uint48 val) public governance {
         require(val > 0 && val <= MAX_UNSTAKING_DELAY, "invalid unstakingDelay");
         emit UnstakingDelaySet(unstakingDelay, val);
         unstakingDelay = val;
         require(rewardPeriod * 2 <= unstakingDelay, "unstakingDelay/rewardPeriod incompatible");
     }
 
-    function setRewardPeriod(uint32 val) public governance {
+    function setRewardPeriod(uint48 val) public governance {
         require(val > 0 && val <= MAX_REWARD_PERIOD, "invalid rewardPeriod");
         emit RewardPeriodSet(rewardPeriod, val);
         rewardPeriod = val;

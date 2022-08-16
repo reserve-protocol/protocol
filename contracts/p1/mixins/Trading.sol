@@ -22,14 +22,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // All trades
     mapping(IERC20 => ITrade) public trades;
-    uint32 public tradesOpen;
+    uint48 public tradesOpen;
     // The number of nonzero values in `trades`
 
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
 
     // The latest end time for any trade in `trades`.
-    uint32 private latestEndtime;
+    uint48 private latestEndtime;
 
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {

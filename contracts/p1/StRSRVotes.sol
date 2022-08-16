@@ -11,7 +11,7 @@ import "contracts/p1/StRSR.sol";
  */
 contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     struct Checkpoint {
-        uint32 fromBlock;
+        uint48 fromBlock;
         uint224 val;
     }
 
@@ -44,11 +44,11 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         return era;
     }
 
-    function checkpoints(address account, uint32 pos) public view returns (Checkpoint memory) {
+    function checkpoints(address account, uint48 pos) public view returns (Checkpoint memory) {
         return _checkpoints[era][account][pos];
     }
 
-    function numCheckpoints(address account) public view returns (uint32) {
+    function numCheckpoints(address account) public view returns (uint48) {
         return SafeCastUpgradeable.toUint32(_checkpoints[era][account].length);
     }
 

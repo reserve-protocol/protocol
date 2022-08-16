@@ -45,7 +45,7 @@ contract GnosisTrade is ITrade {
     IERC20Metadata public sell;
     IERC20Metadata public buy;
     uint256 public initBal; // {qTok}
-    uint32 public endTime;
+    uint48 public endTime;
     uint192 public worstCasePrice; // {buyTok/sellTok}
 
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
@@ -64,7 +64,7 @@ contract GnosisTrade is ITrade {
         IBroker broker_,
         address origin_,
         IGnosis gnosis_,
-        uint32 auctionLength,
+        uint48 auctionLength,
         TradeRequest memory req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
@@ -73,7 +73,7 @@ contract GnosisTrade is ITrade {
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
-        endTime = uint32(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + auctionLength;
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();

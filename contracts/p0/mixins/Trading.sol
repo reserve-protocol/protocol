@@ -19,10 +19,10 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     // All trades
     mapping(IERC20 => ITrade) public trades;
-    uint32 public tradesOpen;
+    uint48 public tradesOpen;
 
     // The latest end time for any trade in `trades`.
-    uint32 private latestEndtime;
+    uint48 private latestEndtime;
 
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}

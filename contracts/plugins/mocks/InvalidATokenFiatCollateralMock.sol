@@ -13,7 +13,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_,
+        uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_

@@ -247,7 +247,7 @@ library FixLib {
     /// Presumes that powu(0.0, 0) = 1
     /// @dev The gas cost is O(lg(y))
     /// Intermediate muls do nearest-value rounding.
-    function powu(uint192 x_, uint32 y) internal pure returns (uint192) {
+    function powu(uint192 x_, uint48 y) internal pure returns (uint192) {
         // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
         if (y == 1) return x_;
         if (x_ == FIX_ONE || y == 0) return FIX_ONE;

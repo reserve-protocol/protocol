@@ -407,7 +407,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Refresh from non-owner account should fail
       await expect(basketHandler.connect(addr2).refreshBasket()).to.be.revertedWith(
-        'paused or frozen'
+        'basket unrefreshable'
       )
 
       // Refresh from owner should succeed

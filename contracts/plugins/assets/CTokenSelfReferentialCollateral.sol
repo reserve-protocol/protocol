@@ -47,7 +47,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_,
+        uint48 oracleTimeout_,
         bytes32 targetName_,
         int8 referenceERC20Decimals_,
         address comptrollerAddr_

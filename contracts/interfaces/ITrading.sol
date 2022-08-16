@@ -56,5 +56,5 @@ interface TestITrading is ITrading {
     function setDustAmount(uint192 val) external;
 
     /// @return The number of ongoing trades open
-    function tradesOpen() external view returns (uint32);
+    function tradesOpen() external view returns (uint48);
 }

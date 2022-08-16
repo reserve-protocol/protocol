@@ -26,7 +26,7 @@ abstract contract Collateral is ICollateral, Asset {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_,
+        uint48 oracleTimeout_,
         bytes32 targetName_
     ) Asset(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
