@@ -41,8 +41,10 @@ struct DeploymentParams {
     uint32 longFreeze; // {s} how long each freeze extension lasts
     // === RToken ===
     uint192 issuanceRate; // {1} number of RToken to issue per block / (RToken value)
-    uint192 maxRedemption; // {1} max fraction of RToken supply that can be redeemed at once
-    uint256 dustSupply; // {qRTok} full redemptions are always allowed below this supply
+    uint192 maxRedemptionCharge; // {1} max fraction of RToken supply that can be redeemed at once
+    uint256 redemptionVirtualSupply; // {qRTok}
+    // The min value of total supply to use for redemption throttling
+    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
 }
 
 /**

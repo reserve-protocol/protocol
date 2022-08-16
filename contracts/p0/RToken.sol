@@ -68,9 +68,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     RedemptionBatteryLib.Battery private battery; // .update() after every supply change!
 
     // set to 0 to disable
-    uint192 public maxRedemption; // {1} fraction of supply that can be redeemed at once
+    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
 
-    uint256 public dustSupply; // {qRTok} quantity of RToken at which to offer full redemption
+    uint256 public redemptionVirtualSupply; // {qRTok}
 
     function init(
         IMain main_,
@@ -78,16 +78,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         string memory symbol_,
         string calldata mandate_,
         uint192 issuanceRate_,
-        uint192 maxRedemption_,
-        uint256 dustSupply_
+        uint192 maxRedemptionCharge_,
+        uint256 redemptionVirtualSupply_
     ) public initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setMaxRedemption(maxRedemption_);
-        setDustSupply(dustSupply_);
+        setMaxRedemption(maxRedemptionCharge_);
+        setDustSupply(redemptionVirtualSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
@@ -99,14 +99,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     /// @custom:governance
     function setMaxRedemption(uint192 val) public governance {
         require(val <= FIX_ONE, "invalid fraction");
-        emit MaxRedemptionSet(maxRedemption, val);
-        maxRedemption = val;
+        emit MaxRedemptionSet(maxRedemptionCharge, val);
+        maxRedemptionCharge = val;
     }
 
     /// @custom:governance
     function setDustSupply(uint256 val) public governance {
-        emit DustSupplySet(dustSupply, val);
-        dustSupply = val;
+        emit DustSupplySet(redemptionVirtualSupply, val);
+        redemptionVirtualSupply = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -271,7 +271,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         // Accept and burn RToken
         _burn(_msgSender(), amount);
-        battery.update(maxRedemption, dustSupply);
+
+        // Revert if redemption exceeds battery capacity
+        if (maxRedemptionCharge > 0) {
+            // {1} = {qRTok} / {qRTok}
+            uint192 dischargeAmt = divuu(amount, Math.max(redemptionVirtualSupply, totalSupply()));
+            battery.discharge(dischargeAmt, maxRedemptionCharge);
+        }
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -302,14 +308,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
-        battery.update(maxRedemption, dustSupply);
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amount {qRTok} The amount to be melted
     function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
-        battery.update(maxRedemption, dustSupply);
         emit Melted(amount);
     }
 
@@ -334,7 +338,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);
-            battery.update(maxRedemption, dustSupply);
 
             issued = iss.amount;
 

@@ -98,7 +98,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
         string memory mandate_,
         uint192 issuanceRate_,
         uint192 redemptionBattery_,
-        uint256 dustSupply_
+        uint256 redemptionVirtualSupply_
     ) external;
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -159,11 +159,11 @@ interface TestIRToken is IRToken {
     function setMaxRedemption(uint192 val) external;
 
     /// @return {1} The maximum fraction of the RToken supply that can be redeemed at once
-    function maxRedemption() external view returns (uint192);
+    function maxRedemptionCharge() external view returns (uint192);
 
     /// Set the RToken supply at which full redemptions become enabled
     function setDustSupply(uint256 val) external;
 
     /// @return {qRTok} The RToken supply at which full redemptions are enabled
-    function dustSupply() external view returns (uint256);
+    function redemptionVirtualSupply() external view returns (uint256);
 }

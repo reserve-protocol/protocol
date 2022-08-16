@@ -4,50 +4,40 @@ pragma solidity 0.8.9;
 import "contracts/interfaces/IRToken.sol";
 import "./Fixed.sol";
 
-uint256 constant ONE_HOUR_IN_BLOCKS = 277;
+uint48 constant BLOCKS_PER_HOUR = 277; // {blocks/hour}
 
 /// Applies a redemption throttle of X% every 277 blocks (~1 hour)
-/// @dev Use: call `update` after each change to total supply
+/// @dev Use: call `discharge` after each redemption
 /// @dev Reverts when a redemption is too large
 library RedemptionBatteryLib {
     using FixLib for uint192;
 
     struct Battery {
-        uint256 lastBlock; // {blocknumber}
-        uint256 lastSupply; // {qRTok}
-        uint256 charge; // {qRTok}
+        uint48 lastBlock; // {blocks}
+        uint192 lastCharge; // {1}
     }
 
-    /// @param maxRedemption {1} The maximum fraction of the supply that can be redeemed at once
-    /// @param dustSupply {qRTok} The RToken supply at which full redemption becomes emabled
-    /// @dev Call after any and all changes to the total supply
-    function update(
+    /// @param chargeToUse {1} Fraction of the supply to use
+    /// @param maxCapacity {1/hour} The max fraction of the supply that can be used in <=1 hour
+    /// @dev Call after redemptions
+    function discharge(
         Battery storage battery,
-        uint192 maxRedemption,
-        uint256 dustSupply
+        uint192 chargeToUse,
+        uint192 maxCapacity
     ) internal {
-        uint256 currentSupply = IRToken(address(this)).totalSupply();
+        uint48 blocks = uint48(block.number) - battery.lastBlock; // {blocks}
 
-        if (maxRedemption > 0 && currentSupply > dustSupply) {
-            uint256 blocks = block.number - battery.lastBlock; // {blocknumber}
+        // {1} = {1} + {1/hour} * {blocks} / {blocks/hour}
+        uint192 charge = battery.lastCharge + ((maxCapacity * blocks) / BLOCKS_PER_HOUR);
+        // maxCapacity is <= FIX_ONE; maxCapacity * blocks <= 1e37
 
-            // {qRTok} = {1} * {qRTok}
-            uint256 hourly = maxRedemption.mulu_toUint(battery.lastSupply);
-            if (hourly < dustSupply) hourly = dustSupply;
+        if (charge > maxCapacity) charge = maxCapacity;
 
-            // {qRTok} = {qRTok} + {qRTok} * {blocknumber} / {blocknumber}
-            uint256 newCharge = battery.charge + (hourly * blocks) / ONE_HOUR_IN_BLOCKS;
-            battery.charge = newCharge > hourly ? hourly : newCharge;
+        // Deduct any usage
+        charge -= chargeToUse; // reverts on underflow
 
-            // Deduct any usage
-            if (currentSupply < battery.lastSupply) {
-                uint256 redemption = battery.lastSupply - currentSupply;
-                battery.charge -= redemption; // reverts on underflow
-            }
-        }
-
-        // Update cached values
-        battery.lastSupply = currentSupply;
-        battery.lastBlock = block.number;
+        // Update battery
+        battery.lastCharge = charge;
+        battery.lastBlock = uint48(block.number);
     }
 }
