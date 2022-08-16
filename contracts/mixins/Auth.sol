@@ -87,32 +87,23 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// Enter a freeze for the `shortFreeze` duration
     function freezeShort() external onlyRole(SHORT_FREEZER) {
-        // Cannot start a short freeze if freeze is ongoing
-        require(!frozen(), "frozen");
-
         // Revoke short freezer role after one use
         _revokeRole(SHORT_FREEZER, _msgSender());
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + shortFreeze);
-        unfreezeAt = uint32(block.timestamp) + shortFreeze;
+        freezeUntil(uint32(block.timestamp) + shortFreeze);
     }
 
     /// Enter a freeze by the `longFreeze` duration
     function freezeLong() external onlyRole(LONG_FREEZER) {
-        // Cannot start a long freeze if permanently frozen
-        require(unfreezeAt < MAX_UNFREEZE_AT, "permanently frozen");
-
         longFreezes[_msgSender()] -= 1; // reverts on underflow
 
         // Revoke on 0 charges as a cleanup step
         if (longFreezes[_msgSender()] == 0) _revokeRole(LONG_FREEZER, _msgSender());
-        emit UnfreezeAtSet(unfreezeAt, uint32(block.timestamp) + longFreeze);
-        unfreezeAt = uint32(block.timestamp) + longFreeze;
+        freezeUntil(uint32(block.timestamp) + longFreeze);
     }
 
     /// Enter a permanent freeze
     function freezeForever() external onlyRole(OWNER) {
-        emit UnfreezeAtSet(unfreezeAt, MAX_UNFREEZE_AT);
-        unfreezeAt = MAX_UNFREEZE_AT;
+        freezeUntil(MAX_UNFREEZE_AT);
     }
 
     /// End all freezes
@@ -147,5 +138,13 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         emit LongFreezeDurationSet(longFreeze, longFreeze_);
         longFreeze = longFreeze_;
+    }
+
+    // === Private Helper ===
+
+    function freezeUntil(uint32 newUnfreezeAt) private {
+        require(newUnfreezeAt > unfreezeAt, "frozen");
+        emit UnfreezeAtSet(unfreezeAt, newUnfreezeAt);
+        unfreezeAt = newUnfreezeAt;
     }
 }
