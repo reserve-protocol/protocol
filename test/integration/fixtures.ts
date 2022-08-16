@@ -650,6 +650,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+    maxRedemption: fp('0'), // disable
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
   }

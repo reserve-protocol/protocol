@@ -188,6 +188,7 @@ export interface IConfig {
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
   issuanceRate: BigNumber
+  maxRedemption: BigNumber
   shortFreeze: BigNumber
   longFreeze: BigNumber
 }

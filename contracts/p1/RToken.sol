@@ -82,6 +82,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     uint192 public maxRedemption; // {1} fraction of supply that can be redeemed at once
 
+    // set to 0 to ignore
+
     function init(
         IMain main_,
         string calldata name_,

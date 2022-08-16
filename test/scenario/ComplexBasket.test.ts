@@ -15,6 +15,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
   TestIRevenueTrader,
@@ -57,6 +58,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let compAsset: Asset
   let aaveToken: ERC20Mock
   let rsrAsset: Asset
+  let rTokenAsset: RTokenAsset
 
   // Trading
   let gnosis: GnosisMock
@@ -143,6 +145,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rsrTrader,
       gnosis,
       oracleLib,
+      rTokenAsset,
     } = await loadFixture(defaultFixture))
 
     // Mint initial balances
@@ -640,7 +643,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await rToken.connect(addr1).issue(issueAmount)
 
     const origAssetValue = issueAmount.mul(totalPriceUSD).div(BN_SCALE_FACTOR)
-    expect(await rToken.price()).to.equal(totalPriceUSD)
+    expect(await rTokenAsset.price()).to.equal(totalPriceUSD)
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(origAssetValue)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -707,7 +710,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(excessQuantity7).to.be.closeTo(fp('304.7619'), point5Pct(fp('304.7619')))
     expect(excessValue7).to.be.closeTo(fp('7679.999'), point5Pct(fp('7679.999')))
 
-    expect(await rToken.price()).to.be.closeTo(totalPriceUSD, fp('0.1'))
+    expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, fp('0.1'))
     const excessTotal = excessValue2.add(excessValue5).add(excessValue7)
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue.add(excessTotal),
@@ -753,7 +756,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       .sub(sellAmtRToken2.div(100))
       .mul(pow10(10))
       .mul(await collateral[2].price())
-      .div(await rToken.price()) // trade slippage 1% - 39.6 cDAI @ 0.04 = 1.584 USD of value, in Rtoken = 0.000001330
+      .div(await rTokenAsset.price()) // trade slippage 1% - 39.6 cDAI @ 0.04 = 1.584 USD of value, in Rtoken = 0.000001330
     expect(minBuyAmtRToken2).to.be.closeTo(fp('0.00000133'), fp('0.00000001'))
 
     // Run auctions - Will detect excess
@@ -803,7 +806,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(minBuyAmtRToken2).to.be.closeTo(auctionbuyAmtRToken2, point5Pct(auctionbuyAmtRToken2))
 
     // Check Price (unchanged) and Assets value
-    expect(await rToken.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -857,7 +860,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       .sub(sellAmtRToken5.div(100))
       .mul(pow10(10))
       .mul(await collateral[5].price())
-      .div(await rToken.price()) // trade slippage 1% - 128 CWBTC @ 500 = 64K USD of value, in Rtoken = 0.053225
+      .div(await rTokenAsset.price()) // trade slippage 1% - 128 CWBTC @ 500 = 64K USD of value, in Rtoken = 0.053225
     expect(minBuyAmtRToken5).to.be.closeTo(fp('0.053225'), fp('0.0001'))
 
     // Close auctions - Will open for next token
@@ -887,7 +890,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rToken.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -982,7 +985,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       .sub(sellAmtRToken7.div(100))
       .mul(pow10(10))
       .mul(await collateral[7].price())
-      .div(await rToken.price()) // trade slippage 1% - 119.79 CETH @ 25.2 = 3018.7 USD of value, in Rtoken = 0.002554
+      .div(await rTokenAsset.price()) // trade slippage 1% - 119.79 CETH @ 25.2 = 3018.7 USD of value, in Rtoken = 0.002554
     expect(minBuyAmtRToken7).to.be.closeTo(fp('0.002554'), point5Pct(fp('0.002554')))
 
     // Close auctions - Will open for next token
@@ -1012,7 +1015,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rToken.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -1119,7 +1122,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rToken.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
     expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)

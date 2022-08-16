@@ -1526,7 +1526,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-      expect(await rToken.price()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await rTokenAsset.price()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
     it('Should issue/reedem correctly with simple basket ', async function () {
@@ -1864,7 +1864,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        await expect(rToken.price()).to.be.revertedWith('no supply')
+        await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)

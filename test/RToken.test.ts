@@ -17,6 +17,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
+  RTokenAsset,
   RTokenP0,
   RTokenP1,
   StaticATokenMock,
@@ -62,6 +63,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let collateral3: CTokenFiatCollateral
   let basket: Collateral[]
   let initialBasketNonce: BigNumber
+  let rTokenAsset: RTokenAsset
 
   // Config values
   let config: IConfig
@@ -139,8 +141,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ assetRegistry, backingManager, basket, basketHandler, config, facade, main, rToken } =
-      await loadFixture(defaultFixture))
+    ;({
+      assetRegistry,
+      backingManager,
+      basket,
+      basketHandler,
+      config,
+      facade,
+      main,
+      rToken,
+      rTokenAsset,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     collateral0 = <Collateral>basket[0]
@@ -183,7 +194,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      expect(await rToken.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.price()).to.equal(fp('1'))
     })
   })
 
@@ -412,7 +423,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price should revert pre-issuae
-      await expect(rToken.price()).to.be.revertedWith('no supply')
+      await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)

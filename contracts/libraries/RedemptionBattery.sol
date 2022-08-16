@@ -6,7 +6,7 @@ import "./Fixed.sol";
 
 uint256 constant ONE_HOUR_IN_BLOCKS = 277;
 
-/// Applies a redemption throttle of 5% per hour, up to 5% at a time
+/// Applies a redemption throttle of X% every 277 blocks (~1 hour)
 /// @dev Use: call `update` after each change to total supply
 /// @dev Reverts when a redemption is too large
 library RedemptionBatteryLib {
@@ -18,13 +18,16 @@ library RedemptionBatteryLib {
         uint256 charge; // {qRTok}
     }
 
-    /// @param maxCharge {1} The maximum fraction of the supply that can be redeemed at once
+    /// @param maxRedemption {1} The maximum fraction of the supply that can be redeemed at once
     /// @dev Call after any and all changes to the total supply
-    function update(Battery storage battery, uint192 maxCharge) internal {
+    function update(Battery storage battery, uint192 maxRedemption) internal {
+        // Fix.eq is ==
+        if (maxRedemption == 0) return;
+
         uint256 blocks = block.number - battery.lastBlock; // {blocknumber}
 
         // {qRTok} = {1} * {qRTok}
-        uint256 hourly = maxCharge.mulu_toUint(battery.lastSupply);
+        uint256 hourly = maxRedemption.mulu_toUint(battery.lastSupply);
 
         // {qRTok} = {qRTok} + {qRTok} * {blocknumber} / {blocknumber}
         uint256 newCharge = battery.charge + (hourly * blocks) / ONE_HOUR_IN_BLOCKS;

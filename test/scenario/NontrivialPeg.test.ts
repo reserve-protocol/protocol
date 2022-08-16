@@ -14,6 +14,7 @@ import {
   IBasketHandler,
   FiatCollateral,
   MockV3Aggregator,
+  RTokenAsset,
   OracleLib,
   TestIBackingManager,
   TestIStRSR,
@@ -42,6 +43,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
   let collateral0: NontrivialPegCollateral
   let token1: ERC20Mock
   let collateral1: FiatCollateral
+  let rTokenAsset: RTokenAsset
 
   // Config values
   let config: IConfig
@@ -67,8 +69,17 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, stRSR, config, rToken, assetRegistry, backingManager, basketHandler, oracleLib } =
-      await loadFixture(defaultFixture))
+    ;({
+      rsr,
+      stRSR,
+      config,
+      rToken,
+      assetRegistry,
+      backingManager,
+      basketHandler,
+      oracleLib,
+      rTokenAsset,
+    } = await loadFixture(defaultFixture))
 
     // Variable-peg ERC20
     token0 = await (await ethers.getContractFactory('ERC20Mock')).deploy('Peg ERC20', 'PERC20')
@@ -166,7 +177,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       it('should not produce revenue', async () => {
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await rToken.price()).to.equal(fp('2')) // sum of target amounts
+        expect(await rTokenAsset.price()).to.equal(fp('2')) // sum of target amounts
         await expectEvents(
           backingManager
             .connect(owner)
@@ -201,7 +212,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
         )
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCapitalized()).to.equal(true)
-        expect(await rToken.price()).to.equal(fp('2')) // sum of target amounts
+        expect(await rTokenAsset.price()).to.equal(fp('2')) // sum of target amounts
       })
     })
   })

@@ -361,7 +361,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RToken
       await expect(
-        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'Manifesto', config.issuanceRate)
+        rToken.init(
+          main.address,
+          'RTKN RToken',
+          'RTKN',
+          'Manifesto',
+          config.issuanceRate,
+          config.maxRedemption
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - StRSR
