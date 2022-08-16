@@ -389,7 +389,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    maxRedemption: fp('0.1'), // 10% per hour
+    maxRedemption: fp('0.05'), // 5% per hour
     dustSupply: fp('1e6'), // 1e6 whole RToken
   }
 

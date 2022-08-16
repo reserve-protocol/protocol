@@ -238,7 +238,7 @@ The max redemption is a percentage value that describes what proportion of the R
 
 Set to 0 to disable redemption throttling altogether.
 
-Anticipated value: `1e17` = 10% per hour
+Anticipated value: `5e16` = 5% per hour
 Reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
 
 ### `dustSupply`
