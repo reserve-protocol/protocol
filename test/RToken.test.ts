@@ -391,8 +391,33 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Freeze Main
       await main.connect(owner).freezeShort()
 
-      // Try to vest
+      // Try to cancel
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('frozen')
+    })
+
+    it('Should not be able to DOS issuance by calling refreshBasket', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Refresh from non-owner account should fail
+      await expect(basketHandler.connect(addr2).refreshBasket()).to.be.revertedWith(
+        'paused or frozen'
+      )
+
+      // Refresh from owner should succeed
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Vest should return tokens
+      await expect(rToken.vest(addr1.address, 1)).to.emit(rToken, 'IssuancesCanceled')
+
+      // Cancel should be a no-op
+      await expect(rToken.connect(addr1).cancel(1, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
     it('Should be able to cancel vesting if paused', async function () {
