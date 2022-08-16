@@ -22,9 +22,11 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         auctionLength: bn('900'), // 15 minutes
         backingBuffer: fp('0.0001'), // 0.01%
         maxTradeSlippage: fp('0.01'), // 1%
-        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
+        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+        maxRedemptionCharge: fp('0.05'), // 5% per hour
+        redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
       },
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks
