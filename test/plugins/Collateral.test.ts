@@ -19,6 +19,7 @@ import {
   MockV3Aggregator,
   NonFiatCollateral,
   OracleLib,
+  RTokenAsset,
   SelfReferentialCollateral,
   StaticATokenMock,
   TestIBackingManager,
