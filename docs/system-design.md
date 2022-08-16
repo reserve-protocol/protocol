@@ -123,7 +123,7 @@ Reasonable range: 10 to 31536000 (1 year)
 
 ### `rewardRatio`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
@@ -159,7 +159,7 @@ Reasonable range: 60 to 3600
 
 ### `backingBuffer`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This helps cause collateral tokens to more reliably be converted into RToken, which is the most efficient form of revenue production.
 
@@ -168,7 +168,7 @@ Reasonable range: 1e12 to 1e18
 
 ### `maxTradeSlippage`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
 
@@ -186,12 +186,23 @@ Reasonable range: 1e18 to 1e24
 
 ### `issuanceRate`
 
-Dimension: `{%}`
+Dimension: `{1}`
 
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
 Reasonable range: 1e12 to 1e16
+
+### `maxRedemption`
+
+Dimension: `{1}`
+
+The max redemption is a percentage value that describes what proportion of the RToken supply to allow redemption of per-hour. It controls how quickly the protocol can scale down RToken supply.
+
+Set to 0 to disable redemption throttling altogether.
+
+Anticipated value: `0.05` = 5% per hour
+Reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour)
 
 ### `shortFreeze`
 
