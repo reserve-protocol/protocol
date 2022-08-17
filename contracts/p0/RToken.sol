@@ -195,7 +195,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         uint256 left;
         uint256 amtRToken; // {qRTok}
-        for (uint256 n = first; n < last; n++) {
+        bool canceled = false;
+        for (uint256 n = first; n < last && n < queue.length; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
@@ -203,11 +204,12 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
+                canceled = true;
 
                 if (left == 0) left = n;
             }
         }
-        emit IssuancesCanceled(account, left, last, amtRToken);
+        if (canceled) emit IssuancesCanceled(account, left, last, amtRToken);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -381,17 +383,30 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function refundAndClearStaleIssuances(address account) private {
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
         bool clearQueue = false;
+        bool someProcessed = false;
+        uint256 amount;
+        uint256 startIndex;
+        uint256 endIndex;
         for (uint256 i = 0; i < issuances[account].length; i++) {
             SlowIssuance storage iss = issuances[account][i];
             if (!iss.processed && iss.basketNonce != basketNonce) {
+                amount += iss.amount;
+
+                if (!someProcessed) startIndex = i;
+                someProcessed = true;
+
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
                     IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }
                 iss.processed = true;
+                endIndex = i + 1;
             }
             if (iss.basketNonce != basketNonce) clearQueue = true;
         }
 
-        if (clearQueue) delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
+        if (clearQueue) {
+            emit IssuancesCanceled(account, startIndex, endIndex, amount);
+            delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
+        }
     }
 }
