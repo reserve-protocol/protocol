@@ -1,6 +1,6 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task, types } from 'hardhat/config'
-import { StaticATokenMock } from '../../../typechain'
+import { ATokenMock } from '../../../typechain'
 
 task('deploy-mock-atoken', 'Deploys a mock AToken')
   .addParam('name', 'Token name')
@@ -14,12 +14,12 @@ task('deploy-mock-atoken', 'Deploys a mock AToken')
 
     if (!params.noOutput) {
       console.log(
-        `Deploying StaticATokenMock to ${hre.network.name} (${chainId}) with burner account ${deployer.address}...`
+        `Deploying ATokenMock to ${hre.network.name} (${chainId}) with burner account ${deployer.address}...`
       )
     }
 
-    const erc20 = <StaticATokenMock>(
-      await (await hre.ethers.getContractFactory('StaticATokenMock'))
+    const erc20 = <ATokenMock>(
+      await (await hre.ethers.getContractFactory('ATokenMock'))
         .connect(deployer)
         .deploy(params.name, params.symbol, params.erc20)
     )
@@ -27,7 +27,7 @@ task('deploy-mock-atoken', 'Deploys a mock AToken')
 
     if (!params.noOutput) {
       console.log(
-        `Deployed StaticATokenMock ${params.symbol} to ${hre.network.name} (${chainId}): ${erc20.address}`
+        `Deployed ATokenMock ${params.symbol} to ${hre.network.name} (${chainId}): ${erc20.address}`
       )
     }
 
@@ -43,14 +43,14 @@ task('deploy-mock-atoken', 'Deploys a mock AToken')
     //   console.log('verifying')
     // }
 
-    // /** ******************** Verify StaticATokenMock ****************************************/
-    // console.time('Verifying StaticATokenMock')
+    // /** ******************** Verify ATokenMock ****************************************/
+    // console.time('Verifying ATokenMock')
     // await hre.run('verify:verify', {
     //   address: erc20.address,
     //   constructorArguments: [params.name, params.symbol, params.erc20],
-    //   contract: 'contracts/plugins/mocks/ATokenMock.sol:StaticATokenMock',
+    //   contract: 'contracts/plugins/mocks/ATokenMock.sol:ATokenMock',
     // })
-    // console.timeEnd('Verifying StaticATokenMock')
+    // console.timeEnd('Verifying ATokenMock')
 
     // if (!params.noOutput) {
     //   console.log('verified')
