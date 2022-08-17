@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "hardhat/console.sol";
 
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
@@ -123,7 +124,6 @@ contract NormalOpsScenario {
 
     // In the modified function, send transactions from *this* contract as if they were from
     // msg.sender, which is presumably the echdina-chosen user.
-
     modifier asSender() {
         main.spoof(address(this), msg.sender);
         _;
@@ -138,7 +138,7 @@ contract NormalOpsScenario {
         uint8 tokenID,
         uint256 amount
     ) public asSender {
-        IERC20 token = main.someToken(tokenID);
+        IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
         token.transfer(main.someAddr(userID), amount);
     }
 
@@ -166,9 +166,10 @@ contract NormalOpsScenario {
         uint8 tokenID,
         uint256 amount
     ) public {
-        IERC20 token = main.someToken(tokenID);
+        IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
         require(address(token) != address(main.rToken()), "Do not just mint RTokens");
         ERC20Fuzz(address(token)).mint(main.someUser(userID), amount);
+        require(token.totalSupply() <= 1e57, "Do not mint 'unreasonably' many tokens");
     }
 
     function burn(
@@ -189,6 +190,10 @@ contract NormalOpsScenario {
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
+        require(
+            amount + main.rToken().totalSupply() <= 1e48,
+            "Do not issue 'unreasonably' many rTokens"
+        );
         address[] memory tokens;
         uint256[] memory tokenAmounts;
         (tokens, tokenAmounts) = (RTokenP1Fuzz(address(main.rToken()))).quote(amount, CEIL);
@@ -354,8 +359,8 @@ contract NormalOpsScenario {
         uint192 rsrRate = main.stRSR().exchangeRate();
         uint256 rTokenRate = divFix(main.rToken().totalSupply(), main.rToken().basketsNeeded());
 
-        if (rsrRate > prevRSRRate) return false;
-        if (rTokenRate > prevRTokenRate) return false;
+        if (prevRSRRate == 0 || rsrRate > prevRSRRate) return false;
+        if (prevRTokenRate == 0 || rTokenRate > prevRTokenRate) return false;
         return true;
     }
     // TODO: prepareTradeRecacapitalize(), compromiseBasketsNeeded(), and stRSR.seizeRSR() are

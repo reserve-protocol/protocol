@@ -496,13 +496,6 @@ describe('The Normal Operations scenario', () => {
       }
     })
   })
-  describe('contains fixes to fuzz regressions, in which', () => {
-    it.only('mint then transfer should not cause UIntOutOfBounds', async () => {
-      await expect(scenario.mint(0, 0, 3335154066862763000134490064340114572968565149567946427579n))
-        .to.not.be.reverted
-      await expect(
-        scenario.transfer(7, 0, 3334077524132537522969397590806896146573001286888339491606n)
-      ).to.not.be.reverted
-    })
-  })
+
+  describe('fixes fuzz-found regressions')
 })

@@ -264,7 +264,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         if (id < numUsers()) return users[id];
         else id -= numUsers();
 
-        if (id < constAddrs.len.gth) return constAddrs[id];
+        if (id < constAddrs.length) return constAddrs[id];
         else id -= constAddrs.length;
 
         if (id == 0) return address(BrokerP1Fuzz(address(broker)).lastOpenedTrade());

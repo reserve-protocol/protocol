@@ -60,7 +60,7 @@ const config: any = {
           // "default" does not inject compiler-generated revert strings and keeps user-supplied ones
           // "strip" removes all revert strings (if literals are used) keeping side-effects
           // "debug" injects strings for compiler-generated internal reverts
-          revertStrings: 'default',
+          revertStrings: 'debug',
         },
       },
       {
