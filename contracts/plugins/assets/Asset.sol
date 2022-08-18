@@ -55,14 +55,26 @@ contract Asset is IAsset {
         return false;
     }
 
-    /// @return {tok} The minimium trade size
-    function minTradeSize() external view returns (uint192) {
-        return tradingRange.min;
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view returns (uint192 min) {
+        try this.price() returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.min.div(p, CEIL);
+            min = (tradingRange.min + p - 1) / p;
+        } catch {}
+        if (tradingRange.minAmt > min) min = tradingRange.minAmt;
+        if (tradingRange.maxAmt < min) min = tradingRange.maxAmt;
     }
 
-    /// @return {tok} The maximum trade size
-    function maxTradeSize() external view returns (uint192) {
-        return tradingRange.max;
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view returns (uint192 max) {
+        try this.price() returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.max.div(p);
+            max = tradingRange.max / p;
+        } catch {}
+        if (tradingRange.minAmt > max) max = tradingRange.minAmt;
+        if (tradingRange.maxAmt < max) max = tradingRange.maxAmt;
     }
 
     /// (address, calldata) to call in order to claim rewards for holding this asset
