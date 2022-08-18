@@ -8,8 +8,12 @@ import "./IMain.sol";
 
 /// A range of whole token quantities to bound trading
 struct TradingRange {
-    uint192 min; // {tok}
-    uint192 max; // {tok}
+    /// Prefer using min + max
+    uint192 min; // {UoA}
+    uint192 max; // {UoA}
+    // Fallback to amounts when UNPRICED
+    uint192 amtMin; // {tok}
+    uint192 amtMax; // {tok}
 }
 
 /**
