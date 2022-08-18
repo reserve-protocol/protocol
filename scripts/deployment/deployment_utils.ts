@@ -1,5 +1,7 @@
 import fs from 'fs'
 import hre from 'hardhat'
+import { BigNumber } from 'ethers'
+import { bn } from '../../common/numbers'
 import { ITokens, IComponents, IImplementations } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 
@@ -38,6 +40,10 @@ export interface IRTokenDeployments {
 
 const tempFileSuffix = '-tmp-deployments.json'
 const tempAssetCollFileSuffix = '-tmp-assets-collateral.json'
+
+export const getOracleTimeout = (chainId: number): BigNumber => {
+  return bn(chainId == 1 ? '86400' : '4294967296') // long timeout on testnets
+}
 
 export const getDeploymentFilename = (chainId: number): string => {
   return `./${chainId}${tempFileSuffix}`

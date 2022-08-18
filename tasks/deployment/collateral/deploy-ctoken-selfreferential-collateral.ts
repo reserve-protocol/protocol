@@ -8,7 +8,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('rewardToken', 'Reward token address')
   .addParam('tradingMin', 'Trade Range - Min')
   .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
@@ -31,7 +31,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
         params.cToken,
         params.rewardToken,
         { min: params.tradingMin, max: params.tradingMax },
-        params.maxOracleTimeout,
+        params.oracleTimeout,
         params.targetName,
         params.decimals,
         params.comptroller

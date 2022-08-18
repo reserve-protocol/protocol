@@ -4,12 +4,13 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
-import { bn, fp } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getDeploymentFilename,
   IDeployments,
   validateImplementations,
+  getOracleTimeout,
 } from '../deployment_utils'
 import { Asset } from '../../../typechain'
 
@@ -32,15 +33,14 @@ async function main() {
 
   await validateImplementations(deployments)
 
-  const ORACLE_TIMEOUT = bn('86400') // 1 day
   // ******************** Deploy RSR Asset ****************************************/
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
     priceFeed: deployments.prerequisites.RSR_FEED,
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
+    tradingMin: fp(chainId == 1 ? '1e5' : '0').toString(), // 100k RSR
+    tradingMax: fp(chainId == 1 ? '1e8' : '0').toString(), // 100m RSR,
+    oracleTimeout: getOracleTimeout(chainId).toString(),
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

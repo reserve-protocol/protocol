@@ -8,7 +8,7 @@ task('deploy-asset', 'Deploys an Asset')
   .addParam('rewardToken', 'Reward token address')
   .addParam('tradingMin', 'Trade Range - Min')
   .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max Oracle Timeout')
+  .addParam('oracleTimeout', 'Max Oracle Timeout')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -23,7 +23,7 @@ task('deploy-asset', 'Deploys an Asset')
           params.tokenAddress,
           params.rewardToken,
           { min: params.tradingMin, max: params.tradingMax },
-          params.maxOracleTimeout
+          params.oracleTimeout
         )
     )
     await asset.deployed()

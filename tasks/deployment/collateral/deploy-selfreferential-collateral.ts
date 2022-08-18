@@ -9,7 +9,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('rewardToken', 'Reward token address')
   .addParam('tradingMin', 'Trade Range - Min')
   .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('oracleLibrary', 'Oracle library address')
   .setAction(async (params, hre) => {
@@ -30,7 +30,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
         params.tokenAddress,
         params.rewardToken,
         { min: params.tradingMin, max: params.tradingMax },
-        params.maxOracleTimeout,
+        params.oracleTimeout,
         params.targetName
       )
     )
