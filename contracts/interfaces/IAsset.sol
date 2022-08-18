@@ -12,8 +12,8 @@ struct TradingRange {
     uint192 min; // {UoA}
     uint192 max; // {UoA}
     // Fallback to amounts when UNPRICED
-    uint192 amtMin; // {tok}
-    uint192 amtMax; // {tok}
+    uint192 minAmt; // {tok}
+    uint192 maxAmt; // {tok}
 }
 
 /**
