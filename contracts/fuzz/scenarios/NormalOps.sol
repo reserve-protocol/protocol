@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "hardhat/console.sol";
 
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
@@ -59,13 +58,12 @@ contract NormalOpsScenario {
                 main.addToken(reward);
                 main.assetRegistry().register(
                     new AssetMock(
-                        IERC20Metadata(address(token)),
+                        IERC20Metadata(address(reward)),
+                        IERC20Metadata(address(0)), // no recursive reward
                         tradingRange,
-                        volatile,
-                        address(0)
+                        volatile
                     )
                 );
-                main.rewarder().setReward(address(main.tokens(i)), 1e18);
             } else {
                 reward = IERC20Metadata(address(0));
             }
@@ -82,8 +80,7 @@ contract NormalOpsScenario {
                     growing,
                     stable,
                     justOne,
-                    stable,
-                    address(main.rewarder())
+                    stable
                 )
             );
             collateralTokens.push(IERC20(token));
@@ -107,8 +104,7 @@ contract NormalOpsScenario {
                     justOne,
                     stable,
                     justOne,
-                    justOne,
-                    address(main.rewarder())
+                    justOne
                 )
             );
             backupTokens.push(IERC20(token));
@@ -303,9 +299,14 @@ contract NormalOpsScenario {
         }
     }
 
-    // update rewarder payout
-    function updateRewards(uint256 a, uint256 b) public {
-        main.rewarder().update(a, b);
+    // update reward amount
+    function updateRewards(uint256 seedID, uint256 a) public {
+        IERC20 erc20 = main.someToken(seedID);
+        IAssetRegistry reg = main.assetRegistry();
+        if (!reg.isRegistered(erc20)) return;
+        AssetMock asset = AssetMock(address(reg.toAsset(erc20)));
+        asset.updateRewardAmount(a);
+        // same signature on CollateralMock. Could define a whole interface, but eh
     }
 
     function claimProtocolRewards(uint8 which) public {

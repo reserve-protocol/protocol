@@ -9,6 +9,7 @@ import "contracts/fuzz/Utils.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/OracleErrorMock.sol";
+import "contracts/fuzz/ERC20Fuzz.sol";
 
 contract CollateralMock is OracleErrorMock, Collateral {
     using FixLib for uint192;
@@ -25,7 +26,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
         // Collateral base-class arguments
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint256 rewardAmount_, // not a base-class arg, but needed anyway
         TradingRange memory tradingRange_,
         uint192, //defaultThreshold_,
         uint256, //delayUntilDefault_,
@@ -35,8 +35,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
-        PriceModel memory deviationModel_,
-        address rewarder_
+        PriceModel memory deviationModel_
     )
         // deviationModel is the deviation of price() from the combination of the above.
         // that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
@@ -49,7 +48,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
             targetName_
         )
     {
-        rewardAmount = rewardAmount_;
+        rewardAmount = 1e18;
         refPerTokModel = refPerTokModel_;
         targetPerRefModel = targetPerRefModel_;
         uoaPerTargetModel = uoaPerTargetModel_;
@@ -99,13 +98,13 @@ contract CollateralMock is OracleErrorMock, Collateral {
     }
 
     function getClaimCalldata() public view virtual override returns (address to, bytes memory cd) {
-        if (rewarder != address(0)) {
-            to = rewarder;
-            cd = abi.encodeWithSignature("claimRewards(address)", address(this), msg.sender);
+        if (address(rewardERC20) != address(0)) {
+            to = address(this);
+            cd = abi.encodeWithSignature("claimRewards(address)", msg.sender);
         }
     }
 
-    function claimRewards(address who) public override {
+    function claimRewards(address who) public {
         if (address(rewardERC20) == address(0)) return; // no rewards if no reward token
         if (erc20.balanceOf(who) == 0) return; // no rewards to non-holders
         if (rewardAmount == 0) return; // no rewards if rewards are zero

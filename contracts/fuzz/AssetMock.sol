@@ -9,7 +9,7 @@ import "contracts/fuzz/Utils.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/fuzz/OracleErrorMock.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/RewarderMock.sol";
+import "contracts/fuzz/ERC20Fuzz.sol";
 
 contract AssetMock is OracleErrorMock, Asset {
     using FixLib for uint192;
@@ -17,15 +17,14 @@ contract AssetMock is OracleErrorMock, Asset {
 
     event SetPrice(string symbol, uint192 price);
     PriceModel public model;
+
     uint256 public rewardAmount;
 
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        uint256 rewardAmount_,
         TradingRange memory tradingRange_,
-        PriceModel memory model_,
-        address rewarder_
+        PriceModel memory model_
     )
         Asset(
             AggregatorV3Interface(address(1)), // stub out the expected chainlink oracle
@@ -36,7 +35,7 @@ contract AssetMock is OracleErrorMock, Asset {
         )
     {
         model = model_;
-        rewardAmount = rewardAmount_;
+        rewardAmount = 1e18;
         emit SetPrice(erc20.symbol(), model.price());
     }
 
@@ -57,13 +56,13 @@ contract AssetMock is OracleErrorMock, Asset {
     }
 
     function getClaimCalldata() public view virtual override returns (address to, bytes memory cd) {
-        if (rewarder != address(0)) {
-            to = rewarder;
-            cd = abi.encodeWithSignature("claimRewards(address)", address(this), msg.sender);
+        if (address(rewardERC20) != address(0)) {
+            to = address(this);
+            cd = abi.encodeWithSignature("claimRewards(address)", msg.sender);
         }
     }
 
-    function claimRewards(address who) public override {
+    function claimRewards(address who) public {
         if (address(rewardERC20) == address(0)) return; // no rewards if no reward token
         if (erc20.balanceOf(who) == 0) return; // no rewards to non-holders
         if (rewardAmount == 0) return; // no rewards if rewards are zero

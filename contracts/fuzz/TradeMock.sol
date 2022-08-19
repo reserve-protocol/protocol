@@ -3,8 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
-import "hardhat/console.sol";
-
 import "contracts/plugins/mocks/ERC20Mock.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";

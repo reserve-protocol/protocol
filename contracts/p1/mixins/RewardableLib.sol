@@ -8,8 +8,6 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
 import "contracts/interfaces/IRewardable.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title RewardableLibP1
  * @notice A library that allows a contract to claim rewards
@@ -38,8 +36,6 @@ abstract contract RewardableLibP1 is IRewardable {
         Claim[] memory claims = new Claim[](erc20s.length);
         uint256 numClaims = 0;
 
-        console.log("claimAndSweepRewards on:", address(this));
-
         // Compute the interactions to have...
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // Does erc20s[i] _have_ a reward function and reward token?
@@ -63,8 +59,6 @@ abstract contract RewardableLibP1 is IRewardable {
                 numRewardTokens++;
             }
         }
-
-        console.log("  numClaims:", numClaims);
 
         // == Interactions ==
         // Claim rewards

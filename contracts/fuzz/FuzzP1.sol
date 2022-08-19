@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "hardhat/console.sol";
-
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
@@ -17,7 +15,6 @@ import "contracts/fuzz/IFuzz.sol";
 import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/RewarderMock.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
 
@@ -190,7 +187,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     // Mock-specific singleton contracts in the deployment
     IMarketMock public marketMock;
-    IRewarderMock public rewarder;
 
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders
@@ -295,7 +291,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader = new RevenueTraderP1Fuzz();
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
-        rewarder = new RewarderMock();
 
         constAddrs.push(address(rsr));
         constAddrs.push(address(rToken));
@@ -307,7 +302,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(rTokenTrader));
         constAddrs.push(address(furnace));
         constAddrs.push(address(broker));
-        constAddrs.push(address(rewarder));
         constAddrs.push(address(0));
         constAddrs.push(address(1));
     }
@@ -358,9 +352,9 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
+            IERC20Metadata(address(0)),
             params.tradingRange,
-            PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 }),
-            address(rewarder)
+            PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
         assets[1] = new RTokenAsset(IRToken(address(rToken)), params.tradingRange);
         assetRegistry.init(this, assets);

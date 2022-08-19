@@ -62,7 +62,6 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IMarketMock public marketMock;
-    IRewarderMock public rewarder;
 
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders

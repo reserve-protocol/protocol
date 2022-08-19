@@ -30,7 +30,6 @@ const componentsOf = async (main: sc.IMainFuzz) => ({
   rTokenTrader: await ConAt('RevenueTraderP1Fuzz', await main.rTokenTrader()),
   furnace: await ConAt('FurnaceP1Fuzz', await main.furnace()),
   broker: await ConAt('BrokerP1Fuzz', await main.broker()),
-  rewarder: await ConAt('RewarderMock', await main.rewarder()),
 })
 type Components = Awaited<ReturnType<typeof componentsOf>>
 
@@ -95,10 +94,10 @@ describe('The Normal Operations scenario', () => {
     expect(await main.pausedOrFrozen()).to.equal(false)
 
     // tokens and user balances
-    syms = ['C0', 'C1', 'C2', 'R0', 'R1', 'USD0', 'USD1', 'USD2']
+    const syms = ['C0', 'C1', 'C2', 'R0', 'R1', 'USD0', 'USD1', 'USD2']
     expect(await main.numTokens()).to.equal(syms.length)
-    for (sym of syms) {
-      const tokenAddr = await main.tokenBySymbol()
+    for (const sym of syms) {
+      const tokenAddr = await main.tokenBySymbol(sym)
       const token = await ConAt('ERC20Fuzz', tokenAddr)
       expect(await token.symbol()).to.equal(sym)
       for (let u = 0; u < 3; u++) {
@@ -180,7 +179,7 @@ describe('The Normal Operations scenario', () => {
         // Note: this isn't the usual pattern for testing some mutations. Really, this is specifically
         // testing TradingMock and MarketMock, but those need a deployment to be properly tested. :/
 
-        const usd0 = await ConAt('ERC20Fuzz', await main.tokensBySymbol('USD0'))
+        const usd0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('USD0'))
         const bm_addr = comp.backingManager.address
         const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
         const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
@@ -264,7 +263,7 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('lets users transfer tokens', async () => {
-      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol("C0")))
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
 
       const alice_bal_init = await token.balanceOf(aliceAddr)
       const bob_bal_init = await token.balanceOf(bobAddr)
@@ -279,7 +278,7 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('lets users approve and then transfer tokens', async () => {
-      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol("C0"))
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
 
       const alice_bal_init = await token.balanceOf(aliceAddr)
       const carol_bal_init = await token.balanceOf(carolAddr)
@@ -295,7 +294,7 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('allows minting mutations', async () => {
-      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol("C0"))
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       const alice_bal_init = await token.balanceOf(aliceAddr)
       await scenario.mint(0, 0, 3n * exa)
       const alice_bal = await token.balanceOf(aliceAddr)
@@ -303,7 +302,7 @@ describe('The Normal Operations scenario', () => {
     })
 
     it('allows burning mutations', async () => {
-      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol("C0"))
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       const alice_bal_init = await token.balanceOf(aliceAddr)
       await scenario.burn(0, 0, 3n * exa)
       const alice_bal = await token.balanceOf(aliceAddr)
@@ -493,28 +492,7 @@ describe('The Normal Operations scenario', () => {
       }
     })
 
-    it('has a rewarder which basically allows claiming rewards', async () => {
-      // rewards exist on tokens C0 and C1, not C2
-      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
-      const c0_bal0 = await c0.balanceOf(aliceAddr)
-      const c0_asset = await comp.assetRegistry.toAsset(c0.address)
-
-      const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('R0'))
-      const r0_bal0 = await r0.balanceOf(aliceAddr)
-
-      expect(await r0.balanceOf(aliceAddr)).to.equal(1_000_000n * exa)
-
-      let reward = await comp.rewarder.rewards(c0.address)
-      expect(reward.token).to.equal(r0.address)
-      expect(reward.amount).to.equal(exa)
-
-      comp.rewarder.claimRewards(aliceAddr, c0.address)
-
-      const r0_bal1 = await r0.balanceOf(aliceAddr)
-      expect(r0_bal1.sub(r0_bal0)).to.equal(1n * exa)
-    })
-
-    it.only('allows the protocol to set and claim rewards', async () => {
+    it('allows the protocol to set and claim rewards', async () => {
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('R0'))
 
@@ -528,14 +506,12 @@ describe('The Normal Operations scenario', () => {
       // mint some c0 to each rewardable contract
       for (const r of rewardables) await c0.mint(r, exa)
 
-      await scenario.updateRewards(2n * exa, 0) // set C0 rewards to 2exa R0
+      await scenario.updateRewards(0, 2n * exa) // set C0 rewards to 2exa R0
 
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
-        console.log(`i: ${i}`)
         const r = rewardables[i]
         const bal0 = await r0.balanceOf(comp.backingManager.address)
-        //comp.rewarder.claimRewards(r, c0.address)
         await scenario.claimProtocolRewards(i) // claim rewards
         const bal1 = await r0.balanceOf(comp.backingManager.address)
 
