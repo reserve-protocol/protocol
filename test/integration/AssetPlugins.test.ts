@@ -870,32 +870,32 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
 
       // Setup Assets with no price feed
-      const nonpriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          NO_PRICE_DATA_FEED,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          ZERO_ADDRESS,
-          config.tradingRange,
-          MAX_ORACLE_TIMEOUT
-        )
+      const nonpriceAsset: Asset = <Asset>await (
+        await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        NO_PRICE_DATA_FEED,
+        networkConfig[chainId].tokens.stkAAVE || '',
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Assets with invalid price feed will revert
       await expect(nonpriceAsset.price()).to.be.reverted
 
       // Reverts with a feed with zero price
-      const invalidPriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          mockChainlinkFeed.address,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          ZERO_ADDRESS,
-          config.tradingRange,
-          MAX_ORACLE_TIMEOUT
-        )
+      const invalidPriceAsset: Asset = <Asset>await (
+        await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        mockChainlinkFeed.address,
+        networkConfig[chainId].tokens.stkAAVE || '',
+        ZERO_ADDRESS,
+        config.tradingRange,
+        MAX_ORACLE_TIMEOUT
       )
 
       await setOraclePrice(invalidPriceAsset.address, bn(0))
@@ -1181,7 +1181,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Set price = 0
-      const chainlinkFeedAddr = await invalidPriceNonFiatCollateral.targetPerRefFeed()
+      const chainlinkFeedAddr = await invalidPriceNonFiatCollateral.chainlinkFeed()
       const v3Aggregator = await ethers.getContractAt('MockV3Aggregator', chainlinkFeedAddr)
       await v3Aggregator.updateAnswer(bn(0))
 

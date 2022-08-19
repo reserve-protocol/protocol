@@ -82,7 +82,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              *
              * TODO
-             * Argument for why this is ok and won't accidentally hurt RToken holders
+             * Argument for why this can't hurt RToken holders
              */
 
             (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();

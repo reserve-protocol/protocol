@@ -172,8 +172,10 @@ export const getNetworkConfig = (chainId: string) => {
 export const developmentChains = ['hardhat', 'localhost']
 
 export interface TradingRange {
-  min: BigNumberish
-  max: BigNumberish
+  minVal: BigNumberish // {UoA}
+  maxVal: BigNumberish // {UoA}
+  minAmt: BigNumberish // {tok}
+  maxAmt: BigNumberish // {tok}
 }
 
 // Common configuration interfaces
