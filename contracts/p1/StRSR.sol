@@ -342,8 +342,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // Both uses of uint192(-) are fine, as it's equivalent to FixLib.sub().
         uint192 payoutRatio = FIX_ONE - FixLib.powu(FIX_ONE - rewardRatio, numPeriods);
 
-        // stakeRSR: {qRSR} = D18{1} * {qRSR} / D18
-        stakeRSR += (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
+        // payout: {qRSR} = D18{1} * {qRSR} / D18
+        uint256 payout = (payoutRatio * rsrRewardsAtLastPayout) / FIX_ONE;
+        stakeRSR += payout;
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
@@ -354,6 +355,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             ? FIX_ONE
             : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
 
+        emit RewardsPaid(payout);
         emit ExchangeRateSet(initRate, stakeRate);
     }
 
