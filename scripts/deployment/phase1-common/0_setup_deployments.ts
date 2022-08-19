@@ -89,6 +89,7 @@ async function main() {
     },
     rewardableLib: '',
     tradingLib: '',
+    rTokenPricingLib: '',
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',

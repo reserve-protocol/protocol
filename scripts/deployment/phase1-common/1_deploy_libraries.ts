@@ -9,10 +9,11 @@ import {
   IDeployments,
   validatePrerequisites,
 } from '../deployment_utils'
-import { TradingLibP1, RewardableLibP1 } from '../../../typechain'
+import { TradingLibP1, RewardableLibP1, RTokenPricingLib } from '../../../typechain'
 
 let tradingLib: TradingLibP1
 let rewardableLib: RewardableLibP1
+let rTokenPricingLib: RTokenPricingLib
 
 async function main() {
   // ==== Read Configuration ====
@@ -45,11 +46,18 @@ async function main() {
   await rewardableLib.deployed()
   deployments.rewardableLib = rewardableLib.address
 
+  // Deploy RTokenPricing external library
+  const RTokenPricingLib = await ethers.getContractFactory('RTokenPricingLib')
+  rTokenPricingLib = <RTokenPricingLib>await RTokenPricingLib.deploy()
+  await rTokenPricingLib.deployed()
+  deployments.rTokenPricingLib = rTokenPricingLib.address
+
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     RewardableLib: ${rewardableLib.address}
+    RTokenPricing: ${rTokenPricingLib.address}
     Deployment file: ${deploymentFilename}`)
 }
 

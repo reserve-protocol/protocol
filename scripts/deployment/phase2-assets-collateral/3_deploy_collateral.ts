@@ -129,8 +129,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     cToken: networkConfig[chainId].tokens.cDAI,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
+    tradingMin: fp('0.01').mul(50).toString(), // min trade
+    tradingMax: fp('1e6').mul(50).toString(), // max trade
     maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -149,8 +149,8 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     cToken: networkConfig[chainId].tokens.cWBTC,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
+    tradingMin: fp('0.01').mul(50).toString(), // min trade
+    tradingMax: fp('1e6').mul(50).toString(), // max trade
     maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
@@ -168,8 +168,8 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     cToken: networkConfig[chainId].tokens.cETH,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
+    tradingMin: fp('0.01').mul(50).toString(), // min trade
+    tradingMax: fp('1e6').mul(50).toString(), // max trade
     maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 24h
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     decimals: bn(18).toString(),
