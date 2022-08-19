@@ -19,8 +19,6 @@ contract RTokenAsset is Asset {
         )
     {}
 
-    // solhint-enable no-empty-blocks
-
     /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() public view override returns (uint192 p) {
         return RTokenPricingLib.price(IRToken(address(erc20)));
@@ -57,4 +55,6 @@ contract RTokenAsset is Asset {
         if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
         if (max < tradingRange.minAmt) max = tradingRange.minAmt;
     }
+
+    // solhint-enable no-empty-blocks
 }

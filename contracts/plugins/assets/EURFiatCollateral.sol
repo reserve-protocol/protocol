@@ -117,6 +117,8 @@ contract EURFiatCollateral is Collateral {
         return uoaPerTargetFeed.price(oracleTimeout);
     }
 
+    // solhint-disable no-empty-blocks
+
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view virtual override returns (uint192 min) {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
@@ -142,4 +144,6 @@ contract EURFiatCollateral is Collateral {
         if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
         if (max < tradingRange.minAmt) max = tradingRange.minAmt;
     }
+
+    // solhint-enable no-empty-blocks
 }

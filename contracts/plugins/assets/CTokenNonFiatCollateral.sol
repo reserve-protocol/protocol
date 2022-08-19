@@ -176,6 +176,8 @@ contract CTokenNonFiatCollateral is Collateral {
         return targetUnitChainlinkFeed.price(oracleTimeout);
     }
 
+    // solhint-disable no-empty-blocks
+
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
@@ -211,6 +213,8 @@ contract CTokenNonFiatCollateral is Collateral {
         if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
         if (max < tradingRange.minAmt) max = tradingRange.minAmt;
     }
+
+    // solhint-enable no-empty-blocks
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to

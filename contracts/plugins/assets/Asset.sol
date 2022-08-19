@@ -55,6 +55,8 @@ contract Asset is IAsset {
         return false;
     }
 
+    // solhint-disable no-empty-blocks
+
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view virtual returns (uint192 min) {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
@@ -83,6 +85,7 @@ contract Asset is IAsset {
 
     /// (address, calldata) to call in order to claim rewards for holding this asset
     /// @dev The default impl returns zero values, implying that no reward function exists.
-    // solhint-disable-next-line no-empty-blocks
     function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
+
+    // solhint-enable no-empty-blocks
 }

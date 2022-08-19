@@ -122,6 +122,8 @@ contract NonFiatCollateral is Collateral {
         return uoaPerTargetFeed.price(oracleTimeout);
     }
 
+    // solhint-disable no-empty-blocks
+
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
         try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
@@ -159,4 +161,6 @@ contract NonFiatCollateral is Collateral {
         if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
         if (max < tradingRange.minAmt) max = tradingRange.minAmt;
     }
+
+    // solhint-enable no-empty-blocks
 }
