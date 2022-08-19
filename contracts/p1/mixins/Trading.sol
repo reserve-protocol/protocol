@@ -62,7 +62,7 @@ abstract contract TradingP1 is
     /// @custom:interaction CEI
     function claimAndSweepRewards() external notPausedOrFrozen {
         // == Interaction ==
-        RewardableLibP1._claimAndSweepRewards();
+        _claimAndSweepRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker

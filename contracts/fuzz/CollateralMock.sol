@@ -19,9 +19,13 @@ contract CollateralMock is OracleErrorMock, Collateral {
     PriceModel public uoaPerTargetModel;
     PriceModel public deviationModel;
 
+    uint256 rewardAmount;
+
     constructor(
         // Collateral base-class arguments
         IERC20Metadata erc20_,
+        IERC20Metadata rewardERC20_,
+        uint256 rewardAmount_, // not a base-class arg, but needed anyway
         TradingRange memory tradingRange_,
         uint192, //defaultThreshold_,
         uint256, //delayUntilDefault_,
@@ -31,19 +35,21 @@ contract CollateralMock is OracleErrorMock, Collateral {
         PriceModel memory refPerTokModel_, // Ref units per token
         PriceModel memory targetPerRefModel_, // Target units per ref unit
         PriceModel memory uoaPerTargetModel_, // Units-of-account per target unit
-        PriceModel memory deviationModel_
+        PriceModel memory deviationModel_,
+        address rewarder_
     )
         // deviationModel is the deviation of price() from the combination of the above.
         // that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
         Collateral(
             AggregatorV3Interface(address(1)), // Stub out expected Chainlink feed
             erc20_,
-            IERC20Metadata(address(0)), // no reward token
+            rewardERC20_, // no reward token
             tradingRange_,
             1, // stub out oracleTimeout
             targetName_
         )
     {
+        rewardAmount = rewardAmount_;
         refPerTokModel = refPerTokModel_;
         targetPerRefModel = targetPerRefModel_;
         uoaPerTargetModel = uoaPerTargetModel_;
@@ -85,5 +91,26 @@ contract CollateralMock is OracleErrorMock, Collateral {
         targetPerRefModel.update(b);
         uoaPerTargetModel.update(c);
         deviationModel.update(d);
+    }
+
+    // ==== Rewards ====
+    function updateRewardAmount(uint256 amount) public {
+        rewardAmount = amount % 1e29;
+    }
+
+    function getClaimCalldata() public view virtual override returns (address to, bytes memory cd) {
+        if (rewarder != address(0)) {
+            to = rewarder;
+            cd = abi.encodeWithSignature("claimRewards(address)", address(this), msg.sender);
+        }
+    }
+
+    function claimRewards(address who) public override {
+        if (address(rewardERC20) == address(0)) return; // no rewards if no reward token
+        if (erc20.balanceOf(who) == 0) return; // no rewards to non-holders
+        if (rewardAmount == 0) return; // no rewards if rewards are zero
+
+        ERC20Fuzz(address(rewardERC20)).mint(who, rewardAmount);
+        require(rewardERC20.totalSupply() <= 1e29, "Exceeded reasonable maximum of reward tokens");
     }
 }

@@ -62,11 +62,14 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IMarketMock public marketMock;
+    IRewarderMock public rewarder;
 
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders
 
     IERC20[] public tokens; // token addresses, not including RSR or RToken
+    mapping(bytes32 => IERC20) tokensBySymbol;
+
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
@@ -103,6 +106,12 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     // Add a token to this system's tiny token registry
     function addToken(IERC20 token) public {
         tokens.push(token);
+        bytes32 symbol = bytes32(bytes(IERC20Metadata(address(token)).symbol()));
+        tokensBySymbol[symbol] = token;
+    }
+
+    function tokenBySymbol(string calldata symbol) public view returns (IERC20) {
+        return tokensBySymbol[bytes32(bytes(symbol))];
     }
 
     function someToken(uint256 seed) public view returns (IERC20) {

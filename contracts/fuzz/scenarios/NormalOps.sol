@@ -47,15 +47,33 @@ contract NormalOpsScenario {
 
         TradingRange memory tradingRange = defaultParams().tradingRange;
 
-        // Create three "standard" collateral tokens
+        // Create three "standard" collateral tokens; have rewards for the first two
         for (uint256 i = 0; i < 3; i++) {
             string memory num = Strings.toString(i);
             ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
             main.addToken(token);
 
+            IERC20Metadata reward;
+            if (i < 2) {
+                reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
+                main.addToken(reward);
+                main.assetRegistry().register(
+                    new AssetMock(
+                        IERC20Metadata(address(token)),
+                        tradingRange,
+                        volatile,
+                        address(0)
+                    )
+                );
+                main.rewarder().setReward(address(main.tokens(i)), 1e18);
+            } else {
+                reward = IERC20Metadata(address(0));
+            }
+
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
+                    reward,
                     tradingRange,
                     0,
                     0,
@@ -64,7 +82,8 @@ contract NormalOpsScenario {
                     growing,
                     stable,
                     justOne,
-                    stable
+                    stable,
+                    address(main.rewarder())
                 )
             );
             collateralTokens.push(IERC20(token));
@@ -79,6 +98,7 @@ contract NormalOpsScenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
+                    IERC20Metadata(address(0)), // no reward
                     tradingRange,
                     0,
                     0,
@@ -87,10 +107,16 @@ contract NormalOpsScenario {
                     justOne,
                     stable,
                     justOne,
-                    justOne
+                    justOne,
+                    address(main.rewarder())
                 )
             );
             backupTokens.push(IERC20(token));
+        }
+
+        // Create and assign /two/ reward tokens with volatile prices; leave the third unrewarding
+        for (uint256 i = 0; i < 2; i++) {
+            string memory num = Strings.toString(i);
         }
 
         // Configure basket
@@ -259,8 +285,6 @@ contract NormalOpsScenario {
     }
 
     // ==== keeper functions ====
-    // function claimRewards(uint256 tokenID) // ignoring for now
-
     function updatePrice(
         uint256 seedID,
         uint192 a,
@@ -279,6 +303,19 @@ contract NormalOpsScenario {
         }
     }
 
+    // update rewarder payout
+    function updateRewards(uint256 a, uint256 b) public {
+        main.rewarder().update(a, b);
+    }
+
+    function claimProtocolRewards(uint8 which) public {
+        which %= 4;
+        if (which == 0) main.rTokenTrader().claimAndSweepRewards();
+        else if (which == 1) main.rsrTrader().claimAndSweepRewards();
+        else if (which == 2) main.backingManager().claimAndSweepRewards();
+        else if (which == 3) main.rToken().claimAndSweepRewards();
+    }
+
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
     }
@@ -294,11 +331,11 @@ contract NormalOpsScenario {
         main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
     }
 
-    function payRSRRewards() public {
+    function payRSRProfits() public {
         main.stRSR().payoutRewards();
     }
 
-    function payRTokenRewards() public {
+    function payRTokenProfits() public {
         main.furnace().melt();
     }
 

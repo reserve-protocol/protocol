@@ -14,11 +14,12 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 
 import "contracts/fuzz/IFuzz.sol";
+import "contracts/fuzz/AssetMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
+import "contracts/fuzz/PriceModel.sol";
+import "contracts/fuzz/RewarderMock.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
-import "contracts/fuzz/AssetMock.sol";
-import "contracts/fuzz/PriceModel.sol";
 
 import "contracts/p1/AssetRegistry.sol";
 import "contracts/p1/BackingManager.sol";
@@ -186,12 +187,16 @@ contract StRSRP1Fuzz is StRSRP1 {
 // ================ Main ================
 contract MainP1Fuzz is IMainFuzz, MainP1 {
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    // Mock-specific singleton contracts in the deployment
     IMarketMock public marketMock;
+    IRewarderMock public rewarder;
 
     EnumerableSet.AddressSet internal aliasedAddrs;
     mapping(address => address) public aliases; // The map of senders
 
     IERC20[] public tokens; // token addresses, not including RSR or RToken
+    mapping(bytes32 => IERC20) tokensBySymbol;
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
@@ -230,6 +235,12 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     // Add a token to this system's tiny token registry
     function addToken(IERC20 token) public {
         tokens.push(token);
+        bytes32 symbol = bytes32(bytes(IERC20Metadata(address(token)).symbol()));
+        tokensBySymbol[symbol] = token;
+    }
+
+    function tokenBySymbol(string calldata symbol) public view returns (IERC20) {
+        return tokensBySymbol[bytes32(bytes(symbol))];
     }
 
     function someToken(uint256 seed) public view returns (IERC20) {
@@ -284,6 +295,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         rTokenTrader = new RevenueTraderP1Fuzz();
         furnace = new FurnaceP1Fuzz();
         broker = new BrokerP1Fuzz();
+        rewarder = new RewarderMock();
 
         constAddrs.push(address(rsr));
         constAddrs.push(address(rToken));
@@ -295,6 +307,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(rTokenTrader));
         constAddrs.push(address(furnace));
         constAddrs.push(address(broker));
+        constAddrs.push(address(rewarder));
         constAddrs.push(address(0));
         constAddrs.push(address(1));
     }
@@ -346,7 +359,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             params.tradingRange,
-            PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
+            PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 }),
+            address(rewarder)
         );
         assets[1] = new RTokenAsset(IRToken(address(rToken)), params.tradingRange);
         assetRegistry.init(this, assets);

@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeab
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/fuzz/IRewarder.sol";
 
 import "contracts/interfaces/IRToken.sol";
 
@@ -49,6 +50,9 @@ interface IMainFuzz is IMain {
 
     // Retrieve the MarketMock contract, i.e, for trading
     function marketMock() external view returns (IMarketMock);
+
+    // Retrieve the rewarder contract
+    function rewarder() external view returns (IRewarderMock);
 
     // Tokens and Users by "ID"
 
