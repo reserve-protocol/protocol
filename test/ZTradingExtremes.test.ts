@@ -229,14 +229,12 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
       libraries: { OracleLib: oracleLib.address },
     })
-    const newRTokenAsset: Asset = <Asset>(
-      await RTokenAssetFactory.deploy(rToken.address, {
-        minVal: bn('1'),
-        maxVal: MAX_UOA,
-        minAmt: bn('1'),
-        maxAmt: MAX_UOA,
-      })
-    )
+    const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, {
+      minVal: bn('1'),
+      maxVal: MAX_UOA,
+      minAmt: bn('1'),
+      maxAmt: MAX_UOA,
+    })
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
         await rsrAsset.chainlinkFeed(),
