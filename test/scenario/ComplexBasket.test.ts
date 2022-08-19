@@ -167,6 +167,26 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       'MockV3Aggregator'
     )
 
+    // Replace RSRAsset
+
+    const AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+
+    const newRSRAsset: Asset = <Asset>await AssetFactory.deploy(
+      await rsrAsset.chainlinkFeed(),
+      rsr.address,
+      ZERO_ADDRESS,
+      {
+        minAmt: config.tradingRange.minAmt,
+        maxAmt: config.tradingRange.maxAmt,
+        minVal: fp('0'),
+        maxVal: fp('0'),
+      },
+      ORACLE_TIMEOUT
+    )
+    await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+
     /*****  Setup Basket  ***********/
     // 0. FiatCollateral against USD
     // 1. FiatCollateral against EUR
@@ -184,7 +204,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 1. FiatCollateral against USD
     usdToken = erc20s[0] // DAI Token
     const usdFeed: MockV3Aggregator = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+      await MockV3AggregatorFactory.deploy(8, fp('1e8'))
     )
     const { collateral: fiatUSD } = await hre.run('deploy-fiat-collateral', {
       priceFeed: usdFeed.address,
