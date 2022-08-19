@@ -40,4 +40,30 @@ contract SelfReferentialCollateral is Collateral {
     function pricePerTarget() public view virtual override returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
     }
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view virtual override returns (uint192 min) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.minVal.div(p, CEIL);
+            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+            if (type(uint192).max < min256) revert UIntOutOfBounds();
+            min = uint192(min256);
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
+    }
+
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view virtual override returns (uint192 max) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.maxVal.div(p);
+            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+            if (type(uint192).max < max256) revert UIntOutOfBounds();
+            max = uint192(max256);
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
+    }
 }

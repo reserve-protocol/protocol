@@ -47,8 +47,8 @@ contract RTokenCollateral is ICollateral, Asset {
         basketHandler = main_.basketHandler();
     }
 
-    /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken
-    function price() public view override(Asset, IAsset) returns (uint192 p) {
+    /// @return {UoA/rTok} The protocol's best guess of the redemption price of an RToken
+    function price() public view override(Asset, IAsset) returns (uint192) {
         IMain main = rToken.main();
         uint256 totalSupply = rToken.totalSupply();
         uint256 basketsNeeded = rToken.basketsNeeded();
@@ -63,6 +63,7 @@ contract RTokenCollateral is ICollateral, Asset {
         address backingMgr = address(main.backingManager());
         IAssetRegistry assetRegistry = main.assetRegistry();
 
+        uint192 p;
         // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20length; ++i) {
             IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
@@ -80,14 +81,16 @@ contract RTokenCollateral is ICollateral, Asset {
             // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
             p += uint192((asset.price() * uint256(q)) / FIX_ONE);
         }
+        return p;
     }
 
     function refresh() external virtual override {
         CollateralStatus oldStatus = status();
 
         // No default checks -- we outsource stability to the collateral RToken
-        try this.price() returns (uint192) {
-            priceable = true;
+        try this.price() returns (uint192 p) {
+            // In Solidity 0.8, external calls to `this` do not bubble up errors
+            priceable = p > 0;
         } catch {
             priceable = false;
         }
