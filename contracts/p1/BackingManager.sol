@@ -11,8 +11,6 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Trading.sol";
 import "contracts/p1/mixins/TradingLib.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title BackingManager
  * @notice The backing manager holds + manages the backing for an RToken

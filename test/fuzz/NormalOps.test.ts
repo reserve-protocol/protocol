@@ -49,11 +49,39 @@ describe('The Normal Operations scenario', () => {
   let bobAddr: string
   let carolAddr: string
 
+  // addrIDs: maps addresses to their address IDs. Inverse of main.someAddr.
+  // for any addr the system tracks, main.someAddr(addrIDs(addr)) == addr
+  let addrIDs: Map<string, number>
+
+  // tokenIDs: maps token symbols to their token IDs.
+  // for any token symbol in the system, main.someToken(tokenIDs(symbol)).symbol() == symbol
+  let tokenIDs: Map<string, number>
+
   before('deploy and setup', async () => {
     ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('NormalOpsScenario')).deploy({ gasLimit: 0x1ffffffff })
     main = await ConAt('MainP1Fuzz', await scenario.main())
     comp = await componentsOf(main)
+
+    addrIDs = new Map()
+    let i = 0
+    while (true) {
+      let address = await main.someAddr(i)
+      if (addrIDs.has(address)) break
+      addrIDs.set(address, i)
+      i++
+    }
+
+    tokenIDs = new Map()
+    i = 0
+    while (true) {
+      let tokenAddr = await main.someToken(i)
+      let token = await ConAt('ERC20Fuzz', tokenAddr)
+      let symbol = await token.symbol()
+      if (tokenIDs.has(symbol)) break
+      tokenIDs.set(symbol, i)
+      i++
+    }
 
     alice = await ethers.getSigner(await main.users(0))
     bob = await ethers.getSigner(await main.users(1))
@@ -540,25 +568,17 @@ describe('The Normal Operations scenario', () => {
       return d
     }
 
-    it.only('can call backingManager as expected', async () => {
+    it('can call backingManager as expected', async () => {
       // If the backing buffer is 0 and we have 100% distribution to RSR, then when some collateral
       // token is managed it is just transferred from the backing mgr to the RSR trader
 
       // ==== Setup: 100% distribution to RSR; backing buffer 0 (as owner => as main)
       await scenario.setBackingBuffer(0)
 
-      type AddrIndex = Map<string, number>
-      const index: AddrIndex = new Map()
-      let i = 0
-      while (true) {
-        let address = await main.someAddr(i)
-        if (index.has(address)) break
-        index.set(address, i)
-        i++
-      }
-
-      const furanceID = index.get(addr(1)) || 0n
-      const strsrID = index.get(addr(2)) || 0n
+      expect(addrIDs.has(addr(1))).to.be.true
+      expect(addrIDs.has(addr(2))).to.be.true
+      const furanceID = addrIDs.get(addr(1)) as number
+      const strsrID = addrIDs.get(addr(2)) as number
       expect(await main.someAddr(furanceID)).to.equal(addr(1))
       expect(await main.someAddr(strsrID)).to.equal(addr(2))
       // addr(1) == furnace, set to 0 Rtoken + 0 RSR
@@ -567,36 +587,56 @@ describe('The Normal Operations scenario', () => {
       await scenario.setDistribution(strsrID, 0, 1)
 
       // ==== Mint 1*exa of each token to the backing manager
-      const numTokens = await main.numTokens()
-      for (let i = 0; numTokens.gt(i); i++) {
-        const token = await ConAt('ERC20Fuzz', await main.someToken(i))
-        token.mint(comp.backingManager.address, exa)
-      }
+      // const numTokens = await main.numTokens()
+      // for (let i = 0; numTokens.gt(i); i++) {
+      //   const token = await ConAt('ERC20Fuzz', await main.someToken(i))
+      //   token.mint(comp.backingManager.address, exa)
+      // }
 
-      // ==== Manage C0; see that the rsrTrader balance changes for C0 and nothing else
+      // ==== Mint 1 exa of C0 to the backing manager
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
+      c0.mint(comp.backingManager.address, exa)
+
+      // ==== Manage C0; see that the rsrTrader balance changes for C0 and no others
+      const bmBals = await allBalances(comp.backingManager.address)
       const bals0 = await allBalances(comp.rsrTrader.address)
 
-      await scenario.pushBackingToManage(await main.tokenBySymbol('C0'))
+      expect(tokenIDs.has('C0')).to.be.true
+      await scenario.pushBackingToManage(tokenIDs.get('C0') as number)
       await scenario.manageBackingTokens()
       await scenario.popBackingToManage()
 
       const bals1 = await allBalances(comp.rsrTrader.address)
+
+      for (const sym of Object.keys(bmBals)) {
+        console.log(`BM balances on ${sym}: ${bmBals[sym]}`)
+      }
+
+      for (const sym of Object.keys(bals1)) {
+        console.log(`balances on ${sym}: ${bals1[sym]}, was ${bals0[sym]}`)
+      }
       for (const sym of Object.keys(bals1)) {
         const actual = bals1[sym].sub(bals0[sym])
         const expected = sym == 'C0' ? exa : 0n
         expect(actual).to.equal(expected)
       }
 
-      // ==== Manage C1, R1, and USD1; see that the rsrTrader balance changes for them and no others
+      // ==== Mint and Manage C1, R1, and USD1;
       const round2 = ['C1', 'R1', 'USD1']
-      for (const sym of round2) await scenario.pushBackingToManage(await main.tokenBySymbol(sym))
+      for (const sym of round2) {
+        const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol(sym))
+        token.mint(comp.backingManager.address, exa)
+        expect(tokenIDs.has(sym)).to.be.true
+        await scenario.pushBackingToManage(tokenIDs.get(sym) as number)
+      }
       await scenario.manageBackingTokens()
       for (const sym of round2) await scenario.popBackingToManage()
 
+      // Check that the rsrTrader balance changed for C1, R1, and USD1, and no others
       const bals2 = await allBalances(comp.rsrTrader.address)
 
       for (const sym of Object.keys(bals2)) {
-        const actual = bals1[sym].sub(bals0[sym])
+        const actual = bals2[sym].sub(bals1[sym])
         const expected = round2.includes(sym) ? exa : 0n
         expect(actual).to.equal(expected)
       }
