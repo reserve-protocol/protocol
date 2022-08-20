@@ -321,11 +321,18 @@ contract NormalOpsScenario {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
     }
 
-    // TODO: actually fuzz the array-input version of this
-    function manageBackingToken(uint256 tokenID) public {
-        IERC20[] memory tokens = new IERC20[](1);
-        tokens[0] = main.someToken(tokenID);
-        main.backingManager().manageTokens(tokens);
+    IERC20[] internal backingToManage;
+
+    function pushBackingToManage(uint256 tokenID) public {
+        backingToManage.push(main.someToken(tokenID));
+    }
+
+    function popBackingToManage() public {
+        if (backingToManage.length > 0) backingToManage.pop();
+    }
+
+    function manageBackingTokens() public {
+        main.backingManager().manageTokens(backingToManage);
     }
 
     function grantAllowances(uint256 tokenID) public {
@@ -350,7 +357,17 @@ contract NormalOpsScenario {
         main.distributor().setDistribution(main.someAddr(seedID), dist);
     }
 
-    // Search for others that can change in this setup?
+    function setBackingBuffer(uint256 seed) public {
+        BackingManagerP1(address(main.backingManager())).setBackingBuffer(
+            uint192(between(seed, 0, 1e18))
+        ); //1e18 == MAX_BACKING_BUFFER
+    }
+
+    function setBackingManagerTradingDelay(uint256 seed) public {
+        BackingManagerP1(address(main.backingManager())).setTradingDelay(
+            uint32(between(seed, 0, 31536000))
+        ); // MAX_TRADING_DELAY
+    }
 
     // ================ System Properties ================
 

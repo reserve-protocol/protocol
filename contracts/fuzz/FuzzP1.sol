@@ -304,6 +304,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(broker));
         constAddrs.push(address(0));
         constAddrs.push(address(1));
+        constAddrs.push(address(2));
     }
 
     // Initialize self and components

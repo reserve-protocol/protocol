@@ -1,6 +1,6 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { Wallet, Signer } from 'ethers'
+import { Wallet, Signer, BigNumber } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
@@ -43,6 +43,7 @@ describe('The Normal Operations scenario', () => {
   let alice: Signer
   let bob: Signer
   let carol: Signer
+  let asOwner: Signer // a signer for directly impersonating the owner (i.e, scenario)
 
   let aliceAddr: string
   let bobAddr: string
@@ -57,6 +58,7 @@ describe('The Normal Operations scenario', () => {
     alice = await ethers.getSigner(await main.users(0))
     bob = await ethers.getSigner(await main.users(1))
     carol = await ethers.getSigner(await main.users(2))
+    asOwner = await ethers.getSigner(scenario.address)
 
     aliceAddr = await alice.getAddress()
     bobAddr = await bob.getAddress()
@@ -65,10 +67,12 @@ describe('The Normal Operations scenario', () => {
     await helpers.setBalance(aliceAddr, exa * exa)
     await helpers.setBalance(bobAddr, exa * exa)
     await helpers.setBalance(carolAddr, exa * exa)
+    await helpers.setBalance(main.address, exa * exa)
 
     await helpers.impersonateAccount(aliceAddr)
     await helpers.impersonateAccount(bobAddr)
     await helpers.impersonateAccount(carolAddr)
+    await helpers.impersonateAccount(main.address)
 
     startState = await helpers.takeSnapshot()
   })
@@ -77,6 +81,7 @@ describe('The Normal Operations scenario', () => {
     await helpers.stopImpersonatingAccount(aliceAddr)
     await helpers.stopImpersonatingAccount(bobAddr)
     await helpers.stopImpersonatingAccount(carolAddr)
+    await helpers.stopImpersonatingAccount(main.address)
   })
 
   beforeEach(async () => {
@@ -516,6 +521,84 @@ describe('The Normal Operations scenario', () => {
         const bal1 = await r0.balanceOf(comp.backingManager.address)
 
         expect(bal1.sub(bal0)).to.equal(2n * exa)
+      }
+    })
+
+    // return a (mapping string => BigNumber)
+    interface Balances {
+      [key: string]: BigNumber
+    }
+
+    async function allBalances(owner: string): Promise<Balances> {
+      let d: Balances = {}
+      const numTokens = await main.numTokens()
+      for (let i = 0; numTokens.gt(i); i++) {
+        const token = await ConAt('ERC20Fuzz', await main.someToken(i))
+        const sym = await token.symbol()
+        d[sym] = await token.balanceOf(owner)
+      }
+      return d
+    }
+
+    it.only('can call backingManager as expected', async () => {
+      // If the backing buffer is 0 and we have 100% distribution to RSR, then when some collateral
+      // token is managed it is just transferred from the backing mgr to the RSR trader
+
+      // ==== Setup: 100% distribution to RSR; backing buffer 0 (as owner => as main)
+      await scenario.setBackingBuffer(0)
+
+      type AddrIndex = Map<string, number>
+      const index: AddrIndex = new Map()
+      let i = 0
+      while (true) {
+        let address = await main.someAddr(i)
+        if (index.has(address)) break
+        index.set(address, i)
+        i++
+      }
+
+      const furanceID = index.get(addr(1)) || 0n
+      const strsrID = index.get(addr(2)) || 0n
+      expect(await main.someAddr(furanceID)).to.equal(addr(1))
+      expect(await main.someAddr(strsrID)).to.equal(addr(2))
+      // addr(1) == furnace, set to 0 Rtoken + 0 RSR
+      await scenario.setDistribution(furanceID, 0, 0)
+      // addr(2) == strsr, set to 0 Rtoken + 1 RSR
+      await scenario.setDistribution(strsrID, 0, 1)
+
+      // ==== Mint 1*exa of each token to the backing manager
+      const numTokens = await main.numTokens()
+      for (let i = 0; numTokens.gt(i); i++) {
+        const token = await ConAt('ERC20Fuzz', await main.someToken(i))
+        token.mint(comp.backingManager.address, exa)
+      }
+
+      // ==== Manage C0; see that the rsrTrader balance changes for C0 and nothing else
+      const bals0 = await allBalances(comp.rsrTrader.address)
+
+      await scenario.pushBackingToManage(await main.tokenBySymbol('C0'))
+      await scenario.manageBackingTokens()
+      await scenario.popBackingToManage()
+
+      const bals1 = await allBalances(comp.rsrTrader.address)
+      for (const sym of Object.keys(bals1)) {
+        const actual = bals1[sym].sub(bals0[sym])
+        const expected = sym == 'C0' ? exa : 0n
+        expect(actual).to.equal(expected)
+      }
+
+      // ==== Manage C1, R1, and USD1; see that the rsrTrader balance changes for them and no others
+      const round2 = ['C1', 'R1', 'USD1']
+      for (const sym of round2) await scenario.pushBackingToManage(await main.tokenBySymbol(sym))
+      await scenario.manageBackingTokens()
+      for (const sym of round2) await scenario.popBackingToManage()
+
+      const bals2 = await allBalances(comp.rsrTrader.address)
+
+      for (const sym of Object.keys(bals2)) {
+        const actual = bals1[sym].sub(bals0[sym])
+        const expected = round2.includes(sym) ? exa : 0n
+        expect(actual).to.equal(expected)
       }
     })
   })
