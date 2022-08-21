@@ -3,11 +3,12 @@ import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
-import { bn, fp } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
+  getOracleTimeout,
 } from '../deployment_utils'
 
 async function main() {
@@ -26,19 +27,17 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const ORACLE_LIB_ADDRESS = assetCollDeployments.oracleLib
-  const ORACLE_TIMEOUT = bn('86400') // 1 day
-  let deployedAssets: string[] = []
+  const ORACLE_TIMEOUT = getOracleTimeout(chainId)
+  const deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
-    oracleLibrary: ORACLE_LIB_ADDRESS,
+    tradingMin: fp('1e2').toString(), // 100 AAVE
+    tradingMax: fp('1e4').toString(), // 10,000 AAVE
+    oracleTimeout: ORACLE_TIMEOUT.toString(),
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -49,10 +48,9 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
-    oracleLibrary: ORACLE_LIB_ADDRESS,
+    tradingMin: fp('2e2').toString(), // 200 COMP
+    tradingMax: fp('2e4').toString(), // 20,000 COMP
+    oracleTimeout: ORACLE_TIMEOUT.toString(),
   })
 
   assetCollDeployments.assets.COMP = compAsset
