@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
+import "./RTokenPricingLib.sol";
 
 contract RTokenAsset is Asset {
     // solhint-disable no-empty-blocks
@@ -18,44 +19,42 @@ contract RTokenAsset is Asset {
         )
     {}
 
-    // solhint-enable no-empty-blocks
-
     /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() public view override returns (uint192 p) {
-        IRToken rToken = IRToken(address(erc20));
-        IMain main = rToken.main();
-        uint256 totalSupply = rToken.totalSupply();
-        uint256 basketsNeeded = rToken.basketsNeeded();
-        require(totalSupply > 0, "no supply");
-
-        // downcast is safe: basketsNeeded is <= 1e39
-        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply);
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        uint256 erc20length = erc20s.length;
-        address backingMgr = address(main.backingManager());
-        IAssetRegistry assetRegistry = main.assetRegistry();
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-
-            // {qTok} =  {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
-                (totalSupply);
-
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
-
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
-        }
+        return RTokenPricingLib.price(IRToken(address(erc20)));
     }
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view override returns (uint192 min) {
+        try RTokenPricingLib.price(IRToken(address(erc20))) returns (uint192 p) {
+            // It's correct for the RToken to have a zero price right after a full basket change
+            if (p > 0) {
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.minVal.div(p, CEIL);
+                uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+                if (type(uint192).max < min256) revert UIntOutOfBounds();
+                min = uint192(min256);
+            }
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
+    }
+
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view override returns (uint192 max) {
+        try RTokenPricingLib.price(IRToken(address(erc20))) returns (uint192 p) {
+            // It's correct for the RToken to have a zero price right after a full basket change
+            if (p > 0) {
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.maxVal.div(p);
+                uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+                if (type(uint192).max < max256) revert UIntOutOfBounds();
+                max = uint192(max256);
+            }
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
+    }
+
+    // solhint-enable no-empty-blocks
 }

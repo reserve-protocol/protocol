@@ -9,8 +9,6 @@ error PriceOutsideRange();
 
 /// Used by asset plugins to price their collateral
 library OracleLib {
-    /// External fn available for try-catch
-
     /// @dev Use for on-the-fly calculations that should revert
     /// @param timeout The number of seconds after which oracle values should be considered stale
     /// @return {UoA/tok}

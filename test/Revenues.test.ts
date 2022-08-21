@@ -107,6 +107,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  let AssetFactory: ContractFactory
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -141,6 +143,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       main,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
+
+    AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
@@ -589,7 +595,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
@@ -598,7 +603,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             compToken.address,
             ZERO_ADDRESS,
-            { min: fp('0'), max: fp('1') },
+            { minAmt: bn('1'), maxAmt: fp('1'), minVal: bn('1'), maxVal: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -782,7 +787,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with f=0 (RToken only)', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
@@ -791,7 +795,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             aaveToken.address,
             aaveToken.address,
-            { min: fp('0'), max: fp('1') },
+            { minAmt: bn('1'), maxAmt: fp('1'), minVal: bn('1'), maxVal: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -962,7 +966,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
@@ -971,7 +977,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             compToken.address,
             compToken.address,
-            { min: fp('0'), max: fp('1') },
+            { minAmt: bn('1'), maxAmt: fp('1'), minVal: bn('1'), maxVal: fp('1') },
             ORACLE_TIMEOUT
           )
         )
@@ -2459,7 +2465,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       const chainlinkFeed = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           chainlinkFeed.address,

@@ -31,7 +31,7 @@ contract Asset is IAsset {
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(tradingRange_.max > 0, "invalid maxTradeSize");
+        require(tradingRange_.minAmt > 0 && tradingRange_.maxAmt > 0, "invalid trading range");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
@@ -55,18 +55,37 @@ contract Asset is IAsset {
         return false;
     }
 
-    /// @return {tok} The minimium trade size
-    function minTradeSize() external view returns (uint192) {
-        return tradingRange.min;
+    // solhint-disable no-empty-blocks
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view virtual returns (uint192 min) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.minVal.div(p, CEIL);
+            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+            if (type(uint192).max < min256) revert UIntOutOfBounds();
+            min = uint192(min256);
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
     }
 
-    /// @return {tok} The maximum trade size
-    function maxTradeSize() external view returns (uint192) {
-        return tradingRange.max;
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view virtual returns (uint192 max) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.maxVal.div(p);
+            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+            if (type(uint192).max < max256) revert UIntOutOfBounds();
+            max = uint192(max256);
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
     }
 
     /// (address, calldata) to call in order to claim rewards for holding this asset
     /// @dev The default impl returns zero values, implying that no reward function exists.
-    // solhint-disable-next-line no-empty-blocks
     function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
+
+    // solhint-enable no-empty-blocks
 }

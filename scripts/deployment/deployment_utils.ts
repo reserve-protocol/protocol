@@ -17,6 +17,7 @@ export interface IDeployments {
   prerequisites: IPrerequisites
   rewardableLib: string
   tradingLib: string
+  rTokenPricingLib: string
   facade: string
   facadeWriteLib: string
   facadeWrite: string

@@ -20,6 +20,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RTokenPricingLib,
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
@@ -66,6 +67,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
   let oracleLib: OracleLib
+  let rTokenPricing: RTokenPricingLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -108,6 +110,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       aaveAsset,
       compAsset,
       oracleLib,
+      rTokenPricing,
     } = await loadFixture(defaultFixture))
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
@@ -148,7 +151,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         chainlinkFeed.address,
         erc20.address,
         aaveToken.address,
-        { min: fp('0'), max: MAX_UOA },
+        { minVal: bn('1'), maxVal: MAX_UOA, minAmt: bn('1'), maxAmt: MAX_UOA },
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -181,7 +184,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         chainlinkFeed.address,
         erc20.address,
         compToken.address,
-        { min: fp('0'), max: MAX_UOA },
+        { minVal: bn('1'), maxVal: MAX_UOA, minAmt: bn('1'), maxAmt: MAX_UOA },
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -220,17 +223,24 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     await setOraclePrice(compAsset.address, bn('1e8'))
 
     // Replace RSR and RToken assets with larger maxTradeVolume settings
-    const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
-    const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
-    const newRTokenAsset: Asset = <Asset>(
-      await RTokenAssetFactory.deploy(rToken.address, { min: fp('0'), max: MAX_UOA })
-    )
+    const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset', {
+      libraries: { RTokenPricingLib: rTokenPricing.address },
+    })
+    const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+    const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, {
+      minVal: bn('1'),
+      maxVal: MAX_UOA,
+      minAmt: bn('1'),
+      maxAmt: MAX_UOA,
+    })
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
         await rsrAsset.chainlinkFeed(),
         rsr.address,
         ZERO_ADDRESS,
-        { min: fp('0'), max: MAX_UOA },
+        { minVal: bn('1'), maxVal: MAX_UOA, minAmt: bn('1'), maxAmt: MAX_UOA },
         MAX_ORACLE_TIMEOUT
       )
     )
@@ -417,13 +427,15 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await setupTrading(stRSRCut)
 
       // Replace registered reward assets with large maxTradeVolume assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAaveAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           await aaveAsset.chainlinkFeed(),
           aaveToken.address,
           aaveToken.address,
-          { min: fp('0'), max: MAX_UOA },
+          { minVal: bn('1'), maxVal: MAX_UOA, minAmt: bn('1'), maxAmt: MAX_UOA },
           MAX_ORACLE_TIMEOUT
         )
       )
@@ -432,7 +444,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           await compAsset.chainlinkFeed(),
           compToken.address,
           compToken.address,
-          { min: fp('0'), max: MAX_UOA },
+          { minVal: bn('1'), maxVal: MAX_UOA, minAmt: bn('1'), maxAmt: MAX_UOA },
           MAX_ORACLE_TIMEOUT
         )
       )

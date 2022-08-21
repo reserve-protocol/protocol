@@ -41,8 +41,8 @@ abstract contract Collateral is ICollateral, Asset {
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
         CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
-            priceable = true;
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            priceable = p > 0;
         } catch {
             priceable = false;
         }

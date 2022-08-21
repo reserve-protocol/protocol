@@ -68,6 +68,9 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Emitted whenever the exchange rate changes
     event ExchangeRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
+    /// Emitted whenever RSR are paids out
+    event RewardsPaid(uint256 indexed rsrAmt);
+
     /// Emitted if all the RSR in the staking pool is seized and all balances are reset to zero.
     event AllBalancesReset(uint256 indexed newEra);
     /// Emitted if all the RSR in the unstakin pool is seized, and all ongoing unstaking is voided.

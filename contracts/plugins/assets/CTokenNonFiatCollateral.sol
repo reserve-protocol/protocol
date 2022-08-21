@@ -29,7 +29,6 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
-    AggregatorV3Interface public immutable refUnitChainlinkFeed; // {target/ref}
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
 
     // Default Status:
@@ -69,7 +68,7 @@ contract CTokenNonFiatCollateral is Collateral {
         address comptrollerAddr_
     )
         Collateral(
-            AggregatorV3Interface(address(1)),
+            refUnitChainlinkFeed_,
             erc20_,
             rewardERC20_,
             tradingRange_,
@@ -89,7 +88,6 @@ contract CTokenNonFiatCollateral is Collateral {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
-        refUnitChainlinkFeed = refUnitChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
         comptrollerAddr = comptrollerAddr_;
@@ -101,7 +99,7 @@ contract CTokenNonFiatCollateral is Collateral {
         return
             targetUnitChainlinkFeed
                 .price(oracleTimeout)
-                .mul(refUnitChainlinkFeed.price(oracleTimeout))
+                .mul(chainlinkFeed.price(oracleTimeout))
                 .mul(refPerTok());
     }
 
@@ -122,10 +120,10 @@ contract CTokenNonFiatCollateral is Collateral {
             whenDefault = block.timestamp;
         } else {
             // p {target/ref}
-            try refUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 // We don't need the return value from this next feed, but it should still function
-                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                    priceable = true;
+                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                    priceable = p > 0 && p2 > 0;
 
                     // {target/ref}
                     uint192 peg = targetPerRef();
@@ -177,6 +175,46 @@ contract CTokenNonFiatCollateral is Collateral {
     function pricePerTarget() public view override returns (uint192) {
         return targetUnitChainlinkFeed.price(oracleTimeout);
     }
+
+    // solhint-disable no-empty-blocks
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view override returns (uint192 min) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
+                p = p.mul(p2).mul(refPerTok());
+
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.minVal.div(p, CEIL);
+                uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+                if (type(uint192).max < min256) revert UIntOutOfBounds();
+                min = uint192(min256);
+            } catch {}
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
+    }
+
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view override returns (uint192 max) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
+                p = p.mul(p2).mul(refPerTok());
+
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.maxVal.div(p);
+                uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+                if (type(uint192).max < max256) revert UIntOutOfBounds();
+                max = uint192(max256);
+            } catch {}
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
+    }
+
+    // solhint-enable no-empty-blocks
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
