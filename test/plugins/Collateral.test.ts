@@ -553,9 +553,7 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await nonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await nonFiatCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(
-        (config.tradingRange.maxAmt as BigNumber).div(20000)
-      )
+      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt.div(20000))
       expect(await nonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await nonFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await nonFiatCollateral.refPerTok()).to.equal(fp('1'))

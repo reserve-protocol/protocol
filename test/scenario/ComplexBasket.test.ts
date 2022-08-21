@@ -151,8 +151,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Mint initial balances
     initialBal = bn('100000000e18')
 
-    config.tradingRange.maxAmt = fp('3e7')
-
     // Set large amount of Eth to addr1 (to be able to mint WETH)
     await hre.network.provider.request({
       method: 'hardhat_setBalance',
@@ -204,7 +202,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 1. FiatCollateral against USD
     usdToken = erc20s[0] // DAI Token
     const usdFeed: MockV3Aggregator = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(8, fp('1e8'))
+      await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
     const { collateral: fiatUSD } = await hre.run('deploy-fiat-collateral', {
       priceFeed: usdFeed.address,
@@ -312,8 +310,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: (config.tradingRange.minAmt as BigNumber).div(20000).toString(),
-      tradingAmtMax: (config.tradingRange.maxAmt as BigNumber).div(20000).toString(),
+      tradingAmtMin: config.tradingRange.minAmt.div(20000).toString(),
+      tradingAmtMax: config.tradingRange.maxAmt.div(20000).toString(),
       maxOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -353,6 +351,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(await ethers.getContractAt('Collateral', cWBTCCollateral))
 
     // 7. SelfReferentialCollateral WETH against ETH
+    // Give higher tradingAmtMax in order to allow rebalancing to complete quickly
     weth = <WETH9>await WETH.deploy()
     const ethFeed = await MockV3AggregatorFactory.deploy(8, bn('1200e8'))
     const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
@@ -361,8 +360,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: (config.tradingRange.minAmt as BigNumber).div(1200).toString(),
-      tradingAmtMax: (config.tradingRange.maxAmt as BigNumber).div(1200).toString(),
+      tradingAmtMin: config.tradingRange.minAmt.div(1200).toString(),
+      tradingAmtMax: config.tradingRange.maxAmt.div(1200).mul(30).toString(),
       maxOracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       oracleLibrary: oracleLib.address,
@@ -375,6 +374,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(await ethers.getContractAt('Collateral', wETHCollateral))
 
     // 8. CTokenSelfReferentialCollateral cETH against ETH
+    // Give higher tradingAmtMax in order to allow rebalancing to complete quickly
     cETH = <CTokenMock>await CToken.deploy('cETH Token', 'cETH', weth.address)
     const { collateral: cETHCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
@@ -385,7 +385,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         tradingValMin: '0',
         tradingValMax: '0',
         tradingAmtMin: bn(50).mul(config.tradingRange.minAmt).div(1200).toString(),
-        tradingAmtMax: bn(50).mul(config.tradingRange.maxAmt).div(1200).toString(),
+        tradingAmtMax: bn(50).mul(config.tradingRange.maxAmt).div(1200).mul(30).toString(),
         maxOracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         decimals: bn(18).toString(),
@@ -1566,7 +1566,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // We need 3 auctions selling RSR, 1 million RSR @ 2 usd approx 1650 wETH
     const partialBuyAmtRSR = fp('1650')
     const lastAuctionBuyAmtRSR = buyAmtBidRSR.sub(partialBuyAmtRSR.mul(2))
-    const rsrMaxAmt = fp('1e6')
 
     // Close auctions - Will sell RSR for partial Buy #1
     await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
@@ -1579,7 +1578,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, rsrMaxAmt, partialBuyAmtRSR],
+        args: [rsr.address, weth.address, config.tradingRange.maxAmt, partialBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1608,7 +1607,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     let [, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(rsrMaxAmt)
+    expect(auctionSellAmtRSR).to.equal(config.tradingRange.maxAmt)
     expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 
     // Advance time till auction ended
@@ -1633,7 +1632,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, rsrMaxAmt, partialBuyAmtRSR],
+        args: [rsr.address, weth.address, config.tradingRange.maxAmt, partialBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1666,7 +1665,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(rsrMaxAmt)
+    expect(auctionSellAmtRSR).to.equal(config.tradingRange.maxAmt)
     expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 
     // Advance time till auction ended
@@ -1691,7 +1690,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        //args: [rsr.address, weth.address, sellAmtRSR.sub(rsrMaxAmt.mul(2)), lastAuctionBuyAmtRSR],
+        //args: [rsr.address, weth.address, sellAmtRSR.sub(config.tradingRange.maxAmt.mul(2)), lastAuctionBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1720,7 +1719,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    const lastSellAmtRSR = sellAmtRSR.sub(rsrMaxAmt.mul(2))
+    const lastSellAmtRSR = sellAmtRSR.sub(config.tradingRange.maxAmt.mul(2))
     expect(lastSellAmtRSR).to.be.closeTo(auctionSellAmtRSR, point5Pct(auctionSellAmtRSR))
     expect(lastAuctionBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 
