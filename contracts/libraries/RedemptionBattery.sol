@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/interfaces/IRToken.sol";
 import "./Fixed.sol";
 
-uint48 constant BLOCKS_PER_HOUR = 277; // {blocks/hour}
+uint48 constant BLOCKS_PER_HOUR = 300; // {blocks/hour}
 
 /// Applies a redemption throttle of X% every 277 blocks (~1 hour)
 /// @dev Use: call `discharge` after each redemption
