@@ -641,7 +641,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    tradingRange: { minVal: 0, maxVal: 0, minAmt: fp('0.01'), maxAmt: fp('1e6') }, // [$0, $0, 0.01 tok, 1M tok]
+    tradingRange: { minVal: bn('0'), maxVal: bn('0'), minAmt: fp('0.01'), maxAmt: fp('1e6') }, // [$0, $0, 0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
