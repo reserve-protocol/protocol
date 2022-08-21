@@ -439,6 +439,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         payoutLastPaid += numPeriods * rewardPeriod;
         rsrRewardsAtLastPayout = rsrRewards();
 
+        emit RewardsPaid(payout);
         emit ExchangeRateSet(initialExchangeRate, exchangeRate());
     }
 

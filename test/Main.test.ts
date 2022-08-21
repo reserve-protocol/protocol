@@ -34,6 +34,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
+  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -110,6 +111,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -150,6 +152,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -981,7 +984,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           ONE_ADDRESS,
@@ -1030,7 +1035,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to unregister asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
@@ -1088,7 +1095,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to swap Asset if OWNER', async () => {
       // Setup new Asset - Reusing token
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
@@ -1369,7 +1378,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(ONE_ADDRESS, token1.address, ZERO_ADDRESS, config.tradingRange, 1)
       )
@@ -1496,7 +1507,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Asset Registry - Register Asset', async () => {
       // Setup new Assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           ONE_ADDRESS,

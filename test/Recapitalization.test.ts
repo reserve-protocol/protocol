@@ -1002,7 +1002,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Trigger recapitalization
         const minBuyAmt: BigNumber = issueAmount
-          .sub(bn(2).mul(config.tradingRange.min))
+          .sub(bn(2).mul(config.tradingRange.minAmt))
           .sub(issueAmount.div(100))
         const sellAmt: BigNumber = minBuyAmt.mul(100).div(99).add(1)
         // const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
@@ -1077,7 +1077,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         // Check price in USD of the current RToken - Haircut of 1%+dust taken
-        const dustPriceImpact = fp('1').mul(config.tradingRange.min).div(issueAmount)
+        const dustPriceImpact = fp('1').mul(config.tradingRange.minAmt).div(issueAmount)
         expect(await rTokenAsset.price()).to.equal(fp('0.99').sub(dustPriceImpact.mul(2)))
       })
 
@@ -1344,7 +1344,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             chainlinkFeed.address,
             token0.address,
             ZERO_ADDRESS,
-            { min: bn('0'), max: bn('50e18') },
+            { minAmt: bn('1'), maxAmt: bn('50e18'), minVal: bn('1'), maxVal: bn('50e18') },
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),
             await backupCollateral1.defaultThreshold(),

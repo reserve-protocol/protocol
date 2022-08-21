@@ -6,7 +6,7 @@ import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setInvalidOracleTimestamp, setOraclePrice } from '../utils/oracles'
-import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
+import { Asset, ERC20Mock, RTokenAsset, TestIRToken, OracleLib } from '../../typechain'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -36,6 +36,8 @@ describe('Assets contracts #fast', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  let oracleLib: OracleLib
+
   const amt = fp('1e4')
 
   before('create fixture loader', async () => {
@@ -58,6 +60,7 @@ describe('Assets contracts #fast', () => {
       config,
       rToken,
       rTokenAsset,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     collateral0 = <Collateral>await ethers.getContractAt('Asset', collateral[0].address)
@@ -82,41 +85,41 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.isCollateral()).to.equal(false)
       expect(await rsrAsset.erc20()).to.equal(rsr.address)
       expect(await rsr.decimals()).to.equal(18)
-      expect(await rsrAsset.minTradeSize()).to.equal(config.tradingRange.min)
-      expect(await rsrAsset.maxTradeSize()).to.equal(config.tradingRange.max)
+      expect(await rsrAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       expect(await rsrAsset.price()).to.equal(fp('1'))
       expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-      // COMP Token
+      // COMP Asset
       expect(await compAsset.isCollateral()).to.equal(false)
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compToken.decimals()).to.equal(18)
-      expect(await compAsset.minTradeSize()).to.equal(config.tradingRange.min)
-      expect(await compAsset.maxTradeSize()).to.equal(config.tradingRange.max)
+      expect(await compAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await compAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       expect(await compAsset.price()).to.equal(fp('1'))
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-      // AAVE Token
+      // AAVE Asset
       expect(await aaveAsset.isCollateral()).to.equal(false)
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveToken.decimals()).to.equal(18)
-      expect(await aaveAsset.minTradeSize()).to.equal(config.tradingRange.min)
-      expect(await aaveAsset.maxTradeSize()).to.equal(config.tradingRange.max)
+      expect(await aaveAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await aaveAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       expect(await aaveAsset.price()).to.equal(fp('1'))
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-      // RToken
+      // RToken Asset
       expect(await rTokenAsset.isCollateral()).to.equal(false)
       expect(await rTokenAsset.erc20()).to.equal(rToken.address)
       expect(await rToken.decimals()).to.equal(18)
-      expect(await rTokenAsset.minTradeSize()).to.equal(config.tradingRange.min)
-      expect(await rTokenAsset.maxTradeSize()).to.equal(config.tradingRange.max)
+      expect(await rTokenAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await rTokenAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       expect(await rTokenAsset.price()).to.equal(fp('1'))
       expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
@@ -171,6 +174,21 @@ describe('Assets contracts #fast', () => {
       await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
     })
 
+    it('Should still return trade min/max when price is zero', async () => {
+      // Update values in Oracles to 0
+      await setOraclePrice(compAsset.address, bn('0'))
+      await setOraclePrice(aaveAsset.address, bn('0'))
+      await setOraclePrice(rsrAsset.address, bn('0'))
+
+      // Check minTradeSize + maxTradeSize
+      expect(await compAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await compAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await aaveAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await aaveAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await rsrAsset.minTradeSize()).to.equal(config.tradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+    })
+
     it('Should revert if price is stale', async () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
@@ -193,29 +211,38 @@ describe('Assets contracts #fast', () => {
   })
   describe('Constructor validation', () => {
     it('Should not allow missing chainlink feed', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       await expect(
         AssetFactory.deploy(ZERO_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, config.tradingRange, 1)
       ).to.be.revertedWith('missing chainlink feed')
     })
     it('Should not allow missing erc20', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ZERO_ADDRESS, ONE_ADDRESS, config.tradingRange, 1)
       ).to.be.revertedWith('missing erc20')
     })
-    it('Should not allow 0 maxTradeVolume', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
-      const emptyTradingRange = { min: 0, max: 0 }
-      await expect(
-        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, emptyTradingRange, 1)
-      ).to.be.revertedWith('invalid maxTradeSize')
-    })
     it('Should not allow 0 oracleTimeout', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, config.tradingRange, 0)
       ).to.be.revertedWith('oracleTimeout zero')
+    })
+    it('Should not allow 0 tradingRange.maxAmt', async () => {
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const newTradingRange = JSON.parse(JSON.stringify(config.tradingRange))
+      newTradingRange.maxAmt = 0
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
+      ).to.be.revertedWith('invalid trading range')
     })
   })
 })

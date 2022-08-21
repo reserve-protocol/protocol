@@ -82,8 +82,8 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                priceable = true;
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+                priceable = p > 0;
             } catch {
                 priceable = false;
             }
@@ -117,6 +117,42 @@ contract CTokenSelfReferentialCollateral is Collateral {
     function pricePerTarget() public view override returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
     }
+
+    // solhint-disable no-empty-blocks
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view virtual override returns (uint192 min) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // p = p.mul(refPerTok());
+            p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
+
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.minVal.div(p, CEIL);
+            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+            if (type(uint192).max < min256) revert UIntOutOfBounds();
+            min = uint192(min256);
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
+    }
+
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view virtual override returns (uint192 max) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // p = p.mul(refPerTok());
+            p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
+
+            // {tok} = {UoA} / {UoA/tok}
+            // return tradingRange.maxVal.div(p);
+            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+            if (type(uint192).max < max256) revert UIntOutOfBounds();
+            max = uint192(max256);
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
+    }
+
+    // solhint-enable no-empty-blocks
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to

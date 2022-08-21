@@ -7,8 +7,10 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingMin', 'Trade Range - Min')
-  .addParam('tradingMax', 'Trade Range - Max')
+  .addParam('tradingValMin', 'Trade Range - Min in UoA')
+  .addParam('tradingValMax', 'Trade Range - Max in UoA')
+  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
+  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('oracleLibrary', 'Oracle library address')
@@ -24,15 +26,18 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
       }
     )
 
-    const collateral = <Collateral>(
-      await SelfReferentialCollateralFactory.connect(deployer).deploy(
-        params.priceFeed,
-        params.tokenAddress,
-        params.rewardToken,
-        { min: params.tradingMin, max: params.tradingMax },
-        params.oracleTimeout,
-        params.targetName
-      )
+    const collateral = <Collateral>await SelfReferentialCollateralFactory.connect(deployer).deploy(
+      params.priceFeed,
+      params.tokenAddress,
+      params.rewardToken,
+      {
+        minVal: params.tradingValMin,
+        maxVal: params.tradingValMax,
+        minAmt: params.tradingAmtMin,
+        maxAmt: params.tradingAmtMax,
+      },
+      params.oracleTimeout,
+      params.targetName
     )
     await collateral.deployed()
 

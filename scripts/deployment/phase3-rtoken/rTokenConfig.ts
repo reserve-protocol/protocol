@@ -10,7 +10,12 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        tradingRange: { min: fp('0.01'), max: fp('1e6') }, // [0.01 tok, 1M tok]
+        tradingRange: {
+          minVal: fp('1e4'), // $10k
+          maxVal: fp('1e6'), // $1M
+          minAmt: fp('1e3'), // 1k RToken
+          maxAmt: fp('1e6'), // 1M RToken
+        }, // [$0.01, $1M, 0.01 tok, 1M tok]
         dist: {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR

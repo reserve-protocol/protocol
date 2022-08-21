@@ -1,4 +1,4 @@
-import { BigNumber, BigNumberish } from 'ethers'
+import { BigNumber } from 'ethers'
 import { fp, pow10 } from './numbers'
 
 interface ICurrencies {
@@ -220,8 +220,10 @@ export const getNetworkConfig = (chainId: string) => {
 export const developmentChains = ['hardhat', 'localhost']
 
 export interface TradingRange {
-  min: BigNumberish
-  max: BigNumberish
+  minVal: BigNumber // {UoA}
+  maxVal: BigNumber // {UoA}
+  minAmt: BigNumber // {tok}
+  maxAmt: BigNumber // {tok}
 }
 
 // Common configuration interfaces

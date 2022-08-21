@@ -79,11 +79,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
   context('with nesting', function () {
     beforeEach(async () => {
-      const openTradingRange = {
-        min: 0,
-        max: one.config.tradingRange.max,
-      }
-
       // Deploy ERC20s + Collateral
       const aTokenERC20 = await (
         await ethers.getContractFactory('ERC20Mock')
@@ -102,7 +97,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         chainlinkFeed.address,
         staticATokenERC20.address,
         one.aaveToken.address,
-        openTradingRange,
+        one.config.tradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -111,12 +106,14 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         await one.rToken.main(),
-        openTradingRange,
+        one.config.tradingRange,
         ethers.utils.formatBytes32String('RTK')
       )
       const rTokenAsset = await (
-        await ethers.getContractFactory('RTokenAsset')
-      ).deploy(two.rToken.address, openTradingRange)
+        await ethers.getContractFactory('RTokenAsset', {
+          libraries: { RTokenPricingLib: one.rTokenPricing.address },
+        })
+      ).deploy(two.rToken.address, one.config.tradingRange)
 
       // Set up aToken to back RToken0 and issue
       await one.assetRegistry.connect(owner).register(aTokenCollateral.address)

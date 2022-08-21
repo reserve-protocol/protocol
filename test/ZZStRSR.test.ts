@@ -6,6 +6,7 @@ import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
+import { expectEvents } from '../common/events'
 import {
   CTokenMock,
   ERC20Mock,
@@ -893,9 +894,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Advance to the end of noop period
       await advanceTime(Number(config.rewardPeriod) + 1)
 
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, initialRate)
+      await expectEvents(stRSR.payoutRewards(), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          args: [initialRate, initialRate],
+          emitted: true,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          args: [0],
+          emitted: true,
+        },
+      ])
 
       // Check exchange rate remains static
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
@@ -971,9 +983,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, newRate)
+      await expectEvents(stRSR.payoutRewards(), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          args: [initialRate, newRate],
+          emitted: true,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          args: [addedRSRStake],
+          emitted: true,
+        },
+      ])
 
       // Check exchange rate
       expect(await stRSR.exchangeRate()).to.equal(newRate)
