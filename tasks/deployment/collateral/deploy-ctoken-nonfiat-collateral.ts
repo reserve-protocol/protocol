@@ -15,7 +15,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -34,7 +34,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
     const CTokenNonFiatCollateralFactory = await hre.ethers.getContractFactory(
       'CTokenNonFiatCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 

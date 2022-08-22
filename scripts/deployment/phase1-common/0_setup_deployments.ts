@@ -54,6 +54,7 @@ async function main() {
     rewardableLib: '',
     tradingLib: '',
     rTokenPricingLib: '',
+    oracleLib: '',
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',

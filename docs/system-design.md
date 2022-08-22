@@ -161,7 +161,7 @@ Dimension: `{qRTok}`
 
 The max of the RToken trading range in terms of RToken token quantities. This limit cannot be set to 0 and is always enforced --- even at the same time as the UoA limits --- and even when the RToken becomes UNPRICEABLE.
 
-Anticipated value: `1e24` = 1M RToken
+Anticipated value: `1e25` = 10M RToken
 Mainnet reasonable range: 1e21 to 1e27.
 
 ### `rewardPeriod`
@@ -179,7 +179,7 @@ Dimension: `{1}`
 
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
-Anticipated value: `0.02284e18` = half life of 30 periods
+Anticipated value: `0.007701635339554948` = half life of 90 periods
 Mainnet reasonable range: 1e9 to 1e18
 
 ### `unstakingDelay`
@@ -281,3 +281,6 @@ Governance is 7 days end-to-end.
 - Voting delay: 1 day
 - Voting period: 2 days
 - Execution delay: 4 days
+
+Proposal Threshold: 0.05%
+Quorum: 10%

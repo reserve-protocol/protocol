@@ -11,7 +11,7 @@ task('deploy-asset', 'Deploys an Asset')
   .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
   .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
   .addParam('oracleTimeout', 'Max Oracle Timeout')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -20,7 +20,7 @@ task('deploy-asset', 'Deploys an Asset')
 
     const asset = <Asset>await (
       await hre.ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       })
     )
       .connect(deployer)

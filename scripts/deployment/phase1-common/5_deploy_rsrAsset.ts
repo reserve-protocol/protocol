@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
+import { networkConfig, TradingRange } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import {
@@ -15,6 +15,15 @@ import {
 import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset
+
+export function getRSRTradingRange(chainId: number): TradingRange {
+  return {
+    minVal: fp(chainId == 1 ? '1e4' : '0'), // $10k
+    maxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
+    minAmt: fp(chainId == 1 ? '1e6' : '1'), // 1M RSR
+    maxAmt: fp(chainId == 1 ? '1e8' : '1e9'), // 100M RSR,
+  }
+}
 
 async function main() {
   // ==== Read Configuration ====
@@ -30,6 +39,7 @@ async function main() {
 
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
+  const tradingRange = getRSRTradingRange(chainId)
 
   await validateImplementations(deployments)
 
@@ -38,9 +48,12 @@ async function main() {
     priceFeed: deployments.prerequisites.RSR_FEED,
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp(chainId == 1 ? '1e5' : '0').toString(), // 100k RSR
-    tradingMax: fp(chainId == 1 ? '1e8' : '0').toString(), // 100m RSR,
+    tradingMinVal: tradingRange.minVal.toString(),
+    tradingMaxVal: tradingRange.maxVal.toString(),
+    tradingMinAmt: tradingRange.minAmt.toString(),
+    tradingMaxAmt: tradingRange.maxAmt.toString(),
     oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleLib: deployments.oracleLib,
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

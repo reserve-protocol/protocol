@@ -130,7 +130,7 @@ contract FacadeWrite is IFacadeWrite {
             require(owner == address(0), "owner should be empty");
 
             TimelockController timelock = new TimelockController(
-                govParams.minDelay,
+                govParams.timelockDelay,
                 new address[](0),
                 new address[](0)
             );

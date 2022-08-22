@@ -293,7 +293,7 @@ export interface IGovParams {
   votingPeriod: BigNumber
   proposalThresholdAsMicroPercent: BigNumber
   quorumPercent: BigNumber
-  minDelay: BigNumber
+  timelockDelay: BigNumber
 }
 
 // System constants

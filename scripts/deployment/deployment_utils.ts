@@ -14,6 +14,7 @@ export interface IPrerequisites {
 export interface IDeployments {
   prerequisites: IPrerequisites
   rewardableLib: string
+  oracleLib: string
   tradingLib: string
   rTokenPricingLib: string
   facade: string
@@ -25,7 +26,6 @@ export interface IDeployments {
 }
 
 export interface IAssetCollDeployments {
-  oracleLib: string
   assets: ITokens
   collateral: ITokens
 }

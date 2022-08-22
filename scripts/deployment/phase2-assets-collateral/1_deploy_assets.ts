@@ -9,6 +9,9 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   getOracleTimeout,
+  getDeploymentFilename,
+  IDeployments,
+  fileExists,
 } from '../deployment_utils'
 
 async function main() {
@@ -23,11 +26,17 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
+  // Get phase1 deployment
+  const phase1File = getDeploymentFilename(chainId)
+  if (!fileExists(phase1File)) {
+    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
+  }
+  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
+
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const ORACLE_TIMEOUT = getOracleTimeout(chainId)
   const deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
@@ -35,9 +44,12 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('1e2').toString(), // 100 AAVE
-    tradingMax: fp('1e4').toString(), // 10,000 AAVE
-    oracleTimeout: ORACLE_TIMEOUT.toString(),
+    tradingMinVal: fp(chainId == 1 ? '1e4' : '0'), // $10k,
+    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
+    tradingMinAmt: fp(chainId == 1 ? '10' : '1'), // 10 StkAAVE
+    tradingMaxAmt: fp(chainId == 1 ? '1e4' : '1e9'), // 10,000 StkAAVE
+    oracleTimeout: getOracleTimeout(chainId),
+    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -48,9 +60,12 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('2e2').toString(), // 200 COMP
-    tradingMax: fp('2e4').toString(), // 20,000 COMP
-    oracleTimeout: ORACLE_TIMEOUT.toString(),
+    tradingMinVal: fp(chainId == 1 ? '1e4' : '0'), // $10k,
+    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
+    tradingMinAmt: fp(chainId == 1 ? '20' : '1'), // // 20 COMP
+    tradingMaxAmt: fp(chainId == 1 ? '2e4' : '1e9'), // 20,000 COMP
+    oracleTimeout: getOracleTimeout(chainId),
+    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.COMP = compAsset

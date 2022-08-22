@@ -19,7 +19,7 @@ const RTOKEN_NAME = 'RTKN'
 const DEPLOY_GOVERNANCE = true
 
 // Address to be used as external owner or pauser (if desired)
-const OWNER_ADDR = '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266'
+const OWNER_ADDR = '0xA7b123D54BcEc14b4206dAb796982a6d5aaA6770' // Reserve multisig
 
 async function main() {
   // ==== Read Configuration ====
@@ -82,7 +82,7 @@ async function main() {
     votingPeriod: rTokenConf.votingPeriod,
     proposalThresholdAsMicroPercent: rTokenConf.proposalThresholdAsMicroPercent,
     quorumPercent: rTokenConf.quorumPercent,
-    minDelay: rTokenConf.minDelay,
+    timelockDelay: rTokenConf.timelockDelay,
   }
 
   // Setup Governance in RToken

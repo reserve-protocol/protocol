@@ -4,6 +4,7 @@ import { bn, fp } from '../../../common/numbers'
 type IRToken = { [key: string]: IRTokenConfig & IGovParams }
 
 export const rTokenConfig: { [key: string]: IRToken } = {
+  // The 31337 mainnet forking config is realistic for mainnet
   '31337': {
     RTKN: {
       name: 'RToken',
@@ -20,8 +21,44 @@ export const rTokenConfig: { [key: string]: IRToken } = {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
         },
-        rewardPeriod: bn('604800'), // 1 week
-        rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
+        rewardPeriod: bn('86400'), // 1 day
+        rewardRatio: fp('0.007701635339554948'), // approx. half life of 90 periods
+        unstakingDelay: bn('1209600'), // 2 weeks
+        tradingDelay: bn('14400'), // (the delay _after_ default has been confirmed) 4 hours
+        auctionLength: bn('900'), // 15 minutes
+        backingBuffer: fp('0.0001'), // 0.01%
+        maxTradeSlippage: fp('0.01'), // 1%
+        shortFreeze: bn('259200'), // 3 days
+        longFreeze: bn('2592000'), // 30 days
+        issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
+        maxRedemptionCharge: fp('0.05'), // 5% per hour
+        redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+      },
+      votingDelay: bn(7200), // in blocks, 1 day
+      votingPeriod: bn(14400), // in blocks, 2 days
+      proposalThresholdAsMicroPercent: bn(5e4), // 0.05%
+      quorumPercent: bn(10), // 10%
+      timelockDelay: bn(60 * 60 * 24 * 4), // in seconds, 4 days
+    },
+  },
+  '4': {
+    RTKN: {
+      name: 'RToken',
+      symbol: 'RTKN',
+      mandate: 'mandate',
+      params: {
+        tradingRange: {
+          minVal: bn('0'), // $10k
+          maxVal: bn('0'), // $1M
+          minAmt: fp('1'), // 1k RToken
+          maxAmt: fp('1e9'), // 1M RToken
+        }, // [$0, $0, 1 tok, 1e9 tok]
+        dist: {
+          rTokenDist: bn(40), // 2/5 RToken
+          rsrDist: bn(60), // 3/5 RSR
+        },
+        rewardPeriod: bn('86400'), // 1 day
+        rewardRatio: fp('0.007701635339554948'), // approx. half life of 90 periods
         unstakingDelay: bn('1209600'), // 2 weeks
         tradingDelay: bn('0'), // (the delay _after_ default has been confirmed)
         auctionLength: bn('900'), // 15 minutes
@@ -35,9 +72,9 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       },
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks
-      proposalThresholdAsMicroPercent: bn(1e6), // 1&
-      quorumPercent: bn(4), // 4%
-      minDelay: bn(60 * 60 * 24), // 1 day
+      proposalThresholdAsMicroPercent: bn(5e4), // 0.05%
+      quorumPercent: bn(10), // 10%
+      timelockDelay: bn(60 * 60 * 24 * 4), // in seconds, 4 days
     },
   },
 }

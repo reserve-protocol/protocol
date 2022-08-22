@@ -13,7 +13,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -22,7 +22,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     const SelfReferentialCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
       'SelfReferentialCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 

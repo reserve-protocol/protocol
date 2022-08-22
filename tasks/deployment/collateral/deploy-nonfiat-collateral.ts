@@ -16,7 +16,7 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -25,7 +25,7 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
     const NonFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
       'NonFiatCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 

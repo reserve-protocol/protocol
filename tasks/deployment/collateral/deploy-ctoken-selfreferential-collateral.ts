@@ -14,7 +14,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('targetName', 'Target Name')
   .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -23,7 +23,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
     const CTokenSelfReferentialCollateralFactory = await hre.ethers.getContractFactory(
       'CTokenSelfReferentialCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 
