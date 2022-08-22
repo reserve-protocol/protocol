@@ -30,6 +30,8 @@ async function main() {
   console.log(`Starting full deployment on network ${hre.network.name} (${chainId})`)
   console.log(`Deployer account: ${deployer.address}\n`)
 
+  // Part 1: Deploy and verify all contracts
+
   const allScripts = [
     'phase1-common/0_setup_deployments.ts',
     'phase1-common/1_deploy_libraries.ts',
@@ -52,6 +54,7 @@ async function main() {
     'phase3-rtoken/2_setup_governance.ts',
     'phase3-rtoken/3_verify_rtoken.ts',
     'phase3-rtoken/4_verify_governance.ts',
+    'phase3-rtoken/5_publish_governance.ts',
   ]
 
   for (const script of allScripts) {

@@ -6,6 +6,7 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import '@withtally/tally-publish-dao'
 
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
