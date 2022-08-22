@@ -122,23 +122,47 @@ Design intentions:
 
 ## Deployment Parameters
 
-### `TradingRange.max`
+### `rTokenTradingRange.minVal`
+
+Dimension: `{UoA}`
+
+The min of the RToken trading range in terms of the unit of account. As long as the RToken remains priceable, no trades involving RToken can occur below this trade size. Note that both tokens contribute to trade sizing in any given trade.
+
+This parameter can be set to zero.
+
+Anticipated value: `1e22` = $10k
+Mainnet reasonable range: 1e21 to 1e27.
+
+### `rTokenTradingRange.maxVal`
+
+Dimension: `{UoA}`
+
+The max of the RToken trading range in terms of the unit of account. As long as the RToken remains priceable, no trades involving RToken can occur above this trade size.
+
+This parameter can be set to zero.
+
+Anticipated value: `1e24` = $1M
+Mainnet reasonable range: 1e22 to 1e27.
+
+### `rTokenTradingRange.minAmt`
 
 Dimension: `{qRTok}`
 
-The max of the trading range is how many RTokens can be traded at once. Each asset plugin has its own `TradingRange`; this deployment param only parametrizes the RToken asset. During a trade, both the selling and buying token contribute sizing constraints.
+The min of the RToken trading range in terms of RToken token quantities. This limit cannot be set to 0 and is always enforced --- even at the same time as the UoA limits --- and even when the RToken becomes UNPRICEABLE.
 
-Anticipated value: `1e24` = $1m RToken at $1 an RToken
-Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
+Since token prices can change quickly in short periods of time, it is recommended to set these generously. In general the UoA limits should be tighter than the qRTok limits.
 
-### `TradingRange.min`
+Anticipated value: `1e21` = 1000 RToken
+Mainnet reasonable range: 1e20 to 1e24.
+
+### `rTokenTradingRange.maxAmt`
 
 Dimension: `{qRTok}`
 
-The min of the trading range is a value in the unit of account that sets a floor on how many RTokens can be traded at oncen. Each asset plugin has its own `TradingRange`; this deployment param only parametrizes the RToken asset. During a trade, both the selling and buying token contribute sizing constraints.
+The max of the RToken trading range in terms of RToken token quantities. This limit cannot be set to 0 and is always enforced --- even at the same time as the UoA limits --- and even when the RToken becomes UNPRICEABLE.
 
-Anticipated value: `1e22` = $10k RToken at $1 an RToken
-Reasonable range: 1e21 to 1e27. Definitely increase this as the RToken grows.
+Anticipated value: `1e24` = 1M RToken
+Mainnet reasonable range: 1e21 to 1e27.
 
 ### `rewardPeriod`
 
@@ -147,7 +171,7 @@ Dimension: `{seconds}`
 The reward period is the length of one period of the StRSR and Furnace reward curves, which use exponential decay in order to hand out rewards slowly. The `rewardPeriod` must be set in conjuction with `rewardRatio` in order to achieve a desired payout rate. The `rewardPeriod` is the length of time that comprises a single period. Over a single period, `rewardRatio` of the last balance recorded is handed out. For multiple periods, the amount handed out is `(1 - (1-r)^N)`, where `r` is the `rewardRatio` and `N` is the number of periods elapsed.
 
 Anticipated value: `86400` = 1 day
-Reasonable range: 10 to 31536000 (1 year)
+Mainnet reasonable range: 10 to 31536000 (1 year)
 
 ### `rewardRatio`
 
@@ -156,7 +180,7 @@ Dimension: `{1}`
 The `rewardRatio` is the amount of the current reward amount that should be handed out in a single period. See above.
 
 Anticipated value: `0.02284e18` = half life of 30 periods
-Reasonable range: 1e9 to 1e18
+Mainnet reasonable range: 1e9 to 1e18
 
 ### `unstakingDelay`
 
@@ -165,7 +189,7 @@ Dimension: `{seconds}`
 The unstaking delay is the number of seconds that all RSR unstakings must be delayed in order to account for stakers trying to frontrun defaults. It must be longer than governance cycle, and must be long enough that RSR stakers do not unstake in advance of foreseeable basket change.
 
 Anticipated value: `1209600` = 2 weeks
-Reasonable range: 1 to 31536000
+Mainnet reasonable range: 1 to 31536000
 
 ### `tradingDelay`
 
@@ -174,7 +198,7 @@ Dimension: `{seconds}`
 The trading delay is how many seconds should pass after the basket has been changed, before a trade is opened. In the long term this can probably trend towards zero, but at the start we will want some heads up before trading in order to avoid losses due to poor liquidity.
 
 Anticipated value: `14400` = 4 hours
-Reasonable range: 0 to 604800
+Mainnet reasonable range: 0 to 604800
 
 ### `auctionLength`
 
@@ -183,7 +207,7 @@ Dimension: `{seconds}`
 The auction length is how many seconds long Gnosis EasyAuctions should be.
 
 Anticipated value: `900` = 15 minutes
-Reasonable range: 60 to 3600
+Mainnet reasonable range: 60 to 3600
 
 ### `backingBuffer`
 
@@ -192,7 +216,7 @@ Dimension: `{1}`
 The backing buffer is a percentage value that describes how much additional collateral tokens to keep in the BackingManager before forwarding tokens to the RevenueTraders. This helps cause collateral tokens to more reliably be converted into RToken, which is the most efficient form of revenue production.
 
 Anticipated value: `1e14` = 0.01%
-Reasonable range: 1e12 to 1e18
+Mainnet reasonable range: 1e12 to 1e18
 
 ### `maxTradeSlippage`
 
@@ -201,7 +225,7 @@ Dimension: `{1}`
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
 
 Anticipated value: `0.01e18` = 1%
-Reasonable range: 1e12 to 1e18
+Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
 
@@ -210,7 +234,7 @@ Dimension: `{s}`
 The number of seconds an initial freeze lasts. Governance can freeze forever.
 
 Anticipated value: `259200` = 3 days
-Reasonable range: 3600 to 2592000 (1 hour to 1 month)
+Mainnet reasonable range: 3600 to 2592000 (1 hour to 1 month)
 
 ### `longFreeze`
 
@@ -219,7 +243,7 @@ Dimension: `{s}`
 The number of seconds a freeze extensions freeze lasts. A long freeze / extension can only occur during a short freeze.
 
 Anticipated value: `2592000` = 30 days
-Reasonable range: 86400 to 31536000 (1 day to 1 year)
+Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 ### `issuanceRate`
 
@@ -228,7 +252,7 @@ Dimension: `{1}`
 The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
 
 Anticipated value: `0.00025e18` = 0.025% per block
-Reasonable range: 1e12 to 1e16
+Mainnet reasonable range: 1e12 to 1e16
 
 ### `maxRedemptionCharge`
 
@@ -239,7 +263,7 @@ The max redemption is a percentage value that describes what proportion of the R
 Set to 0 to disable redemption throttling altogether.
 
 Anticipated value: `5e16` = 5% per hour
-Reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
+Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
 
 ### `redemptionVirtualSupply`
 
@@ -248,7 +272,7 @@ Dimension: `{qRTok}`
 The redemption virtual supply is the minimum value to use to size the redemption battery. The redemption capacity is at least maxRedemptionCharge \* redemptionVirtualSupply.
 
 Anticipated value: `2e25` = $20,000,000 at $1 an RToken
-Reasonable range: 1e21 to 1e27
+Mainnet reasonable range: 1e21 to 1e27
 
 ### Governance Parameters
 
