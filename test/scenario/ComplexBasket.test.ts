@@ -216,7 +216,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -243,7 +243,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: ethers.utils.formatBytes32String('EURO'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -267,7 +267,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -290,7 +290,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -316,7 +316,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -341,7 +341,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -364,7 +364,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       tradingAmtMax: config.rTokenTradingRange.maxAmt.div(1200).mul(30).toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -390,7 +390,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         decimals: bn(18).toString(),
         comptroller: compoundMock.address,
-        oracleLibrary: oracleLib.address,
+        oracleLib: oracleLib.address,
         noOutput: true,
       }
     )
