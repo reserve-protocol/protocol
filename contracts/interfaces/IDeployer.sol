@@ -18,7 +18,7 @@ import "./ITrade.sol";
  */
 struct DeploymentParams {
     // === RToken trade sizing ===
-    TradingRange tradingRange; // {rTok}
+    TradingRange rTokenTradingRange; // {rTok}
     //
     // === Revenue sharing ===
     RevenueShare dist; // revenue sharing splits between RToken and RSR

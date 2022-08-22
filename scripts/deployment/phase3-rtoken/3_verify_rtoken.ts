@@ -34,7 +34,7 @@ async function main() {
 
   // Do this for all components
 
-  // Also verify assets creared (RSR and RTOKEN)
+  // Also verify assets created (RSR and RTOKEN)
 
   /** ******************** Verify Components  ****************************************/
   // Get all components and verify proxies - Needs to be tested in Testnet to confirm correct validation by default

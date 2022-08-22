@@ -204,7 +204,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -226,7 +226,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -252,7 +252,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           compToken.address,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -290,7 +290,7 @@ async function collateralFixture(
           chainlinkAddr,
           staticErc20.address,
           aaveToken.address,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
@@ -316,7 +316,7 @@ async function collateralFixture(
           targetUnitOracleAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
@@ -345,7 +345,7 @@ async function collateralFixture(
           targetUnitOracleAddr,
           erc20.address,
           compToken.address,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
@@ -371,7 +371,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName)
         )
@@ -396,7 +396,7 @@ async function collateralFixture(
           chainlinkAddr,
           erc20.address,
           compToken.address,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           (await referenceERC20.decimals()).toString(),
@@ -422,7 +422,7 @@ async function collateralFixture(
           targetUnitOracleAddr,
           erc20.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
@@ -641,7 +641,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    tradingRange: { minVal: bn('0'), maxVal: bn('0'), minAmt: fp('0.01'), maxAmt: fp('1e6') }, // [$0, $0, 0.01 tok, 1M tok]
+    rTokenTradingRange: { minVal: bn('0'), maxVal: bn('0'), minAmt: fp('0.01'), maxAmt: fp('1e6') }, // [$0, $0, 0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -684,7 +684,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       networkConfig[chainId].chainlinkFeeds.RSR || '',
       rsr.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -816,7 +816,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     networkConfig[chainId].chainlinkFeeds.AAVE || '',
     aaveToken.address,
     ZERO_ADDRESS,
-    config.tradingRange,
+    config.rTokenTradingRange,
     ORACLE_TIMEOUT
   )
 
@@ -828,7 +828,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     networkConfig[chainId].chainlinkFeeds.COMP || '',
     compToken.address,
     ZERO_ADDRESS, // also uncertain about this one
-    config.tradingRange,
+    config.rTokenTradingRange,
     ORACLE_TIMEOUT
   )
   const rToken: TestIRToken = <TestIRToken>(

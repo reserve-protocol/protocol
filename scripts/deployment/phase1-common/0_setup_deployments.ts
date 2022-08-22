@@ -37,38 +37,6 @@ async function main() {
     throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
   }
 
-  // Get AaveLendingPool Address
-  const aaveLendPoolAddr = networkConfig[chainId].AAVE_LENDING_POOL
-  if (!aaveLendPoolAddr) {
-    throw new Error(`Missing address for AAVE_LENDING_POOL in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, aaveLendPoolAddr))) {
-    throw new Error(`AAVE_LENDING_POOL contract not found in network ${hre.network.name}`)
-  }
-
-  // Get stkAAVE Token Address
-  const aaveTokenAddr = networkConfig[chainId].tokens.stkAAVE
-  if (!aaveTokenAddr) {
-    throw new Error(`Missing address for stkAAVE token in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, aaveTokenAddr))) {
-    throw new Error(`STKAAVE contract not found in network ${hre.network.name}`)
-  }
-
-  // Get Comptroller Address
-  const comptrollerAddr = networkConfig[chainId].COMPTROLLER
-  if (!comptrollerAddr) {
-    throw new Error(`Missing address for COMPTROLLER in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, comptrollerAddr))) {
-    throw new Error(`COMPTROLLER contract not found in network ${hre.network.name}`)
-  }
-
-  // Get COMP Token Address
-  const compTokenAddr = networkConfig[chainId].tokens.COMP
-  if (!compTokenAddr) {
-    throw new Error(`Missing address for COMP tokenin network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, compTokenAddr))) {
-    throw new Error(`COMP contract not found in network ${hre.network.name}`)
-  }
-
   // Get Gnosis EasyAuction Address
   const gnosisAddr = networkConfig[chainId].GNOSIS_EASY_AUCTION
   if (!gnosisAddr) {
@@ -81,15 +49,12 @@ async function main() {
     prerequisites: {
       RSR: rsrAddr,
       RSR_FEED: rsrFeedAddr,
-      AAVE_LENDING_POOL: aaveLendPoolAddr,
-      stkAAVE: aaveTokenAddr,
-      COMPTROLLER: comptrollerAddr,
-      COMP: compTokenAddr,
       GNOSIS_EASY_AUCTION: gnosisAddr,
     },
     rewardableLib: '',
     tradingLib: '',
     rTokenPricingLib: '',
+    oracleLib: '',
     facade: '',
     facadeWriteLib: '',
     facadeWrite: '',
@@ -117,10 +82,6 @@ async function main() {
   console.log(`Deployment file created for ${hre.network.name} (${chainId}):
     RSR: ${rsrAddr}
     RSR FEED: ${rsrFeedAddr}
-    AAVE_LENDING_POOL: ${aaveLendPoolAddr}
-    stkAAVE: ${aaveTokenAddr}
-    COMPTROLLER: ${comptrollerAddr}
-    COMP: ${compTokenAddr}
     GNOSIS_EASY_AUCTION: ${gnosisAddr}
     Deployment file: ${deploymentFilename}`)
 }

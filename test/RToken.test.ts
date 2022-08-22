@@ -1526,7 +1526,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           expect(await rToken.redemptionVirtualSupply()).to.equal(redemptionVirtualSupply)
 
           // Charge battery
-          await advanceBlocks(277)
+          await advanceBlocks(300)
         })
 
         it('Should calculate redemption limit correctly', async function () {
@@ -1540,7 +1540,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             if (totalSupply.eq(0)) break
 
             // Charge + redeem
-            await advanceBlocks(277)
+            await advanceBlocks(300)
             redeemAmount = await rToken.redemptionLimit()
 
             await rToken.connect(addr1).redeem(redeemAmount)

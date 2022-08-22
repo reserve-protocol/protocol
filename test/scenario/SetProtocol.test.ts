@@ -94,7 +94,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.tradingRange.maxAmt },
+      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH')
     )
@@ -106,7 +106,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       chainlinkFeed.address,
       token1.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.tradingRange.maxAmt },
+      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('MKR')
     )
@@ -118,7 +118,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       chainlinkFeed.address,
       token2.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.tradingRange.maxAmt },
+      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('COMP')
     )

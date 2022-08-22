@@ -3,11 +3,15 @@ import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
-import { bn, fp } from '../../../common/numbers'
+import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
+  getOracleTimeout,
+  getDeploymentFilename,
+  IDeployments,
+  fileExists,
 } from '../deployment_utils'
 
 async function main() {
@@ -22,23 +26,30 @@ async function main() {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
+  // Get phase1 deployment
+  const phase1File = getDeploymentFilename(chainId)
+  if (!fileExists(phase1File)) {
+    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
+  }
+  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
+
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const ORACLE_LIB_ADDRESS = assetCollDeployments.oracleLib
-  const ORACLE_TIMEOUT = bn('86400') // 1 day
-  let deployedAssets: string[] = []
+  const deployedAssets: string[] = []
 
   /********  Deploy StkAAVE Asset **************************/
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
-    oracleLibrary: ORACLE_LIB_ADDRESS,
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '10' : '1').toString(), // 10 StkAAVE
+    tradingAmtMax: fp(chainId == 1 ? '1e4' : '1e9').toString(), // 10,000 StkAAVE
+    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -49,10 +60,12 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    tradingMin: fp('0.01').toString(), // min trade
-    tradingMax: fp('1e6').toString(), // max trade
-    maxOracleTimeout: ORACLE_TIMEOUT.toString(), // 1 day
-    oracleLibrary: ORACLE_LIB_ADDRESS,
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '20' : '1').toString(), // // 20 COMP
+    tradingAmtMax: fp(chainId == 1 ? '2e4' : '1e9').toString(), // 20,000 COMP
+    oracleTimeout: getOracleTimeout(chainId).toString(),
+    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.COMP = compAsset

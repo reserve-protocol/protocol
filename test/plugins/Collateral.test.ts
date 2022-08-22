@@ -139,8 +139,8 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await tokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await tokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
       expect(await tokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
@@ -159,8 +159,8 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await usdcCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await usdcCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await usdcCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await usdcCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await usdcCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
       expect(await usdcCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await usdcCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
@@ -179,8 +179,8 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await aTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await aTokenCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await aTokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
       expect(await aTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await aTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -204,8 +204,12 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await cTokenCollateral.minTradeSize()).to.equal(bn(50).mul(config.tradingRange.minAmt))
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(bn(50).mul(config.tradingRange.maxAmt))
+      expect(await cTokenCollateral.minTradeSize()).to.equal(
+        bn(50).mul(config.rTokenTradingRange.minAmt)
+      )
+      expect(await cTokenCollateral.maxTradeSize()).to.equal(
+        bn(50).mul(config.rTokenTradingRange.maxAmt)
+      )
       expect(await cTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4).mul(50))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -527,7 +531,7 @@ describe('Collateral contracts', () => {
         targetUnitOracle.address,
         nonFiatToken.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
         DEFAULT_THRESHOLD,
@@ -552,8 +556,10 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await nonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await nonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt.div(20000))
+      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await nonFiatCollateral.maxTradeSize()).to.equal(
+        config.rTokenTradingRange.maxAmt.div(20000)
+      )
       expect(await nonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await nonFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await nonFiatCollateral.refPerTok()).to.equal(fp('1'))
@@ -621,7 +627,7 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
 
-      const newTradingRange = JSON.parse(JSON.stringify(config.tradingRange))
+      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
       newTradingRange.minAmt = bn(50).mul(newTradingRange.minAmt)
       newTradingRange.maxAmt = bn(50).mul(newTradingRange.maxAmt)
 
@@ -669,10 +675,10 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenNonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(
-        bn(50).mul(config.tradingRange.minAmt)
+        bn(50).mul(config.rTokenTradingRange.minAmt)
       )
       expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(
-        bn(50).mul(config.tradingRange.maxVal).div(20000)
+        bn(50).mul(config.rTokenTradingRange.maxVal).div(20000)
       )
       expect(await cTokenNonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenNonFiatCollateral.bal(owner.address)).to.equal(amt)
@@ -753,7 +759,7 @@ describe('Collateral contracts', () => {
         chainlinkFeed.address,
         selfRefToken.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH')
       )
@@ -771,8 +777,12 @@ describe('Collateral contracts', () => {
       // Get priceable info
       await selfReferentialCollateral.refresh()
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
+        config.rTokenTradingRange.minAmt
+      )
+      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
+        config.rTokenTradingRange.maxAmt
+      )
       expect(await selfReferentialCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await selfReferentialCollateral.bal(owner.address)).to.equal(0)
       expect(await selfReferentialCollateral.refPerTok()).to.equal(fp('1'))
@@ -816,7 +826,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      const newTradingRange = JSON.parse(JSON.stringify(config.tradingRange))
+      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
       newTradingRange.minAmt = bn(50).mul(newTradingRange.minAmt)
       newTradingRange.maxAmt = bn(50).mul(newTradingRange.maxAmt)
 
@@ -859,10 +869,10 @@ describe('Collateral contracts', () => {
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        bn(50).mul(config.tradingRange.minAmt)
+        bn(50).mul(config.rTokenTradingRange.minAmt)
       )
       expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        bn(50).mul(config.tradingRange.maxAmt)
+        bn(50).mul(config.rTokenTradingRange.maxAmt)
       )
       expect(await cTokenSelfReferentialCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenSelfReferentialCollateral.bal(owner.address)).to.equal(amt)
@@ -941,7 +951,7 @@ describe('Collateral contracts', () => {
         targetUnitOracle.address,
         eurFiatToken.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('EUR'),
         DEFAULT_THRESHOLD,
@@ -966,8 +976,8 @@ describe('Collateral contracts', () => {
       expect(await eurFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await eurFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await eurFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.tradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.tradingRange.maxAmt)
+      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
       expect(await eurFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await eurFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await eurFiatCollateral.refPerTok()).to.equal(fp('1'))

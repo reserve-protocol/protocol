@@ -176,8 +176,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rsr.address,
       ZERO_ADDRESS,
       {
-        minAmt: config.tradingRange.minAmt,
-        maxAmt: config.tradingRange.maxAmt,
+        minAmt: config.rTokenTradingRange.minAmt,
+        maxAmt: config.rTokenTradingRange.maxAmt,
         minVal: fp('0'),
         maxVal: fp('0'),
       },
@@ -210,13 +210,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: config.tradingRange.minAmt.toString(),
-      tradingAmtMax: config.tradingRange.maxAmt.toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: config.rTokenTradingRange.minAmt.toString(),
+      tradingAmtMax: config.rTokenTradingRange.maxAmt.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -237,13 +237,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: config.tradingRange.minAmt.toString(),
-      tradingAmtMax: config.tradingRange.maxAmt.toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: config.rTokenTradingRange.minAmt.toString(),
+      tradingAmtMax: config.rTokenTradingRange.maxAmt.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('EURO'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -260,14 +260,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: compToken.address,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: bn(50).mul(config.tradingRange.minAmt).toString(),
-      tradingAmtMax: bn(50).mul(config.tradingRange.maxAmt).toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: bn(50).mul(config.rTokenTradingRange.minAmt).toString(),
+      tradingAmtMax: bn(50).mul(config.rTokenTradingRange.maxAmt).toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -284,13 +284,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: aaveToken.address,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: config.tradingRange.minAmt.toString(),
-      tradingAmtMax: config.tradingRange.maxAmt.toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: config.rTokenTradingRange.minAmt.toString(),
+      tradingAmtMax: config.rTokenTradingRange.maxAmt.toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -310,13 +310,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: config.tradingRange.minAmt.div(20000).toString(),
-      tradingAmtMax: config.tradingRange.maxAmt.div(20000).toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: config.rTokenTradingRange.minAmt.div(20000).toString(),
+      tradingAmtMax: config.rTokenTradingRange.maxAmt.div(20000).toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -334,14 +334,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: compToken.address,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: bn(50).mul(config.tradingRange.minAmt).div(20000).toString(),
-      tradingAmtMax: bn(50).mul(config.tradingRange.maxAmt).div(20000).toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: bn(50).mul(config.rTokenTradingRange.minAmt).div(20000).toString(),
+      tradingAmtMax: bn(50).mul(config.rTokenTradingRange.maxAmt).div(20000).toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -360,11 +360,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rewardToken: ZERO_ADDRESS,
       tradingValMin: '0',
       tradingValMax: '0',
-      tradingAmtMin: config.tradingRange.minAmt.div(1200).toString(),
-      tradingAmtMax: config.tradingRange.maxAmt.div(1200).mul(30).toString(),
-      maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+      tradingAmtMin: config.rTokenTradingRange.minAmt.div(1200).toString(),
+      tradingAmtMax: config.rTokenTradingRange.maxAmt.div(1200).mul(30).toString(),
+      oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      oracleLibrary: oracleLib.address,
+      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
@@ -384,13 +384,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         rewardToken: compToken.address,
         tradingValMin: '0',
         tradingValMax: '0',
-        tradingAmtMin: bn(50).mul(config.tradingRange.minAmt).div(1200).toString(),
-        tradingAmtMax: bn(50).mul(config.tradingRange.maxAmt).div(1200).mul(30).toString(),
-        maxOracleTimeout: ORACLE_TIMEOUT.toString(),
+        tradingAmtMin: bn(50).mul(config.rTokenTradingRange.minAmt).div(1200).toString(),
+        tradingAmtMax: bn(50).mul(config.rTokenTradingRange.maxAmt).div(1200).mul(30).toString(),
+        oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         decimals: bn(18).toString(),
         comptroller: compoundMock.address,
-        oracleLibrary: oracleLib.address,
+        oracleLib: oracleLib.address,
         noOutput: true,
       }
     )
@@ -1578,7 +1578,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, config.tradingRange.maxAmt, partialBuyAmtRSR],
+        args: [rsr.address, weth.address, config.rTokenTradingRange.maxAmt, partialBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1607,7 +1607,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     let [, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(config.tradingRange.maxAmt)
+    expect(auctionSellAmtRSR).to.equal(config.rTokenTradingRange.maxAmt)
     expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 
     // Advance time till auction ended
@@ -1632,7 +1632,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, config.tradingRange.maxAmt, partialBuyAmtRSR],
+        args: [rsr.address, weth.address, config.rTokenTradingRange.maxAmt, partialBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1665,7 +1665,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(config.tradingRange.maxAmt)
+    expect(auctionSellAmtRSR).to.equal(config.rTokenTradingRange.maxAmt)
     expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 
     // Advance time till auction ended
@@ -1690,7 +1690,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        //args: [rsr.address, weth.address, sellAmtRSR.sub(config.tradingRange.maxAmt.mul(2)), lastAuctionBuyAmtRSR],
+        //args: [rsr.address, weth.address, sellAmtRSR.sub(config.rTokenTradingRange.maxAmt.mul(2)), lastAuctionBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1719,7 +1719,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
     ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    const lastSellAmtRSR = sellAmtRSR.sub(config.tradingRange.maxAmt.mul(2))
+    const lastSellAmtRSR = sellAmtRSR.sub(config.rTokenTradingRange.maxAmt.mul(2))
     expect(lastSellAmtRSR).to.be.closeTo(auctionSellAmtRSR, point5Pct(auctionSellAmtRSR))
     expect(lastAuctionBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
 

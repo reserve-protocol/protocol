@@ -21,11 +21,22 @@ interface IAaveOracle {
 contract AaveLendingPoolMock is IAaveLendingPool {
     ILendingPoolAddressesProvider private _lendingAddressesProvider;
 
+    // asset => normalized income
+    mapping(address => uint256) private _normalizedIncome;
+
     constructor(address lendingAddressesProvider) {
         _lendingAddressesProvider = ILendingPoolAddressesProvider(lendingAddressesProvider);
     }
 
     function getAddressesProvider() external view returns (ILendingPoolAddressesProvider) {
         return _lendingAddressesProvider;
+    }
+
+    function getReserveNormalizedIncome(address asset) external view returns (uint256) {
+        return _normalizedIncome[asset] > 0 ? _normalizedIncome[asset] : 1e27;
+    }
+
+    function setNormalizedIncome(address asset, uint256 newRate) external {
+        _normalizedIncome[asset] = newRate;
     }
 }

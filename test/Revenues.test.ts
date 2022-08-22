@@ -1713,7 +1713,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             ONE_ADDRESS,
             token2.address,
             aaveToken.address,
-            config.tradingRange,
+            config.rTokenTradingRange,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),
             await collateral2.defaultThreshold(),
@@ -2470,7 +2470,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           chainlinkFeed.address,
           compToken.address,
           compToken.address,
-          config.tradingRange,
+          config.rTokenTradingRange,
           ORACLE_TIMEOUT
         )
       )

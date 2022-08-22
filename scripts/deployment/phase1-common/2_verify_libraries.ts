@@ -45,6 +45,15 @@ async function main() {
     contract: 'contracts/plugins/assets/RTokenPricingLib.sol:RTokenPricingLib',
   })
   console.timeEnd('Verifying RTokenPricingLib')
+
+  /** ******************** Verify OracleLib Library ****************************************/
+  console.time('Verifying OracleLib')
+  await hre.run('verify:verify', {
+    address: deployments.oracleLib,
+    constructorArguments: [],
+    contract: 'contracts/plugins/assets/OracleLib.sol:OracleLib',
+  })
+  console.timeEnd('Verifying OracleLib')
 }
 
 main().catch((error) => {

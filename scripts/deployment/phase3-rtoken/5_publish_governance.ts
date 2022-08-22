@@ -4,11 +4,14 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../../common/configuration'
 import {
   getDeploymentFile,
-  getAssetCollDeploymentFilename,
-  IAssetCollDeployments,
+  getRTokenDeploymentFilename,
+  IRTokenDeployments,
 } from '../deployment_utils'
 
-let assetCollDeployments: IAssetCollDeployments
+let rTokenDeployments: IRTokenDeployments
+
+// Define the Token to use
+const RTOKEN_NAME = 'RTKN'
 
 async function main() {
   // ********** Read config **********
@@ -21,18 +24,25 @@ async function main() {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
 
-  assetCollDeployments = <IAssetCollDeployments>(
-    getDeploymentFile(getAssetCollDeploymentFilename(chainId))
+  rTokenDeployments = <IRTokenDeployments>(
+    getDeploymentFile(getRTokenDeploymentFilename(chainId, RTOKEN_NAME))
   )
 
-  /** ******************** Verify OracleLib ****************************************/
-  console.time('Verifying OracleLib')
-  await hre.run('verify:verify', {
-    address: assetCollDeployments.oracleLib,
-    constructorArguments: [],
-    contract: 'contracts/plugins/assets/OracleLib.sol:OracleLib',
+  await hre.tally.publishDao({
+    name: 'My DAO',
+    contracts: {
+      governor: {
+        address: rTokenDeployments.governance,
+        type: 'OPENZEPPELINGOVERNOR',
+      },
+      token: {
+        address: rTokenDeployments.components.stRSR,
+        type: 'ERC20',
+      },
+    },
   })
-  console.timeEnd('Verifying OracleLib')
+
+  console.log(`Published DAO to ${hre.network.name} (${chainId}): ${rTokenDeployments.governance}`)
 }
 
 main().catch((error) => {

@@ -1,21 +1,20 @@
 import fs from 'fs'
 import hre from 'hardhat'
+import { BigNumber } from 'ethers'
+import { bn } from '../../common/numbers'
 import { ITokens, IComponents, IImplementations } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 
 export interface IPrerequisites {
   RSR: string
   RSR_FEED: string
-  AAVE_LENDING_POOL: string
-  stkAAVE: string
-  COMPTROLLER: string
-  COMP: string
   GNOSIS_EASY_AUCTION: string
 }
 
 export interface IDeployments {
   prerequisites: IPrerequisites
   rewardableLib: string
+  oracleLib: string
   tradingLib: string
   rTokenPricingLib: string
   facade: string
@@ -27,7 +26,6 @@ export interface IDeployments {
 }
 
 export interface IAssetCollDeployments {
-  oracleLib: string
   assets: ITokens
   collateral: ITokens
 }
@@ -41,8 +39,12 @@ export interface IRTokenDeployments {
   timelock: string
 }
 
-const tempFileSuffix: string = '-tmp-deployments.json'
-const tempAssetCollFileSuffix: string = '-tmp-assets-collateral.json'
+const tempFileSuffix = '-tmp-deployments.json'
+const tempAssetCollFileSuffix = '-tmp-assets-collateral.json'
+
+export const getOracleTimeout = (chainId: number): BigNumber => {
+  return bn(chainId == 1 ? '86400' : '4294967296') // long timeout on testnets
+}
 
 export const getDeploymentFilename = (chainId: number): string => {
   return `./${chainId}${tempFileSuffix}`
@@ -81,8 +83,6 @@ export const getDeploymentFile = (
 export const validatePrerequisites = async (deployments: IDeployments) => {
   // Check prerequisites properly defined
   if (
-    !deployments.prerequisites.AAVE_LENDING_POOL ||
-    !deployments.prerequisites.COMPTROLLER ||
     !deployments.prerequisites.GNOSIS_EASY_AUCTION ||
     !deployments.prerequisites.RSR ||
     !deployments.prerequisites.RSR_FEED
@@ -92,14 +92,6 @@ export const validatePrerequisites = async (deployments: IDeployments) => {
     throw new Error(`RSR contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.RSR_FEED))) {
     throw new Error(`RSR_FEED contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.AAVE_LENDING_POOL))) {
-    throw new Error(`AAVE_LENDING_POOL contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.stkAAVE))) {
-    throw new Error(`stkAAVE contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.COMPTROLLER))) {
-    throw new Error(`COMPTROLLER contract not found in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.prerequisites.COMP))) {
-    throw new Error(`COMP contract not found in network ${hre.network.name}`)
   } else if (!(await isValidContract(hre, deployments.prerequisites.GNOSIS_EASY_AUCTION))) {
     throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
   }

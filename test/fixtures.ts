@@ -179,7 +179,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -199,7 +199,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -217,7 +217,7 @@ async function collateralFixture(
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
     )
-    const cTokenTradingRange = JSON.parse(JSON.stringify(config.tradingRange))
+    const cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
     cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
     cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
     const coll = <CTokenFiatCollateral>(
@@ -252,7 +252,7 @@ async function collateralFixture(
         chainlinkAddr,
         erc20.address,
         aaveToken.address,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -382,7 +382,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    tradingRange: { minVal: fp('0.01'), maxVal: fp('1e6'), minAmt: fp('0.01'), maxAmt: fp('1e6') }, // [$0.01, $1M, 0.01 tok, 1M tok]
+    rTokenTradingRange: {
+      minVal: fp('0.01'),
+      maxVal: fp('1e6'),
+      minAmt: fp('0.01'),
+      maxAmt: fp('1e6'),
+    }, // [$0.01, $1M, 0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -433,7 +438,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       rsrChainlinkFeed.address,
       rsr.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -565,7 +570,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveChainlinkFeed.address,
       aaveToken.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -578,7 +583,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       compChainlinkFeed.address,
       compToken.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )

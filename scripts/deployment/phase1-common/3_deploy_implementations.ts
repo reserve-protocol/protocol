@@ -37,7 +37,7 @@ const writeComponentDeployment = (
   implAddr: string,
   logDesc: string
 ) => {
-  let field = name as keyof typeof deployments.implementations.components
+  const field = name as keyof typeof deployments.implementations.components
 
   // Write temporary deployments file for component
   deployments.implementations.components[field] = implAddr

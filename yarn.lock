@@ -2137,6 +2137,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@withtally/tally-publish-dao@npm:^0.0.5":
+  version: 0.0.5
+  resolution: "@withtally/tally-publish-dao@npm:0.0.5"
+  peerDependencies:
+    "@nomiclabs/hardhat-ethers": ^2.0.6
+    "@nomiclabs/hardhat-etherscan": ^3.1.0
+    caip: ^1.1.0
+    dotenv: ^16.0.1
+    graphql: ^16.5.0
+    graphql-request: ^4.3.0
+    hardhat: ^2.0.0
+    lodash.get: ^4.4.2
+    query-string: ^7.1.1
+    wretch: ^1.7.10
+  checksum: 89b6e4ad5a05e0e8faaa0c69a40b05c012313acd0270bceb93bdf46e902b05369b3136737f99a64b58047074d2b5757de3f958f7a131286cc6f334382f7211f9
+  languageName: node
+  linkType: hard
+
 "@yarnpkg/lockfile@npm:^1.1.0":
   version: 1.1.0
   resolution: "@yarnpkg/lockfile@npm:1.1.0"
@@ -3933,6 +3951,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"caip@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "caip@npm:1.1.0"
+  checksum: 9c56d919941672e6e4676e539a808f7da64df6a3b31befdbcad551ac83d02a9dd2827d27be863db6e448a6a32563d1934da0d273e36d873c5e4db456ee0dca74
+  languageName: node
+  linkType: hard
+
 "call-bind@npm:^1.0.0, call-bind@npm:^1.0.2, call-bind@npm:~1.0.2":
   version: 1.0.2
   resolution: "call-bind@npm:1.0.2"
@@ -4651,6 +4676,15 @@ __metadata:
     node-fetch: ^2.6.7
     whatwg-fetch: ^2.0.4
   checksum: df9c6728b314ff96022dca468a3d2a05b4546cd318d82a7e1f1445e7160472d39029bccbe5f20d319b8ba3793930592b0b956244aef6a87a133fbcfed85fc8ca
+  languageName: node
+  linkType: hard
+
+"cross-fetch@npm:^3.1.5":
+  version: 3.1.5
+  resolution: "cross-fetch@npm:3.1.5"
+  dependencies:
+    node-fetch: 2.6.7
+  checksum: f6b8c6ee3ef993ace6277fd789c71b6acf1b504fd5f5c7128df4ef2f125a429e29cd62dc8c127523f04a5f2fa4771ed80e3f3d9695617f441425045f505cf3bb
   languageName: node
   linkType: hard
 
@@ -6506,6 +6540,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"extract-files@npm:^9.0.0":
+  version: 9.0.0
+  resolution: "extract-files@npm:9.0.0"
+  checksum: c31781d090f8d8f62cc541f1023b39ea863f24bd6fb3d4011922d71cbded70cef8191f2b70b43ec6cb5c5907cdad1dc5e9f29f78228936c10adc239091d8ab64
+  languageName: node
+  linkType: hard
+
 "extsprintf@npm:1.3.0":
   version: 1.3.0
   resolution: "extsprintf@npm:1.3.0"
@@ -7466,6 +7507,26 @@ fsevents@~2.1.1:
   version: 4.2.10
   resolution: "graceful-fs@npm:4.2.10"
   checksum: 3f109d70ae123951905d85032ebeae3c2a5a7a997430df00ea30df0e3a6c60cf6689b109654d6fdacd28810a053348c4d14642da1d075049e6be1ba5216218da
+  languageName: node
+  linkType: hard
+
+"graphql-request@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "graphql-request@npm:4.3.0"
+  dependencies:
+    cross-fetch: ^3.1.5
+    extract-files: ^9.0.0
+    form-data: ^3.0.0
+  peerDependencies:
+    graphql: 14 - 16
+  checksum: 3124afd01aee781cd5a2e9ac30063526b677a6754032566104fc36270b5f9be03f17a32e49f34c71ca968d533151550c37f7a0194d11c36ff59977bd73e2abc3
+  languageName: node
+  linkType: hard
+
+"graphql@npm:^16.6.0":
+  version: 16.6.0
+  resolution: "graphql@npm:16.6.0"
+  checksum: bf1d9e3c1938ce3c1a81e909bd3ead1ae4707c577f91cff1ca2eca474bfbc7873d5d7b942e1e9777ff5a8304421dba57a4b76d7a29eb19de8711cb70e3c2415e
   languageName: node
   linkType: hard
 
@@ -9467,6 +9528,13 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
+"lodash.get@npm:^4.4.2":
+  version: 4.4.2
+  resolution: "lodash.get@npm:4.4.2"
+  checksum: e403047ddb03181c9d0e92df9556570e2b67e0f0a930fcbbbd779370972368f5568e914f913e93f3b08f6d492abc71e14d4e9b7a18916c31fa04bd2306efe545
+  languageName: node
+  linkType: hard
+
 "lodash.merge@npm:^4.6.2":
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
@@ -10400,7 +10468,7 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
-"node-fetch@npm:^2.6.1, node-fetch@npm:^2.6.7":
+"node-fetch@npm:2.6.7, node-fetch@npm:^2.6.1, node-fetch@npm:^2.6.7":
   version: 2.6.7
   resolution: "node-fetch@npm:2.6.7"
   dependencies:
@@ -11965,8 +12033,10 @@ fsevents@~2.1.1:
     "@types/node": ^12.20.37
     "@typescript-eslint/eslint-plugin": ^5.17.0
     "@typescript-eslint/parser": ^5.17.0
+    "@withtally/tally-publish-dao": ^0.0.5
     axios: ^0.24.0
     big.js: ^6.1.1
+    caip: ^1.1.0
     chai: ^4.3.4
     dotenv: ^10.0.0
     eslint: ^8.14.0
@@ -11980,10 +12050,13 @@ fsevents@~2.1.1:
     ethereum-waffle: ^3.4.0
     ethers: ^5.5.2
     fast-check: ^2.24.0
+    graphql: ^16.6.0
+    graphql-request: ^4.3.0
     hardhat: ^2.9.5
     hardhat-contract-sizer: ^2.4.0
     hardhat-gas-reporter: ^1.0.8
     husky: ^7.0.0
+    lodash.get: ^4.4.2
     mocha-chai-jest-snapshot: ^1.1.3
     prettier: 2.5.1
     prettier-plugin-solidity: ^1.0.0-beta.13
@@ -11993,6 +12066,7 @@ fsevents@~2.1.1:
     ts-node: ^10.4.0
     typechain: ^5.2.0
     typescript: ^4.4.2
+    wretch: ^2.0.4
   languageName: unknown
   linkType: soft
 
@@ -15045,6 +15119,13 @@ typescript@^4.4.2:
   version: 1.0.2
   resolution: "wrappy@npm:1.0.2"
   checksum: 159da4805f7e84a3d003d8841557196034155008f817172d4e986bd591f74aa82aa7db55929a54222309e01079a65a92a9e6414da5a6aa4b01ee44a511ac3ee5
+  languageName: node
+  linkType: hard
+
+"wretch@npm:^2.0.4":
+  version: 2.0.4
+  resolution: "wretch@npm:2.0.4"
+  checksum: 27278ca4f239dc26af2fb8da0221ba1a6373005343ed0e66d4f8c3227710d39e5e4f4323ed8f81996f5fe62a7343722bf0076f5f6e4930c18815e27a6680917e
   languageName: node
   linkType: hard
 

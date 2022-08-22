@@ -24,7 +24,7 @@ async function main() {
   await hre.run('verify:verify', {
     address: deployments.facade,
     constructorArguments: [],
-    contract: 'contracts/Facade.sol:FacadeP1',
+    contract: 'contracts/facade/Facade.sol:FacadeP1',
   })
   console.timeEnd('Verifying Facade')
 }

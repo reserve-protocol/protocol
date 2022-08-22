@@ -10,11 +10,11 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('tradingValMax', 'Trade Range - Max in UoA')
   .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
   .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -23,7 +23,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
     const CTokenSelfReferentialCollateralFactory = await hre.ethers.getContractFactory(
       'CTokenSelfReferentialCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 
@@ -38,7 +38,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
           minAmt: params.tradingAmtMin,
           maxAmt: params.tradingAmtMax,
         },
-        params.maxOracleTimeout,
+        params.oracleTimeout,
         params.targetName,
         params.decimals,
         params.comptroller

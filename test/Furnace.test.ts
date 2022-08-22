@@ -397,7 +397,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       // Charge battery
       await rToken.connect(owner).setRedemptionVirtualSupply(bal)
-      await advanceBlocks(277)
+      await advanceBlocks(300)
 
       return furnace
     }
@@ -449,7 +449,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr2).issue(issueAmount)
 
       // Advance blocks to fill battery
-      await advanceBlocks(277)
+      await advanceBlocks(300)
     })
 
     it('Melt - One period ', async () => {

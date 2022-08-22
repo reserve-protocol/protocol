@@ -9,19 +9,20 @@ import {
   IDeployments,
   validatePrerequisites,
 } from '../deployment_utils'
-import { TradingLibP1, RewardableLibP1, RTokenPricingLib } from '../../../typechain'
+import { TradingLibP1, RewardableLibP1, RTokenPricingLib, OracleLib } from '../../../typechain'
 
 let tradingLib: TradingLibP1
 let rewardableLib: RewardableLibP1
 let rTokenPricingLib: RTokenPricingLib
+let oracleLib: OracleLib
 
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying TradingLib and RewardableLib to network ${hre.network.name} (${chainId})
-    with burner account: ${burner.address}`)
+  console.log(`Deploying TradingLib, RewardableLib, RTokenPricingLib, and OracleLib 
+    to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -52,12 +53,19 @@ async function main() {
   await rTokenPricingLib.deployed()
   deployments.rTokenPricingLib = rTokenPricingLib.address
 
+  // Deploy OracleLib external library
+  const OracleLibFactory = await ethers.getContractFactory('OracleLib')
+  oracleLib = <OracleLib>await OracleLibFactory.deploy()
+  await oracleLib.deployed()
+  deployments.oracleLib = oracleLib.address
+
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     RewardableLib: ${rewardableLib.address}
     RTokenPricing: ${rTokenPricingLib.address}
+    OracleLib: ${oracleLib.address}
     Deployment file: ${deploymentFilename}`)
 }
 
