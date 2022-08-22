@@ -103,7 +103,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,

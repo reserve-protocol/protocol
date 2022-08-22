@@ -11,7 +11,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        tradingRange: {
+        rTokenTradingRange: {
           minVal: fp('1e4'), // $10k
           maxVal: fp('1e6'), // $1M
           minAmt: fp('1e3'), // 1k RToken
@@ -47,7 +47,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        tradingRange: {
+        rTokenTradingRange: {
           minVal: bn('0'), // $10k
           maxVal: bn('0'), // $1M
           minAmt: fp('1'), // 1k RToken

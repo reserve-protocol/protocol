@@ -228,7 +228,7 @@ export interface TradingRange {
 
 // Common configuration interfaces
 export interface IConfig {
-  tradingRange: TradingRange
+  rTokenTradingRange: TradingRange
   dist: IRevenueShare
   rewardPeriod: BigNumber
   rewardRatio: BigNumber

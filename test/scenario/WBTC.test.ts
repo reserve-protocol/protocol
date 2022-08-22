@@ -111,7 +111,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       targetUnitOracle.address,
       wbtc.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,

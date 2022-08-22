@@ -992,13 +992,19 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
 
       const duplicateAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Get previous length for assets
@@ -1039,7 +1045,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Setup new asset with new ERC20
@@ -1050,7 +1062,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           newToken.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -1099,7 +1111,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Setup another one with new token (cannot be used in swap)
@@ -1108,7 +1126,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -1382,7 +1400,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token1.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token1.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
       // Swap Asset
       await expectEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
@@ -1515,7 +1539,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -1524,7 +1548,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[6].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
