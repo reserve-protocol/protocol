@@ -44,7 +44,7 @@ async function main() {
       rTokenConf.proposalThresholdAsMicroPercent,
       rTokenConf.quorumPercent,
     ],
-    contract: 'contracts/plugins/Governance.sol:Governance',
+    contract: 'contracts/plugins/governance/Governance.sol:Governance',
   })
   console.timeEnd('Verifying Governance')
 }

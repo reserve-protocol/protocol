@@ -44,11 +44,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0'), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '10' : '1'), // 10 StkAAVE
-    tradingMaxAmt: fp(chainId == 1 ? '1e4' : '1e9'), // 10,000 StkAAVE
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '10' : '1').toString(), // 10 StkAAVE
+    tradingAmtMax: fp(chainId == 1 ? '1e4' : '1e9').toString(), // 10,000 StkAAVE
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })
 
@@ -60,11 +60,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0'), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '20' : '1'), // // 20 COMP
-    tradingMaxAmt: fp(chainId == 1 ? '2e4' : '1e9'), // 20,000 COMP
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '20' : '1').toString(), // // 20 COMP
+    tradingAmtMax: fp(chainId == 1 ? '2e4' : '1e9').toString(), // 20,000 COMP
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })
 

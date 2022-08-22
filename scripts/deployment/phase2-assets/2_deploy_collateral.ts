@@ -47,11 +47,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     tokenAddress: networkConfig[chainId].tokens.DAI,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k DAI
-    tradingMaxAmt: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M DAI
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k DAI
+    tradingAmtMax: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M DAI
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -66,11 +66,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     tokenAddress: networkConfig[chainId].tokens.USDC,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k USDC
-    tradingMaxAmt: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M USDC
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k USDC
+    tradingAmtMax: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M USDC
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -85,11 +85,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     tokenAddress: networkConfig[chainId].tokens.USDT,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k USDT
-    tradingMaxAmt: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M USDT
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k USDT
+    tradingAmtMax: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M USDT
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -126,11 +126,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     staticAToken: staticAToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k aDAI
-    tradingMaxAmt: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M aDAI
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k aDAI
+    tradingAmtMax: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M aDAI
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -146,11 +146,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     cToken: networkConfig[chainId].tokens.cDAI,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '50e3' : '1').toString(), // 50k cDAI
-    tradingMaxAmt: fp(chainId == 1 ? '50e6' : '1e9').toString(), // 50M cDAI
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '50e3' : '1').toString(), // 50k cDAI
+    tradingAmtMax: fp(chainId == 1 ? '50e6' : '1e9').toString(), // 50M cDAI
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -168,11 +168,11 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     cToken: networkConfig[chainId].tokens.cWBTC,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '12.5' : '1').toString(), // 12.5 cWBTC or 0.25 BTC
-    tradingMaxAmt: fp(chainId == 1 ? '12500' : '1e9').toString(), // 12500 cWBTC or 250 BTC
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '12.5' : '1').toString(), // 12.5 cWBTC or 0.25 BTC
+    tradingAmtMax: fp(chainId == 1 ? '12500' : '1e9').toString(), // 12500 cWBTC or 250 BTC
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -189,11 +189,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     cToken: networkConfig[chainId].tokens.cETH,
     rewardToken: networkConfig[chainId].tokens.COMP,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '25' : '1').toString(), // 25 cETH or 0.5 ETH
-    tradingMaxAmt: fp(chainId == 1 ? '25e3' : '1e9').toString(), // 25,000 cETH or 500 ETH
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '25' : '1').toString(), // 25 cETH or 0.5 ETH
+    tradingAmtMax: fp(chainId == 1 ? '25e3' : '1e9').toString(), // 25,000 cETH or 500 ETH
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     decimals: bn(18).toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
@@ -209,11 +209,11 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '0.25' : '1').toString(), // 0.25 BTC
-    tradingMaxAmt: fp(chainId == 1 ? '250' : '1e9').toString(), // 250 BTC
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '0.25' : '1').toString(), // 0.25 BTC
+    tradingAmtMax: fp(chainId == 1 ? '250' : '1e9').toString(), // 250 BTC
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
@@ -229,11 +229,11 @@ async function main() {
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     tokenAddress: networkConfig[chainId].tokens.WETH,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '0.5' : '1').toString(), // 0.5 ETH
-    tradingMaxAmt: fp(chainId == 1 ? '500' : '1e9').toString(), // 500 ETH
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '0.5' : '1').toString(), // 0.5 ETH
+    tradingAmtMax: fp(chainId == 1 ? '500' : '1e9').toString(), // 500 ETH
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     oracleLib: phase1Deployment.oracleLib,
   })
@@ -247,11 +247,11 @@ async function main() {
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
     tokenAddress: networkConfig[chainId].tokens.EURT,
     rewardToken: ZERO_ADDRESS,
-    tradingMinVal: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingMaxVal: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingMinAmt: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k EURO
-    tradingMaxAmt: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M EURO
-    oracleTimeout: getOracleTimeout(chainId),
+    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
+    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    tradingAmtMin: fp(chainId == 1 ? '1e3' : '1').toString(), // 1k EURO
+    tradingAmtMax: fp(chainId == 1 ? '1e6' : '1e9').toString(), // 1M EURO
+    oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: ethers.utils.formatBytes32String('EURO'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h

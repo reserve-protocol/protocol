@@ -21,8 +21,8 @@ async function main() {
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying TradingLib and RewardableLib to network ${hre.network.name} (${chainId})
-    with burner account: ${burner.address}`)
+  console.log(`Deploying TradingLib, RewardableLib, RTokenPricingLib, and OracleLib 
+    to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)

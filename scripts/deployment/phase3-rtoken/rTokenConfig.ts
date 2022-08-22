@@ -41,7 +41,7 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       timelockDelay: bn(60 * 60 * 24 * 4), // in seconds, 4 days
     },
   },
-  '4': {
+  '5': {
     RTKN: {
       name: 'RToken',
       symbol: 'RTKN',

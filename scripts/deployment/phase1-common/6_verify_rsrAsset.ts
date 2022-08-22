@@ -36,12 +36,13 @@ async function main() {
       deployments.prerequisites.RSR_FEED,
       deployments.prerequisites.RSR,
       ZERO_ADDRESS,
-      tradingRange.minVal.toString(),
-      tradingRange.maxVal.toString(),
-      tradingRange.minAmt.toString(),
-      tradingRange.maxAmt.toString(),
+      {
+        minVal: tradingRange.minVal.toString(),
+        maxVal: tradingRange.maxVal.toString(),
+        minAmt: tradingRange.minAmt.toString(),
+        maxAmt: tradingRange.maxAmt.toString(),
+      },
       getOracleTimeout(chainId).toString(),
-      deployments.oracleLib,
     ],
     contract: 'contracts/plugins/assets/Asset.sol:Asset',
   })

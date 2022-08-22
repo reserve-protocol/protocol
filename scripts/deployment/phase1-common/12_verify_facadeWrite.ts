@@ -23,8 +23,8 @@ async function main() {
   console.time('Verifying FacadeWrite')
   await hre.run('verify:verify', {
     address: deployments.facadeWrite,
-    constructorArguments: [],
-    contract: 'contracts/FacadeWrite.sol:FacadeWrite',
+    constructorArguments: [deployments.deployer],
+    contract: 'contracts/facade/FacadeWrite.sol:FacadeWrite',
   })
   console.timeEnd('Verifying FacadeWrite')
 }
