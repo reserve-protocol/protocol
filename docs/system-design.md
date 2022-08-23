@@ -122,6 +122,13 @@ Design intentions:
 
 ## Deployment Parameters
 
+### Revenue split (`dist`)
+
+The fraction of revenues that should go towards RToken holders vs stakers, as given by the relative values of `rTokenDist` and `rsrDist`. This can be thought of as a single variable between 0 and 100% (during deployment).
+
+Anticipated value: 60% to stakers and 40% to RToken holders.
+Mainnet reasonable range: 0% to 100%
+
 ### `rTokenTradingRange.minVal`
 
 Dimension: `{UoA}`
