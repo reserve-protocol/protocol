@@ -103,7 +103,9 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         DEFAULT_THRESHOLD,
         DELAY_UNTIL_DEFAULT
       )
-      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
+      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral', {
+        libraries: { OracleLib: one.oracleLib.address },
+      })
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         await one.rToken.main(),
         one.config.rTokenTradingRange,
