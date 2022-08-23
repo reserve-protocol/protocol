@@ -284,7 +284,6 @@ async function main() {
     await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aBUSD as string)
   )
 
-  // Wrap in StaticAToken
   const abusdStaticToken: StaticATokenLM = <StaticATokenLM>(
     await StaticATokenFactory.connect(burner).deploy(
       networkConfig[chainId].AAVE_LENDING_POOL as string,
@@ -316,6 +315,26 @@ async function main() {
 
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
   deployedCollateral.push(aBusdCollateral.toString())
+
+  /******** Verify StaticATokens */
+
+  console.time('Verifying StaticATokenLM')
+  try {
+    await hre.run('verify:verify', {
+      address: abusdStaticToken.address,
+      constructorArguments: [
+        networkConfig[chainId].AAVE_LENDING_POOL as string,
+        aToken.address,
+        'Static ' + (await aToken.name()),
+        'stat' + (await aToken.symbol()),
+      ],
+      contract: 'contracts/plugins/aave/StaticATokenLM.sol:StaticATokenLM',
+    })
+  } catch (e) {
+    if (e instanceof Error && e.toString().indexOf('Already Verified') < 0) throw e
+    console.log('StaticAToken already verified, passing...')
+  }
+  console.timeEnd('Verifying StaticATokenLM')
 
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
 
