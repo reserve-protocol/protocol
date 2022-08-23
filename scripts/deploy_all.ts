@@ -8,7 +8,8 @@ async function sh(cmd: string) {
   return new Promise(function (resolve, reject) {
     const execProcess = exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        reject(err)
+        if (cmd.indexOf('verify') >= 0) console.log('already verified, skipping...')
+        else reject(err)
       } else {
         resolve({ stdout, stderr })
       }
@@ -54,7 +55,6 @@ async function main() {
     'phase3-rtoken/2_setup_governance.ts',
     'phase3-rtoken/3_verify_rtoken.ts',
     'phase3-rtoken/4_verify_governance.ts',
-    'phase3-rtoken/5_publish_governance.ts',
   ]
 
   for (const script of allScripts) {
