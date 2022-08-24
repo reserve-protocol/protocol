@@ -652,14 +652,22 @@ describe('The Normal Operations scenario', () => {
   })
   it('has only initially-true properties', async () => {
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
-    expect(await scenario.echidna_refreshBasketIsNoop()).to.be.true
     expect(await scenario.echidna_isFullyCapitalized()).to.be.true
     expect(await scenario.echidna_quoteProportionalToBasket()).to.be.true
+
+    // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+    await comp.basketHandler.savePrev()
+    await comp.basketHandler.refreshBasket()
+    expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
   it('does not fail on refreshBasket after just one call to updatePrice', async () => {
     await scenario.updatePrice(0, 0, 0, 0, 0)
-    expect(await scenario.echidna_refreshBasketIsNoop()).to.be.true
+
+    // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+    await comp.basketHandler.savePrev()
+    await comp.basketHandler.refreshBasket()
+    expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
   it('does not have falling rates after a tiny issuance', async () => {

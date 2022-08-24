@@ -78,7 +78,7 @@ contract NormalOpsScenario {
                     IERC20Metadata(address(0)),
                     bytes32("USD"),
                     growing,
-                    stable,
+                    justOne,
                     justOne,
                     stable
                 )
