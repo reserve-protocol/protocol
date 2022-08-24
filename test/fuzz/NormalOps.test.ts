@@ -3,7 +3,8 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer, BigNumber } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp } from '../../common/numbers'
+import { fp, shortString } from '../../common/numbers'
+import { whileImpersonating } from '../../test/utils/impersonation'
 import { RoundingMode } from '../../common/constants'
 import { advanceTime } from '../../test/utils/time'
 
@@ -586,13 +587,6 @@ describe('The Normal Operations scenario', () => {
       // addr(2) == strsr, set to 0 Rtoken + 1 RSR
       await scenario.setDistribution(strsrID, 0, 1)
 
-      // ==== Mint 1*exa of each token to the backing manager
-      // const numTokens = await main.numTokens()
-      // for (let i = 0; numTokens.gt(i); i++) {
-      //   const token = await ConAt('ERC20Fuzz', await main.someToken(i))
-      //   token.mint(comp.backingManager.address, exa)
-      // }
-
       // ==== Mint 1 exa of C0 to the backing manager
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       c0.mint(comp.backingManager.address, exa)
@@ -608,13 +602,6 @@ describe('The Normal Operations scenario', () => {
 
       const bals1 = await allBalances(comp.rsrTrader.address)
 
-      for (const sym of Object.keys(bmBals)) {
-        console.log(`BM balances on ${sym}: ${bmBals[sym]}`)
-      }
-
-      for (const sym of Object.keys(bals1)) {
-        console.log(`balances on ${sym}: ${bals1[sym]}, was ${bals0[sym]}`)
-      }
       for (const sym of Object.keys(bals1)) {
         const actual = bals1[sym].sub(bals0[sym])
         const expected = sym == 'C0' ? exa : 0n
@@ -641,5 +628,42 @@ describe('The Normal Operations scenario', () => {
         expect(actual).to.equal(expected)
       }
     })
+
+    it('can grant allownaces to RToken', async () => {
+      // With token C0,
+      let txn
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
+      const tokenID = tokenIDs.get('C0') as number
+      await token.mint(comp.backingManager.address, exa)
+
+      // 1. mimic BM; set RToken's allowance to 0
+      await whileImpersonating(comp.backingManager.address, async (asBM) => {
+        await token.connect(asBM).approve(comp.rToken.address, 0)
+      })
+      const allowance0 = await token.allowance(comp.backingManager.address, comp.rToken.address)
+
+      expect(allowance0).to.equal(0)
+
+      // 2. grantAllowances on C0
+      await scenario.grantAllowances(tokenID)
+      const allowance1 = await token.allowance(comp.backingManager.address, comp.rToken.address)
+      expect(allowance1).to.equal(2n ** 256n - 1n)
+    })
+  })
+  it('has only initially-true properties', async () => {
+    expect(await scenario.echidna_ratesNeverFall()).to.be.true
+    expect(await scenario.echidna_refreshBasketIsNoop()).to.be.true
+    expect(await scenario.echidna_isFullyCapitalized()).to.be.true
+    expect(await scenario.echidna_quoteProportionalToBasket()).to.be.true
+  })
+
+  it('does not fail on refreshBasket after just one call to updatePrice', async () => {
+    await scenario.updatePrice(0, 0, 0, 0, 0)
+    expect(await scenario.echidna_refreshBasketIsNoop()).to.be.true
+  })
+
+  it('does not have falling rates after a tiny issuance', async () => {
+    await scenario.connect(alice).issue(1)
+    expect(await scenario.echidna_ratesNeverFall()).to.be.true
   })
 })

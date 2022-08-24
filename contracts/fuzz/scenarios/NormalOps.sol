@@ -142,6 +142,9 @@ contract NormalOpsScenario {
         for (uint256 t = 0; t < main.numTokens(); t++) {
             main.backingManager().grantRTokenAllowance(main.tokens(t));
         }
+
+        // Save RSR and RToken rates
+        saveRates();
     }
 
     // In the modified function, send transactions from *this* contract as if they were from
@@ -360,13 +363,66 @@ contract NormalOpsScenario {
     function setBackingBuffer(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setBackingBuffer(
             uint192(between(seed, 0, 1e18))
-        ); //1e18 == MAX_BACKING_BUFFER
+        ); // 1e18 == MAX_BACKING_BUFFER
     }
 
     function setBackingManagerTradingDelay(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setTradingDelay(
             uint32(between(seed, 0, 31536000))
-        ); // MAX_TRADING_DELAY
+        ); // 31536000 is BackingManager.MAX_TRADING_DELAY
+    }
+
+    function setAuctionLength(uint256 seed) public {
+        BrokerP1(address(main.broker())).setAuctionLength(uint32(between(seed, 1, 604800)));
+        // 604800 is Broker.MAX_AUCTION_LENGTH
+    }
+
+    function setFurnacePeriod(uint256 seed) public {
+        FurnaceP1(address(main.furnace())).setPeriod(uint32(between(seed, 1, 31536000)));
+        // 31536000 is Furnace.MAX_PERIOD
+    }
+
+    function setFurnaceRatio(uint256 seed) public {
+        FurnaceP1(address(main.furnace())).setRatio(uint192(between(seed, 0, 1e18)));
+        // 1e18 is Furnace.MAX_RATIO
+    }
+
+    function setIssuanceRate(uint256 seed) public {
+        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(seed, 0, 1e18)));
+        // 1e18 is RToken.MAX_ISSUANCE_RATE
+    }
+
+    function setRSRTraderMaxTradeSlippage(uint256 seed) public {
+        RevenueTraderP1(address(main.rsrTrader())).setMaxTradeSlippage(
+            uint192(between(seed, 0, 1e18))
+        );
+        // 1e18 is Trading.MAX_TRADE_SLIPPAGE
+    }
+
+    function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
+        RevenueTraderP1(address(main.rTokenTrader())).setMaxTradeSlippage(
+            uint192(between(seed, 0, 1e18))
+        );
+        // 1e18 is Trading.MAX_TRADE_SLIPPAGE
+    }
+
+    function setBackingManagerMaxTradeSlippage(uint256 seed) public {
+        BackingManagerP1(address(main.backingManager())).setMaxTradeSlippage(
+            uint192(between(seed, 0, 1e18))
+        );
+        // 1e18 is Trading.MAX_TRADE_SLIPPAGE
+    }
+
+    function setStakeRewardPeriod(uint256 seed) public {
+        StRSRP1(address(main.stRSR())).setRewardPeriod(uint32(between(seed, 1, 31536000)));
+    }
+
+    function setStakeRewardRatio(uint256 seed) public {
+        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(seed, 1, 1e18)));
+    }
+
+    function setUnstakingDelay(uint256 seed) public {
+        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint32(between(seed, 1, 31536000)));
     }
 
     // ================ System Properties ================
@@ -401,23 +457,28 @@ contract NormalOpsScenario {
     }
 
     // RSR and RToken rates never fall
-    uint192 internal prevRSRRate; // {StRSR/RSR}
-    uint256 internal prevRTokenRate; // {RTok/BU}
+    uint192 public prevRSRRate; // {StRSR/RSR}
+    uint192 public prevRTokenRate; // {RTok/BU}
+
+    function rTokenRate() public view returns (uint192) {
+        return
+            main.rToken().basketsNeeded() == 0
+                ? FIX_ONE
+                : uint192((FIX_ONE * main.rToken().totalSupply()) / main.rToken().basketsNeeded());
+    }
 
     // pseudo-mutator for saving old rates...
-    function saveRates() external {
+    function saveRates() public {
         prevRSRRate = main.stRSR().exchangeRate();
-        prevRTokenRate = divFix(main.rToken().totalSupply(), main.rToken().basketsNeeded());
+        prevRTokenRate = rTokenRate();
     }
 
     function echidna_ratesNeverFall() external view returns (bool) {
-        uint192 rsrRate = main.stRSR().exchangeRate();
-        uint256 rTokenRate = divFix(main.rToken().totalSupply(), main.rToken().basketsNeeded());
-
-        if (prevRSRRate == 0 || rsrRate > prevRSRRate) return false;
-        if (prevRTokenRate == 0 || rTokenRate > prevRTokenRate) return false;
+        if (main.stRSR().exchangeRate() > prevRSRRate) return false;
+        if (rTokenRate() > prevRTokenRate) return false;
         return true;
     }
-    // TODO: prepareTradeRecacapitalize(), compromiseBasketsNeeded(), and stRSR.seizeRSR() are
-    // never called
+
+    // TODO Properties / tests to write (or at least think about writing):
+    // The total supply of rtokens increases no faster than max(issuanceRate() * supply, MIN_RATE) per block
 }
