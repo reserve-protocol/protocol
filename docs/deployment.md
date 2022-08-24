@@ -78,11 +78,3 @@ FORK=true npx hardhat node
 The same scripts can be executed against a Testnet or Mainnet network. Make sure the correct network is specified when executing the scripts (eg:`--network mainnet`)
 
 A specific set of files will be created for that specific network (using the network `chainId` as prefix)
-
-### Verification
-
-The `deploy_all` script does its best to take care of verification, but it falls short on the proxies themselves. This is because Etherscan has a specific API for verifying proxies, and `hardhat-etherscan` hasn't integrated with it yet (they have it as an open issue). After deployment, head here (mainnet example) and follow the flow for each proxied address (Main + Components).
-
-```
-https://etherscan.io/proxycontractchecker?a={ADDRESS}
-```

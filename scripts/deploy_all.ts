@@ -1,23 +1,8 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
-import { exec } from 'child_process'
 import { getChainId } from '../common/blockchain-utils'
 import { networkConfig } from '../common/configuration'
-
-async function sh(cmd: string) {
-  return new Promise(function (resolve, reject) {
-    const execProcess = exec(cmd, (err, stdout, stderr) => {
-      if (err) {
-        if (cmd.indexOf('verify') >= 0) console.log('already verified, skipping...')
-        else reject(err)
-      } else {
-        resolve({ stdout, stderr })
-      }
-    })
-
-    execProcess.stdout?.pipe(process.stdout)
-  })
-}
+import { sh } from './deployment/deployment_utils'
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners()
@@ -49,11 +34,13 @@ async function main() {
     'phase1-common/12_verify_facadeWrite.ts',
     'phase2-assets/0_setup_deployments.ts',
     'phase2-assets/1_deploy_assets.ts',
-    'phase2-assets/2_deploy_collateral.ts',
+    'phase2-assets/2_verify_assets.ts',
+    'phase2-assets/3_deploy_collateral.ts',
+    'phase2-assets/4_verify_collateral.ts',
     'phase3-rtoken/0_setup_deployments.ts',
     'phase3-rtoken/1_deploy_rtoken.ts',
-    'phase3-rtoken/2_setup_governance.ts',
-    'phase3-rtoken/3_verify_rtoken.ts',
+    'phase3-rtoken/2_verify_rtoken.ts',
+    'phase3-rtoken/3_setup_governance.ts',
     'phase3-rtoken/4_verify_governance.ts',
   ]
 
@@ -65,10 +52,10 @@ async function main() {
     )
 
     if (script.indexOf('verify') >= 0) {
-      console.log('\n', 'sleeping 30s before verification...', '\n')
+      console.log('\n', 'sleeping 20s before verification...', '\n')
 
       // Sleep
-      await new Promise((r) => setTimeout(r, 30000))
+      await new Promise((r) => setTimeout(r, 20000))
     }
 
     await sh(`hardhat run scripts/deployment/${script}`)
