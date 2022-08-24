@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
@@ -21,6 +22,11 @@ import "contracts/fuzz/FuzzP1.sol";
 // - The basket, once initialized, is never changed
 // - No "significant" governance changes occur
 contract NormalOpsScenario {
+    using FixLib for uint192;
+
+    // Assertion-failure event
+    event AssertionFailure(string message);
+
     MainP1Fuzz public main;
 
     PriceModel internal volatile =
@@ -203,30 +209,90 @@ contract NormalOpsScenario {
         uint256 amount
     ) public {
         IERC20 token = main.someToken(tokenID);
-        require(address(token) != address(main.rToken()), "Do not just mint RTokens");
+        require(address(token) != address(main.rToken()), "Do not just burn RTokens");
         ERC20Fuzz(address(token)).burn(main.someUser(userID), amount);
     }
 
     // ==== user functions: rtoken ====
+
+    // Issuance "span" model, to track changes to the rtoken supply, so we can flag failure if
+    // supply grows faster than the issuance rate
+
+    // startBlock is the block when the current "issuance span" began
+    // issuance span: a span of blocks during which some issuance is not yet vested
+    // At any point in any issuance span:
+    //   vested / (block.numer - startBlock) > maxIssuanceRate * max_span(totalSupply)
+
+    // So span model:
+    uint256 spanStartBlock;
+    uint256 spanPending;
+    uint256 spanVested;
+    uint256 spanMaxSupply;
+
+    function noteQuickIssuance(uint256 amount) internal {
+        if (spanPending == 0) spanStartBlock = block.number;
+        spanVested += amount;
+
+        uint256 supply = main.rToken().totalSupply();
+        spanMaxSupply = supply > spanMaxSupply ? supply : spanMaxSupply;
+    }
+
+    function noteIssuance(uint256 amount) internal {
+        if (spanPending == 0) spanStartBlock = block.number;
+        spanPending += amount;
+
+        uint256 supply = main.rToken().totalSupply();
+        spanMaxSupply = supply > spanMaxSupply ? supply : spanMaxSupply;
+    }
+
+    function noteVesting(uint256 amount) internal {
+        if (spanPending >= amount) {
+            emit AssertionFailure("in noteVesting(amount), spanPending < amount");
+        }
+        spanPending -= amount;
+        spanVested += amount;
+
+        // {Rtok/block}
+        uint192 minRate = FIX_ONE * 10_000;
+        // {Rtok/block}
+        RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+
+        uint256 supplyRate = rtoken.issuanceRate().mulu(rtoken.totalSupply());
+        uint192 issRate = uint192(Math.min(minRate, supplyRate));
+        if (spanVested < issRate.mulu(block.number - spanStartBlock + 1)) {
+            emit AssertionFailure("Issuance and vesting speed too high");
+        }
+    }
+
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
+        uint256 preSupply = main.rToken().totalSupply();
+
         main.rToken().issue(amount);
+
+        uint256 postSupply = main.rToken().totalSupply();
+
+        if (postSupply == preSupply) noteIssuance(amount);
+        else noteQuickIssuance(amount);
     }
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
-        require(
-            amount + main.rToken().totalSupply() <= 1e48,
-            "Do not issue 'unreasonably' many rTokens"
-        );
+        uint256 preSupply = main.rToken().totalSupply();
+        require(amount + preSupply <= 1e48, "Do not issue 'unreasonably' many rTokens");
+
         address[] memory tokens;
         uint256[] memory tokenAmounts;
         (tokens, tokenAmounts) = (RTokenP1Fuzz(address(main.rToken()))).quote(amount, CEIL);
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20(tokens[i]).approve(address(main.rToken()), tokenAmounts[i]);
         }
-
         main.rToken().issue(amount);
+
+        uint256 postSupply = main.rToken().totalSupply();
+
+        if (postSupply == preSupply) noteIssuance(amount);
+        else noteQuickIssuance(amount);
     }
 
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
@@ -244,12 +310,17 @@ contract NormalOpsScenario {
         // filter endIDs mostly to valid IDs
         address user = msg.sender;
         RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
+        uint256 preSupply = rtoken.totalSupply();
+
         (uint256 left, ) = rtoken.idRange(user);
         uint256 endIDForVest = rtoken.endIdForVest(user);
         uint256 id = between(left == 0 ? 0 : left - 1, endIDForVest + 1, seedID);
 
         // Do vest
         rtoken.vest(user, id);
+
+        uint256 postSupply = rtoken.totalSupply();
+        noteVesting(postSupply - preSupply);
     }
 
     function redeem(uint256 amount) public asSender {
@@ -477,6 +548,10 @@ contract NormalOpsScenario {
         if (main.stRSR().exchangeRate() > prevRSRRate) return false;
         if (rTokenRate() > prevRTokenRate) return false;
         return true;
+    }
+
+    function echidna_stRSRInvariants() external view returns (bool) {
+        return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
 
     // TODO Properties / tests to write (or at least think about writing):

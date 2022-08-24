@@ -176,6 +176,17 @@ contract StRSRP1Fuzz is StRSRP1 {
         right = draftQueues[draftEra][user].length;
     }
 
+    function invariantsHold() external view returns (bool) {
+        bool stakesProp = totalStakes == 0
+            ? stakeRSR == 0 && stakeRate == FIX_ONE
+            : stakeRSR > 0;
+        bool draftsProp = totalDrafts == 0
+            ? draftRSR == 0 && draftRate == FIX_ONE
+            : draftRSR > 0;
+
+        return stakesProp && draftsProp;
+    }
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }

@@ -36,8 +36,6 @@ interface IMarketMock {
 
 // ================ Main ================
 interface IMainFuzz is IMain {
-    event TestError(string message);
-
     // Aspect: emulated sender
     function translateAddr(address addr) external view returns (address);
 
