@@ -1,5 +1,6 @@
 import fs from 'fs'
 import hre from 'hardhat'
+import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
 import { bn } from '../../common/numbers'
 import { ITokens, IComponents, IImplementations } from '../../common/configuration'
@@ -133,4 +134,20 @@ export const validateImplementations = async (deployments: IDeployments) => {
   } else if (!(await validComponents(deployments.implementations.components))) {
     throw new Error(`Component implementation(s) not found in network ${hre.network.name}`)
   }
+}
+
+export async function sh(cmd: string) {
+  return new Promise(function (resolve, reject) {
+    const execProcess = exec(cmd, (err, stdout, stderr) => {
+      if (err) {
+        if (cmd.indexOf('verify') >= 0)
+          console.log('error during verification, probably already verified, skipping...')
+        else reject(err)
+      } else {
+        resolve({ stdout, stderr })
+      }
+    })
+
+    execProcess.stdout?.pipe(process.stdout)
+  })
 }
