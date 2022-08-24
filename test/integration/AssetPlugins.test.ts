@@ -49,6 +49,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderADAI = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
+const holderUSDT = '0xf977814e90da44bfa03b6295a0616a897441acec'
+
 // Complex Basket holders
 const holderWBTC = '0xbf72da2bd84c5170618fbe5914b0eca9638d5eb5'
 const holdercWBTC = '0x7132ad0a72b5ba50bdaa005fad19caae029ae699'
@@ -294,6 +296,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // cDAI
       await whileImpersonating(holderCDAI, async (cdaiSigner) => {
         await cDai.connect(cdaiSigner).transfer(addr1.address, toBNDecimals(initialBal, 8).mul(100))
+      })
+
+      // Setup balances for USDT
+      await whileImpersonating(holderUSDT, async (usdtSigner) => {
+        await usdt.connect(usdtSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
       })
 
       // Setup balances for complex basket
@@ -2025,6 +2032,106 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
         expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
+      })
+    })
+
+    context('With USDT (Non-compliant token)', function () {
+      let newBasket: Collateral[]
+      let newBasketsNeededAmts: BigNumber[]
+
+      beforeEach(async () => {
+        // Set new basket
+        newBasket = [usdtCollateral]
+        newBasketsNeededAmts = [fp('1')]
+
+        // Register prime collateral and grant allowances
+        const newBasketERC20s = []
+        for (let i = 0; i < newBasket.length; i++) {
+          await assetRegistry.connect(owner).register(newBasket[i].address)
+          newBasketERC20s.push(await newBasket[i].erc20())
+          // Grant allowance
+          await backingManager.grantRTokenAllowance(await newBasket[i].erc20())
+        }
+        // Set non-empty basket
+        await basketHandler.connect(owner).setPrimeBasket(newBasketERC20s, newBasketsNeededAmts)
+        await basketHandler.connect(owner).refreshBasket()
+
+        // Approve all balances for user
+        await usdt.connect(addr1).approve(rToken.address, await usdt.balanceOf(addr1.address))
+      })
+
+      it('Should Issue/Redeem (USDT)', async () => {
+        // Check prices
+        // USDT
+        const usdtPrice = fp('1') // June 2022
+        expect(await usdtCollateral.price()).to.be.closeTo(usdtPrice, fp('0.01'))
+
+        // Aproximate total price of Basket in USD
+        const totalPriceUSD = usdtPrice
+
+        // Check Basket
+        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        const backing = await facade.basketTokens(rToken.address)
+        expect(backing[0]).to.equal(usdt.address)
+        expect(backing.length).to.equal(1)
+
+        // Check initial values
+        expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+
+        // Check rToken balance
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances before
+        expect(await usdt.balanceOf(backingManager.address)).to.equal(0)
+
+        expect(await usdt.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 6))
+
+        // Issue one RToken
+        const issueAmount: BigNumber = bn('1e18')
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check Balances after
+        expect(await usdt.balanceOf(backingManager.address)).to.equal(toBNDecimals(issueAmount, 6)) //1 full unit
+        // Balances for user
+        expect(await usdt.balanceOf(addr1.address)).to.equal(
+          toBNDecimals(initialBal.sub(issueAmount), 6)
+        )
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        expect(await rToken.balanceOf(rToken.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check asset value
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          totalPriceUSD,
+          point1Pct(totalPriceUSD)
+        )
+
+        // Redeem Rtokens
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
+
+        // Check balances after - Backing Manager is empty
+        expect(await usdt.balanceOf(backingManager.address)).to.equal(0)
+
+        // Check funds returned to user
+        expect(await usdt.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 6))
+
+        //  Check asset value left
+        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+          bn(0),
+          fp('0.001')
+        ) // Near zero
       })
     })
   })

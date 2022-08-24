@@ -43,7 +43,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        erc20.approve(address(main.rToken()), type(uint256).max);
+        uint256 currAllowance = erc20.allowance(address(this), address(main.rToken()));
+        IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
+            address(main.rToken()),
+            type(uint256).max - currAllowance
+        );
     }
 
     /// Maintain the overall backing policy; handout assets otherwise

@@ -51,7 +51,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
         require(!broker.disabled(), "broker disabled");
 
-        req.sell.erc20().approve(address(broker), req.sellAmount);
+        req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
         ITrade trade = broker.openTrade(req);
 
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
