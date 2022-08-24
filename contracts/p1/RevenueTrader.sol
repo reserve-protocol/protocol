@@ -38,7 +38,10 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==
-            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(address(main.distributor()), bal);
+            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
+                address(main.distributor()),
+                bal
+            );
             main.distributor().distribute(erc20, address(this), bal);
             return;
         }
