@@ -20,7 +20,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
     PriceModel public uoaPerTargetModel;
     PriceModel public deviationModel;
 
-    uint256 rewardAmount;
+    uint256 public rewardAmount;
 
     constructor(
         // Collateral base-class arguments

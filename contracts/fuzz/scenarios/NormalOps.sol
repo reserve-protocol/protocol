@@ -116,11 +116,6 @@ contract NormalOpsScenario {
             backupTokens.push(IERC20(token));
         }
 
-        // Create and assign /two/ reward tokens with volatile prices; leave the third unrewarding
-        for (uint256 i = 0; i < 2; i++) {
-            string memory num = Strings.toString(i);
-        }
-
         // Configure basket
         uint192[] memory wts = new uint192[](3);
         wts[0] = 0.5e18;
@@ -224,10 +219,10 @@ contract NormalOpsScenario {
     //   vested / (block.numer - startBlock) > maxIssuanceRate * max_span(totalSupply)
 
     // So span model:
-    uint256 spanStartBlock;
-    uint256 spanPending;
-    uint256 spanVested;
-    uint256 spanMaxSupply;
+    uint256 public spanStartBlock;
+    uint256 public spanPending;
+    uint256 public spanVested;
+    uint256 public spanMaxSupply;
 
     function noteQuickIssuance(uint256 amount) internal {
         if (spanPending == 0) spanStartBlock = block.number;
@@ -553,7 +548,4 @@ contract NormalOpsScenario {
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
-
-    // TODO Properties / tests to write (or at least think about writing):
-    // The total supply of rtokens increases no faster than max(issuanceRate() * supply, MIN_RATE) per block
 }

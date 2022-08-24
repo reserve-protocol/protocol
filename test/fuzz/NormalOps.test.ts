@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer, BigNumber } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp, shortString } from '../../common/numbers'
+import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
 import { RoundingMode } from '../../common/constants'
 import { advanceTime } from '../../test/utils/time'
@@ -44,7 +44,6 @@ describe('The Normal Operations scenario', () => {
   let alice: Signer
   let bob: Signer
   let carol: Signer
-  let asOwner: Signer // a signer for directly impersonating the owner (i.e, scenario)
 
   let aliceAddr: string
   let bobAddr: string
@@ -67,7 +66,7 @@ describe('The Normal Operations scenario', () => {
     addrIDs = new Map()
     let i = 0
     while (true) {
-      let address = await main.someAddr(i)
+      const address = await main.someAddr(i)
       if (addrIDs.has(address)) break
       addrIDs.set(address, i)
       i++
@@ -76,9 +75,9 @@ describe('The Normal Operations scenario', () => {
     tokenIDs = new Map()
     i = 0
     while (true) {
-      let tokenAddr = await main.someToken(i)
-      let token = await ConAt('ERC20Fuzz', tokenAddr)
-      let symbol = await token.symbol()
+      const tokenAddr = await main.someToken(i)
+      const token = await ConAt('ERC20Fuzz', tokenAddr)
+      const symbol = await token.symbol()
       if (tokenIDs.has(symbol)) break
       tokenIDs.set(symbol, i)
       i++
@@ -87,7 +86,6 @@ describe('The Normal Operations scenario', () => {
     alice = await ethers.getSigner(await main.users(0))
     bob = await ethers.getSigner(await main.users(1))
     carol = await ethers.getSigner(await main.users(2))
-    asOwner = await ethers.getSigner(scenario.address)
 
     aliceAddr = await alice.getAddress()
     bobAddr = await bob.getAddress()
@@ -544,7 +542,6 @@ describe('The Normal Operations scenario', () => {
 
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
-        const r = rewardables[i]
         const bal0 = await r0.balanceOf(comp.backingManager.address)
         await scenario.claimProtocolRewards(i) // claim rewards
         const bal1 = await r0.balanceOf(comp.backingManager.address)
@@ -559,7 +556,7 @@ describe('The Normal Operations scenario', () => {
     }
 
     async function allBalances(owner: string): Promise<Balances> {
-      let d: Balances = {}
+      const d: Balances = {}
       const numTokens = await main.numTokens()
       for (let i = 0; numTokens.gt(i); i++) {
         const token = await ConAt('ERC20Fuzz', await main.someToken(i))
@@ -589,10 +586,9 @@ describe('The Normal Operations scenario', () => {
 
       // ==== Mint 1 exa of C0 to the backing manager
       const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
-      c0.mint(comp.backingManager.address, exa)
+      await c0.mint(comp.backingManager.address, exa)
 
       // ==== Manage C0; see that the rsrTrader balance changes for C0 and no others
-      const bmBals = await allBalances(comp.backingManager.address)
       const bals0 = await allBalances(comp.rsrTrader.address)
 
       expect(tokenIDs.has('C0')).to.be.true
@@ -612,12 +608,12 @@ describe('The Normal Operations scenario', () => {
       const round2 = ['C1', 'R1', 'USD1']
       for (const sym of round2) {
         const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol(sym))
-        token.mint(comp.backingManager.address, exa)
+        await token.mint(comp.backingManager.address, exa)
         expect(tokenIDs.has(sym)).to.be.true
         await scenario.pushBackingToManage(tokenIDs.get(sym) as number)
       }
       await scenario.manageBackingTokens()
-      for (const sym of round2) await scenario.popBackingToManage()
+      for (const _sym of round2) await scenario.popBackingToManage()
 
       // Check that the rsrTrader balance changed for C1, R1, and USD1, and no others
       const bals2 = await allBalances(comp.rsrTrader.address)
@@ -631,7 +627,6 @@ describe('The Normal Operations scenario', () => {
 
     it('can grant allownaces to RToken', async () => {
       // With token C0,
-      let txn
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
       const tokenID = tokenIDs.get('C0') as number
       await token.mint(comp.backingManager.address, exa)

@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { fp } from '../../common/numbers'
-import { PriceModelKind, PriceModel } from './common'
+import { PriceModelKind, PriceModel, addr } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
 describe('CollateralMock', () => {
@@ -24,6 +24,7 @@ describe('CollateralMock', () => {
     const f: sc.CollateralMock__factory = await ethers.getContractFactory('CollateralMock')
     return await f.deploy(
       token.address,
+      addr(0), // null reward token
       { min: fp(1e-2), max: fp(1e6) },
       fp(0.05),
       86400,

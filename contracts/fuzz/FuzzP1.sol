@@ -52,9 +52,9 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
     }
 
     function prevEqualsCurr() external view returns (bool) {
-        uint n = basket.erc20s.length;
+        uint256 n = basket.erc20s.length;
         if (n != prev.erc20s.length) return false;
-        for(uint i = 0; i < n; i++) {
+        for (uint256 i = 0; i < n; i++) {
             if (prev.erc20s[i] != basket.erc20s[i]) return false;
             if (prev.refAmts[prev.erc20s[i]] != basket.refAmts[basket.erc20s[i]]) return false;
         }
@@ -177,12 +177,8 @@ contract StRSRP1Fuzz is StRSRP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        bool stakesProp = totalStakes == 0
-            ? stakeRSR == 0 && stakeRate == FIX_ONE
-            : stakeRSR > 0;
-        bool draftsProp = totalDrafts == 0
-            ? draftRSR == 0 && draftRate == FIX_ONE
-            : draftRSR > 0;
+        bool stakesProp = totalStakes == 0 ? stakeRSR == 0 && stakeRate == FIX_ONE : stakeRSR > 0;
+        bool draftsProp = totalDrafts == 0 ? draftRSR == 0 && draftRate == FIX_ONE : draftRSR > 0;
 
         return stakesProp && draftsProp;
     }
@@ -329,7 +325,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         __Auth_init(freezerDuration);
         __UUPSUpgradeable_init();
         emit MainInitialized();
-
 
         marketMock = marketMock_;
 

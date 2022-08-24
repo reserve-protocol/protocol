@@ -2,7 +2,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { fp } from '../../common/numbers'
-import { PriceModelKind, PriceModel, onePM } from './common'
+import { PriceModelKind, PriceModel, onePM, addr } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
 describe(`PriceModels in AssetMock`, () => {
@@ -10,7 +10,7 @@ describe(`PriceModels in AssetMock`, () => {
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
     const f: sc.AssetMock__factory = await ethers.getContractFactory('AssetMock')
-    return await f.deploy(token.address, { min: fp(1e-2), max: fp(1e6) }, priceModel)
+    return await f.deploy(token.address, addr(0), { min: fp(1e-2), max: fp(1e6) }, priceModel)
   }
 
   beforeEach(async () => {
