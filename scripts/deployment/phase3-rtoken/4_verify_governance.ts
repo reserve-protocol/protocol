@@ -47,6 +47,15 @@ async function main() {
     contract: 'contracts/plugins/governance/Governance.sol:Governance',
   })
   console.timeEnd('Verifying Governance')
+
+  /********************** Verify TimelockController ****************************************/
+  console.time('Verifying TimelockController')
+  await hre.run('verify:verify', {
+    address: rTokenDeployments.timelock,
+    constructorArguments: [rTokenConf.timelockDelay, [], []],
+    contract: '@openzeppelin/contracts/governance/TimelockController.sol:TimelockController',
+  })
+  console.timeEnd('Verifying TimelockController')
 }
 
 main().catch((error) => {
