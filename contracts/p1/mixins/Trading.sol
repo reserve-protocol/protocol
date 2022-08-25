@@ -65,7 +65,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20 sell = req.sell.erc20();
         require(address(trades[sell]) == address(0), "trade already open");
 
-        IERC20Upgradeable(address(sell)).approve(address(main.broker()), req.sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(
+            address(main.broker()),
+            req.sellAmount
+        );
         ITrade trade = main.broker().openTrade(req);
 
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();

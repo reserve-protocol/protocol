@@ -52,9 +52,6 @@ contract FacadeWrite is IFacadeWrite {
             IAssetRegistry(address(main.assetRegistry())).register(setup.assets[i]);
         }
 
-        // Unfreeze (required for next steps)
-        main.unfreeze();
-
         // Setup basket
         {
             IERC20[] memory basketERC20s = new IERC20[](setup.primaryBasket.length);
@@ -95,9 +92,8 @@ contract FacadeWrite is IFacadeWrite {
             }
         }
 
-        // Freeze (+ regrant)
-        main.freezeShort();
-        main.grantRole(SHORT_FREEZER, address(this));
+        // Pause until setupGovernance
+        main.pause();
 
         // Setup deployer as owner to complete next step - do not renounce roles yet
         main.grantRole(OWNER, msg.sender);
@@ -111,7 +107,7 @@ contract FacadeWrite is IFacadeWrite {
     function setupGovernance(
         IRToken rToken,
         bool deployGovernance,
-        bool unfreeze,
+        bool unpause,
         GovernanceParams calldata govParams,
         address owner,
         address guardian,
@@ -173,9 +169,9 @@ contract FacadeWrite is IFacadeWrite {
             main.grantRole(PAUSER, pauser);
         }
 
-        // Unfreeze if required
-        if (unfreeze) {
-            main.unfreeze();
+        // Unpause if required
+        if (unpause) {
+            main.unpause();
         }
 
         // Transfer Ownership and renounce roles
