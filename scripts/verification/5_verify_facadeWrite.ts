@@ -1,8 +1,13 @@
 import hre from 'hardhat'
 
-import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment_utils'
+import { getChainId } from '../../common/blockchain-utils'
+import { developmentChains, networkConfig } from '../../common/configuration'
+import {
+  getDeploymentFile,
+  getDeploymentFilename,
+  IDeployments,
+  verifyContract,
+} from '../deployment/deployment_utils'
 
 let deployments: IDeployments
 
@@ -20,13 +25,20 @@ async function main() {
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify FacadeWrite ****************************************/
-  console.time('Verifying FacadeWrite')
-  await hre.run('verify:verify', {
-    address: deployments.facadeWrite,
-    constructorArguments: [deployments.deployer],
-    contract: 'contracts/facade/FacadeWrite.sol:FacadeWrite',
-  })
-  console.timeEnd('Verifying FacadeWrite')
+  await verifyContract(
+    chainId,
+    deployments.facadeWrite,
+    [deployments.deployer],
+    'contracts/facade/FacadeWrite.sol:FacadeWrite'
+  )
+
+  /** ******************** Verify FacadeWriteLib ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facadeWriteLib,
+    [],
+    'contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib'
+  )
 }
 
 main().catch((error) => {

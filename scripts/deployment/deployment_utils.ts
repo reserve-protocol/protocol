@@ -1,5 +1,6 @@
 import fs from 'fs'
 import hre from 'hardhat'
+import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
 import { bn } from '../../common/numbers'
@@ -140,9 +141,7 @@ export async function sh(cmd: string) {
   return new Promise(function (resolve, reject) {
     const execProcess = exec(cmd, (err, stdout, stderr) => {
       if (err) {
-        if (cmd.indexOf('verify') >= 0)
-          console.log('error during verification, probably already verified, skipping...')
-        else reject(err)
+        reject(err)
       } else {
         resolve({ stdout, stderr })
       }
@@ -150,4 +149,57 @@ export async function sh(cmd: string) {
 
     execProcess.stdout?.pipe(process.stdout)
   })
+}
+
+export async function verifyContract(
+  chainId: number,
+  address: string | undefined,
+  constructorArguments: unknown[],
+  contract: string
+) {
+  console.time(`Verifying ${contract}`)
+  console.log(`Verifying ${contract}`)
+
+  // Sleep 0.2s to not overwhelm API
+  await new Promise((r) => setTimeout(r, 200))
+
+  // Check to see if already verified
+  const url = `${getEtherscanBaseURL(
+    chainId,
+    true
+  )}/api/?module=contract&action=getsourcecode&address=${address}&apikey=${
+    process.env.ETHERSCAN_API_KEY
+  }`
+  const { data, status } = await axios.get(url, { headers: { Accept: 'application/json' } })
+  if (status != 200 || data['status'] != '1') {
+    throw new Error("Can't communicate with Etherscan API")
+  }
+
+  // Only run verification script if not verified
+  if (data['result'][0]['SourceCode']?.length > 0) {
+    console.log('Already verified. Continuing')
+  } else {
+    console.log('Running new verification')
+    try {
+      await hre.run('verify:verify', {
+        address,
+        constructorArguments,
+        contract,
+      })
+    } catch (e) {
+      console.log(
+        `IMPORTANT: failed to verify ${contract}. 
+      ${getEtherscanBaseURL(chainId)}/address/${address}#code`,
+        e
+      )
+    }
+  }
+  console.timeEnd(`Verifying ${contract}`)
+}
+
+const getEtherscanBaseURL = (chainId: number, api = false) => {
+  let prefix: string
+  if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
+  else prefix = chainId == 1 ? '' : `${hre.network.name}.`
+  return `https://${prefix}etherscan.io`
 }

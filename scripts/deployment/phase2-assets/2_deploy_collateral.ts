@@ -316,7 +316,7 @@ async function main() {
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
   deployedCollateral.push(aBusdCollateral.toString())
 
-  /******** Verify StaticATokens */
+  /******** Verify StaticATokens *******************/
 
   console.time('Verifying StaticATokenLM')
   try {
