@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
@@ -594,7 +595,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rsrTrader,
         name: 'TradeStarted',
-        args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+        args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
         emitted: true,
       },
       {
@@ -634,7 +635,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rsrTrader,
         name: 'TradeSettled',
-        args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+        args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
         emitted: true,
       },
       {
@@ -906,13 +907,19 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rsrTrader,
         name: 'TradeSettled',
-        args: [cUSDToken.address, rsr.address, auctionSellAmt2, auctionbuyAmt2],
+        args: [anyValue, cUSDToken.address, rsr.address, auctionSellAmt2, auctionbuyAmt2],
         emitted: true,
       },
       {
         contract: rTokenTrader,
         name: 'TradeSettled',
-        args: [cUSDToken.address, rToken.address, auctionSellAmtRToken2, auctionbuyAmtRToken2],
+        args: [
+          anyValue,
+          cUSDToken.address,
+          rToken.address,
+          auctionSellAmtRToken2,
+          auctionbuyAmtRToken2,
+        ],
         emitted: true,
       },
       {
@@ -1031,13 +1038,19 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rsrTrader,
         name: 'TradeSettled',
-        args: [cWBTC.address, rsr.address, auctionSellAmt5, auctionbuyAmt5],
+        args: [anyValue, cWBTC.address, rsr.address, auctionSellAmt5, auctionbuyAmt5],
         emitted: true,
       },
       {
         contract: rTokenTrader,
         name: 'TradeSettled',
-        args: [cWBTC.address, rToken.address, auctionSellAmtRToken5, auctionbuyAmtRToken5],
+        args: [
+          anyValue,
+          cWBTC.address,
+          rToken.address,
+          auctionSellAmtRToken5,
+          auctionbuyAmtRToken5,
+        ],
         emitted: true,
       },
       {
@@ -1138,13 +1151,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: rsrTrader,
         name: 'TradeSettled',
-        args: [cETH.address, rsr.address, auctionSellAmt7, auctionbuyAmt7],
+        args: [anyValue, cETH.address, rsr.address, auctionSellAmt7, auctionbuyAmt7],
         emitted: true,
       },
       {
         contract: rTokenTrader,
         name: 'TradeSettled',
-        args: [cETH.address, rToken.address, auctionSellAmtRToken7, auctionbuyAmtRToken7],
+        args: [anyValue, cETH.address, rToken.address, auctionSellAmtRToken7, auctionbuyAmtRToken7],
         emitted: true,
       },
       {
@@ -1252,7 +1265,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [cWBTC.address, wbtc.address, sellAmt, bn('0')],
+        args: [anyValue, cWBTC.address, wbtc.address, sellAmt, bn('0')],
         emitted: true,
       },
     ])
@@ -1303,7 +1316,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [cWBTC.address, wbtc.address, auctionSellAmt, auctionbuyAmt],
+        args: [anyValue, cWBTC.address, wbtc.address, auctionSellAmt, auctionbuyAmt],
         emitted: true,
       },
       {
@@ -1360,7 +1373,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [rsr.address, wbtc.address, auctionSellAmtRSR, auctionBuyAmtRSR],
+        args: [anyValue, rsr.address, wbtc.address, auctionSellAmtRSR, auctionBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1457,7 +1470,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [cETH.address, weth.address, sellAmt, bn('0')],
+        args: [anyValue, cETH.address, weth.address, sellAmt, bn('0')],
         emitted: true,
       },
     ])
@@ -1500,13 +1513,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [cETH.address, weth.address, auctionSellAmt, auctionbuyAmt],
+        args: [anyValue, cETH.address, weth.address, auctionSellAmt, auctionbuyAmt],
         emitted: true,
       },
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [cETH.address, weth.address, sellAmtRemainder, bn('0')],
+        args: [anyValue, cETH.address, weth.address, sellAmtRemainder, bn('0')],
         emitted: true,
       },
     ])
@@ -1572,13 +1585,25 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [cETH.address, weth.address, auctionSellAmtRemainder, auctionbuyAmtRemainder],
+        args: [
+          anyValue,
+          cETH.address,
+          weth.address,
+          auctionSellAmtRemainder,
+          auctionbuyAmtRemainder,
+        ],
         emitted: true,
       },
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, config.rTokenTradingRange.maxAmt, partialBuyAmtRSR],
+        args: [
+          anyValue,
+          rsr.address,
+          weth.address,
+          config.rTokenTradingRange.maxAmt,
+          partialBuyAmtRSR,
+        ],
         emitted: true,
       },
       {
@@ -1626,13 +1651,19 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
+        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
         emitted: true,
       },
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [rsr.address, weth.address, config.rTokenTradingRange.maxAmt, partialBuyAmtRSR],
+        args: [
+          anyValue,
+          rsr.address,
+          weth.address,
+          config.rTokenTradingRange.maxAmt,
+          partialBuyAmtRSR,
+        ],
         emitted: true,
       },
       {
@@ -1684,7 +1715,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
+        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
         emitted: true,
       },
       {
@@ -1739,7 +1770,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeSettled',
-        args: [rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
+        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
         emitted: true,
       },
       {

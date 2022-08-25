@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
@@ -134,7 +135,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Create auction
       await expect(backingManager.manageTokens([]))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(rsr.address, token0.address, sellAmt, buyAmt)
+        .withArgs(anyValue, rsr.address, token0.address, sellAmt, buyAmt)
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       auctionId = await getAuctionId(backingManager, rsr.address)
@@ -194,13 +195,13 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, 0, 0],
+          args: [anyValue, rsr.address, token0.address, 0, 0],
           emitted: true,
         },
         {
           contract: backingManager,
           name: 'TradeStarted',
-          args: [rsr.address, token0.address, sellAmt, buyAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, buyAmt],
           emitted: true,
         },
       ])
@@ -227,7 +228,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
+          args: [anyValue, rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
           emitted: true,
         },
       ])
@@ -263,7 +264,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
+          args: [anyValue, rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
           emitted: true,
         },
       ])
@@ -292,7 +293,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, bidAmt],
           emitted: true,
         },
       ])
@@ -322,7 +323,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, bidAmt],
           emitted: true,
         },
       ])
@@ -352,7 +353,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt.mul(2), bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt.mul(2), bidAmt],
           emitted: true,
         },
       ])
@@ -396,7 +397,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, bidAmt],
           emitted: true,
         },
       ])
@@ -427,7 +428,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeStarted',
-          args: [rsr.address, token0.address, sellAmt, buyAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, buyAmt],
           emitted: true,
         },
       ])
@@ -452,7 +453,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, bidAmt],
           emitted: true,
         },
       ])
@@ -484,7 +485,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [rsr.address, token0.address, sellAmt, bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt, bidAmt],
           emitted: true,
         },
       ])
@@ -609,7 +610,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [token0.address, token1.address, issueAmount, bidAmt],
+          args: [anyValue, token0.address, token1.address, issueAmount, bidAmt],
           emitted: true,
         },
       ])

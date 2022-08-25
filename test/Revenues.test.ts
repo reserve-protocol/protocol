@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
@@ -390,13 +391,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -445,13 +446,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -512,13 +513,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -565,13 +566,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -665,7 +666,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -720,13 +721,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -765,7 +766,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -855,7 +856,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rToken.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -900,13 +901,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rToken.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRemainder,
+              minBuyAmtRemainder,
+            ],
             emitted: true,
           },
 
@@ -942,7 +949,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rToken.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRemainder,
+              minBuyAmtRemainder,
+            ],
             emitted: true,
           },
           {
@@ -1041,13 +1054,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1103,19 +1116,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [anyValue, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -1147,7 +1160,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [anyValue, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
             emitted: true,
           },
           {
@@ -1308,13 +1321,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1368,13 +1381,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt.sub(10)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken.sub(10)],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              minBuyAmtRToken.sub(10),
+            ],
             emitted: true,
           },
           {
@@ -1537,13 +1556,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1592,13 +1611,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -1805,13 +1824,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -1873,13 +1892,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -1951,13 +1970,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
         ])
@@ -2027,13 +2046,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeSettled',
-            args: [token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
             emitted: true,
           },
           {
@@ -2106,7 +2125,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [rToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, rToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
         ])
@@ -2151,7 +2170,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [rToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, rToken.address, rsr.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
@@ -2237,13 +2256,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
+            args: [anyValue, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeStarted',
             args: [
+              anyValue,
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
@@ -2255,6 +2275,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             contract: rTokenTrader,
             name: 'TradeStarted',
             args: [
+              anyValue,
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
@@ -2348,13 +2369,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
+            args: [anyValue, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
             emitted: true,
           },
           {
             contract: rsrTrader,
             name: 'TradeSettled',
             args: [
+              anyValue,
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
@@ -2366,6 +2388,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             contract: rTokenTrader,
             name: 'TradeSettled',
             args: [
+              anyValue,
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,

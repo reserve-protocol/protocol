@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
@@ -353,7 +354,13 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
         .withArgs(rTokenTrader.address, furnace.address, issueAmt.div(2))
       await expect(rsrTrader.manageToken(rToken.address))
         .to.emit(rsrTrader, 'TradeStarted')
-        .withArgs(rToken.address, rsr.address, issueAmt.div(2), issueAmt.div(2).mul(99).div(100))
+        .withArgs(
+          anyValue,
+          rToken.address,
+          rsr.address,
+          issueAmt.div(2),
+          issueAmt.div(2).mul(99).div(100)
+        )
     })
   })
 })
