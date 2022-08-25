@@ -42,7 +42,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         delete trades[sell];
         tradesOpen--;
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-        emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
+        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
@@ -57,7 +57,13 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
-        emit TradeStarted(req.sell.erc20(), req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+        emit TradeStarted(
+            trade,
+            req.sell.erc20(),
+            req.buy.erc20(),
+            req.sellAmount,
+            req.minBuyAmount
+        );
     }
 
     // === Setters ===
