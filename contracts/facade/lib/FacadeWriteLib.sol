@@ -12,7 +12,7 @@ library FacadeWriteLib {
         uint256 votingPeriod,
         uint256 proposalThresholdAsMicroPercent,
         uint256 quorumPercent
-    ) external returns (address) {
+    ) internal returns (address) {
         return
             address(
                 new Governance(
