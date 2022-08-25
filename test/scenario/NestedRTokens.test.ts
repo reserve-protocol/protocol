@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
@@ -205,7 +206,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       const sellAmt = buyAmt.mul(100).div(99).add(1)
       await expect(one.backingManager.manageTokens([]))
         .to.emit(one.backingManager, 'TradeStarted')
-        .withArgs(one.rsr.address, staticATokenERC20.address, sellAmt, buyAmt)
+        .withArgs(anyValue, one.rsr.address, staticATokenERC20.address, sellAmt, buyAmt)
 
       // Verify outer RToken isn't panicking
       await two.assetRegistry.refresh()
@@ -233,13 +234,25 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         {
           contract: one.rTokenTrader,
           name: 'TradeStarted',
-          args: [two.rToken.address, one.rToken.address, rTokSellAmt, rTokSellAmt.mul(99).div(100)],
+          args: [
+            anyValue,
+            two.rToken.address,
+            one.rToken.address,
+            rTokSellAmt,
+            rTokSellAmt.mul(99).div(100),
+          ],
           emitted: true,
         },
         {
           contract: one.rsrTrader,
           name: 'TradeStarted',
-          args: [two.rToken.address, one.rsr.address, rsrSellAmt, rsrSellAmt.mul(99).div(100)],
+          args: [
+            anyValue,
+            two.rToken.address,
+            one.rsr.address,
+            rsrSellAmt,
+            rsrSellAmt.mul(99).div(100),
+          ],
           emitted: true,
         },
       ])
@@ -259,7 +272,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Settle trade
       await expect(one.rsrTrader.settleTrade(two.rToken.address))
         .to.emit(one.rsrTrader, 'TradeSettled')
-        .withArgs(two.rToken.address, one.rsr.address, rsrSellAmt, rsrSellAmt.mul(99).div(100))
+        .withArgs(
+          anyValue,
+          two.rToken.address,
+          one.rsr.address,
+          rsrSellAmt,
+          rsrSellAmt.mul(99).div(100)
+        )
 
       // Redeem half the outer RToken we just bought back
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt.mul(3).div(5)) // only 3/5ths
@@ -295,7 +314,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         {
           contract: two.rsrTrader,
           name: 'TradeStarted',
-          args: [two.rToken.address, two.rsr.address, rsrSellAmt, rsrSellAmt.mul(99).div(100)],
+          args: [
+            anyValue,
+            two.rToken.address,
+            two.rsr.address,
+            rsrSellAmt,
+            rsrSellAmt.mul(99).div(100),
+          ],
           emitted: true,
         },
       ])
@@ -342,6 +367,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           contract: one.rsrTrader,
           name: 'TradeStarted',
           args: [
+            anyValue,
             one.rToken.address,
             one.rsr.address,
             rsrSellAmt,
