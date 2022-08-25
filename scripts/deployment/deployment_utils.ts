@@ -155,7 +155,8 @@ export async function verifyContract(
   chainId: number,
   address: string | undefined,
   constructorArguments: unknown[],
-  contract: string
+  contract: string,
+  libraries?: { [key: string]: string }
 ) {
   console.time(`Verifying ${contract}`)
   console.log(`Verifying ${contract}`)
@@ -185,6 +186,7 @@ export async function verifyContract(
         address,
         constructorArguments,
         contract,
+        libraries,
       })
     } catch (e) {
       console.log(

@@ -1,8 +1,15 @@
 /* eslint-disable no-process-exit */
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
-import { networkConfig } from '../common/configuration'
+import { developmentChains, networkConfig } from '../common/configuration'
 import { sh } from './deployment/deployment_utils'
+import {
+  getDeploymentFile,
+  getAssetCollDeploymentFilename,
+  IAssetCollDeployments,
+  IDeployments,
+  getDeploymentFilename,
+} from './deployment/deployment_utils'
 
 async function main() {
   const chainId = await getChainId(hre)
@@ -11,6 +18,15 @@ async function main() {
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
+
+  if (developmentChains.includes(hre.network.name)) {
+    throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
+  }
+
+  const phase1Deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
+  const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
+  const assetDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
+  if (!phase1Deployments || !assetDeployments) throw new Error('Missing deployments')
 
   console.log(`Starting full verification on network ${hre.network.name} (${chainId})`)
 
@@ -26,9 +42,8 @@ async function main() {
     '3_verify_deployer.ts',
     '4_verify_facade.ts',
     '5_verify_facadeWrite.ts',
-    '6_verify_assets.ts',
-    '7_verify_collateral.ts',
-    '8_verify_governance.ts',
+    '6_verify_collateral.ts',
+    '7_verify_governance.ts',
   ]
 
   for (const script of scripts) {

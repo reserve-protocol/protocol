@@ -8,7 +8,9 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
+  IDeployments,
   getOracleTimeout,
+  getDeploymentFilename,
   verifyContract,
 } from '../deployment/deployment_utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
@@ -25,6 +27,8 @@ async function main() {
   if (developmentChains.includes(hre.network.name)) {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
+
+  const phase1Deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -89,7 +93,8 @@ async function main() {
       fp('0.05').toString(), // 5%
       bn('86400').toString(), // 24h
     ],
-    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
+    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral',
+    { OracleLib: phase1Deployments.oracleLib }
   )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   await verifyContract(

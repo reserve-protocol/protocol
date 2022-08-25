@@ -76,6 +76,7 @@ async function verifyOnTestnet(chainId: number, rTokenConf: IRTokenConfig & IGov
   /********************** Verify TimelockController ****************************************/
   const TimelockFactory = await hre.ethers.getContractFactory('TimelockController')
   const dummyTimelock = await TimelockFactory.deploy(rTokenConf.timelockDelay.toString(), [], [])
+  await dummyTimelock.deployed()
 
   // Sleep to ensure API is in sync with chain
   await new Promise((r) => setTimeout(r, 20000)) // 20s
@@ -97,6 +98,7 @@ async function verifyOnTestnet(chainId: number, rTokenConf: IRTokenConfig & IGov
     '1',
     '1'
   )
+  await dummyGovernance.deployed()
 
   // Sleep to ensure API is in sync with chain
   await new Promise((r) => setTimeout(r, 20000)) // 20s
@@ -105,7 +107,7 @@ async function verifyOnTestnet(chainId: number, rTokenConf: IRTokenConfig & IGov
     chainId,
     dummyGovernance.address,
     [rTokenDeployments.components.stRSR, rTokenDeployments.timelock, '1', '1', '1', '1'],
-    '@openzeppelin/contracts/governance/TimelockController.sol:TimelockController'
+    'contracts/plugins/governance/Governance.sol:Governance'
   )
 }
 

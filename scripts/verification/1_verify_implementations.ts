@@ -46,6 +46,7 @@ async function main() {
     name: keyof typeof deployments.implementations.components
     desc: string
     contract: string
+    libraries?: { [key: string]: string }
   }
 
   // Components to verify
@@ -84,6 +85,10 @@ async function main() {
       name: 'rsrTrader',
       desc: 'RSR / RToken Traders',
       contract: 'contracts/p1/RevenueTrader.sol:RevenueTraderP1',
+      libraries: {
+        RewardableLibP1: deployments.rewardableLib,
+        TradingLibP1: deployments.tradingLib,
+      },
     },
     {
       name: 'rToken',
@@ -102,7 +107,8 @@ async function main() {
       chainId,
       deployments.implementations.components[cinf.name],
       [],
-      cinf.contract
+      cinf.contract,
+      cinf.libraries
     )
   }
 }
