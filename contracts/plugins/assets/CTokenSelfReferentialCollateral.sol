@@ -81,7 +81,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 priceable = p > 0;
             } catch {
                 priceable = false;
@@ -121,7 +121,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view virtual override returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // p = p.mul(refPerTok());
             p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
 
@@ -137,7 +137,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view virtual override returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // p = p.mul(refPerTok());
             p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
 

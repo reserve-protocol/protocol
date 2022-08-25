@@ -96,8 +96,8 @@ contract CTokenNonFiatCollateral is Collateral {
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
-            price(targetUnitUSDChainlinkFeed,oracleTimeout)
-                .mul(chainlinkFeed.price(oracleTimeout))
+            price(targetUnitChainlinkFeed,oracleTimeout)
+                .mul(price(chainlinkFeed, oracleTimeout))
                 .mul(refPerTok());
     }
 
@@ -118,9 +118,9 @@ contract CTokenNonFiatCollateral is Collateral {
             whenDefault = block.timestamp;
         } else {
             // p {target/ref}
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 // We don't need the return value from this next feed, but it should still function
-                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
                     priceable = p > 0 && p2 > 0;
 
                     // {target/ref}
@@ -171,15 +171,15 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return price(targetUnitUSDChainlinkFeed, oracleTimeout);
+        return price(targetUnitChainlinkFeed, oracleTimeout);
     }
 
     // solhint-disable no-empty-blocks
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
+            try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
                 p = p.mul(p2).mul(refPerTok());
 
@@ -196,8 +196,8 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view override returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
+            try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
                 p = p.mul(p2).mul(refPerTok());
 

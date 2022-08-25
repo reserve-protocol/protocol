@@ -48,9 +48,9 @@ contract NormalOpsScenario {
     constructor() {
         main = new MainP1Fuzz();
 
-        main.initFuzz(defaultParams(), defaultFreezeDuration(), new MarketMock(main));
+        main.initFuzz(defaultParams(), new MarketMock(main));
 
-        TradingRange memory tradingRange = defaultParams().tradingRange;
+        TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
 
         // Create three "standard" collateral tokens; have rewards for the first two
         for (uint256 i = 0; i < 3; i++) {
@@ -434,17 +434,17 @@ contract NormalOpsScenario {
 
     function setBackingManagerTradingDelay(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setTradingDelay(
-            uint32(between(seed, 0, 31536000))
+            uint48(between(seed, 0, 31536000))
         ); // 31536000 is BackingManager.MAX_TRADING_DELAY
     }
 
     function setAuctionLength(uint256 seed) public {
-        BrokerP1(address(main.broker())).setAuctionLength(uint32(between(seed, 1, 604800)));
+        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(seed, 1, 604800)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
 
     function setFurnacePeriod(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setPeriod(uint32(between(seed, 1, 31536000)));
+        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(seed, 1, 31536000)));
         // 31536000 is Furnace.MAX_PERIOD
     }
 
@@ -480,7 +480,7 @@ contract NormalOpsScenario {
     }
 
     function setStakeRewardPeriod(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardPeriod(uint32(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(seed, 1, 31536000)));
     }
 
     function setStakeRewardRatio(uint256 seed) public {
@@ -488,7 +488,7 @@ contract NormalOpsScenario {
     }
 
     function setUnstakingDelay(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint32(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(seed, 1, 31536000)));
     }
 
     // ================ System Properties ================

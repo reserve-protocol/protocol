@@ -40,7 +40,7 @@ contract AssetMock is OracleErrorMock, Asset {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price(AggregatorV3Interface, uint32) internal view virtual override returns (uint192) {
+    function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
         maybeFail();
         return model.price();
     }

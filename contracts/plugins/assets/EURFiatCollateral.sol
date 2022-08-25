@@ -68,10 +68,10 @@ contract EURFiatCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // p1 {UoA/ref}
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p1) {
             // We don't need the return value from this next feed, but it should still function
             // p2 {UoA/target}
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
+            try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192 p2) {
                 priceable = p1 > 0 && p2 > 0;
 
                 // {target/ref}
@@ -120,7 +120,7 @@ contract EURFiatCollateral is Collateral {
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view virtual override returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // {tok} = {UoA} / {UoA/tok}
             // return tradingRange.minVal.div(p, CEIL);
             uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
@@ -133,7 +133,7 @@ contract EURFiatCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view virtual override returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // {tok} = {UoA} / {UoA/tok}
             // return tradingRange.maxVal.div(p);
             uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;

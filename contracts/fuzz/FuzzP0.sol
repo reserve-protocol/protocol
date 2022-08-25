@@ -151,10 +151,11 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     function initForFuzz(
         Components memory components,
         IERC20 rsr,
-        uint32 freezerDuration,
+        uint48 shortFreeze_,
+        uint48 longFreeze_,
         IMarketMock marketMock_
     ) public virtual initializer {
-        init(components, rsr, freezerDuration);
+        init(components, rsr, shortFreeze_, longFreeze_);
         marketMock = marketMock_;
     }
 }

@@ -92,7 +92,7 @@ contract FiatCollateral is Collateral {
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view virtual override returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // {tok} = {UoA} / {UoA/tok}
             // return tradingRange.minVal.div(p, CEIL);
             uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
@@ -105,7 +105,7 @@ contract FiatCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view virtual override returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // {tok} = {UoA} / {UoA/tok}
             // return tradingRange.maxVal.div(p);
             uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;

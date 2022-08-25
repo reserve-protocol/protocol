@@ -316,13 +316,13 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     // Initialize self and components
     // Avoiding overloading here, just because it's super annoying to deal with in ethers.js
-    function initFuzz(
-        DeploymentParams memory params,
-        uint32 freezerDuration,
-        IMarketMock marketMock_
-    ) public virtual initializer {
+    function initFuzz(DeploymentParams memory params, IMarketMock marketMock_)
+        public
+        virtual
+        initializer
+    {
         // ==== Init self ====
-        __Auth_init(freezerDuration);
+        __Auth_init(params.shortFreeze, params.longFreeze);
         __UUPSUpgradeable_init();
         emit MainInitialized();
 
@@ -334,7 +334,15 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         // ==== Initialize components ====
         // This is pretty much the matching section from p1/Deployer.sol
-        rToken.init(this, "RToken", "Rtkn", "fnord", FIX_ONE / 10);
+        rToken.init(
+            this,
+            "RToken",
+            "Rtkn",
+            "fnord",
+            params.issuanceRate,
+            params.maxRedemptionCharge,
+            params.redemptionVirtualSupply
+        );
         stRSR.init(
             this,
             "Staked RSR",
@@ -360,10 +368,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             IERC20Metadata(address(0)),
-            params.tradingRange,
+            params.rTokenTradingRange,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
-        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.tradingRange);
+        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.rTokenTradingRange);
         assetRegistry.init(this, assets);
 
         // Init Distributor

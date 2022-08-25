@@ -55,7 +55,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         deviationModel = deviationModel_;
     }
 
-    function price(AggregatorV3Interface, uint32) internal view virtual override returns (uint192) {
+    function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
         maybeFail();
         return
             deviationModel

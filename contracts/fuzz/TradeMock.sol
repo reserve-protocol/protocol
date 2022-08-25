@@ -17,7 +17,7 @@ contract TradeMock is ITrade {
     uint256 public requestedSellAmt;
     uint256 public requestedBuyAmt;
 
-    uint32 public endTime;
+    uint48 public endTime;
     address public origin;
 
     enum TradeMockStatus {
@@ -30,7 +30,7 @@ contract TradeMock is ITrade {
     function init(
         IMainFuzz main_,
         address origin_,
-        uint32 auctionLength,
+        uint48 auctionLength,
         TradeRequest memory req
     ) external {
         require(status == TradeMockStatus.NOT_STARTED);
@@ -38,7 +38,7 @@ contract TradeMock is ITrade {
 
         main = main_;
         origin = origin_;
-        endTime = uint32(block.timestamp) + auctionLength;
+        endTime = uint48(block.timestamp) + auctionLength;
 
         sell = req.sell.erc20();
         buy = req.buy.erc20();
@@ -48,13 +48,13 @@ contract TradeMock is ITrade {
     }
 
     function canSettle() external view returns (bool) {
-        return uint32(block.timestamp) >= endTime && status == TradeMockStatus.OPEN;
+        return uint48(block.timestamp) >= endTime && status == TradeMockStatus.OPEN;
     }
 
     function settle() external returns (uint256 soldAmt, uint256 boughtAmt) {
         require(_msgSender() == origin, "only origin can settle");
         require(status == TradeMockStatus.OPEN, "trade not OPEN");
-        require(uint32(block.timestamp) >= endTime, "trade not yet closed");
+        require(uint48(block.timestamp) >= endTime, "trade not yet closed");
         status = TradeMockStatus.CLOSED;
 
         // ==== Trade tokens ====

@@ -125,8 +125,8 @@ contract NonFiatCollateral is Collateral {
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+        try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192 p) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
                 // p = p.mul(p2);
                 p = uint192((uint256(p) * p2) / FIX_ONE);
@@ -144,8 +144,8 @@ contract NonFiatCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view override returns (uint192 max) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+        try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192 p) {
+            try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
                 // p = p.mul(p2);
                 p = uint192((uint256(p) * p2) / FIX_ONE);

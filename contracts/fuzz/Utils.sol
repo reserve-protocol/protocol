@@ -7,7 +7,12 @@ import "contracts/interfaces/IAsset.sol";
 
 function defaultParams() pure returns (DeploymentParams memory params) {
     params = DeploymentParams({
-        tradingRange: TradingRange({ min: toFix(1) / 100, max: toFix(1e6) }), // 0.01 UoA (USD)
+        rTokenTradingRange: TradingRange({
+            minVal: 1e22,
+            maxVal: 1e24,
+            minAmt: 1e21,
+            maxAmt: 1e25
+        }),
         dist: RevenueShare({ rTokenDist: 2, rsrDist: 3 }),
         rewardPeriod: 604800, // 1 week
         rewardRatio: FixLib.divu(toFix(22840), (1_000_000)), // approx. half life of 30 pay periods
@@ -16,12 +21,15 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         auctionLength: 1800, // 30 minutes
         backingBuffer: FixLib.divu(toFix(1), 10000), // 0.01%, 1 BIP
         maxTradeSlippage: FixLib.divu(toFix(1), 100), // 1%
+        shortFreeze: 345600, // 4 days
+        longFreeze: 1814400, // 3 weeks
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
-        oneshotFreezeDuration: 864000 // 10 days
+        maxRedemptionCharge: FixLib.divu(FIX_ONE, 20),
+        redemptionVirtualSupply: toFix(20_000_000)
     });
 }
 
-function defaultFreezeDuration() pure returns (uint32 duration) {
+function defaultFreezeDuration() pure returns (uint48 duration) {
     return 1209600; // 2 weeks
 }
 
