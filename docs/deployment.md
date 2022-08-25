@@ -65,15 +65,17 @@ The verification scripts are smart enough to only verify those that are unverifi
 
 ### Deploy Phases
 
+Within the _deployment_ step, there are 3 phases:
+
 - **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only **once** for all RTokens. Scripts are located in `/scripts/deployment/phase1-common`.
 
 - **Phase 2 - Assets/Collateral:** Required to deploy new asset and collateral contracts that will be used for the deployment of a new RToken. The exact setup to deploy will depend on each case and can be customized for each particular RToken. Once an asset/collateral is deployed it can be reused for several RTokens. Scripts are located in `scripts/deployment/phase2-assets-collateral`.
 
-- **Phase 3 - RToken:** Something we won't run on Mainnet. Deployments are done via public functions in the `FacadeWrite` contract to simulate the Register. Scripts are located in `scripts/deployment/phase3-rtoken`.
+- **Phase 3 - RToken:** Deployments are done via public functions in the `FacadeWrite` contract to simulate the Register. The RToken and Governance are left bricked, so as only to be only used for etherscan verification. Scripts are located in `scripts/deployment/phase3-rtoken`.
 
 The same scripts can be executed against a Testnet or Mainnet network. Make sure the correct network is specified when executing the scripts (eg:`--network mainnet`)
 
-A specific set of files will be created for that specific network
+A specific set of files will be created for that specific network after each phase:
 
 1. `{CHAIN_ID}-tmp-deployments.json`: Contains prerequisite + implementation addresses
 2. `{CHAIN_ID}-tmp-assets-collateral.json`: Contains asset plugin addresses
