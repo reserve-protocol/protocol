@@ -53,6 +53,8 @@ The deployment process consists of two steps:
 hardhat run scripts/deploy_all.ts --network {NETWORK}
 ```
 
+If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy_all.ts` in order to pick up execution at another point.
+
 2. Verify everything:
 
 ```

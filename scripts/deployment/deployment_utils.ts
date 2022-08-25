@@ -160,8 +160,8 @@ export async function verifyContract(
   console.time(`Verifying ${contract}`)
   console.log(`Verifying ${contract}`)
 
-  // Sleep 0.2s to not overwhelm API
-  await new Promise((r) => setTimeout(r, 200))
+  // Sleep 0.5s to not overwhelm API
+  await new Promise((r) => setTimeout(r, 500))
 
   // Check to see if already verified
   const url = `${getEtherscanBaseURL(

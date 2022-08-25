@@ -1,5 +1,4 @@
 import { BigNumber } from 'ethers'
-import { fp, pow10 } from './numbers'
 
 interface ICurrencies {
   ETH?: string
@@ -187,7 +186,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     chainlinkFeeds: {
       ETH: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', // canonical chainlink
       BTC: '0xA39434A63A52E749F02807ae27335515BA4b07F7', // canonical chainlink
-      // mocks below
+      // mocks below, we shouldn't have to touch these unless causing default
       RSR: '0x905084691C2c7505b5FC63229621621b616bbbFe',
       AAVE: '0xcba876375c5144722BB665A9312A02Ba77865D28',
       COMP: '0x00e95ea8009f3B01c2ceC5AA7143F73C23136f45',
@@ -294,12 +293,12 @@ export interface IGovParams {
 }
 
 // System constants
-export const MAX_TRADE_SLIPPAGE = fp('1')
-export const MAX_BACKING_BUFFER = fp('1')
-export const MAX_TARGET_AMT = fp(1e3)
-export const MAX_RATIO = fp('1')
-export const MAX_ISSUANCE_RATE = fp('1')
-export const MAX_TRADE_VOLUME = pow10(48)
+export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
+export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
+export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
+export const MAX_RATIO = BigNumber.from(10).pow(18)
+export const MAX_ISSUANCE_RATE = BigNumber.from(10).pow(18)
+export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)

@@ -8,10 +8,7 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
-  getDeploymentFilename,
   getOracleTimeout,
-  fileExists,
   verifyContract,
 } from '../deployment/deployment_utils'
 
@@ -27,13 +24,6 @@ async function main() {
   if (developmentChains.includes(hre.network.name)) {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
-
-  // Get phase1 deployment
-  const phase1File = getDeploymentFilename(chainId)
-  if (!fileExists(phase1File)) {
-    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
-  }
-  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
 
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)

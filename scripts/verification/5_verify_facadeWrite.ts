@@ -24,20 +24,20 @@ async function main() {
 
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
-  /** ******************** Verify FacadeWrite ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.facadeWrite,
-    [deployments.deployer],
-    'contracts/facade/FacadeWrite.sol:FacadeWrite'
-  )
-
   /** ******************** Verify FacadeWriteLib ****************************************/
   await verifyContract(
     chainId,
     deployments.facadeWriteLib,
     [],
     'contracts/facade/lib/FacadeWriteLib.sol:FacadeWriteLib'
+  )
+
+  /** ******************** Verify FacadeWrite ****************************************/
+  await verifyContract(
+    chainId,
+    deployments.facadeWrite,
+    [deployments.deployer],
+    'contracts/facade/FacadeWrite.sol:FacadeWrite'
   )
 }
 
