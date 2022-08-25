@@ -635,9 +635,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
 
-  // Unpause
-  await main.connect(owner).unpause()
-
   // Set up allowances
   for (let i = 0; i < basket.length; i++) {
     await backingManager.grantRTokenAllowance(await basket[i].erc20())
