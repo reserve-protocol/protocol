@@ -86,7 +86,6 @@ async function main() {
       desc: 'RSR / RToken Traders',
       contract: 'contracts/p1/RevenueTrader.sol:RevenueTraderP1',
       libraries: {
-        RewardableLibP1: deployments.rewardableLib,
         TradingLibP1: deployments.tradingLib,
       },
     },

@@ -3,7 +3,7 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IGovParams, networkConfig } from '../../../common/configuration'
-import { ONE_ADDRESS } from '../../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig } from './rTokenConfig'
 import {
@@ -84,9 +84,9 @@ async function main() {
     await facadeWrite.connect(deployerUser).setupGovernance(
       rToken.address,
       true, // deploy governance
-      false, // but it's frozen
+      false, // but it's paused
       govParams,
-      ONE_ADDRESS, // and all the roles are bricked so it can't be used
+      ZERO_ADDRESS, // and all the roles are bricked so it can't be used
       ONE_ADDRESS,
       ONE_ADDRESS
     )
