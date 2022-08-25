@@ -43,13 +43,6 @@ async function main() {
   const DeployerFactory = await ethers.getContractFactory('DeployerP1', {
     libraries: { RTokenPricingLib: deployments.rTokenPricingLib },
   })
-  console.log([
-    deployments.prerequisites.RSR,
-    deployments.prerequisites.GNOSIS_EASY_AUCTION,
-    deployments.facade,
-    deployments.rsrAsset,
-    deployments.implementations,
-  ])
   deployer = <DeployerP1>(
     await DeployerFactory.connect(burner).deploy(
       deployments.prerequisites.RSR,

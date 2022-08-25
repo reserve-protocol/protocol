@@ -25,13 +25,6 @@ async function main() {
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Deployer ****************************************/
-  console.log([
-    deployments.prerequisites.RSR,
-    deployments.prerequisites.GNOSIS_EASY_AUCTION,
-    deployments.facade,
-    deployments.rsrAsset,
-    deployments.implementations,
-  ])
   await verifyContract(
     chainId,
     deployments.deployer,
