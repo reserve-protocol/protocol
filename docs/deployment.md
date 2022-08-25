@@ -81,6 +81,10 @@ A specific set of files will be created for that specific network after each pha
 2. `{CHAIN_ID}-tmp-assets-collateral.json`: Contains asset plugin addresses
 3. `{CHAIN_ID}-{RTOKEN_SYMBOL}-tmp-deployments.json`: Contains the (proxied) addresses that make up the real runtime system
 
+### Verification
+
+Verification sometimes fails when we do `verify_all`, but not when we run individual scripts. If this happens, run individual scripts directly, say, with: `hardhat run scripts/verification/6_verify_collateral.ts --network {NETWORK}`
+
 ### With Mainnet forking
 
 - Before running the `deploy_all` script (or any particular script), run in a separate terminal a local forking node:
