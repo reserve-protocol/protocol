@@ -1,23 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import "contracts/interfaces/IStRSRVotes.sol";
 import "contracts/p1/StRSR.sol";
-
-interface IStRSRVotes is IVotesUpgradeable {
-    /// @return The current era
-    function currentEra() external view returns (uint256);
-
-    /// @return The era at a past block number
-    function getPastEra(uint256 blockNumber) external view returns (uint256);
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate);
-}
 
 /*
  * @title StRSRP1Votes
@@ -26,7 +11,7 @@ interface IStRSRVotes is IVotesUpgradeable {
  */
 contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     struct Checkpoint {
-        uint32 fromBlock;
+        uint48 fromBlock;
         uint224 val;
     }
 
@@ -41,9 +26,14 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
 
+    // When RSR is seized, stakeholders are divested not only of their economic position,
+    // but also of their governance position. This occurs retroactively, such that upon
+    // era change it is expected that
+
     // ===
 
     /// Rebase hook
+    /// No need to override beginDraftEra: we are only concerned with raw balances (stakes)
     function beginEra() internal override {
         super.beginEra();
 
@@ -54,11 +44,11 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         return era;
     }
 
-    function checkpoints(address account, uint32 pos) public view returns (Checkpoint memory) {
+    function checkpoints(address account, uint48 pos) public view returns (Checkpoint memory) {
         return _checkpoints[era][account][pos];
     }
 
-    function numCheckpoints(address account) public view returns (uint32) {
+    function numCheckpoints(address account) public view returns (uint48) {
         return SafeCastUpgradeable.toUint32(_checkpoints[era][account].length);
     }
 
@@ -86,17 +76,6 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     function getPastEra(uint256 blockNumber) public view returns (uint256) {
         require(blockNumber < block.number, "ERC20Votes: block not yet mined");
         return _checkpointsLookup(_eras, blockNumber);
-    }
-
-    /// @return blockNumber The block number at which the exchange rate was first reached
-    /// @return rate {qStRSR/qRSR} The exchange rate at the time, as a Fix
-    function getPastExchangeRate(uint256 index)
-        external
-        view
-        returns (uint32 blockNumber, uint192 rate)
-    {
-        HistoricalExchangeRate storage record = exchangeRateHistory[index];
-        return (record.fromBlock, record.rate);
     }
 
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)

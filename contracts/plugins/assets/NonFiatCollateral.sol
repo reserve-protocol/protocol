@@ -14,7 +14,6 @@ contract NonFiatCollateral is Collateral {
     using FixLib for uint192;
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
-    AggregatorV3Interface public immutable targetPerRefFeed; // {target/ref}
 
     // Default Status:
     // whenDefault == NEVER: no risk of default (initial value)
@@ -40,13 +39,13 @@ contract NonFiatCollateral is Collateral {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_,
+        uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     )
         Collateral(
-            AggregatorV3Interface(address(1)),
+            targetPerRefFeed_,
             erc20_,
             rewardERC20_,
             tradingRange_,
@@ -61,13 +60,12 @@ contract NonFiatCollateral is Collateral {
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
-        targetPerRefFeed = targetPerRefFeed_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
-        return price(uoaPerTargetFeed, oracleTimeout).mul(price(targetPerRefFeed, oracleTimeout));
+        return price(uoaPerTargetFeed, oracleTimeout).mul(price(chainlinkFeed, oracleTimeout));
     }
 
     /// Refresh exchange rates and update default status.
@@ -79,10 +77,10 @@ contract NonFiatCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // p {target/ref}
-        try this.price_(targetPerRefFeed, oracleTimeout) returns (uint192 p) {
+        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
             // We don't need the return value from this next feed, but it should still function
-            try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192) {
-                priceable = true;
+            try this.price_(uoaPerTargetFeed, oracleTimeout) returns (uint192 p2) {
+                priceable = p > 0 && p2 > 0;
 
                 // {target/ref}
                 uint192 peg = targetPerRef();
@@ -122,4 +120,46 @@ contract NonFiatCollateral is Collateral {
     function pricePerTarget() public view override returns (uint192) {
         return price(uoaPerTargetFeed, oracleTimeout);
     }
+
+    // solhint-disable no-empty-blocks
+
+    /// @return min {tok} The minimium trade size
+    function minTradeSize() external view override returns (uint192 min) {
+        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+                // p = p.mul(p2);
+                p = uint192((uint256(p) * p2) / FIX_ONE);
+
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.minVal.div(p, CEIL);
+                uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
+                if (type(uint192).max < min256) revert UIntOutOfBounds();
+                min = uint192(min256);
+            } catch {}
+        } catch {}
+        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
+        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
+    }
+
+    /// @return max {tok} The maximum trade size
+    function maxTradeSize() external view override returns (uint192 max) {
+        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
+                // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+                // p = p.mul(p2);
+                p = uint192((uint256(p) * p2) / FIX_ONE);
+
+                // {tok} = {UoA} / {UoA/tok}
+                // return tradingRange.maxVal.div(p);
+                uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
+                if (type(uint192).max < max256) revert UIntOutOfBounds();
+                max = uint192(max256);
+            } catch {}
+        } catch {}
+        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
+        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
+    }
+
+    // solhint-enable no-empty-blocks
 }

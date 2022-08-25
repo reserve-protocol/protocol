@@ -8,7 +8,12 @@ import { bn, fp } from '../../common/numbers'
 import { setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
 import { expectEvents } from '../../common/events'
-import { ATokenFiatCollateral, MockV3Aggregator, StaticATokenMock } from '../../typechain'
+import {
+  ATokenFiatCollateral,
+  MockV3Aggregator,
+  StaticATokenMock,
+  RTokenCollateral,
+} from '../../typechain'
 import { defaultFixture, DefaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
@@ -39,6 +44,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   // Tokens and Assets
   let aTokenCollateral: ATokenFiatCollateral
   let staticATokenERC20: StaticATokenMock
+  let rTokenCollateral: RTokenCollateral
 
   // Whole system instances
   let one: DefaultFixture
@@ -73,11 +79,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
   context('with nesting', function () {
     beforeEach(async () => {
-      const openTradingRange = {
-        min: 0,
-        max: one.config.tradingRange.max,
-      }
-
       // Deploy ERC20s + Collateral
       const aTokenERC20 = await (
         await ethers.getContractFactory('ERC20Mock')
@@ -96,21 +97,25 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         chainlinkFeed.address,
         staticATokenERC20.address,
         one.aaveToken.address,
-        openTradingRange,
+        one.config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
         DELAY_UNTIL_DEFAULT
       )
-      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
-      const rTokenCollateral = await RTokenCollateralFactory.deploy(
+      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral', {
+        libraries: { OracleLib: one.oracleLib.address },
+      })
+      rTokenCollateral = await RTokenCollateralFactory.deploy(
         await one.rToken.main(),
-        openTradingRange,
+        one.config.rTokenTradingRange,
         ethers.utils.formatBytes32String('RTK')
       )
       const rTokenAsset = await (
-        await ethers.getContractFactory('RTokenAsset')
-      ).deploy(two.rToken.address, openTradingRange)
+        await ethers.getContractFactory('RTokenAsset', {
+          libraries: { RTokenPricingLib: one.rTokenPricing.address },
+        })
+      ).deploy(two.rToken.address, one.config.rTokenTradingRange)
 
       // Set up aToken to back RToken0 and issue
       await one.assetRegistry.connect(owner).register(aTokenCollateral.address)
@@ -212,8 +217,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
 
       // Prices should be aware
-      expect(await one.rToken.price()).to.equal(fp('0.5'))
-      expect(await two.rToken.price()).to.equal(fp('0.5'))
+      expect(await one.rTokenAsset.price()).to.equal(fp('0.5'))
+      expect(await rTokenCollateral.price()).to.equal(fp('0.5'))
     })
 
     it("should view donations of the other's RToken as revenue", async () => {
@@ -302,13 +307,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await one.rToken.totalSupply()).to.equal(issueAmt)
       expect(await two.rToken.totalSupply()).to.equal(issueAmt)
-      expect(await one.rToken.price()).to.equal(fp('1'))
-      expect(await two.rToken.price()).to.equal(fp('1'))
+      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenCollateral.price()).to.equal(fp('1'))
     })
 
     it('should propagate appreciation of the inner-most collateral to price', async () => {
-      expect(await one.rToken.price()).to.equal(fp('1'))
-      expect(await two.rToken.price()).to.equal(fp('1'))
+      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenCollateral.price()).to.equal(fp('1'))
 
       // Cause appreciation
       await staticATokenERC20.setExchangeRate(fp('1.5'))
@@ -356,8 +361,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Appreciation should be passed through to both tokens
       await setOraclePrice(aTokenCollateral.address, bn('1e8'))
       const expectedPrice = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
-      expect(await one.rToken.price()).to.be.closeTo(expectedPrice, fp('0.05'))
-      expect(await two.rToken.price()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await one.rTokenAsset.price()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await rTokenCollateral.price()).to.be.closeTo(expectedPrice, fp('0.05'))
     })
   })
 })

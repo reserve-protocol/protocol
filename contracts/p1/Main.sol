@@ -33,9 +33,10 @@ contract MainP1 is
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotFreezeDuration_
+        uint48 shortFreeze_,
+        uint48 longFreeze_
     ) public virtual initializer {
-        __Auth_init(oneshotFreezeDuration_);
+        __Auth_init(shortFreeze_, longFreeze_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
 

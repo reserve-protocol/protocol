@@ -2,8 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IDeployer.sol";
-import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/Governor.sol";
+
 /**
  * @title ConfigurationParams
  * @notice The set of protocol params needed to deploy an RToken
@@ -12,7 +11,7 @@ struct ConfigurationParams {
     // === RToken info ===
     string name;
     string symbol;
-    string manifestoURI;
+    string mandate;
     // === Deployer params ===
     DeploymentParams params;
 }
@@ -50,7 +49,7 @@ struct GovernanceParams {
     uint256 votingPeriod; // in blocks
     uint256 proposalThresholdAsMicroPercent; // e.g. 1e4 for 0.01%
     uint256 quorumPercent; // e.g 4 for 4%
-    uint256 minDelay; // in seconds (used for timelock)
+    uint256 timelockDelay; // in seconds (used for timelock)
 }
 
 /**
@@ -80,7 +79,7 @@ interface IFacadeWrite {
         bool unfreeze,
         GovernanceParams calldata govParams,
         address owner,
-        address freezer,
+        address guardian,
         address pauser
     ) external returns (address);
 }

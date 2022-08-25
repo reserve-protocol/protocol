@@ -7,11 +7,13 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingMin', 'Trade Range - Min')
-  .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('tradingValMin', 'Trade Range - Min in UoA')
+  .addParam('tradingValMax', 'Trade Range - Max in UoA')
+  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
+  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -20,19 +22,22 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     const SelfReferentialCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
       'SelfReferentialCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 
-    const collateral = <Collateral>(
-      await SelfReferentialCollateralFactory.connect(deployer).deploy(
-        params.priceFeed,
-        params.tokenAddress,
-        params.rewardToken,
-        { min: params.tradingMin, max: params.tradingMax },
-        params.maxOracleTimeout,
-        params.targetName
-      )
+    const collateral = <Collateral>await SelfReferentialCollateralFactory.connect(deployer).deploy(
+      params.priceFeed,
+      params.tokenAddress,
+      params.rewardToken,
+      {
+        minVal: params.tradingValMin,
+        maxVal: params.tradingValMax,
+        minAmt: params.tradingAmtMin,
+        maxAmt: params.tradingAmtMax,
+      },
+      params.oracleTimeout,
+      params.targetName
     )
     await collateral.deployed()
 

@@ -21,7 +21,7 @@ import { RTokenP1 } from '@typechain/RTokenP1'
 import { StRSRP1Votes } from '@typechain/StRSRP1Votes'
 import { RTokenAsset } from '@typechain/RTokenAsset'
 import { ZERO_ADDRESS } from '../common/constants'
-import { AavePricedAsset, CompoundPricedAsset } from './../typechain'
+import { AavePricedAsset, CompoundPricedAsset, RTokenPricingLib } from './../typechain'
 import { CompoundPricedAsset } from '@typechain/CompoundPricedAsset'
 
 export const defaultThreshold = fp('0.05') // 5%
@@ -48,7 +48,8 @@ export const config: IConfig = {
   maxTradeSlippage: fp('0.01'), // 1%
   dustAmount: fp('0.01'), // 0.01 UoA (USD)
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-  oneshotFreezeDuration: bn('864000'), // 10 days
+  shortFreeze: bn('259200'), // 3 days
+  longFreeze: bn('2592000'), // 30 days
 }
 
 const createATokenCollateral = async (
@@ -145,6 +146,13 @@ export const deployImplementations = async (
   const rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
   await rewardableLib.deployed()
 
+  // Deploy RTokenPricingLib
+  const RTokenPricingLibFactory: ContractFactory = await hre.ethers.getContractFactory(
+    'RTokenPricingLib'
+  )
+  const rTokenPricing = <RTokenPricingLib>await RTokenPricingLibFactory.deploy()
+  await rTokenPricing.deployed()
+
   const AssetRegImplFactory: ContractFactory = await hre.ethers.getContractFactory(
     'AssetRegistryP1'
   )
@@ -199,7 +207,9 @@ export const deployImplementations = async (
   await stRSRImpl.deployed()
 
   // Assets - Can use dummy data in constructor as only logic will be used
-  const RTokenAssetFactory: ContractFactory = await hre.ethers.getContractFactory('RTokenAsset')
+  const RTokenAssetFactory: ContractFactory = await hre.ethers.getContractFactory('RTokenAsset', {
+    libraries: { RTokenPricingLib: rTokenPricing.address },
+  })
   const rTokenAssetImpl = <RTokenAsset>await RTokenAssetFactory.deploy(bn(0), ZERO_ADDRESS)
   await rTokenAssetImpl.deployed()
 

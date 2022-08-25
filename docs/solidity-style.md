@@ -131,11 +131,11 @@ Ranges here are formatted like "[min, max, granularity]" For instance, the range
 
 ### Time
 
-`{seconds}`: [0, 2^32-1]
+`{seconds}`: [0, 2^48-1]
 
-That is, we expect timestamps to be any uint32 value.
+That is, we expect timestamps to be any uint48 value.
 
-This should work without change for a little under 100 years. With any luck, the gas costs involved in representing timestampts as uint40 will be more acceptable by then.
+This should work without change for around 9M years, which is more than enough.
 
 ## Function annotations
 

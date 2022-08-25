@@ -19,15 +19,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     using FixLib for uint192;
     using SafeERC20 for IERC20;
 
-    uint32 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
-    uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
-        uint32 tradingDelay_,
+        uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_
     ) public initializer {
@@ -41,7 +41,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
-        erc20.approve(address(main.rToken()), type(uint256).max);
+
+        uint256 currAllowance = erc20.allowance(address(this), address(main.rToken()));
+        erc20.safeIncreaseAllowance(address(main.rToken()), type(uint256).max - currAllowance);
     }
 
     /// Mointain the overall backing policy; handout assets otherwise
@@ -168,7 +170,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Setters ===
 
     /// @custom:governance
-    function setTradingDelay(uint32 val) public governance {
+    function setTradingDelay(uint48 val) public governance {
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;

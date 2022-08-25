@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/Facade.sol";
+import "contracts/facade/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";
@@ -53,14 +53,14 @@ contract DeployerP0 is IDeployer {
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
-    /// @param manifestoURI An IPFS URI for the immutable manifesto the RToken adheres to
+    /// @param mandate An IPFS link or direct string; describes what the RToken _should be_
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed RToken.
     function deploy(
         string memory name,
         string memory symbol,
-        string memory manifestoURI,
+        string calldata mandate,
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
@@ -83,11 +83,11 @@ contract DeployerP0 is IDeployer {
 
         // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.tradingRange);
+        assets[0] = new RTokenAsset(components.rToken, params.rTokenTradingRange);
         assets[1] = rsrAsset;
 
         // Init Main
-        main.init(components, rsr, params.oneshotFreezeDuration);
+        main.init(components, rsr, params.shortFreeze, params.longFreeze);
 
         // Init Backing Manager
         main.backingManager().init(
@@ -115,25 +115,39 @@ contract DeployerP0 is IDeployer {
 
         main.broker().init(main, gnosis, ITrade(address(0)), params.auctionLength);
 
-        string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-        string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
-        main.stRSR().init(
-            main,
-            stRSRName,
-            stRSRSymbol,
-            params.unstakingDelay,
-            params.rewardPeriod,
-            params.rewardRatio
-        );
+        // Init StRSR
+        {
+            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
+            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            main.stRSR().init(
+                main,
+                stRSRName,
+                stRSRSymbol,
+                params.unstakingDelay,
+                params.rewardPeriod,
+                params.rewardRatio
+            );
+        }
 
-        main.rToken().init(main, name, symbol, manifestoURI, params.issuanceRate);
+        // Init RToken
+        main.rToken().init(
+            main,
+            name,
+            symbol,
+            mandate,
+            params.issuanceRate,
+            params.maxRedemptionCharge,
+            params.redemptionVirtualSupply
+        );
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);
-        main.grantRole(FREEZER, owner);
+        main.grantRole(SHORT_FREEZER, owner);
+        main.grantRole(LONG_FREEZER, owner);
         main.grantRole(PAUSER, owner);
         main.renounceRole(OWNER, address(this));
-        main.renounceRole(FREEZER, address(this));
+        main.renounceRole(SHORT_FREEZER, address(this));
+        main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
         emit RTokenCreated(main, components.rToken, components.stRSR, owner);

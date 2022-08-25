@@ -32,6 +32,7 @@ import {
   MockV3Aggregator,
   RevenueTraderP1,
   RTokenAsset,
+  RTokenPricingLib,
   RTokenP1,
   StaticATokenMock,
   StRSRP1Votes,
@@ -168,7 +169,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -188,7 +189,7 @@ async function collateralFixture(
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -206,12 +207,15 @@ async function collateralFixture(
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
     )
+    const cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+    cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
+    cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
     const coll = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
         chainlinkAddr,
         erc20.address,
         compToken.address,
-        config.tradingRange,
+        cTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -238,7 +242,7 @@ async function collateralFixture(
         chainlinkAddr,
         erc20.address,
         aaveToken.address,
-        config.tradingRange,
+        config.rTokenTradingRange,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -349,7 +353,8 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
-  // oracleLib: OracleLib
+  oracleLib: OracleLib
+  rTokenPricing: RTokenPricingLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -367,7 +372,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Setup Config
   const config: IConfig = {
-    tradingRange: { min: fp('0.01'), max: fp('1e6') }, // [0.01 tok, 1M tok]
+    rTokenTradingRange: {
+      minVal: fp('0.01'),
+      maxVal: fp('1e6'),
+      minAmt: fp('0.01'),
+      maxAmt: fp('1e6'),
+    }, // [$0.01, $1M, 0.01 tok, 1M tok]
     dist: dist,
     rewardPeriod: bn('604800'), // 1 week
     rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
@@ -376,9 +386,26 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     auctionLength: bn('900'), // 15 minutes
     backingBuffer: fp('0.0001'), // 0.01%
     maxTradeSlippage: fp('0.01'), // 1%
+    shortFreeze: bn('259200'), // 3 days
+    longFreeze: bn('2592000'), // 30 days
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    oneshotFreezeDuration: bn('864000'), // 10 days
+    maxRedemptionCharge: fp('0.05'), // 5% per hour
+    redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
   }
+
+  // Deploy TradingLib external library
+  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+  const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+
+  // Deploy OracleLib external library
+  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
+  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
+
+  // Deploy RTokenPricing external library
+  const RTokenPricingLibFactory: ContractFactory = await ethers.getContractFactory(
+    'RTokenPricingLib'
+  )
+  const rTokenPricing: RTokenPricingLib = <RTokenPricingLib>await RTokenPricingLibFactory.deploy()
 
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
@@ -393,19 +420,23 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy RSR Asset
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+    libraries: { OracleLib: oracleLib.address },
+  })
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
       rsrChainlinkFeed.address,
       rsr.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
 
   // Create Deployer
-  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
+  const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+    libraries: { TradingLibP0: tradingLib.address, RTokenPricingLib: rTokenPricing.address },
+  })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrAsset.address)
   )
@@ -471,7 +502,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP1')
     facade = <Facade>await FacadeFactory.deploy()
 
-    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
+    const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
+      libraries: { RTokenPricingLib: rTokenPricing.address },
+    })
     deployer = <DeployerP1>(
       await DeployerFactory.deploy(
         rsr.address,
@@ -485,7 +518,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy actual contracts
   const receipt = await (
-    await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
+    await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
   ).wait()
 
   const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -513,7 +546,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       aaveChainlinkFeed.address,
       aaveToken.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -526,7 +559,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       compChainlinkFeed.address,
       compToken.address,
       ZERO_ADDRESS,
-      config.tradingRange,
+      config.rTokenTradingRange,
       ORACLE_TIMEOUT
     )
   )
@@ -617,6 +650,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facade,
     rsrTrader,
     rTokenTrader,
-    // oracleLib,
+    oracleLib,
+    rTokenPricing,
   }
 }

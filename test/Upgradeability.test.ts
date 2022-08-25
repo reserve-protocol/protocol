@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
-import { OWNER, FREEZER, PAUSER } from '../common/constants'
+import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
 import { bn } from '../common/numbers'
 import {
   Asset,
@@ -164,7 +164,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
       const newMain: MainP1 = <MainP1>await upgrades.deployProxy(
         MainFactory,
-        [components, rsr.address, 0],
+        [components, rsr.address, 1, 1],
         {
           initializer: 'init',
           kind: 'uups',
@@ -307,7 +307,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RToken', async () => {
       const newRToken: RTokenP1 = <RTokenP1>await upgrades.deployProxy(
         RTokenFactory,
-        [main.address, 'RTKN RToken', 'RTKN', 'newManifesto', config.issuanceRate],
+        [
+          main.address,
+          'RTKN RToken',
+          'RTKN',
+          'Manifesto',
+          config.issuanceRate,
+          config.maxRedemptionCharge,
+          config.redemptionVirtualSupply,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -368,8 +376,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await mainV2.pausedOrFrozen()).to.equal(false)
       expect(await mainV2.hasRole(OWNER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(OWNER, main.address)).to.equal(false)
-      expect(await mainV2.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await mainV2.hasRole(FREEZER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(SHORT_FREEZER, main.address)).to.equal(false)
+      expect(await mainV2.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+      expect(await mainV2.hasRole(LONG_FREEZER, main.address)).to.equal(false)
       expect(await mainV2.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await mainV2.hasRole(PAUSER, main.address)).to.equal(false)
 

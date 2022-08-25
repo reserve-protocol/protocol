@@ -6,6 +6,7 @@ import { networkConfig } from '../../../common/configuration'
 import {
   fileExists,
   getAssetCollDeploymentFilename,
+  getDeploymentFilename,
   IAssetCollDeployments,
 } from '../deployment_utils'
 
@@ -22,6 +23,11 @@ async function main() {
   }
 
   // Check if deployment file already exists for this chainId
+  const phase1File = getDeploymentFilename(chainId)
+  if (!fileExists(phase1File)) {
+    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
+  }
+  // Check if deployment file already exists for this chainId
   const deploymentFilename = getAssetCollDeploymentFilename(chainId)
   if (fileExists(deploymentFilename)) {
     throw new Error(`${deploymentFilename} exists; I won't overwrite it.`)
@@ -29,7 +35,6 @@ async function main() {
 
   // ********************* Output Configuration******************************
   const deployments: IAssetCollDeployments = {
-    oracleLib: '',
     assets: {},
     collateral: {},
   }

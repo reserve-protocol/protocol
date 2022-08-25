@@ -46,7 +46,7 @@ async function main() {
   const rTokenConfig: IRTokenConfig = {
     name: rTokenConf.name,
     symbol: rTokenConf.symbol,
-    manifestoURI: rTokenConf.manifestoURI,
+    mandate: rTokenConf.mandate,
     params: rTokenConf.params,
   }
 

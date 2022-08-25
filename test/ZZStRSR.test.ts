@@ -6,6 +6,7 @@ import hre, { ethers, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
+import { expectEvents } from '../common/events'
 import {
   CTokenMock,
   ERC20Mock,
@@ -309,7 +310,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
     })
 
-    it('Should not allow to stake if Main is Paused', async () => {
+    it('Should allow to stake if Main is Paused', async () => {
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
@@ -318,31 +319,31 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(amount)
 
-      // Check deposit not registered
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      // Check deposit registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
-    it('Should not allow to stake if Main is Frozen', async () => {
+    it('Should allow to stake if Main is Frozen', async () => {
       // Perform stake
       const amount: BigNumber = bn('1000e18')
 
       // Freeze Main
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
 
       // Approve transfer and stake
       await rsr.connect(addr1).approve(stRSR.address, amount)
-      await expect(stRSR.connect(addr1).stake(amount)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(amount)
 
-      // Check deposit not registered
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
-      expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
-      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal)
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
+      // Check deposit registered
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount))
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
     })
 
     it('Should allow to stake/deposit in RSR', async () => {
@@ -420,7 +421,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not unstake if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await expect(stRSR.connect(addr1).unstake(0)).to.be.revertedWith('paused or frozen')
     })
 
@@ -581,7 +582,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await advanceTime(stkWithdrawalDelay + 1)
 
         // Freeze Main
-        await main.connect(owner).freeze()
+        await main.connect(owner).freezeShort()
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
@@ -893,9 +894,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       // Advance to the end of noop period
       await advanceTime(Number(config.rewardPeriod) + 1)
 
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, initialRate)
+      await expectEvents(stRSR.payoutRewards(), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          args: [initialRate, initialRate],
+          emitted: true,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          args: [0],
+          emitted: true,
+        },
+      ])
 
       // Check exchange rate remains static
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
@@ -913,20 +925,49 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
-    it('Rewards should not be handed out when paused', async () => {
-      await main.connect(owner).pause()
-
-      // Stake
+    it('Rewards should be handed out on subsequent staking', async () => {
+      // Stake 1
       await rsr.connect(addr1).approve(stRSR.address, stake)
-      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(stake)
+
+      await advanceTime(Number(config.rewardPeriod) + 1)
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
+
+      // Stake 2
+      await rsr.connect(addr2).approve(stRSR.address, stake)
+      await stRSR.connect(addr2).stake(stake)
+
+      // Should get new exchange rate
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await stRSR.balanceOf(addr2.address)).to.be.lt(stake)
+      expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.mul(2).add(amountAdded))
+      expect(await stRSR.exchangeRate()).to.be.lt(initialRate)
     })
 
-    it('Rewards should not be handed out when frozen', async () => {
-      await main.connect(owner).freeze()
+    it('Rewards should not be handed out when paused but staking should still work', async () => {
+      await main.connect(owner).pause()
+      await advanceTime(Number(config.rewardPeriod) + 1)
 
       // Stake
       await rsr.connect(addr1).approve(stRSR.address, stake)
-      await expect(stRSR.connect(addr1).stake(stake)).to.be.revertedWith('paused or frozen')
+      await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
+    })
+
+    it('Rewards should not be handed out when frozen but staking should still work', async () => {
+      await main.connect(owner).freezeLong()
+      await advanceTime(Number(config.rewardPeriod) + 1)
+
+      // Stake
+      await rsr.connect(addr1).approve(stRSR.address, stake)
+      await stRSR.connect(addr1).stake(stake)
+
+      expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
+      expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(stake))
+      expect(await stRSR.exchangeRate()).to.equal(initialRate)
     })
 
     it('Should allow to add RSR - Single staker', async () => {
@@ -942,9 +983,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, newRate)
+      await expectEvents(stRSR.payoutRewards(), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          args: [initialRate, newRate],
+          emitted: true,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          args: [addedRSRStake],
+          emitted: true,
+        },
+      ])
 
       // Check exchange rate
       expect(await stRSR.exchangeRate()).to.equal(newRate)
@@ -1083,7 +1135,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to remove RSR if frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeShort()
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(1)).to.be.revertedWith('paused or frozen')
       })
@@ -2067,7 +2119,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(amount.mul(2))
       })
 
-      it('Should clean votes properly when changing era', async function () {
+      it('Should track votes properly when changing era', async function () {
         // Check values before changing era
         let currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
@@ -2095,6 +2147,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Advance block
         await advanceBlocks(1)
 
+        // Should not have retroactively wiped past vote
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
         // Check values after changing era
         currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(0)
@@ -2113,7 +2171,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Advance block
         await advanceBlocks(1)
 
-        // Check values after new stake - final stake is registered normally
+        // Check values after new stake - final stake is registered
         currentBlockNumber = (await getLatestBlockNumber()) - 1
         expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount)
         expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
@@ -2160,6 +2218,28 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
         expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount.mul(2))
         expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+      })
+
+      it('Should remove voting weight on unstaking', async function () {
+        // Check values before transfers
+        const currentBlockNumber = (await getLatestBlockNumber()) - 1
+        expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount.mul(2))
+        expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount)
+        expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr3.address)).to.equal(0)
+
+        // Check checkpoint stored
+        expect(await stRSRVotes.numCheckpoints(addr1.address)).to.equal(1)
+        expect(await stRSRVotes.numCheckpoints(addr2.address)).to.equal(1)
+
+        // Unstake stRSR
+        await stRSRVotes.connect(addr2).unstake(amount)
+        expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount)
+        expect(await stRSRVotes.getVotes(addr2.address)).to.equal(0)
       })
     })
   })

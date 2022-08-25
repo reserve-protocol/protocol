@@ -8,13 +8,15 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingMin', 'Trade Range - Min')
-  .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('tradingValMin', 'Trade Range - Min in UoA')
+  .addParam('tradingValMax', 'Trade Range - Max in UoA')
+  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
+  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -23,22 +25,25 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
     const EURFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
       'EURFiatCollateral',
       {
-        libraries: { OracleLib: params.oracleLibrary },
+        libraries: { OracleLib: params.oracleLib },
       }
     )
 
-    const collateral = <Collateral>(
-      await EURFiatCollateralFactory.connect(deployer).deploy(
-        params.referenceUnitFeed,
-        params.targetUnitFeed,
-        params.tokenAddress,
-        params.rewardToken,
-        { min: params.tradingMin, max: params.tradingMax },
-        params.maxOracleTimeout,
-        params.targetName,
-        params.defaultThreshold,
-        params.delayUntilDefault
-      )
+    const collateral = <Collateral>await EURFiatCollateralFactory.connect(deployer).deploy(
+      params.referenceUnitFeed,
+      params.targetUnitFeed,
+      params.tokenAddress,
+      params.rewardToken,
+      {
+        minVal: params.tradingValMin,
+        maxVal: params.tradingValMax,
+        minAmt: params.tradingAmtMin,
+        maxAmt: params.tradingAmtMax,
+      },
+      params.oracleTimeout,
+      params.targetName,
+      params.defaultThreshold,
+      params.delayUntilDefault
     )
     await collateral.deployed()
 

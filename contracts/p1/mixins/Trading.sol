@@ -28,14 +28,14 @@ abstract contract TradingP1 is
 
     // All trades
     mapping(IERC20 => ITrade) public trades;
-    uint32 public tradesOpen;
+    uint48 public tradesOpen;
     // The number of nonzero values in `trades`
 
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
 
     // The latest end time for any trade in `trades`.
-    uint32 private latestEndtime;
+    uint48 private latestEndtime;
 
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
@@ -71,7 +71,10 @@ abstract contract TradingP1 is
         IERC20 sell = req.sell.erc20();
         require(address(trades[sell]) == address(0), "trade already open");
 
-        IERC20Upgradeable(address(sell)).approve(address(main.broker()), req.sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(
+            address(main.broker()),
+            req.sellAmount
+        );
         ITrade trade = main.broker().openTrade(req);
 
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();

@@ -3,12 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./IAsset.sol";
 import "./IAssetRegistry.sol";
-import "./IBackingManager.sol";
 import "./IBasketHandler.sol";
+import "./IBackingManager.sol";
 import "./IBroker.sol";
-import "./IDeployer.sol";
 import "./IGnosis.sol";
 import "./IFurnace.sol";
 import "./IDistributor.sol";
@@ -17,11 +15,12 @@ import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
 
-// === Roles ===
+// === Auth roles ===
 
-bytes32 constant OWNER = bytes32(bytes("OWNER")); // replacement for default AccssControl admin
-bytes32 constant FREEZER = bytes32(bytes("FREEZER")); // disable everything except OWNER actions
-bytes32 constant PAUSER = bytes32(bytes("PAUSER")); // disable everything except OWNER + redeem
+bytes32 constant OWNER = bytes32(bytes("OWNER"));
+bytes32 constant SHORT_FREEZER = bytes32(bytes("SHORT_FREEZER"));
+bytes32 constant LONG_FREEZER = bytes32(bytes("LONG_FREEZER"));
+bytes32 constant PAUSER = bytes32(bytes("PAUSER"));
 
 /**
  * Main is a central hub that maintains a list of Component contracts.
@@ -45,16 +44,21 @@ struct Components {
     IRevenueTrader rTokenTrader;
 }
 
-interface IAuth {
+interface IAuth is IAccessControlUpgradeable {
     /// Emitted when `unfreezeAt` is changed
     /// @param oldVal The old value of `unfreezeAt`
     /// @param newVal The new value of `unfreezeAt`
-    event UnfreezeAtSet(uint32 indexed oldVal, uint32 indexed newVal);
+    event UnfreezeAtSet(uint48 indexed oldVal, uint48 indexed newVal);
 
-    /// Emitted when the oneshot freeze duration governance param is changed
-    /// @param oldDuration The old oneshot freeze duration
-    /// @param newDuration The new oneshot freeze duration
-    event OneshotFreezeDurationSet(uint32 indexed oldDuration, uint32 indexed newDuration);
+    /// Emitted when the short freeze duration governance param is changed
+    /// @param oldDuration The old short freeze duration
+    /// @param newDuration The new short freeze duration
+    event ShortFreezeDurationSet(uint48 indexed oldDuration, uint48 indexed newDuration);
+
+    /// Emitted when the long freeze duration governance param is changed
+    /// @param oldDuration The old long freeze duration
+    /// @param newDuration The new long freeze duration
+    event LongFreezeDurationSet(uint48 indexed oldDuration, uint48 indexed newDuration);
 
     /// Emitted when the system is paused or unpaused
     /// @param oldVal The old value of `paused`
@@ -62,25 +66,35 @@ interface IAuth {
     event PausedSet(bool indexed oldVal, bool indexed newVal);
 
     /**
-     * Paused = Everything is disabled except for OWNER actions and RToken.redeem/cancel
-     * Frozen = Everything disabled except for OWNER actions
+     * Paused: Disable everything except for OWNER actions and RToken.redeem/cancel
+     * Frozen: Disable everything except for OWNER actions
      */
 
     function pausedOrFrozen() external view returns (bool);
 
     function frozen() external view returns (bool);
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    function shortFreeze() external view returns (uint48);
 
-    function freeze() external;
+    function longFreeze() external view returns (uint48);
 
+    // ====
+
+    // onlyRole(OWNER)
+    function freezeForever() external;
+
+    // onlyRole(SHORT_FREEZER)
+    function freezeShort() external;
+
+    // onlyRole(LONG_FREEZER)
+    function freezeLong() external;
+
+    // onlyRole(OWNER)
     function unfreeze() external;
 
     function pause() external;
 
     function unpause() external;
-
-    function oneshotFreeze() external;
 }
 
 interface IComponentRegistry {
@@ -131,7 +145,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
+interface IMain is IAuth, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===
@@ -141,7 +155,8 @@ interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
     function init(
         Components memory components,
         IERC20 rsr_,
-        uint32 oneshotFreezeDuration_
+        uint48 shortFreeze_,
+        uint48 longFreeze_
     ) external;
 
     function rsr() external view returns (IERC20);
@@ -149,9 +164,16 @@ interface IMain is IAccessControlUpgradeable, IAuth, IComponentRegistry {
 
 interface TestIMain is IMain {
     /// @custom:governance
-    function setOneshotFreezeDuration(uint32) external;
+    function setShortFreeze(uint48) external;
 
-    function oneshotFreezeDuration() external view returns (uint32);
+    /// @custom:governance
+    function setLongFreeze(uint48) external;
+
+    function shortFreeze() external view returns (uint48);
+
+    function longFreeze() external view returns (uint48);
+
+    function longFreezes(address account) external view returns (uint256);
 
     function paused() external view returns (bool);
 }

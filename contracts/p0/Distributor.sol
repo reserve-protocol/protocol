@@ -54,6 +54,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
         {
             RevenueTotals memory revTotals = totals();
             uint256 totalShares = isRSR ? revTotals.rsrTotal : revTotals.rTokenTotal;
+            require(totalShares > 0, "nothing to distribute");
             tokensPerShare = amount / totalShares;
         }
 

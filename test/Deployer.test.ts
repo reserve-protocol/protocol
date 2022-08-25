@@ -13,6 +13,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   RTokenAsset,
+  RTokenPricingLib,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -30,6 +31,9 @@ const createFixtureLoader = waffle.createFixtureLoader
 describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
   let mock: SignerWithAddress
+
+  // Required library
+  let rTokenPricing: RTokenPricingLib
 
   // Deployer contract
   let deployer: TestIDeployer
@@ -80,10 +84,17 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
     implementations?: IImplementations
   ): Promise<TestIDeployer> => {
     if (IMPLEMENTATION == Implementation.P0) {
-      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0')
+      const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+      const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+
+      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
+        libraries: { TradingLibP0: tradingLib.address, RTokenPricingLib: rTokenPricing.address },
+      })
       return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
-      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
+      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
+        libraries: { RTokenPricingLib: rTokenPricing.address },
+      })
       return <TestIDeployer>(
         await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset, implementations)
       )
@@ -117,6 +128,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
+      rTokenPricing,
     } = await loadFixture(defaultFixture))
   })
 
@@ -301,7 +313,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
 
     it('Should emit event', async () => {
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
       ).to.emit(deployer, 'RTokenCreated')
     })
 

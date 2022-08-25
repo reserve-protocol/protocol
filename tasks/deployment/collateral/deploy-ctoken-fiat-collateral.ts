@@ -6,14 +6,16 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('cToken', 'CToken address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingMin', 'Trade Range - Min')
-  .addParam('tradingMax', 'Trade Range - Max')
-  .addParam('maxOracleTimeout', 'Max oracle timeout')
+  .addParam('tradingValMin', 'Trade Range - Min in UoA')
+  .addParam('tradingValMax', 'Trade Range - Max in UoA')
+  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
+  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
+  .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
   .addParam('comptroller', 'Comptroller address')
-  .addParam('oracleLibrary', 'Oracle library address')
+  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -30,15 +32,20 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
     )
 
     const CTokenCollateralFactory = await hre.ethers.getContractFactory('CTokenFiatCollateral', {
-      libraries: { OracleLib: params.oracleLibrary },
+      libraries: { OracleLib: params.oracleLib },
     })
 
     const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.connect(deployer).deploy(
       params.priceFeed,
       params.cToken,
       params.rewardToken,
-      { min: params.tradingMin, max: params.tradingMax },
-      params.maxOracleTimeout,
+      {
+        minVal: params.tradingValMin,
+        maxVal: params.tradingValMax,
+        minAmt: params.tradingAmtMin,
+        maxAmt: params.tradingAmtMax,
+      },
+      params.oracleTimeout,
       params.targetName,
       params.defaultThreshold,
       params.delayUntilDefault,

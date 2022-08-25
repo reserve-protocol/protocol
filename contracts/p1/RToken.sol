@@ -8,8 +8,15 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
+
+// MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
+uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
+
+// MAX_ISSUANCE_RATE: 100%
+uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
 
 /**
  * @title RTokenP1
@@ -18,24 +25,23 @@ import "contracts/p1/mixins/RewardableLib.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, RewardableLibP1, IRToken {
+    using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable: expected to be an IPFS link but could be anything
-    string public manifestoURI;
-
-    // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
-    uint192 public constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
-
-    // MAX_ISSUANCE_RATE
-    uint192 public constant MAX_ISSUANCE_RATE = 1e18; // {%}
+    /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
+    string public mandate;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint192 public lastIssRate; // D18{rTok/block}
-    uint256 public lastIssRateBlock; // {block number}
+    uint256 private lastIssRateBlock; // {block number}
+    uint192 private lastIssRate; // D18{rTok/block}
 
     // When all pending issuances will have vested.
     // This is fractional so that we can represent partial progress through a block.
-    uint192 public allVestAt; // D18{fractional block number}
+    uint192 private allVestAt; // D18{fractional block number}
+
+    uint192 public basketsNeeded; // D18{BU}
+
+    uint192 public issuanceRate; // D18{1} of RToken supply to issue per block
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
@@ -63,7 +69,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
      * TotalIssue items in an IssueQueue.
      *
      * The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
-     * "fencpost" in the queue of actual issuances. The true issuances are the spans between the
+     * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
      *    queue.items[queue.right].amtRToken == 6000,
@@ -73,22 +79,33 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
 
     mapping(address => IssueQueue) public issueQueues;
 
-    uint192 public basketsNeeded; // D18{BU}
+    // === Redemption battery ===
 
-    uint192 public issuanceRate; // D18{%} of RToken supply to issue per block
+    RedemptionBatteryLib.Battery private battery;
+
+    // set to 0 to disable
+    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
+
+    // {qRTok} the min value of total supply to use for redemption throttling
+    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
+    uint256 public redemptionVirtualSupply;
 
     function init(
         IMain main_,
         string calldata name_,
         string calldata symbol_,
-        string calldata manifestoURI_,
-        uint192 issuanceRate_
+        string calldata mandate_,
+        uint192 issuanceRate_,
+        uint192 maxRedemptionCharge_,
+        uint256 redemptionVirtualSupply_
     ) external initializer {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
-        manifestoURI = manifestoURI_;
+        mandate = mandate_;
         setIssuanceRate(issuanceRate_);
+        setMaxRedemption(maxRedemptionCharge_);
+        setRedemptionVirtualSupply(redemptionVirtualSupply_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -122,7 +139,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
 
         // == Checks-effects block ==
         CollateralStatus status = bh.status();
-        require(status == CollateralStatus.SOUND, "basket disabled");
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         main.furnace().melt();
 
@@ -147,6 +164,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         ) {
             // Complete issuance
             _mint(issuer, amtRToken);
+
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -246,7 +264,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         main.assetRegistry().refresh();
 
         // == Checks ==
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "collateral default");
+        CollateralStatus status = main.basketHandler().status();
+        require(status == CollateralStatus.SOUND, "basket unsound");
 
         // Refund old issuances if there are any
         IssueQueue storage queue = issueQueues[account];
@@ -296,7 +315,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // == Interactions ==
         if (earliest) {
@@ -357,6 +376,16 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         // Accept and burn RToken
         _burn(redeemer, amount);
 
+        // Revert if redemption exceeds battery capacity
+        if (maxRedemptionCharge > 0) {
+            uint256 supply = totalSupply();
+            if (supply < redemptionVirtualSupply) supply = redemptionVirtualSupply;
+
+            // {1} = {qRTok} / {qRTok}
+            uint192 dischargeAmt = uint192((FIX_ONE_256 * amount + (supply - 1)) / supply);
+            battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
+        }
+
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
@@ -413,44 +442,31 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         issuanceRate = val;
     }
 
-    /// @return p D18{UoA/rTok} The protocol's best guess of the redemption price of an RToken
-    function price() external view returns (uint192 p) {
-        require(totalSupply() > 0, "no supply");
+    /// @custom:governance
+    function setMaxRedemption(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit MaxRedemptionSet(maxRedemptionCharge, val);
+        maxRedemptionCharge = val;
+    }
 
-        // downcast is safe: basketsNeeded is <= 1e39
-        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply());
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        uint256 erc20length = erc20s.length;
-        address backingMgr = address(main.backingManager());
-        IAssetRegistry assetRegistry = main.assetRegistry();
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-
-            // {qTok} =  {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
-                (totalSupply());
-
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
-
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.price() * uint256(q)) / FIX_ONE);
-        }
+    /// @custom:governance
+    function setRedemptionVirtualSupply(uint256 val) public governance {
+        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
+        redemptionVirtualSupply = val;
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
+    }
+
+    /// @return {qRTok} The maximum redemption that can be performed in the current block
+    function redemptionLimit() external view returns (uint256) {
+        uint256 supply = totalSupply();
+        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
+
+        // {qRTok} = D18{1} * {qRTok} / D18
+        return (battery.currentCharge(maxRedemptionCharge) * supply) / FIX_ONE;
     }
 
     // ==== private ====
@@ -473,14 +489,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         IssueItem storage rightItem = queue.items[right - 1];
 
         // we could dedup this logic but it would take more SLOADS, so I think this is best
+        amtRToken = rightItem.amtRToken;
         if (left == 0) {
-            amtRToken = rightItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[left - 1];
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
@@ -493,10 +509,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         } else if (queue.left < left && right == queue.right) {
             // refund from end of queue
             queue.right = left;
-        } else {
-            // error: can't remove [left,right) from the queue, and leave just one interval
-            revert("Bad refundSpan");
-        }
+        } else revert("Bad refundSpan");
+        // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
@@ -513,7 +527,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        require(queue.left <= endId && endId <= queue.right, "'endId' is out of range");
+        require(queue.left <= endId && endId <= queue.right, "out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRToken;
@@ -526,23 +540,24 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         uint256[] memory amtDeposits = new uint256[](queueLength);
 
         // we could dedup this logic but it would take more SLOADS, so this seems best
+        amtRToken = rightItem.amtRToken;
+        amtBaskets = rightItem.amtBaskets;
         if (queue.left == 0) {
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken;
-            amtBaskets = rightItem.amtBaskets;
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
             for (uint256 i = 0; i < queueLength; ++i) {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
             }
-            amtRToken = rightItem.amtRToken - leftItem.amtRToken;
+            amtRToken = amtRToken - leftItem.amtRToken;
             // uint192(-) is safe for Fix.minus()
-            amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
+            amtBaskets = amtBaskets - leftItem.amtBaskets;
         }
 
         _mint(account, amtRToken);
+
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;

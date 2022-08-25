@@ -36,6 +36,24 @@ async function main() {
     contract: 'contracts/p1/mixins/RewardableLib.sol:RewardableLibP1',
   })
   console.timeEnd('Verifying RewardableLib')
+
+  /** ******************** Verify RTokenPricing Library ****************************************/
+  console.time('Verifying RTokenPricingLib')
+  await hre.run('verify:verify', {
+    address: deployments.rTokenPricingLib,
+    constructorArguments: [],
+    contract: 'contracts/plugins/assets/RTokenPricingLib.sol:RTokenPricingLib',
+  })
+  console.timeEnd('Verifying RTokenPricingLib')
+
+  /** ******************** Verify OracleLib Library ****************************************/
+  console.time('Verifying OracleLib')
+  await hre.run('verify:verify', {
+    address: deployments.oracleLib,
+    constructorArguments: [],
+    contract: 'contracts/plugins/assets/OracleLib.sol:OracleLib',
+  })
+  console.timeEnd('Verifying OracleLib')
 }
 
 main().catch((error) => {

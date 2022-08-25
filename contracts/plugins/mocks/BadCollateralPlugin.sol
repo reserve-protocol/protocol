@@ -16,7 +16,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint32 oracleTimeout_,
+        uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
@@ -52,7 +52,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
             whenDefault = block.timestamp;
         } else if (checkSoftDefault) {
             try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-                priceable = true;
+                priceable = p > 0
 
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18

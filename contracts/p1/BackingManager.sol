@@ -21,15 +21,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint32 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
+    uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
-    uint32 public tradingDelay; // {s} how long to wait until resuming trading after switching
+    uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
     function init(
         IMain main_,
-        uint32 tradingDelay_,
+        uint48 tradingDelay_,
         uint192 backingBuffer_,
         uint192 maxTradeSlippage_
     ) external initializer {
@@ -44,7 +44,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        erc20.approve(address(main.rToken()), type(uint256).max);
+        uint256 currAllowance = erc20.allowance(address(this), address(main.rToken()));
+        IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
+            address(main.rToken()),
+            type(uint256).max - currAllowance
+        );
     }
 
     /// Maintain the overall backing policy; handout assets otherwise
@@ -83,7 +87,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              *
              * TODO
-             * Argument for why this is ok and won't accidentally hurt RToken holders
+             * Argument for why this can't hurt RToken holders
              */
 
             (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();
@@ -106,11 +110,25 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Send excess assets to the RSR and RToken traders
     /// @custom:interaction CEI
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
+        /**
+         * Assumptions:
+         *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements
+         *   - All backing capital is held at BackingManager's address. No capital is out on-trade
+         *   - Neither RToken nor RSR are in the basket
+         *
+         * Steps:
+         *   1. Forward all held RSR to the RSR trader to prevent using it for RToken appreciation
+         *   2. Using whatever balances of collateral is there, mint as much RToken as possible.
+         *      Update `basketNeeded`.
+         *   3. Handout all surplus asset balances (including collateral and RToken) to the
+         *      RSR and RToken traders according to the distribution totals.
+         */
+
         IBasketHandler basketHandler = main.basketHandler();
         address rsrTrader = address(main.rsrTrader());
         address rTokenTrader = address(main.rTokenTrader());
 
-        // Forward any RSR held to StRSR pool
+        // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
         if (main.rsr().balanceOf(address(this)) > 0) {
             // We consider this an interaction "within our system" even though RSR is already live
             IERC20Upgradeable(address(main.rsr())).safeTransfer(
@@ -119,7 +137,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             );
         }
 
-        // Mint revenue RToken
+        // Mint revenue RToken and update `basketsNeeded`
         uint192 needed; // {BU}
         {
             IRToken rToken = main.rToken();
@@ -145,11 +163,14 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 needed = held;
             }
         }
+        // Post-conditions:
+        // - Still fully capitalized
+        // - BU exchange rate {BU/rTok} did not decrease
 
         // Keep a small surplus of individual collateral
         needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
-        // Handout excess assets above what is needed, including any newly minted RToken
+        // Handout excess assets above what is needed, including any recently minted RToken
         uint256 length = erc20s.length;
         RevenueTotals memory totals = main.distributor().totals();
         uint256[] memory toRSR = new uint256[](length);
@@ -174,6 +195,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             if (toRToken[i] > 0) erc20.safeTransfer(rTokenTrader, toRToken[i]);
             if (toRSR[i] > 0) erc20.safeTransfer(rsrTrader, toRSR[i]);
         }
+
+        // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
@@ -186,7 +209,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // === Setters ===
 
     /// @custom:governance
-    function setTradingDelay(uint32 val) public governance {
+    function setTradingDelay(uint48 val) public governance {
         require(val <= MAX_TRADING_DELAY, "invalid tradingDelay");
         emit TradingDelaySet(tradingDelay, val);
         tradingDelay = val;

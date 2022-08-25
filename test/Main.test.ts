@@ -15,7 +15,8 @@ import {
   ONE_ADDRESS,
   MAX_UINT256,
   OWNER,
-  FREEZER,
+  SHORT_FREEZER,
+  LONG_FREEZER,
   PAUSER,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
@@ -33,6 +34,7 @@ import {
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
+  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -109,6 +111,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -149,6 +152,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
+      oracleLib,
     } = await loadFixture(defaultFixture))
     token0 = <ERC20Mock>erc20s[collateral.indexOf(basket[0])]
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
@@ -177,13 +181,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should setup Main correctly', async () => {
       // Auth roles
       expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+      expect(await main.longFreezes(owner.address)).to.equal(6)
       expect(await main.hasRole(PAUSER, owner.address)).to.equal(true)
       expect(await main.hasRole(OWNER, deployer.address)).to.equal(false)
-      expect(await main.hasRole(FREEZER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(SHORT_FREEZER, deployer.address)).to.equal(false)
+      expect(await main.hasRole(LONG_FREEZER, deployer.address)).to.equal(false)
       expect(await main.hasRole(PAUSER, deployer.address)).to.equal(false)
       expect(await main.getRoleAdmin(OWNER)).to.equal(OWNER)
-      expect(await main.getRoleAdmin(FREEZER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(SHORT_FREEZER)).to.equal(OWNER)
+      expect(await main.getRoleAdmin(LONG_FREEZER)).to.equal(OWNER)
       expect(await main.getRoleAdmin(PAUSER)).to.equal(OWNER)
 
       // Should start unfrozen and unpaused
@@ -207,7 +215,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const [rTokenTotal, rsrTotal] = await distributor.totals()
       expect(rTokenTotal).to.equal(bn(40))
       expect(rsrTotal).to.equal(bn(60))
-      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
+      expect(await main.shortFreeze()).to.equal(config.shortFreeze)
+      expect(await main.longFreeze()).to.equal(config.longFreeze)
 
       // Check configurations for internal components
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
@@ -299,7 +308,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to initialize Main twice', async () => {
-      await expect(main.init(components, rsr.address, 0)).to.be.revertedWith(
+      await expect(main.init(components, rsr.address, 1, 1)).to.be.revertedWith(
         'Initializable: contract is already initialized'
       )
     })
@@ -355,7 +364,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Attempt to reinitialize - RToken
       await expect(
-        rToken.init(main.address, 'RTKN RToken', 'RTKN', 'manifesto', config.issuanceRate)
+        rToken.init(
+          main.address,
+          'RTKN RToken',
+          'RTKN',
+          'Manifesto',
+          config.issuanceRate,
+          config.maxRedemptionCharge,
+          config.redemptionVirtualSupply
+        )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
       // Attempt to reinitialize - StRSR
@@ -377,7 +394,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidPeriodConfig.rewardPeriod = config.unstakingDelay
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidPeriodConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidPeriodConfig)
       ).to.be.revertedWith('unstakingDelay/rewardPeriod incompatible')
 
       // Distributor validation - Set invalid distribution
@@ -385,14 +402,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       invalidDistConfig.dist = { rTokenDist: bn(0), rsrDist: bn(0) }
 
       await expect(
-        deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, invalidDistConfig)
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
       ).to.be.revertedWith('no distribution defined')
     })
 
     it('Should emit events on init', async () => {
       // Deploy new system instance
       const receipt = await (
-        await deployer.deploy('RTKN RToken', 'RTKN', 'manifesto', owner.address, config)
+        await deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
       ).wait()
 
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
@@ -539,116 +556,258 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
   describe('Freeze/Unfreeze #fast', () => {
     beforeEach(async () => {
-      // Set FREEZER
-      await main.connect(owner).grantRole(FREEZER, addr1.address)
+      // Set SHORT_FREEZER + LONG_FREEZER
+      await main.connect(owner).grantRole(SHORT_FREEZER, addr1.address)
+      await main.connect(owner).grantRole(LONG_FREEZER, addr2.address)
 
       // Check initial status
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
       expect(await main.frozen()).to.equal(false)
       expect(await main.pausedOrFrozen()).to.equal(false)
     })
 
-    it('Should not allow permanent freeze from FREEZER', async () => {
-      await expect(main.connect(addr1).freeze()).to.be.reverted
+    it('Should only permit owner to freeze forever', async () => {
+      await expect(main.connect(addr1).freezeForever()).to.be.reverted
+      await expect(main.connect(addr2).freezeForever()).to.be.reverted
+      await expect(main.connect(other).freezeForever()).to.be.reverted
     })
 
-    it('Should not allow unfreeze from FREEZER after permanent freeze', async () => {
-      // Freeze with owner FREEZER
-      await main.connect(owner).freeze()
+    it('A permanent freeze should last forever', async () => {
+      // Freeze forever with OWNER
+      await main.connect(owner).freezeForever()
       expect(await main.frozen()).to.equal(true)
+
+      // Should not thaw naturally
+      await advanceTime(config.shortFreeze.toString())
+      expect(await main.frozen()).to.equal(true)
+
+      // Should not be able to change this via fixed-duration freezing
+      await expect(main.connect(addr1).freezeShort()).to.be.revertedWith('frozen')
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(bn('2').pow(29).toString())
+      expect(await main.frozen()).to.equal(true)
+
+      // Should not be able to change this via fixed-duration freezing
+      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('frozen')
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(bn('2').pow(29).toString())
+      expect(await main.frozen()).to.equal(true)
+    })
+
+    it('Should allow unfreeze during short-duration freeze', async () => {
+      // Freeze with non-owner SHORT_FREEZER
+      await main.connect(addr1).freezeShort()
+
+      // Role revoked
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false)
+
+      // Cannot unfreeze from short freezer
       await expect(main.connect(addr1).unfreeze()).to.be.reverted
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-    })
-
-    it('Should not allow unfreeze from FREEZER after oneshotFreeze by owner', async () => {
-      // Freeze with owner FREEZER
-      await main.connect(owner).oneshotFreeze()
-      expect(await main.frozen()).to.equal(true)
-      await expect(main.connect(addr1).unfreeze()).to.be.reverted
-      await main.connect(owner).unfreeze()
-      expect(await main.frozen()).to.equal(false)
-    })
-
-    it('Should allow original oneshotFreezer to unfreeze', async () => {
-      // Freeze with non-owner FREEZER
-      await main.connect(addr1).oneshotFreeze()
-      expect(await main.frozen()).to.equal(true)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-
-      // Unfreeze with original freezer
-      await main.connect(addr1).unfreeze()
-
-      // Should not have role
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
-    })
-
-    it('Should allow unfreeze by owner', async () => {
-      // Freeze with non-owner FREEZER
-      await main.connect(addr1).oneshotFreeze()
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
 
       // Unfreeze
       await main.connect(owner).unfreeze()
       expect(await main.frozen()).to.equal(false)
     })
 
-    it('Freezing by owner should last indefinitely', async () => {
-      // Freeze with OWNER
-      await main.connect(owner).freeze()
-      expect(await main.frozen()).to.equal(true)
-      await advanceTime(config.oneshotFreezeDuration.toString())
+    it('Should allow unfreeze during long-duration freeze', async () => {
+      expect(await main.longFreezes(addr2.address)).to.equal(6)
 
-      expect(await main.frozen()).to.equal(true)
-    })
+      // Freeze with non-owner LONG_FREEZER
+      await main.connect(addr2).freezeLong()
 
-    it('Oneshot freezing should eventually thaw', async () => {
-      // Freeze with freezer
-      await main.connect(owner).oneshotFreeze()
-      expect(await main.frozen()).to.equal(true)
-      await advanceTime(config.oneshotFreezeDuration.toString())
+      // Charge used
+      expect(await main.longFreezes(addr2.address)).to.equal(5)
 
+      // Cannot unfreeze from long freezer
+      await expect(main.connect(addr2).unfreeze()).to.be.reverted
+
+      // Unfreeze
+      await main.connect(owner).unfreeze()
       expect(await main.frozen()).to.equal(false)
     })
 
-    it('Should not allow to set FREEZER if not OWNER', async () => {
-      // Set FREEZER from non-owner
-      await expect(main.connect(addr1).grantRole(FREEZER, other.address)).to.be.reverted
-      await expect(main.connect(other).grantRole(FREEZER, other.address)).to.be.reverted
+    it('Should not allow unfreeze from SHORT_FREEZER or LONG_FREEZER', async () => {
+      // Freeze with OWNER
+      await main.connect(owner).freezeForever()
+      expect(await main.frozen()).to.equal(true)
+      await expect(main.connect(addr1).unfreeze()).to.be.reverted
+      await expect(main.connect(addr2).unfreeze()).to.be.reverted
 
-      // Check FREEZER not updated
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(true)
-      expect(await main.hasRole(FREEZER, other.address)).to.equal(false)
+      // Should not be able to start finite-duration freezes either
+      await expect(main.connect(addr1).freezeShort()).to.be.revertedWith('frozen')
+      await expect(main.connect(addr2).freezeLong()).to.be.revertedWith('frozen')
+
+      // Unfreeze
+      await main.connect(owner).unfreeze()
+      expect(await main.frozen()).to.equal(false)
     })
 
-    it('Should allow to renounce FREEZER', async () => {
-      // Renounce role with freezer
-      await main.connect(addr1).renounceRole(FREEZER, addr1.address)
+    it('Short freezing should revoke SHORT_FREEZER + eventually thaw on its own', async () => {
+      // Freeze with short freezer
+      await main.connect(addr1).freezeShort()
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false) // revoked
+      expect(await main.frozen()).to.equal(true)
 
-      // Check FREEZER renounced
-      expect(await main.hasRole(FREEZER, addr1.address)).to.equal(false)
-      await expect(main.connect(addr1).oneshotFreeze()).to.be.reverted
+      // Advance time to thaw
+      await advanceTime(config.shortFreeze.toString())
+      expect(await main.frozen()).to.equal(false)
+
+      // Should not be able to re-initiate freezing
+      await expect(main.connect(addr1).freezeShort()).to.be.reverted
+
+      // Cannot grant role unless owner
+      await expect(main.connect(addr1).grantRole(SHORT_FREEZER, addr1.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(SHORT_FREEZER, addr1.address)).to.be.reverted
+    })
+
+    it('Should be able to chain short freeze into long freeze', async () => {
+      // Freeze with short freezer
+      await main.connect(addr1).freezeShort()
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false) // revoked
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(config.shortFreeze.div(2).toString())
+
+      // Do long freeze
+      await main.connect(addr2).freezeLong()
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
+      expect(await main.longFreezes(addr2.address)).to.equal(5) // lost one charge
+      expect(await main.frozen()).to.equal(true)
+      await advanceTime(config.shortFreeze.toString())
+      expect(await main.frozen()).to.equal(true)
+
+      // Advance time to thaw
+      await advanceTime(config.longFreeze.toString())
+      expect(await main.frozen()).to.equal(false)
+
+      // Should be able to re-freeze
+      await main.connect(addr2).freezeLong()
+      expect(await main.frozen()).to.equal(true)
+      expect(await main.longFreezes(addr2.address)).to.equal(4) // lost another charge
+    })
+
+    it('Should not allow to set SHORT_FREEZER if not OWNER', async () => {
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(SHORT_FREEZER, other.address)).to.equal(false)
+
+      // Set SHORT_FREEZER from non-owner
+      await expect(main.connect(addr1).grantRole(SHORT_FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(SHORT_FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(SHORT_FREEZER, other.address)).to.be.reverted
+
+      // Check SHORT_FREEZER not updated
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, addr2.address)).to.equal(false)
+      expect(await main.hasRole(SHORT_FREEZER, other.address)).to.equal(false)
+    })
+
+    it('Should not allow to set LONG_FREEZER if not OWNER', async () => {
+      expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(LONG_FREEZER, other.address)).to.equal(false)
+
+      // Set LONG_FREEZER from non-owner
+      await expect(main.connect(addr1).grantRole(LONG_FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(addr2).grantRole(LONG_FREEZER, other.address)).to.be.reverted
+      await expect(main.connect(other).grantRole(LONG_FREEZER, other.address)).to.be.reverted
+
+      // Check LONG_FREEZER not updated
+      expect(await main.hasRole(LONG_FREEZER, addr1.address)).to.equal(false)
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(true)
+      expect(await main.hasRole(LONG_FREEZER, other.address)).to.equal(false)
+    })
+
+    it('Should allow to renounce SHORT_FREEZER', async () => {
+      // Renounce role
+      await main.connect(addr1).renounceRole(SHORT_FREEZER, addr1.address)
+
+      // Check SHORT_FREEZER renounced
+      expect(await main.hasRole(SHORT_FREEZER, addr1.address)).to.equal(false)
+      await expect(main.connect(addr1).freezeShort()).to.be.reverted
 
       // Owner should still be OWNER
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
     })
 
-    it('Should allow to renounce FREEZER if OWNER without losing OWNER', async () => {
-      // Renounce role with owner
-      await main.connect(owner).renounceRole(FREEZER, owner.address)
+    it('Should allow to renounce LONG_FREEZER', async () => {
+      // Renounce role
+      await main.connect(addr2).renounceRole(LONG_FREEZER, addr2.address)
 
-      // Check FREEZER renounced
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(false)
+      // Check LONG_FREEZER renounced
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(false)
+      await expect(main.connect(addr2).freezeLong()).to.be.reverted // refresh call
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should renounce LONG_FREEZER automatically after 6 uses', async () => {
+      // 6 uses
+      await main.connect(addr2).freezeLong()
+      await main.connect(addr2).freezeLong()
+      await main.connect(addr2).freezeLong()
+      await main.connect(addr2).freezeLong()
+      await main.connect(addr2).freezeLong()
+      await main.connect(addr2).freezeLong()
+
+      // Check LONG_FREEZER renounced
+      expect(await main.hasRole(LONG_FREEZER, addr2.address)).to.equal(false)
+      expect(await main.longFreezes(addr2.address)).to.equal(0)
+      await expect(main.connect(addr2).freezeLong()).to.be.reverted // refresh call
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce SHORT_FREEZER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(SHORT_FREEZER, owner.address)
+
+      // Check SHORT_FREEZER renounced
+      expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(false)
 
       // Owner should still be OWNER
       expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
 
       // Can re-grant to self
-      await main.connect(owner).grantRole(FREEZER, owner.address)
-      expect(await main.hasRole(FREEZER, owner.address)).to.equal(true)
+      await main.connect(owner).grantRole(SHORT_FREEZER, owner.address)
+      expect(await main.hasRole(SHORT_FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to renounce LONG_FREEZER if OWNER without losing OWNER', async () => {
+      // Renounce role with owner
+      await main.connect(owner).renounceRole(LONG_FREEZER, owner.address)
+
+      // Check LONG_FREEZER renounced
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(false)
+
+      // Owner should still be OWNER
+      expect(await main.hasRole(OWNER, owner.address)).to.equal(true)
+
+      // Can re-grant to self
+      await main.connect(owner).grantRole(LONG_FREEZER, owner.address)
+      expect(await main.hasRole(LONG_FREEZER, owner.address)).to.equal(true)
+    })
+
+    it('Should allow to set short freeze properly', async () => {
+      await expect(main.connect(addr2).setShortFreeze(1)).to.be.reverted
+      await expect(main.connect(owner).setShortFreeze(0)).to.be.reverted
+      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.reverted
+      await main.connect(owner).setShortFreeze(2)
+      expect(await main.shortFreeze()).to.equal(2)
+    })
+
+    it('Should allow to set long freeze properly', async () => {
+      await expect(main.connect(addr2).setLongFreeze(1)).to.be.reverted
+      await expect(main.connect(owner).setLongFreeze(0)).to.be.reverted
+      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.reverted
+      await main.connect(owner).setLongFreeze(2)
+      expect(await main.longFreeze()).to.equal(2)
     })
   })
 
@@ -752,7 +911,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not grant allowances when frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeForever()
       await expect(backingManager.grantRTokenAllowance(ZERO_ADDRESS)).to.be.revertedWith(
         'paused or frozen'
       )
@@ -767,26 +926,48 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ])
     })
 
-    it('Should allow to update oneshotFreezeDuration if OWNER', async () => {
+    it('Should allow to update shortFreeze if OWNER', async () => {
       const newValue: BigNumber = bn(1)
-      await main.connect(owner).grantRole(FREEZER, addr1.address)
+      await main.connect(owner).grantRole(SHORT_FREEZER, addr1.address)
 
       // Check existing value
-      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
+      expect(await main.shortFreeze()).to.equal(config.shortFreeze)
 
       // If not owner cannot update
-      await expect(main.connect(addr1).setOneshotFreezeDuration(newValue)).to.be.reverted
+      await expect(main.connect(addr1).setShortFreeze(newValue)).to.be.reverted
 
       // Check value did not change
-      expect(await main.oneshotFreezeDuration()).to.equal(config.oneshotFreezeDuration)
+      expect(await main.shortFreeze()).to.equal(config.shortFreeze)
 
       // Update with owner
-      await expect(main.connect(owner).setOneshotFreezeDuration(newValue))
-        .to.emit(main, 'OneshotFreezeDurationSet')
-        .withArgs(config.oneshotFreezeDuration, newValue)
+      await expect(main.connect(owner).setShortFreeze(newValue))
+        .to.emit(main, 'ShortFreezeDurationSet')
+        .withArgs(config.shortFreeze, newValue)
 
       // Check value was updated
-      expect(await main.oneshotFreezeDuration()).to.equal(newValue)
+      expect(await main.shortFreeze()).to.equal(newValue)
+    })
+
+    it('Should allow to update longFreeze if OWNER', async () => {
+      const newValue: BigNumber = bn(1)
+      await main.connect(owner).grantRole(SHORT_FREEZER, addr1.address)
+
+      // Check existing value
+      expect(await main.longFreeze()).to.equal(config.longFreeze)
+
+      // If not owner cannot update
+      await expect(main.connect(addr1).setShortFreeze(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await main.longFreeze()).to.equal(config.longFreeze)
+
+      // Update with owner
+      await expect(main.connect(owner).setLongFreeze(newValue))
+        .to.emit(main, 'LongFreezeDurationSet')
+        .withArgs(config.longFreeze, newValue)
+
+      // Check value was updated
+      expect(await main.longFreeze()).to.equal(newValue)
     })
   })
 
@@ -803,19 +984,27 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
 
       const duplicateAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Get previous length for assets
@@ -852,9 +1041,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to unregister asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Setup new asset with new ERC20
@@ -865,7 +1062,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           newToken.address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -910,9 +1107,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to swap Asset if OWNER', async () => {
       // Setup new Asset - Reusing token
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token0.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token0.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
 
       // Setup another one with new token (cannot be used in swap)
@@ -921,7 +1126,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -1067,14 +1272,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to refresh basket if not OWNER when paused', async () => {
       await main.connect(owner).pause()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
-        'paused or frozen'
+        'basket unrefreshable'
       )
     })
 
     it('Should not allow to refresh basket if not OWNER when frozen', async () => {
-      await main.connect(owner).freeze()
+      await main.connect(owner).freezeForever()
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
-        'paused or frozen'
+        'basket unrefreshable'
+      )
+    })
+
+    it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
+      await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
+        'basket unrefreshable'
       )
     })
 
@@ -1103,26 +1314,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-    })
-
-    it('Should allow to call refresh Basket if not paused - No changes', async () => {
-      // Switch basket - No backup nor default
-      await expect(basketHandler.connect(other).refreshBasket()).to.emit(basketHandler, 'BasketSet')
-
-      // Basket remains the same in this case
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
-      const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(token0.address)
-      expect(backing[1]).to.equal(token1.address)
-      expect(backing[2]).to.equal(token2.address)
-      expect(backing[3]).to.equal(token3.address)
-
-      expect(backing.length).to.equal(4)
-
-      // Not updated so basket last changed is not set
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
-      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
@@ -1205,9 +1396,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(ONE_ADDRESS, token1.address, ZERO_ADDRESS, config.tradingRange, 1)
+        await AssetFactory.deploy(
+          ONE_ADDRESS,
+          token1.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          1
+        )
       )
       // Swap Asset
       await expectEvents(assetRegistry.connect(owner).swapRegistered(newAsset.address), [
@@ -1332,13 +1531,15 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Asset Registry - Register Asset', async () => {
       // Setup new Assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           ONE_ADDRESS,
           erc20s[5].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )
@@ -1347,7 +1548,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           ONE_ADDRESS,
           erc20s[6].address,
           ZERO_ADDRESS,
-          config.tradingRange,
+          config.rTokenTradingRange,
           1
         )
       )

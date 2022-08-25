@@ -14,7 +14,7 @@ abstract contract OracleLib {
     /// @dev Use for on-the-fly calculations that should revert
     /// @param timeout The number of seconds after which oracle values should be considered stale
     /// @return {UoA/tok}
-    function price(AggregatorV3Interface chainlinkFeed, uint32 timeout)
+    function price(AggregatorV3Interface chainlinkFeed, uint48 timeout)
         internal
         view
         virtual
@@ -26,8 +26,8 @@ abstract contract OracleLib {
         if (updateTime == 0 || answeredInRound < roundId) {
             revert StalePrice();
         }
-        // Downcast is safe: uint256(-) reverts on underflow; block.timestamp assumed < 2^32
-        uint32 secondsSince = uint32(block.timestamp - updateTime);
+        // Downcast is safe: uint256(-) reverts on underflow; block.timestamp assumed < 2^48
+        uint48 secondsSince = uint48(block.timestamp - updateTime);
         if (secondsSince > timeout) revert StalePrice();
 
         // {UoA/tok}
@@ -40,7 +40,7 @@ abstract contract OracleLib {
     /// @dev Use when a try-catch is necessary
     /// @param timeout The number of seconds after which oracle values should be considered stale
     /// @return {UoA/tok}
-    function price_(AggregatorV3Interface chainlinkFeed, uint32 timeout)
+    function price_(AggregatorV3Interface chainlinkFeed, uint48 timeout)
         external
         view
         returns (uint192)

@@ -31,8 +31,8 @@ struct BasketConfig {
 struct Basket {
     IERC20[] erc20s; // Weak Invariant: after `refreshBasket`, no bad collateral || disabled
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
-    uint32 nonce;
-    uint32 timestamp;
+    uint48 nonce;
+    uint48 timestamp;
     bool disabled;
     // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
 }
@@ -52,7 +52,7 @@ library BasketLib {
         }
         delete self.erc20s;
         self.nonce++;
-        self.timestamp = uint32(block.timestamp);
+        self.timestamp = uint48(block.timestamp);
         self.disabled = false;
     }
 
@@ -65,7 +65,7 @@ library BasketLib {
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
         self.nonce++;
-        self.timestamp = uint32(block.timestamp);
+        self.timestamp = uint48(block.timestamp);
         self.disabled = other.disabled;
     }
 
@@ -82,7 +82,7 @@ library BasketLib {
             self.refAmts[tok] = self.refAmts[tok].plus(weight);
         }
         self.nonce++;
-        self.timestamp = uint32(block.timestamp);
+        self.timestamp = uint48(block.timestamp);
     }
 }
 
@@ -117,9 +117,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Switch the basket, only callable directly by governance
     /// @custom:interaction OR @custom:governance
     function refreshBasket() external {
-        require(!main.pausedOrFrozen() || main.hasRole(OWNER, _msgSender()), "paused or frozen");
-
         main.assetRegistry().refresh();
+
+        require(
+            main.hasRole(OWNER, _msgSender()) ||
+                (status() == CollateralStatus.DISABLED && !main.pausedOrFrozen()),
+            "basket unrefreshable"
+        );
         _switchBasket();
     }
 

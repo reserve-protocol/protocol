@@ -6,6 +6,7 @@ import '@typechain/hardhat'
 import 'hardhat-contract-sizer'
 import 'hardhat-gas-reporter'
 import 'solidity-coverage'
+import '@withtally/tally-publish-dao'
 
 import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
@@ -18,6 +19,7 @@ require('./tasks')
 
 const MAINNET_RPC_URL = process.env.MAINNET_RPC_URL || process.env.ALCHEMY_MAINNET_RPC_URL || ''
 const ROPSTEN_RPC_URL = process.env.ROPSTEN_RPC_URL || ''
+const GOERLI_RPC_URL = process.env.GOERLI_RPC_URL || ''
 const MNEMONIC = process.env.MNEMONIC || ''
 const TIMEOUT = process.env.SLOW ? 3_000_000 : 300_000
 
@@ -49,6 +51,13 @@ const config: any = {
         mnemonic: MNEMONIC,
       },
     },
+    goerli: {
+      chainId: 5,
+      url: GOERLI_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
   },
   solidity: {
     compilers: [
@@ -72,16 +81,6 @@ const config: any = {
         settings: { optimizer: { enabled: false } },
       },
     ],
-    overrides: {
-      'contracts/p1/aux/Deployer.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
-      },
-      'contracts/FacadeWrite.sol': {
-        version: '0.8.9',
-        settings: process.env.NO_OPT ? {} : { optimizer: { enabled: true, runs: 20 } },
-      },
-    },
   },
   paths: {
     sources: src_dir,

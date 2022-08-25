@@ -26,9 +26,8 @@ async function main() {
     constructorArguments: [
       deployments.prerequisites.RSR,
       deployments.prerequisites.GNOSIS_EASY_AUCTION,
-      deployments.prerequisites.COMPTROLLER,
-      deployments.prerequisites.AAVE_LENDING_POOL,
       deployments.facade,
+      deployments.rsrAsset,
       deployments.implementations,
     ],
     contract: 'contracts/p1/Deployer.sol:DeployerP1',
