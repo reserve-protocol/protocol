@@ -93,8 +93,7 @@ async function main() {
       fp('0.05').toString(), // 5%
       bn('86400').toString(), // 24h
     ],
-    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral',
-    { OracleLib: phase1Deployments.oracleLib }
+    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   await verifyContract(
