@@ -3,7 +3,7 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IGovParams, networkConfig } from '../../../common/configuration'
-import { ZERO_ADDRESS, ONE_ADDRESS } from '../../../common/constants'
+import { ZERO_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig } from './rTokenConfig'
 import {
@@ -71,12 +71,14 @@ async function main() {
     await ethers.getContractAt('FacadeWrite', rTokenDeployments.facadeWrite)
   )
 
+  const brickedTimelockDelay = ethers.BigNumber.from(2).pow(47)
+
   const govParams: IGovParams = {
     votingDelay: rTokenConf.votingDelay,
     votingPeriod: rTokenConf.votingPeriod,
     proposalThresholdAsMicroPercent: rTokenConf.proposalThresholdAsMicroPercent,
     quorumPercent: rTokenConf.quorumPercent,
-    timelockDelay: rTokenConf.timelockDelay,
+    timelockDelay: brickedTimelockDelay, // nearly infinite timelock delay
   }
 
   // Setup Governance in RToken
@@ -84,11 +86,11 @@ async function main() {
     await facadeWrite.connect(deployerUser).setupGovernance(
       rToken.address,
       true, // deploy governance
-      false, // but it's paused
+      false, // but it's paused, and only governance can unpause because infinite timelock delay
       govParams,
-      ZERO_ADDRESS, // and all the roles are bricked so it can't be used
-      ONE_ADDRESS,
-      ONE_ADDRESS
+      ZERO_ADDRESS,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS // no other pauser
     )
   ).wait()
 
