@@ -199,7 +199,7 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     mapping(address => address) public aliases; // The map of senders
 
     IERC20[] public tokens; // token addresses, not including RSR or RToken
-    mapping(bytes32 => IERC20) tokensBySymbol;
+    mapping(bytes32 => IERC20) public tokensBySymbol;
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 

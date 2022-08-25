@@ -96,7 +96,7 @@ contract CTokenNonFiatCollateral is Collateral {
     function price() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
-            price(targetUnitChainlinkFeed,oracleTimeout)
+            price(targetUnitChainlinkFeed, oracleTimeout)
                 .mul(price(chainlinkFeed, oracleTimeout))
                 .mul(refPerTok());
     }

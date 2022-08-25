@@ -13,7 +13,7 @@
         "compile": "TS_NODE_TRANSPILE_ONLY=1 hardhat compile",
         "test": "echo testing only test/fuzz && hardhat test test/fuzz/*.test.ts",
         "lint": "bash tools/lint",
-        "eslint": "eslint test/",
+        "eslint": "eslint test/fuzz/",
         "prepare": "husky install",
         "prettier": "bash tools/prettier",
         "slither": "bash tools/slither"
