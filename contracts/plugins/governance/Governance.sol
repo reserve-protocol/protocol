@@ -108,7 +108,7 @@ contract Governance is
         bytes[] memory calldatas,
         bytes32 descriptionHash
     ) external {
-        uint256 proposalId = super._cancel(targets, values, calldatas, descriptionHash);
+        uint256 proposalId = _cancel(targets, values, calldatas, descriptionHash);
         require(!startedInSameEra(proposalId), "same era");
     }
 
