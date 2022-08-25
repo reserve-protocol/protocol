@@ -2,7 +2,7 @@ import fs from 'fs'
 import hre, { ethers } from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig, TradingRange } from '../../../common/configuration'
+import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import {
@@ -16,21 +16,12 @@ import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset
 
-export function getRSRTradingRange(chainId: number): TradingRange {
-  return {
-    minVal: fp(chainId == 1 ? '1e4' : '0'), // $10k
-    maxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
-    minAmt: fp(chainId == 1 ? '1e6' : '1'), // 1M RSR
-    maxAmt: fp(chainId == 1 ? '1e8' : '1e9'), // 100M RSR,
-  }
-}
-
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying Deployer to network ${hre.network.name} (${chainId})
+  console.log(`Deploying RSR asset to network ${hre.network.name} (${chainId})
     with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
@@ -39,7 +30,12 @@ async function main() {
 
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
-  const tradingRange = getRSRTradingRange(chainId)
+  const tradingRange = {
+    minVal: fp(chainId == 1 ? '1e4' : '0'), // $10k
+    maxVal: fp(chainId == 1 ? '1e6' : '0'), // $1m,
+    minAmt: fp(chainId == 1 ? '1e6' : '1'), // 1M RSR
+    maxAmt: fp(chainId == 1 ? '1e8' : '1e9'), // 100M RSR,
+  }
 
   await validateImplementations(deployments)
 
