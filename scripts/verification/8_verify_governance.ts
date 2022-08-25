@@ -1,13 +1,14 @@
 import hre from 'hardhat'
 
-import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getRTokenConfig } from './rTokenConfig'
+import { getChainId } from '../../common/blockchain-utils'
+import { developmentChains, networkConfig } from '../../common/configuration'
+import { getRTokenConfig } from '../deployment/phase3-rtoken/rTokenConfig'
 import {
   getDeploymentFile,
   getRTokenDeploymentFilename,
   IRTokenDeployments,
-} from '../deployment_utils'
+  verifyContract,
+} from '../deployment/deployment_utils'
 
 let rTokenDeployments: IRTokenDeployments
 
@@ -32,11 +33,19 @@ async function main() {
   // Get RToken Configuration
   const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
 
+  /********************** Verify TimelockController ****************************************/
+  await verifyContract(
+    chainId,
+    rTokenDeployments.timelock,
+    [rTokenConf.timelockDelay, [], []],
+    '@openzeppelin/contracts/governance/TimelockController.sol:TimelockController'
+  )
+
   /********************** Verify Governance ****************************************/
-  console.time('Verifying Governance')
-  await hre.run('verify:verify', {
-    address: rTokenDeployments.governance,
-    constructorArguments: [
+  await verifyContract(
+    chainId,
+    rTokenDeployments.governance,
+    [
       rTokenDeployments.components.stRSR,
       rTokenDeployments.timelock,
       rTokenConf.votingDelay,
@@ -44,18 +53,8 @@ async function main() {
       rTokenConf.proposalThresholdAsMicroPercent,
       rTokenConf.quorumPercent,
     ],
-    contract: 'contracts/plugins/governance/Governance.sol:Governance',
-  })
-  console.timeEnd('Verifying Governance')
-
-  /********************** Verify TimelockController ****************************************/
-  console.time('Verifying TimelockController')
-  await hre.run('verify:verify', {
-    address: rTokenDeployments.timelock,
-    constructorArguments: [rTokenConf.timelockDelay, [], []],
-    contract: '@openzeppelin/contracts/governance/TimelockController.sol:TimelockController',
-  })
-  console.timeEnd('Verifying TimelockController')
+    'contracts/plugins/governance/Governance.sol:Governance'
+  )
 }
 
 main().catch((error) => {

@@ -43,38 +43,48 @@ const networkConfig = {
  }
 ```
 
-## Deployment
+## Overall Deployment
 
-The deployment process consists of three main phases (that can be executed via a single command). The scripts required for each phase are located in the `scripts/deployment` folder. Run:
+The deployment process consists of two steps:
+
+1. Deploy everything:
 
 ```
-npx hardhat run scripts/deploy_all --network {NETWORK}
+hardhat run scripts/deploy_all.ts --network {NETWORK}
 ```
 
-### Phases
+If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy_all.ts` in order to pick up execution at another point.
+
+2. Verify everything:
+
+```
+hardhat run scripts/verify_all.ts --network {NETWORK}
+```
+
+The verification scripts are smart enough to only verify those that are unverified.
+
+### Deploy Phases
+
+Within the _deployment_ step, there are 3 phases:
 
 - **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only **once** for all RTokens. Scripts are located in `/scripts/deployment/phase1-common`.
 
 - **Phase 2 - Assets/Collateral:** Required to deploy new asset and collateral contracts that will be used for the deployment of a new RToken. The exact setup to deploy will depend on each case and can be customized for each particular RToken. Once an asset/collateral is deployed it can be reused for several RTokens. Scripts are located in `scripts/deployment/phase2-assets-collateral`.
 
-- **Phase 3 - RToken:** Required to deploy a new RToken. Uses a configuration file and can be customized with the required parameters. Deployments are done via public functions in the `FacadeWrite` contract. Scripts are located in `scripts/deployment/phase3-rtoken`.
+- **Phase 3 - RToken:** Deployments are done via public functions in the `FacadeWrite` contract to simulate the Register. The RToken and Governance are left bricked, so as only to be only used for etherscan verification. Scripts are located in `scripts/deployment/phase3-rtoken`.
 
-There is a single meta-script that wraps all scripts at `scripts/deployment/deploy_all.ts`. When run, this script will produce 3 output files of the form `31337-*.json`.
+The same scripts can be executed against a Testnet or Mainnet network. Make sure the correct network is specified when executing the scripts (eg:`--network mainnet`)
 
-1. `31337-tmp-deployments.json`: Contains prerequisite + implementation addresses
-2. `31337-tmp-assets-collateral.json`: Contains asset plugin addresses
-3. `31337-{RTOKEN SYMBOL}-tmp-deployments.json`: Contains the (proxied) addresses that make up the real runtime system
+A specific set of files will be created for that specific network after each phase:
 
-### Mainnet forking
+1. `{CHAIN_ID}-tmp-deployments.json`: Contains prerequisite + implementation addresses
+2. `{CHAIN_ID}-tmp-assets-collateral.json`: Contains asset plugin addresses
+3. `{CHAIN_ID}-{RTOKEN_SYMBOL}-tmp-deployments.json`: Contains the (proxied) addresses that make up the real runtime system
+
+### With Mainnet forking
 
 - Before running the `deploy_all` script (or any particular script), run in a separate terminal a local forking node:
 
 ```bash
 FORK=true npx hardhat node
 ```
-
-### Deploying to other networks
-
-The same scripts can be executed against a Testnet or Mainnet network. Make sure the correct network is specified when executing the scripts (eg:`--network mainnet`)
-
-A specific set of files will be created for that specific network (using the network `chainId` as prefix)

@@ -1,8 +1,13 @@
 import hre from 'hardhat'
 
-import { getChainId } from '../../../common/blockchain-utils'
-import { developmentChains, networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment_utils'
+import { getChainId } from '../../common/blockchain-utils'
+import { developmentChains, networkConfig } from '../../common/configuration'
+import {
+  getDeploymentFile,
+  getDeploymentFilename,
+  IDeployments,
+  verifyContract,
+} from '../deployment/deployment_utils'
 
 let deployments: IDeployments
 
@@ -20,13 +25,7 @@ async function main() {
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Facade ****************************************/
-  console.time('Verifying Facade')
-  await hre.run('verify:verify', {
-    address: deployments.facade,
-    constructorArguments: [],
-    contract: 'contracts/facade/Facade.sol:FacadeP1',
-  })
-  console.timeEnd('Verifying Facade')
+  await verifyContract(chainId, deployments.facade, [], 'contracts/facade/Facade.sol:FacadeP1')
 }
 
 main().catch((error) => {
