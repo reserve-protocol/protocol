@@ -202,14 +202,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
-                CollateralStatus s = coll.status();
-                if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
+            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
+            CollateralStatus s = coll.status();
+            if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
 
-                if (uint256(s) > uint256(status_)) status_ = s;
-            } catch {
-                return CollateralStatus.DISABLED;
-            }
+            if (uint256(s) > uint256(status_)) status_ = s;
         }
     }
 
@@ -266,19 +263,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            try main.assetRegistry().toColl(basket.erc20s[i]) returns (ICollateral coll) {
-                if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
+            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
+            if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-                uint192 bal = coll.bal(account); // {tok}
+            uint192 bal = coll.bal(account); // {tok}
 
-                // {tok/BU} = {ref/BU} / {ref/tok}
-                uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
+            // {tok/BU} = {ref/BU} / {ref/tok}
+            uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
 
-                // {BU} = {tok} / {tok/BU}
-                baskets = fixMin(baskets, bal.div(q));
-            } catch {
-                return FIX_ZERO;
-            }
+            // {BU} = {tok} / {tok/BU}
+            baskets = fixMin(baskets, bal.div(q));
         }
         if (baskets == FIX_MAX) return FIX_ZERO;
     }
