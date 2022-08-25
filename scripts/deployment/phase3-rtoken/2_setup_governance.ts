@@ -3,7 +3,7 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IGovParams, networkConfig } from '../../../common/configuration'
-import { ZERO_ADDRESS } from '../../../common/constants'
+import { ONE_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig } from './rTokenConfig'
 import {
@@ -14,12 +14,6 @@ import {
 import { FacadeWrite, MainP1, RTokenP1, StRSRP1 } from '../../../typechain'
 // Define the Token to use
 const RTOKEN_NAME = 'RTKN'
-
-// Specify if governance will be deployed
-const DEPLOY_GOVERNANCE = true
-
-// Address to be used as external owner or pauser (if desired)
-const OWNER_ADDR = '0xA7b123D54BcEc14b4206dAb796982a6d5aaA6770' // Reserve multisig
 
 async function main() {
   // ==== Read Configuration ====
@@ -72,7 +66,7 @@ async function main() {
     )
   }
 
-  // ******************** Setup Governance ****************************************/
+  // ******************** Setup Bricked Governance ****************************************/
   const facadeWrite = <FacadeWrite>(
     await ethers.getContractAt('FacadeWrite', rTokenDeployments.facadeWrite)
   )
@@ -86,52 +80,31 @@ async function main() {
   }
 
   // Setup Governance in RToken
-  if (DEPLOY_GOVERNANCE) {
-    const receipt = await (
-      await facadeWrite
-        .connect(deployerUser)
-        .setupGovernance(
-          rToken.address,
-          DEPLOY_GOVERNANCE,
-          false,
-          govParams,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS
-        )
-    ).wait()
+  const receipt = await (
+    await facadeWrite.connect(deployerUser).setupGovernance(
+      rToken.address,
+      true, // deploy governance
+      false, // but it's frozen
+      govParams,
+      ONE_ADDRESS, // and all the roles are bricked so it can't be used
+      ONE_ADDRESS,
+      ONE_ADDRESS
+    )
+  ).wait()
 
-    const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
-    const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
+  const governanceAddr = expectInReceipt(receipt, 'GovernanceCreated').args.governance
+  const timelockAddr = expectInReceipt(receipt, 'GovernanceCreated').args.timelock
 
-    // Write temporary deployments file
-    rTokenDeployments.governance = governanceAddr
-    rTokenDeployments.timelock = timelockAddr
+  // Write temporary deployments file
+  rTokenDeployments.governance = governanceAddr
+  rTokenDeployments.timelock = timelockAddr
 
-    fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
+  fs.writeFileSync(rTokenDeploymentFilename, JSON.stringify(rTokenDeployments, null, 2))
 
-    console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
+  console.log(`Deployed for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
       Governance:  ${governanceAddr}
       Timelock:  ${timelockAddr}
       Deployment file: ${rTokenDeploymentFilename}`)
-  } else {
-    await (
-      await facadeWrite
-        .connect(deployerUser)
-        .setupGovernance(
-          rToken.address,
-          DEPLOY_GOVERNANCE,
-          false,
-          govParams,
-          OWNER_ADDR,
-          ZERO_ADDRESS,
-          ZERO_ADDRESS
-        )
-    ).wait()
-
-    console.log(`Owner setup for RToken ${RTOKEN_NAME} in ${hre.network.name} (${chainId})
-    Owner:  ${OWNER_ADDR}`)
-  }
 }
 
 main().catch((error) => {

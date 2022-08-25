@@ -19,6 +19,8 @@ async function main() {
   // Part 1/2 of the *overall* deployment process: Deploy all contracts
   // See `verify_all.ts` for part 2
 
+  // These scripts will not deploy functional RTokens or Governance. They deploy bricked versions
+  // that are used for verification. Further development is left up to the Register.
   const scripts = [
     'phase1-common/0_setup_deployments.ts',
     'phase1-common/1_deploy_libraries.ts',
@@ -30,16 +32,10 @@ async function main() {
     'phase2-assets/0_setup_deployments.ts',
     'phase2-assets/1_deploy_assets.ts',
     'phase2-assets/2_deploy_collateral.ts',
+    'phase3-rtoken/0_setup_deployments.ts',
+    'phase3-rtoken/1_deploy_rtoken.ts',
+    'phase3-rtoken/2_setup_governance.ts',
   ]
-
-  // On Mainnet, we will not actually deploy any RTokens or Governance. The verify scripts
-  // for Governance are intelligent enough to deploy a dummy Governance instance to verify.
-  if (chainId != 1) {
-    // This is automating some of the stuff we would normally do on the Register
-    scripts.push('phase3-rtoken/0_setup_deployments.ts')
-    scripts.push('phase3-rtoken/1_deploy_rtoken.ts')
-    scripts.push('phase3-rtoken/2_setup_governance.ts')
-  }
 
   for (const script of scripts) {
     console.log('\n===========================================\n', script, '')
