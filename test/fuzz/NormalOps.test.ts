@@ -652,7 +652,9 @@ describe('The Normal Operations scenario', () => {
 
     // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
     await comp.basketHandler.savePrev()
-    await comp.basketHandler.refreshBasket()
+    await whileImpersonating(scenario.address, async (asOwner) => {
+      await comp.basketHandler.connect(asOwner).refreshBasket()
+    })
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
@@ -661,7 +663,9 @@ describe('The Normal Operations scenario', () => {
 
     // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
     await comp.basketHandler.savePrev()
-    await comp.basketHandler.refreshBasket()
+    await whileImpersonating(scenario.address, async (asOwner) => {
+      await comp.basketHandler.connect(asOwner).refreshBasket()
+    })
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 

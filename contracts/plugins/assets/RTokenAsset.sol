@@ -6,7 +6,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "./RTokenPricingLib.sol";
 
-contract RTokenAsset is Asset {
+contract RTokenAsset is Asset, RTokenPricingLib {
     // solhint-disable no-empty-blocks
     /// @param tradingRange_ {tok} The min and max of the trading range for this asset
     constructor(IRToken rToken_, TradingRange memory tradingRange_)
@@ -21,12 +21,12 @@ contract RTokenAsset is Asset {
 
     /// @return p {UoA/rTok} The protocol's best guess of the redemption price of an RToken
     function price() public view override returns (uint192 p) {
-        return RTokenPricingLib.price(IRToken(address(erc20)));
+        return this.rTokenPrice(IRToken(address(erc20)));
     }
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
-        try RTokenPricingLib.price(IRToken(address(erc20))) returns (uint192 p) {
+        try this.rTokenPrice(IRToken(address(erc20))) returns (uint192 p) {
             // It's correct for the RToken to have a zero price right after a full basket change
             if (p > 0) {
                 // {tok} = {UoA} / {UoA/tok}
@@ -42,7 +42,7 @@ contract RTokenAsset is Asset {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view override returns (uint192 max) {
-        try RTokenPricingLib.price(IRToken(address(erc20))) returns (uint192 p) {
+        try this.rTokenPrice(IRToken(address(erc20))) returns (uint192 p) {
             // It's correct for the RToken to have a zero price right after a full basket change
             if (p > 0) {
                 // {tok} = {UoA} / {UoA/tok}

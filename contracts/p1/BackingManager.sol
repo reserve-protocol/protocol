@@ -16,7 +16,6 @@ import "contracts/p1/mixins/TradingLib.sol";
  * @notice The backing manager holds + manages the backing for an RToken
  */
 
-/// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;

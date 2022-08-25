@@ -10,7 +10,12 @@ describe(`PriceModels in AssetMock`, () => {
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
     const f: sc.AssetMock__factory = await ethers.getContractFactory('AssetMock')
-    return await f.deploy(token.address, addr(0), { min: fp(1e-2), max: fp(1e6) }, priceModel)
+    return await f.deploy(
+      token.address,
+      addr(0),
+      { minVal: fp(1e4), maxVal: fp(1e6), minAmt: fp(1000), maxAmt: fp(1e7) },
+      priceModel
+    )
   }
 
   beforeEach(async () => {

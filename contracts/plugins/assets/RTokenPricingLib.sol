@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IRToken.sol";
 
-library RTokenPricingLib {
-    function price(IRToken rToken) external view returns (uint192 p) {
+abstract contract RTokenPricingLib {
+    function rTokenPrice(IRToken rToken) external view returns (uint192 p) {
         IMain main = rToken.main();
         uint256 totalSupply = rToken.totalSupply();
         uint256 basketsNeeded = rToken.basketsNeeded();

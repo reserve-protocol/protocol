@@ -516,6 +516,7 @@ contract NormalOpsScenario {
 
     // Calling basketHandler.refereshBasket() yields an identical basket.
     function echidna_refreshBasketIsNoop() external returns (bool) {
+        assert(main.hasRole(OWNER, address(this)));
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
         bh.savePrev();
         bh.refreshBasket();
