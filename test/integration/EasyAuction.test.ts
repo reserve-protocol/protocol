@@ -135,7 +135,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Create auction
       await expect(backingManager.manageTokens([]))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(rsr.address, token0.address, sellAmt, buyAmt)
+        .withArgs(anyValue, rsr.address, token0.address, sellAmt, buyAmt)
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       auctionId = await getAuctionId(backingManager, rsr.address)
