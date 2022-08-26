@@ -53,6 +53,9 @@ task('mint-tokens', 'Mints all the tokens to an address')
       const amt = hre.ethers.BigNumber.from('10').pow(decimals + 9)
       console.log(`Minting ${amt} of ${token}`)
       await tok.connect(deployer).mint(params.address, amt.toString())
+
+      // Sleep 0.5s
+      await new Promise((r) => setTimeout(r, 500))
     }
 
     if (!params.noOutput) {

@@ -71,14 +71,12 @@ async function main() {
     await ethers.getContractAt('FacadeWrite', rTokenDeployments.facadeWrite)
   )
 
-  const brickedTimelockDelay = ethers.BigNumber.from(2).pow(47)
-
   const govParams: IGovParams = {
     votingDelay: rTokenConf.votingDelay,
     votingPeriod: rTokenConf.votingPeriod,
     proposalThresholdAsMicroPercent: rTokenConf.proposalThresholdAsMicroPercent,
     quorumPercent: rTokenConf.quorumPercent,
-    timelockDelay: brickedTimelockDelay, // nearly infinite timelock delay
+    timelockDelay: rTokenConf.timelockDelay,
   }
 
   // Setup Governance in RToken
@@ -86,7 +84,7 @@ async function main() {
     await facadeWrite.connect(deployerUser).setupGovernance(
       rToken.address,
       true, // deploy governance
-      false, // but it's paused, and only governance can unpause because infinite timelock delay
+      chainId != 1, // unpause if not mainnet
       govParams,
       ZERO_ADDRESS,
       ZERO_ADDRESS,
