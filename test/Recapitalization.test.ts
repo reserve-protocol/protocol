@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
@@ -841,7 +842,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Auction can be run now
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -891,7 +892,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -942,7 +943,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
+            args: [anyValue, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -1006,7 +1007,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         const auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -1057,7 +1058,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            args: [anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -1119,7 +1120,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
         let auctionTimestamp: number = await getLatestBlockTimestamp()
 
@@ -1173,13 +1174,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
+            args: [anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6)],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6).add(1)],
+            args: [
+              anyValue,
+              rsr.address,
+              token1.address,
+              sellAmtRSR,
+              toBNDecimals(buyAmtBidRSR, 6).add(1),
+            ],
             emitted: true,
           },
         ])
@@ -1230,7 +1237,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, token1.address, sellAmtRSR, toBNDecimals(buyAmtBidRSR, 6)],
+            args: [
+              anyValue,
+              rsr.address,
+              token1.address,
+              sellAmtRSR,
+              toBNDecimals(buyAmtBidRSR, 6),
+            ],
             emitted: true,
           },
           {
@@ -1396,7 +1409,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -1438,13 +1451,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token0.address, backupToken1.address, sellAmt, bn('0')],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, bn('0')],
             emitted: true,
           },
         ])
@@ -1493,13 +1506,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -1546,7 +1559,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -1653,7 +1666,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -1687,13 +1700,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
+            args: [anyValue, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
         ])
@@ -1735,13 +1748,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
+            args: [anyValue, backupToken1.address, backupToken2.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
+            args: [anyValue, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
         ])
@@ -1786,13 +1799,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
+            args: [anyValue, backupToken1.address, backupToken3.address, sellAmtBkp, minBuyAmtBkp],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [
+              anyValue,
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
@@ -1848,6 +1862,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [
+              anyValue,
               backupToken1.address,
               backupToken4.address,
               sellAmtBkp1Remainder,
@@ -1858,7 +1873,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -1905,7 +1920,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken4.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -1989,7 +2004,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(token0.address, backupToken1.address, sellAmt, bn('0'))
+          .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
         let auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -2023,13 +2038,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt, minBuyAmt],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt, minBuyAmt],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2069,13 +2084,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken1.address, bn('0'), bn('0')],
+            args: [anyValue, rsr.address, backupToken1.address, bn('0'), bn('0')],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
 
             emitted: true,
           },
@@ -2112,7 +2127,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
@@ -2268,7 +2283,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2311,13 +2326,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2376,7 +2391,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken1.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -2529,7 +2544,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2573,13 +2588,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
+            args: [
+              anyValue,
+              backupToken1.address,
+              backupToken2.address,
+              sellAmtBkp1,
+              minBuyAmtBkp1,
+            ],
             emitted: true,
           },
         ])
@@ -2646,13 +2667,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [backupToken1.address, backupToken2.address, sellAmtBkp1, minBuyAmtBkp1],
+            args: [
+              anyValue,
+              backupToken1.address,
+              backupToken2.address,
+              sellAmtBkp1,
+              minBuyAmtBkp1,
+            ],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [rsr.address, backupToken2.address, sellAmtRSR, buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken2.address, sellAmtRSR, buyAmtBidRSR],
             emitted: true,
           },
         ])
@@ -2718,7 +2745,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [rsr.address, backupToken2.address, sellAmtRSR.sub(1000), buyAmtBidRSR],
+            args: [anyValue, rsr.address, backupToken2.address, sellAmtRSR.sub(1000), buyAmtBidRSR],
             emitted: true,
           },
           {
@@ -2842,7 +2869,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token0.address, backupToken1.address, sellAmt0, bn('0')],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt0, bn('0')],
             emitted: true,
           },
         ])
@@ -2881,13 +2908,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token2.address, backupToken1.address, sellAmt2, bn('0')],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, bn('0')],
             emitted: true,
           },
         ])
@@ -2944,13 +2971,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
+            args: [anyValue, token2.address, backupToken1.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
+            args: [
+              anyValue,
+              token3.address,
+              backupToken1.address,
+              toBNDecimals(sellAmt3, 8),
+              bn('0'),
+            ],
             emitted: true,
           },
         ])
@@ -3026,13 +3059,25 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [
+              anyValue,
+              token3.address,
+              backupToken1.address,
+              toBNDecimals(sellAmt3, 8),
+              minBuyAmt3,
+            ],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [
+              anyValue,
+              token1.address,
+              backupToken1.address,
+              sellAmtRebalance,
+              minBuyAmtRebalance,
+            ],
             emitted: true,
           },
         ])
@@ -3093,7 +3138,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token1.address, backupToken1.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [
+              anyValue,
+              token1.address,
+              backupToken1.address,
+              sellAmtRebalance,
+              minBuyAmtRebalance,
+            ],
             emitted: true,
           },
           {
@@ -3218,7 +3269,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token0.address, backupToken1.address, sellAmt0, bn('0')],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt0, bn('0')],
             emitted: true,
           },
         ])
@@ -3251,13 +3302,13 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
+            args: [anyValue, token0.address, backupToken1.address, sellAmt0, minBuyAmt0],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token2.address, backupToken2.address, sellAmt2, bn('0')],
+            args: [anyValue, token2.address, backupToken2.address, sellAmt2, bn('0')],
 
             emitted: true,
           },
@@ -3316,13 +3367,19 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token2.address, backupToken2.address, sellAmt2, minBuyAmt2],
+            args: [anyValue, token2.address, backupToken2.address, sellAmt2, minBuyAmt2],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), bn('0')],
+            args: [
+              anyValue,
+              token3.address,
+              backupToken1.address,
+              toBNDecimals(sellAmt3, 8),
+              bn('0'),
+            ],
             emitted: true,
           },
         ])
@@ -3396,13 +3453,25 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token3.address, backupToken1.address, toBNDecimals(sellAmt3, 8), minBuyAmt3],
+            args: [
+              anyValue,
+              token3.address,
+              backupToken1.address,
+              toBNDecimals(sellAmt3, 8),
+              minBuyAmt3,
+            ],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
-            args: [token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [
+              anyValue,
+              token1.address,
+              backupToken2.address,
+              sellAmtRebalance,
+              minBuyAmtRebalance,
+            ],
             emitted: true,
           },
         ])
@@ -3476,13 +3545,20 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [token1.address, backupToken2.address, sellAmtRebalance, minBuyAmtRebalance],
+            args: [
+              anyValue,
+              token1.address,
+              backupToken2.address,
+              sellAmtRebalance,
+              minBuyAmtRebalance,
+            ],
             emitted: true,
           },
           {
             contract: backingManager,
             name: 'TradeStarted',
             args: [
+              anyValue,
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,
@@ -3558,6 +3634,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             contract: backingManager,
             name: 'TradeSettled',
             args: [
+              anyValue,
               backupToken1.address,
               backupToken2.address,
               sellAmtRebalanceBkp,

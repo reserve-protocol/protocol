@@ -54,7 +54,7 @@ abstract contract TradingP1 is
 
         // == Interactions ==
         (uint256 soldAmt, uint256 boughtAmt) = trade.settle();
-        emit TradeSettled(trade.sell(), trade.buy(), soldAmt, boughtAmt);
+        emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
     /// Claim all rewards and sweep to BackingManager
@@ -80,7 +80,7 @@ abstract contract TradingP1 is
         if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
         trades[sell] = trade;
         tradesOpen++;
-        emit TradeStarted(sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
+        emit TradeStarted(trade, sell, req.buy.erc20(), req.sellAmount, req.minBuyAmount);
     }
 
     // === Setters ===

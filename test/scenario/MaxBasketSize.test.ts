@@ -1,3 +1,4 @@
+import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
@@ -367,7 +368,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       } else {
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
+          .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
       }
       const auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -484,7 +485,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       } else {
         await expect(facade.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
+          .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
       }
       const auctionTimestamp = await getLatestBlockTimestamp()
 

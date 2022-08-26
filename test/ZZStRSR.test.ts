@@ -869,6 +869,63 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         /// Exchange rate remains steady
         expect(await stRSR.exchangeRate()).to.equal(fp('1'))
       })
+
+      it('Should handle changes in stakingWithdrawalDelay correctly', async function () {
+        // Get current balance for user 2
+        const prevAddr2Balance = await rsr.balanceOf(addr2.address)
+
+        // Create first withdrawal for user 2
+        await stRSR.connect(addr2).unstake(amount2)
+
+        // Reduce staking withdrawal delay significantly - Also need to update rewardPeriod
+        const newRewardPeriod: BigNumber = bn('86400') // 1 day
+        const newUnstakingDelay: BigNumber = newRewardPeriod.mul(2) // 2 days
+
+        await expect(stRSR.connect(owner).setRewardPeriod(newRewardPeriod))
+          .to.emit(stRSR, 'RewardPeriodSet')
+          .withArgs(config.rewardPeriod, newRewardPeriod)
+
+        await expect(stRSR.connect(owner).setUnstakingDelay(newUnstakingDelay))
+          .to.emit(stRSR, 'UnstakingDelaySet')
+          .withArgs(config.unstakingDelay, newUnstakingDelay)
+
+        // Perform another withdrawal for user 2, with shorter period
+        await stRSR.connect(addr2).unstake(amount3)
+
+        // Move forward time past this second stake
+        // Should not be processed, only after the first pending stake is done
+        await advanceTime(Number(newUnstakingDelay) + 1)
+
+        // Check withrawals - Nothing available yet
+        expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(0)
+
+        // Nothing compeleted still
+        expect(await stRSR.totalSupply()).to.equal(0)
+        expect(await rsr.balanceOf(addr2.address)).to.equal(prevAddr2Balance)
+        // All staked funds withdrawn upfront
+        expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+        // Move forward past first stakingWithdrawalDelay
+        await advanceTime(stkWithdrawalDelay + 1)
+
+        //  Check withrawals - We can withdraw both stakes
+        expect(await stRSR.endIdForWithdraw(addr2.address)).to.equal(2)
+
+        // Withdraw with correct index
+        await stRSR.connect(addr2).withdraw(addr2.address, 2)
+
+        // Withdrawals were completed
+        expect(await stRSR.totalSupply()).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(amount1) // Still pending the withdraw for user1
+        expect(await rsr.balanceOf(addr2.address)).to.equal(
+          prevAddr2Balance.add(amount2).add(amount3)
+        )
+        // All staked funds withdrawn upfront
+        expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
+
+        // Exchange rate remains steady
+        expect(await stRSR.exchangeRate()).to.equal(fp('1'))
+      })
     })
   })
 

@@ -318,7 +318,9 @@ describe('FacadeWrite contract', () => {
         expect(await main.hasRole(SHORT_FREEZER, facadeWrite.address)).to.equal(true)
         expect(await main.hasRole(LONG_FREEZER, facadeWrite.address)).to.equal(true)
         expect(await main.hasRole(PAUSER, facadeWrite.address)).to.equal(true)
-        expect(await main.frozen()).to.equal(true)
+        expect(await main.frozen()).to.equal(false)
+        expect(await main.paused()).to.equal(true)
+        expect(await main.pausedOrFrozen()).to.equal(true)
 
         // RToken
         expect(await assetRegistry.toAsset(rToken.address)).to.equal(rTokenAsset.address)
@@ -437,7 +439,7 @@ describe('FacadeWrite contract', () => {
 
         it('Should register Basket correctly', async () => {
           // Unpause
-          await main.connect(owner).unfreeze()
+          await main.connect(owner).unpause()
 
           // Basket
           expect(await basketHandler.fullyCapitalized()).to.equal(true)
@@ -515,7 +517,9 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(LONG_FREEZER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
-          expect(await main.frozen()).to.equal(true)
+          expect(await main.frozen()).to.equal(false)
+          expect(await main.paused()).to.equal(true)
+          expect(await main.pausedOrFrozen()).to.equal(true)
         })
 
         it('Should not allow to complete setup again if already complete', async () => {
@@ -578,6 +582,8 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
+          expect(await main.paused()).to.equal(false)
+          expect(await main.pausedOrFrozen()).to.equal(false)
         })
       })
 
@@ -633,7 +639,9 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(LONG_FREEZER, deployerUser.address)).to.equal(false)
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
-          expect(await main.frozen()).to.equal(true)
+          expect(await main.frozen()).to.equal(false)
+          expect(await main.paused()).to.equal(true)
+          expect(await main.pausedOrFrozen()).to.equal(true)
         })
 
         it('Should deploy Governor correctly', async () => {
@@ -702,6 +710,8 @@ describe('FacadeWrite contract', () => {
           expect(await main.hasRole(PAUSER, deployerUser.address)).to.equal(false)
 
           expect(await main.frozen()).to.equal(false)
+          expect(await main.paused()).to.equal(false)
+          expect(await main.pausedOrFrozen()).to.equal(false)
         })
       })
     })

@@ -58,6 +58,8 @@ async function main() {
     oracleLib: phase1Deployment.oracleLib,
   })
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   assetCollDeployments.collateral.DAI = daiCollateral
   deployedCollateral.push(daiCollateral.toString())
 
@@ -76,6 +78,8 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     oracleLib: phase1Deployment.oracleLib,
   })
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.USDC = usdcCollateral
   deployedCollateral.push(usdcCollateral.toString())
@@ -96,6 +100,8 @@ async function main() {
     oracleLib: phase1Deployment.oracleLib,
   })
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   assetCollDeployments.collateral.USDT = usdtCollateral
   deployedCollateral.push(usdtCollateral.toString())
 
@@ -114,6 +120,8 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     oracleLib: phase1Deployment.oracleLib,
   })
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.USDP = usdpCollateral
   deployedCollateral.push(usdpCollateral.toString())
@@ -153,6 +161,8 @@ async function main() {
     oracleLib: phase1Deployment.oracleLib,
   })
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   assetCollDeployments.collateral.BUSD = busdCollateral
   deployedCollateral.push(busdCollateral.toString())
 
@@ -175,6 +185,9 @@ async function main() {
   )
   await adaiStaticToken.deployed()
 
+  // Sleep 20s to allow sync
+  await new Promise((r) => setTimeout(r, 20000))
+
   console.log(
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
   )
@@ -193,6 +206,8 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     oracleLib: phase1Deployment.oracleLib,
   })
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   assetCollDeployments.collateral.aDAI = aDaiCollateral
   deployedCollateral.push(aDaiCollateral.toString())
@@ -214,6 +229,9 @@ async function main() {
     )
   )
   await ausdcStaticToken.deployed()
+
+  // Sleep 20s to allow sync
+  await new Promise((r) => setTimeout(r, 20000))
 
   console.log(
     `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
@@ -237,6 +255,8 @@ async function main() {
   assetCollDeployments.collateral.aUSDC = aUsdcCollateral
   deployedCollateral.push(aUsdcCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy AToken Fiat Collateral - aUSDT  **************************/
 
   // Get AToken to retrieve name and symbol
@@ -254,6 +274,9 @@ async function main() {
     )
   )
   await ausdtStaticToken.deployed()
+
+  // Sleep 20s to allow sync
+  await new Promise((r) => setTimeout(r, 20000))
 
   console.log(
     `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
@@ -277,6 +300,8 @@ async function main() {
   assetCollDeployments.collateral.aUSDT = aUsdtCollateral
   deployedCollateral.push(aUsdtCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy AToken Fiat Collateral - aBUSD  **************************/
 
   // Get AToken to retrieve name and symbol
@@ -293,6 +318,9 @@ async function main() {
     )
   )
   await abusdStaticToken.deployed()
+
+  // Sleep 20s to allow sync
+  await new Promise((r) => setTimeout(r, 20000))
 
   console.log(
     `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
@@ -316,25 +344,7 @@ async function main() {
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
   deployedCollateral.push(aBusdCollateral.toString())
 
-  /******** Verify StaticATokens */
-
-  console.time('Verifying StaticATokenLM')
-  try {
-    await hre.run('verify:verify', {
-      address: abusdStaticToken.address,
-      constructorArguments: [
-        networkConfig[chainId].AAVE_LENDING_POOL as string,
-        aToken.address,
-        'Static ' + (await aToken.name()),
-        'stat' + (await aToken.symbol()),
-      ],
-      contract: 'contracts/plugins/aave/StaticATokenLM.sol:StaticATokenLM',
-    })
-  } catch (e) {
-    if (e instanceof Error && e.toString().indexOf('Already Verified') < 0) throw e
-    console.log('StaticAToken already verified, passing...')
-  }
-  console.timeEnd('Verifying StaticATokenLM')
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
 
@@ -357,6 +367,8 @@ async function main() {
   assetCollDeployments.collateral.cDAI = cDaiCollateral
   deployedCollateral.push(cDaiCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy CToken Fiat Collateral - cUSDC  **************************/
 
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
@@ -378,6 +390,8 @@ async function main() {
   assetCollDeployments.collateral.cUSDC = cUsdcCollateral
   deployedCollateral.push(cUsdcCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy CToken Fiat Collateral - cUSDT  **************************/
 
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
@@ -398,6 +412,8 @@ async function main() {
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
   deployedCollateral.push(cUsdtCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
 
@@ -421,6 +437,8 @@ async function main() {
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
   deployedCollateral.push(cWBTCCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy CToken Self-Referential Collateral - cETH  **************************/
 
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
@@ -440,6 +458,8 @@ async function main() {
 
   assetCollDeployments.collateral.cETH = cETHCollateral
   deployedCollateral.push(cETHCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy Non-Fiat Collateral  - wBTC **************************/
   const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
@@ -461,6 +481,8 @@ async function main() {
   assetCollDeployments.collateral.WBTC = wBTCCollateral
   deployedCollateral.push(wBTCCollateral.toString())
 
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy Self Referential Collateral - wETH  **************************/
 
   const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
@@ -478,6 +500,8 @@ async function main() {
 
   assetCollDeployments.collateral.WETH = wETHCollateral
   deployedCollateral.push(wETHCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy EURO Fiat Collateral  - EURT **************************/
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {

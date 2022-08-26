@@ -157,6 +157,45 @@ describe('Facade contract', () => {
       expect(quantities.slice(4, 8)).to.eql(initialQuantities)
     })
 
+    it('Should return backingOverview correctly', async () => {
+      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and no insurance
+      expect(backing).to.equal(fp('1'))
+      expect(insurance).to.equal(0)
+
+      // Mint some RSR
+      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
+      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
+
+      // Stake some RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - Fully capitalized and fully insured
+      expect(backing).to.equal(fp('1'))
+      expect(insurance).to.equal(fp('0.5'))
+
+      // Stake more RSR
+      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
+      await stRSR.connect(addr1).stake(stakeAmount)
+      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      expect(backing).to.equal(fp('1'))
+      expect(insurance).to.equal(fp('1'))
+
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount)
+
+      // Check values = 0 (no supply)
+      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
+
+      // Check values - No supply, returns 0
+      expect(backing).to.equal(0)
+      expect(insurance).to.equal(0)
+    })
+
     it('Should return totalAssetValue correctly', async () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })

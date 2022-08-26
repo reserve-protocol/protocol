@@ -26,6 +26,6 @@ typechain/
 \#*\#
 .\#*
 
-*.sol.original
+*.orig
 
 .idea

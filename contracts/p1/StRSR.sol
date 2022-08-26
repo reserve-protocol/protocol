@@ -383,7 +383,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint192 oldDrafts = index > 0 ? queue[index - 1].drafts : 0;
         uint64 lastAvailableAt = index > 0 ? queue[index - 1].availableAt : 0;
         availableAt = uint64(block.timestamp) + unstakingDelay;
-        if (lastAvailableAt > uint64(block.timestamp) + unstakingDelay) {
+        if (lastAvailableAt > availableAt) {
             availableAt = lastAvailableAt;
         }
 

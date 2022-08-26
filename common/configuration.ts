@@ -1,5 +1,4 @@
 import { BigNumber } from 'ethers'
-import { fp, pow10 } from './numbers'
 
 interface ICurrencies {
   ETH?: string
@@ -180,14 +179,14 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       stkAAVE: '0x3Db8b170DA19c45B63B959789f20f397F22767D4',
       COMP: '0x1b4449895037f25b102B28B45b8bD50c8C44Aca1',
       WETH: '0xB5B58F0a853132EA8cB614cb17095dE87AF3E98b',
-      WBTC: '0x258A485948ecd52E61767f646112741178A43752',
+      WBTC: '0x528FdEd7CC39209ed67B4edA11937A9ABe1f6249',
       EURT: '0xD6da5A7ADE2a906d9992612752A339E3485dB508',
       RSR: '0xB58b5530332D2E9e15bfd1f2525E6fD84e830307',
     },
     chainlinkFeeds: {
       ETH: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', // canonical chainlink
       BTC: '0xA39434A63A52E749F02807ae27335515BA4b07F7', // canonical chainlink
-      // mocks below
+      // mocks below, we shouldn't have to touch these unless causing default
       RSR: '0x905084691C2c7505b5FC63229621621b616bbbFe',
       AAVE: '0xcba876375c5144722BB665A9312A02Ba77865D28',
       COMP: '0x00e95ea8009f3B01c2ceC5AA7143F73C23136f45',
@@ -294,12 +293,12 @@ export interface IGovParams {
 }
 
 // System constants
-export const MAX_TRADE_SLIPPAGE = fp('1')
-export const MAX_BACKING_BUFFER = fp('1')
-export const MAX_TARGET_AMT = fp(1e3)
-export const MAX_RATIO = fp('1')
-export const MAX_ISSUANCE_RATE = fp('1')
-export const MAX_TRADE_VOLUME = pow10(48)
+export const MAX_TRADE_SLIPPAGE = BigNumber.from(10).pow(18)
+export const MAX_BACKING_BUFFER = BigNumber.from(10).pow(18)
+export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
+export const MAX_RATIO = BigNumber.from(10).pow(18)
+export const MAX_ISSUANCE_RATE = BigNumber.from(10).pow(18)
+export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)
