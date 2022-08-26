@@ -255,15 +255,12 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         if (basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            try main.assetRegistry().toColl(basket.erc20s[i]).bal(account) returns (uint192 bal) {
-                uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
+            uint192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account);
+            uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-                // {BU} = {tok} / {tok/BU}
-                if (q.eq(FIX_ZERO)) return FIX_ZERO;
-                else baskets = fixMin(baskets, bal.div(q));
-            } catch {
-                return FIX_ZERO;
-            }
+            // {BU} = {tok} / {tok/BU}
+            if (q.eq(FIX_ZERO)) return FIX_ZERO;
+            else baskets = fixMin(baskets, bal.div(q));
         }
         if (baskets == FIX_MAX) return FIX_ZERO;
     }
