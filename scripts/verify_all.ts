@@ -9,7 +9,7 @@ import {
   IAssetCollDeployments,
   IDeployments,
   getDeploymentFilename,
-} from './deployment/utils'
+} from './deployment/common'
 
 async function main() {
   const chainId = await getChainId(hre)
