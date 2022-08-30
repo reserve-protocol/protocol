@@ -56,6 +56,9 @@ interface IFacade {
         external
         view
         returns (uint192 backing, uint192 insurance);
+
+    /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
+    function price(IRToken rToken) external view returns (uint192);
 }
 
 interface IFacadeP1 is IFacade {
