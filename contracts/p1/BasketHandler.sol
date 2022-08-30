@@ -58,13 +58,12 @@ library BasketLib {
 
     /// Set `self` equal to `other`
     function copy(Basket storage self, Basket storage other) internal {
-        empty(self);
+        empty(self); // updates nonce
         uint256 length = other.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             self.erc20s.push(other.erc20s[i]);
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
-        self.nonce++;
         self.timestamp = uint48(block.timestamp);
         self.disabled = other.disabled;
     }
