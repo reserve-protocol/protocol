@@ -60,7 +60,7 @@ su echidna
 ``` bash
 sudo apt update
 sudo apt install emacs-nox # So that we have a text editor at all. Install your own favorite text editor if you like, or just use nano, whatever.
-sudo apt install python3-pip unzip
+sudo apt install python3-pip unzip moreutils # moreutils gives us ts
 
 # Local packages will be installed to ~/.local/bin; we want them on PATH.
 export PATH="$PATH:$HOME/.local/bin" && hash -r
