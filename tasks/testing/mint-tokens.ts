@@ -1,6 +1,11 @@
 import { task, types } from 'hardhat/config'
 import { networkConfig } from '../../common/configuration'
 import { getChainId } from '../../common/blockchain-utils'
+import {
+  getDeploymentFile,
+  getAssetCollDeploymentFilename,
+  IAssetCollDeployments,
+} from '../../scripts/deployment/common'
 
 task('mint-tokens', 'Mints all the tokens to an address')
   .addParam('address', 'Ethereum address to receive the tokens')
@@ -20,6 +25,11 @@ task('mint-tokens', 'Mints all the tokens to an address')
         `Minting the tokens we've mocked on ${hre.network.name} (${chainId}) to account ${params.address}...`
       )
     }
+
+    const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
+    const assetCollDeployments = <IAssetCollDeployments>(
+      getDeploymentFile(assetCollDeploymentFilename)
+    )
 
     const tokens = [
       'DAI',
@@ -52,7 +62,28 @@ task('mint-tokens', 'Mints all the tokens to an address')
       const decimals = await tok.decimals()
       const amt = hre.ethers.BigNumber.from('10').pow(decimals + 9)
       console.log(`Minting ${amt} of ${token}`)
-      await tok.connect(deployer).mint(params.address, amt.toString())
+
+      // For ATokens, mint staticAToken balances
+      if (token.indexOf('a') == 0) {
+        await (await tok.connect(deployer).mint(deployer.address, amt.toString())).wait()
+
+        const collateral = assetCollDeployments.collateral
+        const collAddr = collateral[token as keyof typeof collateral] as string
+        const coll = await hre.ethers.getContractAt('IAsset', collAddr)
+        const staticAToken = await hre.ethers.getContractAt('StaticATokenLM', await coll.erc20())
+
+        console.log(`Approving a ${amt} ${token} deposit`)
+        await (await tok.connect(deployer).approve(staticAToken.address, amt.toString())).wait()
+
+        console.log(`Depositing into ${await staticAToken.symbol()} at address ${collAddr}`)
+        await (
+          await staticAToken.connect(deployer).deposit(deployer.address, amt.toString(), 0, false)
+        ).wait()
+
+        await staticAToken.transfer(params.address, amt.toString()) // don't need to wait
+      } else {
+        await tok.connect(deployer).mint(params.address, amt.toString()) // don't need to wait
+      }
 
       // Sleep 0.5s
       await new Promise((r) => setTimeout(r, 500))
