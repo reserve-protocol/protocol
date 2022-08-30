@@ -20,6 +20,41 @@ import "contracts/p0/StRSR.sol";
 // ================ Components ================
 // Every component must override _msgSender() in this one, common way!
 
+contract AssetRegistryP0Fuzz is AssetRegistryP0 {
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
+
+contract BasketHandlerP0Fuzz is BasketHandlerP0 {
+    using BasketLib for Basket;
+    Basket internal prev;
+
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function savePrev() external {
+        prev.copy(basket);
+    }
+
+    function prevEqualsCurr() external view returns (bool) {
+        uint256 n = basket.erc20s.length;
+        if (n != prev.erc20s.length) return false;
+        for (uint256 i = 0; i < n; i++) {
+            if (prev.erc20s[i] != basket.erc20s[i]) return false;
+            if (prev.refAmts[prev.erc20s[i]] != basket.refAmts[basket.erc20s[i]]) return false;
+        }
+        return true;
+    }
+}
+
+contract BackingManagerP0Fuzz is BackingManagerP0 {
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
+
 contract BrokerP0Fuzz is BrokerP0 {
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -57,105 +92,91 @@ contract BrokerP0Fuzz is BrokerP0 {
     }
 }
 
-// ================ Main ================
-contract MainP0Fuzz is IMainFuzz, MainP0 {
-    using EnumerableSet for EnumerableSet.AddressSet;
+contract DistributorP0Fuzz is DistributorP0 {
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
 
-    IMarketMock public marketMock;
+contract FurnaceP0Fuzz is FurnaceP0 {
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
 
-    EnumerableSet.AddressSet internal aliasedAddrs;
-    mapping(address => address) public aliases; // The map of senders
+contract RevenueTraderP0Fuzz is RevenueTraderP0 {
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
 
-    IERC20[] public tokens; // token addresses, not including RSR or RToken
-    mapping(bytes32 => IERC20) public tokensBySymbol;
+contract RTokenP0Fuzz is IRTokenFuzz, RTokenP0 {
+    using FixLib for uint192;
 
-    address[] public users; // "registered" user addresses
-    address[] public constAddrs; // constant addresses, for "addrById"
-
-    // ==== Scenario handles ====
-    function translateAddr(address addr) public view returns (address) {
-        return aliases[addr] != address(0) ? aliases[addr] : addr;
+    // The range of IDs that would be valid as endID in cancel() or vest()
+    function idRange(address user) external view returns (uint256 left, uint256 right) {
+        // left: index of the first issuance for which processed is false (or .length)
+        left = 0;
+        while (left < issuances[user].length && issuances[user][left].processed) left++;
+        right = issuances[user].length;
     }
 
-    // From now on, translateAddr will pretend that `realSender` is `pretendSender`
-    function spoof(address realSender, address pretendSender) external {
-        aliasedAddrs.add(realSender);
-        aliases[realSender] = pretendSender;
-    }
+    // To be called only from MarketMock; this only works if MarketMock never enqueues any other
+    // issuances.
 
-    // Stop pretending that `realSender` is some other address
-    function unspoof(address realSender) external {
-        aliasedAddrs.remove(realSender);
-        aliases[realSender] = address(0);
-    }
+    // TODO(elder): need allVestAt to have equivalent behavior on both sides; double-check
+    // that allVestAt gets reset in P1 also
+    function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
+        require(amtRToken > 0, "Cannot issue zero");
 
-    // Debugging getter
-    function aliasValues() external view returns (address[] memory from, address[] memory to) {
-        from = aliasedAddrs.values();
-        to = new address[](aliasedAddrs.length());
-        for (uint256 i = 0; i < aliasedAddrs.length(); i++) {
-            to[i] = aliases[aliasedAddrs.at(i)];
+        uint192 initAllVestAt = allVestAt;
+
+        issue(amtRToken);
+        uint256 index = issuances[_msgSender()].length - 1;
+        SlowIssuance storage iss = issuances[_msgSender()][index];
+        if (!iss.processed) {
+            iss.blockAvailableAt = toFix(block.number - 10);
+            tryVestIssuance(_msgSender(), index);
         }
+
+        allVestAt = initAllVestAt;
     }
 
-    function numTokens() public view returns (uint256) {
-        return tokens.length;
+    /// The tokens and underlying quantities needed to issue `amount` qRTokens.
+    /// @dev this is distinct from basketHandler().quote() b/c the input is in RTokens, not BUs.
+    /// @param amount {qRTok} quantity of qRTokens to quote.
+    function quote(uint256 amount, RoundingMode roundingMode)
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory amts)
+    {
+        uint192 baskets = (totalSupply() > 0)
+            ? basketsNeeded.muluDivu(amount, totalSupply()) // {BU * qRTok / qRTok}
+            : uint192(amount); // {qRTok / qRTok}
+
+        return main.basketHandler().quote(baskets, roundingMode);
     }
 
-    // Add a token to this system's tiny token registry
-    function addToken(IERC20 token) public {
-        tokens.push(token);
-        bytes32 symbol = bytes32(bytes(IERC20Metadata(address(token)).symbol()));
-        tokensBySymbol[symbol] = token;
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+}
+
+contract StRSRP0Fuzz is StRSRP0 {
+    // A range of plausibly-valid IDs for withdraw()
+    function idRange(address user) external view returns (uint256 left, uint256 right) {
+        // left: index of first withdrawal with a nonzero balance (or .length)
+        left = 0;
+        while (left < withdrawals[user].length && withdrawals[user][left].rsrAmount > 0) left++;
+        right = withdrawals[user].length;
     }
 
-    function tokenBySymbol(string calldata symbol) public view returns (IERC20) {
-        return tokensBySymbol[bytes32(bytes(symbol))];
+    function invariantsHold() external view returns (bool) {
+        // No similar failure mode to P1 StRSR to be tested here.
+        return true;
     }
 
-    function someToken(uint256 seed) public view returns (IERC20) {
-        uint256 id = seed % (tokens.length + 2);
-        if (id < tokens.length) return tokens[id];
-        else id -= tokens.length;
-
-        if (id == 0) return IERC20(address(rsr));
-        if (id == 1) return IERC20(address(rToken));
-        revert("invalid id in someToken");
-    }
-
-    function numUsers() public view returns (uint256) {
-        return users.length;
-    }
-
-    function addUser(address user) public {
-        users.push(user);
-    }
-
-    function someAddr(uint256 seed) public view returns (address) {
-        // constAddrs.length: constant addresses, mostly deployed contracts
-        // numUsers: addresses from the user registry
-        // 1: broker's "last deployed address"
-        uint256 numIDs = numUsers() + constAddrs.length + 1;
-        uint256 id = seed % numIDs;
-
-        if (id < numUsers()) return users[id];
-        else id -= numUsers();
-
-        if (id < constAddrs.length) return constAddrs[id];
-        else id -= constAddrs.length;
-
-        if (id == 0) return address(0); // broker.lastOpenedTrade();
-        revert("invalid id in someAddr");
-    }
-
-    function initForFuzz(
-        Components memory components,
-        IERC20 rsr,
-        uint48 shortFreeze_,
-        uint48 longFreeze_,
-        IMarketMock marketMock_
-    ) public virtual initializer {
-        init(components, rsr, shortFreeze_, longFreeze_);
-        marketMock = marketMock_;
+    function _msgSender() internal view virtual override returns (address) {
+        return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
 }
