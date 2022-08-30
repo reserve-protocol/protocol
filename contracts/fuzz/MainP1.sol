@@ -17,7 +17,7 @@ import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/TradeMock.sol";
 import "contracts/fuzz/Utils.sol";
-import "contracts/fuzz/FuzzP1.sol"
+import "contracts/fuzz/FuzzP1.sol";
 
 // MainP1Fuzz is both the MainP1 contract implementation, and the P1 "deployment"
 // It constructs and initializes the P1 components found in FuzzP1.
