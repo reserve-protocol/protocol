@@ -179,3 +179,7 @@ hardhat run scripts/verify_all.ts --network mainnet
 `verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
 
 It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+
+### Checks
+
+TODO
