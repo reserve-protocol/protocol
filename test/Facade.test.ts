@@ -200,6 +200,10 @@ describe('Facade contract', () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
 
+    it('Should return RToken price correctly', async () => {
+      expect(await facade.price(rToken.address)).to.equal(fp('1'))
+    })
+
     // P1 only
     if (IMPLEMENTATION == Implementation.P1) {
       let facadeP1: FacadeP1
