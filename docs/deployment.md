@@ -81,10 +81,6 @@ A specific set of files will be created for that specific network after each pha
 2. `{CHAIN_ID}-tmp-assets-collateral.json`: Contains asset plugin addresses
 3. `{CHAIN_ID}-{RTOKEN_SYMBOL}-tmp-deployments.json`: Contains the (proxied) addresses that make up the real runtime system
 
-### Verification
-
-Verification sometimes fails when we do `verify_all`, but not when we run individual scripts. If this happens, run individual scripts directly, say, with: `hardhat run scripts/verification/6_verify_collateral.ts --network {NETWORK}`
-
 ### With Mainnet forking
 
 - Before running the `deploy_all` script (or any particular script), run in a separate terminal a local forking node:
@@ -93,14 +89,64 @@ Verification sometimes fails when we do `verify_all`, but not when we run indivi
 FORK=true npx hardhat node
 ```
 
-## Deployment Checklist / Instructions
+## Mainnet Deployment Checklist / Instructions
 
-TODO
+### Init local .env file
 
-### Deployment
+Okay to screenshare this part
 
-TODO
+If you don't have one already, init a local `.env` file at the project root.
 
-### Verification
+1. Configure `MAINNET_RPC_URL` to be an RPC endpoint, probably from alchemy/infura.
+2. Configure `ETHERSCAN_API_KEY`. Note this is _just_ the key, not the whole url.
 
-TODO
+### Generate the deployment key
+
+Do NOT screenshare this part!
+
+It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite, known as `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts` in our scripts. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: ~3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps.
+
+Current plan (matt to check):
+
+- Go to https://github.com/iancoleman/bip39/releases/tag/0.5.4
+- Download the `bip39-standalone.html`
+- TODO: Verify the PGP signature? The code is open source and it has had tons of eyeballs on it.
+- Open the standalone html app (ideally from a browser you do not normally use) and click **GENERATE**
+- Copy the menomic string to a local `.env` file and set the variable `MNEMONIC` equal to it
+- Change the _Coin_ dropdown to "Ethereum"
+- Scroll down and copy the first address, which should be at path `m/44'/60'/0'/0/0`. Send about 6 ETH here, if targeting a gasprice of 30 gwei (legacy).
+- Close the html app and browser
+
+End state: You have a `.env` file that sets three environment variables, and nobody else knows the seed phrase. Etherscan says at least 6 ETH is at the expected address.
+
+### Deploy!
+
+From within the project root (which is where your `.env` file is located), run:
+
+```
+hardhat run scripts/deploy_all.ts --network mainnet
+```
+
+That's it!
+
+Note: On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, you can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy_all.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
+
+Three files should be produced.
+
+- `1-tmp-deployments.json`
+- `1-tmp-assets-collateral.json`
+- `1-RTKN-tmp-deployments.json`
+
+After: Confirm there are no keys without assigned addresses.
+
+### Verify
+
+From within the project root (which is where your `.env` file is located), run:
+
+```
+hardhat run scripts/verify_all.ts --network mainnet
+```
+
+`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+
+It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
