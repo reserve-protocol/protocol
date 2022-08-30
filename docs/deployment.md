@@ -89,6 +89,35 @@ A specific set of files will be created for that specific network after each pha
 FORK=true npx hardhat node
 ```
 
+### Gas costs
+
+Gas costs from Goerli; excludes collateral deployments:
+
+- RSRAsset: 893,122
+- RewardableLib: 918,407
+- TradingLib: 2,623,625
+- RTokenPricingLib: 842,435
+- OracleLib: 448,042
+- Facade: 3,715,055
+- FacadeWriteLib: 4,235,169
+- FacadeWrite: 4,159,216
+- Deployer: 3,366,347
+- Main implementation: 1,908,322
+- GnosisTrade implementation: 1,908,322
+- AssetRegistry implementation: 2,061,194
+- BackingManager implementation: 4,437,559
+- BasketHandler implementation: 4,142,467
+- Broker implementation: 1,648,334
+- Distributor implementation: 1,778,246
+- Furnace implementation: 1,588,099
+- RevenueTrader implementation: 2,473,889
+- StRSR implementation: 5,069,366
+- RToken implementation: 5,372,794
+- RToken instance deployment: 6,840,650
+- Governance (/w timelock) instance deployment: 5,583,287
+
+Total: ~66M gas
+
 ## Mainnet Deployment Checklist / Instructions
 
 ### Init local .env file
