@@ -118,9 +118,9 @@ Gas costs from Goerli; excludes collateral deployments:
 
 Total: ~66M gas
 
-## Mainnet Deployment Checklist / Instructions
+## Mainnet Deployment Instructions
 
-### Generate the deployment key + init local .env
+### Generate the deployment key
 
 Do NOT screenshare this part!
 
@@ -132,20 +132,22 @@ First, make sure you have golang setup on your machine. If you don't, here are t
 - Run the package install - confirm `go version` prints something
 - Add to your bash profile: (i) `export GOPATH=$HOME/go` and (ii) `export PATH=$PATH:$GOPATH/bin`
 
-Next, delete your local .env file (or rename, temporarily) and run the following from the project root:
+Next, run run the following from the project root:
 
 ```
-go install github.com/kubetrail/bip39@latest
-bip39 gen > .env.new
+go install github.com/kubetrail/bip39@fd599ff6b5589b01e7bf8b394057e8d4c215a680
+bip39 gen > .env.new [TODO: replace with Matt's golang package]
 ```
 
-Finally, confirm you have a local file `.env.new` that contains a mnemonic.
+Confirm you have a local file `.env.new` that contains the newly generated mnemonic. Send this over signal to other close members on the team. This may be necessary to sign messages from the deployer key in the future.
 
-### Finalize local .env file
+End state: You have a `.env.new` file that contains a seed phrase, and this seed phrase has been shared securely.
+
+### Finalize .env file
 
 [Still not screensharing]
 
-To complete the .env configuration:
+To complete the environment configuration:
 
 1. Open your local `.env.new` file and set `MNEMONIC` equal to the generated seed phrase.
 1. Add a second entry for `MAINNET_RPC_URL` to be an RPC endpoint, probably from alchemy/infura.
@@ -157,30 +159,24 @@ Our new environment configuration is ready to go, rename it to `.env` with:
 mv .env.new .env
 ```
 
-End state: You have a `.env` file that contains setters for three environment variables. You did all of this without screensharing.
-
-### Funding
-
-[Screensharing ok]
-
-At this point we're ready to run our scripts. Check to make sure the mnemonic is being processed correctly by attempting to run the deploy_all script:
+Finally, run the `check_env` script in order to confirm the 3 environment variables are configured correctly.
 
 ```
-hardhat run scripts/deploy_all.ts --network mainnet
+npx hardhat run scripts/check_env.ts --network mainnet
 ```
 
-It should error out complaining about not having enough gas. It will print a wallet address.
+If this passes successfully it will print the deployer address and the current ETH balance. Next:
 
-1. Look up the address on etherscan and confirm it is fresh
-2. Send at least 6 ETH to the address. Wait until etherscan shows the new balance to proceed.
+1. Send at least 6 ETH to this address (check ethgasstation.info; if gas prices are > 30gwei then we may need more)
+2. Close the current terminal session.
 
-End state: You have a funded deployment account and are ready to proceed.
+End state: You have a fresh terminal session and a confirmed-good `.env` file. You did all of this without screensharing and are now ready to begin screensharing to perform the deployment.
 
 ### Deploy!
 
 [Screensharing ok]
 
-Run the deploy_all script again, this time for real:
+Open a new terminal session and from the project root run the deploy_all script:
 
 ```
 hardhat run scripts/deploy_all.ts --network mainnet
@@ -194,7 +190,7 @@ Three files should be produced as a result of this process.
 - `1-tmp-assets-collateral.json`
 - `1-RTKN-tmp-deployments.json`
 
-End state: All three files contain populated JSON objects. There should not be any empty string entries.
+End state: All three files contain populated JSON objects. There should not be any empty string entries in any of the files. All 3 files should exist.
 
 ### Verify
 
@@ -206,8 +202,13 @@ Next, run:
 hardhat run scripts/verify_all.ts --network mainnet
 ```
 
-`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified. (It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.)
 
-It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+Manual verification steps:
 
-End state: All addresses that are in the generated output files are verified on etherscan. Check this manually. Also: check the staticAToken contracts, which themselves are not tracked but can be found by grabbing the ERC20 of the collateral.
+- For each address in the output files, make sure it is verified on Etherscan.
+- Make sure the staticATokens are verified too. These are not directly in the output file. To do this you'll need to look at the ATokenCollateral plugins and read out their erc20 addresses, which will be the staticATokens.
+- Confirm `main.paused()` is true
+- Confirm `timelockController.minDelay()` is > 1e12
+
+End state: All addresses are verified, the contracts are in the correct state, and it's time to connect the Register to the new mainnet addresses!
