@@ -91,6 +91,7 @@ library BasketLib {
  */
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLib for Basket;
+    using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -195,17 +196,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         timestamp = basket.timestamp;
     }
 
-    /// @return status_ The status of the basket
+    /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
         if (basket.disabled) return CollateralStatus.DISABLED;
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            CollateralStatus s = coll.status();
-            if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
-
-            if (uint256(s) > uint256(status_)) status_ = s;
+            CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
+            if (s.worseThan(status_)) status_ = s;
         }
     }
 
