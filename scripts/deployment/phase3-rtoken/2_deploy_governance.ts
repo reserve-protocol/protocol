@@ -80,7 +80,7 @@ async function main() {
     await facadeWrite.connect(deployerUser).setupGovernance(
       rToken.address,
       true, // deploy governance
-      chainId != 1, // unpause if not mainnet
+      chainId != '1', // unpause if not mainnet
       govParams,
       ZERO_ADDRESS,
       ZERO_ADDRESS,

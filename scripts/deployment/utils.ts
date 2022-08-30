@@ -128,7 +128,7 @@ export async function verifyContract(
   console.timeEnd(`Verifying ${contract}`)
 }
 
-const getEtherscanBaseURL = (chainId: number, api = false) => {
+export const getEtherscanBaseURL = (chainId: number, api = false) => {
   let prefix: string
   if (api) prefix = chainId == 1 ? 'api.' : `api-${hre.network.name}.`
   else prefix = chainId == 1 ? '' : `${hre.network.name}.`

@@ -9,7 +9,7 @@ async function main() {
   // ==== Read Configuration ====
   const chainId = await getChainId(hre)
 
-  console.log(`Creating Deployment file for network ${hre.network.name} (${chainId})`)
+  console.log(`c Deployment file for network ${hre.network.name} (${chainId})`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
