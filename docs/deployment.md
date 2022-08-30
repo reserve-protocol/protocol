@@ -2,7 +2,7 @@
 
 Mostly, this is about _test_ deployment, though the same elements should work to deploy to any network once configured.
 
-Real mainnet deployment, though, will entail an deployment checklist (not yet written) and serious operational security considerations (not yet articulated).
+Real mainnet deployment, though, will entail an deployment checklist (see below) and serious operational security considerations (not yet articulated).
 
 ## Configure Environment
 
@@ -43,7 +43,7 @@ const networkConfig = {
  }
 ```
 
-## Overall Deployment
+## Deployment Overview
 
 The deployment process consists of two steps:
 
@@ -92,3 +92,15 @@ Verification sometimes fails when we do `verify_all`, but not when we run indivi
 ```bash
 FORK=true npx hardhat node
 ```
+
+## Deployment Checklist / Instructions
+
+TODO
+
+### Deployment
+
+TODO
+
+### Verification
+
+TODO

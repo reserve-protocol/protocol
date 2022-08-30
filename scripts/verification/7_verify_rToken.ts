@@ -5,8 +5,11 @@ import { developmentChains, networkConfig } from '../../common/configuration'
 import { getRTokenConfig } from '../deployment/phase3-rtoken/rTokenConfig'
 import {
   getDeploymentFile,
+  getDeploymentFilename,
   getRTokenDeploymentFilename,
   IRTokenDeployments,
+  IDeployments,
+  fileExists,
   verifyContract,
 } from '../deployment/deployment_utils'
 
@@ -25,6 +28,13 @@ async function main() {
   if (developmentChains.includes(hre.network.name)) {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
+
+  // Get phase1 deployment
+  const phase1File = getDeploymentFilename(chainId)
+  if (!fileExists(phase1File)) {
+    throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
+  }
+  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
 
   rTokenDeployments = <IRTokenDeployments>(
     getDeploymentFile(getRTokenDeploymentFilename(chainId, RTOKEN_NAME))
@@ -48,6 +58,15 @@ async function main() {
       },
     ],
     'contracts/plugins/assets/RTokenAsset.sol:RTokenAsset'
+  )
+
+  /******************* Verify the RToken's Proxy ****************************************/
+  // Should handle all proxied contracts on etherscan for us
+  await verifyContract(
+    chainId,
+    rTokenDeployments.components.rToken,
+    [phase1Deployment.implementations.components.rToken, '0x'],
+    '@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy'
   )
 }
 
