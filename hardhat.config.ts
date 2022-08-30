@@ -58,6 +58,13 @@ const config: any = {
         mnemonic: MNEMONIC,
       },
     },
+    mainnet: {
+      chainId: 1,
+      url: MAINNET_RPC_URL,
+      accounts: {
+        mnemonic: MNEMONIC,
+      },
+    },
   },
   solidity: {
     compilers: [
