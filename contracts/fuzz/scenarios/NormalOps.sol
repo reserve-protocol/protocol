@@ -8,14 +8,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "contracts/fuzz/IFuzz.sol";
-import "contracts/fuzz/CollateralMock.sol";
-import "contracts/fuzz/ERC20Fuzz.sol";
-import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/TradeMock.sol";
-import "contracts/fuzz/Utils.sol";
-
-import "contracts/fuzz/FuzzP1.sol";
+import "contracts/fuzz/MainP1.sol";
 
 // The "normal operations" fuzzing scenario, in which:
 // - Tokens never default, or even threaten to default
