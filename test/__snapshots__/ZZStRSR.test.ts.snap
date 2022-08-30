@@ -10,10 +10,10 @@ exports[`StRSRP1 contract Gas Reporting Transfer 2`] = `41283`;
 
 exports[`StRSRP1 contract Gas Reporting Transfer 3`] = `58395`;
 
-exports[`StRSRP1 contract Gas Reporting Unstake 1`] = `222646`;
+exports[`StRSRP1 contract Gas Reporting Unstake 1`] = `222423`;
 
-exports[`StRSRP1 contract Gas Reporting Unstake 2`] = `139779`;
+exports[`StRSRP1 contract Gas Reporting Unstake 2`] = `139556`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `424398`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 1`] = `424218`;
 
-exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `395256`;
+exports[`StRSRP1 contract Gas Reporting Withdraw 2`] = `395076`;
