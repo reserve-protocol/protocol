@@ -2,14 +2,14 @@
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../common/configuration'
-import { sh } from './deployment/deployment_utils'
+import { sh } from './deployment/utils'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   IDeployments,
   getDeploymentFilename,
-} from './deployment/deployment_utils'
+} from './deployment/utils'
 
 async function main() {
   const chainId = await getChainId(hre)

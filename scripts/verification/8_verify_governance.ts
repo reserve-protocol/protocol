@@ -7,8 +7,8 @@ import {
   getDeploymentFile,
   getRTokenDeploymentFilename,
   IRTokenDeployments,
-  verifyContract,
-} from '../deployment/deployment_utils'
+} from '../deployment/common'
+import { verifyContract } from '../deployment/utils'
 
 let rTokenDeployments: IRTokenDeployments
 

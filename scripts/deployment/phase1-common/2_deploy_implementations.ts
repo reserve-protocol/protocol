@@ -3,7 +3,7 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment_utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import {
   AssetRegistryP1,
   BackingManagerP1,

@@ -2,12 +2,8 @@ import hre from 'hardhat'
 
 import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
-import {
-  getDeploymentFile,
-  getDeploymentFilename,
-  IDeployments,
-  verifyContract,
-} from '../deployment/deployment_utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment/common'
+import { verifyContract } from '../deployment/utils'
 
 let deployments: IDeployments
 

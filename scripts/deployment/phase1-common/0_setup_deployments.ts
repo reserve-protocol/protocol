@@ -3,7 +3,7 @@ import hre from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { fileExists, getDeploymentFilename, IDeployments } from '../deployment_utils'
+import { fileExists, getDeploymentFilename, IDeployments } from '../common'
 
 async function main() {
   // ==== Read Configuration ====

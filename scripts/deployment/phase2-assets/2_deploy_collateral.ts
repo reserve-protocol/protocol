@@ -8,11 +8,11 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  getOracleTimeout,
   getDeploymentFilename,
   IDeployments,
   fileExists,
-} from '../deployment_utils'
+} from '../common'
+import { getOracleTimeout } from '../utils'
 import { ATokenMock, StaticATokenLM } from '../../../typechain'
 
 async function main() {

@@ -6,11 +6,7 @@ import { IGovParams, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
 import { getRTokenConfig } from './rTokenConfig'
-import {
-  getDeploymentFile,
-  getRTokenDeploymentFilename,
-  IRTokenDeployments,
-} from '../deployment_utils'
+import { getDeploymentFile, getRTokenDeploymentFilename, IRTokenDeployments } from '../common'
 import { FacadeWrite, MainP1, RTokenP1, StRSRP1 } from '../../../typechain'
 // Define the Token to use
 const RTOKEN_NAME = 'RTKN'

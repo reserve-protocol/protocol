@@ -3,12 +3,8 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import {
-  getDeploymentFile,
-  getDeploymentFilename,
-  IDeployments,
-  validateImplementations,
-} from '../deployment_utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
+import { validateImplementations } from '../utils'
 import { FacadeP1 } from '../../../typechain'
 
 let facade: FacadeP1

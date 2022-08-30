@@ -6,13 +6,13 @@ import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
+  getDeploymentFilename,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  getOracleTimeout,
-  getDeploymentFilename,
   IDeployments,
   fileExists,
-} from '../deployment_utils'
+} from '../../deployment/common'
+import { getOracleTimeout } from '../../deployment/utils'
 
 async function main() {
   // ==== Read Configuration ====

@@ -8,7 +8,7 @@ import {
   getAssetCollDeploymentFilename,
   getDeploymentFilename,
   IAssetCollDeployments,
-} from '../deployment_utils'
+} from '../common'
 
 async function main() {
   // ==== Read Configuration ====
