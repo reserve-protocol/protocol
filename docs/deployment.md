@@ -120,57 +120,87 @@ Total: ~66M gas
 
 ## Mainnet Deployment Checklist / Instructions
 
-### Init local .env file
-
-Okay to screenshare this part
-
-If you don't have one already, init a local `.env` file at the project root.
-
-1. Configure `MAINNET_RPC_URL` to be an RPC endpoint, probably from alchemy/infura.
-2. Configure `ETHERSCAN_API_KEY`. Note this is _just_ the key, not the whole url.
-
-### Generate the deployment key
+### Generate the deployment key + init local .env
 
 Do NOT screenshare this part!
 
-It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite, known as `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts` in our scripts. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: ~3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps.
+It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite, known as `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts` in our scripts. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: at least 3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps, causing us to have to start the FacadeWrite steps again.
 
-Current plan (matt to check):
+First, make sure you have golang setup on your machine. If you don't, here are the quick steps:
 
-- Go to https://github.com/iancoleman/bip39/releases/tag/0.5.4
-- Download the `bip39-standalone.html`
-- TODO: Verify the PGP signature? The code is open source and it has had tons of eyeballs on it.
-- Open the standalone html app (ideally from a browser you do not normally use) and click **GENERATE**
-- Copy the menomic string to a local `.env` file and set the variable `MNEMONIC` equal to it
-- Change the _Coin_ dropdown to "Ethereum"
-- Scroll down and copy the first address, which should be at path `m/44'/60'/0'/0/0`. Send about 6 ETH here, if targeting a gasprice of 30 gwei (legacy).
-- Close the html app and browser
+- Download from here: https://go.dev/doc/install
+- Run the package install - confirm `go version` prints something
+- Add to your bash profile: (i) `export GOPATH=$HOME/go` and (ii) `export PATH=$PATH:$GOPATH/bin`
 
-End state: You have a `.env` file that sets three environment variables, and nobody else knows the seed phrase. Etherscan says at least 6 ETH is at the expected address.
+Next, delete your local .env file (or rename, temporarily) and run the following from the project root:
 
-### Deploy!
+```
+go install github.com/kubetrail/bip39@latest
+bip39 gen > .env.new
+```
 
-From within the project root (which is where your `.env` file is located), run:
+Finally, confirm you have a local file `.env.new` that contains a mnemonic.
+
+### Finalize local .env file
+
+[Still not screensharing]
+
+To complete the .env configuration:
+
+1. Open your local `.env.new` file and set `MNEMONIC` equal to the generated seed phrase.
+1. Add a second entry for `MAINNET_RPC_URL` to be an RPC endpoint, probably from alchemy/infura.
+1. Add a third entry for `ETHERSCAN_API_KEY`. Note this is _just_ the key, not the whole url.
+
+Our new environment configuration is ready to go, rename it to `.env` with:
+
+```
+mv .env.new .env
+```
+
+End state: You have a `.env` file that contains setters for three environment variables. You did all of this without screensharing.
+
+### Funding
+
+[Screensharing ok]
+
+At this point we're ready to run our scripts. Check to make sure the mnemonic is being processed correctly by attempting to run the deploy_all script:
 
 ```
 hardhat run scripts/deploy_all.ts --network mainnet
 ```
 
-That's it!
+It should error out complaining about not having enough gas. It will print a wallet address.
 
-Note: On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, you can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy_all.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
+1. Look up the address on etherscan and confirm it is fresh
+2. Send at least 6 ETH to the address. Wait until etherscan shows the new balance to proceed.
 
-Three files should be produced.
+End state: You have a funded deployment account and are ready to proceed.
+
+### Deploy!
+
+[Screensharing ok]
+
+Run the deploy_all script again, this time for real:
+
+```
+hardhat run scripts/deploy_all.ts --network mainnet
+```
+
+It should manage itself fairly well. On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, we can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy_all.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
+
+Three files should be produced as a result of this process.
 
 - `1-tmp-deployments.json`
 - `1-tmp-assets-collateral.json`
 - `1-RTKN-tmp-deployments.json`
 
-After: Confirm there are no keys without assigned addresses.
+End state: All three files contain populated JSON objects. There should not be any empty string entries.
 
 ### Verify
 
-From within the project root (which is where your `.env` file is located), run:
+[Screensharing ok]
+
+Next, run:
 
 ```
 hardhat run scripts/verify_all.ts --network mainnet
@@ -180,6 +210,4 @@ hardhat run scripts/verify_all.ts --network mainnet
 
 It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
-### Checks
-
-TODO
+End state: All addresses that are in the generated output files are verified on etherscan. Check this manually. Also: check the staticAToken contracts, which themselves are not tracked but can be found by grabbing the ERC20 of the collateral.
