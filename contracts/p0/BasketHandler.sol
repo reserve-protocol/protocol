@@ -58,12 +58,11 @@ library BasketLib {
 
     /// Set `self` equal to `other`
     function copy(Basket storage self, Basket storage other) internal {
-        empty(self);
+        empty(self); // updates nonce
         for (uint256 i = 0; i < other.erc20s.length; i++) {
             self.erc20s.push(other.erc20s[i]);
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
-        self.nonce++;
         self.timestamp = block.timestamp;
         self.disabled = other.disabled;
     }
@@ -91,6 +90,7 @@ library BasketLib {
  */
 contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using BasketLib for Basket;
+    using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -195,7 +195,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         timestamp = basket.timestamp;
     }
 
-    /// @return status_ The status of the basket
+    /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
         if (basket.disabled) return CollateralStatus.DISABLED;
 
@@ -203,9 +203,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
 
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
-            if (uint256(s) > uint256(status_)) {
-                status_ = s;
-            }
+            if (s.worseThan(status_)) status_ = s;
         }
     }
 

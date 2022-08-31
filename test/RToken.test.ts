@@ -504,7 +504,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       await expectIssuance(addr1.address, 0, {
         amount: issueAmount,
-        basketNonce: initialBasketNonce.add(2),
+        basketNonce: initialBasketNonce.add(1),
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
         processed: false,
       })
