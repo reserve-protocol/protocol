@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
-import { MAX_UINT96, TradeStatus } from '../common/constants'
+import { MAX_UINT96, TradeStatus, ZERO_ADDRESS } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
@@ -78,6 +78,28 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       expect(await broker.auctionLength()).to.equal(config.auctionLength)
       expect(await broker.disabled()).to.equal(false)
       expect(await broker.main()).to.equal(main.address)
+    })
+
+    it('Should perform validations on init', async () => {
+      // Create a Broker
+      const BrokerFactory: ContractFactory = await ethers.getContractFactory(
+        `BrokerP${IMPLEMENTATION}`
+      )
+
+      let newBroker: TestIBroker = <TestIBroker>await BrokerFactory.deploy()
+
+      if (IMPLEMENTATION == Implementation.P1) {
+        newBroker = <TestIBroker>await upgrades.deployProxy(BrokerFactory, [], {
+          kind: 'uups',
+        })
+      }
+
+      await expect(
+        newBroker.init(main.address, ZERO_ADDRESS, ZERO_ADDRESS, bn('100'))
+      ).to.be.revertedWith('invalid Gnosis address')
+      await expect(
+        newBroker.init(main.address, gnosis.address, ZERO_ADDRESS, bn('100'))
+      ).to.be.revertedWith('invalid Trade Implementation address')
     })
   })
 

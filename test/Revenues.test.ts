@@ -2,7 +2,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
@@ -26,6 +26,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RewardableLibP1,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -36,6 +37,8 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
+  TradingLibP0,
+  TradingLibP1,
   USDCMock,
   FiatCollateral,
 } from '../typechain'
@@ -175,6 +178,64 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
+  })
+
+  describe('Deployment', () => {
+    it('Should setup RevenueTraders correctly', async () => {
+      expect(await rsrTrader.main()).to.equal(main.address)
+      expect(await rsrTrader.tokenToBuy()).to.equal(rsr.address)
+      expect(await rsrTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+
+      expect(await rTokenTrader.main()).to.equal(main.address)
+      expect(await rTokenTrader.tokenToBuy()).to.equal(rToken.address)
+      expect(await rTokenTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+    })
+
+    it('Should perform validations on init', async () => {
+      if (IMPLEMENTATION == Implementation.P0) {
+        // Deploy TradingLib external library
+        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+        const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+
+        // Create RevenueTrader Factory
+        const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
+          'RevenueTraderP0',
+          { libraries: { TradingLibP0: tradingLib.address } }
+        )
+
+        const newTrader = <TestIRevenueTrader>await RevenueTraderFactory.deploy()
+
+        await expect(newTrader.init(main.address, ZERO_ADDRESS, bn('100'))).to.be.revertedWith(
+          'invalid token address'
+        )
+      } else if (IMPLEMENTATION == Implementation.P1) {
+        // Deploy TradingLib external library
+        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+        const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+
+        // Deploy RewardableLib external library
+        const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
+          'RewardableLibP1'
+        )
+        const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+
+        const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
+          'RevenueTraderP1',
+          {
+            libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+          }
+        )
+
+        const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
+          kind: 'uups',
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+        })
+
+        await expect(newTrader.init(main.address, ZERO_ADDRESS, bn('100'))).to.be.revertedWith(
+          'invalid token address'
+        )
+      }
+    })
   })
 
   describe('Config/Setup', function () {
