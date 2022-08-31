@@ -74,7 +74,7 @@ contract BrokerP0Fuzz is BrokerP0 {
         return trade;
     }
 
-    function settleTradeS() public {
+    function settleTrades() public {
         uint256 length = tradeSet.length();
         IMainFuzz m = IMainFuzz(address(main));
         for (uint256 i = 0; i < length; i++) {
