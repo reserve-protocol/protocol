@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
 import {
   IConfig,
   MAX_TRADING_DELAY,
@@ -404,6 +404,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
       ).to.be.revertedWith('no distribution defined')
+
+      // Create a new instance of Main
+      const MainFactory: ContractFactory = await ethers.getContractFactory(`MainP${IMPLEMENTATION}`)
+
+      let newMain: TestIMain = <TestIMain>await MainFactory.deploy()
+
+      if (IMPLEMENTATION == Implementation.P1) {
+        newMain = <TestIMain>await upgrades.deployProxy(MainFactory, [], {
+          kind: 'uups',
+        })
+      }
+
+      await expect(newMain.init(components, ZERO_ADDRESS, 1, 1)).to.be.revertedWith(
+        'invalid RSR address'
+      )
     })
 
     it('Should emit events on init', async () => {

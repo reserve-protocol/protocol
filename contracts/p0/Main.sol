@@ -25,6 +25,8 @@ contract MainP0 is Initializable, Auth, ComponentRegistry, IMain {
         uint48 shortFreeze_,
         uint48 longFreeze_
     ) public virtual initializer {
+        require(address(rsr_) != address(0), "invalid RSR address");
+
         __Auth_init(shortFreeze_, longFreeze_);
         __ComponentRegistry_init(components);
 
