@@ -47,7 +47,6 @@ contract MainP1 is
     /// @custom:refresher
     /// @custom:interaction CEI
     function poke() external {
-        require(!pausedOrFrozen(), "paused or frozen");
         // == Refresher ==
         assetRegistry.refresh();
 
