@@ -120,11 +120,18 @@ Total: ~66M gas
 
 ## Mainnet Deployment Instructions
 
+4 phases
+
+1. Generate the deployment key
+2. Finalize .env file
+3. Deploy
+4. Verify
+
 ### Generate the deployment key
 
 Do NOT screenshare this part!
 
-It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite, known as `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts` in our scripts. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: at least 3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps, causing us to have to start the FacadeWrite steps again.
+It's important that nobody know the deployment key between steps 1 and 2 of the FacadeWrite: `phase3-rtoken/1_deploy_rtoken.ts` and `phase3-rtoken/2_deploy_governance.ts`. But beyond this, we do not require the deployment key to be highly secured. The key will need to hold a decent amount of ETH in order to pay for deployment (estimate: at minimum 3 ETH at 30 gwei) and we certainly do not want someone to come in and snipe our deployment between the FacadeWrite steps, causing us to have to start the FacadeWrite steps again.
 
 First, make sure you have golang setup on your machine. If you don't, here are the quick steps:
 
@@ -132,16 +139,18 @@ First, make sure you have golang setup on your machine. If you don't, here are t
 - Run the package install - confirm `go version` prints something
 - Add to your bash profile: (i) `export GOPATH=$HOME/go` and (ii) `export PATH=$PATH:$GOPATH/bin`
 
-Next, run run the following from the project root:
+Next, navigate to the project root and (optional) save your local `.env` file before we clobber it. If you don't care about your prior `.env` file, you can ignore this.
+
+Then
 
 ```
-go install github.com/kubetrail/bip39@fd599ff6b5589b01e7bf8b394057e8d4c215a680
-bip39 gen > .env.new [TODO: replace with Matt's golang package]
+go install https://github.com/reserve-protocol/tiny39@latest
+tiny39 > .env
 ```
 
-Confirm you have a local file `.env.new` that contains the newly generated mnemonic. Send this over signal to other close members on the team. This may be necessary to sign messages from the deployer key in the future.
+Confirm you have a local file `.env` that contains the newly generated mnemonic. Send this over signal to other close members on the team. This may be necessary to sign messages from the deployer key in the future.
 
-End state: You have a `.env.new` file that contains a seed phrase, and this seed phrase has been shared securely.
+End state: You have a `.env` file that contains a seed phrase, and this seed phrase has been shared securely.
 
 ### Finalize .env file
 
@@ -149,15 +158,9 @@ End state: You have a `.env.new` file that contains a seed phrase, and this seed
 
 To complete the environment configuration:
 
-1. Open your local `.env.new` file and set `MNEMONIC` equal to the generated seed phrase.
+1. Open your local `.env` file in an editor
 1. Add a second entry for `MAINNET_RPC_URL` to be an RPC endpoint, probably from alchemy/infura.
 1. Add a third entry for `ETHERSCAN_API_KEY`. Note this is _just_ the key, not the whole url.
-
-Our new environment configuration is ready to go, rename it to `.env` with:
-
-```
-mv .env.new .env
-```
 
 Finally, run the `check_env` script in order to confirm the 3 environment variables are configured correctly.
 
@@ -170,9 +173,9 @@ If this passes successfully it will print the deployer address and the current E
 1. Send at least 6 ETH to this address (check ethgasstation.info; if gas prices are > 30gwei then we may need more)
 2. Close the current terminal session.
 
-End state: You have a fresh terminal session and a confirmed-good `.env` file. You did all of this without screensharing and are now ready to begin screensharing to perform the deployment.
+End state: Your `.env` file is known to be good. You did all of this without screensharing and are now at the end of the private-portion of the deployment process.
 
-### Deploy!
+### Deploy
 
 [Screensharing ok]
 
@@ -202,7 +205,9 @@ Next, run:
 hardhat run scripts/verify_all.ts --network mainnet
 ```
 
-`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified. (It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.)
+`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+
+It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
 Manual verification steps:
 

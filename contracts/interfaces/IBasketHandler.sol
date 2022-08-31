@@ -64,7 +64,7 @@ interface IBasketHandler is IComponent {
     function refreshBasket() external;
 
     /// @return If the BackingManager has sufficient collateral to redeem the entire RToken supply
-    function fullyCapitalized() external view returns (bool);
+    function fullyCollateralized() external view returns (bool);
 
     /// @return status The worst CollateralStatus of all collateral in the basket
     function status() external view returns (CollateralStatus status);

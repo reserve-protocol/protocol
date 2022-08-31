@@ -156,7 +156,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await weth.connect(addr1).approve(rToken.address, issueAmt.div(1000))
       await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(cTokenAmt)
       expect(await weth.balanceOf(backingManager.address)).to.equal(issueAmt.div(1000))
@@ -219,7 +219,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await assetRegistry.refresh()
 
       // Should be fully capitalized
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
     })
@@ -237,7 +237,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await basketHandler.refreshBasket()
 
       // Should be fully capitalized
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
 

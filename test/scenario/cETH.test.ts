@@ -188,7 +188,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await cETH.connect(addr1).approve(rToken.address, cTokenAmt)
       await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(cTokenAmt)
       expect(await cETH.balanceOf(backingManager.address)).to.equal(cTokenAmt.div(1000))
@@ -277,7 +277,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await assetRegistry.refresh()
 
       // Should be fully capitalized
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
     })
@@ -287,7 +287,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await basketHandler.refreshBasket()
 
       // Should be in an undercapitalized state but SOUND
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     })
 
@@ -302,7 +302,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       expect(tokens[1]).to.equal(weth.address)
 
       // Should not be fully capitalized
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(0)
 

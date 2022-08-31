@@ -181,8 +181,8 @@ contract DeployerP1 is IDeployer {
 
         // Init StRSR
         {
-            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            string memory stRSRSymbol = string(abi.encodePacked(symbol, "RSR"));
+            string memory stRSRName = string(abi.encodePacked(stRSRSymbol, " Token"));
             main.stRSR().init(
                 main,
                 stRSRName,

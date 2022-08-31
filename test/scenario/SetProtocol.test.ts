@@ -170,7 +170,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
 
   it('should not produce revenue', async () => {
     expect(await basketHandler.price()).to.equal(price)
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     await expectEvents(
       backingManager
@@ -216,7 +216,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       ]
     )
     expect(await basketHandler.price()).to.equal(price)
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 

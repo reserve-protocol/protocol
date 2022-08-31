@@ -497,14 +497,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(issueAmount))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
       await expectIssuance(addr1.address, 0, {
         amount: issueAmount,
-        basketNonce: initialBasketNonce.add(2),
+        basketNonce: initialBasketNonce.add(1),
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
         processed: false,
       })
@@ -691,7 +691,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.poke()
 
       expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
       // Attempt to vest (pending 1 block)
       await advanceBlocks(1)
@@ -1318,7 +1318,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
-      // Update basket to trigger rollbacks (using same one to keep fullyCapitalized = true)
+      // Update basket to trigger rollbacks (using same one to keep fullyCollateralized = true)
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 

@@ -58,11 +58,35 @@ interface TestIAsset is IAsset {
     function chainlinkFeed() external view returns (AggregatorV3Interface);
 }
 
+/// CollateralStatus must obey a linear ordering. That is:
+/// - being DISABLED is worse than being UNPRICED, IFFY, or SOUND
+/// - being UNPRICED is worse than being IFFY or SOUND
+/// - being IFFY is worse than being SOUND.
 enum CollateralStatus {
     SOUND,
     IFFY, // When a peg is not holding
     UNPRICED, // When a problem is detected with the chainlink feed
     DISABLED // When the collateral has completely defaulted
+}
+
+/// Upgrade-safe maximum operator for CollateralStatus
+library CollateralStatusComparator {
+    /// @return Whether a is worse than b
+    function worseThan(CollateralStatus a, CollateralStatus b) internal pure returns (bool) {
+        // Short-circuit the normal case
+        if (a == CollateralStatus.SOUND) return false;
+
+        // This is written out in order to make it harder to accidentally expand the enum
+        // without thinking about linear ordering constraints.
+        return
+            (a == CollateralStatus.IFFY && b == CollateralStatus.SOUND) ||
+            (a == CollateralStatus.UNPRICED &&
+                (b == CollateralStatus.SOUND || b == CollateralStatus.IFFY)) ||
+            (a == CollateralStatus.DISABLED &&
+                (b == CollateralStatus.SOUND ||
+                    b == CollateralStatus.IFFY ||
+                    b == CollateralStatus.UNPRICED));
+    }
 }
 
 /**
