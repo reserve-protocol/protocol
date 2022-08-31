@@ -161,7 +161,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await wbtc.connect(addr1).approve(rToken.address, issueAmt)
       await rToken.connect(addr1).issue(issueAmt)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await rToken.totalSupply()).to.equal(issueAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmt)
       expect(await wbtc.balanceOf(backingManager.address)).to.equal(issueAmt.div(1000))
@@ -232,7 +232,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await assetRegistry.refresh()
 
       // Should be fully capitalized
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.basketsHeldBy(backingManager.address)).to.equal(issueAmt)
     })
@@ -242,7 +242,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       await basketHandler.refreshBasket()
 
       // Should be in an undercapitalized state but SOUND
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
     })
 

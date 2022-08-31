@@ -184,7 +184,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// @return Whether it holds enough basket units of collateral
-    function fullyCapitalized() external view returns (bool) {
+    function fullyCollateralized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 

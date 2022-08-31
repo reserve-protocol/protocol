@@ -1512,7 +1512,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
     it('Should register simple Basket correctly', async () => {
       // Basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(dai.address)
       expect(backing[1]).to.equal(stataDai.address)
@@ -1857,7 +1857,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
 
         // Check Basket
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         const backing = await facade.basketTokens(rToken.address)
         expect(backing[0]).to.equal(wbtc.address)
         expect(backing[1]).to.equal(cWBTC.address)
@@ -2070,7 +2070,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const totalPriceUSD = usdtPrice
 
         // Check Basket
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         const backing = await facade.basketTokens(rToken.address)
         expect(backing[0]).to.equal(usdt.address)
         expect(backing.length).to.equal(1)

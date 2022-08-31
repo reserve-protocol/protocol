@@ -582,7 +582,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
         // Advance time till auction ends
         await advanceTime(config.auctionLength.add(100).toString())
-        uncapitalized = !(await basketHandler.fullyCapitalized())
+        uncapitalized = !(await basketHandler.fullyCollateralized())
       }
 
       // Should not have taken a haircut
@@ -590,7 +590,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       // Should be capitalized or still capitalizing
       expect(
-        (await basketHandler.fullyCapitalized()) || Boolean(await backingManager.tradesOpen())
+        (await basketHandler.fullyCollateralized()) || Boolean(await backingManager.tradesOpen())
       ).to.equal(true)
     }
 

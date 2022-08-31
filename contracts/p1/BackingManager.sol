@@ -63,7 +63,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         (, uint256 basketTimestamp) = main.basketHandler().lastSet();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (main.basketHandler().fullyCapitalized()) {
+        if (main.basketHandler().fullyCollateralized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
@@ -194,7 +194,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function compromiseBasketsNeeded() private {
         // TODO this might be the one assert we actually keep
-        assert(tradesOpen == 0 && !main.basketHandler().fullyCapitalized());
+        assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
     }
 

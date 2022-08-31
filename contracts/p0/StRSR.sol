@@ -187,7 +187,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     /// @custom:interaction
     function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCapitalized(), "RToken uncapitalized");
+        require(bh.fullyCollateralized(), "RToken uncapitalized");
         require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
 
         Withdrawal[] storage queue = withdrawals[account];

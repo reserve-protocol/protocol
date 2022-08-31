@@ -181,8 +181,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
 
       // ERC20
-      expect(await stRSR.name()).to.equal('stRTKNRSR Token')
-      expect(await stRSR.symbol()).to.equal('stRTKNRSR')
+      expect(await stRSR.name()).to.equal('RTKNRSR Token')
+      expect(await stRSR.symbol()).to.equal('RTKNRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
 
@@ -630,7 +630,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // Set not fully capitalized by changing basket
         await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
         await basketHandler.connect(owner).refreshBasket()
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
@@ -641,7 +641,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await basketHandler.connect(owner).setPrimeBasket(erc20s, basketsNeededAmts)
         await basketHandler.connect(owner).refreshBasket()
 
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
         // Withdraw
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
@@ -662,7 +662,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await setOraclePrice(collateral1.address, bn('0.5e8'))
         await collateral1.refresh()
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
