@@ -3,10 +3,17 @@ import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
-import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
+import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setInvalidOracleTimestamp, setOraclePrice } from '../utils/oracles'
-import { Asset, ERC20Mock, RTokenAsset, TestIRToken, OracleLib } from '../../typechain'
+import {
+  Asset,
+  ERC20Mock,
+  RTokenAsset,
+  RTokenPricingLib,
+  TestIRToken,
+  OracleLib,
+} from '../../typechain'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -36,7 +43,11 @@ describe('Assets contracts #fast', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
+  // Factory
+  let AssetFactory: ContractFactory
+
   let oracleLib: OracleLib
+  let rTokenPricing: RTokenPricingLib
 
   const amt = fp('1e4')
 
@@ -61,6 +72,7 @@ describe('Assets contracts #fast', () => {
       rToken,
       rTokenAsset,
       oracleLib,
+      rTokenPricing,
     } = await loadFixture(defaultFixture))
 
     collateral0 = <Collateral>await ethers.getContractAt('Asset', collateral[0].address)
@@ -77,6 +89,10 @@ describe('Assets contracts #fast', () => {
       await tok.connect(wallet).approve(rToken.address, amt)
     }
     await rToken.connect(wallet).issue(amt)
+
+    AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
   })
 
   describe('Deployment', () => {
@@ -159,7 +175,6 @@ describe('Assets contracts #fast', () => {
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.price()).to.equal(fp('1.1'))
-      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
     })
 
     it('Should revert if price is zero', async () => {
@@ -187,6 +202,127 @@ describe('Assets contracts #fast', () => {
       expect(await aaveAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
       expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
       expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // Redeem RToken to make price function revert
+      await rToken.connect(wallet).redeem(amt)
+      await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+    })
+
+    it('Should calculate trade min/max correctly', async () => {
+      // Check initial values
+      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      //  Reduce price in half - doubles min size, maintains max size
+      await setOraclePrice(rsrAsset.address, bn('0.5e8')) // half
+      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt.mul(2))
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // Double price - still maintains min size, max size reduces in half
+      await setOraclePrice(rsrAsset.address, bn('2e8')) // double
+      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt.div(2))
+
+      // Handle overflow if minVal is too large
+      await setOraclePrice(rsrAsset.address, bn('0.5e8')) // half
+      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      invalidTradingRange.minVal = MAX_UINT192
+      invalidTradingRange.maxVal = MAX_UINT192
+      let newRSRAsset = <Asset>(
+        await AssetFactory.deploy(
+          await rsrAsset.chainlinkFeed(),
+          rsr.address,
+          ZERO_ADDRESS,
+          invalidTradingRange,
+          await rsrAsset.oracleTimeout()
+        )
+      )
+
+      await expect(newRSRAsset.minTradeSize()).to.be.reverted
+      await expect(newRSRAsset.maxTradeSize()).to.be.reverted
+
+      // Check with reduced range
+      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
+      reducedTradingRange.maxVal = reducedTradingRange.minVal
+      newRSRAsset = <Asset>(
+        await AssetFactory.deploy(
+          await rsrAsset.chainlinkFeed(),
+          rsr.address,
+          ZERO_ADDRESS,
+          reducedTradingRange,
+          await rsrAsset.oracleTimeout()
+        )
+      )
+
+      // Reduce to half original price, maintains range
+      await setOraclePrice(rsrAsset.address, bn('0.5e8')) // half
+      expect(await newRSRAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
+      expect(await newRSRAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+
+      // Double original price, maintains range
+      await setOraclePrice(rsrAsset.address, bn('2e8')) // double
+      expect(await newRSRAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
+      expect(await newRSRAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+    })
+
+    it('Should calculate trade min/max correctly - RToken', async () => {
+      // Check initial values
+      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // Reduce price in half - doubles min size, maintains max size
+      await setOraclePrice(collateral0.address, bn('0.5e8')) // half
+      await setOraclePrice(collateral1.address, bn('0.5e8')) // half
+
+      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt.mul(2))
+      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // Double price - still maintains min size, max size reduces in half
+      await setOraclePrice(rsrAsset.address, bn('2e8')) // double
+      await setOraclePrice(collateral0.address, bn('2e8')) // double
+      await setOraclePrice(collateral1.address, bn('2e8')) // double
+
+      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt.div(2))
+
+      // Handle overflow if minVal is too large
+      await setOraclePrice(collateral0.address, bn('0.5e8')) // half
+      await setOraclePrice(collateral1.address, bn('0.5e8')) // half
+      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      invalidTradingRange.minVal = MAX_UINT192
+      invalidTradingRange.maxVal = MAX_UINT192
+      const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset', {
+        libraries: { RTokenPricingLib: rTokenPricing.address },
+      })
+      let newRTokenAsset = <RTokenAsset>(
+        await RTokenAssetFactory.deploy(rToken.address, invalidTradingRange)
+      )
+
+      await expect(newRTokenAsset.minTradeSize()).to.be.reverted
+      await expect(newRTokenAsset.maxTradeSize()).to.be.reverted
+
+      // Check with reduced range
+      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
+      reducedTradingRange.maxVal = reducedTradingRange.minVal
+      newRTokenAsset = <RTokenAsset>(
+        await RTokenAssetFactory.deploy(rToken.address, reducedTradingRange)
+      )
+
+      // Reduce to half original price, maintains range
+      await setOraclePrice(collateral0.address, bn('0.5e8')) // half
+      await setOraclePrice(collateral1.address, bn('0.5e8')) // half
+      expect(await newRTokenAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
+      expect(await newRTokenAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+
+      //  Double original price, maintains range
+      await setOraclePrice(collateral0.address, bn('2e8')) // double
+      await setOraclePrice(collateral1.address, bn('2e8')) // double
+      expect(await newRTokenAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
+      expect(await newRTokenAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
     })
 
     it('Should revert if price is stale', async () => {
@@ -209,37 +345,32 @@ describe('Assets contracts #fast', () => {
       await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
     })
   })
+
   describe('Constructor validation', () => {
     it('Should not allow missing chainlink feed', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
       await expect(
         AssetFactory.deploy(ZERO_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, config.rTokenTradingRange, 1)
       ).to.be.revertedWith('missing chainlink feed')
     })
     it('Should not allow missing erc20', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ZERO_ADDRESS, ONE_ADDRESS, config.rTokenTradingRange, 1)
       ).to.be.revertedWith('missing erc20')
     })
     it('Should not allow 0 oracleTimeout', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, config.rTokenTradingRange, 0)
       ).to.be.revertedWith('oracleTimeout zero')
     })
-    it('Should not allow 0 rTokenTradingRange.maxAmt', async () => {
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+    it('Should not allow 0 rTokenTradingRange.maxAmt and minAmt', async () => {
       const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
       newTradingRange.maxAmt = 0
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
+      ).to.be.revertedWith('invalid trading range')
+
+      newTradingRange.maxAmt = fp('1e6')
+      newTradingRange.minAmt = 0
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
       ).to.be.revertedWith('invalid trading range')
