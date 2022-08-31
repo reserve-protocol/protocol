@@ -442,7 +442,7 @@ describe('FacadeWrite contract', () => {
           await main.connect(owner).unpause()
 
           // Basket
-          expect(await basketHandler.fullyCapitalized()).to.equal(true)
+          expect(await basketHandler.fullyCollateralized()).to.equal(true)
           const backing = await facade.basketTokens(rToken.address)
           expect(backing[0]).to.equal(token.address)
           expect(backing[1]).to.equal(usdc.address)

@@ -277,7 +277,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
     it('Should Issue/Redeem with max basket correctly', async () => {
       // Basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing: string[] = await facade.basketTokens(rToken.address)
       expect(backing.length).to.equal(maxBasketSize)
 
@@ -364,7 +364,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       }
 
       // Check new basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       const newBacking: string[] = await facade.basketTokens(rToken.address)
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -405,7 +405,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
     it('Should Issue/Redeem with max basket correctly', async () => {
       // Basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing: string[] = await facade.basketTokens(rToken.address)
       expect(backing.length).to.equal(maxBasketSize)
 
@@ -479,7 +479,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       }
 
       // Check new basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       const newBacking: string[] = await facade.basketTokens(rToken.address)
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)

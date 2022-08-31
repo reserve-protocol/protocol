@@ -269,7 +269,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should register Basket correctly', async () => {
       // Basket
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)
@@ -1301,7 +1301,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket remains the same in this case
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
       expect(backing[0]).to.equal(token0.address)
       expect(backing[1]).to.equal(token1.address)

@@ -158,8 +158,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
       expect(await one.rToken.totalSupply()).to.equal(issueAmt)
       expect(await two.rToken.totalSupply()).to.equal(issueAmt)
-      expect(await one.basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await one.basketHandler.fullyCollateralized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await one.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
     })
@@ -180,8 +180,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await staticATokenERC20.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // BasketHandler checks
-      expect(await one.basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await one.basketHandler.fullyCollateralized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
     })
@@ -189,12 +189,12 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
     it('should tolerate changes in the price of the inner RToken during auction', async () => {
       // Burn half the backing in the inner RToken
       await staticATokenERC20.connect(owner).burn(one.backingManager.address, issueAmt.div(2))
-      expect(await one.basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await one.basketHandler.fullyCollateralized()).to.equal(false)
       expect(await one.basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Verify outer RToken isn't panicking
       await two.assetRegistry.refresh()
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expect(two.backingManager.manageTokens([])).to.not.emit(
         two.backingManager,
@@ -210,7 +210,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
       // Verify outer RToken isn't panicking
       await two.assetRegistry.refresh()
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expect(two.backingManager.manageTokens([])).to.not.emit(
         two.backingManager,
@@ -285,12 +285,12 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       await two.rToken.connect(addr1).redeem(issueAmt.div(2))
       expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt.div(10)) // 1/10th
       expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt.div(2))
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Donate the inner RToken to the outer RToken
       await one.rToken.connect(addr1).transfer(two.backingManager.address, issueAmt.div(2))
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Outer RToken should launch revenue auctions with the donated inner RToken
@@ -326,8 +326,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       ])
 
       // Final checks
-      expect(await one.basketHandler.fullyCapitalized()).to.equal(true)
-      expect(await two.basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await one.basketHandler.fullyCollateralized()).to.equal(true)
+      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await one.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await one.rToken.totalSupply()).to.equal(issueAmt)
