@@ -10,6 +10,8 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 
+import "hardhat/console.sol";
+
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket
     IERC20[] erc20s; // Ordered list of backup collateral ERC20s
@@ -146,9 +148,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             // In that case the basket is set to disabled.
+            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
-            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
