@@ -9,6 +9,8 @@ import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IGnosis.sol";
 import "contracts/interfaces/ITrade.sol";
 
+import "hardhat/console.sol";
+
 enum TradeStatus {
     NOT_STARTED, // before init()
     OPEN, // after init() and before settle()
@@ -67,20 +69,22 @@ contract GnosisTrade is ITrade {
         uint48 auctionLength,
         TradeRequest memory req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
-        require(req.sell.erc20().balanceOf(address(this)) >= req.sellAmount, "unfunded trade");
+        require(req.sellAmount < type(uint96).max, "sellAmount too large");
+        require(req.minBuyAmount < type(uint96).max, "minBuyAmount too large");
+
+        sell = req.sell.erc20();
+        buy = req.buy.erc20();
+        initBal = sell.balanceOf(address(this));
+
+        require(initBal < type(uint96).max, "initBal too large");
+        require(initBal >= req.sellAmount, "unfunded trade");
+
         assert(origin_ != address(0));
 
         broker = broker_;
         origin = origin_;
         gnosis = gnosis_;
         endTime = uint48(block.timestamp) + auctionLength;
-
-        sell = req.sell.erc20();
-        buy = req.buy.erc20();
-        require(sell.balanceOf(address(this)) < type(uint96).max, "initBal too large");
-        require(req.sellAmount < type(uint96).max, "sellAmount too large");
-        require(req.minBuyAmount < type(uint96).max, "minBuyAmount too large");
-        initBal = sell.balanceOf(address(this));
 
         // {buyTok/sellTok}
         worstCasePrice = shiftl_toFix(req.minBuyAmount, -int8(buy.decimals())).div(
