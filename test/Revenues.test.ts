@@ -1223,6 +1223,38 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
+      it('Should revert if no distribution exists for a specific token', async () => {
+        // Check funds in Backing Manager and destinations
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Set f = 0, avoid dropping tokens
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(1), bn(0))
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(0))
+
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, bn(100))
+        ).to.be.revertedWith('nothing to distribute')
+
+        //  Check funds, nothing changed
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
       it('Should not trade dust when claiming rewards', async () => {
         // Set COMP tokens as reward - Dust
         rewardAmountCOMP = bn('0.01e18')
