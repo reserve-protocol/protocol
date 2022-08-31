@@ -10,8 +10,6 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 
-import "hardhat/console.sol";
-
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket
     IERC20[] erc20s; // Ordered list of backup collateral ERC20s
