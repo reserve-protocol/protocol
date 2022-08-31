@@ -343,8 +343,8 @@ describe('FacadeWrite contract', () => {
         expect(await rsrTrader.main()).to.equal(main.address)
 
         // StRSR
-        expect(await stRSR.name()).to.equal('stRTKNRSR Token')
-        expect(await stRSR.symbol()).to.equal('stRTKNRSR')
+        expect(await stRSR.name()).to.equal('RTKNRSR Token')
+        expect(await stRSR.symbol()).to.equal('RTKNRSR')
         expect(await stRSR.decimals()).to.equal(18)
         expect(await stRSR.totalSupply()).to.equal(0)
         expect(await stRSR.main()).to.equal(main.address)
