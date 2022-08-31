@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig, MAX_AUCTION_LENGTH } from '../common/configuration'
-import { TradeStatus } from '../common/constants'
+import { MAX_UINT96, TradeStatus } from '../common/constants'
 import { bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
@@ -324,6 +324,71 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
           tradeRequest
         )
       ).to.be.revertedWith('Invalid trade state')
+    })
+
+    it('Should perform balance and amounts validations on init', async () => {
+      const amount: BigNumber = bn('100e18')
+      const invalidAmount: BigNumber = MAX_UINT96.add(1)
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+
+      // Initialize trade - Sell Amount too large
+      // Fund trade
+      await token0.connect(owner).mint(trade.address, invalidAmount)
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: invalidAmount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Attempt to initialize
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.be.revertedWith('sellAmount too large')
+
+      // Initialize trade - MinBuyAmount  too large
+      tradeRequest.sellAmount = amount
+      tradeRequest.minBuyAmount = invalidAmount
+
+      // Attempt to initialize
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.be.revertedWith('minBuyAmount too large')
+
+      // Restore value
+      tradeRequest.minBuyAmount = bn('0')
+
+      // Fund trade with large balance
+      await token0.connect(owner).mint(trade.address, invalidAmount)
+
+      // Attempt to initialize
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          gnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.be.revertedWith('initBal too large')
     })
 
     it('Should not allow to initialize an unfunded trade', async () => {
