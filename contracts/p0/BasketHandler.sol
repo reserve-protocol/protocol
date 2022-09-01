@@ -248,7 +248,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    /// @dev Returns FIX_MAX for an empty basket
+    /// @dev Returns FIX_ZERO for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
         if (basket.erc20s.length == 0 || basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
