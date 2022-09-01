@@ -388,9 +388,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not launch revenue auction if IFFY', async () => {
-        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(collateral0.address, bn('7e7'))
+        await collateral0.refresh()
+
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.not.emit(
+        await expect(rTokenTrader.manageToken(token0.address)).to.not.emit(
           rTokenTrader,
           'TradeStarted'
         )

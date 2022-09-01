@@ -778,7 +778,6 @@ describe('Collateral contracts', () => {
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
       await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
-      await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
