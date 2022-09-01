@@ -485,6 +485,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check funds in Market
         expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
+        // If we attempt to settle before auction ended it reverts
+        await expect(rsrTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        await expect(rTokenTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        // Nothing occurs if we attempt to settle for a token that is not being traded
+        await expect(rsrTrader.settleTrade(aaveToken.address)).to.not.emit
+        await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
+
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
