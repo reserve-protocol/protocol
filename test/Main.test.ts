@@ -1293,6 +1293,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('token is not collateral')
     })
 
+    it('Should not allow to set backup Config with RSR/RToken', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+    })
+
     it('Should allow to set backup Config if OWNER', async () => {
       // Set basket
       await expect(
@@ -1486,6 +1500,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
+
+      // Check values - All zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
       // Set basket config
       await expect(

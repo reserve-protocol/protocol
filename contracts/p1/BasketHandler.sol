@@ -176,8 +176,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
         }
@@ -253,12 +253,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    /// @dev Returns FIX_MAX for an empty basket
+    /// @dev Returns FIX_ZERO for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
-        if (basket.disabled) return FIX_ZERO;
+        uint256 length = basket.erc20s.length;
+        if (length == 0 || basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
 
-        uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
@@ -271,7 +271,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // {BU} = {tok} / {tok/BU}
             baskets = fixMin(baskets, bal.div(q));
         }
-        if (baskets == FIX_MAX) return FIX_ZERO;
     }
 
     // These are effectively local variables of _switchBasket. Nothing should use its value

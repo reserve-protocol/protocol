@@ -8,6 +8,7 @@ import { bn, toBNDecimals } from '../common/numbers'
 import {
   ERC20Mock,
   GnosisMock,
+  GnosisMockReentrant,
   GnosisTrade,
   TestIBackingManager,
   TestIBroker,
@@ -348,6 +349,46 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       ).to.be.revertedWith('Invalid trade state')
     })
 
+    it('Should protect against reentrancy when initializing trade', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Reetrant Gnosis
+      const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
+        'GnosisMockReentrant'
+      )
+      const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
+        await GnosisReentrantFactory.deploy()
+      )
+      await reentrantGnosis.setReenterOnInit(true)
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Check state
+      expect(await trade.status()).to.equal(TradeStatus.NOT_STARTED)
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize with reentrant Gnosis
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          reentrantGnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.be.revertedWith('Invalid trade state')
+    })
+
     it('Should perform balance and amounts validations on init', async () => {
       const amount: BigNumber = bn('100e18')
       const invalidAmount: BigNumber = MAX_UINT96.add(1)
@@ -501,6 +542,52 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       // Check status
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await trade.canSettle()).to.equal(false)
+    })
+
+    it('Should protect against reentrancy when settling trade', async () => {
+      const amount: BigNumber = bn('100e18')
+
+      // Create a Reetrant Gnosis
+      const GnosisReentrantFactory: ContractFactory = await ethers.getContractFactory(
+        'GnosisMockReentrant'
+      )
+      const reentrantGnosis: GnosisMockReentrant = <GnosisMockReentrant>(
+        await GnosisReentrantFactory.deploy()
+      )
+      await reentrantGnosis.setReenterOnInit(false)
+      await reentrantGnosis.setReenterOnSettle(true)
+
+      // Create a Trade
+      const TradeFactory: ContractFactory = await ethers.getContractFactory('GnosisTrade')
+      const trade: GnosisTrade = <GnosisTrade>await TradeFactory.deploy()
+
+      // Initialize trade - simulate from backingManager
+      const tradeRequest: ITradeRequest = {
+        sell: collateral0.address,
+        buy: collateral1.address,
+        sellAmount: amount,
+        minBuyAmount: bn('0'),
+      }
+
+      // Fund trade and initialize
+      await token0.connect(owner).mint(trade.address, amount)
+      await expect(
+        trade.init(
+          broker.address,
+          backingManager.address,
+          reentrantGnosis.address,
+          config.auctionLength,
+          tradeRequest
+        )
+      ).to.not.be.reverted
+
+      // Advance time till trade can be settled
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // Attempt Settle trade
+      await whileImpersonating(backingManager.address, async (bmSigner) => {
+        await expect(trade.connect(bmSigner).settle()).to.be.revertedWith('Invalid trade state')
+      })
     })
 
     it('Should be able to settle a trade - handles arbitrary funds being sent to trade', async () => {
