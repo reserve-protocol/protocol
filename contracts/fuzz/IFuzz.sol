@@ -4,8 +4,9 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 
 import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/ITrade.sol";
+import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/interfaces/ITrade.sol";
 
 import "contracts/interfaces/IRToken.sol";
 
@@ -36,7 +37,13 @@ interface IMarketMock {
 
 // ================ Main ================
 interface IMainFuzz is IMain {
-    // Aspect: emulated sender
+    // Fuzzing initializer. Each scenario's constructor should call this.
+    function initFuzz(DeploymentParams memory params, IMarketMock marketMock_) external;
+
+    // Retrieve the MarketMock contract, i.e, for trading
+    function marketMock() external view returns (IMarketMock);
+
+    // ==== Emulated sender ====
     function translateAddr(address addr) external view returns (address);
 
     // Begin sppofing; translateAddr(realAddr) will return `pretendAddr` instead of realAddr
@@ -45,27 +52,32 @@ interface IMainFuzz is IMain {
     // Unset spoofing for addr
     function unspoof(address realAddr) external;
 
-    // Retrieve the MarketMock contract, i.e, for trading
-    function marketMock() external view returns (IMarketMock);
+    // ==== Token and User lightweight registries ====
 
-    // Tokens and Users by IDs
-    function numTokens() external view returns (uint256);
-
+    // register a new ERC20 token
     function addToken(IERC20 token) external;
+
+    // number of registered tokens
+    function numTokens() external view returns (uint256);
 
     // lookup an added token at index; error if index >= numTokens()
     function tokens(uint256 index) external view returns (IERC20);
 
-    // return an arbitrary token: added, RSR, or RToken
+    // return an arbitrary token: RSR, RToken, or a token from the registry
     function someToken(uint256 seed) external view returns (IERC20);
 
-    function numUsers() external view returns (uint256);
-
+    // register a new user (address)
     function addUser(address user) external;
+
+    // number of registered users
+    function numUsers() external view returns (uint256);
 
     // lookup user at index; error if index >= numUsers()
     function users(uint256 index) external view returns (address);
 
-    // return an arbitrary address: a contract, an added user, 0x0, or 0x1
+    // return an arbitrary user
+    function someUser(uint256 seed) external view returns (address);
+
+    // return an arbitrary address: a contract, 0x0, 0x1, or a user from the registry
     function someAddr(uint256 seed) external view returns (address);
 }
