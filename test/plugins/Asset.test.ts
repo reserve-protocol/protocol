@@ -204,6 +204,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
 
       // Redeem RToken to make price function revert
+      // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
       await rToken.connect(wallet).redeem(amt)
       await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
       expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
