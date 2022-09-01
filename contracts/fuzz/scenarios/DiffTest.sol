@@ -29,9 +29,6 @@ contract DiffTestScenario {
     // Assertion-failure event
     event AssertionFailure(string message);
 
-    MainP0Fuzz public p0;
-    MainP1Fuzz public p1;
-
     PriceModel internal volatile =
         PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 });
     PriceModel internal stable =
@@ -40,16 +37,16 @@ contract DiffTestScenario {
         PriceModel({ kind: Kind.Walk, curr: 1e18, low: 1e18, high: 1.1e18 });
     PriceModel internal justOne = PriceModel({ kind: Kind.Constant, curr: 1e18, low: 0, high: 0 });
 
-    IERC20[] public collateralTokens;
-    IERC20[] public backupTokens;
-
     IMainFuzz[2] public p;
 
     // Once constructed, everything is set up for random echidna runs to happen:
-    // - p0 and p1 (Each system's Main) and their components are up
+    // - p[0] and p[1] (Each system's Main) and their components are up
     // - standard tokens, and their Assets and Collateral, exist
     // - standard basket is configured
     // - at least one user has plenty of starting tokens
+    IERC20[] public collateralTokens;
+    IERC20[] public backupTokens;
+
     constructor() {
         p[0] = new MainP0Fuzz();
         p[1] = new MainP1Fuzz();
@@ -58,12 +55,17 @@ contract DiffTestScenario {
 
         // For each main...
         for (uint256 proto = 0; proto < 2; proto++) {
+            // start with empty collateralTokens and backupTokens
+            while(collateralTokens.length > 0) collateralTokens.pop();
+            while(backupTokens.length > 0) backupTokens.pop();
+
             IMainFuzz main = p[proto];
 
             main.initFuzz(defaultParams(), new MarketMock(main));
 
             // Create three "standard" collateral tokens; have rewards for the first two
             for (uint256 i = 0; i < 3; i++) {
+
                 string memory num = Strings.toString(i);
                 ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
                 main.addToken(token);
@@ -167,6 +169,8 @@ contract DiffTestScenario {
     }
 
     // ================ mutators ================
+
+    // TODO: add mutators that introduce defaults and basket-breaking governance actions
 
     // ==== user functions: token ops ====
     function transfer(
@@ -368,8 +372,8 @@ contract DiffTestScenario {
     }
 
     function settleTrades() public {
-        BrokerP0Fuzz(address(p0.broker())).settleTrades();
-        BrokerP1Fuzz(address(p1.broker())).settleTrades();
+        BrokerP0Fuzz(address(p[0].broker())).settleTrades();
+        BrokerP1Fuzz(address(p[1].broker())).settleTrades();
     }
 
     IERC20[] internal backingToManage;
@@ -518,5 +522,19 @@ contract DiffTestScenario {
 
     function echidna_stRSRSuppliesEqual() public view returns (bool) {
         return p[0].stRSR().totalSupply() == p[1].stRSR().totalSupply();
+    }
+
+    function echidna_allBalancesEqual() public view returns (bool) {
+        if (p[0].numUsers() != p[1].numUsers()) return false;
+        if (p[0].numTokens() != p[1].numTokens()) return false;
+
+        for (uint u = 0; u < p[0].numUsers(); u++) {
+            for (uint t = 0; t < p[0].numTokens() + 2; t++) {
+                uint bal0 = p[0].someToken(t).balanceOf(p[0].users(u));
+                uint bal1 = p[1].someToken(t).balanceOf(p[1].users(u));
+                if (bal0 != bal1) return false;
+            }
+        }
+        return true;
     }
 }
