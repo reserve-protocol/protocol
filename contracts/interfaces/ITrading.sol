@@ -7,6 +7,10 @@ import "./IAsset.sol";
 import "./ITrade.sol";
 import "./IRewardable.sol";
 
+// Gnosis: uint96 ~= 7e28
+uint256 constant GNOSIS_MAX_TOKENS = 7e28;
+
+
 /**
  * @title ITrading
  * @notice Common events and refresher function for all Trading contracts

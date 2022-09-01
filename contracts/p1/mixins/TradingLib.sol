@@ -7,9 +7,6 @@ import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
-// Gnosis: uint96 ~= 7e28
-uint256 constant GNOSIS_MAX_TOKENS = 7e28;
-
 /**
  * @title TradingLibP1
  * @notice An informal extension of the Trading mixin that provides trade preparation views

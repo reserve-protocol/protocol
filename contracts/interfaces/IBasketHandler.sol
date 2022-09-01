@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
+import "./IBasket.sol";
 
 /**
  * @title IBasketHandler

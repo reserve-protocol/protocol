@@ -5,86 +5,12 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
+import "contracts/interfaces/IBasket.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
-
-struct BackupConfig {
-    uint256 max; // Maximum number of backup collateral erc20s to use in a basket
-    IERC20[] erc20s; // Ordered list of backup collateral ERC20s
-}
-
-struct BasketConfig {
-    // The collateral erc20s in the prime (explicitly governance-set) basket
-    IERC20[] erc20s;
-    // Amount of target units per basket for each prime collateral token. {target/BU}
-    mapping(IERC20 => uint192) targetAmts;
-    // Cached view of the target unit for each erc20 upon setup
-    mapping(IERC20 => bytes32) targetNames;
-    // Backup configurations, per target name.
-    mapping(bytes32 => BackupConfig) backups;
-}
-
-/// A reference basket that provides a dynamic definition of a basket unit (BU)
-/// Can be empty if all collateral defaults
-struct Basket {
-    IERC20[] erc20s; // Weak Invariant: after `refreshBasket`, no bad collateral || disabled
-    mapping(IERC20 => uint192) refAmts; // {ref/BU}
-    uint48 nonce;
-    uint48 timestamp;
-    bool disabled;
-    // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
-}
-
-/*
- * @title BasketLib
- */
-library BasketLib {
-    using BasketLib for Basket;
-    using FixLib for uint192;
-
-    // Empty self
-    function empty(Basket storage self) internal {
-        uint256 length = self.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
-            self.refAmts[self.erc20s[i]] = FIX_ZERO;
-        }
-        delete self.erc20s;
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
-        self.disabled = false;
-    }
-
-    /// Set `self` equal to `other`
-    function copy(Basket storage self, Basket storage other) internal {
-        empty(self);
-        uint256 length = other.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
-            self.erc20s.push(other.erc20s[i]);
-            self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
-        }
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
-        self.disabled = other.disabled;
-    }
-
-    /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
-    function add(
-        Basket storage self,
-        IERC20 tok,
-        uint192 weight
-    ) internal {
-        if (self.refAmts[tok].eq(FIX_ZERO)) {
-            self.erc20s.push(tok);
-            self.refAmts[tok] = weight;
-        } else {
-            self.refAmts[tok] = self.refAmts[tok].plus(weight);
-        }
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
-    }
-}
+import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/Basket.sol";
 
 /**
  * @title BasketHandler
