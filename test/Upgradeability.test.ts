@@ -355,8 +355,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         StRSRFactory,
         [
           main.address,
-          'RTKNRSR Token',
-          'RTKNRSR',
+          'rtknRSR Token',
+          'rtknRSR',
           config.unstakingDelay,
           config.rewardPeriod,
           config.rewardRatio,
@@ -368,8 +368,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       )
       await newStRSR.deployed()
 
-      expect(await newStRSR.name()).to.equal('RTKNRSR Token')
-      expect(await newStRSR.symbol()).to.equal('RTKNRSR')
+      expect(await newStRSR.name()).to.equal('rtknRSR Token')
+      expect(await newStRSR.symbol()).to.equal('rtknRSR')
       expect(await newStRSR.decimals()).to.equal(18)
       expect(await newStRSR.totalSupply()).to.equal(0)
       expect(await newStRSR.unstakingDelay()).to.equal(config.unstakingDelay)
@@ -665,8 +665,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(stRSRV2.address).to.equal(stRSR.address)
 
       // Check state is preserved
-      expect(await stRSRV2.name()).to.equal('RTKNRSR Token')
-      expect(await stRSRV2.symbol()).to.equal('RTKNRSR')
+      expect(await stRSRV2.name()).to.equal('rtknRSR Token')
+      expect(await stRSRV2.symbol()).to.equal('rtknRSR')
       expect(await stRSRV2.decimals()).to.equal(18)
       expect(await stRSRV2.totalSupply()).to.equal(0)
       expect(await stRSRV2.unstakingDelay()).to.equal(config.unstakingDelay)
