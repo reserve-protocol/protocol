@@ -181,8 +181,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
 
       // ERC20
-      expect(await stRSR.name()).to.equal('RTKNRSR Token')
-      expect(await stRSR.symbol()).to.equal('RTKNRSR')
+      expect(await stRSR.name()).to.equal('rtknRSR Token')
+      expect(await stRSR.symbol()).to.equal('rtknRSR')
       expect(await stRSR.decimals()).to.equal(18)
       expect(await stRSR.totalSupply()).to.equal(0)
 
