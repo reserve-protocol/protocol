@@ -938,6 +938,14 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           buyAmount: toBNDecimals(sellAmt, 6),
         })
 
+        // If we attempt to settle before auction ended it reverts
+        await expect(backingManager.settleTrade(token0.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        // Nothing occurs if we attempt to settle for a token that is not being traded
+        await expect(backingManager.settleTrade(token3.address)).to.not.emit
+
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 

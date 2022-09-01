@@ -48,7 +48,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// Try to initiate a trade with a trading partner provided by the broker
     function tryTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
-        require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
+        assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
 
         req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
