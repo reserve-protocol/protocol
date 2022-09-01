@@ -1504,7 +1504,7 @@ describe('Collateral contracts', () => {
       await expect(newCTokenNonFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
@@ -1920,7 +1920,7 @@ describe('Collateral contracts', () => {
       await expect(newCTokenSelfRefCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newCTokenSelfRefCollateral = <CTokenSelfReferentialCollateral>(
