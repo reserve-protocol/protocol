@@ -53,7 +53,7 @@ contract GnosisTrade is ITrade {
         require(status == begin, "Invalid trade state");
         status = TradeStatus.PENDING;
         _;
-        require(status == TradeStatus.PENDING, "Reentrant trade");
+        assert(status == TradeStatus.PENDING);
         status = end;
     }
 
@@ -128,7 +128,6 @@ contract GnosisTrade is ITrade {
         returns (uint256 soldAmt, uint256 boughtAmt)
     {
         require(msg.sender == origin, "only origin can settle");
-        status = TradeStatus.PENDING;
 
         // Optionally process settlement of the auction in Gnosis
         if (atStageSolutionSubmission()) {
