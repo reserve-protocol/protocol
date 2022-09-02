@@ -4,13 +4,8 @@ import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
 import { fp } from '../../common/numbers'
 import { ZERO_ADDRESS } from '../../common/constants'
-import {
-  getDeploymentFile,
-  getDeploymentFilename,
-  IDeployments,
-  getOracleTimeout,
-  verifyContract,
-} from '../deployment/deployment_utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../deployment/common'
+import { getOracleTimeout, verifyContract } from '../deployment/utils'
 
 let deployments: IDeployments
 

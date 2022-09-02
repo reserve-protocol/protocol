@@ -19,6 +19,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/libraries/String.sol";
 
 /**
  * @title DeployerP0
@@ -113,12 +114,12 @@ contract DeployerP0 is IDeployer {
         // Init Furnace
         main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(main, gnosis, ITrade(address(0)), params.auctionLength);
+        main.broker().init(main, gnosis, ITrade(address(1)), params.auctionLength);
 
         // Init StRSR
         {
-            string memory stRSRName = string(abi.encodePacked("st", symbol, "RSR Token"));
-            string memory stRSRSymbol = string(abi.encodePacked("st", symbol, "RSR"));
+            string memory stRSRSymbol = string(abi.encodePacked(StringLib.toLower(symbol), "RSR"));
+            string memory stRSRName = string(abi.encodePacked(stRSRSymbol, " Token"));
             main.stRSR().init(
                 main,
                 stRSRName,

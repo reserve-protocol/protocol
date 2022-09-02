@@ -3,13 +3,13 @@ import hre from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { fileExists, getDeploymentFilename, IDeployments } from '../deployment_utils'
+import { fileExists, getDeploymentFilename, IDeployments } from '../common'
 
 async function main() {
   // ==== Read Configuration ====
   const chainId = await getChainId(hre)
 
-  console.log(`Creating Deployment file for network ${hre.network.name} (${chainId})`)
+  console.log(`c Deployment file for network ${hre.network.name} (${chainId})`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)

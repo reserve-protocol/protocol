@@ -212,6 +212,11 @@ contract Facade is IFacade {
             insurance = rsrUoA.div(uoaNeeded);
         }
     }
+
+    /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
+    function price(IRToken rToken) external view returns (uint192) {
+        return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).price();
+    }
 }
 
 /**

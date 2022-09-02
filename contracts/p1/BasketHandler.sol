@@ -18,6 +18,7 @@ import "contracts/libraries/Basket.sol";
  */
 contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     using BasketLib for Basket;
+    using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -72,9 +73,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             // In that case the basket is set to disabled.
+            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
-            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -102,8 +103,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
         }
@@ -111,7 +112,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// @return Whether it holds enough basket units of collateral
-    function fullyCapitalized() external view returns (bool) {
+    function fullyCollateralized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
     }
 
@@ -122,17 +123,14 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         timestamp = basket.timestamp;
     }
 
-    /// @return status_ The status of the basket
+    /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
         if (basket.disabled) return CollateralStatus.DISABLED;
 
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            CollateralStatus s = coll.status();
-            if (s == CollateralStatus.DISABLED) return CollateralStatus.DISABLED;
-
-            if (uint256(s) > uint256(status_)) status_ = s;
+            CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
+            if (s.worseThan(status_)) status_ = s;
         }
     }
 
@@ -182,12 +180,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    /// @dev Returns FIX_MAX for an empty basket
+    /// @dev Returns FIX_ZERO for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
-        if (basket.disabled) return FIX_ZERO;
+        uint256 length = basket.erc20s.length;
+        if (length == 0 || basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
 
-        uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
@@ -200,7 +198,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // {BU} = {tok} / {tok/BU}
             baskets = fixMin(baskets, bal.div(q));
         }
-        if (baskets == FIX_MAX) return FIX_ZERO;
     }
 
     // These are effectively local variables of _switchBasket. Nothing should use its value

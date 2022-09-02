@@ -8,11 +8,8 @@ import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
-  getOracleTimeout,
-  getDeploymentFilename,
-  verifyContract,
-} from '../deployment/deployment_utils'
+} from '../deployment/common'
+import { getOracleTimeout, verifyContract } from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
 
 let deployments: IAssetCollDeployments
@@ -27,8 +24,6 @@ async function main() {
   if (developmentChains.includes(hre.network.name)) {
     throw new Error(`Cannot verify contracts for development chain ${hre.network.name}`)
   }
-
-  const phase1Deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)

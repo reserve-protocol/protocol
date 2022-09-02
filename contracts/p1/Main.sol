@@ -36,6 +36,7 @@ contract MainP1 is
         uint48 shortFreeze_,
         uint48 longFreeze_
     ) public virtual initializer {
+        require(address(rsr_) != address(0), "invalid RSR address");
         __Auth_init(shortFreeze_, longFreeze_);
         __ComponentRegistry_init(components);
         __UUPSUpgradeable_init();
@@ -47,7 +48,6 @@ contract MainP1 is
     /// @custom:refresher
     /// @custom:interaction CEI
     function poke() external {
-        require(!pausedOrFrozen(), "paused or frozen");
         // == Refresher ==
         assetRegistry.refresh();
 

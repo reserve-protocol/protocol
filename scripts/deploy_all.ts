@@ -2,7 +2,7 @@
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { networkConfig } from '../common/configuration'
-import { sh } from './deployment/deployment_utils'
+import { sh } from './deployment/utils'
 
 async function main() {
   const [deployer] = await hre.ethers.getSigners()
@@ -35,7 +35,7 @@ async function main() {
     // versions that are used for verification only. Further deployment is left up to the Register.
     'phase3-rtoken/0_setup_deployments.ts',
     'phase3-rtoken/1_deploy_rtoken.ts',
-    'phase3-rtoken/2_setup_governance.ts',
+    'phase3-rtoken/2_deploy_governance.ts',
   ]
 
   for (const script of scripts) {

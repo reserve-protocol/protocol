@@ -12,7 +12,7 @@ import {
   getRTokenDeploymentFilename,
   IAssetCollDeployments,
   IRTokenDeployments,
-} from '../deployment_utils'
+} from '../common'
 import { AssetRegistryP1, DeployerP1, FacadeWrite, MainP1 } from '../../../typechain'
 
 // Define the Token to deploy

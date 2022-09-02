@@ -22,7 +22,7 @@ gcloud config set compute/zone us-central1-a
 
 ## Create VM
 
-On picking an instance type -- It's gonna be one of E2, N2, or C2. Once I have the essential flow working, I can just try out each one for a few hours to get performance numbers, and then pick whatever will get the work done fastest. The cost of probably a handful of thousands of dollars just doesn't really matter, though standing up a bunch of computer that we aren't using is silly.
+On picking an instance type: I _bet_ that N2 is actually the right instance type for us; we'll want to steadily run each node at over 50% capacity, and that's substantially better on a less-dynamic system than an E2. (We _might_ need a massive-memory system instead?) The rest of this initial log happened on an E2, though, becuase that's the typical default, and I didn't really learn which to pick until later.
 
 I'll assume we're using an `e2-standard-16` to start with, and branch out from there.
 

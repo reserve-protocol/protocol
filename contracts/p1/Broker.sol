@@ -37,6 +37,11 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         ITrade tradeImplementation_,
         uint48 auctionLength_
     ) external initializer {
+        require(address(gnosis_) != address(0), "invalid Gnosis address");
+        require(
+            address(tradeImplementation_) != address(0),
+            "invalid Trade Implementation address"
+        );
         __Component_init(main_);
         gnosis = gnosis_;
         tradeImplementation = tradeImplementation_;

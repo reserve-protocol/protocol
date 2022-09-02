@@ -227,7 +227,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -243,7 +243,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -260,7 +260,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -286,7 +286,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -310,7 +310,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -351,7 +351,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -377,7 +377,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -393,7 +393,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - No changes
         expect(await basketHandler.status()).to.equal(CollateralStatus.IFFY)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -417,7 +417,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -437,7 +437,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -463,7 +463,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -476,7 +476,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       it('Should handle not having a valid backup', async () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -503,7 +503,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket is disabled even though fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Should exclude bad token
         await expectCurrentBacking({
@@ -534,7 +534,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -573,7 +573,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -663,7 +663,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -685,7 +685,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -702,7 +702,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket switch in EUR targets
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -722,7 +722,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -744,7 +744,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -758,7 +758,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Basket is disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
         // Should exclude bad token
         await expectCurrentBacking({
@@ -862,7 +862,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -878,7 +878,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -907,7 +907,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -951,7 +951,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(
@@ -974,7 +974,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -990,7 +990,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -1022,7 +1022,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         const leftover = issueAmount.sub(sellAmt)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(leftover)
@@ -1066,7 +1066,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           minBuyAmt.add(leftover)
         )
@@ -1085,7 +1085,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -1105,7 +1105,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
@@ -1135,7 +1135,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -1203,7 +1203,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(toBNDecimals(minBuyAmt, 6))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1255,7 +1255,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(
           toBNDecimals(issueAmount, 6)
@@ -1282,7 +1282,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
@@ -1315,7 +1315,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -1367,7 +1367,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
@@ -1396,7 +1396,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
@@ -1423,7 +1423,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount.sub(sellAmt))
@@ -1473,7 +1473,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
@@ -1530,7 +1530,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt.mul(2))
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt.mul(2))
@@ -1571,7 +1571,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
 
         // Should have small excess now
@@ -1606,7 +1606,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
@@ -1649,7 +1649,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check new state after basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expectCurrentBacking({
@@ -1932,7 +1932,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
@@ -1972,7 +1972,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
@@ -2062,7 +2062,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt) // Reduced 50%
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
@@ -2135,7 +2135,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           minBuyAmt.add(buyAmtBidRSR)
         )
@@ -2208,7 +2208,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -2258,7 +2258,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100)
         ) // only 75% of collateral is worth something
@@ -2350,7 +2350,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(minBuyAmt2)
         ) // adding the obtained tokens
@@ -2403,7 +2403,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(minBuyAmt2).add(buyAmtBidRSR)
         ) // adding the obtained tokens
@@ -2458,7 +2458,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -2519,7 +2519,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100)
         ) // only 75% of collateral is worth something
@@ -2618,7 +2618,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken)
         ) // adding the obtained tokens - only the required ones
@@ -2697,7 +2697,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken).add(minBuyAmtBkp1)
         ) // adding the obtained tokens
@@ -2757,7 +2757,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken).add(minBuyAmtBkp1).add(buyAmtBidRSR)
         ) // adding the obtained tokens
@@ -2802,7 +2802,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -2844,7 +2844,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
@@ -2932,7 +2932,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0)
         ) // Adding the collateral just traded
@@ -3001,7 +3001,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2)
         ) // Adding the collateral just traded
@@ -3095,7 +3095,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after third auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3).sub(minBuyAmtRebalance)
         ) // Adding the collateral just traded - subtracting funds sent to market
@@ -3156,7 +3156,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3)
         ) // Adding the collateral just traded - funds sent to market were recovered
@@ -3202,7 +3202,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
@@ -3244,7 +3244,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
@@ -3327,7 +3327,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0)
         ) // Adding the collateral just traded
@@ -3397,7 +3397,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         //  Check state after second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2)
         ) // Adding the collateral just traded
@@ -3489,7 +3489,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after third auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3).sub(minBuyAmtRebalance)
         ) // Adding the collateral just traded - subtracting funds sent to market
@@ -3581,7 +3581,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check state after fourth auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(false)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount
             .div(4)
@@ -3651,7 +3651,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.fullyCapitalized()).to.equal(true)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3)
         ) // Adding the collateral just traded - Rebalanced, funds recovered

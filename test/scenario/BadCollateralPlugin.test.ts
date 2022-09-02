@@ -155,7 +155,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
 
       // Status should remain SOUND even in the face of a falling exchange rate
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
     })
 
     it('should keep a constant redemption basket as collateral loses value', async () => {
@@ -241,7 +241,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await assetRegistry.refresh()
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
       // Should not launch auctions or create revenue
       await expectEvents(backingManager.manageTokens([token0.address]), [

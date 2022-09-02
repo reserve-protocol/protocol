@@ -424,7 +424,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
   it('Should Issue/Redeem correctly', async () => {
     // Basket
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
     const backing: string[] = await facade.basketTokens(rToken.address)
     expect(backing.length).to.equal(8)
 
@@ -1210,7 +1210,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     await rToken.connect(addr1).issue(issueAmount)
 
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
     // Get quotes for RToken
     const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
@@ -1253,7 +1253,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newExpectedTkn4).to.equal(newQuotes[4])
 
     // Check new basket
-    expect(await basketHandler.fullyCapitalized()).to.equal(false)
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
     const newBacking: string[] = await facade.basketTokens(rToken.address)
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1394,7 +1394,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check new status
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 
@@ -1413,7 +1413,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     await rToken.connect(addr1).issue(issueAmount)
 
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
     // Get quotes for RToken
     const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
@@ -1456,7 +1456,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newExpectedTkn6).to.equal(newQuotes[6])
 
     // Check new basket
-    expect(await basketHandler.fullyCapitalized()).to.equal(false)
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
     const newBacking: string[] = await facade.basketTokens(rToken.address)
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -1564,7 +1564,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // We still need 25600 - 21000 ETH (already bought) = 4600 ETH
-    expect(await basketHandler.fullyCapitalized()).to.equal(false)
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
     // Next auction will trigger RSR auction for the rest
@@ -1679,7 +1679,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check status still undercollateralized
-    expect(await basketHandler.fullyCapitalized()).to.equal(false)
+    expect(await basketHandler.fullyCollateralized()).to.equal(false)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
     auctionTimestamp = await getLatestBlockTimestamp()
@@ -1790,7 +1790,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       },
     ])
     // Check new status - Capitalized
-    expect(await basketHandler.fullyCapitalized()).to.equal(true)
+    expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 })

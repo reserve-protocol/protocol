@@ -343,8 +343,8 @@ describe('FacadeWrite contract', () => {
         expect(await rsrTrader.main()).to.equal(main.address)
 
         // StRSR
-        expect(await stRSR.name()).to.equal('stRTKNRSR Token')
-        expect(await stRSR.symbol()).to.equal('stRTKNRSR')
+        expect(await stRSR.name()).to.equal('rtknRSR Token')
+        expect(await stRSR.symbol()).to.equal('rtknRSR')
         expect(await stRSR.decimals()).to.equal(18)
         expect(await stRSR.totalSupply()).to.equal(0)
         expect(await stRSR.main()).to.equal(main.address)
@@ -404,7 +404,7 @@ describe('FacadeWrite contract', () => {
         ).to.be.revertedWith('not initial deployer')
       })
 
-      it('Should validate owner param when deploying governance in final setup', async () => {
+      it('Should validate owner param in final setup', async () => {
         await expect(
           facadeWrite
             .connect(deployerUser)
@@ -418,6 +418,20 @@ describe('FacadeWrite contract', () => {
               ZERO_ADDRESS
             )
         ).to.be.revertedWith('owner should be empty')
+
+        await expect(
+          facadeWrite
+            .connect(deployerUser)
+            .setupGovernance(
+              rToken.address,
+              false,
+              false,
+              govParams,
+              ZERO_ADDRESS,
+              ZERO_ADDRESS,
+              ZERO_ADDRESS
+            )
+        ).to.be.revertedWith('owner not defined')
       })
     })
 
@@ -442,7 +456,7 @@ describe('FacadeWrite contract', () => {
           await main.connect(owner).unpause()
 
           // Basket
-          expect(await basketHandler.fullyCapitalized()).to.equal(true)
+          expect(await basketHandler.fullyCollateralized()).to.equal(true)
           const backing = await facade.basketTokens(rToken.address)
           expect(backing[0]).to.equal(token.address)
           expect(backing[1]).to.equal(usdc.address)

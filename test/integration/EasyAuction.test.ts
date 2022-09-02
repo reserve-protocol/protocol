@@ -118,7 +118,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check initial state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -151,7 +151,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       expect(await token0.balanceOf(backingManager.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -235,7 +235,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Order restablished
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt.sub(1))
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt.sub(1))
       expect(await token0.balanceOf(easyAuction.address)).to.equal(1) // remainder
@@ -271,7 +271,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt.sub(1))
       expect(await token0.balanceOf(easyAuction.address)).to.equal(1) // remainder
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -300,7 +300,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Order restablished
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
@@ -330,7 +330,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -360,7 +360,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -404,7 +404,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Order restablished
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
@@ -460,7 +460,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Should be undercapitalized
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -492,7 +492,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state - Order restablished
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
@@ -531,7 +531,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check initial state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(true)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -563,7 +563,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCapitalized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
       expect(await token0.balanceOf(backingManager.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 

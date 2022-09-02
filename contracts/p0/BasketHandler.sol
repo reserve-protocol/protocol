@@ -20,6 +20,7 @@ import "contracts/libraries/Basket.sol";
  */
 contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     using BasketLib for Basket;
+    using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
     using FixLib for uint192;
@@ -73,9 +74,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < erc20s.length; i++) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
+            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
-            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -104,8 +105,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
             // In that case the basket is set to disabled.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
+            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
         }
@@ -113,7 +114,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// @return Whether it holds enough basket units of collateral
-    function fullyCapitalized() external view returns (bool) {
+    function fullyCollateralized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
@@ -124,7 +125,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         timestamp = basket.timestamp;
     }
 
-    /// @return status_ The status of the basket
+    /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
         if (basket.disabled) return CollateralStatus.DISABLED;
 
@@ -132,9 +133,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
 
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
-            if (uint256(s) > uint256(status_)) {
-                status_ = s;
-            }
+            if (s.worseThan(status_)) status_ = s;
         }
     }
 
@@ -179,22 +178,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// @return baskets {BU} The balance of basket units held by `account`
-    /// @dev Returns FIX_MAX for an empty basket
+    /// @dev Returns FIX_ZERO for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
-        if (basket.disabled) return FIX_ZERO;
+        if (basket.erc20s.length == 0 || basket.disabled) return FIX_ZERO;
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
-            try main.assetRegistry().toColl(basket.erc20s[i]).bal(account) returns (uint192 bal) {
-                uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
+            uint192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account);
+            uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-                // {BU} = {tok} / {tok/BU}
-                if (q.eq(FIX_ZERO)) return FIX_ZERO;
-                else baskets = fixMin(baskets, bal.div(q));
-            } catch {
-                return FIX_ZERO;
-            }
+            // {BU} = {tok} / {tok/BU}
+            if (q.eq(FIX_ZERO)) return FIX_ZERO;
+            else baskets = fixMin(baskets, bal.div(q));
         }
-        if (baskets == FIX_MAX) return FIX_ZERO;
     }
 
     // These are effectively local variables of _switchBasket. Nothing should use its value

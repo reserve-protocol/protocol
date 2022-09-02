@@ -2,14 +2,14 @@
 import hre from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../common/configuration'
-import { sh } from './deployment/deployment_utils'
+import { sh } from './deployment/utils'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   IDeployments,
   getDeploymentFilename,
-} from './deployment/deployment_utils'
+} from './deployment/common'
 
 async function main() {
   const chainId = await getChainId(hre)
@@ -43,7 +43,7 @@ async function main() {
     '4_verify_facade.ts',
     '5_verify_facadeWrite.ts',
     '6_verify_collateral.ts',
-    '7_verify_rTokenAsset.ts',
+    '7_verify_rToken.ts',
     '8_verify_governance.ts',
   ]
 

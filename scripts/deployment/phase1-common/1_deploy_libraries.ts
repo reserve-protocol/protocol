@@ -3,12 +3,8 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import {
-  getDeploymentFile,
-  getDeploymentFilename,
-  IDeployments,
-  validatePrerequisites,
-} from '../deployment_utils'
+import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
+import { validatePrerequisites } from '../utils'
 import { TradingLibP1, RewardableLibP1, RTokenPricingLib, OracleLib } from '../../../typechain'
 
 let tradingLib: TradingLibP1

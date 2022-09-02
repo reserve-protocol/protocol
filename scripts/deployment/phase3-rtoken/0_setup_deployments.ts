@@ -11,8 +11,8 @@ import {
   getRTokenDeploymentFilename,
   IDeployments,
   IRTokenDeployments,
-  validatePrerequisites,
-} from '../deployment_utils'
+} from '../common'
+import { validatePrerequisites } from '../utils'
 
 // Define the Token to deploy - Will create deployment file
 const RTOKEN_NAME = 'RTKN'
