@@ -1,12 +1,9 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
-import { Wallet, Signer, BigNumber } from 'ethers'
+import { Wallet, Signer } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
-import { whileImpersonating } from '../../test/utils/impersonation'
-import { RoundingMode } from '../../common/constants'
-import { advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -59,29 +56,17 @@ describe('The Differential Testing scenario', () => {
 
   let startState: Awaited<ReturnType<typeof helpers.takeSnapshot>>
 
-  let owner: Wallet
+  let _owner: Wallet
   let alice: Signer
-  let bob: Signer
-  let carol: Signer
+  let _bob: Signer
+  let _carol: Signer
 
   let aliceAddr: string
-  let bobAddr: string
-  let carolAddr: string
-
-  // addrIDs: maps addresses to their address IDs. Inverse of main.someAddr.
-  // for any addr the system tracks, pN.someAddr(addrIDspN(addr)) == addr
-  // TODO: define these if you _need_ them, but probably not otherwise
-  let addrIDsP0: Map<string, number>
-  let addrIDsP1: Map<string, number>
-
-  // tokenIDs: maps token symbols to their token IDs.
-  // for any token symbol in the system, pN.someToken(tokenIDspN(symbol)).symbol() == symbol
-  // TODO: define these if you _need_ them, but probably not otherwise
-  let tokenIDsP0: Map<string, number>
-  let tokenIDsP1: Map<string, number>
+  let _bobAddr: string
+  let _carolAddr: string
 
   before('deploy and setup', async () => {
-    ;[owner] = (await ethers.getSigners()) as unknown as Wallet[]
+    ;[_owner] = (await ethers.getSigners()) as unknown as Wallet[]
     scenario = await (await F('DiffTestScenario')).deploy({ gasLimit: 0x1ffffffff })
 
     p0 = await ConAt('MainP0Fuzz', await scenario.p(0))
@@ -91,22 +76,22 @@ describe('The Differential Testing scenario', () => {
     comp1 = await componentsOfP1(p1)
 
     aliceAddr = user(0)
-    bobAddr = user(1)
-    carolAddr = user(2)
+    _bobAddr = user(1)
+    _carolAddr = user(2)
 
     alice = await ethers.getSigner(aliceAddr)
-    bob = await ethers.getSigner(bobAddr)
-    carol = await ethers.getSigner(carolAddr)
+    _bob = await ethers.getSigner(_bobAddr)
+    _carol = await ethers.getSigner(_carolAddr)
 
     await helpers.setBalance(aliceAddr, exa * exa)
-    await helpers.setBalance(bobAddr, exa * exa)
-    await helpers.setBalance(carolAddr, exa * exa)
+    await helpers.setBalance(_bobAddr, exa * exa)
+    await helpers.setBalance(_carolAddr, exa * exa)
     await helpers.setBalance(p0.address, exa * exa)
     await helpers.setBalance(p1.address, exa * exa)
 
     await helpers.impersonateAccount(aliceAddr)
-    await helpers.impersonateAccount(bobAddr)
-    await helpers.impersonateAccount(carolAddr)
+    await helpers.impersonateAccount(_bobAddr)
+    await helpers.impersonateAccount(_carolAddr)
     await helpers.impersonateAccount(p0.address)
     await helpers.impersonateAccount(p1.address)
 
@@ -115,8 +100,8 @@ describe('The Differential Testing scenario', () => {
 
   after('stop impersonations', async () => {
     await helpers.stopImpersonatingAccount(aliceAddr)
-    await helpers.stopImpersonatingAccount(bobAddr)
-    await helpers.stopImpersonatingAccount(carolAddr)
+    await helpers.stopImpersonatingAccount(_bobAddr)
+    await helpers.stopImpersonatingAccount(_carolAddr)
     await helpers.stopImpersonatingAccount(p0.address)
     await helpers.stopImpersonatingAccount(p1.address)
   })
