@@ -19,6 +19,7 @@ import "contracts/interfaces/IStRSR.sol";
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
 import "contracts/p1/Main.sol";
+import "contracts/libraries/String.sol";
 
 /**
  * @title DeployerP1
@@ -181,7 +182,7 @@ contract DeployerP1 is IDeployer {
 
         // Init StRSR
         {
-            string memory stRSRSymbol = string(abi.encodePacked(symbol, "RSR"));
+            string memory stRSRSymbol = string(abi.encodePacked(StringLib.toLower(symbol), "RSR"));
             string memory stRSRName = string(abi.encodePacked(stRSRSymbol, " Token"));
             main.stRSR().init(
                 main,

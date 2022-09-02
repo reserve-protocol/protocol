@@ -78,11 +78,11 @@ contract CTokenNonFiatCollateral is Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
-        require(address(refUnitChainlinkFeed_) != address(0), "missing ref unit chainlink feed");
         require(
             address(targetUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
         );
+        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;

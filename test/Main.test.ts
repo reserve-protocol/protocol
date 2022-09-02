@@ -1,7 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
 import {
   IConfig,
   MAX_TRADING_DELAY,
@@ -404,6 +404,21 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, invalidDistConfig)
       ).to.be.revertedWith('no distribution defined')
+
+      // Create a new instance of Main
+      const MainFactory: ContractFactory = await ethers.getContractFactory(`MainP${IMPLEMENTATION}`)
+
+      let newMain: TestIMain = <TestIMain>await MainFactory.deploy()
+
+      if (IMPLEMENTATION == Implementation.P1) {
+        newMain = <TestIMain>await upgrades.deployProxy(MainFactory, [], {
+          kind: 'uups',
+        })
+      }
+
+      await expect(newMain.init(components, ZERO_ADDRESS, 1, 1)).to.be.revertedWith(
+        'invalid RSR address'
+      )
     })
 
     it('Should emit events on init', async () => {
@@ -796,16 +811,24 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to set short freeze properly', async () => {
       await expect(main.connect(addr2).setShortFreeze(1)).to.be.reverted
-      await expect(main.connect(owner).setShortFreeze(0)).to.be.reverted
-      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.reverted
+      await expect(main.connect(owner).setShortFreeze(0)).to.be.revertedWith(
+        'short freeze out of range'
+      )
+      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.revertedWith(
+        'short freeze out of range'
+      )
       await main.connect(owner).setShortFreeze(2)
       expect(await main.shortFreeze()).to.equal(2)
     })
 
     it('Should allow to set long freeze properly', async () => {
       await expect(main.connect(addr2).setLongFreeze(1)).to.be.reverted
-      await expect(main.connect(owner).setLongFreeze(0)).to.be.reverted
-      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.reverted
+      await expect(main.connect(owner).setLongFreeze(0)).to.be.revertedWith(
+        'long freeze out of range'
+      )
+      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.revertedWith(
+        'long freeze out of range'
+      )
       await main.connect(owner).setLongFreeze(2)
       expect(await main.longFreeze()).to.equal(2)
     })
@@ -1235,6 +1258,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid target amount')
     })
 
+    it('Should not allow to set prime Basket with RSR/RToken', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+    })
+
     it('Should allow to set prime Basket if OWNER', async () => {
       // Set basket
       await expect(basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')]))
@@ -1256,6 +1291,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [compToken.address])
       ).to.be.revertedWith('token is not collateral')
+    })
+
+    it('Should not allow to set backup Config with RSR/RToken', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
+      ).to.be.revertedWith('cannot use RSR/RToken in basket')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {
@@ -1281,6 +1330,16 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.connect(other).refreshBasket()).to.be.revertedWith(
         'basket unrefreshable'
       )
+    })
+
+    it('Should not allow to poke when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('Should not allow to poke when frozen', async () => {
+      await main.connect(owner).freezeForever()
+      await expect(main.connect(other).poke()).to.be.revertedWith('paused or frozen')
     })
 
     it('Should not allow to refresh basket if not OWNER when unfrozen and unpaused', async () => {
@@ -1441,6 +1500,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
+
+      // Check values - All zero
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
+      expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
       // Set basket config
       await expect(

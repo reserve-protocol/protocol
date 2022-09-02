@@ -57,7 +57,6 @@ contract NonFiatCollateral is Collateral {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
-        require(address(targetPerRefFeed_) != address(0), "missing targetPerRef feed");
         defaultThreshold = defaultThreshold_;
         delayUntilDefault = delayUntilDefault_;
         uoaPerTargetFeed = uoaPerTargetFeed_;

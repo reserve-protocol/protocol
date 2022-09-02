@@ -32,9 +32,14 @@ contract BrokerP0 is ComponentP0, IBroker {
     function init(
         IMain main_,
         IGnosis gnosis_,
-        ITrade, // Added for Interface compatibility with P1
+        ITrade tradeImplementation_, // Added for Interface compatibility with P1
         uint48 auctionLength_
     ) public initializer {
+        require(address(gnosis_) != address(0), "invalid Gnosis address");
+        require(
+            address(tradeImplementation_) != address(0),
+            "invalid Trade Implementation address"
+        );
         __Component_init(main_);
         gnosis = gnosis_;
         setAuctionLength(auctionLength_);

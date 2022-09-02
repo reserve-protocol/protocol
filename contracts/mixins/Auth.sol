@@ -43,11 +43,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     // solhint-disable-next-line func-name-mixedcase
     function __Auth_init(uint48 shortFreeze_, uint48 longFreeze_) internal onlyInitializing {
-        require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
-        require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         __AccessControl_init();
-        shortFreeze = shortFreeze_;
-        longFreeze = longFreeze_;
 
         // Role setup
         _setRoleAdmin(OWNER, OWNER);
@@ -61,6 +57,9 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         _grantRole(LONG_FREEZER, msgSender);
         _grantRole(PAUSER, msgSender);
         longFreezes[msgSender] = LONG_FREEZE_CHARGES;
+
+        setShortFreeze(shortFreeze_);
+        setLongFreeze(longFreeze_);
     }
 
     function grantRole(bytes32 role, address account)
@@ -127,14 +126,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // === Gov params ===
 
     /// @custom:governance
-    function setShortFreeze(uint48 shortFreeze_) external onlyRole(OWNER) {
+    function setShortFreeze(uint48 shortFreeze_) public onlyRole(OWNER) {
         require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
         emit ShortFreezeDurationSet(shortFreeze, shortFreeze_);
         shortFreeze = shortFreeze_;
     }
 
     /// @custom:governance
-    function setLongFreeze(uint48 longFreeze_) external onlyRole(OWNER) {
+    function setLongFreeze(uint48 longFreeze_) public onlyRole(OWNER) {
         require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
         emit LongFreezeDurationSet(longFreeze, longFreeze_);
         longFreeze = longFreeze_;
