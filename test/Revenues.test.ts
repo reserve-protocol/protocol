@@ -2177,7 +2177,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
-      it('(Regression) Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
+      it('Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
         expect(await basketHandler.fullyCollateralized()).to.be.true
 
         // Change redemption rate for AToken and CToken to double
@@ -2186,6 +2186,41 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(
           backingManager.manageTokens([token2.address, token2.address])
         ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token2.address,
+            token2.address,
+            token2.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([token2.address, token1.address, token2.address])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token1.address,
+            token2.address,
+            token3.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token1.address,
+            token2.address,
+            token3.address,
+            token3.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        // Remove duplicates, should work
+        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
+          .to.not.be.reverted
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
