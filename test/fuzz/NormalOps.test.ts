@@ -647,7 +647,7 @@ describe('The Normal Operations scenario', () => {
   })
   it('has only initially-true properties', async () => {
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
-    expect(await scenario.echidna_isFullyCapitalized()).to.be.true
+    expect(await scenario.echidna_isFullyCollateralized()).to.be.true
     expect(await scenario.echidna_quoteProportionalToBasket()).to.be.true
 
     // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
@@ -684,8 +684,8 @@ describe('The Normal Operations scenario', () => {
     // call manageTokens([C0, C0])
     await scenario.pushBackingToManage(0)
     await scenario.pushBackingToManage(0)
-    await scenario.manageBackingTokens()
+    await expect(scenario.manageBackingTokens()).to.be.reverted
 
-    expect(await scenario.echidna_isFullyCapitalized()).to.be.true
+    expect(await scenario.echidna_isFullyCollateralized()).to.be.true
   })
 })

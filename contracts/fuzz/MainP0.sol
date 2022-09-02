@@ -215,7 +215,7 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
 
         // Init Broker
         // `tradeImplmentation` and `gnosis` are unused in BrokerP0Fuzz
-        broker.init(this, IGnosis(address(0)), ITrade(address(0)), params.auctionLength);
+        broker.init(this, IGnosis(address(1)), ITrade(address(1)), params.auctionLength);
 
         this.unspoof(address(this));
     }

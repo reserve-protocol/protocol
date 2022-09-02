@@ -496,12 +496,12 @@ contract NormalOpsScenario {
 
     // ================ System Properties ================
 
-    // The system is always fully capitalized
-    function echidna_isFullyCapitalized() external view returns (bool) {
-        return main.basketHandler().fullyCapitalized();
+    // The system is always fully collateralized
+    function echidna_isFullyCollateralized() external view returns (bool) {
+        return main.basketHandler().fullyCollateralized();
     }
 
-    // The system is always fully capitalized (implemented a little more manually)
+    // The system is always fully collateralized (implemented a little more manually)
     function echidna_quoteProportionalToBasket() external view returns (bool) {
         // rtoken.quote() * rtoken.totalSupply < basketHolder balances
         RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
