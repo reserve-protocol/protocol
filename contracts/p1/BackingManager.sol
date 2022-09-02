@@ -53,6 +53,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction RCEI
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
+        // Token list must not contain duplicates
+        requireUnique(erc20s);
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
@@ -114,6 +117,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements
          *   - All backing capital is held at BackingManager's address. No capital is out on-trade
          *   - Neither RToken nor RSR are in the basket
+         *   - Each address in erc20s is unique
          *
          * Steps:
          *   1. Forward all held RSR to the RSR trader to prevent using it for RToken appreciation
@@ -196,6 +200,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // TODO this might be the one assert we actually keep
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
+    }
+
+    /// Require that all tokens in this array are unique
+    function requireUnique(IERC20[] calldata erc20s) internal pure {
+        for (uint256 i = 1; i < erc20s.length; i++) {
+            for (uint256 j = 0; j < i; j++) {
+                require(erc20s[i] != erc20s[j], "duplicate tokens");
+            }
+        }
     }
 
     // === Setters ===
