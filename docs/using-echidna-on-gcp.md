@@ -123,3 +123,71 @@ The settings in this command are as follows:
 - `--gen_time 1800` Each subsequent generation runs for 30 min (1800 sec)
 - `--timeout -1`: Run the "parade" until otherwise stopped
 - `--ncores 14`: Use up 15 cores in each generation. We're on a 16 core system, and you really want a spare core so you can actually use the console and see results. I'm leaving a second just to be careful; I've had problems.
+
+# Log: Test System
+
+Largely following the instructions above, but for an N2 memory and performance testing setup...
+
+```bash
+
+# Create N2 system named "test-0", with 512 GB memory and 4 vCPUs
+# custom-extensions is needed to use >8GB memory per vCPU
+gcloud compute instances create test-0 \
+  --custom-extensions   --custom-vm-type=n2 \
+  --custom-cpu=4 --custom-memory=512 \
+  --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
+
+gcloud compute config-ssh
+ssh test-0.us-central1-a.rtoken-fuzz
+
+# not bothering with a separate echidna user. I already have a non-root user, and I don't expect to share this setup with anyone, so the extra login step is just a nuisance.
+
+sudo apt update
+sudo apt install emacs-nox python3-pip unzip moreutils
+
+# Local packages will be installed to ~/.local/bin; we want them on PATH.
+export PATH="$PATH:$HOME/.local/bin" && hash -r
+echo 'export PATH="$PATH:$HOME/.local/bin"' >> .bashrc
+
+# install python packages
+pip3 install solc-select slither_analyzer echidna_parade
+
+# Maybe overkill, but it won't take too long
+solc-select install all 
+
+# Also, I'm going to ignore the previous node-js installation instructions, as they lead to (a) installing X11 and (b) getting outdated versions of everything. Instead, per the instructions here (https://github.com/nodejs/snap), I will try the nodejs snap.
+sudo snap install node --classic --channel=16
+
+# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.2; see https://github.com/crytic/echidna/releases/latest
+wget "https://github.com/crytic/echidna/releases/download/v2.0.2/echidna-test-2.0.2-Ubuntu-18.04.tar.gz"
+tar -xf echidna-test-2.0.2-Ubuntu-18.04.tar.gz
+mv echidna-test ~/.local/bin
+rm echidna-test-2.0.2-Ubuntu-18.04.tar.gz
+
+# Install echidna parade (from source, with live files)
+git clone https://github.com/crytic/echidna-parade.git
+pip install -e echidna-parade/
+
+# Drop in my personal setup (for tmux and emacs QoL improvements)
+git clone https://github.com/fiddlemath/dotfiles.git
+cd dotfiles && . install.sh && cd ..
+
+# Get our code
+git clone https://github.com/reserve-protocol/protocol.git
+cd protocol
+git switch fuzz
+
+# Install google cloud ops agent, for memory utilization plots
+curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
+sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+
+# Install local dependencies. --force is necessary and seems to work fine.
+npm install --force 
+
+# Compile our code
+TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
+
+# Test run echidna briefly, see that it actually works
+echidna-test . --config tools/echidna.config.yml \
+  --contract NormalOpsScenario --test-limit 100
+```
