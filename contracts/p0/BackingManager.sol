@@ -49,6 +49,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// Mointain the overall backing policy; handout assets otherwise
     /// @custom:interaction
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
+        // Token list must not contain duplicates
+        requireUnique(erc20s);
+
         // Call keepers before
         main.poke();
 
@@ -165,6 +168,15 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCollateralized());
+    }
+
+    /// Require that all tokens in this array are unique
+    function requireUnique(IERC20[] calldata erc20s) internal pure {
+        for (uint256 i = 1; i < erc20s.length; i++) {
+            for (uint256 j = 0; j < i; j++) {
+                require(erc20s[i] != erc20s[j], "duplicate tokens");
+            }
+        }
     }
 
     // === Setters ===
