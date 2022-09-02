@@ -673,4 +673,19 @@ describe('The Normal Operations scenario', () => {
     await scenario.connect(alice).issue(1)
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
   })
+
+  it('does not habe the backingManager double-revenue bug', async () => {
+    // Have some RToken in existance
+    await scenario.connect(alice).issue(1e6)
+
+    // cause C0 to grow against its ref unit
+    await scenario.updatePrice(0, fp(1.1), 0, 0, fp(1))
+
+    // call manageTokens([C0, C0])
+    await scenario.pushBackingToManage(0)
+    await scenario.pushBackingToManage(0)
+    await scenario.manageBackingTokens()
+
+    expect(await scenario.echidna_isFullyCapitalized()).to.be.true
+  })
 })
