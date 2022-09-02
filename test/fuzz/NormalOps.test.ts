@@ -674,7 +674,7 @@ describe('The Normal Operations scenario', () => {
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
   })
 
-  it('does not habe the backingManager double-revenue bug', async () => {
+  it('does not have the backingManager double-revenue bug', async () => {
     // Have some RToken in existance
     await scenario.connect(alice).issue(1e6)
 
