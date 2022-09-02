@@ -1948,6 +1948,61 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRVotes.delegates(addr1.address)).to.equal(addr1.address)
     })
 
+    it('Should perform validations when delegating by signature', async function () {
+      // Check no delegate
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+
+      const Delegation = [
+        { name: 'delegatee', type: 'address' },
+        { name: 'nonce', type: 'uint256' },
+        { name: 'expiry', type: 'uint256' },
+      ]
+
+      // Set invalid nonce
+      const invalidNonce = 5
+
+      // Set other values
+      const nonce = await stRSRVotes.nonces(addr1.address)
+      const expiry = MAX_UINT256
+      const chainId = await getChainId(hre)
+      const name = await stRSRVotes.name()
+      const version = '1'
+      const verifyingContract = stRSRVotes.address
+
+      // Get data
+      const buildData = {
+        types: { Delegation },
+        domain: { name, version, chainId, verifyingContract },
+        message: {
+          delegatee: addr1.address,
+          nonce: invalidNonce,
+          expiry,
+        },
+      }
+
+      // Get data
+      const sig = await addr1._signTypedData(buildData.domain, buildData.types, buildData.message)
+      const { v, r, s } = ethers.utils.splitSignature(sig)
+
+      // Attempt to delegate with invalid nonce
+      await expect(
+        stRSRVotes.connect(other).delegateBySig(addr1.address, invalidNonce, expiry, v, r, s)
+      ).to.be.revertedWith('ERC20Votes: invalid nonce')
+
+      // Set invalid expiration
+      const invalidExpiry = bn(await getLatestBlockNumber())
+      buildData.message.nonce = Number(nonce)
+      buildData.message.expiry = invalidExpiry
+
+      // Attempt to delegate with invalid expiry
+      await expect(
+        stRSRVotes.connect(other).delegateBySig(addr1.address, nonce, invalidExpiry, v, r, s)
+      ).to.be.revertedWith('ERC20Votes: signature expired')
+
+      // Check result - No delegates
+      expect(await stRSRVotes.delegates(addr1.address)).to.equal(ZERO_ADDRESS)
+    })
+
     it('Should count votes properly when staking', async function () {
       // Perform some stakes
       const amount1: BigNumber = bn('50e18')
@@ -1965,6 +2020,18 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRVotes.getPastTotalSupply(currentBlockNumber)).to.equal(amount1)
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(0)
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(0)
+      expect(await stRSRVotes.getPastEra(currentBlockNumber)).to.equal(1)
+
+      // Cannot check votes on future block
+      await expect(stRSRVotes.getPastTotalSupply(currentBlockNumber + 1)).to.be.revertedWith(
+        'ERC20Votes: block not yet mined'
+      )
+      await expect(
+        stRSRVotes.getPastVotes(addr1.address, currentBlockNumber + 1)
+      ).to.be.revertedWith('ERC20Votes: block not yet mined')
+      await expect(stRSRVotes.getPastEra(currentBlockNumber + 1)).to.be.revertedWith(
+        'ERC20Votes: block not yet mined'
+      )
 
       // Delegate votes
       await stRSRVotes.connect(addr1).delegate(addr1.address)
@@ -1985,6 +2052,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount1)
       expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(0)
       expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastEra(currentBlockNumber)).to.equal(1)
 
       // Check current votes
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
@@ -2013,6 +2081,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSRVotes.getPastVotes(addr1.address, currentBlockNumber)).to.equal(amount1)
       expect(await stRSRVotes.getPastVotes(addr2.address, currentBlockNumber)).to.equal(amount2)
       expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastEra(currentBlockNumber)).to.equal(1)
 
       // Check current votes
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
@@ -2047,6 +2116,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         amount2.add(amount3)
       )
       expect(await stRSRVotes.getPastVotes(addr3.address, currentBlockNumber)).to.equal(0)
+      expect(await stRSRVotes.getPastEra(currentBlockNumber)).to.equal(1)
 
       // Check current votes
       expect(await stRSRVotes.getVotes(addr1.address)).to.equal(amount1)
