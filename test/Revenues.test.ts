@@ -2177,6 +2177,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
       })
 
+      it.only('(Regression) Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
+        expect(await basketHandler.fullyCollateralized()).to.be.true
+
+        // Change redemption rate for AToken and CToken to double
+        await token2.setExchangeRate(fp('1.2'))
+
+        expect(await basketHandler.fullyCollateralized()).to.be.true
+
+        await backingManager.manageTokens([token2.address, token2.address, token2.address])
+
+        expect(await basketHandler.fullyCollateralized()).to.be.true
+      })
+
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
         // Check Price and Assets value
         expect(await rTokenAsset.price()).to.equal(fp('1'))
