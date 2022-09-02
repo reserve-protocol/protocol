@@ -56,8 +56,8 @@ contract DiffTestScenario {
         // For each main...
         for (uint256 proto = 0; proto < 2; proto++) {
             // start with empty collateralTokens and backupTokens
-            while(collateralTokens.length > 0) collateralTokens.pop();
-            while(backupTokens.length > 0) backupTokens.pop();
+            while (collateralTokens.length > 0) collateralTokens.pop();
+            while (backupTokens.length > 0) backupTokens.pop();
 
             IMainFuzz main = p[proto];
 
@@ -65,7 +65,6 @@ contract DiffTestScenario {
 
             // Create three "standard" collateral tokens; have rewards for the first two
             for (uint256 i = 0; i < 3; i++) {
-
                 string memory num = Strings.toString(i);
                 ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
                 main.addToken(token);
@@ -107,7 +106,11 @@ contract DiffTestScenario {
             // Create three "standard" backup USD tokens
             for (uint256 i = 0; i < 3; i++) {
                 string memory num = Strings.toString(i);
-                ERC20Fuzz token = new ERC20Fuzz(concat("Stable USD ", num), concat("USD", num), main);
+                ERC20Fuzz token = new ERC20Fuzz(
+                    concat("Stable USD ", num),
+                    concat("USD", num),
+                    main
+                );
                 main.addToken(token);
 
                 main.assetRegistry().register(
@@ -178,9 +181,9 @@ contract DiffTestScenario {
         uint8 tokenID,
         uint256 amount
     ) public asSender {
-        for (uint N = 0; N < 2; N++) {
-        IERC20Metadata token = IERC20Metadata(address(p[N].someToken(tokenID)));
-        token.transfer(p[N].someAddr(userID), amount);
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20Metadata token = IERC20Metadata(address(p[N].someToken(tokenID)));
+            token.transfer(p[N].someAddr(userID), amount);
         }
     }
 
@@ -189,7 +192,7 @@ contract DiffTestScenario {
         uint8 tokenID,
         uint256 amount
     ) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20 token = p[N].someToken(tokenID);
             token.approve(p[N].someAddr(spenderID), amount);
         }
@@ -201,7 +204,7 @@ contract DiffTestScenario {
         uint8 tokenID,
         uint256 amount
     ) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20 token = p[N].someToken(tokenID);
             token.transferFrom(p[N].someAddr(fromID), p[N].someAddr(toID), amount);
         }
@@ -212,7 +215,7 @@ contract DiffTestScenario {
         uint8 tokenID,
         uint256 amount
     ) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20Metadata token = IERC20Metadata(address(p[N].someToken(tokenID)));
             require(address(token) != address(p[N].rToken()), "Do not just mint RTokens");
             ERC20Fuzz(address(token)).mint(p[N].someUser(userID), amount);
@@ -225,7 +228,7 @@ contract DiffTestScenario {
         uint8 tokenID,
         uint256 amount
     ) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20 token = p[N].someToken(tokenID);
             require(address(token) != address(p[N].rToken()), "Do not just burn RTokens");
             ERC20Fuzz(address(token)).burn(p[N].someUser(userID), amount);
@@ -236,16 +239,18 @@ contract DiffTestScenario {
 
     // do issuance without doing allowances first
     function justIssue(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].rToken().issue(amount);
         }
     }
 
     // do allowances as needed, and *then* do issuance
     function issue(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
-            require(amount + p[N].rToken().totalSupply() <= 1e48,
-                    "Do not issue 'unreasonably' many rTokens");
+        for (uint256 N = 0; N < 2; N++) {
+            require(
+                amount + p[N].rToken().totalSupply() <= 1e48,
+                "Do not issue 'unreasonably' many rTokens"
+            );
 
             address[] memory tokens;
             uint256[] memory tokenAmounts;
@@ -258,7 +263,7 @@ contract DiffTestScenario {
     }
 
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             // filter endIDs mostly to valid IDs
             address user = msg.sender;
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(p[N].rToken()));
@@ -271,7 +276,7 @@ contract DiffTestScenario {
     }
 
     function vestIssuance(uint256 seedID) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             // filter endIDs mostly to valid IDs
             address user = msg.sender;
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(p[N].rToken()));
@@ -286,33 +291,33 @@ contract DiffTestScenario {
     }
 
     function redeem(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].rToken().redeem(amount);
         }
     }
 
     // ==== user functions: strsr ====
     function justStake(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].stRSR().stake(amount);
         }
     }
 
     function stake(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].rsr().approve(address(p[N].stRSR()), amount);
             p[N].stRSR().stake(amount);
         }
     }
 
     function unstake(uint256 amount) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].stRSR().unstake(amount);
         }
     }
 
     function withdraw(uint256 seedAddr, uint256 seedID) public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             address user = p[N].someAddr(seedAddr);
             (uint256 left, uint256 right) = StRSRP1Fuzz(address(p[N].stRSR())).idRange(user);
             uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
@@ -321,7 +326,7 @@ contract DiffTestScenario {
     }
 
     function withdrawAvailable() public asSender {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             address user = msg.sender;
             uint256 id = p[N].stRSR().endIdForWithdraw(user);
             p[N].stRSR().withdraw(user, id);
@@ -335,8 +340,8 @@ contract DiffTestScenario {
         uint192 b,
         uint192 c,
         uint192 d
-        ) public {
-        for (uint N = 0; N < 2; N++) {
+    ) public {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20 erc20 = p[N].someToken(seedID);
             IAssetRegistry reg = p[N].assetRegistry();
             if (!reg.isRegistered(erc20)) return;
@@ -351,7 +356,7 @@ contract DiffTestScenario {
 
     // update reward amount
     function updateRewards(uint256 seedID, uint256 a) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             IERC20 erc20 = p[N].someToken(seedID);
             IAssetRegistry reg = p[N].assetRegistry();
             if (!reg.isRegistered(erc20)) return;
@@ -362,7 +367,7 @@ contract DiffTestScenario {
     }
 
     function claimProtocolRewards(uint8 which) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             which %= 4;
             if (which == 0) p[N].rTokenTrader().claimAndSweepRewards();
             else if (which == 1) p[N].rsrTrader().claimAndSweepRewards();
@@ -379,37 +384,37 @@ contract DiffTestScenario {
     IERC20[] internal backingToManage;
 
     function pushBackingToManage(uint256 tokenID) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             backingToManage.push(p[N].someToken(tokenID));
         }
     }
 
     function popBackingToManage() public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             if (backingToManage.length > 0) backingToManage.pop();
         }
     }
 
     function manageBackingTokens() public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].backingManager().manageTokens(backingToManage);
         }
     }
 
     function grantAllowances(uint256 tokenID) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].backingManager().grantRTokenAllowance(p[N].someToken(tokenID));
         }
     }
 
     function payRSRProfits() public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].stRSR().payoutRewards();
         }
     }
 
     function payRTokenProfits() public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].furnace().melt();
         }
     }
@@ -419,98 +424,98 @@ contract DiffTestScenario {
         uint256 seedID,
         uint16 rTokenDist,
         uint16 rsrDist
-        ) public {
-        for (uint N = 0; N < 2; N++) {
+    ) public {
+        for (uint256 N = 0; N < 2; N++) {
             RevenueShare memory dist = RevenueShare(rTokenDist, rsrDist);
             p[N].distributor().setDistribution(p[N].someAddr(seedID), dist);
         }
     }
 
     function setBackingBuffer(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIBackingManager(address(p[N].backingManager())).setBackingBuffer(
                 uint192(between(seed, 0, 1e18))
-                ); // 1e18 == MAX_BACKING_BUFFER
+            ); // 1e18 == MAX_BACKING_BUFFER
         }
     }
 
     function setBackingManagerTradingDelay(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIBackingManager(address(p[N].backingManager())).setTradingDelay(
                 uint48(between(seed, 0, 31536000))
-                ); // 31536000 is BackingManager.MAX_TRADING_DELAY
+            ); // 31536000 is BackingManager.MAX_TRADING_DELAY
         }
     }
 
     function setAuctionLength(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIBroker(address(p[N].broker())).setAuctionLength(uint48(between(seed, 1, 604800)));
             // 604800 is Broker.MAX_AUCTION_LENGTH
         }
     }
 
     function setFurnacePeriod(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].furnace().setPeriod(uint48(between(seed, 1, 31536000)));
             // 31536000 is Furnace.MAX_PERIOD
         }
     }
 
     function setFurnaceRatio(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             p[N].furnace().setRatio(uint192(between(seed, 0, 1e18)));
             // 1e18 is Furnace.MAX_RATIO
         }
     }
 
     function setIssuanceRate(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIRToken(address(p[N].rToken())).setIssuanceRate(uint192(between(seed, 0, 1e18)));
             // 1e18 is RToken.MAX_ISSUANCE_RATE
         }
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].rsrTrader())).setMaxTradeSlippage(
                 uint192(between(seed, 0, 1e18))
-                );
+            );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
     }
 
     function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].rTokenTrader())).setMaxTradeSlippage(
                 uint192(between(seed, 0, 1e18))
-                );
+            );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
     }
 
     function setBackingManagerMaxTradeSlippage(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].backingManager())).setMaxTradeSlippage(
                 uint192(between(seed, 0, 1e18))
-                );
+            );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
     }
 
     function setStakeRewardPeriod(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIStRSR(address(p[N].stRSR())).setRewardPeriod(uint48(between(seed, 1, 31536000)));
         }
     }
 
     function setStakeRewardRatio(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIStRSR(address(p[N].stRSR())).setRewardRatio(uint192(between(seed, 1, 1e18)));
         }
     }
 
     function setUnstakingDelay(uint256 seed) public {
-        for (uint N = 0; N < 2; N++) {
+        for (uint256 N = 0; N < 2; N++) {
             TestIStRSR(address(p[N].stRSR())).setUnstakingDelay(uint48(between(seed, 1, 31536000)));
         }
     }
@@ -528,10 +533,10 @@ contract DiffTestScenario {
         if (p[0].numUsers() != p[1].numUsers()) return false;
         if (p[0].numTokens() != p[1].numTokens()) return false;
 
-        for (uint u = 0; u < p[0].numUsers(); u++) {
-            for (uint t = 0; t < p[0].numTokens() + 2; t++) {
-                uint bal0 = p[0].someToken(t).balanceOf(p[0].users(u));
-                uint bal1 = p[1].someToken(t).balanceOf(p[1].users(u));
+        for (uint256 u = 0; u < p[0].numUsers(); u++) {
+            for (uint256 t = 0; t < p[0].numTokens() + 2; t++) {
+                uint256 bal0 = p[0].someToken(t).balanceOf(p[0].users(u));
+                uint256 bal1 = p[1].someToken(t).balanceOf(p[1].users(u));
                 if (bal0 != bal1) return false;
             }
         }
