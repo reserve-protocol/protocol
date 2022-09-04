@@ -17,14 +17,6 @@ interface IFacade {
     /// @custom:static-call
     function getActCalldata(IRToken rToken) external returns (address to, bytes memory calldata_);
 
-    /// TODO
-    /// There's a set of _purely_ altruistic behaviors that an off-chain keeper might be
-    /// interested in, such as:
-    /// - Completing a staker's unstaking withdrawal
-    /// - Completing an issuer's slow issuance
-    /// function getAltruisticCalldata(IRToken rToken) external returns
-    ///    (address to, bytes memory calldata_);
-
     // ============
 
     /// Prompt all traders to run auctions
