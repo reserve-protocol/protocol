@@ -30,6 +30,7 @@ contract Facade is IFacade {
         IMain main = rToken.main();
         BackingManagerP1 backingManager = BackingManagerP1(address(main.backingManager()));
         BasketHandlerP1 basketHandler = BasketHandlerP1(address(main.basketHandler()));
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
         address[] memory empty = new address[](0);
 
         // first priority: keep the basket fresh
@@ -44,32 +45,26 @@ contract Facade is IFacade {
             }
         }
 
-        // if not collateralized
-        if (!basketHandler.fullyCollateralized()) {
-            // if no trades open
-            if (backingManager.tradesOpen() == 0) {
-                // backingManager.manageTokens([]);
-                return (
-                    address(backingManager),
-                    abi.encodeWithSelector(backingManager.manageTokens.selector, empty)
-                );
-            } else {
-                // see if settlement is required
-                IERC20[] memory erc20s = main.assetRegistry().erc20s();
-                for (uint256 i = 0; i < erc20s.length; i++) {
-                    ITrade trade = backingManager.trades(erc20s[i]);
-                    if (address(trade) != address(0) && trade.canSettle()) {
-                        // backingManager.settleTrade(...)
-                        return (
-                            address(backingManager),
-                            abi.encodeWithSelector(backingManager.settleTrade.selector, erc20s[i])
-                        );
-                    }
+        // see if backingManager settlement is required
+        if (backingManager.tradesOpen() > 0) {
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                ITrade trade = backingManager.trades(erc20s[i]);
+                if (address(trade) != address(0) && trade.canSettle()) {
+                    // backingManager.settleTrade(...)
+                    return (
+                        address(backingManager),
+                        abi.encodeWithSelector(backingManager.settleTrade.selector, erc20s[i])
+                    );
                 }
             }
+        } else if (!basketHandler.fullyCollateralized()) {
+            // backingManager.manageTokens([]);
+            return (
+                address(backingManager),
+                abi.encodeWithSelector(backingManager.manageTokens.selector, empty)
+            );
         } else {
             // collateralized
-            IERC20[] memory erc20s = main.assetRegistry().erc20s();
 
             // check revenue traders
             RevenueTraderP1 rTokenTrader = RevenueTraderP1(address(main.rTokenTrader()));
