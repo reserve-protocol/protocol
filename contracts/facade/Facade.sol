@@ -31,6 +31,7 @@ contract Facade is IFacade {
         BackingManagerP1 backingManager = BackingManagerP1(address(main.backingManager()));
         BasketHandlerP1 basketHandler = BasketHandlerP1(address(main.basketHandler()));
         IERC20[] memory erc20s = main.assetRegistry().erc20s();
+        IERC20 rsr = main.rsr();
         address[] memory empty = new address[](0);
 
         // first priority: keep the basket fresh
@@ -116,34 +117,45 @@ contract Facade is IFacade {
             // maybe revenue needs to be forwarded from backingManager
             backingManager.manageTokens(erc20s);
 
-            // if this unblocked an auction, then prepare backingManager.manageTokens
+            // if this unblocked an auction in either revenue trader,
+            // then prepare backingManager.manageTokens
             for (uint256 i = 0; i < erc20s.length; i++) {
-                address[] memory singleERC20 = new address[](1);
+                address[] memory twoERC20s = new address[](2);
 
-                // rTokenTrader: check if we can start any trades
-                uint48 tradesOpen = rTokenTrader.tradesOpen();
-                rTokenTrader.manageToken(erc20s[i]);
-                if (rTokenTrader.tradesOpen() - tradesOpen > 0) {
-                    singleERC20[0] = address(erc20s[i]);
-                    // A trade started: backingManager.manageTokens(a single ERC20)
-                    // forward revenue onward to the revenue traders
-                    return (
-                        address(backingManager),
-                        abi.encodeWithSelector(backingManager.manageTokens.selector, singleERC20)
-                    );
+                // rTokenTrader
+                if (address(erc20s[i]) != address(rToken)) {
+                    // rTokenTrader: check if we can start any trades
+                    uint48 tradesOpen = rTokenTrader.tradesOpen();
+                    rTokenTrader.manageToken(erc20s[i]);
+                    if (rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                        // always manage RToken + one other ERC20
+                        twoERC20s[0] = address(rToken);
+                        twoERC20s[1] = address(erc20s[i]);
+                        // backingManager.manageTokens([rToken, erc20s[i])
+                        // forward revenue onward to the revenue traders
+                        return (
+                            address(backingManager),
+                            abi.encodeWithSelector(backingManager.manageTokens.selector, twoERC20s)
+                        );
+                    }
                 }
 
-                // rsrTrader: check if we can start any trades
-                tradesOpen = rsrTrader.tradesOpen();
-                rsrTrader.manageToken(erc20s[i]);
-                if (rsrTrader.tradesOpen() - tradesOpen > 0) {
-                    singleERC20[0] = address(erc20s[i]);
-                    // A trade started: backingManager.manageTokens(a single ERC20)
-                    // forward revenue onward to the revenue traders
-                    return (
-                        address(backingManager),
-                        abi.encodeWithSelector(backingManager.manageTokens.selector, singleERC20)
-                    );
+                // rsrTrader
+                if (erc20s[i] != rsr) {
+                    // rsrTrader: check if we can start any trades
+                    uint48 tradesOpen = rsrTrader.tradesOpen();
+                    rsrTrader.manageToken(erc20s[i]);
+                    if (rsrTrader.tradesOpen() - tradesOpen > 0) {
+                        // always manage RSR + one other ERC20
+                        twoERC20s[0] = address(rsr);
+                        twoERC20s[1] = address(erc20s[i]);
+                        // backingManager.manageTokens(rsr, erc20s[i])
+                        // forward revenue onward to the revenue traders
+                        return (
+                            address(backingManager),
+                            abi.encodeWithSelector(backingManager.manageTokens.selector, twoERC20s)
+                        );
+                    }
                 }
             }
         }
