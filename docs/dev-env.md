@@ -45,7 +45,7 @@ You should also setup `slither`. The [Trail of Bits tools][tob-suite] require so
 
 ```bash
 # Install solc-select and slither
-npip3 install solc-select slither-analyzer
+pip3 install solc-select slither-analyzer
 
 # Install and use solc version 0.8.9
 solc-select install 0.8.9
