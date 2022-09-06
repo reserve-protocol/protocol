@@ -255,20 +255,27 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid issuanceRate')
     })
 
-    it('Should allow to update maxRedemptionCharge if Owner', async () => {
-      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.reverted
+    it('Should allow to update maxRedemptionCharge if Owner and perform validations', async () => {
+      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.revertedWith('governance only')
       await rToken.connect(owner).setMaxRedemption(0)
       expect(await rToken.maxRedemptionCharge()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.reverted
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.revertedWith(
+        'governance only'
+      )
       await rToken.connect(owner).setMaxRedemption(fp('0.15'))
       expect(await rToken.maxRedemptionCharge()).to.equal(fp('0.15'))
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.reverted
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.revertedWith(
+        'governance only'
+      )
       await rToken.connect(owner).setMaxRedemption(fp('1'))
       expect(await rToken.maxRedemptionCharge()).to.equal(fp('1'))
 
-      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.reverted
+      // Cannot update with invalid value
+      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.revertedWith(
+        'invalid fraction'
+      )
     })
 
     it('Should allow to update redemptionVirtualSupply if Owner', async () => {
@@ -372,7 +379,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Try to vest
-      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith('unsound')
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'basket unsound'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -435,6 +444,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Cancel
       await rToken.connect(addr1).cancel(1, true)
+    })
+
+    it.skip('Should not be able to cancel vesting if index is out of range', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to cancel
+      await expect(rToken.connect(addr1).cancel(2, true)).to.be.revertedWith('out of range')
+
+      // Cancel successfully
+      await rToken.connect(addr1).cancel(1, true)
+
+      // Attempt to cancel with older index
+      await expect(rToken.connect(addr1).cancel(0, true)).to.be.revertedWith('out of range')
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -697,7 +726,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceBlocks(1)
       await expect(
         rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.be.revertedWith('unsound')
+      ).to.be.revertedWith('basket unsound')
 
       // Check previous minting was not processed
       await expectIssuance(addr1.address, 0, {
@@ -722,7 +751,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Attempt to vest
-      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('not ready')
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('issuance not ready')
+
+      await advanceBlocks(1)
+
+      // Should vest now
+      await rToken.vest(addr1.address, 1)
+    })
+
+    it.skip('Should not vest if index is out of range', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest with invalid index
+      await expect(rToken.vest(addr1.address, 2)).to.be.revertedWith('out of range')
 
       await advanceBlocks(1)
 
