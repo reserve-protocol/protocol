@@ -1676,6 +1676,23 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.reverted
         })
+
+        it('Should use real total supply for redemption  if greater then or equal to virtualTotalSupply', async function () {
+          // Issue twice the virtual total supply
+          // Provide approvals
+          await token0.connect(addr2).approve(rToken.address, initialBal)
+          await token1.connect(addr2).approve(rToken.address, initialBal)
+          await token2.connect(addr2).approve(rToken.address, initialBal)
+          await token3.connect(addr2).approve(rToken.address, initialBal)
+
+          await rToken.connect(addr2).issue(issueAmount)
+          redeemAmount = issueAmount.mul(2).mul(config.maxRedemptionCharge).div(fp('1'))
+
+          expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
+
+          // Can redeem
+          await rToken.connect(addr2).redeem(redeemAmount)
+        })
       })
     })
   })
