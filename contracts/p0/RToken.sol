@@ -280,9 +280,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // {1} = {qRTok} / {qRTok}
         uint192 prorate = toFix(amount).divu(totalSupply());
 
-        // Accept and burn RToken
-        _burn(_msgSender(), amount);
-
         // Revert if redemption exceeds battery capacity
         if (maxRedemptionCharge > 0) {
             // {1} = {qRTok} / {qRTok}
@@ -293,6 +290,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             );
             battery.discharge(dischargeAmt, maxRedemptionCharge);
         }
+
+        // Accept and burn RToken
+        _burn(_msgSender(), amount);
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
