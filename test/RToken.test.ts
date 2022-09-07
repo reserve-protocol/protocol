@@ -446,7 +446,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).cancel(1, true)
     })
 
-    it.skip('Should not be able to cancel vesting if index is out of range', async function () {
+    it('Should not be able to cancel vesting if index is out of range', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
       // Start issuance pre-pause
@@ -759,7 +759,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, 1)
     })
 
-    it.skip('Should not vest if index is out of range', async function () {
+    it('Should not vest if index is out of range', async function () {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
 
       // Provide approvals
@@ -782,7 +782,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should return maxIssuable correctly', async () => {
       const issueAmount = initialBal.div(2)
-
       // Check values, with no issued tokens
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
         initialBal.mul(4)
@@ -801,7 +800,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // Process slow issuances
+      // Attempt to process slow issuances - nothing at this point
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+
+      // Process 2 blocks
+      await advanceTime(100)
+
+      // Vest tokens
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check values, with issued tokens
@@ -1136,6 +1141,30 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+    })
+
+    it('Should allow instant issuances', async function () {
+      const instantIssue: BigNumber = MIN_ISSUANCE_PER_BLOCK.sub(1)
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('not ready')
+      await advanceBlocks(5)
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(instantIssue)).to.emit(rToken, 'IssuanceStarted')
+
+      // Should vest now
+      await expect(await rToken.vest(addr1.address, 1)).to.emit(rToken, 'IssuancesCompleted')
     })
 
     it('Should move issuances to next block if exceeds issuance limit', async function () {
