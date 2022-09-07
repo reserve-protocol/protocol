@@ -169,7 +169,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 vestedAmount = tryVestIssuance(issuer, index);
             emit IssuancesCompleted(issuer, index, index, vestedAmount);
             assert(vestedAmount == iss.amount);
-            delete issuances[issuer][index];
+            // Remove issuance
+            issuances[issuer].pop();
         }
     }
 
@@ -189,6 +190,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         try main.furnace().melt() {} catch {}
 
         address account = _msgSender();
+
+        require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
 
         SlowIssuance[] storage queue = issuances[account];
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
@@ -221,7 +224,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket unsound");
 
-        refundAndClearStaleIssuances(account);
+        // Perform range validations - P1 compatibility
+        if (leftIndex(account) == endId) return;
+        require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
+
+        // Only continue with vesting if basket did not change - P1 compatibility
+        bool someProcessed = refundAndClearStaleIssuances(account);
+        if (someProcessed) return;
 
         uint256 first;
         uint256 totalVested;
@@ -235,7 +244,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// Return the highest index that could be completed by a vestIssuances call.
     function endIdForVest(address account) external view returns (uint256) {
-        uint256 i = 0;
+        uint256 i = leftIndex(account);
         uint192 currBlock = toFix(block.number);
         SlowIssuance[] storage queue = issuances[account];
 
@@ -345,7 +354,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        require(iss.blockAvailableAt.lte(toFix(block.number)), "not ready");
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
         if (!iss.processed) {
@@ -380,9 +389,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         return allVestAt;
     }
 
-    function refundAndClearStaleIssuances(address account) private {
+    function refundAndClearStaleIssuances(address account) private returns (bool) {
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        bool clearQueue = false;
         bool someProcessed = false;
         uint256 amount;
         uint256 startIndex;
@@ -401,12 +409,40 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 iss.processed = true;
                 endIndex = i + 1;
             }
-            if (iss.basketNonce != basketNonce) clearQueue = true;
         }
 
-        if (clearQueue) {
+        if (someProcessed) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
-            delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
         }
+        return someProcessed;
+    }
+
+    /// Returns the left index of currently-valid items for `account`
+    /// For P1 Compatibility - Equivalent to RTokenP1.IssueQueue.left
+    function leftIndex(address account) private view returns (uint256) {
+        SlowIssuance[] storage queue = issuances[account];
+        uint256 _left;
+        for (uint256 i = 0; i < queue.length; i++) {
+            SlowIssuance storage iss = queue[i];
+            if (!iss.processed) {
+                break;
+            }
+            _left++;
+        }
+        return _left;
+    }
+
+    /// Returns the right index of currently-valid items
+    /// For P1 Compatibility - Equivalent to RTokenP1.IssueQueue.right
+    function rightIndex(address account) private view returns (uint256) {
+        SlowIssuance[] storage queue = issuances[account];
+        uint256 _right = leftIndex(account);
+        for (uint256 i = _right; i < queue.length; i++) {
+            SlowIssuance storage iss = queue[i];
+            if (!iss.processed) {
+                _right++;
+            }
+        }
+        return _right;
     }
 }
