@@ -37,13 +37,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint192 public constant MAX_REWARD_RATIO = 1e18;
 
     // === ERC20 ===
-
     string public name; // mutable
     string public symbol; // mutable
     // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
-    /// === Stakes (balances) ===
+    /// === Financial State: Stakes (balances) ===
+
     // Era. If stake balances are wiped out due to RSR seizure, increment the era to zero balances.
     uint256 internal era;
 
@@ -53,15 +53,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal totalStakes; // Total of all stakes {qStRSR}
     uint256 internal stakeRSR; // Amount of RSR backing all stakes {qRSR}
     uint192 public stakeRate; // The exchange rate between stakes and RSR. D18{qStRSR/qRSR}
-    // invariant: either (totalStakes == 0, stakeRSR == 0, and stakeRate == FIX_ONE),
-    //            or (totalStakes > 0 and stakeRSR > 0)
 
     uint192 private constant MAX_STAKE_RATE = 1e27; // 1e9 D18{qStRSR/qRSR}
 
     // era => (owner => (spender => {qStRSR}))
     mapping(uint256 => mapping(address => mapping(address => uint256))) private _allowances;
 
-    // === Drafts ===
+    // === Financial State: Drafts ===
     // Era. If drafts get wiped out due to RSR seizure, increment the era to zero draft values.
     uint256 internal draftEra;
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
@@ -76,13 +74,43 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     uint256 internal totalDrafts; // Total of all drafts {qDrafts}
     uint256 internal draftRSR; // Amount of RSR backing all drafts {qRSR}
     uint192 public draftRate; // The exchange rate between drafts and RSR. D18{qDrafts/qRSR}
-    // invariant: either (totalDrafts == 0, draftRSR == 0, and draftRate == FIX_ONE),
-    //            or (totalDrafts > 0 and draftRSR > 0)
 
     uint192 private constant MAX_DRAFT_RATE = 1e27; // 1e9 D18{qDrafts/qRSR}
 
-    // === ERC20Permit ===
+    // ==== Analysis Definitions for Financial State ====
+    // Let `bal` be the map stakes[era]; so, bal[acct] == balanceOf(acct)
 
+    // Entirely different concepts for the Drafts:
+    // `draft[acct]` is a "draft record". If, say, r = draft[acct], then:
+    //   Let `r.queue` be the map draftQueues[era][acct]
+    //   Let `r.left` be the value firstRemainingDraft[era][acct] // ( minus 1? )
+    //   Let `r.right` be the value draftsQueues[era][acct].length
+    //   We further define r.queue[-1].drafts to be 0.
+    //
+    // So, for any keyval pair (acct, r) in draft:
+    // r.left <= r.right
+    // for all i and j with r.left <= i < j < r.right:
+    //   r.queue[i].drafts < r.queue[j].drafts, and
+    //   r.queue[i].availableAt <= r.queue[j].availableAt
+    //
+    // Define draftSum, the total amount of drafts eventually due to the account holder of record r:
+    // Let draftSum(r:draftRecord) =
+    //   r.queue[r.right-1].drafts - r.queue[r.left-1].drafts
+
+    // ==== Invariants ====
+    // [total-stakes]: totalStakes == sum(bal[acct] for acct in bal)
+    // [max-stake-rate]: 0 < stakeRate <= MAX_STAKE_RATE
+    // [stake-rate]: if totalStakes == 0, then stakeRSR == 0 and stakeRate == FIX_ONE
+    //               else, stakeRSR * stakeRate >= totalStakes * 1e18
+    //               (ie, stakeRSR covers totalStakes at stakeRate)
+    //
+    // [total-drafts]: totalDrafts == sum(draftSum(draft[acct]) for acct in draft)
+    // [max-draft-rate]: 0 < draftRate <= MAX_DRAFT_RATE
+    // [draft-rate]: if totalDrafts == 0, then draftRSR == 0 and draftRate == FIX_ONE
+    //               else, draftRSR * draftRate >= totalDrafts * 1e18
+    //               (ie, draftRSR covers totalDrafts at draftRate)
+    //
+    // === ERC20Permit ===
     mapping(address => CountersUpgradeable.Counter) private _nonces;
 
     // solhint-disable-next-line var-name-mixedcase
@@ -92,21 +120,33 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         );
 
     // ==== Gov Params ====
-
-    uint48 public unstakingDelay; // {s} The minimum loength of time spent in the draft queue
+    // Promise: Each gov param is set _only_ by the appropriate "set" function.
+    // Invariant: rewardPeriod * 2 <= unstakingDelay
+    uint48 public unstakingDelay; // {s} The minimum length of time spent in the draft queue
     uint48 public rewardPeriod; // {s} The number of seconds between revenue payout events
     uint192 public rewardRatio; // {1} The fraction of the revenue balance to handout per period
 
-    // === Cache ===
+    // === Rewards Cache ===
+    // Promise: The two *payout* vars are modified only by init() and _payoutRewards()
+    //   init() pretends that the "first" payout happens at initialization time
+    //   _payoutRewards() updates them as described.
+    // When init() or _payoutRewards() was last called:
+    //     payoutLastPaid was the timestamp when the last paid-up block ended
+    //     rsrRewardsAtLastPayout was the value of rsrRewards() at that time
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
-
-    // {seconds} The last tim rewards were paid out
+    // {seconds} The last time for which rewards were paid out
     uint48 internal payoutLastPaid;
 
     // ======================
 
+    // init() can only be called once (initializer)
+    // ==== Financial State:
+    // effects:
+    //   draft' = {}, bal' = {}, all totals zero, all rates FIX_ONE.
+    //   payoutLastPaid' = now
+    //   rsrRewardsAtLastPayout' = current RSR balance ( == rsrRewards() given the above )
     function init(
         IMain main_,
         string calldata name_,
@@ -139,6 +179,17 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @param rsrAmount {qRSR}
     /// @dev Staking continues while paused/frozen, without reward handouts
     /// @custom:interaction CEI
+    // checks:
+    //   0 < rsrAmount
+    //
+    // effects:
+    //   stakeRSR' = stakeRSR + rsrAmount
+    //   totalStakes' = stakeRSR' * stakeRate / 1e18   (as required by invariant)
+    //   bal'[caller] = bal[caller] + (totalStakes' - totalStakes)
+    //   stakeRate' = stakeRate     (this could go without saying, but it's important!)
+    //
+    // actions:
+    //   rsr.transferFrom(account, this, rsrAmount)
     function stake(uint256 rsrAmount) external {
         require(rsrAmount > 0, "Cannot stake zero");
 
@@ -168,6 +219,22 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Begins a delayed unstaking for `amount` StRSR
     /// @param stakeAmount {qStRSR}
+    // checks:
+    //   not paused or frozen
+    //   0 < stakeAmount <= bal[caller]
+    //
+    // effects:
+    //   totalStakes' = totalStakes - stakeAmount
+    //   bal'[caller] = bal[caller] - stakeAmount
+    //   stakeRSR' = ceil(totalStakes' * 1e18 / stakeRate)
+    //   stakeRate' = stakeRate (no change)
+    //
+    //   draftRSR' + stakeRSR' = draftRSR + stakeRSR
+    //   draftRate' = draftRate (no change)
+    //   totalDrafts' = floor(draftRSR' + draftRate' / 1e18)
+    //
+    //   A draft for (totalDrafts' - totalDrafts) drafts
+    //   is freshly appended to the caller's draft record.
     function unstake(uint256 stakeAmount) external notPausedOrFrozen {
         address account = _msgSender();
         require(stakeAmount > 0, "Cannot withdraw zero");
@@ -181,7 +248,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _burn(account, stakeAmount);
 
         // newStakeRSR: {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
-        uint256 newStakeRSR = (FIX_ONE_256 * totalStakes) / stakeRate;
+        uint256 newStakeRSR = (FIX_ONE_256 * totalStakes) / stakeRate; // TODO: ceil-div
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
 
@@ -192,6 +259,25 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Complete delayed unstaking for an account, up to but not including `endId`
     /// @custom:interaction RCEI
+    // Let:
+    //   r = draft[account]
+    //   draftAmount = r.queue[endId - 1].drafts - r.queue[r.left-1].drafts
+    //
+    // checks:
+    //   RToken is fully collateralized and the basket is sound.
+    //   The system is not paused or frozen.
+    //   endId <= r.right
+    //   r.queue[endId - 1].availableAt <= now
+    //
+    // effects:
+    //   r'.left = max(endId, r.left)
+    //   draftSum'(account) = draftSum(account) + draftAmount)
+    //   r'.right = r.right
+    //   totalDrafts' = totalDrafts - draftAmount
+    //   draftRSR' = ceil(totalDrafts' * 1e18 / draftRate)
+    //
+    // actions:
+    //   rsr.transfer(account, rsrOut)
     function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -217,7 +303,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
-        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate;
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate; // TODO: ceil-div
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
@@ -235,6 +321,38 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @param rsrAmount {qRSR}
     /// Must seize at least `rsrAmount`, or revert
     /// @custom:protected
+    // let:
+    //   keepRatio = 1 - (rsrAmount / rsr.balanceOf(this))
+    //
+    // checks:
+    //   0 < rsrAmount <= rsr.balanceOf(this)
+    //   not paused or frozen
+    //   caller is backingManager
+    //
+    // effects, in two phases. Phase 1: (from x to x')
+    //   stakeRSR' = floor(stakeRSR * keepRatio)
+    //   totalStakes' = totalStakes
+    //   stakeRate' = ceil(totalStakes' * 1e18 / stakeRSR')
+    //
+    //   draftRSR' = floor(draftRSR * keepRatio)
+    //   totalDrafts' = totalDrafts
+    //   draftRate' = ceil(totalDrafts' * 1e18 / draftRSR')
+    //
+    //   let fromRewards = floor(rsrRewards() * (1 - keepRatio))
+    //
+    // effects phase 2: (from x' to x'')
+    //   draftRSR'' = (draftRSR' <= MAX_DRAFT_RATE) ? draftRSR' : 0
+    //   if draftRSR'' = 0, then totalDrafts'' = 0 and draftRate'' = FIX_ONE
+    //   stakeRSR'' = (stakeRSR' <= MAX_STAKE_RATE) ? stakeRSR' : 0
+    //   if stakeRSR'' = 0, then totalStakes'' = 0 and stakeRate'' = FIX_ONE
+    //
+    // actions:
+    //   as (this), rsr.transfer(backingManager, seized)
+    //   where seized = draftRSR - draftRSR'' + stakeRSR - stakeRSR'' + fromRewards
+    //
+    // other properties:
+    //   seized >= rsrAmount, which should be a logical consequence of the above effects
+
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
@@ -255,7 +373,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update stakeRate, possibly beginning a new stake era
         if (stakeRSR > 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
-            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR);
+            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR); // TODO: should be CEIL div
         }
         if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
             seizedRSR += stakeRSR;
@@ -270,7 +388,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update draftRate, possibly beginning a new draft era
         if (draftRSR > 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
-            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR);
+            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR); // TODO: should be CEIL div
         }
 
         if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
@@ -291,10 +409,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return stakeRate;
     }
 
-    /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
-    /// This search may be slightly expensive.
-    /// TODO: experiment! For what values of queue.length - firstId is this actually cheaper
-    ///     than linear search?
+    /// Return the maximum value of endId such that withdraw(endId) can immediately work
+    // let r = draft[account]
+    // returns:
+    //   if r.left == r.right: r.right (i.e, withdraw 0 drafts)
+    //   else: the least id such that r.left <= id <= r.right and r.queue[id].availableAt > now
     function endIdForWithdraw(address account) external view returns (uint256) {
         uint256 time = block.timestamp;
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
@@ -307,11 +426,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (queue[left].availableAt > time) return left;
 
         // Otherwise, there *are* drafts with left <= index < right and availableAt <= time.
-        // Binary search, keeping true that (queue[left].availableAt <= time) and
-        //   (right == queue.length or queue[right].availableAt > time)
+        // Binary search:
         uint256 test;
         while (left < right - 1) {
-            test = (left + right) / 2;
+            // Loop invariants, because without great care a binary search is usually wrong:
+            // - queue[left].availableAt <= time
+            // - either right == queue.length or queue[right].availableAt > time
+            test = (left + right) / 2; // left < test < right because left < right - 1
             if (queue[test].availableAt <= time) left = test;
             else right = test;
         }
@@ -330,6 +451,30 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @dev do this by effecting stakeRSR and payoutLastPaid as appropriate, given the current
     /// value of rsrRewards()
     /// @dev perhaps astonishingly, this _isn't_ a refresher
+
+    // let
+    //   N = numPeriods; the number of whole rewardPeriods since the last payout
+    //   payout = rsrRewards() * (1 - (1 - rewardRatio)^N)  (see [payout-formula])
+    //
+    // effects:
+    //   stakeRSR' = stakeRSR + payout
+    //   rsrRewards'() = rsrRewards() - payout   (implicit in the code, but true)
+    //   stakeRate' = ceil(totalStakes' * 1e18 / stakeRSR')  (because [stake-rate])
+    //     unless totalStakes == 0 or stakeRSR == 0, in which case stakeRate' = FIX_ONE
+    //   totalStakes' = totalStakes
+    //
+    // [payout-formula]:
+    //   The process we're modelling is:
+    //     N = number of whole rewardPeriods since last _payoutRewards() call
+    //     rewards_0 = rsrRewards()
+    //     payout_{i+1} = rewards_i * payoutRatio
+    //     rewards_{i+1} = rewards_i - payout_i
+    //     payout = sum{payout_i for i in [1...N]}
+    //   thus:
+    //     rewards_N = rewards_0 - payout
+    //     rewards_{i+1} = rewards_i - rewards_i * payoutRatio = rewards_i * (1-payoutRatio)
+    //     rewards_N = rewards_0 * (1-payoutRatio) ^ N
+    //     payout = rewards_N - rewards_0 = rewards_0 * (1 - (1-payoutRatio)^N)
     function _payoutRewards() internal {
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / rewardPeriod;
@@ -362,6 +507,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// @param rsrAmount {qRSR}
     /// @return index The index of the draft
     /// @return availableAt {s} The timestamp the cumulative draft vests
+    // effects:
+    //   draftRSR' = draftRSR + rsrAmount
+    //   draftRate' = draftRate    (ie, unchanged)
+    //   totalDrafts' = floor(draftRSR' * draftRate' / 1e18)
+    //   r'.left = r.left
+    //   r'.right = r.right + 1
+    //   r'.queue is r.queue with a new entry appeneded for (totalDrafts' - totalDraft) drafts
+    //   where r = draft[account] and r' = draft'[account]
     function pushDraft(address account, uint256 rsrAmount)
         internal
         returns (uint256 index, uint64 availableAt)
@@ -371,8 +524,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         draftRSR += rsrAmount;
         // newTotalDrafts: {qDrafts} = D18{qDrafts/qRSR} * {qRSR} / D18
         uint256 newTotalDrafts = (draftRate * draftRSR) / FIX_ONE;
-
-        // equivalently, here: uint(draftRate) * draftRSR / FIX_ONE
         uint256 draftAmount = newTotalDrafts - totalDrafts;
         totalDrafts = newTotalDrafts;
 
@@ -392,6 +543,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// Zero all stakes and withdrawals
     /// Overriden in StRSRVotes to handle rebases
+    // effects:
+    //   stakeRSR' = totalStakes' = 0
+    //   stakeRate' = FIX_ONE
     function beginEra() internal virtual {
         stakeRSR = 0;
         totalStakes = 0;
@@ -401,6 +555,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit AllBalancesReset(era);
     }
 
+    // effects:
+    //  draftRSR' = totalDrafts' = 0
+    //  draftRate' = FIX_ONE
     function beginDraftEra() internal virtual {
         draftRSR = 0;
         totalDrafts = 0;
@@ -483,6 +640,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         return true;
     }
 
+    // checks: from != 0, to != 0,
+    // effects: bal[from] -= amount; bal[to] += amount;
     function _transfer(
         address from,
         address to,
@@ -504,6 +663,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _afterTokenTransfer(from, to, amount);
     }
 
+    // checks: account != 0; totalStakes' < 2^224 - 1  (for StRSRVotes)
+    // effects: bal[account] += amount; totalStakes += amount
+    // this must only be called from a function that will fixup stakeRSR/Rate
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "ERC20: mint to the zero address");
         assert(totalStakes + amount < type(uint224).max);
@@ -515,6 +677,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _afterTokenTransfer(address(0), account, amount);
     }
 
+    // checks: account != 0; bal[account] >= amount
+    // effects: bal[account] -= amount; totalStakes -= amount;
+    // this must only be called from a function that will fixup stakeRSR/Rate
     function _burn(address account, uint256 amount) internal virtual {
         require(account != address(0), "ERC20: burn from the zero address");
 

@@ -41,7 +41,23 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     bool public paused;
 
+    /* ==== Invariants ====
+       0 <= longFreeze[a] <= LONG_FREEZE_CHARGES for all addrs a
+       set{a has LONG_FREEZER} == set{a : longFreeze[a] == 0}
+    */
+
     // solhint-disable-next-line func-name-mixedcase
+    // checks:
+    // - __Auth_init has not previously been called
+    // - 0 < shortFreeze_ <= MAX_SHORT_FREEZE
+    // - 0 < longFreeze_ <= MAX_LONG_FREEZE
+    // effects:
+    // - caller has all roles
+    // - OWNER is the admin role for all roles
+    // - longFreezes[caller] == LONG_FREEZE_CHARGES
+    // - shortFreeze' == shortFreeze_
+    // - longFreeze' == longFreeze_
+    // questions: (what do I know about the values of paused and unfreezeAt?)
     function __Auth_init(uint48 shortFreeze_, uint48 longFreeze_) internal onlyInitializing {
         __AccessControl_init();
 
@@ -62,6 +78,10 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         setLongFreeze(longFreeze_);
     }
 
+    // checks: caller is an admin for role
+    // effects:
+    // - account has the `role` role
+    // - if role is LONG_FREEZER, then longFreezes'[account] == LONG_FREEZE_CHARGES
     function grantRole(bytes32 role, address account)
         public
         override(AccessControlUpgradeable, IAccessControlUpgradeable)
@@ -72,12 +92,13 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     // ==== System-wide views ====
-
+    // returns: bool(main is frozen) == now < unfreezeAt
     function frozen() public view returns (bool) {
         return block.timestamp < unfreezeAt;
     }
 
     /// @dev This -or- condition is a performance optimization for the consuming Component
+    // returns: bool(main is frozen or paused) == paused || (now < unfreezeAt)
     function pausedOrFrozen() public view returns (bool) {
         return paused || block.timestamp < unfreezeAt;
     }
@@ -85,6 +106,12 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // === Freezing ===
 
     /// Enter a freeze for the `shortFreeze` duration
+    // checks:
+    // - caller has the SHORT_FREEZER role
+    // - now + shortFreeze >= unfreezeAt (that is, this call should increase unfreezeAt)
+    // effects:
+    // - unfreezeAt' = now + shortFreeze
+    // - after, caller does not have the SHORT_FREEZER role
     function freezeShort() external onlyRole(SHORT_FREEZER) {
         // Revoke short freezer role after one use
         _revokeRole(SHORT_FREEZER, _msgSender());
@@ -92,6 +119,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     /// Enter a freeze by the `longFreeze` duration
+    // checks:
+    // - caller has the LONG_FREEZER role
+    // - longFreezes[caller] > 0
+    // - now + longFreeze >= unfreezeAt (that is, this call should increase unfreezeAt)
+    // effects:
+    // - unfreezeAt' = now + longFreeze
+    // - longFreezes'[caller] = longFreezes[caller] - 1
+    // - if longFreezes'[caller] == 0 then caller loses the LONG_FREEZER role
     function freezeLong() external onlyRole(LONG_FREEZER) {
         longFreezes[_msgSender()] -= 1; // reverts on underflow
 
@@ -101,23 +136,34 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     /// Enter a permanent freeze
+    // checks:
+    // - caller has the OWNER role
+    // - unfreezeAt != type(uint48).max
+    // effects: unfreezeAt' = type(uint48).max
     function freezeForever() external onlyRole(OWNER) {
         freezeUntil(MAX_UNFREEZE_AT);
     }
 
     /// End all freezes
+    // checks:
+    // - unfreezeAt > now  (i.e, frozen() == true before the call)
+    // - caller has the OWNER role
+    // effects: unfreezeAt' = now  (i.e, frozen() == false after the call)
     function unfreeze() external onlyRole(OWNER) {
         emit UnfreezeAtSet(unfreezeAt, uint48(block.timestamp));
         unfreezeAt = uint48(block.timestamp);
     }
 
     // === Pausing ===
-
+    // checks: caller has PAUSER
+    // effects: paused' = true
     function pause() external onlyRole(PAUSER) {
         emit PausedSet(paused, true);
         paused = true;
     }
 
+    // checks: caller has PAUSER
+    // effects: paused' = false
     function unpause() external onlyRole(PAUSER) {
         emit PausedSet(paused, false);
         paused = false;
@@ -140,7 +186,8 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     }
 
     // === Private Helper ===
-
+    // checks: newUnfreezeAt > unfreezeAt
+    // effects: unfreezeAt' = newUnfreezeAt
     function freezeUntil(uint48 newUnfreezeAt) private {
         require(newUnfreezeAt > unfreezeAt, "frozen");
         emit UnfreezeAtSet(unfreezeAt, newUnfreezeAt);
