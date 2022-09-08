@@ -46,7 +46,6 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
        set{a has LONG_FREEZER} == set{a : longFreeze[a] == 0}
     */
 
-    // solhint-disable-next-line func-name-mixedcase
     // checks:
     // - __Auth_init has not previously been called
     // - 0 < shortFreeze_ <= MAX_SHORT_FREEZE
@@ -58,6 +57,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
     // - shortFreeze' == shortFreeze_
     // - longFreeze' == longFreeze_
     // questions: (what do I know about the values of paused and unfreezeAt?)
+    // solhint-disable-next-line func-name-mixedcase
     function __Auth_init(uint48 shortFreeze_, uint48 longFreeze_) internal onlyInitializing {
         __AccessControl_init();
 
