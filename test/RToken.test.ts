@@ -1670,6 +1670,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
         })
 
+        it('Should ignore redemption throttling if max redemption charge is zero ', async function () {
+          const prevMaxRedemption: BigNumber = await rToken.maxRedemptionCharge()
+          await rToken.connect(owner).setMaxRedemption(bn(0))
+          expect(await rToken.maxRedemptionCharge()).to.equal(bn(0))
+
+          // Large redemption will work
+          redeemAmount = issueAmount.mul(prevMaxRedemption).div(fp('1'))
+          await rToken.connect(addr1).redeem(redeemAmount.add(1))
+        })
+
         it('Should allow two redemptions of half value #fast', async function () {
           redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
