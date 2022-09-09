@@ -16,9 +16,16 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     EnumerableSet.AddressSet internal destinations;
     mapping(address => RevenueShare) internal distribution;
-    // invariant: distribution values are all nonnegative, and at least one is nonzero.
-    // invariant: distribution[FURNACE].rsrDist == FIX_ZERO
-    // invariant: distribution[ST_RSR].rTokenDist == FIX_ZERO
+
+    // ==== Invariants ====
+    // distribution is nonzero. (That is, distribution has at least one nonzero value)
+    // distribution[FURNACE].rsrDist == 0
+    // distribution[ST_RSR].rTokenDist == 0
+    // distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries
+    // all distribution-share values are <= 10000
+
+    // ==== destinations:
+    // if distribution[dest] != (0,0) then dest in destinations // TODO: make this iff
 
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
@@ -35,6 +42,10 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Set the RevenueShare for destination `dest`. Destinations `FURNACE` and `ST_RSR` refer to
     /// main.furnace() and main.stRSR().
     /// @custom:governance
+    // checks: invariants hold in post-state
+    // effects:
+    //   destinations' = destinations.add(dest)
+    //   distribution' = distribution.set(dest, share)
     function setDistribution(address dest, RevenueShare memory share) external governance {
         _setDistribution(dest, share);
         RevenueTotals memory revTotals = totals();
@@ -51,6 +62,16 @@ contract DistributorP1 is ComponentP1, IDistributor {
     /// Requires that this contract has an allowance of at least
     /// `amount` tokens, from `from`, of the token at `erc20`.
     /// @custom:interaction CEI
+    // let:
+    //   w = the map such that w[dest] = distribution[dest].{erc20}Shares
+    //   tokensPerShare = floor(amount / sum(values(w)))
+    //   addrOf(dest) = 1 -> furnace | 2 -> stRSR | x -> x
+    // checks:
+    //   erc20 is in {rsr, rToken}
+    //   sum(values(w)) > 0
+    // actions:
+    //   for dest where w[dest] != 0:
+    //     erc20.transferFrom(from, addrOf(dest), tokensPerShare * w[dest])
     function distribute(
         IERC20 erc20,
         address from,
@@ -107,7 +128,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
     }
 
-    /// Returns the rsr + rToken shareTotals
+    /// The rsr and rToken shareTotals
+    /// @return sum(distribution[d] for d in distribution)
     function totals() public view returns (RevenueTotals memory revTotals) {
         uint256 length = destinations.length();
         for (uint256 i = 0; i < length; ++i) {
@@ -117,7 +139,17 @@ contract DistributorP1 is ComponentP1, IDistributor {
         }
     }
 
-    /// Sets the distribution values - Internals
+    // ==== Internal ====
+
+    /// Set a distribution values
+    // checks:
+    //   distribution'[FURNACE].rsrDist == 0
+    //   distribution'[ST_RSR].rTokenDist == 0
+    //   share.rsrDist <= 10000
+    //   size(destinations') <= MAX_DESTINATIONS_ALLOWED
+    // effects:
+    //   destinations' = destinations.add(dest)
+    //   distribution' = distribution.set(dest, share)
     function _setDistribution(address dest, RevenueShare memory share) internal {
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
@@ -132,6 +164,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     }
 
     /// Ensures distribution values are non-zero
+    // checks: at least one of its arguments is nonzero
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
         require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
     }

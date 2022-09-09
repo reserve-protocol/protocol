@@ -454,7 +454,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // let
     //   N = numPeriods; the number of whole rewardPeriods since the last payout
-    //   payout = rsrRewards() * (1 - (1 - rewardRatio)^N)  (see [payout-formula])
+    //   payout = rsrRewards() * (1 - (1 - rewardRatio)^N)  (see [strsr-payout-formula])
     //
     // effects:
     //   stakeRSR' = stakeRSR + payout
@@ -463,12 +463,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     unless totalStakes == 0 or stakeRSR == 0, in which case stakeRate' = FIX_ONE
     //   totalStakes' = totalStakes
     //
-    // [payout-formula]:
+    // [strsr-payout-formula]:
     //   The process we're modelling is:
     //     N = number of whole rewardPeriods since last _payoutRewards() call
     //     rewards_0 = rsrRewards()
     //     payout_{i+1} = rewards_i * payoutRatio
-    //     rewards_{i+1} = rewards_i - payout_i
+    //     rewards_{i+1} = rewards_i - payout_{i+1}
     //     payout = sum{payout_i for i in [1...N]}
     //   thus:
     //     rewards_N = rewards_0 - payout

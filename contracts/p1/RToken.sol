@@ -20,14 +20,13 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
 
 /**
  * @title RTokenP1
- * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
+ * An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
+    /// Immutable after init. Expected to be an IPFS link, but can be the mandate itself.
     string public mandate;
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
@@ -88,6 +87,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // {qRTok} the min value of total supply to use for redemption throttling
     // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
     uint256 public redemptionVirtualSupply;
+
+
 
     function init(
         IMain main_,
@@ -408,6 +409,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
+    // checks: unpaused; unfrozen; caller is backingManager
+    // effects:
+    //   bal'[recipient] = bal[recipient] + amtRToken
+    //   totalSupply' = totalSupply + amtRToken
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amtRToken);
@@ -415,6 +420,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
+    // checks: not paused or frozen
+    // effects:
+    //   bal'[caller] = bal[caller] - amtRToken
+    //   totalSupply' = totalSupply - amtRToken
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
@@ -422,6 +431,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
+    // checks: unpaused; unfrozen; caller is backingManager
+    // effects: basketsNeeded' = basketsNeeded_
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
@@ -435,6 +446,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     }
 
     /// @custom:governance
+    //
     function setIssuanceRate(uint192 val) public governance {
         require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
