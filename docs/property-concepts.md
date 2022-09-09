@@ -18,6 +18,8 @@ I'm generally not documenting our governance-parameter setters like this, though
 
 # General Notes
 
+Contract invariants are assumed to hold after every function call, _once_ its init() has been called. We don't really try to analyze what state the contract might be in before then -- except to say that its value for `initialized` must be fale.
+
 # Assumptions
 
 - The return value of erc20() is invariant for each Asset deployment.
