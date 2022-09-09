@@ -300,8 +300,8 @@ Note that `delegatecall` can also be dangerous for other reasons, such as transf
 
 Here, "contract state" refers to the normal storage variables of a smart contract.
 
-- P1 core contracts MUST NOT contain `immutable` state variables. (P1 core contract MAY define `constant` values.)
+- P1 core contracts MUST NOT contain `immutable` state variables. (P1 core contracts MAY define `constant` values.)
 - P1 core contracts MUST NOT set state variables in their constructor.
-- P1 core contracts MUST NOT initialized state variables where they are declared.
+- P1 core contracts MUST NOT initialize state variables where they are declared.
 
 Instead of any of these, P1 core contracts will probably each define an initializer funcion, per the usual OZ upgradability pattern. A P1 core contract MAY depend on that initializer having run before any other functions.
