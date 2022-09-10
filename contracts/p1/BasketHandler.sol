@@ -10,11 +10,21 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 
+// A valid BackupConfig has 0 < erc20s.length and 0 < max
 struct BackupConfig {
     uint256 max; // Maximum number of backup collateral erc20s to use in a basket
     IERC20[] erc20s; // Ordered list of backup collateral ERC20s
 }
 
+// What does a BasketConfig value mean?
+//
+// erc20s, targetAmts, and targetNames should be interpreted together.
+// targetAmts[erc20] is the quantity of target units of erc20 that one BU should hold
+// targetNames[erc20] is the name of erc20's target unit
+//
+// For any valid BasketConfig value:
+//     erc20s == keys(targetAmts) == keys(targetNames)
+//     if name is in values(targetNames), then backups[name] is a valid BackupConfig
 struct BasketConfig {
     // The collateral erc20s in the prime (explicitly governance-set) basket
     IERC20[] erc20s;
@@ -26,15 +36,22 @@ struct BasketConfig {
     mapping(bytes32 => BackupConfig) backups;
 }
 
-/// A reference basket that provides a dynamic definition of a basket unit (BU)
-/// Can be empty if all collateral defaults
+/// The type of BasketHandler.basket.
+/// Defines a basket unit (BU) in terms of reference amounts of underlying tokens
+//
+// For any valid Basket value:
+//     erc20s == keys(refAmts)
+//     if disabled = false then erc20s.length > 0
+//     0 < timestamp
+//     when the value is created:
+//        nonce is greater than every previous BasketHandler.basket.nonce
+//        timestamp == now
 struct Basket {
-    IERC20[] erc20s; // Weak Invariant: after `refreshBasket`, no bad collateral || disabled
+    IERC20[] erc20s;  // enumerated keys for refAmts
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
-    uint48 nonce;
-    uint48 timestamp;
+    uint48 nonce;     // A unique identifier for this basket instance
+    uint48 timestamp; // The timestamp when this basket was last set
     bool disabled;
-    // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
 }
 
 /*
@@ -44,7 +61,11 @@ library BasketLib {
     using BasketLib for Basket;
     using FixLib for uint192;
 
-    // Empty self
+    /// Set self to a fresh, empty basket
+    // self'.erc20s = [] (empty list)
+    // self'.refAmts = {} (empty map)
+    // self'.disabled = false
+    // self'.timestamp is now, self'.nonce are "
     function empty(Basket storage self) internal {
         uint256 length = self.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
@@ -57,6 +78,8 @@ library BasketLib {
     }
 
     /// Set `self` equal to `other`
+    // self'.x = other.x for each basket field `x`
+    // EXCEPT THAT self'.nonce = self.nonce + 1
     function copy(Basket storage self, Basket storage other) internal {
         empty(self); // updates nonce
         uint256 length = other.erc20s.length;
@@ -69,6 +92,10 @@ library BasketLib {
     }
 
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
+    // self'.refAmts[tok] = self.refAmts[tok] + weight
+    // self'.erc20s is self.erc20s with tok added,
+    // TODO: if weight == 0 -- should this revert? should it just avoid erc20s.push(tok) and other
+    //       changes?
     function add(
         Basket storage self,
         IERC20 tok,
@@ -98,8 +125,22 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
+    // config is the basket configuration, from which basket will be computed in a basket-switch
+    // event. config is only modified by governance, through setPrimeBakset and setBackupConfig
     BasketConfig private config;
+
+    // basket is the current basket. basket is only every directlly modified by `_switchBasket()`
     Basket private basket;
+
+    // ==== Invariants ====
+    // if basket is empty (what does that mean?) then all backup collateral has defaulted  // TODO: wat
+    // config.targetAmts == {(erc20 -> amt * coll.targetPerRef basket.refAmts
+    //
+    // Always, immediately after refreshBasket():
+    //   either all collateral in basket.erc20s is not DISABLED, or basket.disabled is true
+    //
+    // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
+
 
     function init(IMain main_) external initializer {
         __Component_init(main_);
