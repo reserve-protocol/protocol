@@ -38,7 +38,6 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade } from './utils/trades'
 import { setOraclePrice } from './utils/oracles'
-import { connect } from 'http2'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -1658,7 +1657,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
-        let auctionTimestamp = await getLatestBlockTimestamp()
+        const auctionTimestamp = await getLatestBlockTimestamp()
 
         // Token0 -> Backup Token Auction
         await expectTrade(backingManager, {
