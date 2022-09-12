@@ -134,6 +134,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
     }
   }
 
+  // Only used for P1, checks the length of the draft queue
+  const expectDraftQueue = async (era: number, account: string, expectedValue: number) => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const stRSRP1 = <StRSRP1Votes>await ethers.getContractAt('StRSRP1Votes', stRSR.address)
+      expect(await stRSRP1.draftQueueLen(era, account)).to.equal(expectedValue)
+    } else return
+  }
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -503,6 +511,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await expectWithdrawal(addr1.address, 0, { rsrAmount: amount1 })
 
+      // Check draftQueueLen
+      await expectDraftQueue(1, addr1.address, 1)
+
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount2)
 
@@ -518,6 +529,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       await expectWithdrawal(addr1.address, 1, { rsrAmount: amount2 })
 
+      await expectDraftQueue(1, addr1.address, 2)
+
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
 
@@ -532,6 +545,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         .withArgs(0, 1, addr2.address, amount3, amount3, availableAt)
 
       await expectWithdrawal(addr2.address, 0, { rsrAmount: amount3 })
+
+      await expectDraftQueue(1, addr1.address, 2)
+      await expectDraftQueue(1, addr2.address, 1)
 
       // All staked funds withdrawn upfront
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)

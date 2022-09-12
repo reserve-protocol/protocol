@@ -429,6 +429,37 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).cancel(1, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
+    it('Should be able to refund multiple issuances when calling vest if basket changed', async function () {
+      const issueAmount: BigNumber = bn('20000e18')
+
+      // Start issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Refresh from owner should succeed
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Vest should return tokens
+      await expect(rToken.connect(addr1).vest(addr1.address, 3))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
+    })
+
     it('Should be able to cancel vesting if paused', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
