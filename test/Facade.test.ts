@@ -288,7 +288,7 @@ describe('Facade contract', () => {
       expect((await assetRegistry.erc20s()).length).to.be.gte(numAssets)
     })
 
-    it.only(`getActCalldata - gas reporting for ${numAssets} registered assets`, async () => {
+    it(`getActCalldata - gas reporting for ${numAssets} registered assets`, async () => {
       await snapshotGasCost(facade.getActCalldata(rToken.address))
       const [addr, bytes] = await facade.callStatic.getActCalldata(rToken.address)
       // Should return 0 addr and 0 bytes, otherwise we didn't use maximum gas
