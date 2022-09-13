@@ -2,13 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../common/constants'
+import { BN_SCALE_FACTOR, ZERO_ADDRESS } from '../common/constants'
 import { bn, fp } from '../common/numbers'
+import { IConfig } from '../common/configuration'
 import {
   CTokenMock,
   ERC20Mock,
   Facade,
   FacadeP1,
+  OracleLib,
   StaticATokenMock,
   StRSRP1,
   TestIStRSR,
@@ -16,8 +18,12 @@ import {
   USDCMock,
 } from '../typechain'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import snapshotGasCost from './utils/snapshotGasCost'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe('Facade contract', () => {
   let owner: SignerWithAddress
@@ -42,6 +48,9 @@ describe('Facade contract', () => {
   let aTokenAsset: Collateral
   let cTokenAsset: Collateral
 
+  let config: IConfig
+  let oracleLib: OracleLib
+
   // Facade
   let facade: Facade
 
@@ -61,9 +70,8 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, compToken, aaveToken, basket, facade, rToken } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ oracleLib, stRSR, rsr, compToken, aaveToken, basket, facade, rToken, config } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -249,5 +257,43 @@ describe('Facade contract', () => {
         expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
       })
     }
+  })
+
+  describeGas('Gas Reporting', () => {
+    const numAssets = 200
+
+    beforeEach(async () => {
+      const m = await ethers.getContractAt('MainP1', await rToken.main())
+      const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await m.assetRegistry())
+      const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
+      const AssetFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const feed = await tokenAsset.chainlinkFeed()
+
+      // Get to numAssets registered assets
+      for (let i = 0; i < numAssets; i++) {
+        const erc20 = await ERC20Factory.deploy('Name', 'Symbol')
+        const asset = await AssetFactory.deploy(
+          feed,
+          erc20.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          bn(2).pow(47)
+        )
+        await assetRegistry.connect(owner).register(asset.address)
+        const assets = await assetRegistry.erc20s()
+        if (assets.length > numAssets) break
+      }
+      expect((await assetRegistry.erc20s()).length).to.be.gte(numAssets)
+    })
+
+    it.only(`getActCalldata - gas reporting for ${numAssets} registered assets`, async () => {
+      await snapshotGasCost(facade.getActCalldata(rToken.address))
+      const [addr, bytes] = await facade.callStatic.getActCalldata(rToken.address)
+      // Should return 0 addr and 0 bytes, otherwise we didn't use maximum gas
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(bytes).to.equal('0x')
+    })
   })
 })

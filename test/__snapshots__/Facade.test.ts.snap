@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Facade contract Gas Reporting getActCalldata - gas reporting for 100 registered assets 1`] = `7439340`;
+
+exports[`Facade contract Gas Reporting getActCalldata - gas reporting for 200 registered assets 1`] = `14278765`;
