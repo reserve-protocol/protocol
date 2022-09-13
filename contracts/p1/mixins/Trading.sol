@@ -63,7 +63,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     function tryTrade(TradeRequest memory req) internal nonReentrant {
         IERC20 sell = req.sell.erc20();
-        require(address(trades[sell]) == address(0), "trade already open");
+        assert(address(trades[sell]) == address(0));
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(
             address(main.broker()),

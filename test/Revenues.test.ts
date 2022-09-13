@@ -2,7 +2,7 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import { ethers, waffle } from 'hardhat'
+import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import {
   BN_SCALE_FACTOR,
@@ -26,6 +26,7 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   OracleLib,
+  RewardableLibP1,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -36,6 +37,8 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
+  TradingLibP0,
+  TradingLibP1,
   USDCMock,
   FiatCollateral,
 } from '../typechain'
@@ -66,6 +69,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   // Non-backing assets
   let rsr: ERC20Mock
   let compToken: ERC20Mock
+  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
 
@@ -122,6 +126,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     ;({
       rsr,
       compToken,
+      compAsset,
       aaveToken,
       compoundMock,
       erc20s,
@@ -175,6 +180,64 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
+  })
+
+  describe('Deployment', () => {
+    it('Should setup RevenueTraders correctly', async () => {
+      expect(await rsrTrader.main()).to.equal(main.address)
+      expect(await rsrTrader.tokenToBuy()).to.equal(rsr.address)
+      expect(await rsrTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+
+      expect(await rTokenTrader.main()).to.equal(main.address)
+      expect(await rTokenTrader.tokenToBuy()).to.equal(rToken.address)
+      expect(await rTokenTrader.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
+    })
+
+    it('Should perform validations on init', async () => {
+      if (IMPLEMENTATION == Implementation.P0) {
+        // Deploy TradingLib external library
+        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
+        const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
+
+        // Create RevenueTrader Factory
+        const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
+          'RevenueTraderP0',
+          { libraries: { TradingLibP0: tradingLib.address } }
+        )
+
+        const newTrader = <TestIRevenueTrader>await RevenueTraderFactory.deploy()
+
+        await expect(newTrader.init(main.address, ZERO_ADDRESS, bn('100'))).to.be.revertedWith(
+          'invalid token address'
+        )
+      } else if (IMPLEMENTATION == Implementation.P1) {
+        // Deploy TradingLib external library
+        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
+        const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+
+        // Deploy RewardableLib external library
+        const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
+          'RewardableLibP1'
+        )
+        const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+
+        const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
+          'RevenueTraderP1',
+          {
+            libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+          }
+        )
+
+        const newTrader = <TestIRevenueTrader>await upgrades.deployProxy(RevenueTraderFactory, [], {
+          kind: 'uups',
+          unsafeAllow: ['external-library-linking', 'delegatecall'], // TradingLib
+        })
+
+        await expect(newTrader.init(main.address, ZERO_ADDRESS, bn('100'))).to.be.revertedWith(
+          'invalid token address'
+        )
+      }
+    })
   })
 
   describe('Config/Setup', function () {
@@ -327,9 +390,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not launch revenue auction if IFFY', async () => {
-        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(collateral0.address, bn('7e7'))
+        await collateral0.refresh()
+
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.not.emit(
+        await expect(rTokenTrader.manageToken(token0.address)).to.not.emit(
           rTokenTrader,
           'TradeStarted'
         )
@@ -424,6 +490,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check funds in Market
         expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
+        // If we attempt to settle before auction ended it reverts
+        await expect(rsrTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        await expect(rTokenTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        // Nothing occurs if we attempt to settle for a token that is not being traded
+        await expect(rsrTrader.settleTrade(aaveToken.address)).to.not.emit
+        await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
+
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
@@ -472,6 +551,92 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      })
+
+      it('Should not auction 1qTok - Amount too small', async () => {
+        // Set min tradesizefor COMP to 1 qtok
+        const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+        newTradingRange.minAmt = 1
+        newTradingRange.minVal = 1
+
+        const newCOMPAsset = await AssetFactory.deploy(
+          await compAsset.chainlinkFeed(),
+          compToken.address,
+          ZERO_ADDRESS,
+          newTradingRange,
+          await compAsset.oracleTimeout()
+        )
+
+        // Swap COMP Asset
+        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
+
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set COMP tokens as reward -1 qtok
+        rewardAmountCOMP = bn(1)
+
+        // COMP Rewards - 1 qTok
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimAndSweepRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check no funds in Market, now in trader
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
+
+        // Check destinations, nothing changed
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -1220,6 +1385,38 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         //  Check all funds distributed to StRSR
         expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
         expect(await rsr.balanceOf(stRSR.address)).to.equal(distAmount)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+      })
+
+      it('Should revert if no distribution exists for a specific token', async () => {
+        // Check funds in Backing Manager and destinations
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Set f = 0, avoid dropping tokens
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(1), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(1), bn(0))
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(0))
+
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, bn(100))
+        ).to.be.revertedWith('nothing to distribute')
+
+        //  Check funds, nothing changed
+        expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
@@ -2082,6 +2279,52 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 100)).to.equal(true)
         // Furnace
         expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
+      })
+
+      it('Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
+        expect(await basketHandler.fullyCollateralized()).to.be.true
+
+        // Change redemption rate for AToken and CToken to double
+        await token2.setExchangeRate(fp('1.2'))
+
+        await expect(
+          backingManager.manageTokens([token2.address, token2.address])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token2.address,
+            token2.address,
+            token2.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([token2.address, token1.address, token2.address])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token1.address,
+            token2.address,
+            token3.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        await expect(
+          backingManager.manageTokens([
+            token1.address,
+            token2.address,
+            token3.address,
+            token3.address,
+          ])
+        ).to.be.revertedWith('duplicate tokens')
+
+        // Remove duplicates, should work
+        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
+          .to.not.be.reverted
       })
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {

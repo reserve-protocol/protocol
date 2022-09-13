@@ -181,7 +181,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         _burn(account, stakeAmount);
 
         // newStakeRSR: {qRSR} = D18 * {qStRSR} / D18{qStRSR/qRSR}
-        uint256 newStakeRSR = (FIX_ONE_256 * totalStakes) / stakeRate;
+        uint256 newStakeRSR = (FIX_ONE_256 * totalStakes + (stakeRate - 1)) / stakeRate;
         uint256 rsrAmount = stakeRSR - newStakeRSR;
         stakeRSR = newStakeRSR;
 
@@ -242,7 +242,6 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
-        if (rsrBalance == 0) return;
 
         uint256 seizedRSR;
         uint256 rewards = rsrRewards();

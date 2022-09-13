@@ -99,7 +99,7 @@ contract Governance is
         bytes32 descriptionHash
     ) public override returns (uint256 proposalId) {
         proposalId = super.queue(targets, values, calldatas, descriptionHash);
-        require(startedInSameEra(proposalId), "same era");
+        require(startedInSameEra(proposalId), "new era");
     }
 
     function cancel(

@@ -404,7 +404,7 @@ describe('FacadeWrite contract', () => {
         ).to.be.revertedWith('not initial deployer')
       })
 
-      it('Should validate owner param when deploying governance in final setup', async () => {
+      it('Should validate owner param in final setup', async () => {
         await expect(
           facadeWrite
             .connect(deployerUser)
@@ -418,6 +418,20 @@ describe('FacadeWrite contract', () => {
               ZERO_ADDRESS
             )
         ).to.be.revertedWith('owner should be empty')
+
+        await expect(
+          facadeWrite
+            .connect(deployerUser)
+            .setupGovernance(
+              rToken.address,
+              false,
+              false,
+              govParams,
+              ZERO_ADDRESS,
+              ZERO_ADDRESS,
+              ZERO_ADDRESS
+            )
+        ).to.be.revertedWith('owner not defined')
       })
     })
 

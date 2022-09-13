@@ -26,5 +26,5 @@ interface IRevenueTrader is IComponent, ITrading {
 
 // solhint-disable-next-line no-empty-blocks
 interface TestIRevenueTrader is IRevenueTrader, TestITrading {
-
+    function tokenToBuy() external view returns (IERC20);
 }

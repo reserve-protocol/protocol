@@ -22,6 +22,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IERC20 tokenToBuy_,
         uint192 maxTradeSlippage_
     ) external initializer {
+        require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
         __Trading_init(maxTradeSlippage_);
         tokenToBuy = tokenToBuy_;
