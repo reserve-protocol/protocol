@@ -194,11 +194,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
 
         SlowIssuance[] storage queue = issuances[account];
+
+        uint256 amtRToken; // {qRTok}
+        uint256 numCanceled;
+        uint256 left;
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        uint256 left;
-        uint256 amtRToken; // {qRTok}
-        bool canceled = false;
+        // Refund issuances that have not yet been processed
         for (uint256 n = first; n < last && n < queue.length; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
@@ -207,12 +209,18 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
-                canceled = true;
+                numCanceled++;
 
-                if (left == 0) left = n;
+                if (numCanceled == 1) left = n;
             }
         }
-        if (canceled) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        // Also pop off queue if right-refunding
+        if (!earliest) {
+            for (uint256 n = 0; n < numCanceled; n++) queue.pop();
+        }
+
+        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -338,6 +346,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+    }
+
+    /// @dev This function is only here because solidity doesn't autogenerate a getter
+    function numIssuances(address account) external view returns (uint256) {
+        return issuances[account].length;
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block

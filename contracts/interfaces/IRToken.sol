@@ -169,4 +169,7 @@ interface TestIRToken is IRToken {
 
     /// @return {qRTok} The RToken supply at which full redemptions are enabled
     function redemptionVirtualSupply() external view returns (uint256);
+
+    /// @dev This function is only here because solidity doesn't autogenerate a getter
+    function numIssuances(address account) external view returns (uint256);
 }

@@ -1482,13 +1482,59 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
+
+      expect(await rToken.numIssuances(addr1.address)).to.equal(0)
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    })
+
+    it('Should not allow solidified cancel exploit', async () => {
+      // This test is modeled after the solidified-provided proof of concept test
+
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2) // takes 2 blocks to vest
+      const beforeBal = await token0.balanceOf(addr1.address)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token0.connect(addr2).approve(rToken.address, initialBal)
+      await token1.connect(addr2).approve(rToken.address, initialBal)
+      await token2.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr2).issue(issueAmount) // This will be stolen by addr1
+
+      // Cancel with addr1
+      await expect(rToken.connect(addr1).cancel(1, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 1, 2, issueAmount)
+
+      // before: queue.right is 1
+      await rToken.connect(addr1).issue(1)
+      // after: queue.right is 2
+
+      // Shoult not allow to double-dip into cancellation
+      await expect(rToken.connect(addr1).cancel(3, false)).to.be.revertedWith('out of range')
+      await expect(rToken.connect(addr1).cancel(3, true)).to.be.revertedWith('out of range')
+      await expect(rToken.connect(addr1).cancel(2, false)).to.not.emit(rToken, 'IssuancesCanceled')
+      await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
+
+      // Should still be able to cancel the initial issuance and the malicious +1
+      // and importantly, these should be all that's left to cancel
+      await expect(rToken.connect(addr1).cancel(0, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 2, issueAmount.add(1))
+
+      // Should have initial tokens back, up to 1 less. Not more
+      expect(await token0.balanceOf(addr1.address)).to.be.lte(beforeBal)
+      expect(await token0.balanceOf(addr1.address)).to.be.closeTo(beforeBal, 1)
     })
   })
 
