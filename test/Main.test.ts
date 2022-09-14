@@ -1261,13 +1261,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       await expect(
         basketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set prime Basket if OWNER', async () => {
@@ -1298,13 +1298,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       await expect(
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {

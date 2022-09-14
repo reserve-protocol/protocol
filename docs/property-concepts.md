@@ -23,4 +23,4 @@ Contract invariants are assumed to hold after every function call, _once_ its in
 # Assumptions
 
 - The return value of erc20() is invariant for each Asset deployment.
-
+- For any map, the documentation function `keys(m)` is the set of all keys `k` such that `m[k]` is not the zero value.

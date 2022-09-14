@@ -479,7 +479,7 @@ library FixLib {
 //    https://medium.com/coinmonks/4db014e080b1, https://medium.com/wicketh/afa55870a65
 //    and quite a few of the other excellent "Mathemagic" posts from https://medium.com/wicketh
 /// @dev Only use if you need to avoid overflow; costlier than x * y / z
-/// @return x * y / z
+/// @return result x * y / z
 function mulDiv256(
     uint256 x,
     uint256 y,
@@ -533,7 +533,8 @@ function mulDiv256(
 ///   Adapted from sources:
 ///   https://medium.com/wicketh/27650fec525d, https://medium.com/coinmonks/4db014e080b1
 /// @dev Intended to be internal to this library
-/// @return (lo, hi) such that hi*(2**256) + lo == x * y
+/// @return lo (paired with `hi`)
+/// @return hi (lo, hi) satisfies  hi*(2**256) + lo == x * y
 function fullMul(uint256 x, uint256 y) pure returns (uint256 lo, uint256 hi) {
     unchecked {
         uint256 mm = mulmod(x, y, uint256(0) - uint256(1));

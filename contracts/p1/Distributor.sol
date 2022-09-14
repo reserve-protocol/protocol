@@ -129,7 +129,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     }
 
     /// The rsr and rToken shareTotals
-    /// @return sum(distribution[d] for d in distribution)
+    /// @return revTotals equals sum(distribution[d] for d in distribution)
     function totals() public view returns (RevenueTotals memory revTotals) {
         uint256 length = destinations.length();
         for (uint256 i = 0; i < length; ++i) {
@@ -141,7 +141,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     // ==== Internal ====
 
-    /// Set a distribution values
+    /// Set a distribution pair
     // checks:
     //   distribution'[FURNACE].rsrDist == 0
     //   distribution'[ST_RSR].rTokenDist == 0
