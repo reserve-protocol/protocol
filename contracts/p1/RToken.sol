@@ -71,7 +71,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
-     *    queue.items[queue.right].amtRToken == 6000,
+     *    queue.items[queue.right - 1].amtRToken == 6000,
      * then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
      * vest() on that account, we'd vest 5000 RTokens *to* that account.
      */
@@ -126,7 +126,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
-            refundSpan(issuer, queue.left, queue.right);
+            refundSpan(issuer, queue.left, queue.right, false);
 
             // Refresh collateral after interaction
             main.assetRegistry().refresh();
@@ -183,7 +183,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // Push issuance onto queue
-        IssueItem storage curr = queue.items.push();
+        IssueItem storage curr = (queue.right < queue.items.length)
+            ? queue.items[queue.right]
+            : queue.items.push();
         curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
@@ -273,7 +275,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
-            refundSpan(account, queue.left, queue.right);
+            refundSpan(account, queue.left, queue.right, false);
         } else {
             vestUpTo(account, endId);
         }
@@ -318,9 +320,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // == Interactions ==
         if (earliest) {
-            refundSpan(account, queue.left, endId);
+            refundSpan(account, queue.left, endId, false);
         } else {
-            refundSpan(account, endId, queue.right);
+            refundSpan(account, endId, queue.right, true);
         }
     }
 
@@ -456,7 +458,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
+        require(index < issueQueues[account].right, "out of range");
         return issueQueues[account].items[index];
+    }
+
+    /// @dev This function is only here because solidity doesn't autogenerate a getter
+    function numIssuances(address account) external view returns (uint256) {
+        return issueQueues[account].right;
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
@@ -470,12 +478,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// after: queue.left == queue.right
     /// @custom:interaction
     function refundSpan(
         address account,
         uint256 left,
-        uint256 right
+        uint256 right,
+        bool cleanup
     ) private {
         if (left >= right) return; // refund an empty span
 
@@ -505,11 +513,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (queue.left == left && right <= queue.right) {
             // refund from beginning of queue
             queue.left = right;
-        } else if (queue.left < left && right == queue.right) {
-            // refund from end of queue
-            queue.right = left;
-        } else revert("Bad refundSpan");
+        } else if (queue.left >= left || right != queue.right) revert("Bad refundSpan");
         // error: can't remove [left,right) from the queue, and leave just one interval
+
+        // cleanup if instructed, by deleting elements from the end of the queue
+        if (cleanup) {
+            assert(right == queue.items.length); // this indicates improper use of this function
+            queue.right = left;
+            if (queue.left > queue.right) queue.left = queue.right;
+        }
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
