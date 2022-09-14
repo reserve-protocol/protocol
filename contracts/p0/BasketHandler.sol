@@ -351,7 +351,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// Require that erc20s is a "valid collateral array"
     // i.e, it contains no duplicates, no instances of rsr, strsr, rtoken, or the 0 address
-    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
+    function requireValidCollArray(IERC20[] memory erc20s) internal view {
         IERC20 rsr = main.rsr();
         IERC20 rToken = IERC20(address(main.rToken()));
         IERC20 stRSR = IERC20(address(main.stRSR()));
@@ -368,7 +368,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
+    /// Good collateral is (1) registered, (2) collateral, and (3) not DISABLED
     function goodCollateral(IERC20 erc20) private view returns (bool) {
         IAssetRegistry reg = main.assetRegistry();
         return
