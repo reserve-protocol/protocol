@@ -125,11 +125,13 @@ contract NonFiatCollateral is Collateral {
 
     /// @return min {tok} The minimium trade size
     function minTradeSize() external view override returns (uint192 min) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
+        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p1) {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-                // p = p.mul(p2);
-                p = uint192((uint256(p) * p2) / FIX_ONE);
+
+                // In the next line we violate our standard practice and put D18 on a uint256
+                // D18{UoA/tok} = p1.mul(p2);
+                uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
 
                 // {tok} = {UoA} / {UoA/tok}
                 // return tradingRange.minVal.div(p, CEIL);
@@ -144,11 +146,13 @@ contract NonFiatCollateral is Collateral {
 
     /// @return max {tok} The maximum trade size
     function maxTradeSize() external view override returns (uint192 max) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p) {
+        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p1) {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-                // p = p.mul(p2);
-                p = uint192((uint256(p) * p2) / FIX_ONE);
+
+                // In the next line we violate our standard practice and put D18 on a uint256
+                // D18{UoA/tok} = p1.mul(p2);
+                uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
 
                 // {tok} = {UoA} / {UoA/tok}
                 // return tradingRange.maxVal.div(p);
