@@ -15,7 +15,6 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     uint192 public constant MAX_RATIO = 1e18;
     uint48 public constant MAX_PERIOD = 31536000; // {s} 1 year
 
-
     uint192 public ratio; // {1} What fraction of balance to melt each period
     uint48 public period; // {seconds} How often to melt
     uint48 public lastPayout; // {seconds} The last time we did a payout

@@ -119,12 +119,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 nonce; // A unique identifier for this basket instance
-    uint48 timestamp; // The timestamp when this basket was last set
+    uint48 public nonce; // A unique identifier for this basket instance
+    uint48 public timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
-    bool disabled;
+    bool private disabled;
 
     // ==== Invariants ====
     // basket is a valid Basket:
@@ -516,7 +516,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                         newBasket.add(
                             erc20,
                             needed.div(reg.toColl(erc20).targetPerRef().mul(fixSize), CEIL)
-                            );
+                        );
                         assigned++;
                     }
                 }
