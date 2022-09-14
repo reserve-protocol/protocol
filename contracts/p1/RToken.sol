@@ -53,15 +53,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     struct IssueQueue {
         uint256 basketNonce; // The nonce of the basket this queue models deposits against
         address[] tokens; // Addresses of the erc20 tokens modelled by deposits in this queue
-        uint256 left; // [left, right) is the span of currently-valid items
-        uint256 right; //
+        uint256 left; // [left, items.length) is the span of currently-valid items
         IssueItem[] items; // The actual items (The issuance "fenceposts")
     }
     /*
-     * If we want to clean up state, it's safe to delete items[x] iff x < left.
-     * For an initialized IssueQueue queue:
-     *     queue.items.right >= left
-     *     queue.items.right == left  iff  there are no more pending issuances here
+     * For an initialized IssueQueue queue with pending issuances:
+     *     queue.left < queue.items.length
+     * For a IssueQueue queue WITHOUT pending issuances:
+     *     queue.left == queue.items.length
      *
      * The short way to describe this is that IssueQueue stores _cumulative_ issuances, not raw
      * issuances, and so any particular issuance is actually the _difference_ between two adjaacent
@@ -71,7 +70,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
-     *    queue.items[queue.right].amtRToken == 6000,
+     *    queue.items[queue.items.length - 1].amtRToken == 6000,
      * then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
      * vest() on that account, we'd vest 5000 RTokens *to* that account.
      */
@@ -123,10 +122,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
+        uint256 queueLen = queue.items.length;
         if (queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
-            refundSpan(issuer, queue.left, queue.right);
+            refundSpan(issuer, queue.left, queueLen, false);
 
             // Refresh collateral after interaction
             main.assetRegistry().refresh();
@@ -134,6 +134,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             // Refresh local values after potential reentrant changes to contract state.
             (basketNonce, ) = bh.lastSet();
             queue = issueQueues[issuer];
+            queueLen = queue.items.length;
         }
 
         // == Checks-effects block ==
@@ -158,7 +159,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (
             // D18{blocks} <= D18{1} * {blocks}
             vestingEnd <= FIX_ONE_256 * block.number &&
-            queue.left == queue.right &&
+            queue.left == queueLen &&
             status == CollateralStatus.SOUND
         ) {
             // Complete issuance
@@ -170,7 +171,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             emit BasketsNeededChanged(basketsNeeded, newBasketsNeeded);
             basketsNeeded = newBasketsNeeded;
 
-            // Note: We don't need to update the prev queue entry because queue.left = queue.right
+            // Note: We don't need to update the prev queue entry because queue.left = queueLen
             emit Issuance(issuer, amtRToken, amtBaskets);
 
             address backingMgr = address(main.backingManager());
@@ -189,9 +190,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         curr.amtBaskets = amtBaskets;
         curr.deposits = deposits;
 
+        // Configure queue
+        queue.basketNonce = basketNonce;
+        queue.tokens = erc20s;
+
         // Accumulate
-        if (queue.right > 0) {
-            IssueItem storage prev = queue.items[queue.right - 1];
+        queueLen = queue.items.length;
+        if (queueLen > 1) {
+            IssueItem storage prev = queue.items[queueLen - 2];
             curr.amtRToken = prev.amtRToken + amtRToken;
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             curr.amtBaskets = prev.amtBaskets + amtBaskets;
@@ -200,14 +206,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             }
         }
 
-        // Configure queue
-        queue.basketNonce = basketNonce;
-        queue.tokens = erc20s;
-        queue.right++;
-
         emit IssuanceStarted(
             issuer,
-            queue.right - 1,
+            queueLen - 1,
             amtRToken,
             amtBaskets,
             erc20s,
@@ -273,7 +274,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets
         if (queue.basketNonce != basketNonce) {
-            refundSpan(account, queue.left, queue.right);
+            refundSpan(account, queue.left, queue.items.length, false);
         } else {
             vestUpTo(account, endId);
         }
@@ -285,16 +286,17 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
 
         // Handle common edge cases in O(1)
-        if (queue.left == queue.right) return queue.left;
+        uint256 queueLen = queue.items.length;
+        if (queue.left == queueLen) return queue.left;
         if (blockNumber < queue.items[queue.left].when) return queue.left;
-        if (queue.items[queue.right - 1].when <= blockNumber) return queue.right;
+        if (queue.items[queueLen - 1].when <= blockNumber) return queueLen;
 
         // find left and right (using binary search where always left <= right) such that:
         //     left == right - 1
         //     queue[left].when <= block.timestamp
-        //     right == queue.right  or  block.timestamp < queue[right].when
+        //     right == queueLen  or  block.timestamp < queue[right].when
         uint256 left = queue.left;
-        uint256 right = queue.right;
+        uint256 right = queueLen;
         while (left < right - 1) {
             uint256 test = (left + right) / 2;
             // In this condition: D18{block} < D18{block}
@@ -314,13 +316,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address account = _msgSender();
         IssueQueue storage queue = issueQueues[account];
 
-        require(queue.left <= endId && endId <= queue.right, "out of range");
+        uint256 queueLen = queue.items.length;
+        require(queue.left <= endId && endId <= queueLen, "out of range");
 
         // == Interactions ==
         if (earliest) {
-            refundSpan(account, queue.left, endId);
+            refundSpan(account, queue.left, endId, false);
         } else {
-            refundSpan(account, endId, queue.right);
+            refundSpan(account, endId, queueLen, true);
         }
     }
 
@@ -454,9 +457,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         redemptionVirtualSupply = val;
     }
 
-    /// @dev This function is only here because solidity can't autogenerate our getter
+    /// @dev This function is only here because solidity doesn't autogenerate a getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
         return issueQueues[account].items[index];
+    }
+
+    /// @dev This function is only here because solidity doesn't autogenerate a getter
+    function numIssuances(address account) external view returns (uint256) {
+        return issueQueues[account].items.length;
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
@@ -470,12 +478,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// after: queue.left == queue.right
     /// @custom:interaction
     function refundSpan(
         address account,
         uint256 left,
-        uint256 right
+        uint256 right,
+        bool deleteAfter
     ) private {
         if (left >= right) return; // refund an empty span
 
@@ -501,15 +509,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             }
         }
 
-        // Check the relationships of these intervals, and set queue.{left, right} to final values.
-        if (queue.left == left && right <= queue.right) {
+        if (queue.left == left && right <= queue.items.length) {
             // refund from beginning of queue
             queue.left = right;
-        } else if (queue.left < left && right == queue.right) {
-            // refund from end of queue
-            queue.right = left;
-        } else revert("Bad refundSpan");
+        } else if (queue.left >= left || right != queue.items.length) revert("Bad refundSpan");
         // error: can't remove [left,right) from the queue, and leave just one interval
+
+        // delete after if instructed
+        if (deleteAfter) {
+            assert(right == queue.items.length); // this indicates improper use of this function
+            for (uint256 i = left; i < right; ++i) queue.items.pop();
+            if (queue.left > queue.items.length) queue.left = queue.items.length;
+        }
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
@@ -526,7 +537,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[account];
         if (queue.left == endId) return;
 
-        require(queue.left <= endId && endId <= queue.right, "out of range");
+        require(queue.left <= endId && endId <= queue.items.length, "out of range");
 
         // Vest the span up to `endId`.
         uint256 amtRToken;

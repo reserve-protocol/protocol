@@ -236,7 +236,8 @@ contract FacadeP1 is Facade, IFacadeP1 {
         returns (Pending[] memory issuances)
     {
         RTokenP1 rTok = RTokenP1(address(rToken));
-        (, uint256 left, uint256 right) = rTok.issueQueues(account);
+        (, uint256 left) = rTok.issueQueues(account);
+        uint256 right = rTok.numIssuances(account);
         issuances = new Pending[](right - left);
         for (uint256 i = 0; i < right - left; i++) {
             RTokenP1.IssueItem memory issueItem = rTok.issueItem(account, i + left);
