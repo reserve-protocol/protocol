@@ -266,7 +266,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         //   lastIssRate is at least 1e24 (from MIN_ISS_RATE), and
         //   amtRToken is at most 1e48, so
         //   what's downcast is at most (1e18 * 1e48 / 1e24) = 1e38 < 2^192-1
-        finished = before + uint192((FIX_ONE_256 * amtRToken - 1 + lastIssRate) / lastIssRate);
+        finished = before + uint192((FIX_ONE_256 * amtRToken + (lastIssRate - 1)) / lastIssRate);
         allVestAt = finished;
     }
 
@@ -389,9 +389,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
-        // Accept and burn RToken
-        _burn(redeemer, amount);
-
         // Revert if redemption exceeds battery capacity
         if (maxRedemptionCharge > 0) {
             uint256 supply = totalSupply();
@@ -401,6 +398,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             uint192 dischargeAmt = uint192((FIX_ONE_256 * amount + (supply - 1)) / supply);
             battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
         }
+
+        // Accept and burn RToken
+        _burn(redeemer, amount);
 
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);

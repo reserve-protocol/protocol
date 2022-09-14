@@ -255,20 +255,27 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid issuanceRate')
     })
 
-    it('Should allow to update maxRedemptionCharge if Owner', async () => {
-      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.reverted
+    it('Should allow to update maxRedemptionCharge if Owner and perform validations', async () => {
+      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.revertedWith('governance only')
       await rToken.connect(owner).setMaxRedemption(0)
       expect(await rToken.maxRedemptionCharge()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.reverted
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.revertedWith(
+        'governance only'
+      )
       await rToken.connect(owner).setMaxRedemption(fp('0.15'))
       expect(await rToken.maxRedemptionCharge()).to.equal(fp('0.15'))
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.reverted
+      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.revertedWith(
+        'governance only'
+      )
       await rToken.connect(owner).setMaxRedemption(fp('1'))
       expect(await rToken.maxRedemptionCharge()).to.equal(fp('1'))
 
-      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.reverted
+      // Cannot update with invalid value
+      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.revertedWith(
+        'invalid fraction'
+      )
     })
 
     it('Should allow to update redemptionVirtualSupply if Owner', async () => {
@@ -372,7 +379,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Try to vest
-      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith('unsound')
+      await expect(rToken.connect(addr1).vest(addr1.address, 1)).to.be.revertedWith(
+        'basket unsound'
+      )
 
       // Check values
       expect(await rToken.totalSupply()).to.equal(bn(0))
@@ -420,6 +429,37 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).cancel(1, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
+    it('Should be able to refund multiple issuances when calling vest if basket changed', async function () {
+      const issueAmount: BigNumber = bn('20000e18')
+
+      // Start issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Refresh from owner should succeed
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Vest should return tokens
+      await expect(rToken.connect(addr1).vest(addr1.address, 3))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
+    })
+
     it('Should be able to cancel vesting if paused', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
@@ -435,6 +475,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Cancel
       await rToken.connect(addr1).cancel(1, true)
+    })
+
+    it('Should not be able to cancel vesting if index is out of range', async function () {
+      const issueAmount: BigNumber = bn('100000e18')
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to cancel
+      await expect(rToken.connect(addr1).cancel(2, true)).to.be.revertedWith('out of range')
+
+      // Cancel successfully
+      await rToken.connect(addr1).cancel(1, true)
+
+      // Attempt to cancel with older index
+      await expect(rToken.connect(addr1).cancel(0, true)).to.be.revertedWith('out of range')
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -697,7 +757,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceBlocks(1)
       await expect(
         rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
-      ).to.be.revertedWith('unsound')
+      ).to.be.revertedWith('basket unsound')
 
       // Check previous minting was not processed
       await expectIssuance(addr1.address, 0, {
@@ -722,7 +782,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Attempt to vest
-      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('not ready')
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('issuance not ready')
+
+      await advanceBlocks(1)
+
+      // Should vest now
+      await rToken.vest(addr1.address, 1)
+    })
+
+    it('Should not vest if index is out of range', async function () {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest with invalid index
+      await expect(rToken.vest(addr1.address, 2)).to.be.revertedWith('out of range')
 
       await advanceBlocks(1)
 
@@ -732,7 +813,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('Should return maxIssuable correctly', async () => {
       const issueAmount = initialBal.div(2)
-
       // Check values, with no issued tokens
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
         initialBal.mul(4)
@@ -751,7 +831,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // Process slow issuances
+      // Attempt to process slow issuances - nothing at this point
+      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+
+      // Process 2 blocks
+      await advanceTime(100)
+
+      // Vest tokens
       await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
 
       // Check values, with issued tokens
@@ -1086,6 +1172,30 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+    })
+
+    it('Should allow instant issuances', async function () {
+      const instantIssue: BigNumber = MIN_ISSUANCE_PER_BLOCK.sub(1)
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Attempt to vest
+      await expect(rToken.vest(addr1.address, 1)).to.be.revertedWith('not ready')
+      await advanceBlocks(5)
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(instantIssue)).to.emit(rToken, 'IssuanceStarted')
+
+      // Should vest now
+      await expect(await rToken.vest(addr1.address, 1)).to.emit(rToken, 'IssuancesCompleted')
     })
 
     it('Should move issuances to next block if exceeds issuance limit', async function () {
@@ -1591,11 +1701,38 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
         })
 
+        it('Should ignore redemption throttling if max redemption charge is zero ', async function () {
+          const prevMaxRedemption: BigNumber = await rToken.maxRedemptionCharge()
+          await rToken.connect(owner).setMaxRedemption(bn(0))
+          expect(await rToken.maxRedemptionCharge()).to.equal(bn(0))
+
+          // Large redemption will work
+          redeemAmount = issueAmount.mul(prevMaxRedemption).div(fp('1'))
+          await rToken.connect(addr1).redeem(redeemAmount.add(1))
+        })
+
         it('Should allow two redemptions of half value #fast', async function () {
           redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.reverted
+        })
+
+        it('Should use real total supply for redemption  if greater then or equal to virtualTotalSupply', async function () {
+          // Issue twice the virtual total supply
+          // Provide approvals
+          await token0.connect(addr2).approve(rToken.address, initialBal)
+          await token1.connect(addr2).approve(rToken.address, initialBal)
+          await token2.connect(addr2).approve(rToken.address, initialBal)
+          await token3.connect(addr2).approve(rToken.address, initialBal)
+
+          await rToken.connect(addr2).issue(issueAmount)
+          redeemAmount = issueAmount.mul(2).mul(config.maxRedemptionCharge).div(fp('1'))
+
+          expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
+
+          // Can redeem
+          await rToken.connect(addr2).redeem(redeemAmount)
         })
       })
     })

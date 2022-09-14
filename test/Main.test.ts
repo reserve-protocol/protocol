@@ -8,6 +8,7 @@ import {
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
   MAX_TARGET_AMT,
+  IComponents,
 } from '../common/configuration'
 import {
   CollateralStatus,
@@ -389,6 +390,20 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should perform validations on init', async () => {
+      const validateComponentAddress = async (
+        mainInstance: TestIMain,
+        components: IComponents,
+        name: keyof IComponents,
+        desc: string
+      ) => {
+        const prevValue = components[name]
+        components[name] = ZERO_ADDRESS
+        await expect(mainInstance.init(components, rsr.address, 1, 1)).to.be.revertedWith(
+          `invalid ${desc} address`
+        )
+        components[name] = prevValue
+      }
+
       // StRSR validation - Set invalid RSRPayPeriod
       const invalidPeriodConfig = { ...config }
       invalidPeriodConfig.rewardPeriod = config.unstakingDelay
@@ -419,6 +434,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(newMain.init(components, ZERO_ADDRESS, 1, 1)).to.be.revertedWith(
         'invalid RSR address'
       )
+
+      // Check component addresses
+      await validateComponentAddress(newMain, components, 'assetRegistry', 'AssetRegistry')
+      await validateComponentAddress(newMain, components, 'backingManager', 'BackingManager')
+      await validateComponentAddress(newMain, components, 'basketHandler', 'BasketHandler')
+      await validateComponentAddress(newMain, components, 'broker', 'Broker')
+      await validateComponentAddress(newMain, components, 'distributor', 'Distributor')
+      await validateComponentAddress(newMain, components, 'furnace', 'Furnace')
+      await validateComponentAddress(newMain, components, 'rsrTrader', 'RSRTrader')
+      await validateComponentAddress(newMain, components, 'rTokenTrader', 'RTokenTrader')
+      await validateComponentAddress(newMain, components, 'rToken', 'RToken')
+      await validateComponentAddress(newMain, components, 'stRSR', 'StRSR')
     })
 
     it('Should emit events on init', async () => {

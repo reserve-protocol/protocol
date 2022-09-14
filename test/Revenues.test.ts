@@ -69,6 +69,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   // Non-backing assets
   let rsr: ERC20Mock
   let compToken: ERC20Mock
+  let compAsset: Asset
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
 
@@ -125,6 +126,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     ;({
       rsr,
       compToken,
+      compAsset,
       aaveToken,
       compoundMock,
       erc20s,
@@ -388,9 +390,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       })
 
       it('Should not launch revenue auction if IFFY', async () => {
-        await setOraclePrice(collateral0.address, bn('0.5e8'))
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(collateral0.address, bn('7e7'))
+        await collateral0.refresh()
+
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.not.emit(
+        await expect(rTokenTrader.manageToken(token0.address)).to.not.emit(
           rTokenTrader,
           'TradeStarted'
         )
@@ -485,6 +490,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check funds in Market
         expect(await compToken.balanceOf(gnosis.address)).to.equal(rewardAmountCOMP)
 
+        // If we attempt to settle before auction ended it reverts
+        await expect(rsrTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        await expect(rTokenTrader.settleTrade(compToken.address)).to.be.revertedWith(
+          'cannot settle yet'
+        )
+
+        // Nothing occurs if we attempt to settle for a token that is not being traded
+        await expect(rsrTrader.settleTrade(aaveToken.address)).to.not.emit
+        await expect(rTokenTrader.settleTrade(aaveToken.address)).to.not.emit
+
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
@@ -533,6 +551,92 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      })
+
+      it('Should not auction 1qTok - Amount too small', async () => {
+        // Set min tradesizefor COMP to 1 qtok
+        const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+        newTradingRange.minAmt = 1
+        newTradingRange.minVal = 1
+
+        const newCOMPAsset = await AssetFactory.deploy(
+          await compAsset.chainlinkFeed(),
+          compToken.address,
+          ZERO_ADDRESS,
+          newTradingRange,
+          await compAsset.oracleTimeout()
+        )
+
+        // Swap COMP Asset
+        await assetRegistry.connect(owner).swapRegistered(newCOMPAsset.address)
+
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set COMP tokens as reward -1 qtok
+        rewardAmountCOMP = bn(1)
+
+        // COMP Rewards - 1 qTok
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimAndSweepRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check no funds in Market, now in trader
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(bn(0))
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP)
+
+        // Check destinations, nothing changed
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
       it('Should claim AAVE and handle revenue auction correctly - small amount processed in single auction', async () => {
