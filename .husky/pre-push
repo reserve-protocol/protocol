@@ -3,3 +3,6 @@
 
 set -ex
 yarn lint
+yarn eslint
+yarn compile
+yarn test:fast
