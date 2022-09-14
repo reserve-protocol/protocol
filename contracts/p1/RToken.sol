@@ -71,7 +71,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
      * TotalIssue items. For example, if:
      *    queue.items[queue.left].amtRToken == 1000 , and
-     *    queue.items[queue.right].amtRToken == 6000,
+     *    queue.items[queue.right - 1].amtRToken == 6000,
      * then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
      * vest() on that account, we'd vest 5000 RTokens *to* that account.
      */
@@ -470,7 +470,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// after: queue.left == queue.right
     /// @custom:interaction
     function refundSpan(
         address account,
