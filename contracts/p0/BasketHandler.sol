@@ -144,7 +144,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
+            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -368,8 +369,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// Good collateral is (1) registered, (2) collateral, and (3) not DISABLED
+    /// Good collateral is: registered, Collateral, not DISABLED, and not a forbidden token
     function goodCollateral(IERC20 erc20) private view returns (bool) {
+        if (erc20 == IERC20(address(0))) return false;
+        if (erc20 == main.rsr()) return false;
+        if (erc20 == IERC20(address(main.rToken()))) return false;
+        if (erc20 == IERC20(address(main.stRSR()))) return false;
+
         IAssetRegistry reg = main.assetRegistry();
         return
             reg.isRegistered(erc20) &&

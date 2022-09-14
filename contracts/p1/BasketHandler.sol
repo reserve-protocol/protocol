@@ -157,7 +157,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // checks: either caller has OWNER,
     //         or (basket is disabled after refresh and we're unpaused and unfrozen)
     // actions: calls assetRegistry.refresh(), then _switchBasket()
-    // effects: either no collateral in basket'.erc20s is DISABLED, or disabled' == true
+    // effects:
+    //   Either: (basket' is a valid nonempty basket, without DISABLED collateral,
+    //            that satisfies basketConfig) and disabled' = false
+    //   Or no such basket exists and disabled' = true
     function refreshBasket() external {
         main.assetRegistry().refresh();
 
@@ -179,7 +182,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   erc20s is a valid collateral array
     //   for all i, erc20[i] is in AssetRegistry as collateral
     //   for all i, 0 < targetAmts[i] <= MAX_TARGET_AMT == 1000
-    //   // TODO: add 0 < targetAmts[i] check
     //
     // effects:
     //   config'.erc20s = erc20s
@@ -201,7 +203,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
+            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -218,6 +221,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   caller is OWNER
     //   erc20s is a valid collateral array
     //   for all i, erc20[i] is in AssetRegistry as collateral
+    //
     // effects:
     //   config'.backups[targetName] = {max: max, erc20s: erc20s}
     function setBackupConfig(
@@ -266,7 +270,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered, disabled, or not in the basket
-    // Returns (token's basket.refAmts / token's Collateral.refPerTok()), otherwise
+    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
@@ -339,27 +343,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Require that erc20s is a valid collateral array
-    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
-        IERC20 rsr = main.rsr();
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 stRSR = IERC20(address(main.stRSR()));
-        IERC20 zero = IERC20(address(0));
-
-        for (uint256 i = 1; i < erc20s.length; i++) {
-            require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != rToken, "RToken is not valid collateral");
-            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
-            require(erc20s[i] != zero, "address zero is not valid collateral");
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
-        }
-    }
-
     /* _switchBasket computes basket' from three inputs:
        - the basket configuration (config: BasketConfig)
-       - the function (isSound: erc20 -> bool) implemented by the Collateral plugin
+       - the function (isGood: erc20 -> bool), implemented here by goodCollateral()
        - the function (targetPerRef: erc20 -> Fix) implemented by the Collateral plugin
 
        ==== Definitions ====
@@ -371,10 +357,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
        // backups(tgt) is the list of sound backup tokens we plan to use for target `tgt`.
        Let backups(tgt) = config.backups[tgt].erc20s
-                          .filter(isSound)
+                          .filter(isGood)
                           .takeUpTo(config.backups[tgt].max)
 
-       Let primeWt(e) = if e in config.erc20s and isSound(e)
+       Let primeWt(e) = if e in config.erc20s and isGood(e)
                         then config.targetAmts[e]
                         else 0
        Let backupWt(e) = if e in backups(tgt)
@@ -382,7 +368,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                          else 0
        Let unsoundPrimeWt(tgt) = sum(config.targetAmts[e]
                                      for e in config.erc20s
-                                     where config.targetNames[e] == tgt and !isSound(e))
+                                     where config.targetNames[e] == tgt and !isGood(e))
 
        ==== The correctness condition ====
 
@@ -412,8 +398,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
          timestamp' = now
     */
 
-    // These are effectively local variables of _switchBasket. Nothing should use their values
-    // from previous transactions.
+    // These are effectively local variables of _switchBasket.
+    // Nothing should use their values from previous transactions.
     EnumerableSet.Bytes32Set private targetNames;
     Basket private newBasket; // Always empty
 
@@ -527,14 +513,15 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         // Now we've looped through all values of tgt, so for all e,
         //   targetWeight(newBasket, e) = primeWt(e) + backupWt(e)
 
-        // Set the basket
-        basket.setFrom(newBasket);
-        nonce += 1;
-        timestamp = uint48(block.timestamp);
-        newBasket.empty();
-
         // Notice if basket is actually empty
-        if (basket.erc20s.length == 0) disabled = true;
+        if (newBasket.erc20s.length == 0) disabled = true;
+
+        // Update the basket if it's not disabled
+        if (!disabled) {
+            basket.setFrom(newBasket);
+            nonce += 1;
+            timestamp = uint48(block.timestamp);
+        }
 
         // Keep records, emit event
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
@@ -544,8 +531,31 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         emit BasketSet(basket.erc20s, refAmts, disabled);
     }
 
-    /// Good collateral is (i) registered, (ii) collateral, and (iii) not DISABLED
+    /// Require that erc20s is a valid collateral array
+    function requireValidCollArray(IERC20[] calldata erc20s) internal view {
+        IERC20 rsr = main.rsr();
+        IERC20 rToken = IERC20(address(main.rToken()));
+        IERC20 stRSR = IERC20(address(main.stRSR()));
+        IERC20 zero = IERC20(address(0));
+
+        for (uint256 i = 1; i < erc20s.length; i++) {
+            require(erc20s[i] != rsr, "RSR is not valid collateral");
+            require(erc20s[i] != rToken, "RToken is not valid collateral");
+            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
+            require(erc20s[i] != zero, "address zero is not valid collateral");
+            for (uint256 j = 0; j < i; j++) {
+                require(erc20s[i] != erc20s[j], "duplicate tokens");
+            }
+        }
+    }
+
+    /// Good collateral is registered, collateral, not DISABLED, and not a system token or 0 addr
     function goodCollateral(IERC20 erc20) private view returns (bool) {
+        if (erc20 == IERC20(address(0))) return false;
+        if (erc20 == main.rsr()) return false;
+        if (erc20 == IERC20(address(main.rToken()))) return false;
+        if (erc20 == IERC20(address(main.stRSR()))) return false;
+
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             return coll.status() != CollateralStatus.DISABLED;
         } catch {
