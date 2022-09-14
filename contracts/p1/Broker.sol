@@ -21,16 +21,27 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
 
+    // The trade contract to clone on openTrade(). Immutable after init.
     ITrade public tradeImplementation;
 
+    // The Gnosis contract to init each trade with. Immutable after init.
     IGnosis public gnosis;
 
-    uint48 public auctionLength; // {s} the length of an auction
+    // {s} the length of an auction. Governance parameter.
+    uint48 public auctionLength;
 
+    // Whether trading is disabled.
+    // Initially false. Settable by OWNER. A trade clone can set it to true via reportViolation()
     bool public disabled;
 
+    // The set of ITrade (clone) addresses this contract has created
     mapping(address => bool) private trades;
 
+    // ==== Invariant ====
+    // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+
+    // checks: gnosis_ and tradeImplementation_ are nonzero
+    // effects: initial parameters are set
     function init(
         IMain main_,
         IGnosis gnosis_,
@@ -51,6 +62,15 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     /// Handle a trade request by deploying a customized disposable trading contract
     /// @dev Requires setting an allowance in advance
     /// @custom:interaction CEI
+    // checks:
+    //   not disabled, paused, or frozen
+    //   caller is a system Trader
+    // effects:
+    //   Deploys a new trade clone, `trade`
+    //   trades'[trade] = true
+    // actions:
+    //   Transfers req.sellAmount of req.sell.erc20 from caller to `trade`
+    //   Calls trade.init() with appropriate parameters
     function openTrade(TradeRequest memory req) external notPausedOrFrozen returns (ITrade) {
         require(!disabled, "broker disabled");
 
@@ -79,6 +99,8 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
     /// Disable the broker until re-enabled by governance
     /// @custom:protected
+    // checks: not paused, not frozen, caller is a Trade this contract cloned
+    // effects: disabled' = true
     function reportViolation() external notPausedOrFrozen {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
