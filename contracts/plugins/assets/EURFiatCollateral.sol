@@ -73,20 +73,21 @@ contract EURFiatCollateral is Collateral {
             // p2 {UoA/target}
             try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
                 priceable = p1 > 0 && p2 > 0;
+                if (p2 > 0) {
+                    // {target/ref}
+                    uint192 peg = targetPerRef();
 
-                // {target/ref}
-                uint192 peg = targetPerRef();
+                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
+                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
-                // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+                    // {target/ref} = {UoA/ref} / {UoA/target}
+                    uint192 p = p1.div(p2);
 
-                // {target/ref} = {UoA/ref} / {UoA/target}
-                uint192 p = p1.div(p2);
-
-                // If the price is below the default-threshold price, default eventually
-                if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
+                    // If the price is below the default-threshold price, default eventually
+                    if (p < peg - delta || p > peg + delta) {
+                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                    } else whenDefault = NEVER;
+                }
             } catch {
                 priceable = false;
             }
