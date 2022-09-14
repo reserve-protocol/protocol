@@ -25,6 +25,7 @@ contract Facade is IFacade {
 
     /// Returns the next call a keeper of MEV searcher should make in order to progress the system
     /// Returns zero bytes to indicate no action should be made
+    /// @dev This function begins reverting due to blocksize constraints at ~400 registered assets
     /// @custom:static-call
     function getActCalldata(IRToken rToken) external returns (address, bytes memory) {
         IMain main = rToken.main();
