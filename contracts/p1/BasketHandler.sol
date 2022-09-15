@@ -485,26 +485,24 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // Remove bad collateral and mark basket disabled. Pause most protocol functions
             if (size == 0) disabled = true;
 
-            {
-                // Set backup basket weights...
-                uint256 assigned = 0;
-                // needed = unsoundPrimeWt(tgt)
-                uint192 needed = totalWeights[i].minus(goodWeights[i]);
-                uint192 fixSize = toFix(size);
+            // Set backup basket weights...
+            uint256 assigned = 0;
+            // needed = unsoundPrimeWt(tgt)
+            uint192 needed = totalWeights[i].minus(goodWeights[i]);
+            uint192 fixSize = toFix(size);
 
-                // Loop: for erc20 in backups(tgt)...
-                for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
-                    IERC20 erc20 = backup.erc20s[j];
-                    // TODO: should check that the erc20's collateral still has matching target name
-                    if (goodCollateral(erc20)) {
-                        // Across this .add(), targetWeight(newBasket',erc20)
-                        // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
-                        newBasket.add(
-                            erc20,
-                            needed.div(reg.toColl(erc20).targetPerRef().mul(fixSize), CEIL)
-                        );
-                        assigned++;
-                    }
+            // Loop: for erc20 in backups(tgt)...
+            for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
+                IERC20 erc20 = backup.erc20s[j];
+                // TODO: should check that the erc20's collateral still has matching target name
+                if (goodCollateral(erc20)) {
+                    // Across this .add(), targetWeight(newBasket',erc20)
+                    // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
+                    newBasket.add(
+                        erc20,
+                        needed.div(reg.toColl(erc20).targetPerRef().mul(fixSize), CEIL)
+                    );
+                    assigned++;
                 }
             }
             // Here, targetWeight(newBasket, e) = primeWt(e) + backupWt(e) for all e targeting tgt
