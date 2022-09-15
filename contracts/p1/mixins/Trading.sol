@@ -29,6 +29,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     // The latest end time for any trade in `trades`.
     uint48 private latestEndtime;
+
     // TODO: dead var; eliminate
 
     // ==== Invariant

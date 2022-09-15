@@ -5,10 +5,11 @@ while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
 # strictly solhint system code
 git ls-files | egrep 'contracts/.*\.sol' | \
-  xargs yarn exec solhint
+    xargs yarn exec solhint || exit $?
+
 
 # more-gently solhint test code
 git ls-files | egrep 'contracts/fuzz.*\.sol' | \
     xargs yarn exec solhint \
           --config contracts/fuzz/.solhint.json \
-          --ignore-path contracts/fuzz/.solhintignore
+          --ignore-path contracts/fuzz/.solhintignore || exit $?
