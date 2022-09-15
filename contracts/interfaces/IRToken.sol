@@ -171,5 +171,5 @@ interface TestIRToken is IRToken {
     function redemptionVirtualSupply() external view returns (uint256);
 
     /// @dev This function is only here because solidity doesn't autogenerate a getter
-    function numIssuances(address account) external view returns (uint256);
+    function issuanceQueueLen(address account) external view returns (uint256);
 }
