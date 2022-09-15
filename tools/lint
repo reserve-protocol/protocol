@@ -8,7 +8,9 @@ find contracts -name '*.sol' | \
   xargs yarn exec solhint
 
 # more-gently solhint test code
-find contracts/fuzz -name '*.sol' | \
-  xargs yarn exec solhint \
-        --config contracts/fuzz/.solhint.json \
-        --ignore-path contracts/fuzz/.solhintignore
+if [[ -e contracts/fuzz ]]; then
+    find contracts/fuzz -name '*.sol' | \
+        xargs yarn exec solhint \
+              --config contracts/fuzz/.solhint.json \
+              --ignore-path contracts/fuzz/.solhintignore
+fi
