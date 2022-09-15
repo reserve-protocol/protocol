@@ -358,7 +358,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         IERC20 stRSR = IERC20(address(main.stRSR()));
         IERC20 zero = IERC20(address(0));
 
-        for (uint256 i = 1; i < erc20s.length; i++) {
+        for (uint256 i = 0; i < erc20s.length; i++) {
             require(erc20s[i] != rsr, "RSR is not valid collateral");
             require(erc20s[i] != rToken, "RToken is not valid collateral");
             require(erc20s[i] != stRSR, "stRSR is not valid collateral");
