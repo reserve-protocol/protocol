@@ -3,7 +3,6 @@
 
 set -exuo pipefail
 
-echo foo bar baz
 bash tools/lint && \
 yarn eslint && \
 yarn compile && \
