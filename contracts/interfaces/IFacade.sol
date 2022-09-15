@@ -10,7 +10,7 @@ import "./IStRSR.sol";
  *
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Regular view
- */
+v */
 interface IFacade {
     /// Prompt all traders to run auctions
     /// @custom:interaction
@@ -41,6 +41,13 @@ interface IFacade {
     function issue(IRToken rToken, uint256 amount)
         external
         returns (address[] memory tokens, uint256[] memory deposits);
+
+    /// @return erc20s The ERC20 addresses in the current basket
+    /// @return uoaShares The proportion of the basket associated with each ERC20
+    /// @custom:static-call
+    function basketBreakdown(IRToken rToken)
+        external
+        returns (address[] memory erc20s, uint192[] memory uoaShares);
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
