@@ -44,10 +44,15 @@ interface IFacade {
 
     /// @return erc20s The ERC20 addresses in the current basket
     /// @return uoaShares The proportion of the basket associated with each ERC20
+    /// @return targets The bytes32 representations of the target unit associated with each ERC20
     /// @custom:static-call
     function basketBreakdown(IRToken rToken)
         external
-        returns (address[] memory erc20s, uint192[] memory uoaShares);
+        returns (
+            address[] memory erc20s,
+            uint192[] memory uoaShares,
+            bytes32[] memory targets
+        );
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view
