@@ -8,7 +8,7 @@ import "./IMain.sol";
 
 /// A range of whole token quantities to bound trading
 struct TradingRange {
-    /// Used when prices are available
+    /// Used when prices are available; optional
     uint192 minVal; // {UoA}
     uint192 maxVal; // {UoA}
     // Always applied

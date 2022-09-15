@@ -368,13 +368,41 @@ describe('Assets contracts #fast', () => {
       newTradingRange.maxAmt = 0
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
-      ).to.be.revertedWith('invalid trading range')
+      ).to.be.revertedWith('invalid trading range amts')
 
       newTradingRange.maxAmt = fp('1e6')
       newTradingRange.minAmt = 0
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
-      ).to.be.revertedWith('invalid trading range')
+      ).to.be.revertedWith('invalid trading range amts')
+    })
+    it('Should not allow rTokenTradingRange.minAmt to exceed maxAmt', async () => {
+      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      newTradingRange.maxAmt = 1
+      newTradingRange.minAmt = 2
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
+      ).to.be.revertedWith('invalid trading range amts')
+
+      // Should now succeed
+      newTradingRange.maxAmt = 2
+      await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
+    })
+    it('Should not allow rTokenTradingRange.minVal to exceed maxVal', async () => {
+      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      newTradingRange.maxVal = 0
+      newTradingRange.minVal = 1
+      await expect(
+        AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
+      ).to.be.revertedWith('invalid trading range vals')
+
+      // Should now succeed
+      newTradingRange.minVal = 0
+      newTradingRange.maxVal = 0
+      await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
+
+      newTradingRange.maxVal = 1
+      await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
     })
   })
 })
