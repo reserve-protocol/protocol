@@ -196,7 +196,10 @@ contract NormalOpsScenario {
         uint256 amount
     ) public {
         IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
-        require(address(token) != address(main.rToken()), "Do not just mint RTokens");
+        require(
+            address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+            "Do not just mint RTokens/StRSR"
+        );
         ERC20Fuzz(address(token)).mint(main.someUser(userID), amount);
         require(token.totalSupply() <= 1e57, "Do not mint 'unreasonably' many tokens");
     }
@@ -207,7 +210,10 @@ contract NormalOpsScenario {
         uint256 amount
     ) public {
         IERC20 token = main.someToken(tokenID);
-        require(address(token) != address(main.rToken()), "Do not just burn RTokens");
+        require(
+            address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+            "Do not just burn RTokens/StRSR"
+        );
         ERC20Fuzz(address(token)).burn(main.someUser(userID), amount);
     }
 
@@ -431,13 +437,17 @@ contract NormalOpsScenario {
         main.distributor().distribute(token, main.someAddr(fromID), amount);
     }
 
-    // do revenue distribution granting allowance first
+    // do revenue distribution granting allowance first - only RSR or RToken
     function distributeRevenue(
-        uint256 tokenID,
+        uint8 which,
         uint8 fromID,
         uint256 amount
     ) public {
-        IERC20 token = main.someToken(tokenID);
+        IERC20 token;
+
+        which %= 2;
+        if (which == 0) token = IERC20(address(main.rsr()));
+        else token = IERC20(address(main.rToken()));
 
         // Grant allowances from fromID
         address fromUser = main.someAddr(fromID);
