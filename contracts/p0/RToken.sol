@@ -216,7 +216,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         }
 
         // Also pop off queue if right-refunding
-        if (!earliest) {
+        if (last == queue.length) {
             for (uint256 n = 0; n < numCanceled; n++) queue.pop();
         }
 
@@ -349,7 +349,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// @dev This function is only here because solidity doesn't autogenerate a getter
-    function numIssuances(address account) external view returns (uint256) {
+    function issuanceQueueLen(address account) external view returns (uint256) {
         return issuances[account].length;
     }
 
@@ -408,23 +408,28 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint256 amount;
         uint256 startIndex;
         uint256 endIndex;
-        for (uint256 i = 0; i < issuances[account].length; i++) {
-            SlowIssuance storage iss = issuances[account][i];
+
+        // Work backwards
+        for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
+            SlowIssuance storage iss = issuances[account][uint256(i)];
             if (!iss.processed && iss.basketNonce != basketNonce) {
                 amount += iss.amount;
 
-                if (!someProcessed) startIndex = i;
+                if (!someProcessed) startIndex = uint256(i);
                 someProcessed = true;
 
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
                     IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }
-                iss.processed = true;
-                endIndex = i + 1;
+                endIndex = uint256(i) + 1;
+
+                // Pop off last item, which should be the item we're working on
+                assert(issuances[account].length == uint256(i) + 1);
+                issuances[account].pop();
             }
         }
 
-        if (someProcessed) {
+        if (endIndex > 0) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
         }
         return someProcessed;
