@@ -359,6 +359,16 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+      // RSR Token
+      expect(await rsrAsset.isCollateral()).to.equal(false)
+      expect(await rsrAsset.erc20()).to.equal(rsr.address)
+      expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.price()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
+      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should setup collateral correctly - Fiatcoins', async () => {
