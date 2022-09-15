@@ -350,6 +350,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await compAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await compAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
 
       // stkAAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
@@ -359,6 +361,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await aaveAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await aaveAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // RSR Token
+      expect(await rsrAsset.isCollateral()).to.equal(false)
+      expect(await rsrAsset.erc20()).to.equal(rsr.address)
+      expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.price()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
+      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
     })
 
     it('Should setup collateral correctly - Fiatcoins', async () => {
@@ -426,6 +442,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+        expect(await tkInf.tokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.tokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -490,6 +512,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -585,6 +614,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
         expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
+
+        expect(await atkInf.aTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await atkInf.aTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -637,6 +673,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ) // ref price approx 1.00062
         expect(await tkInf.nonFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.nonFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.nonFiatTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.nonFiatTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -705,6 +748,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -751,6 +801,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.selfRefTokenCollateral.price()).to.be.closeTo(tkInf.price, fp('0.5'))
         expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.selfRefTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.selfRefTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -817,6 +874,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -866,6 +930,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.eurFiatTokenCollateral.price()).to.be.closeTo(tkInf.refPrice, fp('0.01')) // ref price approx 1.07
         expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.eurFiatTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.eurFiatTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
