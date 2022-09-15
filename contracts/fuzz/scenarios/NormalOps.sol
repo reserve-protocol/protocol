@@ -407,8 +407,45 @@ contract NormalOpsScenario {
         main.backingManager().manageTokens(backingToManage);
     }
 
+    function manageTokenInRSRTrader(uint256 tokenID) public {
+        IERC20 token = main.someToken(tokenID);
+        main.rsrTrader().manageToken(token);
+    }
+
+    function manageTokenInRTokenTrader(uint256 tokenID) public {
+        IERC20 token = main.someToken(tokenID);
+        main.rTokenTrader().manageToken(token);
+    }
+
     function grantAllowances(uint256 tokenID) public {
         main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
+    }
+
+    // do revenue distribution without doing allowances first
+    function justDistributeRevenue(
+        uint256 tokenID,
+        uint8 fromID,
+        uint256 amount
+    ) public asSender {
+        IERC20 token = main.someToken(tokenID);
+        main.distributor().distribute(token, main.someAddr(fromID), amount);
+    }
+
+    // do revenue distribution granting allowance first
+    function distributeRevenue(
+        uint256 tokenID,
+        uint8 fromID,
+        uint256 amount
+    ) public {
+        IERC20 token = main.someToken(tokenID);
+
+        // Grant allowances from fromID
+        address fromUser = main.someAddr(fromID);
+        main.spoof(address(this), fromUser);
+        token.approve(address(main.distributor()), amount);
+        main.unspoof(address(this));
+
+        main.distributor().distribute(token, fromUser, amount);
     }
 
     function payRSRProfits() public {

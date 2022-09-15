@@ -644,7 +644,121 @@ describe('The Normal Operations scenario', () => {
       const allowance1 = await token.allowance(comp.backingManager.address, comp.rToken.address)
       expect(allowance1).to.equal(2n ** 256n - 1n)
     })
+
+    it('can distribute revenue (with or without forcing approvals first)', async () => {
+      // ==== Setup: 100% distribution to RSR;
+      const furanceID = addrIDs.get(addr(1)) as number
+      const strsrID = addrIDs.get(addr(2)) as number
+
+      // addr(1) == furnace, set to 0 Rtoken + 0 RSR
+      await scenario.setDistribution(furanceID, 0, 0)
+      // addr(2) == strsr, set to 0 Rtoken + 1 RSR
+      await scenario.setDistribution(strsrID, 0, 1)
+
+      const distribAddr = comp.distributor.address
+      const stRSRAddr = comp.stRSR.address
+
+      // Check balances before
+      const alice_bal_init = await comp.rsr.balanceOf(aliceAddr)
+      const stRSR_bal_init = await comp.rsr.balanceOf(stRSRAddr)
+
+      expect(alice_bal_init).to.be.gt(0)
+      expect(stRSR_bal_init).to.equal(0)
+
+      // Try to distribute tokens without approval, reverts
+      await expect(scenario.connect(alice).justDistributeRevenue(8, aliceAddr, 100n * exa)).to.be
+        .reverted
+
+      // As Alice, make allowance
+      await comp.rsr.connect(alice).approve(distribAddr, 100n * exa)
+
+      // Distribute as any user
+      await scenario.connect(bob).justDistributeRevenue(8, 0, 100n * exa)
+
+      // Check balances, tokens distributed to stRSR
+      const alice_bal = await comp.rsr.balanceOf(aliceAddr)
+      const stRSR_bal = await comp.rsr.balanceOf(stRSRAddr)
+      expect(alice_bal_init.sub(alice_bal)).to.equal(100n * exa)
+      expect(stRSR_bal.sub(stRSR_bal_init)).to.equal(100n * exa)
+
+      // Can also distribute directly, forcing approval
+      // It does not matter who sends the transaction,as it
+      // will always make approvals as the `from` user (2nd parameter)
+      await scenario.connect(carol).distributeRevenue(8, 0, 20n * exa)
+
+      // Check new balances
+      const alice_bal_end = await comp.rsr.balanceOf(aliceAddr)
+      const stRSR_bal_end = await comp.rsr.balanceOf(stRSRAddr)
+      expect(alice_bal.sub(alice_bal_end)).to.equal(20n * exa)
+      expect(stRSR_bal_end.sub(stRSR_bal)).to.equal(20n * exa)
+    })
+
+    it('can manage tokens in Revenue Traders (RSR and RToken)', async () => {
+      const furanceID = addrIDs.get(addr(1)) as number
+      const strsrID = addrIDs.get(addr(2)) as number
+
+      // RSR Trader - When RSR is the token to manage simply distribute
+      // Setup: 100% distribution to RSR;
+      await scenario.setDistribution(furanceID, 0, 0)
+      await scenario.setDistribution(strsrID, 0, 1)
+
+      // ==== Mint 1 exa of RSR to the RSR Trader
+      await comp.rsr.mint(comp.rsrTrader.address, exa)
+
+      const rsrTraderAddr = comp.rsrTrader.address
+      const stRSRAddr = comp.stRSR.address
+      const rsrTrader_bal_init = await comp.rsr.balanceOf(rsrTraderAddr)
+      const stRSR_bal_init = await comp.rsr.balanceOf(stRSRAddr)
+
+      expect(rsrTrader_bal_init).to.equal(exa)
+      expect(stRSR_bal_init).to.equal(0)
+
+      // Manage token in RSR Trader
+      await scenario.manageTokenInRSRTrader(8)
+
+      const rsrTrader_bal = await comp.rsr.balanceOf(rsrTraderAddr)
+      const stRSR_bal = await comp.rsr.balanceOf(stRSRAddr)
+
+      expect(rsrTrader_bal_init.sub(rsrTrader_bal)).to.equal(exa)
+      expect(stRSR_bal.sub(stRSR_bal_init)).to.equal(exa)
+
+      // Should work for other tokens as well
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
+      await c0.mint(comp.rsrTrader.address, exa)
+      await expect(scenario.manageTokenInRSRTrader(0)).to.not.be.reverted
+
+      // RToken Trader - When RToken is the token to manage simply distribute
+      // Setup: 100% distribution to RToken;
+      await scenario.setDistribution(furanceID, 1, 0)
+      await scenario.setDistribution(strsrID, 0, 0)
+
+      // ==== Send 1 exa of RToken to the RToken Trader
+      await scenario.connect(alice).issue(exa)
+      await comp.rToken.connect(alice).transfer(comp.rTokenTrader.address, exa)
+
+      const rTokenTraderAddr = comp.rTokenTrader.address
+      const furnaceAddr = comp.furnace.address
+      const rTokenTrader_bal_init = await comp.rToken.balanceOf(rTokenTraderAddr)
+      const furnace_bal_init = await comp.rToken.balanceOf(furnaceAddr)
+
+      expect(rTokenTrader_bal_init).to.equal(exa)
+      expect(furnace_bal_init).to.equal(0)
+
+      // Manage token in RSR Trader
+      await scenario.manageTokenInRTokenTrader(9)
+
+      const rTokenTrader_bal = await comp.rToken.balanceOf(rTokenTraderAddr)
+      const furnace_bal = await comp.rToken.balanceOf(furnaceAddr)
+
+      expect(rTokenTrader_bal_init.sub(rTokenTrader_bal)).to.equal(exa)
+      expect(furnace_bal.sub(furnace_bal_init)).to.equal(exa)
+
+      // Should work for other tokens as well
+      await c0.mint(comp.rTokenTrader.address, exa)
+      await expect(scenario.manageTokenInRTokenTrader(0)).to.not.be.reverted
+    })
   })
+
   it('has only initially-true properties', async () => {
     expect(await scenario.echidna_ratesNeverFall()).to.be.true
     expect(await scenario.echidna_isFullyCollateralized()).to.be.true
