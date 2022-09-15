@@ -1,4 +1,4 @@
-#!/bin/bash -eu
+#!/bin/bash -euo pipefail
 
 # cd to project root
 while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
