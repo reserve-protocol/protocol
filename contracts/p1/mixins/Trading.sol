@@ -20,16 +20,18 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
-    // All trades
+    // All open trades
     mapping(IERC20 => ITrade) public trades;
-    uint48 public tradesOpen;
-    // The number of nonzero values in `trades`
+    uint48 public tradesOpen; // tradesOpen = size(values(trades)); trades' num of nonzero values
 
-    // === Governance params ===
+    // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
 
     // The latest end time for any trade in `trades`.
     uint48 private latestEndtime;
+    // TODO: dead var; eliminate
+
+    // ==== Invariant
 
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
