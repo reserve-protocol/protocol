@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
@@ -15,14 +14,7 @@ import "contracts/mixins/Auth.sol";
  * @notice The center of the system around which Components orbit.
  */
 // solhint-disable max-states-count
-contract MainP1 is
-    Initializable,
-    Auth,
-    ComponentRegistry,
-    ReentrancyGuardUpgradeable,
-    UUPSUpgradeable,
-    IMain
-{
+contract MainP1 is Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain {
     IERC20 public rsr;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
