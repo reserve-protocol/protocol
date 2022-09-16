@@ -217,17 +217,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
 
-        // Clear queue if everything is processed
-        bool allProcessed = true;
-        for (uint256 i = 0; i < queue.length; i++) {
-            if (!queue[i].processed) {
-                allProcessed = false;
-            }
-        }
-
-        if (allProcessed) {
-            uint256 queueLen = queue.length;
-            for (uint256 n = 0; n < queueLen; n++) queue.pop();
+        // Empty queue from right
+        for (int256 i = int256(queue.length) - 1; i >= 0; i--) {
+            if (!queue[uint256(i)].processed) break;
+            queue.pop();
         }
     }
 

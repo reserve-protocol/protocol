@@ -1428,9 +1428,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Another call will not do anything
-      console.log('1')
       await rToken.connect(addr1).cancel(0, true)
-      console.log('2')
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
