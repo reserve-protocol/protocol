@@ -324,9 +324,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 prorata = prorate.mulu_toUint(bal);
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
-            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
-
-            if (!nonzero && amounts[i] > 0) nonzero = true;
+            if (amounts[i] > 0) {
+                IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
+                if (!nonzero) nonzero = true;
+            }
         }
 
         if (!nonzero) revert("Empty redemption");
