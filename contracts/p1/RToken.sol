@@ -123,7 +123,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
-        if (queue.basketNonce != basketNonce) {
+        if (queue.basketNonce > 0 && queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
             refundSpan(issuer, queue.left, queue.right);
