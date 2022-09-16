@@ -9,6 +9,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -38,6 +39,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
+    /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
     /// @custom:interaction
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
@@ -50,8 +52,21 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
-        requireUnique(erc20s);
+        require(ArrayLib.allUnique(erc20s), "duplicate tokens");
+        _manageTokens(erc20s);
+    }
 
+    /// Mointain the overall backing policy; handout assets otherwise
+    /// @dev Tokens must be in sorted order!
+    /// @dev Performs a uniqueness check on the erc20s list in O(n)
+    /// @custom:interaction
+    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
+        // Token list must not contain duplicates
+        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate tokens");
+        _manageTokens(erc20s);
+    }
+
+    function _manageTokens(IERC20[] calldata erc20s) private {
         // Call keepers before
         main.poke();
 
@@ -168,15 +183,6 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
         assert(main.basketHandler().fullyCollateralized());
-    }
-
-    /// Require that all tokens in this array are unique
-    function requireUnique(IERC20[] calldata erc20s) internal pure {
-        for (uint256 i = 1; i < erc20s.length; i++) {
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
-        }
     }
 
     // === Setters ===
