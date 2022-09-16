@@ -65,7 +65,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction
     function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
-        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate tokens");
+        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
         _manageTokens(erc20s);
     }
 

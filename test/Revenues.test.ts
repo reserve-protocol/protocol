@@ -2327,6 +2327,58 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.not.be.reverted
       })
 
+      it('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
+        expect(await basketHandler.fullyCollateralized()).to.be.true
+
+        // Change redemption rate for AToken and CToken to double
+        await token2.setExchangeRate(fp('1.2'))
+
+        await expect(
+          backingManager.manageTokensSortedOrder([token2.address, token2.address])
+        ).to.be.revertedWith('duplicate/unsorted tokens')
+
+        await expect(
+          backingManager.manageTokensSortedOrder([
+            token2.address,
+            token2.address,
+            token2.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate/unsorted tokens')
+
+        await expect(
+          backingManager.manageTokensSortedOrder([token2.address, token1.address, token2.address])
+        ).to.be.revertedWith('duplicate/unsorted tokens')
+
+        await expect(
+          backingManager.manageTokensSortedOrder([
+            token1.address,
+            token2.address,
+            token3.address,
+            token2.address,
+          ])
+        ).to.be.revertedWith('duplicate/unsorted tokens')
+
+        await expect(
+          backingManager.manageTokensSortedOrder([
+            token1.address,
+            token2.address,
+            token3.address,
+            token3.address,
+          ])
+        ).to.be.revertedWith('duplicate/unsorted tokens')
+
+        // Remove duplicates but unsort
+        const sorted = [token1.address, token2.address, token3.address].sort()
+        const unsorted = [sorted[2], sorted[0], sorted[1]]
+        await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
+          'duplicate/unsorted tokens'
+        )
+
+        // Remove duplicates and sort, should work
+        await expect(backingManager.manageTokensSortedOrder(sorted)).to.not.be.reverted
+      })
+
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
         // Check Price and Assets value
         expect(await rTokenAsset.price()).to.equal(fp('1'))
