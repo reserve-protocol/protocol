@@ -194,11 +194,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
 
         SlowIssuance[] storage queue = issuances[account];
+
+        uint256 amtRToken; // {qRTok}
+        uint256 numCanceled;
+        uint256 left;
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        uint256 left;
-        uint256 amtRToken; // {qRTok}
-        bool canceled = false;
+        // Refund issuances that have not yet been processed
         for (uint256 n = first; n < last && n < queue.length; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
@@ -207,12 +209,26 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
-                canceled = true;
+                numCanceled++;
 
-                if (left == 0) left = n;
+                if (numCanceled == 1) left = n;
             }
         }
-        if (canceled) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        // Clear queue if everything is processed
+        bool allProcessed = true;
+        for (uint256 i = 0; i < queue.length; i++) {
+            if (!queue[i].processed) {
+                allProcessed = false;
+            }
+        }
+
+        if (allProcessed) {
+            uint256 queueLen = queue.length;
+            for (uint256 n = 0; n < queueLen; n++) queue.pop();
+        }
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -395,6 +411,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint256 amount;
         uint256 startIndex;
         uint256 endIndex;
+
         for (uint256 i = 0; i < issuances[account].length; i++) {
             SlowIssuance storage iss = issuances[account][i];
             if (!iss.processed && iss.basketNonce != basketNonce) {
@@ -413,6 +430,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         if (someProcessed) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
+            // Clear queue
+            for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
+                issuances[account].pop();
+            }
         }
         return someProcessed;
     }

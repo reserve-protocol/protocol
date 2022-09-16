@@ -183,7 +183,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // Push issuance onto queue
-        IssueItem storage curr = queue.items.push();
+        IssueItem storage curr = (queue.right < queue.items.length)
+            ? queue.items[queue.right]
+            : queue.items.push();
         curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
@@ -456,6 +458,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
+        require(index < issueQueues[account].right, "out of range");
         return issueQueues[account].items[index];
     }
 
@@ -500,15 +503,17 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             }
         }
 
-        // Check the relationships of these intervals, and set queue.{left, right} to final values.
-        if (queue.left == left && right <= queue.right) {
-            // refund from beginning of queue
-            queue.left = right;
+        if (queue.left == left && right == queue.right) {
+            // empty entire queue
+            queue.left = 0;
+            queue.right = 0;
+        } else if (queue.left == left && right < queue.right) {
+            queue.left = right; // remove span from beginning
         } else if (queue.left < left && right == queue.right) {
-            // refund from end of queue
-            queue.right = left;
-        } else revert("Bad refundSpan");
-        // error: can't remove [left,right) from the queue, and leave just one interval
+            queue.right = left; // refund span from end
+        } else {
+            revert("Bad refundSpan");
+        } // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
