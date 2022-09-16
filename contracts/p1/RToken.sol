@@ -161,9 +161,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             queue.left == queue.right &&
             status == CollateralStatus.SOUND
         ) {
-            // Complete issuance
-            _mint(issuer, amtRToken);
-
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -176,6 +173,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             address backingMgr = address(main.backingManager());
 
             // == Interactions then return: transfer tokens ==
+            // Complete issuance
+            _mint(issuer, amtRToken);
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, backingMgr, deposits[i]);
             }
@@ -384,13 +383,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
         }
 
-        // Accept and burn RToken
-        _burn(redeemer, amount);
-
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // == Interactions ==
+        // Accept and burn RToken
+        _burn(redeemer, amount);
+
         bool nonzero = false;
         for (uint256 i = 0; i < erc20length; ++i) {
             if (amounts[i] == 0) continue;
@@ -560,8 +559,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             amtBaskets = amtBaskets - leftItem.amtBaskets;
         }
 
-        _mint(account, amtRToken);
-
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;
@@ -571,6 +568,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         queue.left = endId;
 
         // == Interactions ==
+        _mint(account, amtRToken);
 
         for (uint256 i = 0; i < queueLength; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(
