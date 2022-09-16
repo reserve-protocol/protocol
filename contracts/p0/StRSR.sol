@@ -104,6 +104,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) public initializer {
+        require(bytes(name_).length > 0, "name empty");
+        require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
         __EIP712_init(name_, "1");
         _name = name_;

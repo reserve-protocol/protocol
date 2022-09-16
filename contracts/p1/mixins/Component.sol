@@ -20,6 +20,7 @@ abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradea
     // Sets main for the component - Can only be called during initialization
     // solhint-disable-next-line func-name-mixedcase
     function __Component_init(IMain main_) internal onlyInitializing {
+        require(address(main_) != address(0), "main is zero address");
         __UUPSUpgradeable_init();
         main = main_;
     }
