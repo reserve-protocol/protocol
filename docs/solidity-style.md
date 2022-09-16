@@ -162,7 +162,7 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.manageTokens()
+- backingManager.manageTokens\*()
 - {rsrTrader,rTokenTrader}.manageToken()
 - \*.claimAndSweepRewards()
 
