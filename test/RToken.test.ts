@@ -132,6 +132,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
   }
 
+  const expectNoIssuance = async (account: string, index: number) => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
+      await expect(rTokenP1.issueItem(account, index)).to.be.revertedWith('out of range')
+    } else if (IMPLEMENTATION == Implementation.P0) {
+      const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
+      await expect(rTokenP0.issuances(account, index)).to.be.reverted
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+  }
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -426,15 +438,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.vest(addr1.address, 1)).to.emit(rToken, 'IssuancesCanceled')
 
       // Cancel should not work (in fact it has deleted the issuance)
-      expect(await rToken.issuanceQueueLen(addr1.address)).to.equal(0)
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
-      if (IMPLEMENTATION == Implementation.P1) {
-        const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
-
-        await expect(rTokenP1.connect(addr1).issueItem(addr1.address, 0)).to.be.revertedWith(
-          'out of range'
-        )
-      }
+      await expectNoIssuance(addr1.address, 0)
       await expect(rToken.connect(addr1).cancel(0, false)).to.not.emit(rToken, 'IssuancesCanceled')
       await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
@@ -1349,7 +1354,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // We've cleared the queue so calls to cancel should revert
-      expect(await rToken.connect(addr1).issuanceQueueLen(addr1.address)).to.equal(0)
+      await expectNoIssuance(addr1.address, 0)
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
@@ -1410,7 +1415,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         .withArgs(addr1.address, 1, 2, issueAmount)
 
       // Check minting was cancelled and not tokens minted
-      expect(await rToken.issuanceQueueLen(addr1.address)).to.equal(1)
+      await expectNoIssuance(addr1.address, 1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check balances returned to user
@@ -1423,8 +1428,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Another call will not do anything
-      await rToken.connect(addr1).cancel(1, true)
-      await expect(rToken.connect(addr1).cancel(2, true)).to.be.revertedWith('out of range')
+      console.log('1')
+      await rToken.connect(addr1).cancel(0, true)
+      console.log('2')
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
@@ -1489,7 +1496,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
-      expect(await rToken.issuanceQueueLen(addr1.address)).to.equal(0)
+      await expectNoIssuance(addr1.address, 0)
       expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 

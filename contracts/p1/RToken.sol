@@ -462,11 +462,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         return issueQueues[account].items[index];
     }
 
-    /// @dev This function is only here because solidity doesn't autogenerate a getter
-    function issuanceQueueLen(address account) external view returns (uint256) {
-        return issueQueues[account].right;
-    }
-
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
         uint256 supply = totalSupply();
@@ -508,16 +503,17 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             }
         }
 
-        // Check the relationships of these intervals, and set queue.{left, right} to final values.
-        if (queue.left == left && right < queue.right) {
-            // refund from beginning of queue
-            queue.left = right;
-        } else if (queue.left <= left && right == queue.right) {
-            // refund from end of queue
-            queue.right = left;
-            if (queue.left > left) queue.left = queue.right;
-        } else revert("Bad refundSpan");
-        // error: can't remove [left,right) from the queue, and leave just one interval
+        if (queue.left == left && right == queue.right) {
+            // empty entire queue
+            queue.left = 0;
+            queue.right = 0;
+        } else if (queue.left == left && right < queue.right) {
+            queue.left = right; // remove span from beginning
+        } else if (queue.left < left && right == queue.right) {
+            queue.right = left; // refund span from end
+        } else {
+            revert("Bad refundSpan");
+        } // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 

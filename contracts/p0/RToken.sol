@@ -215,12 +215,20 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             }
         }
 
-        // Also pop off queue if right-refunding
-        if (last == queue.length) {
-            for (uint256 n = 0; n < numCanceled; n++) queue.pop();
+        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        // Clear queue if everything is processed
+        bool allProcessed = true;
+        for (uint256 i = 0; i < queue.length; i++) {
+            if (!queue[i].processed) {
+                allProcessed = false;
+            }
         }
 
-        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
+        if (allProcessed) {
+            uint256 queueLen = queue.length;
+            for (uint256 n = 0; n < queueLen; n++) queue.pop();
+        }
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -348,11 +356,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         basketsNeeded = basketsNeeded_;
     }
 
-    /// @dev This function is only here because solidity doesn't autogenerate a getter
-    function issuanceQueueLen(address account) external view returns (uint256) {
-        return issuances[account].length;
-    }
-
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
         uint256 supply = totalSupply();
@@ -409,28 +412,28 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint256 startIndex;
         uint256 endIndex;
 
-        // Work backwards
-        for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
-            SlowIssuance storage iss = issuances[account][uint256(i)];
+        for (uint256 i = 0; i < issuances[account].length; i++) {
+            SlowIssuance storage iss = issuances[account][i];
             if (!iss.processed && iss.basketNonce != basketNonce) {
                 amount += iss.amount;
 
-                if (!someProcessed) startIndex = uint256(i);
+                if (!someProcessed) startIndex = i;
                 someProcessed = true;
 
                 for (uint256 j = 0; j < iss.erc20s.length; j++) {
                     IERC20(iss.erc20s[j]).safeTransfer(iss.issuer, iss.deposits[j]);
                 }
-                endIndex = uint256(i) + 1;
-
-                // Pop off last item, which should be the item we're working on
-                assert(issuances[account].length == uint256(i) + 1);
-                issuances[account].pop();
+                iss.processed = true;
+                endIndex = i + 1;
             }
         }
 
-        if (endIndex > 0) {
+        if (someProcessed) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
+            // Clear queue
+            for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
+                issuances[account].pop();
+            }
         }
         return someProcessed;
     }
