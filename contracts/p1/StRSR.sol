@@ -99,11 +99,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // === Cache ===
 
+    // {seconds} The last time rewards were paid out
+    uint48 internal payoutLastPaid;
+
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
-
-    // {seconds} The last time rewards were paid out
-    uint48 public payoutLastPaid;
 
     // ======================
 
@@ -636,4 +636,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[31] private __gap;
 }
