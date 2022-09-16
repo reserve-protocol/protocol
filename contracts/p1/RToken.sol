@@ -393,7 +393,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // == Interactions ==
         bool nonzero = false;
         for (uint256 i = 0; i < erc20length; ++i) {
-            if (!nonzero && amounts[i] > 0) nonzero = true;
+            if (amounts[i] == 0) continue;
+            if (!nonzero) nonzero = true;
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
