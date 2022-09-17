@@ -20,7 +20,6 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
-
     // All open trades
     mapping(IERC20 => ITrade) public trades;
     uint48 public tradesOpen;
@@ -79,7 +78,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
-    function tryTrade(TradeRequest memory req) internal nonReentrant { /*  */
+    function tryTrade(TradeRequest memory req) internal nonReentrant {
+        /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
