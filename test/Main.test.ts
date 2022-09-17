@@ -1422,7 +1422,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
-    it('Should handle full collateral deregistration and reduce to empty basket', async () => {
+    it('Should handle full collateral deregistration and disable the basket', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
@@ -1449,11 +1449,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket should be 100% collateral0
-      let toks = await facade.basketTokens(rToken.address)
+      const toks = await facade.basketTokens(rToken.address)
       expect(toks.length).to.equal(1)
       expect(toks[0]).to.equal(token0.address)
 
-      // Basket should be set to the empty basket, and be defaulted
+      // Unregister collateral0
       await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
         assetRegistry,
         'AssetUnregistered'
@@ -1463,11 +1463,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
 
-      // Final basket should be empty
-      toks = await facade.basketTokens(rToken.address)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await basketHandler.quantity(token1.address)).to.equal(0)
-      expect(toks.length).to.equal(0)
+      // toks = await facade.basketTokens(rToken.address)
+      // expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      // expect(toks.length).to.equal(0)
     })
 
     it('Should exclude defaulted collateral when checking price', async () => {
