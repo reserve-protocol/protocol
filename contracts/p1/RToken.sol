@@ -76,6 +76,25 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueItem[] items; // The actual items (The issuance "fenceposts")
     }
 
+    /*
+     * If we want to clean up state, it's safe to delete items[x] iff x < left.
+     * For an initialized IssueQueue queue:
+     *     queue.items.right >= left
+     *     queue.items.right == left  iff  there are no more pending issuances here
+     *
+     * The short way to describe this is that IssueQueue stores _cumulative_ issuances, not raw
+     * issuances, and so any particular issuance is actually the _difference_ between two adjaacent
+     * TotalIssue items in an IssueQueue.
+     *
+     * The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
+     * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
+     * TotalIssue items. For example, if:
+     *    queue.items[queue.left].amtRToken == 1000 , and
+     *    queue.items[queue.right - 1].amtRToken == 6000,
+     * then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
+     * vest() on that account, we'd vest 5000 RTokens *to* that account.
+     */
+
     mapping(address => IssueQueue) public issueQueues;
 
     // Redemption throttle
@@ -140,7 +159,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
-        if (queue.basketNonce != basketNonce) {
+        if (queue.basketNonce > 0 && queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
             refundSpan(issuer, queue.left, queue.right);
@@ -178,9 +197,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             queue.left == queue.right &&
             status == CollateralStatus.SOUND
         ) {
-            // Complete issuance
-            _mint(issuer, amtRToken);
-
             // Fixlib optimization:
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             uint192 newBasketsNeeded = basketsNeeded + amtBaskets;
@@ -193,6 +209,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             address backingMgr = address(main.backingManager());
 
             // == Interactions then return: transfer tokens ==
+            // Complete issuance
+            _mint(issuer, amtRToken);
             for (uint256 i = 0; i < erc20s.length; ++i) {
                 IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, backingMgr, deposits[i]);
             }
@@ -200,7 +218,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // Push issuance onto queue
-        IssueItem storage curr = queue.items.push();
+        IssueItem storage curr = (queue.right < queue.items.length)
+            ? queue.items[queue.right]
+            : queue.items.push();
         curr.when = vestingEnd;
         curr.amtRToken = amtRToken;
         curr.amtBaskets = amtBaskets;
@@ -399,16 +419,17 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
         }
 
-        // Accept and burn RToken
-        _burn(redeemer, amount);
-
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
 
         // == Interactions ==
+        // Accept and burn RToken
+        _burn(redeemer, amount);
+
         bool nonzero = false;
         for (uint256 i = 0; i < erc20length; ++i) {
-            if (!nonzero && amounts[i] > 0) nonzero = true;
+            if (amounts[i] == 0) continue;
+            if (!nonzero) nonzero = true;
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
@@ -484,6 +505,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
+        require(index < issueQueues[account].right, "out of range");
         return issueQueues[account].items[index];
     }
 
@@ -498,7 +520,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== private ====
     /// Refund all deposits in the span [left, right)
-    /// after: queue.left == queue.right
     /// @custom:interaction
     function refundSpan(
         address account,
@@ -529,15 +550,17 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             }
         }
 
-        // Check the relationships of these intervals, and set queue.{left, right} to final values.
-        if (queue.left == left && right <= queue.right) {
-            // refund from beginning of queue
-            queue.left = right;
+        if (queue.left == left && right == queue.right) {
+            // empty entire queue
+            queue.left = 0;
+            queue.right = 0;
+        } else if (queue.left == left && right < queue.right) {
+            queue.left = right; // remove span from beginning
         } else if (queue.left < left && right == queue.right) {
-            // refund from end of queue
-            queue.right = left;
-        } else revert("Bad refundSpan");
-        // error: can't remove [left,right) from the queue, and leave just one interval
+            queue.right = left; // refund span from end
+        } else {
+            revert("Bad refundSpan");
+        } // error: can't remove [left,right) from the queue, and leave just one interval
 
         emit IssuancesCanceled(account, left, right, amtRToken);
 
@@ -583,8 +606,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             amtBaskets = amtBaskets - leftItem.amtBaskets;
         }
 
-        _mint(account, amtRToken);
-
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded + amtBaskets);
         // uint192(+) is safe for Fix.plus()
         basketsNeeded = basketsNeeded + amtBaskets;
@@ -594,6 +615,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         queue.left = endId;
 
         // == Interactions ==
+        _mint(account, amtRToken);
 
         for (uint256 i = 0; i < queueLength; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(

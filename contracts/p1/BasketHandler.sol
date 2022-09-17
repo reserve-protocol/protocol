@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 
@@ -229,9 +230,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 max,
         IERC20[] calldata erc20s
     ) external governance {
+        requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
-        requireValidCollArray(erc20s);
         delete conf.erc20s;
         IAssetRegistry reg = main.assetRegistry();
 
@@ -541,10 +542,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             require(erc20s[i] != rToken, "RToken is not valid collateral");
             require(erc20s[i] != stRSR, "stRSR is not valid collateral");
             require(erc20s[i] != zero, "address zero is not valid collateral");
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
         }
+
+        require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
     /// Good collateral is registered, collateral, not DISABLED, and not a system token or 0 addr

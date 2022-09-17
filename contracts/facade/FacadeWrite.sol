@@ -50,6 +50,7 @@ contract FacadeWrite is IFacadeWrite {
         // Register assets
         for (uint256 i = 0; i < setup.assets.length; ++i) {
             IAssetRegistry(address(main.assetRegistry())).register(setup.assets[i]);
+            main.backingManager().grantRTokenAllowance(setup.assets[i].erc20());
         }
 
         // Setup basket
@@ -61,8 +62,6 @@ contract FacadeWrite is IFacadeWrite {
                 IAssetRegistry(address(main.assetRegistry())).register(setup.primaryBasket[i]);
                 IERC20 erc20 = setup.primaryBasket[i].erc20();
                 basketERC20s[i] = erc20;
-
-                // Grant allowance
                 main.backingManager().grantRTokenAllowance(erc20);
             }
 
@@ -81,7 +80,9 @@ contract FacadeWrite is IFacadeWrite {
                 for (uint256 j = 0; j < setup.backups[i].backupCollateral.length; ++j) {
                     ICollateral backupColl = setup.backups[i].backupCollateral[j];
                     IAssetRegistry(address(main.assetRegistry())).register(backupColl);
-                    backupERC20s[j] = backupColl.erc20();
+                    IERC20 erc20 = backupColl.erc20();
+                    backupERC20s[j] = erc20;
+                    main.backingManager().grantRTokenAllowance(erc20);
                 }
 
                 main.basketHandler().setBackupConfig(

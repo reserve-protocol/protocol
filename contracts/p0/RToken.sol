@@ -194,11 +194,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
 
         SlowIssuance[] storage queue = issuances[account];
+
+        uint256 amtRToken; // {qRTok}
+        uint256 numCanceled;
+        uint256 left;
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        uint256 left;
-        uint256 amtRToken; // {qRTok}
-        bool canceled = false;
+        // Refund issuances that have not yet been processed
         for (uint256 n = first; n < last && n < queue.length; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
@@ -207,12 +209,19 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
-                canceled = true;
+                numCanceled++;
 
-                if (left == 0) left = n;
+                if (numCanceled == 1) left = n;
             }
         }
-        if (canceled) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        // Empty queue from right
+        for (int256 i = int256(queue.length) - 1; i >= 0; i--) {
+            if (!queue[uint256(i)].processed) break;
+            queue.pop();
+        }
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -308,9 +317,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 prorata = prorate.mulu_toUint(bal);
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
-            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
-
-            if (!nonzero && amounts[i] > 0) nonzero = true;
+            if (amounts[i] > 0) {
+                IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
+                if (!nonzero) nonzero = true;
+            }
         }
 
         if (!nonzero) revert("Empty redemption");
@@ -395,6 +405,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint256 amount;
         uint256 startIndex;
         uint256 endIndex;
+
         for (uint256 i = 0; i < issuances[account].length; i++) {
             SlowIssuance storage iss = issuances[account][i];
             if (!iss.processed && iss.basketNonce != basketNonce) {
@@ -413,6 +424,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         if (someProcessed) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
+            // Clear queue
+            for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
+                issuances[account].pop();
+            }
         }
         return someProcessed;
     }

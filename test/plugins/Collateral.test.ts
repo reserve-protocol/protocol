@@ -2052,6 +2052,14 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('missing chainlink feed')
     })
 
+    it('Should not revert during refresh when price2 is 0', async () => {
+      const targetFeedAddr = await eurFiatCollateral.uoaPerTargetFeed()
+      const targetFeed = await ethers.getContractAt('MockV3Aggregator', targetFeedAddr)
+      await targetFeed.updateAnswer(0)
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+    })
+
     it('Should setup collateral correctly', async function () {
       // Non-Fiat Token
       expect(await eurFiatCollateral.isCollateral()).to.equal(true)

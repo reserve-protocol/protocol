@@ -4,10 +4,14 @@ pragma solidity 0.8.9;
 import "contracts/interfaces/IRToken.sol";
 import "./Fixed.sol";
 
+// NOTE: This algorithm assumes the contract is running on PoS Ethereum and 100% of the
+// network is online. It is possible for the battery to recharge up to 2/3 as fast
+// depending on validator participation levels. Below 2/3 the chain halts, in which case
+// the battery stops charging completely.
 uint48 constant BLOCKS_PER_HOUR = 300; // {blocks/hour}
 
 /// Throttling mechanism:
-/// Model of a "battery" which "recharges" linearly block by block, over 1 hour.
+/// Models a "battery" which "recharges" linearly block by block, over roughly 1 hour.
 /// Calls to discharge() will revert if the battery doesn't have enough "charge".
 /// @dev This implementation basically assumes that maxCapacity is always the same value.
 ///      It won't misbehave badly if maxCapacity is changed, but it doesn't have sharply-defined

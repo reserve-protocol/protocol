@@ -9,6 +9,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Component.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 
 struct BackupConfig {
@@ -134,8 +135,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
-        requireValidCollArray(erc20s);
         require(erc20s.length == targetAmts.length, "must be same length");
+        requireValidCollArray(erc20s);
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
         bytes32[] memory names = new bytes32[](erc20s.length);
@@ -363,10 +364,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             require(erc20s[i] != rToken, "RToken is not valid collateral");
             require(erc20s[i] != stRSR, "stRSR is not valid collateral");
             require(erc20s[i] != zero, "address zero is not valid collateral");
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
         }
+        require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
     /// Good collateral is: registered, Collateral, not DISABLED, and not a forbidden token
