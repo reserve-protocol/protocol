@@ -102,8 +102,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
 
-    // {seconds} The last tim rewards were paid out
-    uint48 internal payoutLastPaid;
+    // {seconds} The last time rewards were paid out
+    uint48 public payoutLastPaid;
 
     // ======================
 
@@ -190,7 +190,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
     }
 
-    /// Complete delayed unstaking for an account, up to but not including `endId`
+    /// Complete an account's unstaking; callable by anyone
     /// @custom:interaction RCEI
     function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         // == Refresh ==
