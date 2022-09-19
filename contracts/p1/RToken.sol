@@ -82,13 +82,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     RedemptionBatteryLib.Battery private battery;
 
-    // set to 0 to disable
-    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
-
-    // {qRTok} the min value of total supply to use for redemption throttling
-    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
-    uint256 public redemptionVirtualSupply;
-
     function init(
         IMain main_,
         string calldata name_,
@@ -106,8 +99,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setMaxRedemption(maxRedemptionCharge_);
-        setRedemptionVirtualSupply(redemptionVirtualSupply_);
+        setScalingRedemptionRate(maxRedemptionCharge_);
+        setRedemptionRateFloor(redemptionVirtualSupply_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -352,7 +345,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // D18{BU} = D18{BU} * {qRTok} / {qRTok}
         // downcast is safe: amount < totalSupply and basketsNeeded_ < 1e57 < 2^190 (just barely)
-        uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, totalSupply()));
+        uint256 supply = totalSupply();
+        uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, supply));
         emit Redemption(redeemer, amount, baskets);
 
         (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
@@ -366,7 +360,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // D18{1} = D18 * {qRTok} / {qRTok}
         // downcast is safe: amount <= balanceOf(redeemer) <= totalSupply(), so prorate < 1e18
-        uint192 prorate = uint192((FIX_ONE_256 * amount) / totalSupply());
+        uint192 prorate = uint192((FIX_ONE_256 * amount) / supply);
 
         // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
         for (uint256 i = 0; i < erc20length; ++i) {
@@ -377,14 +371,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
 
         // Revert if redemption exceeds battery capacity
-        if (maxRedemptionCharge > 0) {
-            uint256 supply = totalSupply();
-            if (supply < redemptionVirtualSupply) supply = redemptionVirtualSupply;
-
-            // {1} = {qRTok} / {qRTok}
-            uint192 dischargeAmt = uint192((FIX_ONE_256 * amount + (supply - 1)) / supply);
-            battery.discharge(dischargeAmt, maxRedemptionCharge); // reverts on over-redemption
-        }
+        battery.discharge(supply, amount); // reverts on over-redemption
 
         basketsNeeded = basketsNeeded_ - baskets;
         emit BasketsNeededChanged(basketsNeeded_, basketsNeeded);
@@ -439,24 +426,37 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         RewardableLibP1.claimAndSweepRewards();
     }
 
+    /// @param val {1/block}
     /// @custom:governance
     function setIssuanceRate(uint192 val) public governance {
-        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
+        require(val > 0 && val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
-    /// @custom:governance
-    function setMaxRedemption(uint192 val) public governance {
-        require(val <= FIX_ONE, "invalid fraction");
-        emit MaxRedemptionSet(maxRedemptionCharge, val);
-        maxRedemptionCharge = val;
+    /// @return {1/hour} The max redemption charging rate
+    function scalingRedemptionRate() external view returns (uint192) {
+        return battery.scalingRedemptionRate;
     }
 
+    /// @param val {1/hour}
     /// @custom:governance
-    function setRedemptionVirtualSupply(uint256 val) public governance {
-        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
-        redemptionVirtualSupply = val;
+    function setScalingRedemptionRate(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit ScalingRedemptionRateSet(battery.scalingRedemptionRate, val);
+        battery.scalingRedemptionRate = val;
+    }
+
+    /// @return {qRTok/hour} The min redemption charging rate, in {qRTok}
+    function redemptionRateFloor() external view returns (uint256) {
+        return battery.redemptionRateFloor;
+    }
+
+    /// @param val {qRTok/hour}
+    /// @custom:governance
+    function setRedemptionRateFloor(uint256 val) public governance {
+        emit RedemptionRateFloorSet(battery.redemptionRateFloor, val);
+        battery.redemptionRateFloor = val;
     }
 
     /// @dev This function is only here because solidity can't autogenerate our getter
@@ -467,11 +467,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
-        uint256 supply = totalSupply();
-        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
-
-        // {qRTok} = D18{1} * {qRTok} / D18
-        return (battery.currentCharge(maxRedemptionCharge) * supply) / FIX_ONE;
+        return battery.currentCharge(totalSupply());
     }
 
     // ==== private ====
@@ -586,5 +582,5 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[40] private __gap;
+    uint256[42] private __gap;
 }

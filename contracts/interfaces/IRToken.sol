@@ -85,10 +85,10 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     event IssuanceRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted when the redemption battery max charge is set
-    event MaxRedemptionSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event ScalingRedemptionRateSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted when the dust supply is set
-    event RedemptionVirtualSupplySet(uint256 indexed oldVal, uint256 indexed newVal);
+    event RedemptionRateFloorSet(uint256 indexed oldVal, uint256 indexed newVal);
 
     // Initialization
     function init(
@@ -159,14 +159,14 @@ interface TestIRToken is IRToken {
     function issuanceRate() external view returns (uint192);
 
     /// Set the fraction of the RToken supply that can be reedemed at once
-    function setMaxRedemption(uint192 val) external;
+    function setScalingRedemptionRate(uint192 val) external;
 
-    /// @return {1} The maximum fraction of the RToken supply that can be redeemed at once
-    function maxRedemptionCharge() external view returns (uint192);
+    /// @return {1/hour} The maximum fraction of the RToken supply that can be redeemed at once
+    function scalingRedemptionRate() external view returns (uint192);
 
     /// Set the RToken supply at which full redemptions become enabled
-    function setRedemptionVirtualSupply(uint256 val) external;
+    function setRedemptionRateFloor(uint256 val) external;
 
-    /// @return {qRTok} The RToken supply at which full redemptions are enabled
-    function redemptionVirtualSupply() external view returns (uint256);
+    /// @return {qRTok/hour} The lowest possible hourly redemption limit
+    function redemptionRateFloor() external view returns (uint256);
 }

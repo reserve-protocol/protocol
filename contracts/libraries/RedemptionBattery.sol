@@ -17,40 +17,55 @@ library RedemptionBatteryLib {
     using FixLib for uint192;
 
     struct Battery {
+        uint256 redemptionRateFloor; // {qRTok/hour} the floor of the battery charging rate
+        uint192 scalingRedemptionRate; // {1/hour} charging rate as a fraction of supply
+        // for either: set to 0 to disable
+        // ===
         uint48 lastBlock; // {blocks}
-        uint192 lastCharge; // {1}
+        uint256 lastCharge; // {qRTok}
     }
 
-    /// @param chargeToUse {1} Fraction of the supply to use
-    /// @param maxCapacity {1/hour} The max fraction of the supply that can be used in <=1 hour
-    /// @dev Call after redemptions
+    /// @param supply {qRTok} Total RToken supply before redemption
+    /// @param amount {qRTok} Amount of RToken being redeemed
     function discharge(
         Battery storage battery,
-        uint192 chargeToUse,
-        uint192 maxCapacity
+        uint256 supply,
+        uint256 amount
     ) internal {
-        uint192 charge = currentCharge(battery, maxCapacity);
+        if (battery.redemptionRateFloor == 0 && battery.scalingRedemptionRate == 0) return;
 
-        // Deduct any usage
-        charge -= chargeToUse; // reverts on underflow
+        // {qRTok}
+        uint256 charge = currentCharge(battery, supply);
+
+        // A nice error message so people aren't confused why redemption failed
+        require(amount <= charge, "redemption battery insufficient");
 
         // Update battery
-        battery.lastCharge = charge;
         battery.lastBlock = uint48(block.number);
+        battery.lastCharge = charge - amount;
     }
 
-    /// @param maxCapacity {1/hour} The max fraction of the supply that can be used in <=1 hour
-    /// @return charge {1} The current battery charge, after accumulation
-    function currentCharge(Battery storage battery, uint192 maxCapacity)
+    /// @param supply {qRTok} Total RToken supply before the burn step
+    /// @return charge {qRTok} The current total charge as an amount of RToken
+    function currentCharge(Battery storage battery, uint256 supply)
         internal
         view
-        returns (uint192 charge)
+        returns (uint256 charge)
     {
-        uint48 blocks = uint48(block.number) - battery.lastBlock; // {blocks}
+        if (supply == 0) return 0;
 
-        // maxCapacity is <= FIX_ONE; maxCapacity * blocks <= 1e37
-        // {1} = {1} + {1/hour} * {blocks} / {blocks/hour}
-        charge = battery.lastCharge + ((maxCapacity * blocks) / BLOCKS_PER_HOUR);
-        if (charge > maxCapacity) charge = maxCapacity;
+        // {qRTok/hour} = {qRTok} * D18{1/hour} / D18
+        uint256 amtPerHour = (supply * battery.scalingRedemptionRate) / FIX_ONE_256;
+
+        if (battery.redemptionRateFloor > amtPerHour) amtPerHour = battery.redemptionRateFloor;
+
+        // {blocks}
+        uint48 blocks = uint48(block.number) - battery.lastBlock;
+
+        // {qRTok} = {qRTok} + {qRTok/hour} * {blocks} / {blocks/hour}
+        charge = battery.lastCharge + (amtPerHour * blocks) / BLOCKS_PER_HOUR;
+
+        uint256 maxCharge = amtPerHour > supply ? supply : amtPerHour;
+        if (charge > maxCharge) charge = maxCharge;
     }
 }
