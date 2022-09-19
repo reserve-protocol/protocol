@@ -8,7 +8,11 @@ import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/p1/BasketHandler.sol";
+import "contracts/p1/BackingManager.sol";
+import "contracts/p1/Furnace.sol";
 import "contracts/p1/RToken.sol";
+import "contracts/p1/RevenueTrader.sol";
 import "contracts/p1/StRSRVotes.sol";
 
 /**
@@ -18,6 +22,167 @@ import "contracts/p1/StRSRVotes.sol";
  */
 contract Facade is IFacade {
     using FixLib for uint192;
+
+    /// Returns the next call a keeper of MEV searcher should make in order to progress the system
+    /// Returns zero bytes to indicate no action should be made
+    /// @dev This function begins reverting due to blocksize constraints at ~400 registered assets
+    /// @custom:static-call
+    function getActCalldata(IRToken rToken) external returns (address, bytes memory) {
+        IMain main = rToken.main();
+        BackingManagerP1 backingManager = BackingManagerP1(address(main.backingManager()));
+        BasketHandlerP1 basketHandler = BasketHandlerP1(address(main.basketHandler()));
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
+        IERC20 rsr = main.rsr();
+        address[] memory empty = new address[](0);
+
+        // first priority: keep the basket fresh
+        if (basketHandler.status() == CollateralStatus.DISABLED) {
+            basketHandler.refreshBasket();
+            if (basketHandler.status() != CollateralStatus.DISABLED) {
+                // basketHandler.refreshBasket();
+                return (
+                    address(basketHandler),
+                    abi.encodeWithSelector(basketHandler.refreshBasket.selector, empty)
+                );
+            }
+        }
+
+        // see if backingManager settlement is required
+        if (backingManager.tradesOpen() > 0) {
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                ITrade trade = backingManager.trades(erc20s[i]);
+                if (address(trade) != address(0) && trade.canSettle()) {
+                    // backingManager.settleTrade(...)
+                    return (
+                        address(backingManager),
+                        abi.encodeWithSelector(backingManager.settleTrade.selector, erc20s[i])
+                    );
+                }
+            }
+        } else if (!basketHandler.fullyCollateralized()) {
+            // backingManager.manageTokens([]);
+            return (
+                address(backingManager),
+                abi.encodeWithSelector(backingManager.manageTokens.selector, empty)
+            );
+        } else {
+            // collateralized
+
+            // check revenue traders
+            RevenueTraderP1 rTokenTrader = RevenueTraderP1(address(main.rTokenTrader()));
+            RevenueTraderP1 rsrTrader = RevenueTraderP1(address(main.rsrTrader()));
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                // rTokenTrader: if there's a trade to settle
+                ITrade trade = rTokenTrader.trades(erc20s[i]);
+                if (address(trade) != address(0) && trade.canSettle()) {
+                    // rTokenTrader.settleTrade(...)
+                    return (
+                        address(rTokenTrader),
+                        abi.encodeWithSelector(rTokenTrader.settleTrade.selector, erc20s[i])
+                    );
+                }
+
+                // rsrTrader: if there's a trade to settle
+                trade = rsrTrader.trades(erc20s[i]);
+                if (address(trade) != address(0) && trade.canSettle()) {
+                    // rsrTrader.settleTrade(...)
+                    return (
+                        address(rsrTrader),
+                        abi.encodeWithSelector(rsrTrader.settleTrade.selector, erc20s[i])
+                    );
+                }
+
+                // rTokenTrader: check if we can start any trades
+                uint48 tradesOpen = rTokenTrader.tradesOpen();
+                rTokenTrader.manageToken(erc20s[i]);
+                if (rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                    // A trade started; do rTokenTrader.manageToken
+                    return (
+                        address(rTokenTrader),
+                        abi.encodeWithSelector(rTokenTrader.manageToken.selector, erc20s[i])
+                    );
+                }
+
+                // rsrTrader: check if we can start any trades
+                tradesOpen = rsrTrader.tradesOpen();
+                rsrTrader.manageToken(erc20s[i]);
+                if (rsrTrader.tradesOpen() - tradesOpen > 0) {
+                    // A trade started; do rsrTrader.manageToken
+                    return (
+                        address(rsrTrader),
+                        abi.encodeWithSelector(rsrTrader.manageToken.selector, erc20s[i])
+                    );
+                }
+            }
+
+            // maybe revenue needs to be forwarded from backingManager
+            backingManager.manageTokens(erc20s);
+
+            // if this unblocked an auction in either revenue trader,
+            // then prepare backingManager.manageTokens
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                address[] memory twoERC20s = new address[](2);
+
+                // rTokenTrader
+                if (address(erc20s[i]) != address(rToken)) {
+                    // rTokenTrader: check if we can start any trades
+                    uint48 tradesOpen = rTokenTrader.tradesOpen();
+                    rTokenTrader.manageToken(erc20s[i]);
+                    if (rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                        // always manage RToken + one other ERC20
+                        twoERC20s[0] = address(rToken);
+                        twoERC20s[1] = address(erc20s[i]);
+                        // backingManager.manageTokens([rToken, erc20s[i])
+                        // forward revenue onward to the revenue traders
+                        return (
+                            address(backingManager),
+                            abi.encodeWithSelector(backingManager.manageTokens.selector, twoERC20s)
+                        );
+                    }
+                }
+
+                // rsrTrader
+                if (erc20s[i] != rsr) {
+                    // rsrTrader: check if we can start any trades
+                    uint48 tradesOpen = rsrTrader.tradesOpen();
+                    rsrTrader.manageToken(erc20s[i]);
+                    if (rsrTrader.tradesOpen() - tradesOpen > 0) {
+                        // always manage RSR + one other ERC20
+                        twoERC20s[0] = address(rsr);
+                        twoERC20s[1] = address(erc20s[i]);
+                        // backingManager.manageTokens(rsr, erc20s[i])
+                        // forward revenue onward to the revenue traders
+                        return (
+                            address(backingManager),
+                            abi.encodeWithSelector(backingManager.manageTokens.selector, twoERC20s)
+                        );
+                    }
+                }
+            }
+        }
+
+        // check for a melting opportunity
+        FurnaceP1 furnace = FurnaceP1(address(main.furnace()));
+        uint48 lastPayout = furnace.lastPayout();
+        furnace.melt();
+        if (furnace.lastPayout() != lastPayout) {
+            // melt
+            return (address(furnace), abi.encodeWithSelector(furnace.melt.selector));
+        }
+
+        // check for a reward payout opportunity
+        StRSRP1 stRSR = StRSRP1(address(main.stRSR()));
+        uint48 payoutLastPaid = stRSR.payoutLastPaid();
+        stRSR.payoutRewards();
+        if (stRSR.payoutLastPaid() != payoutLastPaid) {
+            // payoutRewards
+            return (address(stRSR), abi.encodeWithSelector(stRSR.payoutRewards.selector));
+        }
+
+        return (address(0), new bytes(0));
+    }
+
+    // ==============================================================
 
     /// Prompt all traders to run auctions
     /// Relatively gas-inefficient, shouldn't be used in production. Use multicall instead

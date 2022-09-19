@@ -23,7 +23,7 @@ import "contracts/p1/mixins/Component.sol";
  * The one time that StRSR will rebase is if the entirety of insurance RSR is seized. If this
  *   happens, users balances are zereod out and StRSR is re-issued at a 1:1 exchange rate with RSR
  *
- * There's an important assymetry in StRSR: when RSR is added it must be split only
+ * There's an important asymmetry in StRSR: when RSR is added it must be split only
  *   across non-withdrawing stakes, while when RSR is seized it is seized uniformly from both
  *   stakes that are in the process of being withdrawn and those that are not.
  */
@@ -136,8 +136,9 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // {qRSR} How much reward RSR was held the last time rewards were paid out
     uint256 internal rsrRewardsAtLastPayout;
-    // {seconds} The last time for which rewards were paid out
-    uint48 internal payoutLastPaid;
+
+    // {seconds} The last time when rewards were paid out
+    uint48 public payoutLastPaid;
 
     // ======================
 
@@ -257,7 +258,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit UnstakingStarted(index, era, account, rsrAmount, stakeAmount, availableAt);
     }
 
-    /// Complete delayed unstaking for an account, up to but not including `endId`
+    /// Complete an account's unstaking; callable by anyone
     /// @custom:interaction RCEI
     // Let:
     //   r = draft[account]

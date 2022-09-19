@@ -12,6 +12,13 @@ import "./IStRSR.sol";
  * - @custom:view - Regular view
 v */
 interface IFacade {
+    /// Returns the next call a keeper of MEV searcher should make in order to progress the system
+    /// Returns zero bytes to indicate no action should be made
+    /// @custom:static-call
+    function getActCalldata(IRToken rToken) external returns (address to, bytes memory calldata_);
+
+    // ============
+
     /// Prompt all traders to run auctions
     /// @custom:interaction
     function runAuctionsForAllTraders(IRToken rToken) external;

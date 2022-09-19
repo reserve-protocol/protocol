@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IBackingManager.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Trading.sol";
 import "contracts/p1/mixins/TradingLib.sol";
@@ -52,12 +53,27 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         );
     }
 
-    /// Maintain the overall backing policy; handout assets otherwise
-    /// @custom:interaction RCEI
+    /// Mointain the overall backing policy; handout assets otherwise
+    /// @custom:interaction
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
-        requireUnique(erc20s);
+        require(ArrayLib.allUnique(erc20s), "duplicate tokens");
+        _manageTokens(erc20s);
+    }
 
+    /// Mointain the overall backing policy; handout assets otherwise
+    /// @dev Tokens must be in sorted order!
+    /// @dev Performs a uniqueness check on the erc20s list in O(n)
+    /// @custom:interaction
+    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
+        // Token list must not contain duplicates
+        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
+        _manageTokens(erc20s);
+    }
+
+    /// Maintain the overall backing policy; handout assets otherwise
+    /// @custom:interaction RCEI
+    function _manageTokens(IERC20[] calldata erc20s) private {
         // == Refresh ==
         main.assetRegistry().refresh();
 

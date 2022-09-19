@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/facade/Facade.sol";
 import "contracts/p0/AssetRegistry.sol";
 import "contracts/p0/BackingManager.sol";
 import "contracts/p0/BasketHandler.sol";

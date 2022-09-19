@@ -795,16 +795,25 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       it('Should not trade if paused', async () => {
         await main.connect(owner).pause()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
+        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+          'paused or frozen'
+        )
       })
 
       it('Should not trade if frozen', async () => {
         await main.connect(owner).freezeShort()
         await expect(backingManager.manageTokens([])).to.be.revertedWith('paused or frozen')
+        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+          'paused or frozen'
+        )
       })
 
       it('Should not trade if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await expect(backingManager.manageTokens([])).to.be.revertedWith('basket not sound')
+        await expect(backingManager.manageTokensSortedOrder([])).to.be.revertedWith(
+          'basket not sound'
+        )
       })
 
       it('Should only start recapitalization after tradingDelay', async () => {
