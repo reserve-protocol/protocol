@@ -23,7 +23,7 @@ import "contracts/p1/mixins/Component.sol";
  * The one time that StRSR will rebase is if the entirety of insurance RSR is seized. If this
  *   happens, users balances are zereod out and StRSR is re-issued at a 1:1 exchange rate with RSR
  *
- * There's an important assymetry in StRSR: when RSR is added it must be split only
+ * There's an important asymmetry in StRSR: when RSR is added it must be split only
  *   across non-withdrawing stakes, while when RSR is seized it is seized uniformly from both
  *   stakes that are in the process of being withdrawn and those that are not.
  */
