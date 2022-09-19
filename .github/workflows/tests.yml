@@ -19,7 +19,7 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
-      - run: yarn test:failing-test
+      - run: yarn test:p0
 
   # unit-tests:
   #   name: 'Unit Tests'
