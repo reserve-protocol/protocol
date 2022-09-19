@@ -162,7 +162,7 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.manageTokens()
+- backingManager.manageTokens\*()
 - {rsrTrader,rTokenTrader}.manageToken()
 - \*.claimAndSweepRewards()
 
@@ -263,7 +263,7 @@ This implies that the core contracts in P1 (`Main` and core components) are mean
 
 ### Writing upgrade-safe contracts
 
-The OpenZepplin documentation has good material on [how to write upgradable contracts][writing-upgradable].
+The OpenZeppelin documentation has good material on [how to write upgradable contracts][writing-upgradable].
 
 Prior to initial launch, the most glaring consequence of keeping this upgrade pattern is that core P1 contracts cannot rely on their constructor to initialize values in contract state. Instead, each contract must define a separate initializer function to initialize its state.
 
