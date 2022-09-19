@@ -27,8 +27,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
 
     // When RSR is seized, stakeholders are divested not only of their economic position,
-    // but also of their governance position. This occurs retroactively, such that upon
-    // era change it is expected that
+    // but also of their governance position. This occurs retroactively.
 
     // ===
 
