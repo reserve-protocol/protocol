@@ -2327,7 +2327,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .to.not.be.reverted
       })
 
-      it.only('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', ;async () => {
+      it.only('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
         expect(await basketHandler.fullyCollateralized()).to.be.true
 
         // Change redemption rate for AToken and CToken to double
