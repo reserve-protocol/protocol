@@ -4,9 +4,13 @@ pragma solidity 0.8.9;
 import "contracts/interfaces/IRToken.sol";
 import "./Fixed.sol";
 
+// NOTE: This algorithm assumes the contract is running on PoS Ethereum and 100% of the
+// network is online. It is possible for the battery to recharge up to 2/3 as fast
+// depending on validator participation levels. Below 2/3 the chain halts, in which case
+// the battery stops charging completely.
 uint48 constant BLOCKS_PER_HOUR = 300; // {blocks/hour}
 
-/// Applies a redemption throttle of X% every 277 blocks (~1 hour)
+/// Applies a redemption throttle of X% every 300 blocks (~1 hour)
 /// @dev Use: call `discharge` after each redemption
 /// @dev Reverts when a redemption is too large
 library RedemptionBatteryLib {

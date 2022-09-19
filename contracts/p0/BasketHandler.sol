@@ -9,6 +9,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Component.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 
 struct BackupConfig {
@@ -134,6 +135,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
+        require(ArrayLib.allUnique(erc20s), "contains duplicates");
         require(erc20s.length == targetAmts.length, "must be same length");
         delete config.erc20s;
         IAssetRegistry reg = main.assetRegistry();
@@ -164,6 +166,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 max,
         IERC20[] memory erc20s
     ) external governance {
+        require(ArrayLib.allUnique(erc20s), "contains duplicates");
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;

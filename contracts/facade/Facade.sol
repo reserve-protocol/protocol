@@ -295,7 +295,7 @@ contract Facade is IFacade {
 
     /// @custom:static-call
     function issue(IRToken rToken, uint256 amount)
-        external
+        public
         returns (address[] memory tokens, uint256[] memory deposits)
     {
         IMain main = rToken.main();
@@ -309,6 +309,44 @@ contract Facade is IFacade {
             : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
         (tokens, deposits) = bh.quote(baskets, CEIL);
+    }
+
+    /// @return erc20s The ERC20 addresses in the current basket
+    /// @return uoaShares {1} The proportion of the basket associated with each ERC20
+    /// @return targets The bytes32 representations of the target unit associated with each ERC20
+    /// @custom:static-call
+    function basketBreakdown(IRToken rToken)
+        external
+        returns (
+            address[] memory erc20s,
+            uint192[] memory uoaShares,
+            bytes32[] memory targets
+        )
+    {
+        uint256[] memory deposits;
+        IAssetRegistry assetRegistry = rToken.main().assetRegistry();
+
+        // ({ERC20}, {qTok})
+        (erc20s, deposits) = issue(rToken, FIX_ONE);
+
+        // Calculate uoaAmts
+        uint192 uoaSum;
+        uint192[] memory uoaAmts = new uint192[](erc20s.length);
+        targets = new bytes32[](erc20s.length);
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            ICollateral coll = assetRegistry.toColl(IERC20(erc20s[i]));
+            int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
+
+            // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(coll.price());
+            uoaSum += uoaAmts[i];
+            targets[i] = coll.targetName();
+        }
+
+        uoaShares = new uint192[](erc20s.length);
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            uoaShares[i] = uoaAmts[i].div(uoaSum);
+        }
     }
 
     /// @return tokens The addresses of the ERC20s backing the RToken

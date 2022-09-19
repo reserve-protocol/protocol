@@ -64,10 +64,10 @@ interface RSRFixture {
 }
 
 async function rsrFixture(): Promise<RSRFixture> {
-  // Deploy RSR and asset
-  const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-  const rsr: ERC20Mock = <ERC20Mock>await ERC20.deploy('Reserve Rights', 'RSR')
-
+  const chainId = await getChainId(hre)
+  const rsr: ERC20Mock = <ERC20Mock>(
+    await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.RSR || '')
+  )
   return { rsr }
 }
 

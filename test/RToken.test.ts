@@ -132,6 +132,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
   }
 
+  const expectNoIssuance = async (account: string, index: number) => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
+      await expect(rTokenP1.issueItem(account, index)).to.be.revertedWith('out of range')
+    } else if (IMPLEMENTATION == Implementation.P0) {
+      const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
+      await expect(rTokenP0.issuances(account, index)).to.be.reverted
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+  }
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -404,7 +416,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('frozen')
     })
 
-    it('Should not be able to DOS issuance by calling refreshBasket', async function () {
+    it('Should be able to DOS issuance only from owner, by calling refreshBasket', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
       // Start issuance pre-pause
@@ -425,8 +437,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Vest should return tokens
       await expect(rToken.vest(addr1.address, 1)).to.emit(rToken, 'IssuancesCanceled')
 
-      // Cancel should be a no-op
-      await expect(rToken.connect(addr1).cancel(1, true)).to.not.emit(rToken, 'IssuancesCanceled')
+      // Cancel should not work (in fact it has deleted the issuance)
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
+      await expectNoIssuance(addr1.address, 0)
+      await expect(rToken.connect(addr1).cancel(0, false)).to.not.emit(rToken, 'IssuancesCanceled')
+      await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
     it('Should be able to refund multiple issuances when calling vest if basket changed', async function () {
@@ -494,7 +509,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).cancel(1, true)
 
       // Attempt to cancel with older index
-      await expect(rToken.connect(addr1).cancel(0, true)).to.be.revertedWith('out of range')
+      await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
     it('Should not issue RTokens if amount is zero', async function () {
@@ -1327,10 +1342,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         .to.emit(rToken, 'IssuancesCanceled')
         .withArgs(addr1.address, 0, 1, issueAmount)
 
-      // Check minting was cancelled but not tokens minted
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check balances returned to user
@@ -1342,8 +1353,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check total asset value did not change
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
-      // Another call will not do anything, will not revert
-      await rToken.connect(addr1).cancel(1, true)
+      // We've cleared the queue so calls to cancel should revert
+      await expectNoIssuance(addr1.address, 0)
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
     it('Should allow the issuer to rollback specific set of mintings', async function () {
@@ -1403,9 +1415,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         .withArgs(addr1.address, 1, 2, issueAmount)
 
       // Check minting was cancelled and not tokens minted
-      await expectIssuance(addr1.address, 1, {
-        processed: true,
-      })
+      await expectNoIssuance(addr1.address, 1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check balances returned to user
@@ -1417,8 +1427,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check total asset value did not change
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
-      // Another call will not do anything, will not revert
-      await rToken.connect(addr1).cancel(2, true)
+      // Another call will not do anything
+      await rToken.connect(addr1).cancel(0, true)
+      await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
     it('Should rollback mintings if Basket changes (2 blocks)', async function () {
@@ -1482,13 +1493,59 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
+
+      await expectNoIssuance(addr1.address, 0)
+      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    })
+
+    it('Should not allow solidified cancel exploit', async () => {
+      // This test is modeled after the solidified-provided proof of concept test
+
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(2) // takes 2 blocks to vest
+      const beforeBal = await token0.balanceOf(addr1.address)
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token0.connect(addr2).approve(rToken.address, initialBal)
+      await token1.connect(addr2).approve(rToken.address, initialBal)
+      await token2.connect(addr2).approve(rToken.address, initialBal)
+      await token3.connect(addr2).approve(rToken.address, initialBal)
+      // Issue rTokens
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+      await rToken.connect(addr2).issue(issueAmount) // This will be stolen by addr1
+
+      // Cancel with addr1
+      await expect(rToken.connect(addr1).cancel(1, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 1, 2, issueAmount)
+
+      // before: queue.right is 1
+      await rToken.connect(addr1).issue(1)
+      // after: queue.right is 2
+
+      // Shoult not allow to double-dip into cancellation
+      await expect(rToken.connect(addr1).cancel(3, false)).to.be.revertedWith('out of range')
+      await expect(rToken.connect(addr1).cancel(3, true)).to.be.revertedWith('out of range')
+      await expect(rToken.connect(addr1).cancel(2, false)).to.not.emit(rToken, 'IssuancesCanceled')
+      await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
+
+      // Should still be able to cancel the initial issuance and the malicious +1
+      // and importantly, these should be all that's left to cancel
+      await expect(rToken.connect(addr1).cancel(0, false))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 2, issueAmount.add(1))
+
+      // Should have initial tokens back, up to 1 less. Not more
+      expect(await token0.balanceOf(addr1.address)).to.be.lte(beforeBal)
+      expect(await token0.balanceOf(addr1.address)).to.be.closeTo(beforeBal, 1)
     })
   })
 

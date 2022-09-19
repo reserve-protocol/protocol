@@ -1279,6 +1279,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('token is not collateral')
     })
 
+    it('Should not allow to set prime Basket with duplicate ERC20s', async () => {
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setPrimeBasket([token0.address, token0.address], [fp('1'), fp('1')])
+      ).to.be.revertedWith('contains duplicates')
+    })
+
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
@@ -1326,6 +1334,17 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
       ).to.be.revertedWith('cannot use RSR/RToken in basket')
+
+      it('Should not allow to set backup Config with duplicate ERC20s', async () => {
+        await expect(
+          basketHandler
+            .connect(owner)
+            .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
+              token0.address,
+              token0.address,
+            ])
+        ).to.be.revertedWith('contains duplicates')
+      })
 
       await expect(
         basketHandler

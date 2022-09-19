@@ -31,7 +31,13 @@ contract Asset is IAsset {
     ) {
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(tradingRange_.minAmt > 0 && tradingRange_.maxAmt > 0, "invalid trading range");
+        require(
+            tradingRange_.minAmt > 0 &&
+                tradingRange_.maxAmt > 0 &&
+                tradingRange_.maxAmt >= tradingRange_.minAmt,
+            "invalid trading range amts"
+        );
+        require(tradingRange_.maxVal >= tradingRange_.minVal, "invalid trading range vals");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;

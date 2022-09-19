@@ -204,6 +204,25 @@ describe('Facade contract', () => {
       expect(insurance).to.equal(0)
     })
 
+    it('Should return basketBreakdown correctly', async () => {
+      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      expect(erc20s.length).to.equal(4)
+      expect(breakdown.length).to.equal(4)
+      expect(targets.length).to.equal(4)
+      expect(erc20s[0]).to.equal(token.address)
+      expect(erc20s[1]).to.equal(usdc.address)
+      expect(erc20s[2]).to.equal(aToken.address)
+      expect(erc20s[3]).to.equal(cToken.address)
+      expect(breakdown[0]).to.equal(fp('0.25'))
+      expect(breakdown[1]).to.equal(fp('0.25'))
+      expect(breakdown[2]).to.equal(fp('0.25'))
+      expect(breakdown[3]).to.equal(fp('0.25'))
+      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
     it('Should return totalAssetValue correctly', async () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
