@@ -2374,11 +2374,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
         // Remove duplicates but unsort
-        const sorted = [token1.address, token2.address, token3.address].sort()
+        // const sorted = [token1.address, token2.address, token3.address].sort()
+        const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
+          const x = BigNumber.from(a)
+          const y = BigNumber.from(b)
+          console.log(a, b)
+          console.log(x, y)
+          console.log(x.lt(y))
+          if (x.lt(y)) return -1
+          if (x.gt(y)) return 1
+          return 0
+        })
         const unsorted = [sorted[2], sorted[0], sorted[1]]
         console.log('6')
-        console.log(sorted)
         console.log(unsorted)
+        console.log(sorted)
         await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
           'duplicate/unsorted tokens'
         )
