@@ -173,14 +173,14 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
 
     /// @custom:governance
     function setShortFreeze(uint48 shortFreeze_) public onlyRole(OWNER) {
-        require(shortFreeze_ > 0 && shortFreeze_ < MAX_SHORT_FREEZE, "short freeze out of range");
+        require(shortFreeze_ > 0 && shortFreeze_ <= MAX_SHORT_FREEZE, "short freeze out of range");
         emit ShortFreezeDurationSet(shortFreeze, shortFreeze_);
         shortFreeze = shortFreeze_;
     }
 
     /// @custom:governance
     function setLongFreeze(uint48 longFreeze_) public onlyRole(OWNER) {
-        require(longFreeze_ > 0 && longFreeze_ < MAX_LONG_FREEZE, "long freeze out of range");
+        require(longFreeze_ > 0 && longFreeze_ <= MAX_LONG_FREEZE, "long freeze out of range");
         emit LongFreezeDurationSet(longFreeze, longFreeze_);
         longFreeze = longFreeze_;
     }

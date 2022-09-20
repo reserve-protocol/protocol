@@ -841,9 +841,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(owner).setShortFreeze(0)).to.be.revertedWith(
         'short freeze out of range'
       )
-      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.revertedWith(
+      await expect(main.connect(owner).setShortFreeze(2592000 + 1)).to.be.revertedWith(
         'short freeze out of range'
       )
+      await main.connect(owner).setShortFreeze(2592000)
+      expect(await main.shortFreeze()).to.equal(2592000)
       await main.connect(owner).setShortFreeze(2)
       expect(await main.shortFreeze()).to.equal(2)
     })
@@ -853,9 +855,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(owner).setLongFreeze(0)).to.be.revertedWith(
         'long freeze out of range'
       )
-      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.revertedWith(
+      await expect(main.connect(owner).setLongFreeze(31536000 + 1)).to.be.revertedWith(
         'long freeze out of range'
       )
+      await main.connect(owner).setLongFreeze(31536000)
+      expect(await main.longFreeze()).to.equal(31536000)
+
       await main.connect(owner).setLongFreeze(2)
       expect(await main.longFreeze()).to.equal(2)
     })
