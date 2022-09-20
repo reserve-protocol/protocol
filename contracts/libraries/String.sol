@@ -3,7 +3,8 @@ pragma solidity 0.8.9;
 
 // From https://gist.github.com/ottodevs/c43d0a8b4b891ac2da675f825b1d1dbf
 library StringLib {
-    /// Convert all of string's uppercase letters to all lower case
+    /// Convert all uppercase letters in str to lowercase
+    /// TODO: This does horrible things to abitrary Unicode codepoints
     function toLower(string memory str) internal pure returns (string memory) {
         bytes memory bStr = bytes(str);
         bytes memory bLower = new bytes(bStr.length);

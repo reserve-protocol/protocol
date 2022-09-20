@@ -27,6 +27,18 @@ library TradingLibP1 {
     /// @param sellAmount {sellTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return trade The prepared trade
+    // Recall: struct TradeRequest is {IAsset sell, IAsset buy, uint sellAmount, uint minBuyAmount}
+    //
+    // If notDust is true, then the returned trade satisfies:
+    //   trade.sell == sell and trade.buy == buy,
+    //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage),
+    //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
+    //   1 < trade.sellAmount <= GNOSIS_MAX_TOKENS,
+    //   trade.buyAmount <= GNOSIS_MAX_TOKENS,
+    //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
+    //
+    // If notDust is false, no such trade exists.
+
     function prepareTradeSell(
         IAsset sell,
         IAsset buy,
@@ -71,7 +83,7 @@ library TradingLibP1 {
         return (true, trade);
     }
 
-    // Used to avoided stack-too-deep errors
+    // Used to avoid stack-too-deep errors
     struct BasketRange {
         uint192 top; // {BU}
         uint192 bottom; // {BU}

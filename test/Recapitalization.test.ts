@@ -510,12 +510,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
-        // Should exclude bad token
-        await expectCurrentBacking({
-          tokens: [initialTokens[0], initialTokens[2], initialTokens[3]],
-          quantities: [initialQuantities[0], initialQuantities[2], initialQuantities[3]],
-        })
-
         // Cannot issue because collateral is not sound
         await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')
       })
@@ -765,12 +759,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - Basket is disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-
-        // Should exclude bad token
-        await expectCurrentBacking({
-          tokens: [initialTokens[1]],
-          quantities: [initialQuantities[1]],
-        })
 
         // Cannot issue because collateral is not sound
         await expect(rToken.connect(addr1).issue(bn('1e18'))).to.be.revertedWith('basket unsound')

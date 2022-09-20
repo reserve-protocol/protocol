@@ -37,6 +37,8 @@ contract DeployerP1 is IDeployer {
     // Implementation contracts for Upgradeability
     Implementations public implementations;
 
+    // checks: every address in the input is nonzero
+    // effects: post, all contract-state values are set
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
@@ -78,6 +80,12 @@ contract DeployerP1 is IDeployer {
     /// @param owner The address that should own the entire system, hopefully a governance contract
     /// @param params Deployment params
     /// @return The address of the newly deployed RToken.
+
+    // effects:
+    //   Deploy a proxy for Main and every component of Main
+    //   Call init() on Main and every component of Main, using `params` for needed parameters
+    //     While doing this, init assetRegistry with this.rsrAsset and a new rTokenAsset
+    //   Set up Auth so that `owner` holds all roles and no one else has any
     function deploy(
         string memory name,
         string memory symbol,

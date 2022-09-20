@@ -764,7 +764,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         const targetUnit = ethers.utils.formatBytes32String((i % targetUnits).toString())
         const erc20 = await makeToken(`Token ${i}`, targetUnit, targetPerRefs)
         primeERC20s.push(erc20.address)
-        targetAmts.push(basketTargetAmt.div(targetUnits))
+        let targetAmt = basketTargetAmt.div(targetUnits)
+        if (targetAmt.eq(bn(0))) targetAmt = bn(1)
+        targetAmts.push(targetAmt)
       }
 
       const backups: [string[]] = [[]]
@@ -811,8 +813,8 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // 1e18 range centered around the expected case of fp('1')
     const targetPerRefs = [fp('1e-9'), fp('1e9')]
 
-    // min weight: 0, max weight: 1000
-    const basketTargetAmts = [fp('0'), fp('1e3')]
+    // min weight: 0 (will wind up as 1), max weight: 1000
+    const basketTargetAmts = [bn(0), fp('1e3')]
 
     const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
 
