@@ -13,6 +13,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   GnosisMock,
   GnosisTrade,
@@ -62,6 +63,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let stRSR: TestIStRSR
   let rToken: TestIRToken
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -104,6 +106,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       distributor,
       rToken,
       facade,
+      facadeTest,
       rsrTrader,
       rTokenTrader,
       rsrAsset,
@@ -254,7 +257,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     for (let i = 0; didStuff && i < 10; i++) {
       didStuff = false
       // Close any auctions and start new ones
-      await facade.runAuctionsForAllTraders(rToken.address)
+      await facadeTest.runAuctionsForAllTraders(rToken.address)
 
       expect(await backingManager.tradesOpen()).to.equal(0)
       const traders = [rsrTrader, rTokenTrader]
@@ -348,7 +351,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -476,7 +479,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -556,7 +559,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
         // Close any open auctions and launch new ones
-        await facade.runAuctionsForAllTraders(rToken.address)
+        await facadeTest.runAuctionsForAllTraders(rToken.address)
 
         for (const erc20 of erc20s) {
           const tradeAddr = await backingManager.trades(erc20)
@@ -653,7 +656,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await stRSR.connect(addr1).stake(fp('1e29'))
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===

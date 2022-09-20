@@ -30,6 +30,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   GnosisMock,
   GnosisTrade,
@@ -108,6 +109,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let furnace: TestIFurnace
   let main: TestIMain
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -151,6 +153,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       gnosis,
       broker,
       facade,
+      facadeTest,
       rsrTrader,
       rTokenTrader,
       oracleLib,
@@ -283,7 +286,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check BU price
       expect(await basketHandler.price()).to.equal(fp('1'))
@@ -1419,7 +1422,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
     it('Should handle full collateral deregistration and reduce to empty basket', async () => {

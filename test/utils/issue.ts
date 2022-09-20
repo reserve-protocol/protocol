@@ -2,8 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { TestIRToken } from '../../typechain'
+import { Facade, RTokenP0, TestIRToken } from '../../typechain'
 import { advanceBlocks } from './time'
+import { IMPLEMENTATION, Implementation } from '../fixtures'
 
 // Issue `amount` RToken to `user`.
 //
@@ -11,6 +12,7 @@ import { advanceBlocks } from './time'
 // blocks, we do this more cleverly than just one big issuance...
 // This presumes that user has already granted allowances of basket tokens!
 export async function issueMany(
+  facade: Facade,
   rToken: TestIRToken,
   toIssue: BigNumber,
   user: SignerWithAddress
@@ -35,7 +37,11 @@ export async function issueMany(
 
     await advanceBlocks(ISS_BLOCKS.add(1))
 
-    await rToken.vest(user.address, await rToken.endIdForVest(user.address))
+    if (IMPLEMENTATION == Implementation.P1) {
+      await rToken.vest(user.address, await facade.endIdForVest(rToken.address, user.address))
+    } else if (IMPLEMENTATION == Implementation.P0) {
+      await rToken.vest(user.address, await (rToken as RTokenP0).endIdForVest(user.address))
+    }
 
     issued = issued.add(currIssue)
     supply = supply.add(currIssue)

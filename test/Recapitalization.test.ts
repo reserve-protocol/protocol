@@ -13,6 +13,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
@@ -89,6 +90,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -137,6 +139,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       stRSR,
       gnosis,
       facade,
+      facadeTest,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -266,7 +269,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('75e18')) // 25% defaulted, value = 0
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(bn('75e18')) // 25% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -692,7 +695,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -751,7 +754,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(bn('50e18')) // 50% defaulted, value = 0
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -846,7 +849,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
         // Attempt to trigger before trading delay - will not open auction
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -855,7 +858,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(newDelay + 1)
 
         // Auction can be run now
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
@@ -878,7 +881,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -894,7 +897,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
@@ -905,7 +908,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
@@ -924,7 +927,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -936,7 +939,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -962,7 +965,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should  not start any new auctions
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -975,7 +978,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - Order restablished
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(
           toBNDecimals(issueAmount, 6)
@@ -998,7 +1001,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1014,7 +1017,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
@@ -1028,7 +1031,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = minBuyAmt.mul(100).div(99).add(1)
         // const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
@@ -1048,7 +1051,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
         const leftover = issueAmount.sub(sellAmt)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(leftover)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(leftover)
         expect(await token0.balanceOf(backingManager.address)).to.equal(leftover)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
 
@@ -1059,7 +1062,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(gnosis.address)).to.equal(sellAmt)
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -1077,7 +1080,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should not start any new auctions
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1090,7 +1093,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - Haircut taken, price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           minBuyAmt.add(leftover)
         )
         expect(await token0.balanceOf(backingManager.address)).to.equal(leftover)
@@ -1109,7 +1112,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1129,7 +1132,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state remains SOUND
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1141,7 +1144,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
@@ -1160,7 +1163,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, everything was moved to the Market
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await token1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1172,7 +1175,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -1193,7 +1196,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Only 1e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = sellAmt.sub(minBuyAmt)
         const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(100).div(99).add(1) // Due to trade slippage 1%
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1238,7 +1241,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(gnosis.address)).to.equal(sellAmtRSR)
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -1256,7 +1259,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction, should start final dust auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1306,7 +1309,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1318,7 +1321,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
 
         // Running auctions will not trigger recapitalization until collateral defauls
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
           'basket not sound'
         )
 
@@ -1340,7 +1343,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1349,7 +1352,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.price()).to.equal(fp('0'))
 
         // Running auctions should not trigger recapitalization
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -1394,7 +1397,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1424,7 +1427,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1433,7 +1436,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recapitalization - only half of the balance is available
         const sellAmt: BigNumber = (await token0.balanceOf(backingManager.address)).div(2)
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
@@ -1451,7 +1454,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount.sub(sellAmt))
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1473,7 +1476,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current, and will open a new auction for the other half
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1500,7 +1503,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1528,7 +1531,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // 50e18 Tokens left to buy - Sets Buy amount as independent value
         const buyAmtBidRSR: BigNumber = issueAmount.sub(sellAmt)
         const sellAmtRSR: BigNumber = buyAmtBidRSR.mul(100).div(99).add(1)
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1557,7 +1560,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt.mul(2))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          minBuyAmt.mul(2)
+        )
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt.mul(2))
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1581,7 +1586,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction; should not start a new one
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1601,7 +1606,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
 
         // Should have small excess now
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1621,7 +1626,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1653,7 +1658,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1662,7 +1667,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recapitalization - only half of the balance is available
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
@@ -1680,7 +1685,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount.sub(sellAmt))
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1722,7 +1727,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
 
         // Ru auctions - NO RSR Auction launched
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1745,7 +1750,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await token0.balanceOf(backingManager.address)).to.equal(0) // no dust
 
         // Should have half of the value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.div(2))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.div(2)
+        )
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -1777,7 +1784,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(0)
@@ -1821,7 +1828,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
         // Asset value is zero, the only collateral held is defaulted
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: [bn('0'), bn('0'), bn('0'), bn('0')],
@@ -1834,7 +1841,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recapitalization - All token balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
@@ -1866,7 +1873,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmtBkp: BigNumber = requiredBkpToken // Will auction only what is required
         const minBuyAmtBkp: BigNumber = sellAmtBkp // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1914,7 +1921,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Run auctions - will end current, and will open a new auction to buy the remaining backup tokens
         // We still have funds of backup Token 1 to trade for the other tokens
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -1965,7 +1972,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmtBkp1Remainder: BigNumber = minBuyAmt.sub(sellAmtBkp.mul(3))
         const minBuyAmtBkp1Remainder: BigNumber = sellAmtBkp1Remainder // No trade splippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2027,7 +2034,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1Remainder)
         const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2086,7 +2093,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2103,8 +2110,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(requiredBkpToken)
         expect(await backupToken2.balanceOf(backingManager.address)).to.equal(requiredBkpToken)
@@ -2143,7 +2150,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -2172,7 +2179,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Running auctions will trigger recapitalization - All balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, backupToken1.address, sellAmt, bn('0'))
 
@@ -2204,7 +2211,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const buyAmtBidRSR: BigNumber = sellAmt.div(2)
         const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2233,7 +2240,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt) // Reduced 50%
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(minBuyAmt) // Reduced 50%
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -2250,7 +2257,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2293,7 +2300,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions again - Will close the pending auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2306,10 +2313,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           minBuyAmt.add(buyAmtBidRSR)
         )
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await token0.balanceOf(backingManager.address)).to.equal(0)
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -2379,7 +2386,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -2429,7 +2436,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100)
         ) // only 75% of collateral is worth something
         await expectCurrentBacking({
@@ -2449,7 +2456,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
         // Run auctions
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeStarted',
@@ -2469,7 +2476,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -2492,7 +2499,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const buyAmtBidRSR: BigNumber = minBuyAmt2
         const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2521,7 +2528,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(minBuyAmt2)
         ) // adding the obtained tokens
 
@@ -2557,7 +2564,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2574,10 +2581,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(minBuyAmt2).add(buyAmtBidRSR)
         ) // adding the obtained tokens
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         await expectCurrentBacking({
           tokens: newTokens,
@@ -2629,7 +2636,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -2690,7 +2697,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100)
         ) // only 75% of collateral is worth something
         await expectCurrentBacking({
@@ -2710,7 +2717,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
         // Run auctions
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeStarted',
@@ -2730,7 +2737,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -2754,7 +2761,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmtBkp1: BigNumber = minBuyAmt2.sub(requiredBkpToken)
         const minBuyAmtBkp1: BigNumber = sellAmtBkp1 // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2789,7 +2796,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken)
         ) // adding the obtained tokens - only the required ones
 
@@ -2833,7 +2840,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const buyAmtBidRSR: BigNumber = requiredBkpToken.sub(minBuyAmtBkp1)
         const sellAmtRSR: BigNumber = buyAmtBidRSR // No trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2868,7 +2875,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken).add(minBuyAmtBkp1)
         ) // adding the obtained tokens
 
@@ -2911,7 +2918,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // End current auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -2928,11 +2935,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - All back to normal
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(75).div(100).add(requiredBkpToken).add(minBuyAmtBkp1).add(buyAmtBidRSR)
         ) // adding the obtained tokens
 
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         await expectCurrentBacking({
           tokens: newTokens,
@@ -2973,7 +2980,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -3015,7 +3022,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.div(4)
+        ) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -3035,7 +3044,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
 
         // Run auctions - Will start with token0
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeStarted',
@@ -3055,7 +3064,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         })
 
         // Another call should not create any new auctions if still ongoing
-        await expect(facade.runAuctionsForAllTraders(rToken.address)).to.not.emit(
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
         )
@@ -3074,7 +3083,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction for another token
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3103,7 +3112,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0)
         ) // Adding the collateral just traded
 
@@ -3137,7 +3146,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3172,7 +3181,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2)
         ) // Adding the collateral just traded
 
@@ -3200,7 +3209,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const minBuyAmt3: BigNumber = sellAmt3.mul(80).div(100).div(50)
 
         const newTotalAssetValue: BigNumber = (
-          await facade.callStatic.totalAssetValue(rToken.address)
+          await facadeTest.callStatic.totalAssetValue(rToken.address)
         ).add(minBuyAmt3)
 
         // We will need to rebalance our backing, we have an excess of Token1 now and we need more backupToken1
@@ -3225,7 +3234,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction with the rebalancing
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3266,7 +3275,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after third auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3).sub(minBuyAmtRebalance)
         ) // Adding the collateral just traded - subtracting funds sent to market
 
@@ -3304,7 +3313,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Close final auction - Haircut will be taken
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3327,7 +3336,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3)
         ) // Adding the collateral just traded - funds sent to market were recovered
 
@@ -3373,7 +3382,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check initial state
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         await expectCurrentBacking({
           tokens: initialTokens,
           quantities: initialQuantities,
@@ -3415,7 +3424,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state - After basket switch
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.div(4)) // only 25% of collateral is worth something
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.div(4)
+        ) // only 25% of collateral is worth something
         await expectCurrentBacking({
           tokens: newTokens,
           quantities: newQuantities,
@@ -3435,7 +3446,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
 
         // Run auctions - will start with token0 and backuptoken1
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeStarted',
@@ -3468,7 +3479,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3498,7 +3509,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after first auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0)
         ) // Adding the collateral just traded
 
@@ -3533,7 +3544,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions - will end current and open a new auction
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3568,7 +3579,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         //  Check state after second auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2)
         ) // Adding the collateral just traded
 
@@ -3595,7 +3606,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Divide by 50 to convert from cToken scale to fiatcoin scale
         const minBuyAmt3: BigNumber = sellAmt3.div(2).div(50)
         const newTotalAssetValue: BigNumber = (
-          await facade.callStatic.totalAssetValue(rToken.address)
+          await facadeTest.callStatic.totalAssetValue(rToken.address)
         ).add(minBuyAmt3)
 
         // We will need to rebalance our backing, we have an excess of Token1 now and we need more backupToken1 and backuptoken2
@@ -3619,7 +3630,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Run auctions - will end current and open a new auction
         // We need to rebalance our backing, we have an excess of Token1 now and we need more backupToken2
         // All can be allocated to backup token 2
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3660,7 +3671,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after third auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3).sub(minBuyAmtRebalance)
         ) // Adding the collateral just traded - subtracting funds sent to market
 
@@ -3711,7 +3722,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const minBuyAmtRebalanceBkp: BigNumber = sellAmtRebalanceBkp
         // no trade slippage
 
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3752,7 +3763,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check state after fourth auction
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(false)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount
             .div(4)
             .add(minBuyAmt0)
@@ -3799,7 +3810,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Close final auction - Haircut will be taken
-        await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
@@ -3822,7 +3833,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check final state - Haircut taken, stable but price of RToken has been reduced
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.div(4).add(minBuyAmt0).add(minBuyAmt2).add(minBuyAmt3)
         ) // Adding the collateral just traded - Rebalanced, funds recovered
 
