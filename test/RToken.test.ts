@@ -148,9 +148,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   const endIdForVest = async (account: string) => {
     if (IMPLEMENTATION == Implementation.P1) {
-      return facade.endIdForVest(rToken.address, account)
+      return await facade.endIdForVest(rToken.address, account)
     } else if (IMPLEMENTATION == Implementation.P0) {
-      return (rToken as RTokenP0).endIdForVest(account)
+      const rTok = await ethers.getContractAt('RTokenP0', rToken.address)
+      return await rTok.endIdForVest(account)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }

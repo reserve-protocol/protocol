@@ -1,5 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
+import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
 import { Facade, RTokenP0, TestIRToken } from '../../typechain'
@@ -40,7 +41,10 @@ export async function issueMany(
     if (IMPLEMENTATION == Implementation.P1) {
       await rToken.vest(user.address, await facade.endIdForVest(rToken.address, user.address))
     } else if (IMPLEMENTATION == Implementation.P0) {
-      await rToken.vest(user.address, await (rToken as RTokenP0).endIdForVest(user.address))
+      const rTok = await ethers.getContractAt('RTokenP0', rToken.address)
+      await rToken.vest(user.address, await rTok.endIdForVest(user.address))
+    } else {
+      throw new Error('Invalid impl type')
     }
 
     issued = issued.add(currIssue)
