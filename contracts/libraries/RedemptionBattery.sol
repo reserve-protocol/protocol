@@ -52,8 +52,6 @@ library RedemptionBatteryLib {
         view
         returns (uint256 charge)
     {
-        if (supply == 0) return 0;
-
         // {qRTok/hour} = {qRTok} * D18{1/hour} / D18
         uint256 amtPerHour = (supply * battery.scalingRedemptionRate) / FIX_ONE_256;
 
