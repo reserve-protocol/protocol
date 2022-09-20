@@ -119,10 +119,6 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @custom:interaction
     function vest(address account, uint256 endId) external;
 
-    /// Return the highest index that could be completed by a vestIssuances call.
-    /// @dev Use with `vest`
-    function endIdForVest(address account) external view returns (uint256);
-
     /// Redeem RToken for basket collateral
     /// @param amount {qRTok} The quantity {qRToken} of RToken to redeem
     /// @custom:interaction

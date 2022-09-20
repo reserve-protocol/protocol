@@ -280,31 +280,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         }
     }
 
-    /// @return A non-inclusive ending index
-    function endIdForVest(address account) external view returns (uint256) {
-        IssueQueue storage queue = issueQueues[account];
-        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
-
-        // Handle common edge cases in O(1)
-        if (queue.left == queue.right) return queue.left;
-        if (blockNumber < queue.items[queue.left].when) return queue.left;
-        if (queue.items[queue.right - 1].when <= blockNumber) return queue.right;
-
-        // find left and right (using binary search where always left <= right) such that:
-        //     left == right - 1
-        //     queue[left].when <= block.timestamp
-        //     right == queue.right  or  block.timestamp < queue[right].when
-        uint256 left = queue.left;
-        uint256 right = queue.right;
-        while (left < right - 1) {
-            uint256 test = (left + right) / 2;
-            // In this condition: D18{block} < D18{block}
-            if (queue.items[test].when < blockNumber) left = test;
-            else right = test;
-        }
-        return right;
-    }
-
     /// Cancel some vesting issuance(s)
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id
@@ -469,6 +444,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         // {qRTok} = D18{1} * {qRTok} / D18
         return (battery.currentCharge(maxRedemptionCharge) * supply) / FIX_ONE;
+    }
+
+    /// @return left The index of the left sides of the issuance queue for the account
+    /// @return right The index of the right sides of the issuance queue for the account
+    function queueBounds(address account) external view returns (uint256 left, uint256 right) {
+        return (issueQueues[account].left, issueQueues[account].right);
     }
 
     // ==== private ====
