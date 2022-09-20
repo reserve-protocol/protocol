@@ -41,6 +41,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     // Give RToken max allowance over a registered token
     /// @custom:interaction CEI
+    // checks: erc20 in assetRegistry
+    // action: set allowance on erc20 for rToken to UINT_MAX
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==

@@ -20,31 +20,49 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
 
 /**
  * @title RTokenP1
- * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
+ * An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-
 contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
+    /// Immutable after init. Expected to be an IPFS link, but can be the mandate itself.
     string public mandate;
 
-    // Enforce a fixed issuanceRate throughout the entire block by caching it.
-    uint256 private lastIssRateBlock; // {block number}
-    uint192 private lastIssRate; // D18{rTok/block}
+    // ==== Governance Params ====
 
-    // When all pending issuances will have vested.
-    // This is fractional so that we can represent partial progress through a block.
-    uint192 private allVestAt; // D18{fractional block number}
+    // {qRTok} The min value of total supply to use for redemption throttling
+    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
+    uint256 public redemptionVirtualSupply;
 
+    // D18{1} fraction of supply that may be issued per block
+    // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
+    uint192 public issuanceRate;
+
+    // {1} fraction of supply that may be redeemed at once. Set to 0 to disable.
+    // Always, maxRedemptionCharge <= FIX_ONE
+    uint192 public maxRedemptionCharge;
+
+    // ==== End Governance Params ====
+
+    // The number of baskets that backingManager must hold
+    // in order for this RToken to be fully collateralized.
+    // The exchange rate for issuance and redemption is totalSupply()/basketsNeeded {BU}/{qRTok}.
     uint192 public basketsNeeded; // D18{BU}
 
-    uint192 public issuanceRate; // D18{1} of RToken supply to issue per block
+    // ==== Slow Issuance State====
+
+    // When all pending issuances will have vested.
+    uint192 private allVestAt; // D18{fractional block number}
+
+    // Enforce a fixed issuanceRate throughout the entire block by caching it.
+    // Both of these MUST only be modified by whenFinished()
+    uint192 private lastIssRate; // D18{rTok/block}
+    uint256 private lastIssRateBlock; // {block number}
 
     // IssueItem: One edge of an issuance
     struct IssueItem {
-        uint192 when; // D18{block number} fractional
+        uint192 when; // D18{fractional block number}
         uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
         uint192 amtBaskets; // D18{BU} Total amount of baskets that should back those RTokens
         uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
@@ -57,30 +75,36 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 right; //
         IssueItem[] items; // The actual items (The issuance "fenceposts")
     }
-    /*
-     * If we want to clean up state, it's safe to delete items[x] iff x < left.
-     * For an initialized IssueQueue queue:
-     *     queue.items.right >= left
-     *     queue.items.right == left  iff  there are no more pending issuances here
-     *
-     * The short way to describe this is that IssueQueue stores _cumulative_ issuances, not raw
-     * issuances, and so any particular issuance is actually the _difference_ between two adjaacent
-     * TotalIssue items in an IssueQueue.
-     *
-     * The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
-     * "fencepost" in the queue of actual issuances. The true issuances are the spans between the
-     * TotalIssue items. For example, if:
-     *    queue.items[queue.left].amtRToken == 1000 , and
-     *    queue.items[queue.right - 1].amtRToken == 6000,
-     * then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
-     * vest() on that account, we'd vest 5000 RTokens *to* that account.
-     */
 
     mapping(address => IssueQueue) public issueQueues;
 
-    // === Redemption battery ===
-
+    // Redemption throttle
     RedemptionBatteryLib.Battery private battery;
+
+    // For an initialized IssueQueue queue:
+    //     queue.items.right >= left
+    //     queue.items.right == left  iff  there are no more pending issuances here
+    //
+    // The short way to describe this is that IssueQueue stores _cumulative_ issuances, not raw
+    // issuances, and so any particular issuance is actually the _difference_ between two adjaacent
+    // TotalIssue items in an IssueQueue.
+    //
+    // The way to keep an IssueQueue striaght in your head is to think of each TotalIssue item as a
+    // "fencepost" in the queue of actual issuances. The true issuances are the spans between the
+    // TotalIssue items. For example, if:
+    //    queue.items[queue.left].amtRToken == 1000 , and
+    //    queue.items[queue.right - 1].amtRToken == 6000,
+    // then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
+    // vest() on that account, we'd vest 5000 RTokens *to* that account.
+    //
+    // We use "fractional block numbers" in a slightly weird way. The most natural thing would
+    // probably be to allow an issuance `i` to vest at any block `N` where `N >= i.when`. However,
+    // we'd like people to be able to make single-block issuances in a single transaction, so we
+    // instead allow an issuance `i` to vest in any block `N` where `N + 1 >= i.when`.
+
+    // ==== Invariants ====
+    // For any queue in value(issueQueues)
+    //   if i < j <= queue.right,
 
     function init(
         IMain main_,
@@ -400,6 +424,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
     /// @custom:protected
+    // checks: unpaused; unfrozen; caller is backingManager
+    // effects:
+    //   bal'[recipient] = bal[recipient] + amtRToken
+    //   totalSupply' = totalSupply + amtRToken
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amtRToken);
@@ -407,6 +435,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
     /// @param amtRToken {qRTok} The amtRToken to be melted
+    // checks: not paused or frozen
+    // effects:
+    //   bal'[caller] = bal[caller] - amtRToken
+    //   totalSupply' = totalSupply - amtRToken
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
@@ -414,6 +446,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
     /// @custom:protected
+    // checks: unpaused; unfrozen; caller is backingManager
+    // effects: basketsNeeded' = basketsNeeded_
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
@@ -428,6 +462,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @param val {1/block}
     /// @custom:governance
+    //
     function setIssuanceRate(uint192 val) public governance {
         require(val > 0 && val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);

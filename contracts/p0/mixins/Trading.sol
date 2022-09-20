@@ -21,9 +21,6 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     mapping(IERC20 => ITrade) public trades;
     uint48 public tradesOpen;
 
-    // The latest end time for any trade in `trades`.
-    uint48 private latestEndtime;
-
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
 
@@ -54,7 +51,6 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
         ITrade trade = broker.openTrade(req);
 
-        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(

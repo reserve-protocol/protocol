@@ -1,15 +1,15 @@
 {
-    "extends": "solhint:recommended",
-    "plugins": ["prettier"],
-    "rules": {
-        "prettier/prettier": "error",
-        "max-line-length": ["error", 100],
-        "func-param-name-mixedcase": "error",
-        "modifier-name-mixedcase": "error",
-        "private-vars-leading-underscore": "off",
-        "reason-string": ["error", { "maxLength": 64 }],
-        "func-visibility": ["error", { "ignoreConstructors": true }],
-        "compiler-version": ["off"],
-        "not-rely-on-time": "off"
-    }
+  "extends": "solhint:recommended",
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "max-line-length": ["error", 100],
+    "func-param-name-mixedcase": "error",
+    "modifier-name-mixedcase": "error",
+    "private-vars-leading-underscore": "off",
+    "reason-string": ["error", { "maxLength": 64 }],
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "compiler-version": ["off"],
+    "not-rely-on-time": "off"
+  }
 }

@@ -29,6 +29,19 @@ library RewardableLibP1 {
     /// Claim all rewards and sweep to BackingManager
     /// Collective Action
     /// @custom:interaction mostly CEI but see comments
+    // where:
+    //   this: the contract from which this function is being delegateCall'dd
+    //   claims = {{rewardToken: erc20.rewardERC20(), to, calldata}
+    //     for erc20 in assetRegistry
+    //     where (to, calldata) = erc20.getClaimCalldata(){caller: this}
+    //     if to != 0 and rewardToken in assetRegistry}
+    //   rewards = {claim.rewardToken for claim in claims}
+    // actions:
+    //   first, do to.functionCall(calldata) for claim in claims
+    //   then, if this is not backingManager
+    //     then do
+    //       reward.transfer(bal, backingManager) for claim in claims if bal > 0
+    //       where reward = claim.reward and bal = reward.balanceOf(this)
     function claimAndSweepRewards() external {
         IAssetRegistry reg = assetRegistry();
         IERC20[] memory erc20s = reg.erc20s();

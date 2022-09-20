@@ -15,6 +15,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // Immutable after init()
     IERC20 public tokenToBuy;
 
     function init(
@@ -28,9 +29,21 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         tokenToBuy = tokenToBuy_;
     }
 
-    /// Processes a single token; unpermissioned
+    /// If erc20 is tokenToBuy, distribute it; else, sell it for tokenToBuy
     /// @dev Intended to be used with multicall
     /// @custom:interaction CEI
+    // let bal = this contract's balance of erc20
+    // checks: !paused, !frozen
+    // does nothing if erc20 == addr(0) or bal == 0
+    //
+    // If erc20 is tokenToBuy:
+    //   actions:
+    //     erc20.increaseAllowance(distributor, bal)
+    //     distributor.distribute(erc20, this, bal)
+    //
+    // If erc20 is any other registered asset (checked):
+    //   actions:
+    //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
     function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 

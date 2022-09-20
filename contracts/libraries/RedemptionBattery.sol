@@ -10,9 +10,12 @@ import "./Fixed.sol";
 // the battery stops charging completely.
 uint48 constant BLOCKS_PER_HOUR = 300; // {blocks/hour}
 
-/// Applies a redemption throttle of X% every 300 blocks (~1 hour)
-/// @dev Use: call `discharge` after each redemption
-/// @dev Reverts when a redemption is too large
+/// Throttling mechanism:
+/// Models a "battery" which "recharges" linearly block by block, over roughly 1 hour.
+/// Calls to discharge() will revert if the battery doesn't have enough "charge".
+/// @dev This implementation basically assumes that maxCapacity is always the same value.
+///      It won't misbehave badly if maxCapacity is changed, but it doesn't have sharply-defined
+///      behavior in that case. (But keeping maxCapacity outside storage saves SLOADs)
 library RedemptionBatteryLib {
     using FixLib for uint192;
 

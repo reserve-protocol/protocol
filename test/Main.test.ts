@@ -1296,13 +1296,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should not allow to set prime Basket with RSR/RToken', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([rsr.address], [fp('1')])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       await expect(
         basketHandler
           .connect(owner)
           .setPrimeBasket([token0.address, rToken.address], [fp('0.5'), fp('0.5')])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set prime Basket if OWNER', async () => {
@@ -1333,7 +1333,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rsr.address])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RSR is not valid collateral')
 
       it('Should not allow to set backup Config with duplicate ERC20s', async () => {
         await expect(
@@ -1350,7 +1350,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         basketHandler
           .connect(owner)
           .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [rToken.address])
-      ).to.be.revertedWith('cannot use RSR/RToken in basket')
+      ).to.be.revertedWith('RToken is not valid collateral')
     })
 
     it('Should allow to set backup Config if OWNER', async () => {
@@ -1422,7 +1422,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
-    it('Should handle full collateral deregistration and reduce to empty basket', async () => {
+    it('Should handle full collateral deregistration and disable the basket', async () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
@@ -1449,11 +1449,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Basket should be 100% collateral0
-      let toks = await facade.basketTokens(rToken.address)
+      const toks = await facade.basketTokens(rToken.address)
       expect(toks.length).to.equal(1)
       expect(toks[0]).to.equal(token0.address)
 
-      // Basket should be set to the empty basket, and be defaulted
+      // Unregister collateral0
       await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
         assetRegistry,
         'AssetUnregistered'
@@ -1463,11 +1463,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .to.emit(basketHandler, 'BasketSet')
         .withArgs([], [], true)
 
-      // Final basket should be empty
-      toks = await facade.basketTokens(rToken.address)
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await basketHandler.quantity(token1.address)).to.equal(0)
-      expect(toks.length).to.equal(0)
+      // toks = await facade.basketTokens(rToken.address)
+      // expect(await basketHandler.quantity(token1.address)).to.equal(0)
+      // expect(toks.length).to.equal(0)
     })
 
     it('Should exclude defaulted collateral when checking price', async () => {

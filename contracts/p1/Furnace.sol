@@ -20,6 +20,14 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
+    // ==== Invariants ====
+    // ratio <= MAX_RATIO = 1e18
+    // 0 < period <= MAX_PERIOD
+    // lastPayout was the timestamp of the end of the last period we paid out
+    //   (or, if no periods have been paid out, the timestamp init() was called)
+    // lastPayoutBal was rtoken.balanceOf(this) after the last period we paid out
+    //   (or, if no periods have been paid out, that balance when init() was called)
+
     function init(
         IMain main_,
         uint48 period_,
@@ -32,8 +40,30 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         lastPayoutBal = main_.rToken().balanceOf(address(this));
     }
 
+    // [furnace-payout-formula]:
+    //   The process we're modelling is:
+    //     N = number of whole periods since lastPayout
+    //     bal_0 = rToken.balanceOf(this)
+    //     payout_{i+1} = bal_i * ratio
+    //     bal_{i+1} = bal_i - payout_{i+1}
+    //     payoutAmount = sum{payout_i for i in [1...N]}
+    //   thus:
+    //     bal_N = bal_0 - payout
+    //     bal_{i+1} = bal_i - bal_i * ratio = bal_i * (1-ratio)
+    //     bal_N = bal_0 * (1-ratio)**N
+    //   and so:
+    //     payoutAmount = bal_N - bal_0 = bal_0 * (1 - (1-ratio)**N)
+
     /// Performs any melting that has vested since last call.
     /// @custom:refresher
+    // let numPeriods = number of whole periods that have passed since `lastPayout`
+    //     payoutAmount = RToken.balanceOf(this) * (1 - (1-ratio)**N) from [furnace-payout-formula]
+    // effects:
+    //   lastPayout' = lastPayout + numPeriods * period (end of last pay period)
+    //   lastPayoutBal' = rToken.balanceOf'(this) (balance now == at end of pay leriod)
+    // actions:
+    //   rToken.melt(payoutAmount), paying payoutAmount to RToken holders
+
     function melt() external notPausedOrFrozen {
         if (uint48(block.timestamp) < uint64(lastPayout) + period) return;
 

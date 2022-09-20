@@ -23,6 +23,7 @@ contract GnosisTrade is ITrade {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // ==== Constants
     uint256 public constant FEE_DENOMINATOR = 1000;
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
@@ -32,21 +33,27 @@ contract GnosisTrade is ITrade {
     // raw "/" for compile-time const
     uint192 public constant DEFAULT_MIN_BID = FIX_ONE / 100; // {tok}
 
-    IGnosis public gnosis;
-
-    uint256 public auctionId; // An auction id from gnosis
-
+    // ==== status: This contract's state-machine state. See TradeStatus enum, above
     TradeStatus public status;
 
-    IBroker public broker;
+    // ==== The rest of contract state is all parameters that are immutable after init()
+    // == Metadata
+    IGnosis public gnosis; // Gnosis Auction contract
+    uint256 public auctionId; // The Gnosis Auction ID returned by gnosis.initiateAuction()
+    IBroker public broker; // The Broker that cloned this contract into existence
 
-    // === Pricing ===
+    // == Economic parameters
+    // This trade is on behalf of origin. Only origin may call settle(), and the `buy` tokens
+    // from this trade's acution will all eventually go to origin.
     address public origin;
-    IERC20Metadata public sell;
-    IERC20Metadata public buy;
-    uint256 public initBal; // {qTok}
-    uint48 public endTime;
-    uint192 public worstCasePrice; // {buyTok/sellTok}
+    IERC20Metadata public sell; // address of token this trade is selling
+    IERC20Metadata public buy; // address of token this trade is buying
+    uint256 public initBal; // {qTok}, this trade's balance of `sell` when init() was called
+    uint48 public endTime; // timestamp after which this trade's auction can be settled
+    uint192 public worstCasePrice; // {buyTok/sellTok}, the worst price we expect to get at Auction
+    // We expect Gnosis Auction either to meet or beat worstCasePrice, or to return the `sell`
+    // tokens. If we actually *get* a worse clearing that worstCasePrice, we consider it an error in
+    // our trading scheme and call broker.reportViolation()
 
     // This modifier both enforces the state-machine pattern and guards against reentrancy.
     modifier stateTransition(TradeStatus begin, TradeStatus end) {
@@ -60,6 +67,17 @@ contract GnosisTrade is ITrade {
     /// Constructor function, can only be called once
     /// @dev Expects sell tokens to already be present
     /// @custom:interaction reentrancy-safe b/c state-locking
+    // checks:
+    //   state is NOT_STARTED
+    //   req.sellAmount <= our balance of sell tokens < 2**96 //TODO: currently < 2**96 -1
+    //   req.minBuyAmount < 2**96 //TODO: current < 2**96 - 1
+    // effects:
+    //   state' is OPEN
+    //   correctly sets all Metadata and Economic parameters of this contract
+    //
+    // actions:
+    //   increases the `req.sell` allowance for `gnosis` by the amount needed to fund the auction
+    //   calls gnosis.initiateAuction(...) to launch the requested auction.
     function init(
         IBroker broker_,
         address origin_,
@@ -122,6 +140,19 @@ contract GnosisTrade is ITrade {
 
     /// Settle trade, transfer tokens to trader, and report bad trade if needed
     /// @custom:interaction reentrancy-safe b/c state-locking
+    // checks:
+    //   state is OPEN
+    //   caller is `origin`
+    //   now >= endTime (TODO: this panics if this is false)
+    // actions:
+    //   (if not already called) call gnosis.settleAuction(auctionID), which:
+    //     settles the Gnosis Auction
+    //     transfers the resulting tokens back to this address
+    //   if the auction's clearing price was below what we assert it should be,
+    //     then broker.reportViolation()
+    //   transfer all balancess of `buy` and `sell` at this address to `origin`
+    // effects:
+    //   state' is CLOSED
     function settle()
         external
         stateTransition(TradeStatus.OPEN, TradeStatus.CLOSED)
@@ -162,14 +193,15 @@ contract GnosisTrade is ITrade {
     }
 
     /// Anyone can transfer any ERC20 back to the origin after the trade has been closed
-    /// @dev Escape hatch for when trading partner freezes up, or other unexpected events
+    /// @dev Escape hatch in case trading partner freezes up, or other unexpected events
     /// @custom:interaction CEI (and respects the state lock)
     function transferToOriginAfterTradeComplete(IERC20 erc20) external {
         require(status == TradeStatus.CLOSED, "only after trade is closed");
         IERC20Upgradeable(address(erc20)).safeTransfer(origin, erc20.balanceOf(address(this)));
     }
 
-    /// @return True if the trade can be settled; should be guaranteed to be true eventually
+    /// @return True if the trade can be settled.
+    // Guaranteed to be true some time after init(), until settle() is called
     function canSettle() public view returns (bool) {
         return status == TradeStatus.OPEN && endTime <= block.timestamp;
     }
