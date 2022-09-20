@@ -2333,12 +2333,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Change redemption rate for AToken and CToken to double
         await token2.setExchangeRate(fp('1.2'))
 
-        console.log('1')
         await expect(
           backingManager.manageTokensSortedOrder([token2.address, token2.address])
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
-        console.log('2')
         await expect(
           backingManager.manageTokensSortedOrder([
             token2.address,
@@ -2348,12 +2346,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           ])
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
-        console.log('3')
         await expect(
           backingManager.manageTokensSortedOrder([token2.address, token1.address, token2.address])
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
-        console.log('4')
         await expect(
           backingManager.manageTokensSortedOrder([
             token1.address,
@@ -2363,7 +2359,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           ])
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
-        console.log('5')
         await expect(
           backingManager.manageTokensSortedOrder([
             token1.address,
@@ -2374,26 +2369,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate/unsorted tokens')
 
         // Remove duplicates but unsort
-        // const sorted = [token1.address, token2.address, token3.address].sort()
         const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
           const x = BigNumber.from(a)
           const y = BigNumber.from(b)
-          console.log(a, b)
-          console.log(x, y)
-          console.log(x.lt(y))
           if (x.lt(y)) return -1
           if (x.gt(y)) return 1
           return 0
         })
         const unsorted = [sorted[2], sorted[0], sorted[1]]
-        console.log('6')
-        console.log(unsorted)
-        console.log(sorted)
         await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
           'duplicate/unsorted tokens'
         )
 
-        console.log('7')
         // Remove duplicates and sort, should work
         await expect(backingManager.manageTokensSortedOrder(sorted)).to.not.be.reverted
       })

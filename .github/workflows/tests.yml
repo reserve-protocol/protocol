@@ -7,8 +7,8 @@ on:
   pull_request:
 
 jobs:
-  problematic-test:
-    name: 'Problematic CI test'
+  unit-tests:
+    name: 'Unit Tests'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -19,44 +19,30 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn lint
-      - run: yarn test:p0
+      - run: yarn test:unit
 
-  # unit-tests:
-  #   name: 'Unit Tests'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16.x
-  #         cache: 'yarn'
-  #     - run: yarn install --immutable
-  #     - run: yarn compile
-  #     - run: yarn lint
-  #     - run: yarn test:unit
-
-  # integration-tests:
-  #   name: 'Integration Tests'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         fetch-depth: 1
-  #     - uses: actions/setup-node@v3
-  #       with:
-  #         node-version: 16.x
-  #         cache: 'yarn'
-  #     - name: 'Cache hardhat network fork'
-  #       uses: actions/cache@v3
-  #       with:
-  #         path: cache/hardhat-network-fork
-  #         key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-  #         restore-keys: |
-  #           hardhat-network-fork-${{ runner.os }}-
-  #           hardhat-network-fork-
-  #     - run: yarn install --immutable
-  #     - run: yarn compile
-  #     - run: yarn test:integration
-  #       env:
-  #         TS_NODE_SKIP_IGNORE: true
-  #         MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+  integration-tests:
+    name: 'Integration Tests'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'yarn'
+      - name: 'Cache hardhat network fork'
+        uses: actions/cache@v3
+        with:
+          path: cache/hardhat-network-fork
+          key: hardhat-network-fork-${{ runner.os }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+          restore-keys: |
+            hardhat-network-fork-${{ runner.os }}-
+            hardhat-network-fork-
+      - run: yarn install --immutable
+      - run: yarn compile
+      - run: yarn test:integration
+        env:
+          TS_NODE_SKIP_IGNORE: true
+          MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
