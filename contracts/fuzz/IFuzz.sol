@@ -26,13 +26,19 @@ interface IRTokenFuzz is IRToken {
 
 // ================ Mocks ================
 interface IMarketMock {
-    // Execute an exchange where the caller sells `sellAmt` of `sell` and buys `buyAmt` of `buy`.
+    // Execute an exchange where the caller sells `sellAmt` of `sell` to get `buyAmt` of `buy`.
+    // Uses seeds for randomness when calculating the actualBuyAmount, which is returned
     function execute(
         IERC20 sell,
         IERC20 buy,
         uint256 sellAmt,
         uint256 buyAmt
-    ) external;
+    ) external returns (uint256);
+
+    // Add/Remove seeds to be used for calculating buy amounts in trade settling
+    function pushSeed(uint256 seed) external;
+
+    function popSeed() external;
 }
 
 // ================ Main ================

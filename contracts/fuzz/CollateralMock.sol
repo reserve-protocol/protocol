@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "contracts/interfaces/IAsset.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
@@ -22,13 +23,24 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
     uint256 public rewardAmount;
 
+    uint256 internal constant NEVER = type(uint256).max;
+    uint256 public whenDefault = NEVER;
+
+    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
+
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
+
+    uint192 public prevReferencePrice; // previous rate, {collateral/reference}
+
+    uint192 public initialPeg; // peg value (for default detection)
+
     constructor(
         // Collateral base-class arguments
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         TradingRange memory tradingRange_,
-        uint192, //defaultThreshold_,
-        uint256, //delayUntilDefault_,
+        uint192 defaultThreshold_,
+        uint256 delayUntilDefault_,
         IERC20Metadata, //referenceERC20_,
         bytes32 targetName_,
         // Price Models
@@ -53,6 +65,14 @@ contract CollateralMock is OracleErrorMock, Collateral {
         targetPerRefModel = targetPerRefModel_;
         uoaPerTargetModel = uoaPerTargetModel_;
         deviationModel = deviationModel_;
+
+        defaultThreshold = defaultThreshold_;
+        delayUntilDefault = delayUntilDefault_;
+
+        prevReferencePrice = refPerTok();
+
+        // Store peg value
+        initialPeg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
     }
 
     function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
@@ -90,6 +110,47 @@ contract CollateralMock is OracleErrorMock, Collateral {
         targetPerRefModel.update(b);
         uoaPerTargetModel.update(c);
         deviationModel.update(d);
+    }
+
+    function refresh() public override {
+        // == Refresh ==
+        if (whenDefault <= block.timestamp) return;
+        CollateralStatus oldStatus = status();
+
+        // Check for hard default
+        uint192 referencePrice = refPerTok();
+
+        if (referencePrice < prevReferencePrice) {
+            whenDefault = block.timestamp;
+        } else {
+            uint192 p = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+
+            priceable = p > 0;
+
+            // Check for soft default. If not pegged, default eventually
+            // TODO: Review. This works fine with stable or stable+, but would mark volatile collateral as defaulted
+            // if something like wBTC or wETH is being tested (those collaterals should never default)
+            uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+            if (p < initialPeg - delta || p > initialPeg + delta) {
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            } else whenDefault = NEVER;
+        }
+        prevReferencePrice = referencePrice;
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+    }
+
+    function status() public view override returns (CollateralStatus) {
+        if (whenDefault == NEVER) {
+            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+        } else if (whenDefault > block.timestamp) {
+            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
+        } else {
+            return CollateralStatus.DISABLED;
+        }
     }
 
     // ==== Rewards ====

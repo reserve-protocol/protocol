@@ -51,7 +51,7 @@ contract NormalOpsScenario {
     constructor() {
         main = new MainP1Fuzz();
 
-        main.initFuzz(defaultParams(), new MarketMock(main));
+        main.initFuzz(defaultParams(), new MarketMock(main, SettlingMode.Acceptable));
 
         TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
 
@@ -82,8 +82,8 @@ contract NormalOpsScenario {
                     IERC20Metadata(address(token)),
                     reward,
                     tradingRange,
-                    0,
-                    0,
+                    5e16, // defaultThreshold
+                    86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
                     bytes32("USD"),
                     growing,
@@ -106,8 +106,8 @@ contract NormalOpsScenario {
                     IERC20Metadata(address(token)),
                     IERC20Metadata(address(0)), // no reward
                     tradingRange,
-                    0,
-                    0,
+                    5e16, // defaultThreshold
+                    86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
                     bytes32("USD"),
                     justOne,
@@ -395,6 +395,14 @@ contract NormalOpsScenario {
         else if (which == 3) main.rToken().claimAndSweepRewards();
     }
 
+    function pushSeedForTrades(uint256 seed) public {
+        IMarketMock(address(main.marketMock())).pushSeed(seed);
+    }
+
+    function popSeedForTrades() public {
+        IMarketMock(address(main.marketMock())).popSeed();
+    }
+
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
     }
@@ -478,67 +486,76 @@ contract NormalOpsScenario {
 
     function setBackingBuffer(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setBackingBuffer(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         ); // 1e18 == MAX_BACKING_BUFFER
     }
 
     function setBackingManagerTradingDelay(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setTradingDelay(
-            uint48(between(seed, 0, 31536000))
+            uint48(between(0, 31536000, seed))
         ); // 31536000 is BackingManager.MAX_TRADING_DELAY
     }
 
     function setAuctionLength(uint256 seed) public {
-        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(seed, 1, 604800)));
+        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(1, 604800, seed)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
 
     function setFurnacePeriod(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(seed, 1, 31536000)));
+        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(1, 31536000, seed)));
         // 31536000 is Furnace.MAX_PERIOD
     }
 
     function setFurnaceRatio(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setRatio(uint192(between(seed, 0, 1e18)));
+        FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e18, seed)));
         // 1e18 is Furnace.MAX_RATIO
     }
 
     function setIssuanceRate(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(seed, 0, 1e18)));
+        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(0, 1e18, seed)));
         // 1e18 is RToken.MAX_ISSUANCE_RATE
+    }
+
+    function setMaxRedemption(uint256 seed) public {
+        RTokenP1(address(main.rToken())).setMaxRedemption(uint192(between(0, 1e18, seed)));
+        // 1e18 is RToken.MAX_REDEMPTION
+    }
+
+    function setRedemptionVirtualSupply(uint256 value) public {
+        RTokenP1(address(main.rToken())).setRedemptionVirtualSupply(value);
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rsrTrader())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rTokenTrader())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setBackingManagerMaxTradeSlippage(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setStakeRewardPeriod(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(1, 31536000, seed)));
     }
 
     function setStakeRewardRatio(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(seed, 1, 1e18)));
+        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(1, 1e18, seed)));
     }
 
     function setUnstakingDelay(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(1, 31536000, seed)));
     }
 
     // ================ System Properties ================

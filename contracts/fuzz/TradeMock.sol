@@ -8,6 +8,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/ITrade.sol";
 import "contracts/fuzz/IFuzz.sol";
+import "contracts/fuzz/Utils.sol";
 
 contract TradeMock is ITrade {
     IMainFuzz public main;
@@ -61,12 +62,22 @@ contract TradeMock is ITrade {
         // Move tokens to-be-sold to the market mock
         sell.transfer(address(IMainFuzz(main).marketMock()), requestedSellAmt);
         // Have the "market" transform those tokens and send them back here
-        main.marketMock().execute(sell, buy, requestedSellAmt, requestedBuyAmt);
+        uint256 actualBuyAmt = main.marketMock().execute(
+            sell,
+            buy,
+            requestedSellAmt,
+            requestedBuyAmt
+        );
+
+        // Report violation if required
+        if (actualBuyAmt < requestedBuyAmt) {
+            IBroker(address(main.broker())).reportViolation();
+        }
 
         // Move the tokens to-be-bought to the original address
-        buy.transfer(origin, requestedBuyAmt);
+        buy.transfer(origin, actualBuyAmt);
 
-        return (requestedSellAmt, requestedBuyAmt);
+        return (requestedSellAmt, actualBuyAmt);
     }
 
     function _msgSender() internal view virtual returns (address) {
@@ -74,12 +85,25 @@ contract TradeMock is ITrade {
     }
 }
 
+enum SettlingMode {
+    Acceptable, // Provides an acceptable amount of tokens
+    Random // Provides a random amount of tokens
+}
+
 // A simple external actor to "be the market", taking the other side of TradeMock trades.
 contract MarketMock is IMarketMock {
+    using FixLib for uint192;
+
     IMainFuzz public main;
 
-    constructor(IMainFuzz main_) {
+    SettlingMode mode;
+
+    uint256[] seeds;
+    uint256 private index;
+
+    constructor(IMainFuzz main_, SettlingMode mode_) {
         main = main_;
+        mode = mode_;
     }
 
     // execute expects the sell tokens to be already at MarketMock.
@@ -94,7 +118,7 @@ contract MarketMock is IMarketMock {
         IERC20 buy,
         uint256 sellAmt,
         uint256 buyAmt
-    ) external {
+    ) external returns (uint256) {
         address trader = _msgSender();
 
         if (address(sell) == address(main.rToken())) {
@@ -103,13 +127,28 @@ contract MarketMock is IMarketMock {
             ERC20Mock(address(sell)).burn(address(this), sellAmt);
         }
 
+        // Calculate buy amount
+        uint256 actualBuyAmt = calculateActualBuyAmt(buy, buyAmt);
+
         if (address(buy) == address(main.rToken())) {
-            procureRTokens(buyAmt);
+            procureRTokens(actualBuyAmt);
         } else {
-            ERC20Mock(address(buy)).mint(address(this), buyAmt);
+            ERC20Mock(address(buy)).mint(address(this), actualBuyAmt);
         }
 
-        buy.transfer(trader, buyAmt);
+        buy.transfer(trader, actualBuyAmt);
+
+        return actualBuyAmt;
+    }
+
+    // Add seed for randomness in trade settling - called by scenarios
+    function pushSeed(uint256 seed) external {
+        seeds.push(seed);
+    }
+
+    // Remove seed - called by scenarios
+    function popSeed() external {
+        if (seeds.length > 0) seeds.pop();
     }
 
     // Procure `amt` RTokens
@@ -145,6 +184,57 @@ contract MarketMock is IMarketMock {
             uint256 bal = ERC20Mock(tokens[i]).balanceOf(address(this));
             if (bal > 0) ERC20Mock(tokens[i]).burn(address(this), bal);
         }
+    }
+
+    function calculateActualBuyAmt(IERC20 buy, uint256 buyAmt) internal returns (uint256) {
+        uint256 actualBuyAmt;
+
+        // Get next seed to calculate the actual buy amt
+        uint256 seed = getNextSeed();
+
+        uint256 maxTradeSlippage = getMaxTradeSlippage(buy);
+
+        if (mode == SettlingMode.Acceptable) {
+            actualBuyAmt = between(buyAmt, (buyAmt * (FIX_ONE + maxTradeSlippage)) / FIX_ONE, seed);
+        } else if (mode == SettlingMode.Random) {
+            // Allow to cause a violation in some cases
+            actualBuyAmt = between(
+                (buyAmt * (FIX_ONE - maxTradeSlippage)) / FIX_ONE,
+                GNOSIS_MAX_TOKENS - 1,
+                seed
+            );
+        } else revert("invalid settling mode");
+
+        return actualBuyAmt;
+    }
+
+    // Gets the next seed to use, from the seeds array
+    // if reaches the end of the list, starts again from the beginning
+    function getNextSeed() internal returns (uint256) {
+        uint256 seed = 0;
+        if (seeds.length > 0) {
+            if (index >= seeds.length) {
+                index = 0;
+            }
+            seed = seeds[index];
+            index++;
+        }
+        return seed;
+    }
+
+    function getMaxTradeSlippage(IERC20 buy) internal returns (uint256) {
+        uint192 maxTradeSlippage;
+        if (address(buy) == address(main.rToken())) {
+            // RTokenTrader
+            maxTradeSlippage = ITrading(main.rTokenTrader()).maxTradeSlippage();
+        } else if (address(buy) == address(main.rsr())) {
+            // RSR Trader
+            maxTradeSlippage = ITrading(main.rsrTrader()).maxTradeSlippage();
+        } else {
+            // Backing Manager
+            maxTradeSlippage = ITrading(main.backingManager()).maxTradeSlippage();
+        }
+        return uint256(maxTradeSlippage);
     }
 
     function _msgSender() internal view virtual returns (address) {
