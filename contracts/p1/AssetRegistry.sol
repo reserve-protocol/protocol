@@ -116,8 +116,8 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         return _erc20s.contains(address(erc20));
     }
 
-    /// Returns keys(assets) as a list.
-    // returns: [keys(assets)]
+    /// Returns keys(assets) as a (duplicate-free) list.
+    // returns: [keys(assets)] without duplicates.
     function erc20s() external view returns (IERC20[] memory erc20s_) {
         uint256 length = _erc20s.length();
         erc20s_ = new IERC20[](length);

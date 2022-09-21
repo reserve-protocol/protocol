@@ -45,6 +45,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// === Financial State: Stakes (balances) ===
 
     // Era. If stake balances are wiped out due to RSR seizure, increment the era to zero balances.
+    // Only ever directly written by beginEra()
     uint256 internal era;
 
     // Typically: "balances". These are the tokenized staking positions!
@@ -61,6 +62,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     // === Financial State: Drafts ===
     // Era. If drafts get wiped out due to RSR seizure, increment the era to zero draft values.
+    // Only ever directly written by beginDraftEra()
     uint256 internal draftEra;
     // Drafts: share of the withdrawing tokens. Not transferrable and not revenue-earning.
     struct CumulativeDraft {

@@ -220,16 +220,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
     }
 
-    /// Require that all tokens in this array are unique
-    function requireUnique(IERC20[] calldata erc20s) internal pure {
-        for (uint256 i = 1; i < erc20s.length; i++) {
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
-        }
-    }
-
-    // === Setters ===
+    // === Governance Setters ===
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {
