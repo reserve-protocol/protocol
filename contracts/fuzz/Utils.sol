@@ -45,3 +45,13 @@ function between(
 function concat(string memory a, string memory b) pure returns (string memory) {
     return string(abi.encodePacked(a, b));
 }
+
+function getFirstChar(string memory originString) pure returns (string memory firstChar) {
+    bytes memory firstCharByte = new bytes(1);
+    firstCharByte[0] = bytes(originString)[0];
+    return string(firstCharByte);
+}
+
+function compareStr(string memory stringA, string memory stringB) pure returns (bool) {
+    return keccak256(bytes(stringA)) == keccak256(bytes(stringB));
+}
