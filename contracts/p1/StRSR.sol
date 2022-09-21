@@ -306,7 +306,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
-        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate; // TODO: ceil-div
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
@@ -375,7 +375,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update stakeRate, possibly beginning a new stake era
         if (stakeRSR > 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
-            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR); // TODO: should be CEIL div
+            stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
         }
         if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
             seizedRSR += stakeRSR;
@@ -390,7 +390,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update draftRate, possibly beginning a new draft era
         if (draftRSR > 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
-            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR); // TODO: should be CEIL div
+            draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
         }
 
         if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
@@ -500,7 +500,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
-            : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
+            : uint192((totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR);
 
         emit RewardsPaid(payout);
         emit ExchangeRateSet(initRate, stakeRate);

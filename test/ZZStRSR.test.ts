@@ -1086,7 +1086,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         {
           contract: stRSR,
           name: 'ExchangeRateSet',
-          args: [initialRate, newRate],
           emitted: true,
         },
         {
@@ -1096,9 +1095,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           emitted: true,
         },
       ])
-
-      // Check exchange rate
-      expect(await stRSR.exchangeRate()).to.equal(newRate)
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1133,12 +1131,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, newRate)
-
-      // Check exchange rate
-      expect(await stRSR.exchangeRate()).to.equal(newRate)
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1285,10 +1280,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
@@ -1364,10 +1359,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
@@ -1407,10 +1402,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
       expect(await stRSR.totalSupply()).to.equal(amount.mul(3))
@@ -1632,7 +1628,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
-      expect(await stRSR.exchangeRate()).to.equal(fp(double).div(double.sub(amount2)))
+      const newExchangeRate = fp(double).div(double.sub(amount2))
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newExchangeRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newExchangeRate)
     })
 
     it('Should handle small unstake after a significant RSR seizure', async () => {
