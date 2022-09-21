@@ -25,6 +25,7 @@ import {
   ERC20Mock,
   EURFiatCollateral,
   Facade,
+  FacadeTest,
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
@@ -616,6 +617,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: Facade
+  facadeTest: FacadeTest
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -674,6 +676,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
+
+  // Deploy FacadeTest
+  const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
+  const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
@@ -913,6 +919,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     broker,
     gnosis,
     facade,
+    facadeTest,
     rsrTrader,
     rTokenTrader,
     oracleLib,
