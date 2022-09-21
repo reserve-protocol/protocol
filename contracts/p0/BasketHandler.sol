@@ -302,7 +302,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 targetWeight = config.targetAmts[erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
-            if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
+            if (
+                targetWeight.gt(FIX_ZERO) &&
+                goodCollateralForTarget(config.targetNames[erc20], erc20)
+            ) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
             }
@@ -318,7 +321,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
             for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; j++) {
-                if (goodCollateral(backup.erc20s[j])) size++;
+                if (goodCollateralForTarget(targetNames.at(i), backup.erc20s[j])) size++;
             }
 
             // If we need backup collateral, but there's no good backup collateral, basket default!
@@ -331,7 +334,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 fixSize = toFix(size);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
-                if (goodCollateral(erc20)) {
+                if (goodCollateralForTarget(targetNames.at(i), erc20)) {
                     newBasket.add(
                         erc20,
                         needed.div(fixSize, CEIL).div(reg.toColl(erc20).targetPerRef(), CEIL)
@@ -380,5 +383,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             reg.isRegistered(erc20) &&
             reg.toAsset(erc20).isCollateral() &&
             reg.toColl(erc20).status() != CollateralStatus.DISABLED;
+    }
+
+    /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
+    /// and not a system token or 0 addr
+    function goodCollateralForTarget(bytes32 targetName, IERC20 erc20)
+        private
+        view
+        returns (bool good)
+    {
+        good = goodCollateral(erc20);
+        if (good) good = good && targetName == main.assetRegistry().toColl(erc20).targetName();
     }
 }

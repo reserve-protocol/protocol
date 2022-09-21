@@ -450,7 +450,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 targetWeight = config.targetAmts[erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
-            if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
+            if (goodCollateral(config.targetNames[erc20], erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
             }
@@ -479,7 +479,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
             for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; ++j) {
-                if (goodCollateral(backup.erc20s[j])) size++;
+                if (goodCollateral(targetNames.at(i), backup.erc20s[j])) size++;
             }
 
             // Now, size = len(backups(tgt)). Do the disable check:
@@ -490,24 +490,21 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint256 assigned = 0;
             // needed = unsoundPrimeWt(tgt)
             uint192 needed = totalWeights[i].minus(goodWeights[i]);
-            uint192 fixSize = toFix(size);
 
             // Loop: for erc20 in backups(tgt)...
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
                 IERC20 erc20 = backup.erc20s[j];
-                // TODO: should check that the erc20's collateral still has matching target name
-                if (goodCollateral(erc20)) {
+                if (goodCollateral(targetNames.at(i), erc20)) {
                     // Across this .add(), targetWeight(newBasket',erc20)
                     // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
                     newBasket.add(
                         erc20,
-                        needed.div(reg.toColl(erc20).targetPerRef().mul(fixSize), CEIL)
+                        needed.div(reg.toColl(erc20).targetPerRef().mulu(size), CEIL)
                     );
                     assigned++;
                 }
             }
             // Here, targetWeight(newBasket, e) = primeWt(e) + backupWt(e) for all e targeting tgt
-            // (TODO: if e is still targeting tgt, which we should check)
         }
         // Now we've looped through all values of tgt, so for all e,
         //   targetWeight(newBasket, e) = primeWt(e) + backupWt(e)
@@ -547,15 +544,16 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(ArrayLib.allUnique(erc20s), "contains duplicates");
     }
 
-    /// Good collateral is registered, collateral, not DISABLED, and not a system token or 0 addr
-    function goodCollateral(IERC20 erc20) private view returns (bool) {
+    /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
+    /// and not a system token or 0 addr
+    function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == main.rsr()) return false;
         if (erc20 == IERC20(address(main.rToken()))) return false;
         if (erc20 == IERC20(address(main.stRSR()))) return false;
 
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return coll.status() != CollateralStatus.DISABLED;
+            return targetName == coll.targetName() && coll.status() != CollateralStatus.DISABLED;
         } catch {
             return false;
         }
