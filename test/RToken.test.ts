@@ -12,6 +12,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
+  ERC1271Mock,
   Facade,
   FacadeTest,
   FiatCollateral,
@@ -1916,6 +1917,74 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+  })
+
+  describe('ERC1271 permit #fast', () => {
+    const issueAmount = bn('100e18') // fits into one block
+    let erc1271Mock: ERC1271Mock
+
+    beforeEach(async () => {
+      const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
+      erc1271Mock = await ERC1271Factory.deploy()
+
+      // Issue
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Give RToken balance at ERC1271Mock
+      await rToken.connect(addr1).transfer(erc1271Mock.address, issueAmount)
+    })
+
+    it('should not permit without ERC1271 support', async () => {
+      // Try a smart contract that does not support ERC1271
+      await expect(
+        rToken.permit(
+          main.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.reverted
+      expect(await rToken.allowance(main.address, addr1.address)).to.equal(0)
+
+      // Try the ERC1271Mock with approvals turned off
+      await expect(
+        rToken.permit(
+          erc1271Mock.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.revertedWith('ERC1271: Unauthorized')
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
+    })
+
+    it('should permit spend with ERC1271 support', async () => {
+      // ERC1271 with approvals turned on
+      await erc1271Mock.enableApprovals()
+      await rToken.permit(
+        erc1271Mock.address,
+        addr1.address,
+        issueAmount,
+        bn(2).pow(255),
+        0,
+        ethers.utils.formatBytes32String(''),
+        ethers.utils.formatBytes32String('')
+      )
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(issueAmount)
+      await rToken.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, issueAmount)
+      expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     })
   })
 
