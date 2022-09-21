@@ -20,7 +20,7 @@ import {
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
-  Facade,
+  FacadeTest,
   FiatCollateral,
   MockV3Aggregator,
   NonFiatCollateral,
@@ -78,7 +78,7 @@ describe('Collateral contracts', () => {
   let oracleLib: OracleLib
 
   // Facade
-  let facade: Facade
+  let facadeTest: FacadeTest
 
   // Factories
   let FiatCollateralFactory: ContractFactory
@@ -109,7 +109,7 @@ describe('Collateral contracts', () => {
       config,
       backingManager,
       rToken,
-      facade,
+      facadeTest,
       oracleLib,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -898,7 +898,7 @@ describe('Collateral contracts', () => {
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await facade.claimRewards(rToken.address)
+      await facadeTest.claimRewards(rToken.address)
 
       // Check rewards were transfered to BackingManager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -915,7 +915,9 @@ describe('Collateral contracts', () => {
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenCollateral.address)
-      await expect(facade.claimRewards(rToken.address)).to.be.revertedWith('rewards claim failed')
+      await expect(facadeTest.claimRewards(rToken.address)).to.be.revertedWith(
+        'rewards claim failed'
+      )
 
       // Check funds not yet swept
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)

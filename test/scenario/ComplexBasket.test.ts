@@ -11,6 +11,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
@@ -99,6 +100,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
   let facade: Facade
+  let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
   let oracleLib: OracleLib
 
@@ -137,6 +139,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       facade,
+      facadeTest,
       rsr,
       rsrAsset,
       furnace,
@@ -432,7 +435,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     expect(await basketHandler.price()).to.equal(totalPriceUSD)
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
     const issueAmt = bn('10e18')
 
@@ -444,7 +447,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     expect(await rToken.totalSupply()).to.equal(issueAmt)
     expect(await basketHandler.price()).to.equal(totalPriceUSD)
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
       issueAmt.mul(totalPriceUSD.div(BN_SCALE_FACTOR))
     )
 
@@ -591,7 +594,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
     // Run auctions
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeStarted',
@@ -631,7 +634,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeSettled',
@@ -683,7 +686,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     const origAssetValue = issueAmount.mul(totalPriceUSD).div(BN_SCALE_FACTOR)
     expect(await rTokenAsset.price()).to.equal(totalPriceUSD)
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(origAssetValue)
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(origAssetValue)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -751,7 +754,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, fp('0.1'))
     const excessTotal = excessValue2.add(excessValue5).add(excessValue7)
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue.add(excessTotal),
       point5Pct(origAssetValue.add(excessTotal))
     )
@@ -799,7 +802,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(minBuyAmtRToken2).to.be.closeTo(fp('0.00000133'), fp('0.00000001'))
 
     // Run auctions - Will detect excess
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeStarted',
@@ -846,7 +849,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check Price (unchanged) and Assets value
     expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
     )
@@ -903,7 +906,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(minBuyAmtRToken5).to.be.closeTo(fp('0.053225'), fp('0.0001'))
 
     // Close auctions - Will open for next token
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeSettled',
@@ -936,7 +939,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check Price (unchanged) and Assets value (unchanged)
     expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
     )
@@ -1034,7 +1037,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(minBuyAmtRToken7).to.be.closeTo(fp('0.002554'), point5Pct(fp('0.002554')))
 
     // Close auctions - Will open for next token
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeSettled',
@@ -1067,7 +1070,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check Price (unchanged) and Assets value (unchanged)
     expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
     )
@@ -1147,7 +1150,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - Will not open new ones
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: rsrTrader,
         name: 'TradeSettled',
@@ -1174,7 +1177,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Check Price (unchanged) and Assets value (unchanged)
     expect(await rTokenAsset.price()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
-    expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
     )
@@ -1261,7 +1264,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
     const sellAmt: BigNumber = await cWBTC.balanceOf(backingManager.address)
 
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeStarted',
@@ -1312,7 +1315,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       .div(await rsrAsset.price()) // 7 wBTC @ 20K = 140K USD of value, in RSR ~= 560K RSR (@0.25)
 
     // Close auctions - Will sell RSR for the remaining 7 WBTC
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1369,7 +1372,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - Will sell RSR for the remaining 7 WBTC
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1466,7 +1469,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const sellAmt = toBNDecimals(maxAmt, 8)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
 
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeStarted',
@@ -1509,7 +1512,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Run auctions again for remainder
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1581,7 +1584,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const lastAuctionBuyAmtRSR = buyAmtBidRSR.sub(partialBuyAmtRSR.mul(2))
 
     // Close auctions - Will sell RSR for partial Buy #1
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1647,7 +1650,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - Will sell RSR for partial Buy #2
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1711,7 +1714,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - Will sell RSR for final auction
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',
@@ -1766,7 +1769,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - No more auctions should be triggered
-    await expectEvents(facade.runAuctionsForAllTraders(rToken.address), [
+    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,
         name: 'TradeSettled',

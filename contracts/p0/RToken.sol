@@ -252,6 +252,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
+    /// In P1 this function is over in the Facade
     function endIdForVest(address account) external view returns (uint256) {
         uint256 i = leftIndex(account);
         uint192 currBlock = toFix(block.number);
