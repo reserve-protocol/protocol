@@ -497,7 +497,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             require(
                 IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
                     0x1626ba7e,
-                "Unauthorized"
+                "ERC1271: Unauthorized"
             );
         } else {
             address signer = ECDSAUpgradeable.recover(hash, v, r, s);

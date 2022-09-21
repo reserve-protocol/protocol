@@ -755,7 +755,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             require(
                 IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
                     0x1626ba7e,
-                "Unauthorized"
+                "ERC1271: Unauthorized"
             );
         } else {
             address signer = ECDSAUpgradeable.recover(hash, v, r, s);

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.6.12;
 
-import "contracts/plugins/mocks/vendored/EasyAuction.sol";
+import "contracts/plugins/mocks/vendor/EasyAuction.sol";
 
 // ==== From https://etherscan.io/address/0x0b7ffc1f4ad541a4ed16b40d8c37f0929158d101 ====
 
