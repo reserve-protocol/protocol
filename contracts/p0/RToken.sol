@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,6 +14,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
+import "contracts/vendor/ERC20PermitUpgradeable.sol";
 
 struct SlowIssuance {
     address issuer;
@@ -32,7 +31,7 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;

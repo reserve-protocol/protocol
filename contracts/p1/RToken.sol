@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 // solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRewardable.sol";
@@ -11,6 +10,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/p1/mixins/RewardableLib.sol";
+import "contracts/vendor/ERC20PermitUpgradeable.sol";
 
 // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;

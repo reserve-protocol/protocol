@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 // solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -751,8 +751,16 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        require(signer == owner, "ERC20Permit: invalid signature");
+        if (AddressUpgradeable.isContract(owner)) {
+            require(
+                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
+                    0x1626ba7e,
+                "Unauthorized"
+            );
+        } else {
+            address signer = ECDSAUpgradeable.recover(hash, v, r, s);
+            require(signer != address(0) && signer == owner, "ERC20Permit: invalid signature");
+        }
 
         _approve(owner, spender, value);
     }
