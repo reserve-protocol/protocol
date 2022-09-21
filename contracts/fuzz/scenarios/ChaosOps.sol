@@ -370,8 +370,9 @@ contract ChaosOpsScenario {
 
         // Switch type Asset -> Coll and viceversa one out of 100 times
         bool switchType = (switchTypeSeed %= 100) <= 1;
-        bool createAsColl = (asset.isCollateral() && !switchType) || (!asset.isCollateral() && switchType);
-      
+        bool createAsColl = (asset.isCollateral() && !switchType) ||
+            (!asset.isCollateral() && switchType);
+
         if (createAsColl) {
             CollateralMock newColl = new CollateralMock(
                 IERC20Metadata(address(erc20)),
@@ -683,7 +684,8 @@ contract ChaosOpsScenario {
 
     function pushBackingForPrimeBasket(uint256 tokenID, uint256 seed) public {
         backingForPrimeBasket.push(main.someToken(tokenID));
-        targetAmtsForPrimeBasket.push(uint192(between(1, 1000e18, seed))); // 1000e18 is BH.MAX_TARGET_AMT
+        targetAmtsForPrimeBasket.push(uint192(between(1, 1000e18, seed)));
+        // 1000e18 is BH.MAX_TARGET_AMT
     }
 
     function popBackingForPrimeBasket() public {

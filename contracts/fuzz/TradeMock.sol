@@ -96,9 +96,9 @@ contract MarketMock is IMarketMock {
 
     IMainFuzz public main;
 
-    SettlingMode mode;
+    SettlingMode public mode;
 
-    uint256[] seeds;
+    uint256[] public seeds;
     uint256 private index;
 
     constructor(IMainFuzz main_, SettlingMode mode_) {

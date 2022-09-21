@@ -128,8 +128,9 @@ contract CollateralMock is OracleErrorMock, Collateral {
             priceable = p > 0;
 
             // Check for soft default. If not pegged, default eventually
-            // TODO: Review. This works fine with stable or stable+, but would mark volatile collateral as defaulted
-            // if something like wBTC or wETH is being tested (those collaterals should never default)
+            // TODO: Review. This works fine with stable or stable+, but would mark
+            // volatile collateral as defaulted if something like wBTC or wETH is being tested
+            // (these should never default)
             uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
             if (p < initialPeg - delta || p > initialPeg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
