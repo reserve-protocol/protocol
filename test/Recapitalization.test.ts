@@ -1602,7 +1602,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
-      it('Should recapitalize correctly in case of default - MinTradeSize too large', async () => {
+      it.only('Should recapitalize correctly in case of default - MinTradeSize too large', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -1714,7 +1714,15 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Swap RSR Asset
         await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
 
-        // Ru auctions - NO RSR Auction launched
+        console.log(
+          '1',
+          newTradingRange.minAmt,
+          await newRSRAsset.minTradeSize(),
+          await newRSRAsset.maxTradeSize(),
+          await rsr.balanceOf(stRSR.address)
+        )
+
+        // Run auctions - NO RSR Auction launched
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1728,8 +1736,9 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             emitted: false,
           },
         ])
+        console.log('2')
 
-        //  Should not have seized RSR
+        // Should not have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
 
         // Check state

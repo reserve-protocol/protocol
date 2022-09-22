@@ -8,9 +8,6 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
-// Gnosis: uint96 ~= 7e28
-uint256 constant GNOSIS_MAX_TOKENS = 7e28;
-
 /**
  * @title TradingLibP0
  * @notice An informal extension of the Trading mixin that provides trade preparation views
@@ -46,11 +43,6 @@ library TradingLibP0 {
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
 
-        // Do not overflow auction mechanism - sell side
-        if (trade.sellAmount > GNOSIS_MAX_TOKENS) {
-            trade.sellAmount = GNOSIS_MAX_TOKENS;
-            s = shiftl_toFix(trade.sellAmount, -int8(sell.erc20().decimals()));
-        }
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
             sell.price(),
@@ -59,12 +51,6 @@ library TradingLibP0 {
         );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
 
-        // Do not overflow auction mechanism - buy side
-        if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
-            uint192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
-            trade.sellAmount = divFix(trade.sellAmount, over).toUint(CEIL);
-            trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
-        }
         return (true, trade);
     }
 
@@ -108,9 +94,9 @@ library TradingLibP0 {
             (doTrade, req) = prepareTradeToCoverDeficit(surplus, deficit, surplusAmt, deficitAmt);
         }
 
-        // The way we have set up rounding in prepareTradeSell, if surplus amount if nonzero,
+        // The way we have set up rounding in prepareTradeSell, if surplus amount is nonzero,
         // then if doTrade is true, req.sellAmount is nonzero.
-        assert(isEnoughToSell(surplus, surplusAmount) == doTrade);
+        assert(isEnoughToSell(surplus, surplusAmt) == doTrade);
         assert(!doTrade || req.sellAmount > 0);
 
         return (doTrade, req);
@@ -335,7 +321,8 @@ library TradingLibP0 {
         uint256 amtQTok = shiftl_toFix(amt, -int8(asset.erc20().decimals())); // {qTok}
 
         // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
-        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok.
+        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This may
+        // be true of all the trading platforms we integrate with.
         return amt.gte(asset.minTradeSize()) && amtQTok > 1;
     }
 
