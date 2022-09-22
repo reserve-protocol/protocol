@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { Wallet, ContractFactory } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig } from '../../common/configuration'
+import { IConfig, TradingRange } from '../../common/configuration'
 import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS, MAX_UINT192 } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
@@ -94,6 +94,15 @@ describe('Assets contracts #fast', () => {
       libraries: { OracleLib: oracleLib.address },
     })
   })
+
+  const copyTradingRange = (tradingRange: TradingRange) => {
+    return {
+      minAmt: tradingRange.minAmt,
+      maxAmt: tradingRange.maxAmt,
+      minVal: tradingRange.minVal,
+      maxVal: tradingRange.maxVal,
+    }
+  }
 
   describe('Deployment', () => {
     it('Deployment should setup assets correctly', async () => {
@@ -228,7 +237,7 @@ describe('Assets contracts #fast', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(rsrAsset.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newRSRAsset = <Asset>(
@@ -245,7 +254,7 @@ describe('Assets contracts #fast', () => {
       await expect(newRSRAsset.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newRSRAsset = <Asset>(
@@ -258,10 +267,10 @@ describe('Assets contracts #fast', () => {
         )
       )
 
-      // Reduce to half original price, maintains range
+      // Reduce to half original price, doubles minTradeSize/maxTradeSize
       await setOraclePrice(rsrAsset.address, bn('0.5e8')) // half
-      expect(await newRSRAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newRSRAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newRSRAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newRSRAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
       // Double original price, maintains range
       await setOraclePrice(rsrAsset.address, bn('2e8')) // double
@@ -292,7 +301,7 @@ describe('Assets contracts #fast', () => {
       // Handle overflow if minVal is too large
       await setOraclePrice(collateral0.address, bn('0.5e8')) // half
       await setOraclePrice(collateral1.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset', {
@@ -306,20 +315,20 @@ describe('Assets contracts #fast', () => {
       await expect(newRTokenAsset.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newRTokenAsset = <RTokenAsset>(
         await RTokenAssetFactory.deploy(rToken.address, reducedTradingRange)
       )
 
-      // Reduce to half original price, maintains range
+      // Reduce to half original price, doubles range
       await setOraclePrice(collateral0.address, bn('0.5e8')) // half
       await setOraclePrice(collateral1.address, bn('0.5e8')) // half
-      expect(await newRTokenAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newRTokenAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newRTokenAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newRTokenAsset.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
-      //  Double original price, maintains range
+      //  Double original price, does not impact range (since amts are absolute bounds)
       await setOraclePrice(collateral0.address, bn('2e8')) // double
       await setOraclePrice(collateral1.address, bn('2e8')) // double
       expect(await newRTokenAsset.minTradeSize()).to.equal(reducedTradingRange.minAmt)
@@ -364,44 +373,44 @@ describe('Assets contracts #fast', () => {
       ).to.be.revertedWith('oracleTimeout zero')
     })
     it('Should not allow 0 rTokenTradingRange.maxAmt and minAmt', async () => {
-      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      newTradingRange.maxAmt = 0
+      const newTradingRange = copyTradingRange(config.rTokenTradingRange)
+      newTradingRange.maxAmt = bn('0')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
       ).to.be.revertedWith('invalid trading range amts')
 
       newTradingRange.maxAmt = fp('1e6')
-      newTradingRange.minAmt = 0
+      newTradingRange.minAmt = bn('0')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
       ).to.be.revertedWith('invalid trading range amts')
     })
     it('Should not allow rTokenTradingRange.minAmt to exceed maxAmt', async () => {
-      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      newTradingRange.maxAmt = 1
-      newTradingRange.minAmt = 2
+      const newTradingRange = copyTradingRange(config.rTokenTradingRange)
+      newTradingRange.maxAmt = bn('1')
+      newTradingRange.minAmt = bn('2')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
       ).to.be.revertedWith('invalid trading range amts')
 
       // Should now succeed
-      newTradingRange.maxAmt = 2
+      newTradingRange.maxAmt = bn('2')
       await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
     })
     it('Should not allow rTokenTradingRange.minVal to exceed maxVal', async () => {
-      const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      newTradingRange.maxVal = 0
-      newTradingRange.minVal = 1
+      const newTradingRange = copyTradingRange(config.rTokenTradingRange)
+      newTradingRange.maxVal = bn('0')
+      newTradingRange.minVal = bn('1')
       await expect(
         AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 0)
       ).to.be.revertedWith('invalid trading range vals')
 
       // Should now succeed
-      newTradingRange.minVal = 0
-      newTradingRange.maxVal = 0
+      newTradingRange.minVal = bn('0')
+      newTradingRange.maxVal = bn('0')
       await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
 
-      newTradingRange.maxVal = 1
+      newTradingRange.maxVal = bn('1')
       await AssetFactory.deploy(ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, newTradingRange, 1)
     })
   })

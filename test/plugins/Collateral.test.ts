@@ -152,6 +152,15 @@ describe('Collateral contracts', () => {
     })
   })
 
+  const copyTradingRange = (tradingRange: TradingRange) => {
+    return {
+      minAmt: tradingRange.minAmt,
+      maxAmt: tradingRange.maxAmt,
+      minVal: tradingRange.minVal,
+      maxVal: tradingRange.maxVal,
+    }
+  }
+
   describe('Deployment', () => {
     it('Deployment should setup collateral correctly #fast', async () => {
       // Fiat Token Asset
@@ -531,7 +540,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(tokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newFiatCollateral = <FiatCollateral>(
@@ -551,7 +560,7 @@ describe('Collateral contracts', () => {
       await expect(newFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newFiatCollateral = <FiatCollateral>(
@@ -567,10 +576,10 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Reduce to half original price, maintains range
+      // Reduce to half original price, doubles range
       await setOraclePrice(newFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
       // Double original price, maintains range
       await setOraclePrice(newFiatCollateral.address, bn('2e8')) // double
@@ -604,7 +613,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(aTokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newATokenFiatCollateral = <ATokenFiatCollateral>(
@@ -624,7 +633,7 @@ describe('Collateral contracts', () => {
       await expect(newATokenFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newATokenFiatCollateral = <ATokenFiatCollateral>(
@@ -640,10 +649,14 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Reduce to half original price, maintains range
+      // Reduce to half original price, doubles range
       await setOraclePrice(newATokenFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newATokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newATokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newATokenFiatCollateral.minTradeSize()).to.equal(
+        reducedTradingRange.minAmt.mul(2)
+      )
+      expect(await newATokenFiatCollateral.maxTradeSize()).to.equal(
+        reducedTradingRange.maxAmt.mul(2)
+      )
 
       // Double original price, maintains range
       await setOraclePrice(newATokenFiatCollateral.address, bn('2e8')) // double
@@ -653,7 +666,7 @@ describe('Collateral contracts', () => {
 
     it('Should calculate trade min/max correctly - CToken', async () => {
       // Set initial values used in deployment
-      const cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const cTokenTradingRange = copyTradingRange(config.rTokenTradingRange)
       cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
       cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
 
@@ -678,7 +691,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(cTokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(cTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newCTokenFiatCollateral = <CTokenFiatCollateral>(
@@ -700,7 +713,7 @@ describe('Collateral contracts', () => {
       await expect(newCTokenFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(cTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newCTokenFiatCollateral = <CTokenFiatCollateral>(
@@ -718,10 +731,14 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Reduce to half original price, maintains range
+      // Reduce to half original price, doubles range
       await setOraclePrice(newCTokenFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newCTokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newCTokenFiatCollateral.minTradeSize()).to.equal(
+        reducedTradingRange.minAmt.mul(2)
+      )
+      expect(await newCTokenFiatCollateral.maxTradeSize()).to.equal(
+        reducedTradingRange.maxAmt.mul(2)
+      )
 
       // Double original price, maintains range
       await setOraclePrice(newCTokenFiatCollateral.address, bn('2e8')) // double
@@ -1128,7 +1145,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newNonFiatCollateral = <NonFiatCollateral>(
@@ -1148,7 +1165,7 @@ describe('Collateral contracts', () => {
       await expect(newNonFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newNonFiatCollateral = <NonFiatCollateral>(
@@ -1165,10 +1182,10 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price for calculations
+      // Half price, doubles range
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
       // Double price, maintains range
       await targetUnitOracle.updateAnswer(bn('2e8'))
@@ -1203,7 +1220,7 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
 
-      cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      cTokenTradingRange = copyTradingRange(config.rTokenTradingRange)
       cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
       cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
 
@@ -1483,7 +1500,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(cTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
@@ -1505,7 +1522,7 @@ describe('Collateral contracts', () => {
       await expect(newCTokenNonFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(cTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
@@ -1524,10 +1541,14 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price for calculations
+      // Halve price, doubles range
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newCTokenNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newCTokenNonFiatCollateral.minTradeSize()).to.equal(
+        reducedTradingRange.minAmt.mul(2)
+      )
+      expect(await newCTokenNonFiatCollateral.maxTradeSize()).to.equal(
+        reducedTradingRange.maxAmt.mul(2)
+      )
 
       // Double price, maintains range
       await targetUnitOracle.updateAnswer(bn('2e8'))
@@ -1649,7 +1670,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(selfReferentialCollateral.address, bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newSelfRefCollateral = <SelfReferentialCollateral>(
@@ -1666,7 +1687,7 @@ describe('Collateral contracts', () => {
       await expect(newSelfRefCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newSelfRefCollateral = <SelfReferentialCollateral>(
@@ -1680,10 +1701,10 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Set price for calculations
+      // Half price, doubles range
       await setOraclePrice(newSelfRefCollateral.address, bn('0.5e8'))
-      expect(await newSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
       // Double price, maintains range
       await setOraclePrice(newSelfRefCollateral.address, bn('2e8'))
@@ -1707,7 +1728,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      cTokenTradingRange = copyTradingRange(config.rTokenTradingRange)
       cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
       cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
 
@@ -1902,7 +1923,7 @@ describe('Collateral contracts', () => {
 
       // Handle overflow if minVal is too large
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(cTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newCTokenSelfRefCollateral = <CTokenSelfReferentialCollateral>(
@@ -1921,7 +1942,7 @@ describe('Collateral contracts', () => {
       await expect(newCTokenSelfRefCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(cTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newCTokenSelfRefCollateral = <CTokenSelfReferentialCollateral>(
@@ -1937,10 +1958,14 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price for calculations
+      // Halve price, doubles range
       await setOraclePrice(newCTokenSelfRefCollateral.address, bn('0.5e8'))
-      expect(await newCTokenSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newCTokenSelfRefCollateral.minTradeSize()).to.equal(
+        reducedTradingRange.minAmt.mul(2)
+      )
+      expect(await newCTokenSelfRefCollateral.maxTradeSize()).to.equal(
+        reducedTradingRange.maxAmt.mul(2)
+      )
 
       // Double price, maintains range
       await setOraclePrice(newCTokenSelfRefCollateral.address, bn('2e8'))
@@ -2152,7 +2177,7 @@ describe('Collateral contracts', () => {
       // Handle overflow if minVal is too large
       await referenceUnitOracle.updateAnswer(bn('0.5e8'))
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const invalidTradingRange = copyTradingRange(config.rTokenTradingRange)
       invalidTradingRange.minVal = MAX_UINT192
       invalidTradingRange.maxVal = MAX_UINT192
       let newEURFiatCollateral = <EURFiatCollateral>(
@@ -2172,7 +2197,7 @@ describe('Collateral contracts', () => {
       await expect(newEURFiatCollateral.maxTradeSize()).to.be.reverted
 
       // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
+      const reducedTradingRange = copyTradingRange(config.rTokenTradingRange)
       reducedTradingRange.maxAmt = reducedTradingRange.minAmt
       reducedTradingRange.maxVal = reducedTradingRange.minVal
       newEURFiatCollateral = <EURFiatCollateral>(
@@ -2189,11 +2214,11 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price significantly to force calculations
+      // Halve price, doubles range
       await referenceUnitOracle.updateAnswer(bn('0.5e8'))
       await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newEURFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newEURFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await newEURFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt.mul(2))
+      expect(await newEURFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt.mul(2))
 
       // Double price, maintains range
       await referenceUnitOracle.updateAnswer(bn('2e8'))
