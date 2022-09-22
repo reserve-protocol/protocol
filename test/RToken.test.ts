@@ -1965,7 +1965,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           ethers.utils.formatBytes32String(''),
           ethers.utils.formatBytes32String('')
         )
-      ).to.be.revertedWith('ERC1271: Unauthorized')
+      ).to.be.revertedWith('ERC20Permit: invalid signature')
       expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
     })
 

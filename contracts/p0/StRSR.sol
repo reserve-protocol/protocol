@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -493,16 +493,10 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        if (AddressUpgradeable.isContract(owner)) {
-            require(
-                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
-                    0x1626ba7e,
-                "ERC1271: Unauthorized"
-            );
-        } else {
-            address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-            require(signer != address(0) && signer == owner, "ERC20Permit: invalid signature");
-        }
+        require(
+            SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v)),
+            "ERC20Permit: invalid signature"
+        );
 
         _approve(owner, spender, value);
     }

@@ -1857,6 +1857,66 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
     })
 
+    describe('ERC1271 #fast', () => {
+      let erc1271Mock: ERC1271Mock
+
+      beforeEach(async () => {
+        const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
+        erc1271Mock = await ERC1271Factory.deploy()
+
+        // Give StRSR balance to ERC1271Mock
+        await stRSR.connect(addr1).transfer(erc1271Mock.address, amount)
+      })
+
+      it('should not permit without ERC1271 support', async () => {
+        // Try a smart contract that does not support ERC1271
+        await expect(
+          stRSR.permit(
+            main.address,
+            addr1.address,
+            amount,
+            bn(2).pow(255),
+            0,
+            ethers.utils.formatBytes32String(''),
+            ethers.utils.formatBytes32String('')
+          )
+        ).to.be.reverted
+        expect(await stRSR.allowance(main.address, addr1.address)).to.equal(0)
+
+        // Try the ERC1271Mock with approvals turned off
+        await expect(
+          stRSR.permit(
+            erc1271Mock.address,
+            addr1.address,
+            amount,
+            bn(2).pow(255),
+            0,
+            ethers.utils.formatBytes32String(''),
+            ethers.utils.formatBytes32String('')
+          )
+        ).to.be.revertedWith('ERC1271: Unauthorized')
+        expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
+      })
+
+      it('should permit spend with ERC1271 support', async () => {
+        // ERC1271 with approvals turned on
+        await erc1271Mock.enableApprovals()
+        await stRSR.permit(
+          erc1271Mock.address,
+          addr1.address,
+          amount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+        expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(amount)
+        await stRSR.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, amount)
+        expect(await stRSR.balanceOf(erc1271Mock.address)).to.equal(0)
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      })
+    })
+
     it('Should not transferFrom stakes if no allowance', async function () {
       const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
       const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
@@ -1945,71 +2005,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Remains the same
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
-    })
-  })
-
-  describe('ERC1271 permit #fast', () => {
-    const stakeAmount = bn('100e18')
-    let erc1271Mock: ERC1271Mock
-
-    beforeEach(async () => {
-      const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
-      erc1271Mock = await ERC1271Factory.deploy()
-
-      // Stake
-      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
-      await stRSR.connect(addr1).stake(stakeAmount)
-
-      // Give StRSR balance to ERC1271Mock
-      await stRSR.connect(addr1).transfer(erc1271Mock.address, stakeAmount)
-    })
-
-    it('should not permit without ERC1271 support', async () => {
-      // Try a smart contract that does not support ERC1271
-      await expect(
-        stRSR.permit(
-          main.address,
-          addr1.address,
-          stakeAmount,
-          bn(2).pow(255),
-          0,
-          ethers.utils.formatBytes32String(''),
-          ethers.utils.formatBytes32String('')
-        )
-      ).to.be.reverted
-      expect(await stRSR.allowance(main.address, addr1.address)).to.equal(0)
-
-      // Try the ERC1271Mock with approvals turned off
-      await expect(
-        stRSR.permit(
-          erc1271Mock.address,
-          addr1.address,
-          stakeAmount,
-          bn(2).pow(255),
-          0,
-          ethers.utils.formatBytes32String(''),
-          ethers.utils.formatBytes32String('')
-        )
-      ).to.be.revertedWith('ERC1271: Unauthorized')
-      expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
-    })
-
-    it('should permit spend with ERC1271 support', async () => {
-      // ERC1271 with approvals turned on
-      await erc1271Mock.enableApprovals()
-      await stRSR.permit(
-        erc1271Mock.address,
-        addr1.address,
-        stakeAmount,
-        bn(2).pow(255),
-        0,
-        ethers.utils.formatBytes32String(''),
-        ethers.utils.formatBytes32String('')
-      )
-      expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(stakeAmount)
-      await stRSR.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, stakeAmount)
-      expect(await stRSR.balanceOf(erc1271Mock.address)).to.equal(0)
-      expect(await stRSR.balanceOf(addr1.address)).to.equal(stakeAmount)
     })
   })
 
