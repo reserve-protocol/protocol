@@ -194,6 +194,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         external
         governance
     {
+        require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
         delete config.erc20s;
@@ -260,10 +261,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return status_ The status of the basket
     // returns DISABLED if disabled == true, and worst(status(coll)) otherwise
     function status() public view returns (CollateralStatus status_) {
-        if (disabled) return CollateralStatus.DISABLED;
+        uint256 size = basket.erc20s.length;
 
-        uint256 length = basket.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
+        if (disabled || size == 0) return CollateralStatus.DISABLED;
+
+        for (uint256 i = 0; i < size; ++i) {
             CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
             if (s.worseThan(status_)) status_ = s;
         }
