@@ -491,10 +491,12 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
         );
 
-        bytes32 hash = _hashTypedDataV4(structHash);
-
         require(
-            SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v)),
+            SignatureCheckerUpgradeable.isValidSignatureNow(
+                owner,
+                _hashTypedDataV4(structHash),
+                abi.encodePacked(r, s, v)
+            ),
             "ERC20Permit: invalid signature"
         );
 
