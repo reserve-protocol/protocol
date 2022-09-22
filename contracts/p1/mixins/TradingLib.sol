@@ -48,16 +48,13 @@ library TradingLibP1 {
         trade.buy = buy;
 
         // Don't sell dust
-        if (sellAmount.lt(sell.minTradeSize())) return (false, trade);
+        if (!isEnoughToSell(sell, sellAmount)) return (false, trade);
 
         // {sellTok}
         uint192 s = fixMin(sellAmount, sell.maxTradeSize());
 
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
-
-        // Do not consider 1 qTok a viable sell amount
-        if (trade.sellAmount <= 1) return (false, trade);
 
         // Do not overflow auction mechanism - sell side
         if (trade.sellAmount > GNOSIS_MAX_TOKENS) {
@@ -76,7 +73,7 @@ library TradingLibP1 {
         // Do not overflow auction mechanism - buy side
         if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
             uint192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
-            trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
+            trade.sellAmount = divFix(trade.sellAmount, over).toUint(CEIL);
             trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
         }
 
@@ -128,7 +125,10 @@ library TradingLibP1 {
             );
         }
 
-        if (req.sellAmount == 0) return (false, req);
+        // The way we have set up rounding in prepareTradeSell, if surplus amount if nonzero,
+        // then if doTrade is true, req.sellAmount is nonzero.
+        assert(isEnoughToSell(surplus, surplusAmount) == doTrade);
+        assert(!doTrade || req.sellAmount > 0);
 
         return (doTrade, req);
     }
@@ -282,7 +282,7 @@ library TradingLibP1 {
 
                 // {tok} = {UoA} / {UoA/tok}
                 uint192 amt = delta.div(asset.price());
-                if (delta.gt(maxSurplus) && amt.gt(asset.minTradeSize())) {
+                if (delta.gt(maxSurplus) && isEnoughToSell(asset, amt)) {
                     surplus = asset;
                     maxSurplus = delta;
 
@@ -345,6 +345,17 @@ library TradingLibP1 {
         uint192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
 
         return prepareTradeSell(sell, buy, sellAmount);
+    }
+
+    /// @param asset The asset in question
+    /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @return If amt is sufficiently large to be worth selling into our trading platforms
+    function isEnoughToSell(IAsset asset, uint192 amt) private view returns (bool) {
+        uint256 amtQTok = shiftl_toFix(amt, -int8(asset.erc20().decimals())); // {qTok}
+
+        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
+        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok.
+        return amt.gte(asset.minTradeSize()) && amtQTok > 1;
     }
 
     // === Getters ===
