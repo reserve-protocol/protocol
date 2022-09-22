@@ -119,6 +119,9 @@ contract GnosisTrade is ITrade {
             DEFAULT_MIN_BID.shiftl_toUint(int8(buy.decimals()))
         );
 
+        // Gnosis EasyAuction requires minBuyAmtPerOrder > 0
+        if (minBuyAmtPerOrder == 0) minBuyAmtPerOrder = 1;
+
         // == Interactions ==
 
         IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
