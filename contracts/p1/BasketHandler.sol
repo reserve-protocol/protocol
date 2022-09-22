@@ -197,7 +197,15 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
+
+        // Clean up previous basket config
+        for (uint256 i = 0; i < config.erc20s.length; ++i) {
+            delete config.targetAmts[config.erc20s[i]];
+            delete config.targetNames[config.erc20s[i]];
+        }
         delete config.erc20s;
+
+        // Set up new config basket
         IAssetRegistry reg = main.assetRegistry();
         bytes32[] memory names = new bytes32[](erc20s.length);
 
