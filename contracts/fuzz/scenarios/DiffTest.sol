@@ -218,7 +218,7 @@ contract DiffTestScenario {
         for (uint256 N = 0; N < 2; N++) {
             IERC20Metadata token = IERC20Metadata(address(p[N].someToken(tokenID)));
             require(
-                address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+                address(token) != address(p[N].rToken()) && address(token) != address(p[N].stRSR()),
                 "Do not just mint RTokens/StRSR"
             );
             ERC20Fuzz(address(token)).mint(p[N].someUser(userID), amount);
@@ -234,7 +234,7 @@ contract DiffTestScenario {
         for (uint256 N = 0; N < 2; N++) {
             IERC20 token = p[N].someToken(tokenID);
             require(
-                address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+                address(token) != address(p[N].rToken()) && address(token) != address(p[N].stRSR()),
                 "Do not just burn RTokens/StRSR"
             );
             ERC20Fuzz(address(token)).burn(p[N].someUser(userID), amount);
