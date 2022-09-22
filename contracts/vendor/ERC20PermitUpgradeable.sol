@@ -6,6 +6,7 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
@@ -82,10 +83,22 @@ abstract contract ERC20PermitUpgradeable is
 
         /// ==== MODIFICATIONS START ====
 
-        require(
-            SignatureCheckerUpgradeable.isValidSignatureNow(owner, hash, abi.encodePacked(r, s, v)),
-            "ERC20Permit: invalid signature"
-        );
+        if (AddressUpgradeable.isContract(owner)) {
+            require(
+                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
+                    0x1626ba7e,
+                "ERC1271: Unauthorized"
+            );
+        } else {
+            require(
+                SignatureCheckerUpgradeable.isValidSignatureNow(
+                    owner,
+                    hash,
+                    abi.encodePacked(r, s, v)
+                ),
+                "ERC20Permit: invalid signature"
+            );
+        }
 
         /// ==== MODIFICATIONS END ====
 

@@ -491,14 +491,24 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
         );
 
-        require(
-            SignatureCheckerUpgradeable.isValidSignatureNow(
-                owner,
-                _hashTypedDataV4(structHash),
-                abi.encodePacked(r, s, v)
-            ),
-            "ERC20Permit: invalid signature"
-        );
+        bytes32 hash = _hashTypedDataV4(structHash);
+
+        if (AddressUpgradeable.isContract(owner)) {
+            require(
+                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
+                    0x1626ba7e,
+                "ERC1271: Unauthorized"
+            );
+        } else {
+            require(
+                SignatureCheckerUpgradeable.isValidSignatureNow(
+                    owner,
+                    hash,
+                    abi.encodePacked(r, s, v)
+                ),
+                "ERC20Permit: invalid signature"
+            );
+        }
 
         _approve(owner, spender, value);
     }
