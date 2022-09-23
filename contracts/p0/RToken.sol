@@ -142,7 +142,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         }
 
         // Add a new SlowIssuance ticket to the queue
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         SlowIssuance memory iss = SlowIssuance({
             issuer: issuer,
             amount: amount,
@@ -362,7 +362,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
@@ -399,7 +399,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     }
 
     function refundAndClearStaleIssuances(address account) private returns (bool) {
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         bool someProcessed = false;
         uint256 amount;
         uint256 startIndex;

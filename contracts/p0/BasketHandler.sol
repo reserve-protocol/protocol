@@ -195,11 +195,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
-    /// @return nonce The current basket nonce
-    /// @return timestamp The timestamp when the basket was last set
-    function lastSet() external view returns (uint256 nonce, uint256 timestamp) {
-        nonce = basket.nonce;
-        timestamp = basket.timestamp;
+    /// @return The basket nonce, a monotonically increasing unique identifier
+    function nonce() external view override returns (uint48) {
+        assert(basket.nonce <= type(uint48).max);
+        return uint48(basket.nonce);
+    }
+
+    /// @return timestamp The timestamp at which the basket was last set
+    function timestamp() external view override returns (uint48) {
+        assert(basket.timestamp <= type(uint48).max);
+        return uint48(basket.timestamp);
     }
 
     /// @return status_ The worst collateral status of the basket

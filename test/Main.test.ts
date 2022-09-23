@@ -283,7 +283,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
@@ -1431,7 +1433,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
+      expect(await basketHandler.nonce()).to.be.gt(bn(1))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)

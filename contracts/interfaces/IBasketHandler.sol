@@ -89,7 +89,9 @@ interface IBasketHandler is IComponent {
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function price(bool allowFallback) external view returns (bool isFallback, uint192 p);
 
-    /// @return nonce The basket nonce, a monotonically increasing unique identifier
+    /// @return The basket nonce, a monotonically increasing unique identifier
+    function nonce() external view returns (uint48);
+
     /// @return timestamp The timestamp at which the basket was last set
-    function lastSet() external view returns (uint256 nonce, uint256 timestamp);
+    function timestamp() external view returns (uint48);
 }

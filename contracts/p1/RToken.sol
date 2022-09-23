@@ -161,7 +161,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
         IBasketHandler bh = main.basketHandler(); // OK to save: can only be changed by gov
 
-        (uint256 basketNonce, ) = bh.lastSet();
+        uint48 basketNonce = bh.nonce();
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
@@ -174,7 +174,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             main.assetRegistry().refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
-            (basketNonce, ) = bh.lastSet();
+            basketNonce = bh.nonce();
             queue = issueQueues[issuer];
         }
 
@@ -333,7 +333,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(status == CollateralStatus.SOUND, "basket unsound");
 
         IssueQueue storage queue = issueQueues[account];
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
 
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets;

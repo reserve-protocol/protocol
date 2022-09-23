@@ -121,8 +121,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public nonce; // A unique identifier for this basket instance
-    uint48 public timestamp; // The timestamp when this basket was last set
+    uint48 public override nonce; // A unique identifier for this basket instance
+    uint48 public override timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
@@ -257,12 +257,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// ie, whether the protocol is currently fully collateralized
     function fullyCollateralized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
-    }
-
-    /// @return nonce_ The current basket nonce
-    /// @return timestamp_ The timestamp when the basket was last set
-    function lastSet() external view returns (uint256 nonce_, uint256 timestamp_) {
-        return (nonce, timestamp);
     }
 
     /// @return status_ The status of the basket
