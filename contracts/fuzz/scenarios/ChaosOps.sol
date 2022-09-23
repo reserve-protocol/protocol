@@ -59,22 +59,21 @@ contract ChaosOpsScenario {
 
         TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
 
-        // Create assets/collateral - By target name
+        // Process each target name - Create collaterals and reward assets
         for (uint256 i = 0; i < 3; i++) {
             bytes32 targetName = targetNames[i];
-            string memory targetNameStr = string(abi.encodePacked(targetName));
+            string memory targetNameStr = bytes32ToString(targetName);
 
             // Coll #1 - CToken type, stable, with reward
             ERC20Fuzz token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 1"),
-                concat(concat("C", targetNameStr), "1"),
+                concat(concat("Collateral", targetNameStr), " 0"),
+                concat(concat("C", targetNameStr), "0"),
                 main
             );
             main.addToken(token);
-
             IERC20Metadata reward = new ERC20Fuzz(
-                concat(concat("Reward", targetNameStr), " 1"),
-                concat(concat("R", targetNameStr), "1"),
+                concat(concat("Reward", targetNameStr), " 0"),
+                concat(concat("R", targetNameStr), "0"),
                 main
             );
             main.addToken(reward);
@@ -107,15 +106,15 @@ contract ChaosOpsScenario {
 
             // Coll #2 - CToken Type, volatile,may default With reward
             token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 2"),
-                concat(concat("C", targetNameStr), "2"),
+                concat(concat("Collateral", targetNameStr), " 1"),
+                concat(concat("C", targetNameStr), "1"),
                 main
             );
             main.addToken(token);
 
             reward = new ERC20Fuzz(
-                concat(concat("Reward", targetNameStr), " 2"),
-                concat(concat("R", targetNameStr), "2"),
+                concat(concat("Reward", targetNameStr), " 1"),
+                concat(concat("R", targetNameStr), "1"),
                 main
             );
             main.addToken(reward);
@@ -148,8 +147,8 @@ contract ChaosOpsScenario {
 
             // Coll #3 - CToken Type, volatile, may hard default as well, no reward
             token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 3"),
-                concat(concat("C", targetNameStr), "3"),
+                concat(concat("Collateral", targetNameStr), " 2"),
+                concat(concat("C", targetNameStr), "2"),
                 main
             );
             main.addToken(token);
@@ -175,7 +174,7 @@ contract ChaosOpsScenario {
             for (uint256 j = 0; j < 3; j++) {
                 string memory num = Strings.toString(j);
                 token = new ERC20Fuzz(
-                    concat(concat(concat("Stable", targetNameStr), " "), num),
+                    concat(concat("Stable", targetNameStr), num),
                     concat(concat("S", targetNameStr), num),
                     main
                 );
@@ -329,7 +328,7 @@ contract ChaosOpsScenario {
 
         string memory firstChar = getFirstChar(IERC20Metadata(address(erc20)).symbol());
 
-        if (compareStr(firstChar, "C") || compareStr(firstChar, "S")) {
+        if (strEqual(firstChar, "C") || strEqual(firstChar, "S")) {
             CollateralMock newColl = new CollateralMock(
                 IERC20Metadata(address(erc20)),
                 IERC20Metadata(address(0)), // no reward
