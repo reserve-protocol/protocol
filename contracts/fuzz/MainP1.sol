@@ -36,6 +36,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
+    function _msgSender() internal view virtual override returns (address) {
+        return translateAddr(msg.sender);
+    }
+
     // ==== Scenario handles ====
     // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
     // allowing the spoof() and unspoof() functions to work.
