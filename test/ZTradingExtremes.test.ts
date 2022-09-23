@@ -28,7 +28,6 @@ import {
   TestIRToken,
   StaticATokenMock,
 } from '../typechain'
-import { whileImpersonating } from './utils/impersonation'
 import { advanceTime } from './utils/time'
 import { defaultFixture, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
