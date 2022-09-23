@@ -729,10 +729,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Used by StRSRVotes to track voting
     // solhint-disable no-empty-blocks
     function _afterTokenTransfer(
-        address from,
+        address,
         address to,
-        uint256 amount
-    ) internal virtual {}
+        uint256
+    ) internal virtual {
+        require(to != address(this), "StRSR transfer to self");
+    }
 
     // === ERC20Permit ===
     // This section extracted from OZ:ERC20PermitUpgradeable

@@ -149,6 +149,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         address to,
         uint256 amount
     ) internal override {
+        super._afterTokenTransfer(from, to, amount);
         _moveVotingPower(delegates(from), delegates(to), amount);
     }
 

@@ -1883,6 +1883,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(issueAmount.sub(meltAmount))
     })
 
+    it('Should not allow mint/transfer/transferFrom to address(this)', async () => {
+      // mint
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(rToken.connect(signer).mint(rToken.address, 1)).to.be.revertedWith(
+          'RToken transfer to self'
+        )
+      })
+
+      // transfer
+      await expect(rToken.connect(addr1).transfer(rToken.address, 1)).to.be.revertedWith(
+        'RToken transfer to self'
+      )
+
+      // transferFrom
+      await rToken.connect(addr1).approve(addr2.address, 1)
+      await expect(
+        rToken.connect(addr2).transferFrom(addr1.address, rToken.address, 1)
+      ).to.be.revertedWith('RToken transfer to self')
+    })
+
     it('Should allow to mint tokens when called by backing manager', async () => {
       // Mint tokens
       const mintAmount: BigNumber = bn('10e18')

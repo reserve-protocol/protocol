@@ -344,6 +344,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     ) private {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
+        require(to != address(this), "StRSR transfer to self");
 
         uint256 fromBalance = balances[from];
 

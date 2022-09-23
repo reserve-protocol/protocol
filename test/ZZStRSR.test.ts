@@ -1762,6 +1762,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
     })
 
+    it('Should not allow transfer/transferFrom to address(this)', async () => {
+      // transfer
+      await expect(stRSR.connect(addr1).transfer(stRSR.address, 1)).to.be.revertedWith(
+        'StRSR transfer to self'
+      )
+
+      // transferFrom
+      await stRSR.connect(addr1).approve(addr2.address, 1)
+      await expect(
+        stRSR.connect(addr2).transferFrom(addr1.address, stRSR.address, 1)
+      ).to.be.revertedWith('StRSR transfer to self')
+    })
+
     it('Should transferFrom stakes between accounts', async function () {
       const addr1BalancePrev = await stRSR.balanceOf(addr1.address)
       const addr2BalancePrev = await stRSR.balanceOf(addr2.address)
