@@ -111,8 +111,11 @@ contract GnosisTrade is ITrade {
         // Downsize our sell amount to adjust for fee
         // {qTok} = {qTok} * {1} / {1}
         uint96 sellAmount = uint96(
-            mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
-        ); // Safe downcast; require'd < uint96.max
+            _divrnd(req.sellAmount * FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator(), CEIL)
+        );
+        // TODO this CEIL hasn't been analyzed in depth
+        // It seems like it should be fine even for small feeNumerators
+
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
 
         uint256 minBuyAmtPerOrder = Math.max(
