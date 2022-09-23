@@ -192,7 +192,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
-    initialBasketNonce = await basketHandler.nonce()
+    initialBasketNonce = BigNumber.from(await basketHandler.nonce())
 
     // Mint initial balances
     initialBal = bn('40000e18')

@@ -65,7 +65,7 @@ export const IMPLEMENTATION: Implementation =
 
 export const SLOW = !!process.env.SLOW
 
-export const ORACLE_TIMEOUT = bn('86400000') // 1000d -- way too long for an actual deployment
+export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 
 export type Collateral =
   | FiatCollateral
