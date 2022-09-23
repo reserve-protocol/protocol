@@ -333,6 +333,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
+        requireValidBUExchangeRate();
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -340,6 +341,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
         emit Melted(amount);
+        requireValidBUExchangeRate();
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -348,6 +350,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+        requireValidBUExchangeRate();
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
@@ -426,6 +429,25 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             }
         }
         return someProcessed;
+    }
+
+    /// Require the BU to RToken exchange rate to be in [1e-9, 1e9]
+    function requireValidBUExchangeRate() private view {
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply;
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply;
+
+        // We can't assume we can downcast to uint192 safely. Note that the
+        // uint192 check below is redundant but this is P0 so we keep it.
+        require(
+            low <= type(uint192).max &&
+                high <= type(uint192).max &&
+                uint192(low) >= FIX_ONE / 1e9 &&
+                uint192(high) <= FIX_ONE * 1e9,
+            "BU rate out of range"
+        );
     }
 
     /// Returns the left index of currently-valid items for `account`

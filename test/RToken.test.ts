@@ -1909,6 +1909,42 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         )
       })
     })
+
+    it('Should not allow setBasketsNeeded to set BU exchange rate to outside [1e-9, 1e9]', async () => {
+      // setBasketsNeeded()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(
+          rToken.connect(signer).setBasketsNeeded(issueAmount.mul(bn('1e9')).add(1))
+        ).to.be.revertedWith('BU rate out of range')
+        await expect(
+          rToken.connect(signer).setBasketsNeeded(issueAmount.div(bn('1e9')).sub(1))
+        ).to.be.revertedWith('BU rate out of range')
+        await rToken.connect(signer).setBasketsNeeded(issueAmount.mul(bn('1e9')))
+        await rToken.connect(signer).setBasketsNeeded(issueAmount.div(bn('1e9')))
+      })
+    })
+
+    it('Should not allow mint to set BU exchange rate to above 1e9', async () => {
+      // mint()
+      await whileImpersonating(backingManager.address, async (signer) => {
+        await expect(
+          rToken
+            .connect(signer)
+            .mint(addr1.address, issueAmount.mul(bn('1e9')).add(1).sub(issueAmount))
+        ).to.be.revertedWith('BU rate out of range')
+        await rToken
+          .connect(signer)
+          .mint(addr1.address, issueAmount.mul(bn('1e9')).sub(issueAmount))
+      })
+    })
+
+    it('Should not allow melt to set BU exchange rate to below 1e-9', async () => {
+      // melt()
+      await expect(
+        rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))).add(1))
+      ).to.be.revertedWith('BU rate out of range')
+      await rToken.connect(addr1).melt(issueAmount.sub(issueAmount.div(bn('1e9'))))
+    })
   })
 
   describe('Reward Claiming #fast', () => {
