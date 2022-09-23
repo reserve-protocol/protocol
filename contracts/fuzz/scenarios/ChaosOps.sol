@@ -40,6 +40,8 @@ contract ChaosOpsScenario {
         PriceModel({ kind: Kind.Walk, curr: 1e18, low: 1e18, high: 1.1e18 });
     PriceModel internal mayHardDefault =
         PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.99e18, high: 1.1e18 });
+    PriceModel internal mayDepeg =
+        PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.85e18, high: 1.25e18 });
     PriceModel internal justOne = PriceModel({ kind: Kind.Constant, curr: 1e18, low: 0, high: 0 });
 
     IERC20[] public collateralTokens;
@@ -104,7 +106,7 @@ contract ChaosOpsScenario {
             );
             collateralTokens.push(IERC20(token));
 
-            // Coll #2 - CToken Type, volatile,may default With reward
+            // Coll #2 - CToken Type, volatile,may depeg With reward
             token = new ERC20Fuzz(
                 concat(concat("Collateral", targetNameStr), " 1"),
                 concat(concat("C", targetNameStr), "1"),
@@ -138,7 +140,7 @@ contract ChaosOpsScenario {
                     IERC20Metadata(address(0)),
                     targetName,
                     growing,
-                    justOne,
+                    mayDepeg,
                     justOne,
                     volatile
                 )
@@ -857,7 +859,7 @@ contract ChaosOpsScenario {
     }
 
     // Grant/Revoke Roles
-    function grantRole(uint8 userID, uint8 which) public {
+    function grantRole(uint8 which, uint8 userID) public {
         address user = main.someAddr(userID);
         which %= 4;
         if (which == 0) main.grantRole(OWNER, user);
@@ -866,7 +868,7 @@ contract ChaosOpsScenario {
         else if (which == 3) main.grantRole(PAUSER, user);
     }
 
-    function revokeRole(uint8 userID, uint8 which) public {
+    function revokeRole(uint8 which, uint8 userID) public {
         address user = main.someAddr(userID);
         which %= 4;
         if (which == 0) main.revokeRole(OWNER, user);
