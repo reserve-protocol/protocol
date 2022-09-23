@@ -129,7 +129,6 @@ contract MarketMock is IMarketMock {
 
         // Calculate buy amount
         uint256 actualBuyAmt = calculateActualBuyAmt(buy, buyAmt);
-
         if (address(buy) == address(main.rToken())) {
             procureRTokens(actualBuyAmt);
         } else {
@@ -194,8 +193,14 @@ contract MarketMock is IMarketMock {
 
         uint256 maxTradeSlippage = getMaxTradeSlippage(buy);
 
-        if (mode == SettlingMode.Acceptable) {
-            actualBuyAmt = between(buyAmt, (buyAmt * (FIX_ONE + maxTradeSlippage)) / FIX_ONE, seed);
+        if (
+            mode == SettlingMode.Acceptable /*|| (mode == SettlingMode.Random && seed%5 == 0) */
+        ) {
+            actualBuyAmt = between(
+                buyAmt,
+                ((buyAmt * FIX_ONE) / (FIX_ONE - maxTradeSlippage)),
+                seed
+            );
         } else if (mode == SettlingMode.Random) {
             // Allow to cause a violation in some cases
             actualBuyAmt = between(
@@ -203,6 +208,7 @@ contract MarketMock is IMarketMock {
                 GNOSIS_MAX_TOKENS - 1,
                 seed
             );
+            //actualBuyAmt = between(0, GNOSIS_MAX_TOKENS + 1, seed);
         } else revert("invalid settling mode");
 
         return actualBuyAmt;
