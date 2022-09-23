@@ -4,25 +4,27 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/ATokenFiatCollateral.sol";
 
 contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     )
         ATokenFiatCollateral(
+            fallbackPrice_,
             chainlinkFeed_,
             erc20_,
             rewardERC20_,
-            tradingRange_,
+            maxTradeVolume_,
             oracleTimeout_,
             targetName_,
             defaultThreshold_,

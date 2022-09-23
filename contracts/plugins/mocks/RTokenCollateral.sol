@@ -26,17 +26,19 @@ contract RTokenCollateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(
         IMain main_,
-        TradingRange memory tradingRange_,
+        uint192 fallbackPrice_,
+        uint192 maxTradeVolume_,
         bytes32 targetName_
     )
         Asset(
+            fallbackPrice_,
             AggregatorV3Interface(address(1)),
             IERC20Metadata(address(main_.rToken())),
             IERC20Metadata(address(0)),
-            tradingRange_,
+            maxTradeVolume_,
             1
         )
     {

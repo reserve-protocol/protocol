@@ -43,22 +43,33 @@ contract CTokenFiatCollateral is Collateral {
     address public immutable comptrollerAddr;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
         address comptrollerAddr_
-    ) Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_) {
+    )
+        Collateral(
+            fallbackPrice_,
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_
+        )
+    {
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
@@ -140,42 +151,6 @@ contract CTokenFiatCollateral is Collateral {
         int8 shiftLeft = 8 - referenceERC20Decimals - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
-
-    // solhint-disable no-empty-blocks
-
-    /// @return min {tok} The minimium trade size
-    function minTradeSize() external view virtual override returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // p = p.mul(refPerTok());
-            p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
-
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.minVal.div(p, CEIL);
-            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
-            if (type(uint192).max < min256) revert UIntOutOfBounds();
-            min = uint192(min256);
-        } catch {}
-        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
-        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
-    }
-
-    /// @return max {tok} The maximum trade size
-    function maxTradeSize() external view virtual override returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // p = p.mul(refPerTok());
-            p = uint192((uint256(p) * refPerTok()) / FIX_ONE_256);
-
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.maxVal.div(p);
-            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
-            if (type(uint192).max < max256) revert UIntOutOfBounds();
-            max = uint192(max256);
-        } catch {}
-        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
-        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
-    }
-
-    // solhint-enable no-empty-blocks
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to

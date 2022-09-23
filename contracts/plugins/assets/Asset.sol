@@ -15,38 +15,37 @@ contract Asset is IAsset {
 
     IERC20 public immutable override rewardERC20;
 
+    uint192 public immutable override maxTradeVolume; // {UoA}
+
+    uint192 public immutable override fallbackPrice; // {UoA}
+
     uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
-    TradingRange public tradingRange;
-
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_
     ) {
+        require(fallbackPrice_ > 0, "deployment price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(
-            tradingRange_.minAmt > 0 &&
-                tradingRange_.maxAmt > 0 &&
-                tradingRange_.maxAmt >= tradingRange_.minAmt,
-            "invalid trading range amts"
-        );
-        require(tradingRange_.maxVal >= tradingRange_.minVal, "invalid trading range vals");
+        require(maxTradeVolume_ > 0, "invalid max trade");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
+        fallbackPrice = fallbackPrice_;
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         rewardERC20 = rewardERC20_;
-        tradingRange = tradingRange_;
+        maxTradeVolume = maxTradeVolume_;
         oracleTimeout = oracleTimeout_;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
     function price() public view virtual returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
     }
@@ -62,32 +61,6 @@ contract Asset is IAsset {
     }
 
     // solhint-disable no-empty-blocks
-
-    /// @return min {tok} The minimium trade size
-    function minTradeSize() external view virtual returns (uint192 min) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.minVal.div(p, CEIL);
-            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
-            if (type(uint192).max < min256) revert UIntOutOfBounds();
-            min = uint192(min256);
-        } catch {}
-        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
-        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
-    }
-
-    /// @return max {tok} The maximum trade size
-    function maxTradeSize() external view virtual returns (uint192 max) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.maxVal.div(p);
-            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
-            if (type(uint192).max < max256) revert UIntOutOfBounds();
-            max = uint192(max256);
-        } catch {}
-        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
-        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
-    }
 
     /// (address, calldata) to call in order to claim rewards for holding this asset
     /// @dev The default impl returns zero values, implying that no reward function exists.

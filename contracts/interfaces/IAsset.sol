@@ -6,16 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 
-/// A range of whole token quantities to bound trading
-struct TradingRange {
-    /// Used when prices are available; optional
-    uint192 minVal; // {UoA}
-    uint192 maxVal; // {UoA}
-    // Always applied
-    uint192 minAmt; // {tok}
-    uint192 maxAmt; // {tok}
-}
-
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -23,8 +13,11 @@ struct TradingRange {
  * is eligible to be an asset.
  */
 interface IAsset {
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in the UoA
+    /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
     function price() external view returns (uint192);
+
+    /// @return {UoA/tok} A fallback price set at deployment
+    function fallbackPrice() external view returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
@@ -35,11 +28,8 @@ interface IAsset {
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
 
-    /// @return {tok} The minimium trade size
-    function minTradeSize() external view returns (uint192);
-
-    /// @return {tok} The maximum trade size
-    function maxTradeSize() external view returns (uint192);
+    /// @param {UoA} The max trade volume, in UoA
+    function maxTradeVolume() external view returns (uint192);
 
     // ==== Rewards ====
 

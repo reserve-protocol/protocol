@@ -19,16 +19,17 @@ abstract contract Collateral is ICollateral, Asset {
     bytes32 public immutable targetName;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_
-    ) Asset(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_) {
+    ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;
     }
