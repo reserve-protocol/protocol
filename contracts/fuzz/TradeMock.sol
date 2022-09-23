@@ -193,9 +193,7 @@ contract MarketMock is IMarketMock {
 
         uint256 maxTradeSlippage = getMaxTradeSlippage(buy);
 
-        if (
-            mode == SettlingMode.Acceptable /*|| (mode == SettlingMode.Random && seed%5 == 0) */
-        ) {
+        if (mode == SettlingMode.Acceptable || (mode == SettlingMode.Random && seed % 5 > 0)) {
             actualBuyAmt = between(
                 buyAmt,
                 ((buyAmt * FIX_ONE) / (FIX_ONE - maxTradeSlippage)),
@@ -203,12 +201,7 @@ contract MarketMock is IMarketMock {
             );
         } else if (mode == SettlingMode.Random) {
             // Allow to cause a violation in some cases
-            actualBuyAmt = between(
-                (buyAmt * (FIX_ONE - maxTradeSlippage)) / FIX_ONE,
-                GNOSIS_MAX_TOKENS - 1,
-                seed
-            );
-            //actualBuyAmt = between(0, GNOSIS_MAX_TOKENS + 1, seed);
+            actualBuyAmt = between(0, GNOSIS_MAX_TOKENS + 1, seed);
         } else revert("invalid settling mode");
 
         return actualBuyAmt;

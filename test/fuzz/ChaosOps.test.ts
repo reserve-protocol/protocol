@@ -222,7 +222,7 @@ describe('The Chaos Operations scenario', () => {
 
         expect(await trade.canSettle()).to.be.true
 
-        // Manually update MarketMock seed to minBuyAmount, will provide more than expected
+        // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
         await scenario.pushSeedForTrades(tradeReq.minBuyAmount)
 
         // yeah, we could do this more simply with trade.connect(alice), but I'm testing spoof() too
@@ -230,9 +230,9 @@ describe('The Chaos Operations scenario', () => {
         await trade.settle()
         await main.unspoof(owner.address)
 
-        // Alice now has no extra USD0 and more than 456 RSR.
+        // Alice now has no extra USD0 and 456 RSR.
         expect(await usd0.balanceOf(aliceAddr)).to.equal(alice_usd0_0)
-        expect(await rsr.balanceOf(aliceAddr)).to.be.gt(fp(456).add(alice_rsr_0))
+        expect(await rsr.balanceOf(aliceAddr)).to.equal(fp(456).add(alice_rsr_0))
       })
 
       it('lets BackingManager buy and sell RTokens', async () => {
@@ -277,7 +277,7 @@ describe('The Chaos Operations scenario', () => {
 
         // Set Market seed to an acceptable buy amount - will provide more tokens than expected
         const market = await ConAt('MarketMock', await main.marketMock())
-        await market.pushSeed(fp(10))
+        await market.pushSeed(tradeReq.minBuyAmount.add(fp(1)))
 
         await comp.broker.settleTrades()
 
@@ -308,7 +308,10 @@ describe('The Chaos Operations scenario', () => {
 
         // As BackingMgr, settle the trade
         await advanceTime(31 * 60)
-        // Will use previously setup seed, so still will provide a bit more than expected
+
+        // Set Market seed to an acceptable buy amount - will provide more tokens than expected
+        await scenario.pushSeedForTrades(tradeReq2.minBuyAmount.add(fp(1)))
+
         await comp.broker.settleTrades()
 
         // (Backing Manager has no RTokens and more than 789 USD0)
