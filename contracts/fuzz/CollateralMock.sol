@@ -72,7 +72,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         prevReferencePrice = refPerTok();
 
         // Store peg value
-        initialPeg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+        initialPeg = pricePerTarget();
     }
 
     function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
@@ -115,6 +115,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
     function refresh() public override {
         // == Refresh ==
         if (whenDefault <= block.timestamp) return;
+
         CollateralStatus oldStatus = status();
 
         // Check for hard default
@@ -123,14 +124,11 @@ contract CollateralMock is OracleErrorMock, Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            uint192 p = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            uint192 p = targetPerRef();
 
             priceable = p > 0;
 
             // Check for soft default. If not pegged, default eventually
-            // TODO: Review. This works fine with stable or stable+, but would mark
-            // volatile collateral as defaulted if something like wBTC or wETH is being tested
-            // (these should never default)
             uint192 delta = (initialPeg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
             if (p < initialPeg - delta || p > initialPeg + delta) {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);

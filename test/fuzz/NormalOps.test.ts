@@ -744,7 +744,7 @@ describe('The Normal Operations scenario', () => {
       expect(rTokenTrader_bal_init).to.equal(exa)
       expect(furnace_bal_init).to.equal(0)
 
-      // Manage token in RSR Trader
+      // Manage token in RToken Trader
       await scenario.manageTokenInRTokenTrader(9)
 
       const rTokenTrader_bal = await comp.rToken.balanceOf(rTokenTraderAddr)

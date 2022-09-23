@@ -1,6 +1,8 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { fp } from '../../common/numbers'
+import { CollateralStatus } from '../../common/constants'
+import { advanceTime } from '../utils/time'
 import { PriceModelKind, PriceModel, addr } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
@@ -70,5 +72,62 @@ describe('CollateralMock', () => {
     expect(await coll.refPerTok()).equal(fp(2))
     expect(await coll.targetPerRef()).equal(fp(3))
     expect(await coll.pricePerTarget()).equal(fp(0.5))
+  })
+
+  it('should default collateral - hard default ', async () => {
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    expect(await coll.price()).equal(fp(1))
+    expect(await coll.refPerTok()).equal(fp(1))
+    expect(await coll.targetPerRef()).equal(fp(1))
+    expect(await coll.pricePerTarget()).equal(fp(1))
+
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    await coll.update(fp(0.5), fp(1), fp(1), fp(1))
+
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+
+    expect(await coll.price()).equal(fp(0.5))
+    expect(await coll.refPerTok()).equal(fp(0.5))
+    expect(await coll.targetPerRef()).equal(fp(1))
+    expect(await coll.pricePerTarget()).equal(fp(1))
+  })
+
+  it('should default collateral - soft default ', async () => {
+    const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
+    expect(await coll.price()).equal(fp(1))
+    expect(await coll.refPerTok()).equal(fp(1))
+    expect(await coll.targetPerRef()).equal(fp(1))
+    expect(await coll.pricePerTarget()).equal(fp(1))
+
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    // If price does not change significantly nothing happens
+    await coll.update(fp(1), fp(0.99), fp(1), fp(1))
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+
+    // If it loses peg beyond default Threshold
+    await coll.update(fp(1), fp(0.8), fp(1), fp(1))
+    await coll.refresh()
+    expect(await coll.status()).to.equal(CollateralStatus.IFFY)
+
+    expect(await coll.price()).equal(fp(0.8))
+    expect(await coll.refPerTok()).equal(fp(1))
+    expect(await coll.targetPerRef()).equal(fp(0.8))
+    expect(await coll.pricePerTarget()).equal(fp(1))
+
+    // Advance time past delayUntildEfault
+    await advanceTime(Number(await coll.delayUntilDefault()))
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+
+    // Check final values
+    expect(await coll.price()).equal(fp(0.8))
+    expect(await coll.refPerTok()).equal(fp(1))
+    expect(await coll.targetPerRef()).equal(fp(0.8))
+    expect(await coll.pricePerTarget()).equal(fp(1))
   })
 })
