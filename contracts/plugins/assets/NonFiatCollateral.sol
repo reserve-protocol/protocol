@@ -129,7 +129,10 @@ contract NonFiatCollateral is Collateral {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
 
-                // In the next line we violate our standard practice and put D18 on a uint256
+                // Below we violate our standard practice and put D18 on a uint256,
+                // which is on purpose. Consider p1 == p2 == 2^128. An early downcast
+                // to uint192 before the min256 calculation could potentially truncate.
+
                 // D18{UoA/tok} = p1.mul(p2);
                 uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
 
@@ -150,7 +153,10 @@ contract NonFiatCollateral is Collateral {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
                 // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
 
-                // In the next line we violate our standard practice and put D18 on a uint256
+                // Below we violate our standard practice and put D18 on a uint256,
+                // which is on purpose. Consider p1 == p2 == 2^128. An early downcast
+                // to uint192 before the min256 calculation could potentially truncate.
+
                 // D18{UoA/tok} = p1.mul(p2);
                 uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
 

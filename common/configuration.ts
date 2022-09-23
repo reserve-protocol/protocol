@@ -236,8 +236,8 @@ export interface IConfig {
   shortFreeze: BigNumber
   longFreeze: BigNumber
   issuanceRate: BigNumber
-  maxRedemptionCharge: BigNumber
-  redemptionVirtualSupply: BigNumber
+  scalingRedemptionRate: BigNumber
+  redemptionRateFloor: BigNumber
 }
 
 export interface IRevenueShare {

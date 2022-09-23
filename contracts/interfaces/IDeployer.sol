@@ -40,11 +40,9 @@ struct DeploymentParams {
     uint48 shortFreeze; // {s} how long an initial freeze lasts
     uint48 longFreeze; // {s} how long each freeze extension lasts
     // === RToken ===
-    uint192 issuanceRate; // {1} number of RToken to issue per block / (RToken value)
-    uint192 maxRedemptionCharge; // {1} max fraction of RToken supply that can be redeemed at once
-    uint256 redemptionVirtualSupply; // {qRTok}
-    // The min value of total supply to use for redemption throttling
-    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
+    uint192 issuanceRate; // {1/block} number of RToken to issue per block / (RToken value)
+    uint192 scalingRedemptionRate; // {1/hour} max fraction of supply that can be redeemed hourly
+    uint256 redemptionRateFloor; // {qRTok/hour} the lowest possible hourly redemption limit
 }
 
 /**

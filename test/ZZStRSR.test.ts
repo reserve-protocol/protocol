@@ -10,6 +10,7 @@ import { expectEvents } from '../common/events'
 import {
   CTokenMock,
   ERC20Mock,
+  ERC1271Mock,
   Facade,
   IBasketHandler,
   StRSRP0,
@@ -1086,7 +1087,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         {
           contract: stRSR,
           name: 'ExchangeRateSet',
-          args: [initialRate, newRate],
           emitted: true,
         },
         {
@@ -1096,9 +1096,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           emitted: true,
         },
       ])
-
-      // Check exchange rate
-      expect(await stRSR.exchangeRate()).to.equal(newRate)
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1133,12 +1132,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
 
       // Payout rewards
-      await expect(stRSR.payoutRewards())
-        .to.emit(stRSR, 'ExchangeRateSet')
-        .withArgs(initialRate, newRate)
-
-      // Check exchange rate
-      expect(await stRSR.exchangeRate()).to.equal(newRate)
+      await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1285,10 +1281,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
@@ -1364,10 +1360,10 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
@@ -1407,10 +1403,11 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
-        await expect(stRSR.connect(signer).seizeRSR(amount2))
-          .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), newRate)
+        await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
       expect(await stRSR.totalSupply()).to.equal(amount.mul(3))
@@ -1632,7 +1629,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
-      expect(await stRSR.exchangeRate()).to.equal(fp(double).div(double.sub(amount2)))
+      const newExchangeRate = fp(double).div(double.sub(amount2))
+      expect(await stRSR.exchangeRate()).to.be.closeTo(newExchangeRate, 1)
+      expect(await stRSR.exchangeRate()).to.be.gte(newExchangeRate)
     })
 
     it('Should handle small unstake after a significant RSR seizure', async () => {
@@ -1856,6 +1855,66 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('ERC20Permit: expired deadline')
 
       expect(await stRSR.allowance(addr1.address, addr2.address)).to.equal(0)
+    })
+
+    describe('ERC1271 #fast', () => {
+      let erc1271Mock: ERC1271Mock
+
+      beforeEach(async () => {
+        const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
+        erc1271Mock = await ERC1271Factory.deploy()
+
+        // Give StRSR balance to ERC1271Mock
+        await stRSR.connect(addr1).transfer(erc1271Mock.address, amount)
+      })
+
+      it('should not permit without ERC1271 support', async () => {
+        // Try a smart contract that does not support ERC1271
+        await expect(
+          stRSR.permit(
+            main.address,
+            addr1.address,
+            amount,
+            bn(2).pow(255),
+            0,
+            ethers.utils.formatBytes32String(''),
+            ethers.utils.formatBytes32String('')
+          )
+        ).to.be.reverted
+        expect(await stRSR.allowance(main.address, addr1.address)).to.equal(0)
+
+        // Try the ERC1271Mock with approvals turned off
+        await expect(
+          stRSR.permit(
+            erc1271Mock.address,
+            addr1.address,
+            amount,
+            bn(2).pow(255),
+            0,
+            ethers.utils.formatBytes32String(''),
+            ethers.utils.formatBytes32String('')
+          )
+        ).to.be.revertedWith('ERC1271: Unauthorized')
+        expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
+      })
+
+      it('should permit spend with ERC1271 support', async () => {
+        // ERC1271 with approvals turned on
+        await erc1271Mock.enableApprovals()
+        await stRSR.permit(
+          erc1271Mock.address,
+          addr1.address,
+          amount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+        expect(await stRSR.allowance(erc1271Mock.address, addr1.address)).to.equal(amount)
+        await stRSR.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, amount)
+        expect(await stRSR.balanceOf(erc1271Mock.address)).to.equal(0)
+        expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
+      })
     })
 
     it('Should not transferFrom stakes if no allowance', async function () {

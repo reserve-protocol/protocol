@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { BigNumber } from 'ethers'
 import { bn, fp } from '../../common/numbers'
-import { Facade, RTokenP0, TestIRToken } from '../../typechain'
+import { Facade, TestIRToken } from '../../typechain'
 import { advanceBlocks } from './time'
 import { IMPLEMENTATION, Implementation } from '../fixtures'
 

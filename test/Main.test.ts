@@ -374,8 +374,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           'RTKN',
           'Manifesto',
           config.issuanceRate,
-          config.maxRedemptionCharge,
-          config.redemptionVirtualSupply
+          config.scalingRedemptionRate,
+          config.redemptionRateFloor
         )
       ).to.be.revertedWith('Initializable: contract is already initialized')
 
@@ -844,9 +844,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(owner).setShortFreeze(0)).to.be.revertedWith(
         'short freeze out of range'
       )
-      await expect(main.connect(owner).setShortFreeze(2592000)).to.be.revertedWith(
+      await expect(main.connect(owner).setShortFreeze(2592000 + 1)).to.be.revertedWith(
         'short freeze out of range'
       )
+      await main.connect(owner).setShortFreeze(2592000)
+      expect(await main.shortFreeze()).to.equal(2592000)
       await main.connect(owner).setShortFreeze(2)
       expect(await main.shortFreeze()).to.equal(2)
     })
@@ -856,9 +858,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(main.connect(owner).setLongFreeze(0)).to.be.revertedWith(
         'long freeze out of range'
       )
-      await expect(main.connect(owner).setLongFreeze(31536000)).to.be.revertedWith(
+      await expect(main.connect(owner).setLongFreeze(31536000 + 1)).to.be.revertedWith(
         'long freeze out of range'
       )
+      await main.connect(owner).setLongFreeze(31536000)
+      expect(await main.longFreeze()).to.equal(31536000)
+
       await main.connect(owner).setLongFreeze(2)
       expect(await main.longFreeze()).to.equal(2)
     })
@@ -1630,6 +1635,50 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(0)
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
+    })
+
+    it('Should not put backup tokens with different targetName in the basket', async () => {
+      // Swap out collateral for bad target name
+      const CollFactory = await ethers.getContractFactory('FiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const newColl = await CollFactory.deploy(
+        await collateral0.chainlinkFeed(),
+        token0.address,
+        ZERO_ADDRESS,
+        config.rTokenTradingRange,
+        await collateral0.oracleTimeout(),
+        await ethers.utils.formatBytes32String('NEW TARGET'),
+        await collateral0.defaultThreshold(),
+        await collateral0.delayUntilDefault()
+      )
+      await assetRegistry.connect(owner).swapRegistered(newColl.address)
+
+      // Change basket
+      await basketHandler.connect(owner).refreshBasket()
+
+      // New basket should be disabled since no basket backup config
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Set basket backup config
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
+            token0.address,
+            token2.address,
+            token3.address,
+          ])
+      ).to.emit(basketHandler, 'BackupConfigSet')
+
+      // Change basket
+      await basketHandler.connect(owner).refreshBasket()
+
+      // New basket should not contain token0
+      const newBasket = await facade.basketTokens(rToken.address)
+      for (let i = 0; i < newBasket.length; i++) {
+        expect(newBasket[i]).to.not.equal(token0.address)
+      }
     })
   })
 

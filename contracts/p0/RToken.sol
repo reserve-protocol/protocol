@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,6 +14,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
+import "contracts/vendor/ERC20PermitUpgradeable.sol";
 
 struct SlowIssuance {
     address issuer;
@@ -32,7 +31,7 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
@@ -67,11 +66,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     RedemptionBatteryLib.Battery private battery;
 
-    // set to 0 to disable
-    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
-
-    uint256 public redemptionVirtualSupply; // {qRTok}
-
     function init(
         IMain main_,
         string memory name_,
@@ -81,32 +75,45 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint192 maxRedemptionCharge_,
         uint256 redemptionVirtualSupply_
     ) public initializer {
+        require(bytes(name_).length > 0, "name empty");
+        require(bytes(symbol_).length > 0, "symbol empty");
+        require(bytes(mandate_).length > 0, "mandate empty");
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setMaxRedemption(maxRedemptionCharge_);
-        setRedemptionVirtualSupply(redemptionVirtualSupply_);
+        setScalingRedemptionRate(maxRedemptionCharge_);
+        setRedemptionRateFloor(redemptionVirtualSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
-        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
+        require(val > 0 && val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
-    /// @custom:governance
-    function setMaxRedemption(uint192 val) public governance {
-        require(val <= FIX_ONE, "invalid fraction");
-        emit MaxRedemptionSet(maxRedemptionCharge, val);
-        maxRedemptionCharge = val;
+    /// @return {1/hour} The max redemption charging rate
+    function scalingRedemptionRate() external view returns (uint192) {
+        return battery.scalingRedemptionRate;
     }
 
     /// @custom:governance
-    function setRedemptionVirtualSupply(uint256 val) public governance {
-        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
-        redemptionVirtualSupply = val;
+    function setScalingRedemptionRate(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit ScalingRedemptionRateSet(battery.scalingRedemptionRate, val);
+        battery.scalingRedemptionRate = val;
+    }
+
+    /// @return {qRTok/hour} The min redemption charging rate, in {qRTok}
+    function redemptionRateFloor() external view returns (uint256) {
+        return battery.redemptionRateFloor;
+    }
+
+    /// @custom:governance
+    function setRedemptionRateFloor(uint256 val) public governance {
+        emit RedemptionRateFloorSet(battery.redemptionRateFloor, val);
+        battery.redemptionRateFloor = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -291,15 +298,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint192 prorate = toFix(amount).divu(totalSupply());
 
         // Revert if redemption exceeds battery capacity
-        if (maxRedemptionCharge > 0) {
-            // {1} = {qRTok} / {qRTok}
-            uint192 dischargeAmt = FIX_ONE.muluDivu(
-                amount,
-                Math.max(redemptionVirtualSupply, totalSupply()),
-                CEIL
-            );
-            battery.discharge(dischargeAmt, maxRedemptionCharge);
-        }
+        battery.discharge(totalSupply(), amount); // reverts on over-redemption
 
         // Accept and burn RToken
         _burn(_msgSender(), amount);
@@ -353,11 +352,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
-        uint256 supply = totalSupply();
-        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
-
-        // {qRTok} = {1} * {qRTok}
-        return battery.currentCharge(maxRedemptionCharge).mulu_toUint(supply);
+        return battery.currentCharge(totalSupply());
     }
 
     /// Tries to vest an issuance

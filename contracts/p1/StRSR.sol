@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-// solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
@@ -134,11 +134,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //     payoutLastPaid was the timestamp when the last paid-up block ended
     //     rsrRewardsAtLastPayout was the value of rsrRewards() at that time
 
-    // {qRSR} How much reward RSR was held the last time rewards were paid out
-    uint256 internal rsrRewardsAtLastPayout;
-
     // {seconds} The last time when rewards were paid out
     uint48 public payoutLastPaid;
+
+    // {qRSR} How much reward RSR was held the last time rewards were paid out
+    uint256 internal rsrRewardsAtLastPayout;
 
     // ======================
 
@@ -156,6 +156,8 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) external initializer {
+        require(bytes(name_).length > 0, "name empty");
+        require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
         __EIP712_init(name_, "1");
         name = name_;
@@ -304,7 +306,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // ==== Compute RSR amount
         uint256 newTotalDrafts = totalDrafts - draftAmount;
         // newDraftRSR: {qRSR} = {qDrafts} * D18 / D18{qDrafts/qRSR}
-        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256) / draftRate; // TODO: ceil-div
+        uint256 newDraftRSR = (newTotalDrafts * FIX_ONE_256 + (draftRate - 1)) / draftRate;
         uint256 rsrAmount = draftRSR - newDraftRSR;
 
         if (rsrAmount == 0) return;
@@ -373,7 +375,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update stakeRate, possibly beginning a new stake era
         if (stakeRSR > 0) {
             // Downcast is safe: totalStakes is 1e38 at most so expression maximum value is 1e56
-            stakeRate = uint192((FIX_ONE_256 * totalStakes) / stakeRSR); // TODO: should be CEIL div
+            stakeRate = uint192((FIX_ONE_256 * totalStakes + (stakeRSR - 1)) / stakeRSR);
         }
         if (stakeRSR == 0 || stakeRate > MAX_STAKE_RATE) {
             seizedRSR += stakeRSR;
@@ -388,7 +390,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         // update draftRate, possibly beginning a new draft era
         if (draftRSR > 0) {
             // Downcast is safe: totalDrafts is 1e38 at most so expression maximum value is 1e56
-            draftRate = uint192((FIX_ONE_256 * totalDrafts) / draftRSR); // TODO: should be CEIL div
+            draftRate = uint192((FIX_ONE_256 * totalDrafts + (draftRSR - 1)) / draftRSR);
         }
 
         if (draftRSR == 0 || draftRate > MAX_DRAFT_RATE) {
@@ -498,7 +500,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         stakeRate = (stakeRSR == 0 || totalStakes == 0)
             ? FIX_ONE
-            : uint192((totalStakes * FIX_ONE_256) / stakeRSR);
+            : uint192((totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR);
 
         emit RewardsPaid(payout);
         emit ExchangeRateSet(initRate, stakeRate);
@@ -749,8 +751,22 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        require(signer == owner, "ERC20Permit: invalid signature");
+        if (AddressUpgradeable.isContract(owner)) {
+            require(
+                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
+                    0x1626ba7e,
+                "ERC1271: Unauthorized"
+            );
+        } else {
+            require(
+                SignatureCheckerUpgradeable.isValidSignatureNow(
+                    owner,
+                    hash,
+                    abi.encodePacked(r, s, v)
+                ),
+                "ERC20Permit: invalid signature"
+            );
+        }
 
         _approve(owner, spender, value);
     }
@@ -802,4 +818,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit RewardRatioSet(rewardRatio, val);
         rewardRatio = val;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[31] private __gap;
 }

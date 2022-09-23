@@ -12,6 +12,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
+  ERC1271Mock,
   Facade,
   FacadeTest,
   FiatCollateral,
@@ -281,41 +282,50 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid issuanceRate')
     })
 
-    it('Should allow to update maxRedemptionCharge if Owner and perform validations', async () => {
-      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.revertedWith('governance only')
-      await rToken.connect(owner).setMaxRedemption(0)
-      expect(await rToken.maxRedemptionCharge()).to.equal(0)
+    it('Should not allow to set issuanceRate to zero', async () => {
+      // If not owner cannot update
+      await expect(rToken.connect(owner).setIssuanceRate(bn('0'))).to.be.revertedWith(
+        'invalid issuanceRate'
+      )
+    })
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.revertedWith(
+    it('Should allow to update scalingRedemptionRate if Owner and perform validations', async () => {
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(0)).to.be.revertedWith(
         'governance only'
       )
-      await rToken.connect(owner).setMaxRedemption(fp('0.15'))
-      expect(await rToken.maxRedemptionCharge()).to.equal(fp('0.15'))
+      await rToken.connect(owner).setScalingRedemptionRate(0)
+      expect(await rToken.scalingRedemptionRate()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.revertedWith(
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(fp('0.15'))).to.be.revertedWith(
         'governance only'
       )
-      await rToken.connect(owner).setMaxRedemption(fp('1'))
-      expect(await rToken.maxRedemptionCharge()).to.equal(fp('1'))
+      await rToken.connect(owner).setScalingRedemptionRate(fp('0.15'))
+      expect(await rToken.scalingRedemptionRate()).to.equal(fp('0.15'))
+
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(fp('1'))).to.be.revertedWith(
+        'governance only'
+      )
+      await rToken.connect(owner).setScalingRedemptionRate(fp('1'))
+      expect(await rToken.scalingRedemptionRate()).to.equal(fp('1'))
 
       // Cannot update with invalid value
-      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.revertedWith(
+      await expect(rToken.connect(owner).setScalingRedemptionRate(fp('1.0001'))).to.be.revertedWith(
         'invalid fraction'
       )
     })
 
-    it('Should allow to update redemptionVirtualSupply if Owner', async () => {
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(0)).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(0)
-      expect(await rToken.redemptionVirtualSupply()).to.equal(0)
+    it('Should allow to update redemptionRateFloor if Owner', async () => {
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(0)).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(0)
+      expect(await rToken.redemptionRateFloor()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('0.15'))).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(fp('0.15'))
-      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('0.15'))
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(fp('1e3'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(fp('1e3'))
+      expect(await rToken.redemptionRateFloor()).to.equal(fp('1e3'))
 
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('1'))).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(fp('1'))
-      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('1'))
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(fp('1e4'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(fp('1e4'))
+      expect(await rToken.redemptionRateFloor()).to.equal(fp('1e4'))
     })
   })
 
@@ -1736,26 +1746,29 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       context('And redemption throttling', function () {
-        let redemptionVirtualSupply: BigNumber
+        let redemptionRateFloor: BigNumber
         let redeemAmount: BigNumber
 
         beforeEach(async function () {
-          redemptionVirtualSupply = issueAmount
+          redemptionRateFloor = (await rToken.totalSupply()).div(100) // 1% of totalSupply
+          // the scaling rate is 5%
 
-          await rToken.connect(owner).setRedemptionVirtualSupply(redemptionVirtualSupply)
-          expect(await rToken.redemptionVirtualSupply()).to.equal(redemptionVirtualSupply)
+          await rToken.connect(owner).setRedemptionRateFloor(redemptionRateFloor)
+          expect(await rToken.redemptionRateFloor()).to.equal(redemptionRateFloor)
 
           // Charge battery
           await advanceBlocks(300)
         })
 
         it('Should calculate redemption limit correctly', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
           expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
         })
 
         it('Should be able to do geometric redemptions to scale down supply', async function () {
-          for (let i = 0; i < 30; i++) {
+          // Should complete is just under 52 iterations at rates: 5% + 1e18
+          const numIterations = 53
+          for (let i = 0; i < numIterations; i++) {
             const totalSupply = await rToken.totalSupply()
             if (totalSupply.eq(0)) break
 
@@ -1769,21 +1782,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             expect(await rToken.totalSupply()).to.equal(issueAmount)
 
             // Should reach dust supply before exhausting loop iterations
-            expect(i < 29).to.equal(true)
+            expect(i < numIterations - 1).to.equal(true)
           }
 
           expect(await rToken.totalSupply()).to.equal(0)
         })
 
         it('Should revert on overly-large redemption #fast', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
+          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.revertedWith(
+            'redemption battery insufficient'
+          )
+          await rToken.connect(addr1).redeem(redeemAmount)
         })
 
-        it('Should ignore redemption throttling if max redemption charge is zero ', async function () {
-          const prevMaxRedemption: BigNumber = await rToken.maxRedemptionCharge()
-          await rToken.connect(owner).setMaxRedemption(bn(0))
-          expect(await rToken.maxRedemptionCharge()).to.equal(bn(0))
+        it('Should ignore redemption throttling if max redemption charge is zero', async function () {
+          const prevMaxRedemption: BigNumber = await rToken.scalingRedemptionRate()
+          await rToken.connect(owner).setScalingRedemptionRate(bn(0))
+          await rToken.connect(owner).setRedemptionRateFloor(bn(0))
+          expect(await rToken.scalingRedemptionRate()).to.equal(bn(0))
+          expect(await rToken.redemptionRateFloor()).to.equal(bn(0))
 
           // Large redemption will work
           redeemAmount = issueAmount.mul(prevMaxRedemption).div(fp('1'))
@@ -1791,10 +1809,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should allow two redemptions of half value #fast', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.reverted
+          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.revertedWith(
+            'redemption battery insufficient'
+          )
         })
 
         it('Should use real total supply for redemption  if greater then or equal to virtualTotalSupply', async function () {
@@ -1806,7 +1826,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await token3.connect(addr2).approve(rToken.address, initialBal)
 
           await rToken.connect(addr2).issue(issueAmount)
-          redeemAmount = issueAmount.mul(2).mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(2).mul(config.scalingRedemptionRate).div(fp('1'))
 
           expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
 
@@ -1897,6 +1917,74 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+  })
+
+  describe('ERC1271 permit #fast', () => {
+    const issueAmount = bn('100e18') // fits into one block
+    let erc1271Mock: ERC1271Mock
+
+    beforeEach(async () => {
+      const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
+      erc1271Mock = await ERC1271Factory.deploy()
+
+      // Issue
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Give RToken balance at ERC1271Mock
+      await rToken.connect(addr1).transfer(erc1271Mock.address, issueAmount)
+    })
+
+    it('should not permit without ERC1271 support', async () => {
+      // Try a smart contract that does not support ERC1271
+      await expect(
+        rToken.permit(
+          main.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.reverted
+      expect(await rToken.allowance(main.address, addr1.address)).to.equal(0)
+
+      // Try the ERC1271Mock with approvals turned off
+      await expect(
+        rToken.permit(
+          erc1271Mock.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.revertedWith('ERC1271: Unauthorized')
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
+    })
+
+    it('should permit spend with ERC1271 support', async () => {
+      // ERC1271 with approvals turned on
+      await erc1271Mock.enableApprovals()
+      await rToken.permit(
+        erc1271Mock.address,
+        addr1.address,
+        issueAmount,
+        bn(2).pow(255),
+        0,
+        ethers.utils.formatBytes32String(''),
+        ethers.utils.formatBytes32String('')
+      )
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(issueAmount)
+      await rToken.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, issueAmount)
+      expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     })
   })
 

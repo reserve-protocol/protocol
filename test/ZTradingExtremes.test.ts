@@ -807,7 +807,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
 
-    const primeTokens = [size, 0]
+    const primeTokens = [size, 1]
 
     const backupTokens = [size, 0]
 

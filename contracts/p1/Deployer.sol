@@ -209,8 +209,8 @@ contract DeployerP1 is IDeployer {
             symbol,
             mandate,
             params.issuanceRate,
-            params.maxRedemptionCharge,
-            params.redemptionVirtualSupply
+            params.scalingRedemptionRate,
+            params.redemptionRateFloor
         );
 
         // Transfer Ownership

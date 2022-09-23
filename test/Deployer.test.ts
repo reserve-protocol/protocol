@@ -318,6 +318,24 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       ).to.emit(deployer, 'RTokenCreated')
     })
 
+    it('Should not allow empty name', async () => {
+      await expect(
+        deployer.deploy('', 'RTKN', 'mandate', owner.address, config)
+      ).to.be.revertedWith('name empty')
+    })
+
+    it('Should not allow empty symbol', async () => {
+      await expect(
+        deployer.deploy('RTKN RToken', '', 'mandate', owner.address, config)
+      ).to.be.revertedWith('symbol empty')
+    })
+
+    it('Should not allow empty mandate', async () => {
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', '', owner.address, config)
+      ).to.be.revertedWith('mandate empty')
+    })
+
     it('Should setup Main correctly', async () => {
       // Assets
       // RSR

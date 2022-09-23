@@ -168,4 +168,11 @@ contract DistributorP1 is ComponentP1, IDistributor {
     function _ensureNonZeroDistribution(uint24 rTokenDist, uint24 rsrDist) internal pure {
         require(rTokenDist > 0 || rsrDist > 0, "no distribution defined");
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[48] private __gap;
 }

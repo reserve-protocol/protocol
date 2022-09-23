@@ -305,3 +305,9 @@ Here, "contract state" refers to the normal storage variables of a smart contrac
 - P1 core contracts MUST NOT initialize state variables where they are declared.
 
 Instead of any of these, P1 core contracts will probably each define an initializer funcion, per the usual OZ upgradability pattern. A P1 core contract MAY depend on that initializer having run before any other functions.
+
+### Storage Gaps
+
+All our upgradeable contracts (and their base classes) implement storage gaps mimicking the standard OZ practice from `@openzeppelin/contracts-upgradeable`. That is: at the bottom of each of these contracts there is a `uint256[X] private __gap` declaration, where X is set to 50 minus the number of storage slots that the class uses. Remember, constants do not use storage slots, and some data members may pack together!
+
+It's also not absolutely crucial for the gaps to be sized correctly; the practice OZ suggests is to allocate 50 slots to each inheritance class contract, but it's not a big deal if there are a few more or few less (I think).
