@@ -21,10 +21,11 @@ interface IBasketHandler is IComponent {
     event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
 
     /// Emitted when the reference basket is set
+    /// @param nonce The basket nonce
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
     /// @param disabled True when the list of erc20s + refAmts may not be correct
-    event BasketSet(IERC20[] erc20s, uint192[] refAmts, bool disabled);
+    event BasketSet(uint256 indexed nonce, IERC20[] erc20s, uint192[] refAmts, bool disabled);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32

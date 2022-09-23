@@ -150,7 +150,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function disableBasket() external {
         require(_msgSender() == address(main.assetRegistry()), "asset registry only");
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
-        emit BasketSet(basket.erc20s, refAmts, true);
+        emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
     }
 
@@ -539,7 +539,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
-        emit BasketSet(basket.erc20s, refAmts, disabled);
+        emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
     }
 
     /// Require that erc20s is a valid collateral array
