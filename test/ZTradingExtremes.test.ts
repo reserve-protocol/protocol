@@ -264,9 +264,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
           expect(buy == rToken.address || buy == rsr.address)
           if (buy == rToken.address) {
-            await whileImpersonating(backingManager.address, async (bmSigner) => {
-              await rToken.connect(bmSigner).mint(addr1.address, buyAmt)
-            })
+            await issueMany(facade, rToken, buyAmt, addr1)
             await rToken.connect(addr1).approve(gnosis.address, buyAmt)
             await gnosis.placeBid(auctionId, {
               bidder: addr1.address,
