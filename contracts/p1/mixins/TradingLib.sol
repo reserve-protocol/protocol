@@ -161,10 +161,10 @@ library TradingLibP1 {
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions
-    // range.top = max(rToken().basketsNeeded, totalAssetValue(erc20s) / basket.price())
+    // range.top = min(rToken().basketsNeeded, totalAssetValue(erc20s) / basket.price())
     //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
     //   "best plausible" prices, and we won't try to hold more than rToken().basketsNeeded
-    // range.bottom = min(
+    // range.bottom = TODO
 
     function basketRange(IERC20[] memory erc20s) private view returns (BasketRange memory range) {
         // basketPrice: The current UoA value of one basket.
@@ -403,9 +403,9 @@ library TradingLibP1 {
         }
     }
 
-    /// Assuming we have `maxSellAmount` sell tokens available, prepare a trade to
-    /// cover as much of our deficit as possible, given expected trade slippage and
-    /// the sell asset's maxTradeVolume().
+    /// Assuming we have `maxSellAmount` sell tokens available, prepare a trade to cover as much of
+    /// our deficit of `deficitAmount` buy tokens as possible, given expected trade slippage the
+    /// sell asset's maxTradeVolume().
     /// @param maxSellAmount {sellTok}
     /// @param deficitAmount {buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading
@@ -420,7 +420,8 @@ library TradingLibP1 {
     // Which means we should get that, if notDust is true, then:
     //   trade.sell = sell and trade.buy = buy
     //
-    //   1 <= trade.minBuyAmount <= min(deficitAmount.toQTok(buy), GNOSIS_MAX_TOKENS)
+    //   1 <= trade.minBuyAmount <= min(max(deficitAmount, buy.minTradeSize()).toQTok(buy),
+    //                                  GNOSIS_MAX_TOKENS)
     //   1 < trade.sellAmount <= min(maxSellAmount.toQTok(sell),
     //                               sell.maxTradeSize().toQTok(sell),
     //                               GNOSIS_MAX_TOKENS)
