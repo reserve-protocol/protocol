@@ -72,7 +72,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         prevReferencePrice = refPerTok();
 
         // Store peg value
-        initialPeg = pricePerTarget();
+        initialPeg = targetPerRef();
     }
 
     function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
