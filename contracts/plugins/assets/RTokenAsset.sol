@@ -15,7 +15,7 @@ contract RTokenAsset is Asset {
         uint192 maxTradeVolume_
     )
         Asset(
-            fallbackPrice_,
+            price(),
             AggregatorV3Interface(address(1)),
             IERC20Metadata(address(rToken_)),
             IERC20Metadata(address(0)),
