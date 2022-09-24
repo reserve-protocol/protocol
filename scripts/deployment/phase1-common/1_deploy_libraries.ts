@@ -5,11 +5,10 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { TradingLibP1, RewardableLibP1, RTokenPricingLib, OracleLib } from '../../../typechain'
+import { TradingLibP1, RewardableLibP1, OracleLib } from '../../../typechain'
 
 let tradingLib: TradingLibP1
 let rewardableLib: RewardableLibP1
-let rTokenPricingLib: RTokenPricingLib
 let oracleLib: OracleLib
 
 async function main() {
@@ -17,7 +16,7 @@ async function main() {
   const [burner] = await hre.ethers.getSigners()
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying TradingLib, RewardableLib, RTokenPricingLib, and OracleLib 
+  console.log(`Deploying TradingLib, RewardableLib, and OracleLib 
     to network ${hre.network.name} (${chainId}) with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
@@ -43,12 +42,6 @@ async function main() {
   await rewardableLib.deployed()
   deployments.rewardableLib = rewardableLib.address
 
-  // Deploy RTokenPricing external library
-  const RTokenPricingLib = await ethers.getContractFactory('RTokenPricingLib')
-  rTokenPricingLib = <RTokenPricingLib>await RTokenPricingLib.deploy()
-  await rTokenPricingLib.deployed()
-  deployments.rTokenPricingLib = rTokenPricingLib.address
-
   // Deploy OracleLib external library
   const OracleLibFactory = await ethers.getContractFactory('OracleLib')
   oracleLib = <OracleLib>await OracleLibFactory.deploy()
@@ -60,7 +53,6 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     RewardableLib: ${rewardableLib.address}
-    RTokenPricing: ${rTokenPricingLib.address}
     OracleLib: ${oracleLib.address}
     Deployment file: ${deploymentFilename}`)
 }

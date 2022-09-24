@@ -36,14 +36,6 @@ async function main() {
     'contracts/p1/mixins/RewardableLib.sol:RewardableLibP1'
   )
 
-  /** ******************** Verify RTokenPricing Library ****************************************/
-  await verifyContract(
-    chainId,
-    deployments.rTokenPricingLib,
-    [],
-    'contracts/plugins/assets/RTokenPricingLib.sol:RTokenPricingLib'
-  )
-
   /** ******************** Verify OracleLib Library ****************************************/
   await verifyContract(
     chainId,

@@ -12,7 +12,7 @@ import {
   IDeployments,
   fileExists,
 } from '../../deployment/common'
-import { getOracleTimeout } from '../../deployment/utils'
+import { getCurrentPrice, getOracleTimeout } from '../../deployment/utils'
 
 async function main() {
   // ==== Read Configuration ====
@@ -41,13 +41,11 @@ async function main() {
 
   /********  Deploy StkAAVE Asset **************************/
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
+    fallbackPrice: await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE),
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingAmtMin: fp(chainId == 1 ? '10' : '1').toString(), // 10 StkAAVE
-    tradingAmtMax: fp(chainId == 1 ? '1e4' : '1e9').toString(), // 10,000 StkAAVE
+    maxTradeVolume: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })
@@ -57,13 +55,11 @@ async function main() {
 
   /********  Deploy Comp Asset **************************/
   const { asset: compAsset } = await hre.run('deploy-asset', {
+    fallbackPrice: await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    tradingValMin: fp(chainId == 1 ? '1e4' : '0').toString(), // $10k,
-    tradingValMax: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
-    tradingAmtMin: fp(chainId == 1 ? '20' : '1').toString(), // // 20 COMP
-    tradingAmtMax: fp(chainId == 1 ? '2e4' : '1e9').toString(), // 20,000 COMP
+    maxTradeVolume: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })

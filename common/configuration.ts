@@ -215,17 +215,13 @@ export const getNetworkConfig = (chainId: string) => {
 
 export const developmentChains = ['hardhat', 'localhost']
 
-export interface TradingRange {
-  minVal: BigNumber // {UoA}
-  maxVal: BigNumber // {UoA}
-  minAmt: BigNumber // {tok}
-  maxAmt: BigNumber // {tok}
-}
-
 // Common configuration interfaces
 export interface IConfig {
-  rTokenTradingRange: TradingRange
   dist: IRevenueShare
+  minTradeVolume: BigNumber
+  rTokenMaxTradeVolume: BigNumber
+  shortFreeze: BigNumber
+  longFreeze: BigNumber
   rewardPeriod: BigNumber
   rewardRatio: BigNumber
   unstakingDelay: BigNumber
@@ -233,8 +229,6 @@ export interface IConfig {
   auctionLength: BigNumber
   backingBuffer: BigNumber
   maxTradeSlippage: BigNumber
-  shortFreeze: BigNumber
-  longFreeze: BigNumber
   issuanceRate: BigNumber
   scalingRedemptionRate: BigNumber
   redemptionRateFloor: BigNumber
