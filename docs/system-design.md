@@ -129,7 +129,9 @@ The fraction of revenues that should go towards RToken holders vs stakers, as gi
 Anticipated value: 60% to stakers and 40% to RToken holders.
 Mainnet reasonable range: 0% to 100%
 
-### `rTokenTradingRange.minVal`
+### `rTokenTradingRange`
+
+#### `rTokenTradingRange.minVal`
 
 Dimension: `{UoA}`
 
@@ -140,7 +142,7 @@ This parameter can be set to zero.
 Anticipated value: `1e22` = $10k
 Mainnet reasonable range: 1e21 to 1e27.
 
-### `rTokenTradingRange.maxVal`
+#### `rTokenTradingRange.maxVal`
 
 Dimension: `{UoA}`
 
@@ -151,7 +153,7 @@ This parameter can be set to zero.
 Anticipated value: `1e24` = $1M
 Mainnet reasonable range: 1e22 to 1e27.
 
-### `rTokenTradingRange.minAmt`
+#### `rTokenTradingRange.minAmt`
 
 Dimension: `{qRTok}`
 
@@ -162,7 +164,7 @@ Since token prices can change quickly in short periods of time, it is recommende
 Anticipated value: `1e21` = 1000 RToken
 Mainnet reasonable range: 1e20 to 1e24.
 
-### `rTokenTradingRange.maxAmt`
+#### `rTokenTradingRange.maxAmt`
 
 Dimension: `{qRTok}`
 
@@ -256,30 +258,34 @@ Mainnet reasonable range: 86400 to 31536000 (1 day to 1 year)
 
 Dimension: `{1}`
 
-The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply.
+The issuance rate is a percentage value that describes what proportion of the RToken supply to issue per block. It controls how quickly the protocol can scale up RToken supply. It cannot be zero.
 
 Anticipated value: `0.00025e18` = 0.025% per block
 Mainnet reasonable range: 1e12 to 1e16
 
-### `maxRedemptionCharge`
+### `RedemptionBattery`
 
-Dimension: `{1}`
+In order to restrict the system to organic patterns of behavior, we have the concept of a Redemption Battery. When redemption occurs, it uses up stored battery charge. The battery has a natural charging rate, which is controlled by the combination of two variables: _redemptionRateFloor_ and _scalingRedemptionRate_.
+
+Either of the two variables can be defined to be zero to disable them. When both are set to a nonzero value, the one that provides the faster charging rate is used. Note the differing units: one is in terms of `{qRTok/hour}` and the other is `{1/hour}`, i.e a fraction.
+
+#### `RedemptionBattery.redemptionRateFloor`
+
+Dimension: `{qRTok/hour}`
+
+The redemption rate floor is the minimum quantity of RToken to allow redemption of per-hour, and thereby the rate to charge the redemption battery at.
+
+Anticipated value: `1e24` = 1,000,000 RToken
+Mainnet reasonable range: 1e23 to 1e27
+
+#### `RedemptionBattery.scalingRedemptionRate`
+
+Dimension: `{1/hour}`
 
 The max redemption is a percentage value that describes what proportion of the RToken supply to allow redemption of per-hour. It controls how quickly the protocol can scale down RToken supply.
 
-Set to 0 to disable redemption throttling altogether.
-
 Anticipated value: `5e16` = 5% per hour
 Mainnet reasonable range: 1e15 to 1e18 (0.1% per hour to 100% per hour; or disable and set to 0)
-
-### `redemptionVirtualSupply`
-
-Dimension: `{qRTok}`
-
-The redemption virtual supply is the minimum value to use to size the redemption battery. The redemption capacity is at least maxRedemptionCharge \* redemptionVirtualSupply.
-
-Anticipated value: `2e25` = $20,000,000 at $1 an RToken
-Mainnet reasonable range: 1e21 to 1e27
 
 ### Governance Parameters
 

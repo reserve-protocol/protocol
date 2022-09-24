@@ -12,7 +12,9 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
+  ERC1271Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   IAssetRegistry,
   IBasketHandler,
@@ -72,6 +74,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let main: TestIMain
   let rToken: TestIRToken
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -144,6 +147,17 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
   }
 
+  const endIdForVest = async (account: string) => {
+    if (IMPLEMENTATION == Implementation.P1) {
+      return await facade.endIdForVest(rToken.address, account)
+    } else if (IMPLEMENTATION == Implementation.P0) {
+      const rTok = await ethers.getContractAt('RTokenP0', rToken.address)
+      return await rTok.endIdForVest(account)
+    } else {
+      throw new Error('PROTO_IMPL must be set to either `0` or `1`')
+    }
+  }
+
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -160,6 +174,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       basketHandler,
       config,
       facade,
+      facadeTest,
       main,
       rToken,
       rTokenAsset,
@@ -267,41 +282,50 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('invalid issuanceRate')
     })
 
-    it('Should allow to update maxRedemptionCharge if Owner and perform validations', async () => {
-      await expect(rToken.connect(addr1).setMaxRedemption(0)).to.be.revertedWith('governance only')
-      await rToken.connect(owner).setMaxRedemption(0)
-      expect(await rToken.maxRedemptionCharge()).to.equal(0)
+    it('Should not allow to set issuanceRate to zero', async () => {
+      // If not owner cannot update
+      await expect(rToken.connect(owner).setIssuanceRate(bn('0'))).to.be.revertedWith(
+        'invalid issuanceRate'
+      )
+    })
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('0.15'))).to.be.revertedWith(
+    it('Should allow to update scalingRedemptionRate if Owner and perform validations', async () => {
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(0)).to.be.revertedWith(
         'governance only'
       )
-      await rToken.connect(owner).setMaxRedemption(fp('0.15'))
-      expect(await rToken.maxRedemptionCharge()).to.equal(fp('0.15'))
+      await rToken.connect(owner).setScalingRedemptionRate(0)
+      expect(await rToken.scalingRedemptionRate()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setMaxRedemption(fp('1'))).to.be.revertedWith(
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(fp('0.15'))).to.be.revertedWith(
         'governance only'
       )
-      await rToken.connect(owner).setMaxRedemption(fp('1'))
-      expect(await rToken.maxRedemptionCharge()).to.equal(fp('1'))
+      await rToken.connect(owner).setScalingRedemptionRate(fp('0.15'))
+      expect(await rToken.scalingRedemptionRate()).to.equal(fp('0.15'))
+
+      await expect(rToken.connect(addr1).setScalingRedemptionRate(fp('1'))).to.be.revertedWith(
+        'governance only'
+      )
+      await rToken.connect(owner).setScalingRedemptionRate(fp('1'))
+      expect(await rToken.scalingRedemptionRate()).to.equal(fp('1'))
 
       // Cannot update with invalid value
-      await expect(rToken.connect(owner).setMaxRedemption(fp('1.0001'))).to.be.revertedWith(
+      await expect(rToken.connect(owner).setScalingRedemptionRate(fp('1.0001'))).to.be.revertedWith(
         'invalid fraction'
       )
     })
 
-    it('Should allow to update redemptionVirtualSupply if Owner', async () => {
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(0)).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(0)
-      expect(await rToken.redemptionVirtualSupply()).to.equal(0)
+    it('Should allow to update redemptionRateFloor if Owner', async () => {
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(0)).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(0)
+      expect(await rToken.redemptionRateFloor()).to.equal(0)
 
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('0.15'))).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(fp('0.15'))
-      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('0.15'))
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(fp('1e3'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(fp('1e3'))
+      expect(await rToken.redemptionRateFloor()).to.equal(fp('1e3'))
 
-      await expect(rToken.connect(addr1).setRedemptionVirtualSupply(fp('1'))).to.be.reverted
-      await rToken.connect(owner).setRedemptionVirtualSupply(fp('1'))
-      expect(await rToken.redemptionVirtualSupply()).to.equal(fp('1'))
+      await expect(rToken.connect(addr1).setRedemptionRateFloor(fp('1e4'))).to.be.reverted
+      await rToken.connect(owner).setRedemptionRateFloor(fp('1e4'))
+      expect(await rToken.redemptionRateFloor()).to.equal(fp('1e4'))
     })
   })
 
@@ -587,7 +611,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Process issuance
       await advanceBlocks(17)
 
-      const endID = await rToken.endIdForVest(addr1.address)
+      const endID = await endIdForVest(addr1.address)
       expect(endID).to.equal(1)
       await expectEvents(rToken.vest(addr1.address, 1), [
         {
@@ -610,7 +634,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
 
     it('Should issue RTokens correctly for more complex basket multiple users', async function () {
@@ -683,7 +707,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
       await advanceBlocks(1)
-      await expectEvents(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)), [
+      await expectEvents(rToken.vest(addr1.address, await endIdForVest(addr1.address)), [
         {
           contract: rToken,
           name: 'IssuancesCompleted',
@@ -707,7 +731,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(main.address)).to.equal(0)
 
       // Check asset value at this point
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr2).issue(issueAmount)
@@ -737,7 +761,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Complete 2nd issuance
       await advanceBlocks(1)
-      await rToken.vest(addr2.address, await rToken.endIdForVest(addr2.address))
+      await rToken.vest(addr2.address, await endIdForVest(addr2.address))
 
       // Check issuance is confirmed
       await expectIssuance(addr2.address, 0, {
@@ -746,7 +770,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+        issueAmount.mul(2)
+      )
     })
 
     it('Should not vest RTokens if collateral not SOUND', async function () {
@@ -771,7 +797,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Attempt to vest (pending 1 block)
       await advanceBlocks(1)
       await expect(
-        rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+        rToken.vest(addr1.address, await endIdForVest(addr1.address))
       ).to.be.revertedWith('basket unsound')
 
       // Check previous minting was not processed
@@ -847,13 +873,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Attempt to process slow issuances - nothing at this point
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Process 2 blocks
       await advanceTime(100)
 
       // Vest tokens
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check values, with issued tokens
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
@@ -945,7 +971,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       // Nothing should process
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       // Check previous minting was not processed[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
       await expectIssuance(addr1.address, 0, {
         processed: false,
@@ -954,13 +980,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check asset value at this point (still nothing issued)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Process 4 blocks
       await advanceTime(100)
       await advanceTime(100)
       await advanceTime(100)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
       await expectIssuance(addr1.address, 0, {
@@ -970,7 +996,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
 
     it('Should process issuances in multiple attempts (using issuanceRate)', async function () {
@@ -989,7 +1015,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await advanceTime(100)
       await advanceTime(100)
       await advanceTime(100)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check issuance was confirmed
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1020,7 +1046,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       // Should not process
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was not processed
       await expectIssuance(addr1.address, 1, {
@@ -1031,11 +1057,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check asset value at this point (still nothing issued beyond initial amount)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Process slow mintings one more time
       await advanceBlocks(1)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
       await expectIssuance(addr1.address, 1, {
@@ -1046,7 +1072,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
         issueAmount.add(newIssuanceAmt)
       )
     })
@@ -1073,13 +1099,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check first slow minting is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Process another block to get the 2nd issuance processed
       await rToken.vest(addr1.address, 2)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
         issueAmount.add(newIssueAmount)
       )
 
@@ -1087,7 +1113,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, 3)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount.mul(2)))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
         issueAmount.add(newIssueAmount.mul(2))
       )
     })
@@ -1104,7 +1130,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Check vestings - Nothing available yet
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+      expect(await endIdForVest(addr1.address)).to.equal(0)
 
       // Create three additional issuances of 3 blocks each
       const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
@@ -1113,37 +1139,37 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(newIssueAmount)
 
       // Check vestings - Nothing available yet, need two more blocks
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+      expect(await endIdForVest(addr1.address)).to.equal(0)
 
       //  Advance 2 blocks
       await advanceBlocks(2)
 
       // Check vestings - We can vest the first issuance only
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(1)
+      expect(await endIdForVest(addr1.address)).to.equal(1)
 
       // Advance 3 blocks, should be able to vest second issuance
       await advanceBlocks(3)
 
       // Check vestings - Can vest issuances #1 and #2
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+      expect(await endIdForVest(addr1.address)).to.equal(2)
 
       // Advance 1 block
       await advanceBlocks(1)
 
       // Check vestings - Nothing changed
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(2)
+      expect(await endIdForVest(addr1.address)).to.equal(2)
 
       // Advance 3 more blocks, will unlock third issuance
       await advanceBlocks(3)
 
       // Check vestings - Can vest issuances #1, #2, and #3
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(3)
+      expect(await endIdForVest(addr1.address)).to.equal(3)
 
       // Advance 10 blocks will unlock all issuances
       await advanceBlocks(10)
 
       // Check vestings - Can vest all issuances
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(4)
+      expect(await endIdForVest(addr1.address)).to.equal(4)
 
       // Vest all issuances
       await rToken.vest(addr1.address, 4)
@@ -1151,7 +1177,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check slow mintings are all confirmed
       const totalValue: BigNumber = issueAmount.add(newIssueAmount.mul(3))
       expect(await rToken.balanceOf(addr1.address)).to.equal(totalValue)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(totalValue)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(totalValue)
     })
 
     it('Should allow multiple issuances in the same block', async function () {
@@ -1177,16 +1203,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check both slow mintings are confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+        issueAmount.mul(2)
+      )
 
       // Set automine to true again
       await hre.network.provider.send('evm_setAutomine', [true])
 
       // Process issuances again, should not change anything
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.mul(2))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+        issueAmount.mul(2)
+      )
     })
 
     it('Should allow instant issuances', async function () {
@@ -1242,15 +1272,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check first slow mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Process issuance #2
-      await rToken.vest(addr1.address, (await rToken.endIdForVest(addr1.address)).add(1))
+      await rToken.vest(addr1.address, (await endIdForVest(addr1.address)).add(1))
 
       // Check second mintings is confirmed
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssueAmount))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
         issueAmount.add(newIssueAmount)
       )
     })
@@ -1305,7 +1335,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect((await token3.balanceOf(addr1.address)).sub(before3).div(expectedTkn3)).to.equal(28)
 
       // Check total asset value did not change
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
     it('Should allow the issuer to rollback minting', async function () {
@@ -1351,7 +1381,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
       // Check total asset value did not change
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // We've cleared the queue so calls to cancel should revert
       await expectNoIssuance(addr1.address, 0)
@@ -1388,7 +1418,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Vest minting
       await advanceBlocks(1)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
       await expectIssuance(addr1.address, 0, {
@@ -1425,7 +1455,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
       // Check total asset value did not change
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Another call will not do anything
       await rToken.connect(addr1).cancel(0, true)
@@ -1495,11 +1525,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
       await expectNoIssuance(addr1.address, 0)
-      expect(await rToken.endIdForVest(addr1.address)).to.equal(0)
+      expect(await endIdForVest(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Check total asset value did not change
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     })
 
     it('Should not allow solidified cancel exploit', async () => {
@@ -1585,7 +1615,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         // Check balances
         expect(await rToken.balanceOf(addr1.address)).to.equal(redeemAmount)
         expect(await rToken.totalSupply()).to.equal(redeemAmount)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         // Redeem rTokens
         await rToken.connect(addr1).redeem(redeemAmount)
@@ -1600,7 +1630,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.sub(redeemAmount)
         )
       })
@@ -1614,19 +1644,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token1.connect(addr2).approve(rToken.address, initialBal)
         await token2.connect(addr2).approve(rToken.address, initialBal)
         await token3.connect(addr2).approve(rToken.address, initialBal)
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         // Issue rTokens
         await rToken.connect(addr2).issue(issueAmount)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount.mul(2))
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
+          issueAmount.mul(2)
+        )
 
         // Redeem rTokens
         await rToken.connect(addr1).redeem(redeemAmount)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(2).sub(redeemAmount)
         )
 
@@ -1650,7 +1682,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         expect(await token3.balanceOf(addr2.address)).to.equal(initialBal)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(2).sub(redeemAmount.mul(2))
         )
       })
@@ -1714,26 +1746,29 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       context('And redemption throttling', function () {
-        let redemptionVirtualSupply: BigNumber
+        let redemptionRateFloor: BigNumber
         let redeemAmount: BigNumber
 
         beforeEach(async function () {
-          redemptionVirtualSupply = issueAmount
+          redemptionRateFloor = (await rToken.totalSupply()).div(100) // 1% of totalSupply
+          // the scaling rate is 5%
 
-          await rToken.connect(owner).setRedemptionVirtualSupply(redemptionVirtualSupply)
-          expect(await rToken.redemptionVirtualSupply()).to.equal(redemptionVirtualSupply)
+          await rToken.connect(owner).setRedemptionRateFloor(redemptionRateFloor)
+          expect(await rToken.redemptionRateFloor()).to.equal(redemptionRateFloor)
 
           // Charge battery
           await advanceBlocks(300)
         })
 
         it('Should calculate redemption limit correctly', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
           expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
         })
 
         it('Should be able to do geometric redemptions to scale down supply', async function () {
-          for (let i = 0; i < 30; i++) {
+          // Should complete is just under 52 iterations at rates: 5% + 1e18
+          const numIterations = 53
+          for (let i = 0; i < numIterations; i++) {
             const totalSupply = await rToken.totalSupply()
             if (totalSupply.eq(0)) break
 
@@ -1747,21 +1782,26 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
             expect(await rToken.totalSupply()).to.equal(issueAmount)
 
             // Should reach dust supply before exhausting loop iterations
-            expect(i < 29).to.equal(true)
+            expect(i < numIterations - 1).to.equal(true)
           }
 
           expect(await rToken.totalSupply()).to.equal(0)
         })
 
         it('Should revert on overly-large redemption #fast', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.reverted
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
+          await expect(rToken.connect(addr1).redeem(redeemAmount.add(1))).to.be.revertedWith(
+            'redemption battery insufficient'
+          )
+          await rToken.connect(addr1).redeem(redeemAmount)
         })
 
-        it('Should ignore redemption throttling if max redemption charge is zero ', async function () {
-          const prevMaxRedemption: BigNumber = await rToken.maxRedemptionCharge()
-          await rToken.connect(owner).setMaxRedemption(bn(0))
-          expect(await rToken.maxRedemptionCharge()).to.equal(bn(0))
+        it('Should ignore redemption throttling if max redemption charge is zero', async function () {
+          const prevMaxRedemption: BigNumber = await rToken.scalingRedemptionRate()
+          await rToken.connect(owner).setScalingRedemptionRate(bn(0))
+          await rToken.connect(owner).setRedemptionRateFloor(bn(0))
+          expect(await rToken.scalingRedemptionRate()).to.equal(bn(0))
+          expect(await rToken.redemptionRateFloor()).to.equal(bn(0))
 
           // Large redemption will work
           redeemAmount = issueAmount.mul(prevMaxRedemption).div(fp('1'))
@@ -1769,10 +1809,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         })
 
         it('Should allow two redemptions of half value #fast', async function () {
-          redeemAmount = issueAmount.mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(config.scalingRedemptionRate).div(fp('1'))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
           await rToken.connect(addr1).redeem(redeemAmount.div(2))
-          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.reverted
+          await expect(rToken.connect(addr1).redeem(redeemAmount.div(100))).to.be.revertedWith(
+            'redemption battery insufficient'
+          )
         })
 
         it('Should use real total supply for redemption  if greater then or equal to virtualTotalSupply', async function () {
@@ -1784,7 +1826,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await token3.connect(addr2).approve(rToken.address, initialBal)
 
           await rToken.connect(addr2).issue(issueAmount)
-          redeemAmount = issueAmount.mul(2).mul(config.maxRedemptionCharge).div(fp('1'))
+          redeemAmount = issueAmount.mul(2).mul(config.scalingRedemptionRate).div(fp('1'))
 
           expect(await rToken.redemptionLimit()).to.equal(redeemAmount)
 
@@ -1875,6 +1917,74 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+  })
+
+  describe('ERC1271 permit #fast', () => {
+    const issueAmount = bn('100e18') // fits into one block
+    let erc1271Mock: ERC1271Mock
+
+    beforeEach(async () => {
+      const ERC1271Factory = await ethers.getContractFactory('ERC1271Mock')
+      erc1271Mock = await ERC1271Factory.deploy()
+
+      // Issue
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Give RToken balance at ERC1271Mock
+      await rToken.connect(addr1).transfer(erc1271Mock.address, issueAmount)
+    })
+
+    it('should not permit without ERC1271 support', async () => {
+      // Try a smart contract that does not support ERC1271
+      await expect(
+        rToken.permit(
+          main.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.reverted
+      expect(await rToken.allowance(main.address, addr1.address)).to.equal(0)
+
+      // Try the ERC1271Mock with approvals turned off
+      await expect(
+        rToken.permit(
+          erc1271Mock.address,
+          addr1.address,
+          issueAmount,
+          bn(2).pow(255),
+          0,
+          ethers.utils.formatBytes32String(''),
+          ethers.utils.formatBytes32String('')
+        )
+      ).to.be.revertedWith('ERC1271: Unauthorized')
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(0)
+    })
+
+    it('should permit spend with ERC1271 support', async () => {
+      // ERC1271 with approvals turned on
+      await erc1271Mock.enableApprovals()
+      await rToken.permit(
+        erc1271Mock.address,
+        addr1.address,
+        issueAmount,
+        bn(2).pow(255),
+        0,
+        ethers.utils.formatBytes32String(''),
+        ethers.utils.formatBytes32String('')
+      )
+      expect(await rToken.allowance(erc1271Mock.address, addr1.address)).to.equal(issueAmount)
+      await rToken.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, issueAmount)
+      expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     })
   })
 
@@ -1975,13 +2085,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // ==== Issue the "initial" rtoken supply to owner
 
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
-      await issueMany(rToken, toIssue0, owner)
+      await issueMany(facade, rToken, toIssue0, owner)
       expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
 
       // ==== Issue the toIssue supply to addr1
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await issueMany(rToken, toIssue, addr1)
+      await issueMany(facade, rToken, toIssue, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(toIssue)
 
       // ==== Send enough rTokens to addr2 that it can redeem the amount `toRedeem`
@@ -2073,7 +2183,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Vest
       await advanceTime(100)
       await advanceTime(100)
-      await rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address))
+      await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Transfer
@@ -2105,11 +2215,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Vest
       await advanceTime(100)
-      await snapshotGasCost(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)))
+      await snapshotGasCost(rToken.vest(addr1.address, await endIdForVest(addr1.address)))
 
       // Vest
       await advanceTime(100)
-      await snapshotGasCost(rToken.vest(addr1.address, await rToken.endIdForVest(addr1.address)))
+      await snapshotGasCost(rToken.vest(addr1.address, await endIdForVest(addr1.address)))
     })
 
     it('Redemption', async () => {

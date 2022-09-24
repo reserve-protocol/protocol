@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC1271Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
@@ -104,6 +105,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         uint48 rewardPeriod_,
         uint192 rewardRatio_
     ) public initializer {
+        require(bytes(name_).length > 0, "name empty");
+        require(bytes(symbol_).length > 0, "symbol empty");
         __Component_init(main_);
         __EIP712_init(name_, "1");
         _name = name_;
@@ -354,8 +357,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         accounts.add(to);
     }
 
-    function allowance(address owner_, address spender) public view returns (uint256) {
-        return allowances[owner_][spender];
+    function allowance(address owner, address spender) public view returns (uint256) {
+        return allowances[owner][spender];
     }
 
     function approve(address spender, uint256 amount) public returns (bool) {
@@ -374,45 +377,45 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function increaseAllowance(address spender, uint256 addedValue) external returns (bool) {
-        address owner_ = _msgSender();
-        _approve(owner_, spender, allowances[owner_][spender] + addedValue);
+        address owner = _msgSender();
+        _approve(owner, spender, allowances[owner][spender] + addedValue);
         return true;
     }
 
     function decreaseAllowance(address spender, uint256 subtractedValue) external returns (bool) {
-        address owner_ = _msgSender();
-        uint256 currentAllowance = allowances[owner_][spender];
+        address owner = _msgSender();
+        uint256 currentAllowance = allowances[owner][spender];
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
-            _approve(owner_, spender, currentAllowance - subtractedValue);
+            _approve(owner, spender, currentAllowance - subtractedValue);
         }
 
         return true;
     }
 
     function _approve(
-        address owner_,
+        address owner,
         address spender,
         uint256 amount
     ) private {
-        require(owner_ != address(0), "ERC20: approve from the zero address");
+        require(owner != address(0), "ERC20: approve from the zero address");
         require(spender != address(0), "ERC20: approve to the zero address");
 
-        allowances[owner_][spender] = amount;
+        allowances[owner][spender] = amount;
 
-        emit Approval(owner_, spender, amount);
+        emit Approval(owner, spender, amount);
     }
 
     function _spendAllowance(
-        address owner_,
+        address owner,
         address spender,
         uint256 amount
     ) internal virtual {
-        uint256 currentAllowance = allowance(owner_, spender);
+        uint256 currentAllowance = allowance(owner, spender);
         if (currentAllowance != type(uint256).max) {
             require(currentAllowance >= amount, "ERC20: insufficient allowance");
             unchecked {
-                _approve(owner_, spender, currentAllowance - amount);
+                _approve(owner, spender, currentAllowance - amount);
             }
         }
     }
@@ -474,7 +477,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     // From OZ 4.4 release at commit 6bd6b76
 
     function permit(
-        address owner_,
+        address owner,
         address spender,
         uint256 value,
         uint256 deadline,
@@ -485,19 +488,33 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         require(block.timestamp <= deadline, "ERC20Permit: expired deadline");
 
         bytes32 structHash = keccak256(
-            abi.encode(_PERMIT_TYPEHASH, owner_, spender, value, _useNonce(owner_), deadline)
+            abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
 
-        address signer = ECDSAUpgradeable.recover(hash, v, r, s);
-        require(signer == owner_, "ERC20Permit: invalid signature");
+        if (AddressUpgradeable.isContract(owner)) {
+            require(
+                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
+                    0x1626ba7e,
+                "ERC1271: Unauthorized"
+            );
+        } else {
+            require(
+                SignatureCheckerUpgradeable.isValidSignatureNow(
+                    owner,
+                    hash,
+                    abi.encodePacked(r, s, v)
+                ),
+                "ERC20Permit: invalid signature"
+            );
+        }
 
-        _approve(owner_, spender, value);
+        _approve(owner, spender, value);
     }
 
-    function nonces(address owner_) public view virtual returns (uint256) {
-        return _nonces[owner_].current();
+    function nonces(address owner) public view virtual returns (uint256) {
+        return _nonces[owner].current();
     }
 
     // solhint-disable-next-line func-name-mixedcase
@@ -505,8 +522,8 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
         return _domainSeparatorV4();
     }
 
-    function _useNonce(address owner_) internal virtual returns (uint256 current) {
-        Counters.Counter storage nonce = _nonces[owner_];
+    function _useNonce(address owner) internal virtual returns (uint256 current) {
+        Counters.Counter storage nonce = _nonces[owner];
         current = nonce.current();
         nonce.increment();
     }

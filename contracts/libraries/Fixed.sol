@@ -486,7 +486,7 @@ function mulDiv256(
     uint256 z
 ) pure returns (uint256 result) {
     unchecked {
-        (uint256 lo, uint256 hi) = fullMul(x, y);
+        (uint256 hi, uint256 lo) = fullMul(x, y);
         if (hi >= z) revert UIntOutOfBounds();
         uint256 mm = mulmod(x, y, z);
         if (mm > lo) hi -= 1;
@@ -533,9 +533,9 @@ function mulDiv256(
 ///   Adapted from sources:
 ///   https://medium.com/wicketh/27650fec525d, https://medium.com/coinmonks/4db014e080b1
 /// @dev Intended to be internal to this library
+/// @return hi (hi, lo) satisfies  hi*(2**256) + lo == x * y
 /// @return lo (paired with `hi`)
-/// @return hi (lo, hi) satisfies  hi*(2**256) + lo == x * y
-function fullMul(uint256 x, uint256 y) pure returns (uint256 lo, uint256 hi) {
+function fullMul(uint256 x, uint256 y) pure returns (uint256 hi, uint256 lo) {
     unchecked {
         uint256 mm = mulmod(x, y, uint256(0) - uint256(1));
         lo = x * y;

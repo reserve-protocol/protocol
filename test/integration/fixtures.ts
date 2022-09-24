@@ -25,6 +25,7 @@ import {
   ERC20Mock,
   EURFiatCollateral,
   Facade,
+  FacadeTest,
   FurnaceP1,
   GnosisTrade,
   IAssetRegistry,
@@ -616,6 +617,7 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: Facade
+  facadeTest: FacadeTest
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -653,8 +655,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    maxRedemptionCharge: fp('0.05'), // 5%
-    redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+    scalingRedemptionRate: fp('0.05'), // 5%
+    redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
   // Deploy TradingLib external library
@@ -674,6 +676,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
+
+  // Deploy FacadeTest
+  const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
+  const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
@@ -913,6 +919,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     broker,
     gnosis,
     facade,
+    facadeTest,
     rsrTrader,
     rTokenTrader,
     oracleLib,

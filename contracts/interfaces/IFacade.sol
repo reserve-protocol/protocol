@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/p1/RToken.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 
@@ -15,32 +16,39 @@ interface IFacade {
     /// Returns the next call a keeper of MEV searcher should make in order to progress the system
     /// Returns zero bytes to indicate no action should be made
     /// @custom:static-call
-    function getActCalldata(IRToken rToken) external returns (address to, bytes memory calldata_);
+    function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
 
     // ============
 
-    /// Prompt all traders to run auctions
-    /// @custom:interaction
-    function runAuctionsForAllTraders(IRToken rToken) external;
+    struct Pending {
+        uint256 index;
+        uint256 availableAt;
+        uint256 amount;
+    }
 
-    /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    /// @custom:interaction
-    function claimRewards(IRToken rToken) external;
+    /// @param account The account for the query
+    /// @return All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending[] memory);
+
+    /// @param account The account for the query
+    /// @return All the pending StRSR unstakings for an account
+    /// @custom:view
+    function pendingUnstakings(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending[] memory);
+
+    /// Return the highest index that could be completed by a vestIssuances call.
+    /// @dev Use with `vest`
+    function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256);
 
     /// @return How many RToken `account` can issue given current holdings
     /// @custom:static-call
     function maxIssuable(IRToken rToken, address account) external returns (uint256);
-
-    /// @return tokens Array of all known ERC20 asset addreses
-    /// @return amounts {qTok} Array of balance that the protocol holds of this current asset
-    /// @custom:static-call
-    function currentAssets(IRToken rToken)
-        external
-        returns (address[] memory tokens, uint256[] memory amounts);
-
-    /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
-    /// @custom:static-call
-    function totalAssetValue(IRToken rToken) external returns (uint192 total);
 
     /// @return tokens The erc20 needed for the issuance
     /// @return deposits The deposits necessary to issue `amount` RToken
@@ -53,7 +61,7 @@ interface IFacade {
     /// @return uoaShares The proportion of the basket associated with each ERC20
     /// @return targets The bytes32 representations of the target unit associated with each ERC20
     /// @custom:static-call
-    function basketBreakdown(IRToken rToken)
+    function basketBreakdown(RTokenP1 rToken)
         external
         returns (
             address[] memory erc20s,
@@ -78,30 +86,4 @@ interface IFacade {
 
     /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192);
-}
-
-interface IFacadeP1 is IFacade {
-    struct Pending {
-        uint256 index;
-        uint256 availableAt;
-        uint256 amount;
-    }
-
-    // ===
-
-    /// @param account The account for the query
-    /// @return All the pending RToken issuances for an account
-    /// @custom:view
-    function pendingIssuances(IRToken rToken, address account)
-        external
-        view
-        returns (Pending[] memory);
-
-    /// @param account The account for the query
-    /// @return All the pending StRSR unstakings for an account
-    /// @custom:view
-    function pendingUnstakings(IRToken rToken, address account)
-        external
-        view
-        returns (Pending[] memory);
 }

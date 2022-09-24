@@ -1,11 +1,12 @@
 import { Fixture } from 'ethereum-waffle'
 import { BigNumber, ContractFactory } from 'ethers'
+import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { ZERO_ADDRESS } from '../common/constants'
+import { ZERO_ADDRESS, CollateralStatus } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -20,6 +21,7 @@ import {
   DeployerP0,
   DeployerP1,
   Facade,
+  FacadeTest,
   DistributorP1,
   FurnaceP1,
   EasyAuction,
@@ -360,6 +362,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   furnace: TestIFurnace
   stRSR: TestIStRSR
   facade: Facade
+  facadeTest: FacadeTest
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
@@ -370,7 +373,6 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
-  let facade: Facade
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()
@@ -399,8 +401,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days
     issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-    maxRedemptionCharge: fp('0.05'), // 5% per hour
-    redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+    scalingRedemptionRate: fp('0.05'), // 5% per hour
+    redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
   // Deploy TradingLib external library
@@ -419,7 +421,11 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  facade = <Facade>await FacadeFactory.deploy()
+  const facade = <Facade>await FacadeFactory.deploy()
+
+  // Deploy FacadeTest
+  const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
+  const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
   // Deploy RSR chainlink feed
   const MockV3AggregatorFactory: ContractFactory = await ethers.getContractFactory(
@@ -521,10 +527,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       },
       trade: tradeImpl.address,
     }
-
-    // Deploy FacadeP1
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('FacadeP1')
-    facade = <Facade>await FacadeFactory.deploy()
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
       libraries: { RTokenPricingLib: rTokenPricing.address },
@@ -631,6 +633,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     basketERC20s.push(await basket[i].erc20())
   }
 
+  // Basket should begin disabled at 0 len
+  expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
   // Set non-empty basket
   await basketHandler.connect(owner).setPrimeBasket(basketERC20s, basketsNeededAmts)
   await basketHandler.connect(owner).refreshBasket()
@@ -669,6 +674,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     gnosis,
     easyAuction,
     facade,
+    facadeTest,
     rsrTrader,
     rTokenTrader,
     oracleLib,
