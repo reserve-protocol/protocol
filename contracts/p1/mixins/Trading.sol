@@ -17,7 +17,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
+    uint192 public constant MIN_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
     // All open trades
@@ -27,13 +27,19 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
 
+    uint192 public minTradeVolume; // {UoA}
+
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
+    function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
+        internal
+        onlyInitializing
+    {
         setMaxTradeSlippage(maxTradeSlippage_);
+        setMinTradeVolume(minTradeVolume_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -98,9 +104,16 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
-        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+        require(val > 0 && val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
+    }
+
+    /// @custom:governance
+    function setMinTradeVolume(uint192 val) public governance {
+        require(val <= MIN_TRADE_VOLUME, "invalid minTradeVolume");
+        emit MinTradeVolumeSet(minTradeVolume, val);
+        minTradeVolume = val;
     }
 
     /**

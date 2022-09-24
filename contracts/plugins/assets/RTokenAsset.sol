@@ -9,11 +9,7 @@ import "./RTokenPricingLib.sol";
 contract RTokenAsset is Asset {
     // solhint-disable no-empty-blocks
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    constructor(
-        IRToken rToken_,
-        uint192 fallbackPrice_,
-        uint192 maxTradeVolume_
-    )
+    constructor(IRToken rToken_, uint192 maxTradeVolume_)
         Asset(
             price(),
             AggregatorV3Interface(address(1)),

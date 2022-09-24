@@ -8,9 +8,6 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
 
-// Gnosis: uint96 ~= 7e28
-uint256 constant GNOSIS_MAX_TOKENS = 7e28;
-
 /**
  * @title TradingLibP0
  * @notice An informal extension of the Trading mixin that provides trade preparation views
@@ -23,37 +20,40 @@ uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 library TradingLibP0 {
     using FixLib for uint192;
 
-    /// Prepare an trade to sell `sellAmount` that guarantees a reasonable closing price,
+    /// Prepare a trade to sell `sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param sellAmount {sellTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return trade The prepared trade
+    // Recall: struct TradeRequest is {IAsset sell, IAsset buy, uint sellAmount, uint minBuyAmount}
+    //
+    // If notDust is true, then the returned trade satisfies:
+    //   trade.sell == sell and trade.buy == buy,
+    //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage),
+    //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
+    //   1 < trade.sellAmount <= GNOSIS_MAX_TOKENS,
+    //   trade.buyAmount <= GNOSIS_MAX_TOKENS,
+    //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
+    //
+    // If notDust is false, no such trade exists.
+
     function prepareTradeSell(
         IAsset sell,
         IAsset buy,
         uint192 sellAmount
     ) public view returns (bool notDust, TradeRequest memory trade) {
-        assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
         trade.sell = sell;
         trade.buy = buy;
 
         // Don't sell dust
-        if (sellAmount.lt(sell.minTradeSize())) return (false, trade);
+        assert(isEnoughToSell(sell, sellAmount, minTradeVolume()));
 
         // {sellTok}
-        uint192 s = fixMin(sellAmount, sell.maxTradeSize());
+        uint192 s = fixMin(sellAmount, maxTradeSize(sell));
 
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
 
-        // Do not consider 1 qTok a viable sell amount
-        if (trade.sellAmount <= 1) return (false, trade);
-
-        // Do not overflow auction mechanism - sell side
-        if (trade.sellAmount > GNOSIS_MAX_TOKENS) {
-            trade.sellAmount = GNOSIS_MAX_TOKENS;
-            s = shiftl_toFix(trade.sellAmount, -int8(sell.erc20().decimals()));
-        }
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
             sell.price(),
@@ -62,16 +62,10 @@ library TradingLibP0 {
         );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
 
-        // Do not overflow auction mechanism - buy side
-        if (trade.minBuyAmount > GNOSIS_MAX_TOKENS) {
-            uint192 over = FIX_ONE.muluDivu(trade.minBuyAmount, GNOSIS_MAX_TOKENS);
-            trade.sellAmount = divFix(trade.sellAmount, over).toUint(FLOOR);
-            trade.minBuyAmount = divFix(trade.minBuyAmount, over).toUint(CEIL);
-        }
         return (true, trade);
     }
 
-    // Used to avoided stack-too-deep errors
+    // Used to avoid stack-too-deep errors
     struct BasketRange {
         uint192 top; // {BU}
         uint192 bottom; // {BU}
@@ -93,8 +87,8 @@ library TradingLibP0 {
         (
             IAsset surplus,
             ICollateral deficit,
-            uint192 surplusAmt,
-            uint192 deficitAmt
+            uint192 surplusAmount,
+            uint192 deficitAmount
         ) = nextTradePair(erc20s, range);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
@@ -105,13 +99,19 @@ library TradingLibP0 {
             surplus.isCollateral() &&
             assetRegistry().toColl(surplus.erc20()).status() != CollateralStatus.SOUND
         ) {
-            (doTrade, req) = prepareTradeSell(surplus, deficit, surplusAmt);
+            (doTrade, req) = prepareTradeSell(surplus, deficit, surplusAmount);
             req.minBuyAmount = 0;
         } else {
-            (doTrade, req) = prepareTradeToCoverDeficit(surplus, deficit, surplusAmt, deficitAmt);
+            (doTrade, req) = prepareTradeToCoverDeficit(
+                surplus,
+                deficit,
+                surplusAmount,
+                deficitAmount
+            );
         }
 
-        if (req.sellAmount == 0) return (false, req);
+        assert(isEnoughToSell(surplus, surplusAmount, minTradeVolume()) == doTrade);
+        assert(!doTrade || req.sellAmount > 0);
 
         return (doTrade, req);
     }
@@ -123,10 +123,10 @@ library TradingLibP0 {
         uint192 basketPrice = basket().price();
 
         /**
-         * - `assetsHigh`: The largest amount of {UoA} that we could reasonably expect to manifest
-         *     as basket backing. Assumes frictionless trades and predictable prices.
-         * - `assetsLow`: The smallest amount of value that might ultimately manifest as basket
-         *     backing. Assumes frictionless trades and zero for uncertain prices.
+         * - `assetsHigh`: The most we could get out of our assets. Assumes frictionless trades
+         *     and reliable prices.
+         * - `assetsLow`: The least we could get out of our assets. Assumes frictionless trades
+         *     and zero for uncertain prices.
          */
         (uint192 assetsHigh, uint192 assetsLow) = totalAssetValue(erc20s); // {UoA}
 
@@ -151,8 +151,8 @@ library TradingLibP0 {
 
     /// Total value of all assets under management by BackingManager
     /// This includes all assets that the BackingManager holds directly + staked RSR
-    /// @return assetsHigh {UoA} The high estimate of the eventual backing, in UoA terms
-    /// @return assetsLow {UoA} The low estimate of the eventual backing, in UoA terms
+    /// @return assetsHigh {UoA} The high estimate of the total value of assets under management
+    /// @return assetsLow {UoA} The low estimate of the total value of assets under management
     function totalAssetValue(IERC20[] memory erc20s)
         private
         view
@@ -160,10 +160,11 @@ library TradingLibP0 {
     {
         // The low estimate is lower than the high estimate due to:
         // - Discounting unsound collateral
-        // - Discounting dust amounts for collateral in the basket
+        // - Discounting dust amounts for collateral in the basket + non-dust assets
 
         IERC20 rsrERC20 = rsr();
         IBasketHandler bh = basket();
+        uint192 minTradeVolume_ = minTradeVolume(); // {UoA}
         uint192 potentialDustLoss; // {UoA}
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
@@ -175,7 +176,7 @@ library TradingLibP0 {
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             bool inBasket = bh.quantity(erc20s[i]).gt(FIX_ZERO);
-            if (!inBasket && bal.lt(asset.minTradeSize())) {
+            if (!inBasket && !isEnoughToSell(asset, bal, minTradeVolume_)) {
                 continue;
             }
 
@@ -186,12 +187,13 @@ library TradingLibP0 {
             assetsHigh = assetsHigh.plus(val);
 
             // Accumulate potential losses to dust
-            potentialDustLoss = potentialDustLoss.plus(asset.minTradeSize());
+            potentialDustLoss = potentialDustLoss.plus(minTradeVolume_);
 
-            // Only consider assets or SOUND collateral for the assetsLow estimate
-            bool danger = asset.isCollateral() &&
-                ICollateral(address(asset)).status() != CollateralStatus.SOUND;
-            if (!danger) {
+            // Consider only reliable sources of value for the assetsLow estimate
+            if (
+                !asset.isCollateral() ||
+                ICollateral(address(asset)).status() == CollateralStatus.SOUND
+            ) {
                 assetsLow = assetsLow.plus(val);
             }
         }
@@ -249,6 +251,7 @@ library TradingLibP0 {
         uint192 maxDeficit; // {UoA}
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
+            // TODO re-use rsr val: currently no stack space
             if (erc20s[i] == rsr()) continue;
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
@@ -261,14 +264,12 @@ library TradingLibP0 {
                 // {UoA} = ({tok} - {tok}) * {UoA/tok}
                 uint192 delta = bal.minus(needed).mul(asset.price(), FLOOR);
 
-                // {tok} = {UoA} / {UoA/tok}
-                uint192 amt = delta.div(asset.price());
-                if (delta.gt(maxSurplus) && amt.gt(asset.minTradeSize())) {
+                if (delta.gt(maxSurplus) && delta > minTradeVolume()) {
                     surplus = asset;
                     maxSurplus = delta;
 
                     // {tok} = {UoA} / {UoA/tok}
-                    surplusAmt = amt;
+                    surplusAmt = delta.div(asset.price());
                     if (bal.lt(surplusAmt)) surplusAmt = bal;
                 }
             } else {
@@ -293,45 +294,104 @@ library TradingLibP0 {
             IAsset rsrAsset = assetRegistry().toAsset(rsr());
 
             uint192 rsrAvailable = rsrAsset.bal(address(this)).plus(rsrAsset.bal(address(stRSR())));
-            if (rsrAvailable.gt(rsrAsset.minTradeSize())) {
+            if (rsrAvailable.gt(minTradeSize(rsrAsset, minTradeVolume()))) {
                 surplus = rsrAsset;
                 surplusAmt = rsrAvailable;
             }
         }
     }
 
-    /// Assuming we have `maxSellAmount` sell tokens avaialable, prepare a trade to
+    /// Assuming we have `maxSellAmount` sell tokens available, prepare a trade to
     /// cover as much of our deficit as possible, given expected trade slippage and
     /// the sell asset's maxTradeVolume().
     /// @param maxSellAmount {sellTok}
-    /// @param deficitAmt {buyTok}
+    /// @param deficitAmount {buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading
     /// @return trade The prepared trade
     function prepareTradeToCoverDeficit(
         IAsset sell,
         IAsset buy,
         uint192 maxSellAmount,
-        uint192 deficitAmt
+        uint192 deficitAmount
     ) private view returns (bool notDust, TradeRequest memory trade) {
         // Don't buy dust.
-        deficitAmt = fixMax(deficitAmt, buy.minTradeSize());
+        deficitAmount = fixMax(deficitAmount, minTradeSize(buy, minTradeVolume()));
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        uint192 exactSellAmount = deficitAmt.mulDiv(buy.price(), sell.price(), CEIL);
-        // exactSellAmount: Amount to sell to buy `deficitAmt` if there's no slippage
+        uint192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
+        // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
-        // slippedSellAmount: Amount needed to sell to buy `deficitAmt`, counting slippage
+        // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
         uint192 slippedSellAmount = exactSellAmount.div(FIX_ONE.minus(maxTradeSlippage()), CEIL);
 
         uint192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
+
         return prepareTradeSell(sell, buy, sellAmount);
+    }
+
+    /// @param asset The asset in question
+    /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
+    /// @return If amt is sufficiently large to be worth selling into our trading platforms
+    function isEnoughToSell(
+        IAsset asset,
+        uint192 amt,
+        uint192 minTradeVolume_
+    ) private view returns (bool) {
+        // {qTok} = {tok} / {tok/qTok}
+        uint256 amtQTok = shiftl_toFix(amt, -int8(asset.erc20().decimals()));
+
+        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
+        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
+        // likely to be true of all the trading platforms we integrate with.
+        return amt.gte(minTradeSize(asset, minTradeVolume_)) && amtQTok > 1;
     }
 
     // === Getters ===
 
+    /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price
+    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
+    /// @return {tok} The min trade size for the asset in whole tokens
+    function minTradeSize(IAsset asset, uint192 minTradeVolume_) private view returns (uint192) {
+        uint192 price; // {UoA/tok}
+        try asset.price() returns (uint192 p) {
+            price = p;
+        } catch {
+            price = asset.fallbackPrice();
+        }
+
+        // TODO remove?
+        assert(price.gt(0));
+
+        // {tok} = {UoA} / {UoA/tok}
+        return minTradeVolume_.div(price);
+    }
+
+    /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
+    /// @return {tok} The max trade size for the asset in whole tokens
+    function maxTradeSize(IAsset asset) private view returns (uint192) {
+        uint192 price; // {UoA/tok}
+        try asset.price() returns (uint192 p) {
+            price = p;
+        } catch {
+            price = asset.fallbackPrice();
+        }
+
+        // TODO remove?
+        assert(price.gt(0));
+
+        // {tok} = {UoA} / {UoA/tok}
+        return asset.maxTradeVolume().div(price);
+    }
+
     /// @return {%}
     function maxTradeSlippage() private view returns (uint192) {
         return ITrading(address(this)).maxTradeSlippage();
+    }
+
+    /// @return {UoA}
+    function minTradeVolume() private view returns (uint192) {
+        return ITrading(address(this)).minTradeVolume();
     }
 
     /// @return The AssetRegistry

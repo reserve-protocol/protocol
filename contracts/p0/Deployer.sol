@@ -83,7 +83,7 @@ contract DeployerP0 is IDeployer {
 
         // Deploy RToken/RSR Assets
         IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenTradingRange);
+        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
         assets[1] = rsrAsset;
 
         // Init Main
@@ -94,15 +94,21 @@ contract DeployerP0 is IDeployer {
             main,
             params.tradingDelay,
             params.backingBuffer,
-            params.maxTradeSlippage
+            params.maxTradeSlippage,
+            params.minTradeVolume
         );
 
         // Init Basket Handler
         main.basketHandler().init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage);
-        main.rTokenTrader().init(main, IERC20(address(rToken)), params.maxTradeSlippage);
+        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
+        main.rTokenTrader().init(
+            main,
+            IERC20(address(rToken)),
+            params.maxTradeSlippage,
+            params.minTradeVolume
+        );
 
         // Init Asset Registry
         main.assetRegistry().init(main, assets);

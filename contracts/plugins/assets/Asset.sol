@@ -32,7 +32,7 @@ contract Asset is IAsset {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_
     ) {
-        require(fallbackPrice_ > 0, "deployment price zero");
+        require(fallbackPrice_ > 0, "fallback price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade");

@@ -30,10 +30,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 maxTradeVolume_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }

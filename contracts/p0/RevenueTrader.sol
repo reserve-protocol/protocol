@@ -19,11 +19,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
     ) public initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_);
         tokenToBuy = tokenToBuy_;
     }
 
