@@ -35,7 +35,7 @@ contract Asset is IAsset {
         require(fallbackPrice_ > 0, "fallback price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
-        require(maxTradeVolume_ > 0, "invalid max trade");
+        require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         fallbackPrice = fallbackPrice_;
         chainlinkFeed = chainlinkFeed_;
