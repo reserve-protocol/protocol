@@ -31,8 +31,7 @@ library TradingLibP0 {
     //   trade.sell == sell and trade.buy == buy,
     //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage),
     //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
-    //   1 < trade.sellAmount <= GNOSIS_MAX_TOKENS,
-    //   trade.buyAmount <= GNOSIS_MAX_TOKENS,
+    //   1 < trade.sellAmount
     //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
     //
     // If notDust is false, no such trade exists.
