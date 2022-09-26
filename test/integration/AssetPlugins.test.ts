@@ -353,8 +353,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
-      expect(await compAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await compAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // stkAAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
@@ -364,8 +363,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
-      expect(await aaveAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await aaveAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // RSR Token
       expect(await rsrAsset.isCollateral()).to.equal(false)
@@ -376,8 +374,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rsrAsset.price()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
       expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
-      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
     it('Should setup collateral correctly - Fiatcoins', async () => {
@@ -445,12 +442,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
-        expect(await tkInf.tokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await tkInf.tokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
-        )
+        expect(await tkInf.tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
 
@@ -516,12 +508,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
 
-        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
-        )
+        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
 
@@ -618,12 +605,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
         expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
 
-        expect(await atkInf.aTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await atkInf.aTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
-        )
+        expect(await atkInf.aTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
 
@@ -677,11 +659,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.nonFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.nonFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-        expect(await tkInf.nonFiatTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await tkInf.nonFiatTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
+        expect(await tkInf.nonFiatTokenCollateral.maxTradeVolume()).to.equal(
+          config.rTokenMaxTradeVolume
         )
       }
     })
@@ -752,12 +731,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
 
-        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
-        )
+        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
 
@@ -805,11 +779,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-        expect(await tkInf.selfRefTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await tkInf.selfRefTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
+        expect(await tkInf.selfRefTokenCollateral.maxTradeVolume()).to.equal(
+          config.rTokenMaxTradeVolume
         )
       }
     })
@@ -878,12 +849,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
 
-        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
-        )
+        expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
 
@@ -934,11 +900,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
-        expect(await tkInf.eurFiatTokenCollateral.minTradeSize()).to.equal(
-          config.rTokenTradingRange.minAmt
-        )
-        expect(await tkInf.eurFiatTokenCollateral.maxTradeSize()).to.equal(
-          config.rTokenTradingRange.maxAmt
+        expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
+          config.rTokenMaxTradeVolume
         )
       }
     })
@@ -951,32 +914,34 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
 
       // Setup Assets with no price feed
-      const nonpriceAsset: Asset = <Asset>await (
-        await ethers.getContractFactory('Asset', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        NO_PRICE_DATA_FEED,
-        networkConfig[chainId].tokens.stkAAVE || '',
-        ZERO_ADDRESS,
-        config.rTokenTradingRange,
-        MAX_ORACLE_TIMEOUT
+      const nonpriceAsset: Asset = <Asset>(
+        await (
+          await ethers.getContractFactory('Asset')
+        ).deploy(
+          fp('1'),
+          NO_PRICE_DATA_FEED,
+          networkConfig[chainId].tokens.stkAAVE || '',
+          ZERO_ADDRESS,
+          config.rTokenMaxTradeVolume,
+          MAX_ORACLE_TIMEOUT
+        )
       )
 
       // Assets with invalid price feed will revert
       await expect(nonpriceAsset.price()).to.be.reverted
 
       // Reverts with a feed with zero price
-      const invalidPriceAsset: Asset = <Asset>await (
-        await ethers.getContractFactory('Asset', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        mockChainlinkFeed.address,
-        networkConfig[chainId].tokens.stkAAVE || '',
-        ZERO_ADDRESS,
-        config.rTokenTradingRange,
-        MAX_ORACLE_TIMEOUT
+      const invalidPriceAsset: Asset = <Asset>(
+        await (
+          await ethers.getContractFactory('Asset')
+        ).deploy(
+          fp('1'),
+          mockChainlinkFeed.address,
+          networkConfig[chainId].tokens.stkAAVE || '',
+          ZERO_ADDRESS,
+          config.rTokenMaxTradeVolume,
+          MAX_ORACLE_TIMEOUT
+        )
       )
 
       await setOraclePrice(invalidPriceAsset.address, bn(0))
@@ -1019,10 +984,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         dai.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1042,10 +1008,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         dai.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1088,10 +1055,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         cDai.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1113,10 +1081,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         cDai.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1164,10 +1133,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         stataDai.address,
         aaveToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1187,10 +1157,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         stataDai.address,
         aaveToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -1226,11 +1197,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         NO_PRICE_DATA_FEED,
         wbtc.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
         defaultThreshold,
@@ -1250,11 +1222,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         wbtc.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
         defaultThreshold,
@@ -1295,11 +1268,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
             libraries: { OracleLib: oracleLib.address },
           })
         ).deploy(
+          fp('1'),
           NO_PRICE_DATA_FEED,
           NO_PRICE_DATA_FEED,
           cWBTC.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           defaultThreshold,
@@ -1324,11 +1298,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         cWBTC.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
         defaultThreshold,
@@ -1370,10 +1345,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         weth.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH')
       )
@@ -1393,10 +1369,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         weth.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH')
       )
@@ -1435,10 +1412,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         cETH.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
         await weth.decimals(),
@@ -1462,10 +1440,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         cETH.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
         await weth.decimals(),
@@ -1505,11 +1484,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         NO_PRICE_DATA_FEED,
         NO_PRICE_DATA_FEED,
         eurt.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('EUR'),
         defaultThreshold,
@@ -1529,11 +1509,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         eurt.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('EUR'),
         defaultThreshold,
