@@ -91,10 +91,11 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token0 = await (await ethers.getContractFactory('WETH9')).deploy()
     let chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('1e8'))
     collateral0 = await SelfReferentialFactory.deploy(
+      fp('1'),
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH')
     )
@@ -103,10 +104,11 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token1 = await (await ethers.getContractFactory('ERC20Mock')).deploy('MKR Token', 'MKR')
     chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('2e8'))
     collateral1 = await SelfReferentialFactory.deploy(
+      fp('2'),
       chainlinkFeed.address,
       token1.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('MKR')
     )
@@ -115,10 +117,11 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token2 = await (await ethers.getContractFactory('ERC20Mock')).deploy('COMP Token', 'COMP')
     chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('4e8'))
     collateral2 = await SelfReferentialFactory.deploy(
+      fp('4'),
       chainlinkFeed.address,
       token2.address,
       ZERO_ADDRESS,
-      { minVal: 0, maxVal: 0, minAmt: fp('1'), maxAmt: config.rTokenTradingRange.maxAmt },
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('COMP')
     )

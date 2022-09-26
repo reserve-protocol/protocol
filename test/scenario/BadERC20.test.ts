@@ -101,10 +101,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,

@@ -109,10 +109,11 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       weth.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH')
     )
@@ -127,10 +128,11 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1').div(50),
       chainlinkFeed.address,
       cETH.address,
       compToken.address,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH'),
       await weth.decimals(),

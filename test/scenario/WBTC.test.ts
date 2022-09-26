@@ -107,11 +107,12 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('20000'),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,

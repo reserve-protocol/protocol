@@ -226,7 +226,7 @@ async function collateralFixture(
         chainlinkAddr,
         erc20.address,
         compToken.address,
-        bn(50).mul(config.rTokenMaxTradeVolume),
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
@@ -384,7 +384,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Setup Config
   const config: IConfig = {
     dist: dist,
-    minTradeVolume: fp('1e4'), // $10k
+    minTradeVolume: fp('1e-2'), // $0.01
     rTokenMaxTradeVolume: fp('1e6'), // $1M
     shortFreeze: bn('259200'), // 3 days
     longFreeze: bn('2592000'), // 30 days

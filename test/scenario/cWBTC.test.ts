@@ -116,11 +116,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('20000'),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,
@@ -136,11 +137,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('20000').div(50),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       cWBTC.address,
       compToken.address,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,

@@ -95,28 +95,25 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           libraries: { OracleLib: one.oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         chainlinkFeed.address,
         staticATokenERC20.address,
         one.aaveToken.address,
-        one.config.rTokenTradingRange,
+        one.config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
         DELAY_UNTIL_DEFAULT
       )
-      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral', {
-        libraries: { OracleLib: one.oracleLib.address },
-      })
+      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
-        await one.rToken.main(),
-        one.config.rTokenTradingRange,
+        one.rToken.address,
+        one.config.rTokenMaxTradeVolume,
         ethers.utils.formatBytes32String('RTK')
       )
       const rTokenAsset = await (
-        await ethers.getContractFactory('RTokenAsset', {
-          libraries: { RTokenPricingLib: one.rTokenPricing.address },
-        })
-      ).deploy(two.rToken.address, one.config.rTokenTradingRange)
+        await ethers.getContractFactory('RTokenAsset')
+      ).deploy(two.rToken.address, one.config.rTokenMaxTradeVolume)
 
       // Set up aToken to back RToken0 and issue
       await one.assetRegistry.connect(owner).register(aTokenCollateral.address)

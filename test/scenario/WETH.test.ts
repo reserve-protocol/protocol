@@ -99,10 +99,11 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       weth.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH')
     )

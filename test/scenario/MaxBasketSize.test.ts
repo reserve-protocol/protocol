@@ -129,10 +129,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: FiatCollateral = <FiatCollateral>(
       await CollateralFactory.deploy(
+        fp('1'),
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -171,10 +172,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.deploy(
+        fp('1'),
         chainlinkFeed.address,
         atoken.address,
         aaveToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -209,10 +211,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
+        fp('1').div(50),
         chainlinkFeed.address,
         ctoken.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
