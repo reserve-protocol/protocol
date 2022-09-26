@@ -249,7 +249,7 @@ library TradingLibP0 {
         uint192 maxSurplus; // {UoA}
         uint192 maxDeficit; // {UoA}
 
-        // We're at the stack varlimit in this function; there are at least 2
+        // We're at the stack var limit in this function; there are at least 2
         // locations we'd like to use cached values but can't.
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
