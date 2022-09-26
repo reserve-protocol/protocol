@@ -250,8 +250,10 @@ library TradingLibP0 {
         uint192 maxSurplus; // {UoA}
         uint192 maxDeficit; // {UoA}
 
+        // We're at the stack varlimit in this function; there are at least 2
+        // locations we'd like to use cached values but can't.
+
         for (uint256 i = 0; i < erc20s.length; ++i) {
-            // TODO re-use rsr val: currently no stack space
             if (erc20s[i] == rsr()) continue;
 
             IAsset asset = assetRegistry().toAsset(erc20s[i]);
@@ -261,29 +263,27 @@ library TradingLibP0 {
             // needed(Top): token balance needed at top of the basket range
             uint192 needed = range.top.mul(bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                // {UoA} = ({tok} - {tok}) * {UoA/tok}
-                uint192 delta = bal.minus(needed).mul(asset.price(), FLOOR);
+                uint192 amtExtra = bal.minus(needed); // {tok}
 
-                if (delta.gt(maxSurplus) && delta > minTradeVolume()) {
+                // {UoA} = {tok} * {UoA/tok}
+                uint192 delta = amtExtra.mul(asset.price(), FLOOR);
+                if (delta.gt(maxSurplus) && isEnoughToSell(asset, amtExtra, minTradeVolume())) {
                     surplus = asset;
                     maxSurplus = delta;
-
-                    // {tok} = {UoA} / {UoA/tok}
-                    surplusAmt = delta.div(asset.price());
-                    if (bal.lt(surplusAmt)) surplusAmt = bal;
+                    surplusAmt = amtExtra;
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
                 needed = range.bottom.mul(bh.quantity(erc20s[i]), CEIL); // {tok};
                 if (bal.lt(needed)) {
-                    // {UoA} = ({tok} - {tok}) * {UoA/tok}
-                    uint192 delta = needed.minus(bal).mul(asset.price(), CEIL);
+                    uint192 amtShort = needed.minus(bal); // {tok}
+
+                    // {UoA} = {tok} * {UoA/tok}
+                    uint192 delta = amtShort.mul(asset.price(), CEIL);
                     if (delta.gt(maxDeficit)) {
                         deficit = ICollateral(address(asset));
                         maxDeficit = delta;
-
-                        // {tok} = {UoA} / {UoA/tok}
-                        deficitAmt = maxDeficit.div(deficit.price(), CEIL);
+                        deficitAmt = amtShort;
                     }
                 }
             }
