@@ -50,7 +50,7 @@ contract ChaosOpsScenario {
     bytes32[] public targetNames = [bytes32("A"), bytes32("B"), bytes32("C")];
 
     // Used to create unique asset/col symbols - Starts with 3 to avoid collisions
-    uint256 tokenIdNonce = 3;
+    uint256 internal tokenIdNonce = 3;
 
     // Register and track priceModels that can be used in new assets/collateral
     PriceModel[] internal priceModels;
