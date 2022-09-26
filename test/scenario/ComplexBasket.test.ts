@@ -42,6 +42,7 @@ import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+const MAX_TRADE_VOLUME = fp('1e7') // $10M
 
 const point5Pct = (value: BigNumber): BigNumber => {
   return value.mul(5).div(1000)
@@ -179,11 +180,12 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         await rsrAsset.chainlinkFeed(),
         rsr.address,
         ZERO_ADDRESS,
-        config.rTokenMaxTradeVolume,
+        MAX_TRADE_VOLUME,
         ORACLE_TIMEOUT
       )
     )
     await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
+    rsrAsset = newRSRAsset
 
     /*****  Setup Basket  ***********/
     // 0. FiatCollateral against USD
@@ -205,11 +207,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
     const { collateral: fiatUSD } = await hre.run('deploy-fiat-collateral', {
-      fallbackPrice: fp('1'),
+      fallbackPrice: fp('1').toString(),
       priceFeed: usdFeed.address,
       tokenAddress: usdToken.address, // DAI Token
       rewardToken: ZERO_ADDRESS,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -229,12 +231,12 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const eurRefUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
 
     const { collateral: fiatEUR } = await hre.run('deploy-eurfiat-collateral', {
-      fallbackPrice: fp('1'),
+      fallbackPrice: fp('1').toString(),
       referenceUnitFeed: eurRefUnitFeed.address,
       targetUnitFeed: eurTargetUnitFeed.address,
       tokenAddress: eurToken.address,
       rewardToken: ZERO_ADDRESS,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('EURO'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -251,11 +253,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 3. CTokenFiatCollateral against USD
     cUSDToken = <CTokenMock>erc20s[4] // cDAI Token
     const { collateral: cUSDCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-      fallbackPrice: fp('1'),
+      fallbackPrice: fp('1').div(50).toString(),
       priceFeed: usdFeed.address,
       cToken: cUSDToken.address,
       rewardToken: compToken.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -273,11 +275,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 4. ATokenFiatCollateral against USD
     aUSDToken = <StaticATokenMock>erc20s[7] // aDAI Token
     const { collateral: aUSDCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-      fallbackPrice: fp('1'),
+      fallbackPrice: fp('1').toString(),
       priceFeed: usdFeed.address,
       staticAToken: aUSDToken.address,
       rewardToken: aaveToken.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -296,12 +298,12 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const targetUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('20000e8')) // $20k
     const referenceUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8')) // 1 WBTC/BTC
     const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
-      fallbackPrice: fp('20000'),
+      fallbackPrice: fp('20000').toString(),
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       tokenAddress: wbtc.address,
       rewardToken: ZERO_ADDRESS,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -318,12 +320,12 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 6. CTokenNonFiatCollateral cWBTC against BTC
     cWBTC = <CTokenMock>await CToken.deploy('cWBTC Token', 'cWBTC', wbtc.address)
     const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-      fallbackPrice: fp('20000').div(50),
+      fallbackPrice: fp('20000').div(50).toString(),
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       cToken: cWBTC.address,
       rewardToken: compToken.address,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
@@ -339,15 +341,15 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(await ethers.getContractAt('Collateral', cWBTCCollateral))
 
     // 7. SelfReferentialCollateral WETH against ETH
-    // Give higher tradingAmtMax in order to allow rebalancing to complete quickly
+    // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
     weth = <WETH9>await WETH.deploy()
     const ethFeed = await MockV3AggregatorFactory.deploy(8, bn('1200e8'))
     const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
-      fallbackPrice: fp('1200'),
+      fallbackPrice: fp('1200').toString(),
       priceFeed: ethFeed.address,
       tokenAddress: weth.address,
       rewardToken: ZERO_ADDRESS,
-      maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+      maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
       oracleLib: oracleLib.address,
@@ -360,16 +362,16 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     collateral.push(await ethers.getContractAt('Collateral', wETHCollateral))
 
     // 8. CTokenSelfReferentialCollateral cETH against ETH
-    // Give higher tradingAmtMax in order to allow rebalancing to complete quickly
+    // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
     cETH = <CTokenMock>await CToken.deploy('cETH Token', 'cETH', weth.address)
     const { collateral: cETHCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
       {
-        fallbackPrice: fp('12000').div(50),
+        fallbackPrice: fp('1200').div(50).toString(),
         priceFeed: ethFeed.address,
         cToken: cETH.address,
         rewardToken: compToken.address,
-        maxTradeVolume: config.rTokenMaxTradeVolume.toString(),
+        maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
         decimals: bn(18).toString(),
@@ -1444,8 +1446,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-    // Running auctions will trigger recapitalization - Max trade limit exceeded
-    const sellAmt = toBNDecimals(config.rTokenMaxTradeVolume, 8)
+    // Running auctions will trigger recapitalization - cETH partial sale for weth
+    const sellAmt = toBNDecimals(MAX_TRADE_VOLUME, 8).div(12)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
 
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1552,15 +1554,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Next auction will trigger RSR auction for the rest
     const buyAmtBidRSR: BigNumber = fp('4600')
     const sellAmtRSR: BigNumber = buyAmtBidRSR
+      .mul(await collateral[6].price())
+      .div(await rsrAsset.price()) // 4600 wETH @ 1200 = 5,520,000 USD of value, in RSR ~= 2,760,000 RSR (@2 usd)
       .mul(100)
       .div(99)
       .add(1)
-      .mul(await collateral[6].price())
-      .div(await rsrAsset.price()) // 4600 wETH @ 1200 = 5,520,000 USD of value, in RSR ~= 2,760,000 RSR (@2 usd)
-
-    // We need 3 auctions selling RSR, 1 million RSR @ 2 usd approx 1650 wETH
-    const partialBuyAmtRSR = fp('1650')
-    const lastAuctionBuyAmtRSR = buyAmtBidRSR.sub(partialBuyAmtRSR.mul(2))
 
     // Close auctions - Will sell RSR for partial Buy #1
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1579,7 +1577,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [anyValue, rsr.address, weth.address, config.rTokenMaxTradeVolume, partialBuyAmtRSR],
+        args: [anyValue, rsr.address, weth.address, sellAmtRSR, buyAmtBidRSR],
         emitted: true,
       },
       {
@@ -1607,9 +1605,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check trade
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
-    let [, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(config.rTokenMaxTradeVolume)
-    expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
+    const [, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
+    expect(auctionSellAmtRSR).to.equal(sellAmtRSR)
+    expect(auctionBuyAmtRSR).to.be.closeTo(buyAmtBidRSR, point5Pct(buyAmtBidRSR))
 
     // Advance time till auction ended
     await advanceTime(config.auctionLength.add(100).toString())
@@ -1623,119 +1621,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     })
 
     // Close auctions - Will sell RSR for partial Buy #2
-    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-      {
-        contract: backingManager,
-        name: 'TradeSettled',
-        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
-        emitted: true,
-      },
-      {
-        contract: backingManager,
-        name: 'TradeStarted',
-        args: [anyValue, rsr.address, weth.address, config.rTokenMaxTradeVolume, partialBuyAmtRSR],
-        emitted: true,
-      },
-      {
-        contract: rsrTrader,
-        name: 'TradeStarted',
-        emitted: false,
-      },
-      {
-        contract: rTokenTrader,
-        name: 'TradeStarted',
-        emitted: false,
-      },
-    ])
-
-    // Check status still undercollateralized
-    expect(await basketHandler.fullyCollateralized()).to.equal(false)
-    expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-
-    auctionTimestamp = await getLatestBlockTimestamp()
-
-    // RSR -> wETH (2nd auction)
-    await expectTrade(backingManager, {
-      sell: rsr.address,
-      buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
-      externalId: bn('3'),
-    })
-
-    // Check trade
-    trade = await getTrade(backingManager, rsr.address)
-    auctionId = await trade.auctionId()
-    ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    expect(auctionSellAmtRSR).to.equal(config.rTokenMaxTradeVolume)
-    expect(partialBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
-
-    // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
-
-    // Mock auction - Get all tokens
-    await weth.connect(addr1).approve(gnosis.address, auctionBuyAmtRSR)
-    await gnosis.placeBid(3, {
-      bidder: addr1.address,
-      sellAmount: auctionSellAmtRSR,
-      buyAmount: auctionBuyAmtRSR,
-    })
-
-    // Close auctions - Will sell RSR for final auction
-    await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
-      {
-        contract: backingManager,
-        name: 'TradeSettled',
-        args: [anyValue, rsr.address, weth.address, auctionSellAmtRSR, auctionBuyAmtRSR],
-        emitted: true,
-      },
-      {
-        contract: backingManager,
-        name: 'TradeStarted',
-        //args: [rsr.address, weth.address, sellAmtRSR.sub(config.rTokenMaxTradeVolume.mul(2)), lastAuctionBuyAmtRSR],
-        emitted: true,
-      },
-      {
-        contract: rsrTrader,
-        name: 'TradeStarted',
-        emitted: false,
-      },
-      {
-        contract: rTokenTrader,
-        name: 'TradeStarted',
-        emitted: false,
-      },
-    ])
-
-    auctionTimestamp = await getLatestBlockTimestamp()
-
-    // RSR -> wETH
-    await expectTrade(backingManager, {
-      sell: rsr.address,
-      buy: weth.address,
-      endTime: auctionTimestamp + Number(config.auctionLength),
-      externalId: bn('4'),
-    })
-
-    // Check trade
-    trade = await getTrade(backingManager, rsr.address)
-    auctionId = await trade.auctionId()
-    ;[, , , auctionSellAmtRSR, auctionBuyAmtRSR] = await gnosis.auctions(auctionId)
-    const lastSellAmtRSR = sellAmtRSR.sub(config.rTokenMaxTradeVolume.mul(2))
-    expect(lastSellAmtRSR).to.be.closeTo(auctionSellAmtRSR, point5Pct(auctionSellAmtRSR))
-    expect(lastAuctionBuyAmtRSR).to.be.closeTo(auctionBuyAmtRSR, point5Pct(auctionBuyAmtRSR))
-
-    // Advance time till auction ended
-    await advanceTime(config.auctionLength.add(100).toString())
-
-    // Mock auction - Get all tokens
-    await weth.connect(addr1).approve(gnosis.address, auctionBuyAmtRSR)
-    await gnosis.placeBid(4, {
-      bidder: addr1.address,
-      sellAmount: auctionSellAmtRSR,
-      buyAmount: auctionBuyAmtRSR,
-    })
-
-    // Close auctions - No more auctions should be triggered
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
       {
         contract: backingManager,

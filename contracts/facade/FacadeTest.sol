@@ -64,16 +64,19 @@ contract FacadeTest is IFacadeTest {
         rToken.claimAndSweepRewards();
     }
 
-    /// @return total {UoA} An estimate of the total value of all assets held at BackingManager
+    /// @return total {UoA} An estimate of the total value of all non-RSR assets at BackingManager
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
         main.poke();
         IAssetRegistry reg = main.assetRegistry();
         address backingManager = address(main.backingManager());
+        IERC20 rsr = main.rsr();
 
         IERC20[] memory erc20s = reg.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
+            if (erc20s[i] == rsr) continue;
+
             IAsset asset = reg.toAsset(erc20s[i]);
             // Exclude collateral that has defaulted
             if (
