@@ -49,6 +49,13 @@ contract ChaosOpsScenario {
 
     bytes32[] public targetNames = [bytes32("A"), bytes32("B"), bytes32("C")];
 
+    // Used to create unique asset/col symbols - Starts with 3 to avoid collisions
+    uint256 tokenIdNonce = 3;
+
+    // Register and track priceModels that can be used in new assets/collateral
+    PriceModel[] internal priceModels;
+    uint256 internal priceModelIndex;
+
     // Once constructed, everything is set up for random echidna runs to happen:
     // - main and its components are up
     // - standard tokens, and their Assets and Collateral, exist
@@ -66,7 +73,7 @@ contract ChaosOpsScenario {
             bytes32 targetName = targetNames[i];
             string memory targetNameStr = bytes32ToString(targetName);
 
-            // Coll #1 - CToken type, stable, with reward
+            // Coll #1 - CToken-like, stable, with reward
             ERC20Fuzz token = new ERC20Fuzz(
                 concat(concat("Collateral", targetNameStr), " 0"),
                 concat(concat("C", targetNameStr), "0"),
@@ -106,7 +113,7 @@ contract ChaosOpsScenario {
             );
             collateralTokens.push(IERC20(token));
 
-            // Coll #2 - CToken Type, volatile,may depeg With reward
+            // Coll #2 - CToken-like, volatile, may depeg With reward
             token = new ERC20Fuzz(
                 concat(concat("Collateral", targetNameStr), " 1"),
                 concat(concat("C", targetNameStr), "1"),
@@ -147,7 +154,7 @@ contract ChaosOpsScenario {
             );
             collateralTokens.push(IERC20(token));
 
-            // Coll #3 - CToken Type, volatile, may hard default as well, no reward
+            // Coll #3 - CToken-like, volatile, may hard default, no reward
             token = new ERC20Fuzz(
                 concat(concat("Collateral", targetNameStr), " 2"),
                 concat(concat("C", targetNameStr), "2"),
@@ -320,37 +327,54 @@ contract ChaosOpsScenario {
     function registerAsset(
         uint8 tokenID,
         uint8 targetNameID,
-        uint256 defaultSeed,
-        uint256 delaySeed
+        uint256 defaultThresholdSeed,
+        uint256 delayUntilDefaultSeed,
+        uint256 createNewTokenSeed,
+        uint256 stableOrRandomSeed
     ) public {
-        // TODO: Review - More randomness for all params? Pricemodels, TradingRange, etc?
-        IERC20 erc20 = main.someToken(tokenID);
+        bytes32 targetName = someTargetName(targetNameID);
         IAssetRegistry reg = main.assetRegistry();
-        if (reg.isRegistered(erc20)) return;
+
+        IERC20 erc20;
+        // One out of ten times ignore provided token and create new one
+        if (createNewTokenSeed % 10 == 0) {
+            erc20 = IERC20(address(createAndRegisterNewToken(targetName, "Collateral", "C")));
+        } else {
+            // Use provied token
+            erc20 = main.someToken(tokenID);
+            if (reg.isRegistered(erc20)) return;
+        }
 
         string memory firstChar = getFirstChar(IERC20Metadata(address(erc20)).symbol());
 
         if (strEqual(firstChar, "C") || strEqual(firstChar, "S")) {
-            CollateralMock newColl = new CollateralMock(
-                IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no reward
-                defaultParams().rTokenTradingRange,
-                uint192(between(1, 1e18, defaultSeed)), // def threshold
-                between(1, type(uint256).max, delaySeed), // delay until default
-                IERC20Metadata(address(0)),
-                someTargetName(targetNameID),
-                justOne,
-                stable,
-                justOne,
-                justOne
-            );
+            CollateralMock newColl;
+
+            // One out of 3 create a stable+ asset
+            bool createStable = (stableOrRandomSeed % 3) == 0;
+
+            if (createStable) {
+                newColl = createNewStableColl(
+                    erc20,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    targetName
+                );
+            } else {
+                newColl = createNewRandomColl(
+                    erc20,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    targetName
+                );
+            }
             reg.register(newColl);
         } else {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
                 IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenTradingRange,
-                volatile
+                getNextPriceModel()
             );
             reg.register(newAsset);
         }
@@ -358,11 +382,11 @@ contract ChaosOpsScenario {
 
     function swapRegisteredAsset(
         uint8 tokenID,
-        uint256 defaultSeed,
-        uint256 delaySeed,
-        uint256 switchTypeSeed
+        uint256 defaultThresholdSeed,
+        uint256 delayUntilDefaultSeed,
+        uint256 switchTypeSeed,
+        uint256 stableOrRandomSeed
     ) public {
-        // TODO: Review - More randomness for all params? Pricemodels, TradingRange, etc?
         IERC20 erc20 = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
@@ -370,31 +394,35 @@ contract ChaosOpsScenario {
         IAsset asset = reg.toAsset(erc20);
 
         // Switch type Asset -> Coll and viceversa one out of 100 times
-        bool switchType = (switchTypeSeed %= 100) <= 1;
+        bool switchType = (switchTypeSeed % 100) < 1;
         bool createAsColl = (asset.isCollateral() && !switchType) ||
             (!asset.isCollateral() && switchType);
+        bool createStable = (stableOrRandomSeed % 3) == 0;
 
         if (createAsColl) {
-            CollateralMock newColl = new CollateralMock(
-                IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no reward
-                defaultParams().rTokenTradingRange,
-                uint192(between(1, 1e18, defaultSeed)), // def threshold
-                between(1, type(uint256).max, delaySeed), // delay until default
-                IERC20Metadata(address(0)),
-                CollateralMock(address(asset)).targetName(),
-                justOne,
-                stable,
-                justOne,
-                justOne
-            );
+            CollateralMock newColl;
+            if (createStable) {
+                newColl = createNewStableColl(
+                    erc20,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    CollateralMock(address(asset)).targetName()
+                );
+            } else {
+                newColl = createNewRandomColl(
+                    erc20,
+                    defaultThresholdSeed,
+                    delayUntilDefaultSeed,
+                    CollateralMock(address(asset)).targetName()
+                );
+            }
             reg.swapRegistered(newColl);
         } else {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
                 IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenTradingRange,
-                volatile
+                getNextPriceModel()
             );
             reg.swapRegistered(newAsset);
         }
@@ -407,6 +435,29 @@ contract ChaosOpsScenario {
 
         IAsset asset = reg.toAsset(erc20);
         reg.unregister(asset);
+    }
+
+    function pushPriceModel(
+        uint256 which,
+        uint256 currSeed,
+        uint256 lowSeed,
+        uint256 highSeed
+    ) public {
+        // Set Kind
+        Kind _kind;
+        which %= 4;
+        if (which == 0) _kind = Kind.Constant;
+        else if (which == 1) _kind = Kind.Manual;
+        else if (which == 2) _kind = Kind.Band;
+        else if (which == 3) _kind = Kind.Walk;
+
+        PriceModel memory _priceModel = PriceModel({
+            kind: _kind,
+            curr: uint192(currSeed),
+            low: uint192(between(0, currSeed, lowSeed)),
+            high: uint192(between(currSeed, type(uint192).max, highSeed))
+        });
+        priceModels.push(_priceModel);
     }
 
     // ==== user functions: rtoken ====
@@ -877,11 +928,104 @@ contract ChaosOpsScenario {
         else if (which == 3) main.revokeRole(PAUSER, user);
     }
 
-    // ================ Internal functions ================
+    // ================ Internal functions / Helpers ================
 
     function someTargetName(uint256 seed) public view returns (bytes32) {
         uint256 id = seed % 3;
         return targetNames[id];
+    }
+
+    function createAndRegisterNewToken(
+        bytes32 targetName,
+        string memory namePrefix,
+        string memory symbolPrefix
+    ) internal returns (ERC20Fuzz) {
+        string memory targetNameStr = bytes32ToString(targetName);
+        string memory id = Strings.toString(tokenIdNonce);
+        ERC20Fuzz token = new ERC20Fuzz(
+            concat(concat(concat(namePrefix, targetNameStr), " "), id),
+            concat(concat(symbolPrefix, targetNameStr), id),
+            main
+        );
+        main.addToken(token);
+        tokenIdNonce++;
+        return token;
+    }
+
+    function createAndRegisterNewRewardAsset(bytes32 targetName) internal returns (ERC20Fuzz) {
+        ERC20Fuzz reward = createAndRegisterNewToken(targetName, "Reward", "R");
+        main.assetRegistry().register(
+            new AssetMock(
+                IERC20Metadata(address(reward)),
+                IERC20Metadata(address(0)), // no recursive reward
+                defaultParams().rTokenTradingRange,
+                getNextPriceModel()
+            )
+        );
+        return reward;
+    }
+
+    function createNewStableColl(
+        IERC20 erc20,
+        uint256 defaultThresholdSeed,
+        uint256 delayUntilDefaultSeed,
+        bytes32 targetName
+    ) internal returns (CollateralMock) {
+        ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
+        CollateralMock newColl = new CollateralMock(
+            IERC20Metadata(address(erc20)),
+            IERC20Metadata(address(reward)),
+            defaultParams().rTokenTradingRange,
+            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
+            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
+            IERC20Metadata(address(0)),
+            targetName,
+            growing,
+            justOne,
+            justOne,
+            stable
+        );
+
+        return newColl;
+    }
+
+    function createNewRandomColl(
+        IERC20 erc20,
+        uint256 defaultThresholdSeed,
+        uint256 delayUntilDefaultSeed,
+        bytes32 targetName
+    ) internal returns (CollateralMock) {
+        ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
+        CollateralMock newColl = new CollateralMock(
+            IERC20Metadata(address(erc20)),
+            IERC20Metadata(address(reward)),
+            defaultParams().rTokenTradingRange,
+            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
+            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
+            IERC20Metadata(address(0)),
+            targetName,
+            getNextPriceModel(),
+            getNextPriceModel(),
+            getNextPriceModel(),
+            getNextPriceModel()
+        );
+
+        return newColl;
+    }
+
+    function getNextPriceModel() internal returns (PriceModel memory) {
+        PriceModel memory _priceModel;
+        if (priceModels.length > 0) {
+            if (priceModelIndex >= priceModels.length) {
+                priceModelIndex = 0;
+            }
+            _priceModel = priceModels[priceModelIndex];
+            priceModelIndex++;
+        } else {
+            // Return stable as default
+            _priceModel = stable;
+        }
+        return _priceModel;
     }
 
     // ================ System Properties ================
