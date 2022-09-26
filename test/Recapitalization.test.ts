@@ -8,7 +8,6 @@ import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../common/const
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
-  Asset,
   ATokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
@@ -55,7 +54,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
-  let rsrAsset: Asset
   let aaveToken: ERC20Mock
 
   // Trading
@@ -128,7 +126,6 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       // Deploy fixture
     ;({
       rsr,
-      rsrAsset,
       aaveToken,
       erc20s,
       collateral,

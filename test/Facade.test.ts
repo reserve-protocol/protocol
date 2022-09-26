@@ -10,7 +10,6 @@ import {
   ERC20Mock,
   Facade,
   FacadeTest,
-  OracleLib,
   StaticATokenMock,
   StRSRP1,
   TestIStRSR,
@@ -47,7 +46,6 @@ describe('Facade contract', () => {
   let cTokenAsset: Collateral
 
   let config: IConfig
-  let oracleLib: OracleLib
 
   // Facade
   let facade: Facade
@@ -69,7 +67,7 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ oracleLib, stRSR, rsr, basket, facade, facadeTest, rToken, config } = await loadFixture(
+    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, config } = await loadFixture(
       defaultFixture
     ))
 
