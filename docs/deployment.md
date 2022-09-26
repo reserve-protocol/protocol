@@ -96,7 +96,6 @@ Gas costs from Goerli; excludes collateral deployments:
 - RSRAsset: 893,122
 - RewardableLib: 918,407
 - TradingLib: 2,623,625
-- RTokenPricingLib: 842,435
 - OracleLib: 448,042
 - Facade: 3,715,055
 - FacadeWriteLib: 4,235,169
@@ -213,6 +212,10 @@ Manual verification steps:
 
 - For each address in the output files, make sure it is verified on Etherscan.
 - Make sure the staticATokens are verified too. These are not directly in the output file. To do this you'll need to look at the ATokenCollateral plugins and read out their erc20 addresses, which will be the staticATokens.
+
+TODO: write a script to confirm all of this
+
+- For each asset, confirm `fallbackPrice()` and `price()` are close.
 - Confirm `main.paused()` is true
 - Confirm `timelockController.minDelay()` is > 1e12
 
