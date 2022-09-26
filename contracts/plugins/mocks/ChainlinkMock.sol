@@ -17,7 +17,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
     uint256 public constant override version = 0;
 
     uint8 public override decimals;
-    int256 public override latestAnswer;
+    int256 public latestAnswer;
     uint256 public latestTimestamp;
     uint256 public latestRound;
 
