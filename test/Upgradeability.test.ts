@@ -26,6 +26,7 @@ import {
   IBasketHandler,
   MainP1,
   MainP1V2,
+  PermitLib,
   RevenueTraderP1,
   RevenueTraderP1V2,
   RewardableLibP1,
@@ -131,10 +132,14 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
     rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
 
+    // Deploy PermitLib external library
+    const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+    const permitLib = <PermitLib>await PermitLibFactory.deploy()
+
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
+      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
     })
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
     RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
@@ -149,7 +154,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     TradeFactory = await ethers.getContractFactory('GnosisTrade')
-    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
+    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
+      libraries: { PermitLib: permitLib.address },
+    })
 
     // Import deployed proxies
     await upgrades.forceImport(main.address, MainFactory)

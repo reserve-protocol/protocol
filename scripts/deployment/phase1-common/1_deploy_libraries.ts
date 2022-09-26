@@ -5,11 +5,12 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { TradingLibP1, RewardableLibP1, OracleLib } from '../../../typechain'
+import { TradingLibP1, RewardableLibP1, OracleLib, PermitLib } from '../../../typechain'
 
 let tradingLib: TradingLibP1
 let rewardableLib: RewardableLibP1
 let oracleLib: OracleLib
+let permitLib: PermitLib
 
 async function main() {
   // ==== Read Configuration ====
@@ -42,6 +43,12 @@ async function main() {
   await rewardableLib.deployed()
   deployments.rewardableLib = rewardableLib.address
 
+  // Deploy PermitLib external library
+  const PermitLibFactory = await ethers.getContractFactory('PermitLib')
+  permitLib = <PermitLib>await PermitLibFactory.deploy()
+  await permitLib.deployed()
+  deployments.permitLib = permitLib.address
+
   // Deploy OracleLib external library
   const OracleLibFactory = await ethers.getContractFactory('OracleLib')
   oracleLib = <OracleLib>await OracleLibFactory.deploy()
@@ -53,6 +60,7 @@ async function main() {
   console.log(`Deployed to ${hre.network.name} (${chainId}):
     TradingLib: ${tradingLib.address}
     RewardableLib: ${rewardableLib.address}
+    PermitLib: ${permitLib.address}
     OracleLib: ${oracleLib.address}
     Deployment file: ${deploymentFilename}`)
 }

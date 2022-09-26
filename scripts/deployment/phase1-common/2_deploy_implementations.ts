@@ -195,7 +195,7 @@ async function main() {
 
   // 8. *********** RToken *************/
   const RTokenImplFactory = await ethers.getContractFactory('RTokenP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib },
+    libraries: { RewardableLibP1: deployments.rewardableLib, PermitLib: deployments.permitLib },
   })
   rTokenImpl = <RTokenP1>await RTokenImplFactory.connect(burner).deploy()
   await rTokenImpl.deployed()
@@ -204,7 +204,9 @@ async function main() {
 
   // 9. *********** StRSR *************/
 
-  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes')
+  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes', {
+    libraries: { PermitLib: deployments.permitLib },
+  })
   stRSRImpl = <StRSRP1Votes>await StRSRImplFactory.connect(burner).deploy()
   await stRSRImpl.deployed()
 
