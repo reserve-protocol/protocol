@@ -891,7 +891,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
 
-    it('Should return price 0 and trade min/max after full basket refresh', async () => {
+    it('Should return price 0 and trade min after full basket refresh', async () => {
       // Note: To get RToken price to 0, a full basket refresh needs to occur
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
@@ -909,8 +909,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).issue(issueAmount))
 
       expect(await rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
       // Set basket - Single token
@@ -918,8 +917,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       expect(await rTokenAsset.price()).to.equal(0)
-      expect(await rTokenAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await rTokenAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
     it('Should process issuances in multiple attempts (using minimum issuance)', async function () {
