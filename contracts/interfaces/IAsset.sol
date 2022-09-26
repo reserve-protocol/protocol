@@ -16,8 +16,8 @@ interface IAsset {
     /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
     function price() external view returns (uint192);
 
-    /// @return {UoA/tok} A fallback price set at deployment
-    function fallbackPrice() external view returns (uint192);
+    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function priceWithFailover() external view returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);

@@ -19,7 +19,7 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint192 public immutable override fallbackPrice; // {UoA}
+    uint192 public immutable fallbackPrice; // {UoA}
 
     uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
@@ -51,6 +51,15 @@ contract Asset is IAsset {
     /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
     function price() public view virtual returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
+    }
+
+    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function priceWithFailover() public view virtual returns (uint192) {
+        try this.price() returns (uint192 p) {
+            return (p > 0) ? p : fallbackPrice;
+        } catch {
+            return fallbackPrice;
+        }
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

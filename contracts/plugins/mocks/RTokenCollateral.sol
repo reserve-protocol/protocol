@@ -41,9 +41,9 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         return super.price();
     }
 
-    /// @return p {UoA/tok} The issuance price of the RToken, using asset's fallbackPrice()
-    function fallbackPrice() public view override(RTokenAsset, IAsset) returns (uint192) {
-        return super.price();
+    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function priceWithFailover() public view override(RTokenAsset, IAsset) returns (uint192) {
+        return super.priceWithFailover();
     }
 
     function refresh() external virtual override {

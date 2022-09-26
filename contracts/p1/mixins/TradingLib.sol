@@ -352,14 +352,10 @@ library TradingLibP1 {
     /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
     /// @return {tok} The min trade size for the asset in whole tokens
     function minTradeSize(IAsset asset, uint192 minTradeVolume_) private view returns (uint192) {
-        uint192 price; // {UoA/tok}
-        try asset.price() returns (uint192 p) {
-            price = (p > 0) ? p : asset.fallbackPrice();
-        } catch {
-            price = asset.fallbackPrice();
-        }
-
+        uint192 price = asset.priceWithFailover(); // {UoA/tok}
         require(price > 0, "insufficient asset pricing");
+        // this is a require and not an assert because it's likely to arise from incorrect asset
+        // configuration, and the assets are not "inside" the system
 
         // {tok} = {UoA} / {UoA/tok}
         return minTradeVolume_.div(price);
@@ -368,14 +364,10 @@ library TradingLibP1 {
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
     /// @return {tok} The max trade size for the asset in whole tokens
     function maxTradeSize(IAsset asset) private view returns (uint192) {
-        uint192 price; // {UoA/tok}
-        try asset.price() returns (uint192 p) {
-            price = (p > 0) ? p : asset.fallbackPrice();
-        } catch {
-            price = asset.fallbackPrice();
-        }
-
+        uint192 price = asset.priceWithFailover(); // {UoA/tok}
         require(price > 0, "insufficient asset pricing");
+        // this is a require and not an assert because it's likely to arise from incorrect asset
+        // configuration, and the assets are not "inside" the system
 
         // {tok} = {UoA} / {UoA/tok}
         return asset.maxTradeVolume().div(price);

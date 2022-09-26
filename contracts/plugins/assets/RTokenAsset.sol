@@ -66,36 +66,47 @@ contract RTokenAsset is IAsset {
         }
     }
 
-    /// @return p {UoA/tok} The issuance price of the RToken, using asset's fallbackPrice()
-    function fallbackPrice() external view virtual returns (uint192 p) {
-        IMain main = IRToken(address(erc20)).main();
-        IAssetRegistry assetRegistry = main.assetRegistry();
-        uint256 totalSupply = IRToken(address(erc20)).totalSupply();
-        uint256 basketsNeeded = IRToken(address(erc20)).basketsNeeded();
+    /// @return p {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function priceWithFailover() public view virtual returns (uint192 p) {
+        // solhint-disable no-empty-blocks
+        try this.price() returns (uint192 price_) {
+            p = price_;
+        } catch {}
+        // solhint-enable no-empty-blocks
 
-        uint192 amtBUs; // D18{BU}
-        if (totalSupply > 0) {
-            // Can allow the totalSupply to be zero if we are getting the fallback price
-            amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply);
-        }
+        if (p == 0) {
+            IMain main = IRToken(address(erc20)).main();
+            IAssetRegistry assetRegistry = main.assetRegistry();
+            uint256 totalSupply = IRToken(address(erc20)).totalSupply();
+            uint256 basketsNeeded = IRToken(address(erc20)).basketsNeeded();
 
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            CEIL
-        );
+            uint192 amtBUs; // D18{BU}
+            if (totalSupply > 0) {
+                // Can allow the totalSupply to be zero if we are getting the fallback price
+                amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply);
+            }
 
-        uint256 erc20length = erc20s.length;
+            (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
+                amtBUs,
+                CEIL
+            );
 
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
+            uint256 erc20length = erc20s.length;
 
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
+            // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
+            for (uint256 i = 0; i < erc20length; ++i) {
+                IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
 
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((asset.fallbackPrice() * uint256(q)) / FIX_ONE);
+                // D18{tok} = D18 * {qTok} / {qTok/tok}
+                uint192 q = shiftl_toFix(
+                    quantities[i],
+                    -int8(IERC20Metadata(erc20s[i]).decimals())
+                );
+
+                // downcast is safe: total attoUoA from any single asset is well under 1e47
+                // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
+                p += uint192((asset.priceWithFailover() * uint256(q)) / FIX_ONE);
+            }
         }
     }
 
