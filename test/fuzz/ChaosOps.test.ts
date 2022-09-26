@@ -10,7 +10,7 @@ import { advanceTime } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
-import { addr } from './common'
+import { addr, PriceModelKind } from './common'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
@@ -852,11 +852,12 @@ describe('The Chaos Operations scenario', () => {
       let updatedErc20s = await comp.assetRegistry.erc20s()
       expect(updatedErc20s.length).to.equal(25)
 
-      // Register collateral again for target A
-      await scenario.registerAsset(7, 0, exa, exa)
+      // Register collateral again for target A, avoid creating a new token
+      // Will create an additional reward token
+      await scenario.registerAsset(7, 0, exa, exa, 1, exa)
 
       updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(26)
+      expect(updatedErc20s.length).to.equal(27)
 
       // Swap collateral in main basket - CA2 - for same type
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
@@ -865,11 +866,87 @@ describe('The Chaos Operations scenario', () => {
         await comp.assetRegistry.toColl(token.address)
       )
 
-      await scenario.swapRegisteredAsset(4, exa, exa, 2)
+      await scenario.swapRegisteredAsset(4, exa, exa, 2, 0)
+
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
       expect(currentColl.address).to.not.equal(newColl.address)
       expect(await currentColl.erc20()).to.equal(await newColl.erc20())
+    })
+
+    it('can create stable+ collateral with reward', async () => {
+      // Unregister a collateral from backup config - SA2
+      await scenario.unregisterAsset(7)
+      let updatedErc20s = await comp.assetRegistry.erc20s()
+      expect(updatedErc20s.length).to.equal(25)
+
+      // Register STABLE collateral for target A, avoid creating a new token
+      await scenario.registerAsset(7, 0, exa, exa, 1, 0)
+
+      // Registered the new collateral and the reward asset
+      updatedErc20s = await comp.assetRegistry.erc20s()
+      expect(updatedErc20s.length).to.equal(27)
+
+      // Check collateral values
+      const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA2'))
+      const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
+
+      expect(await newColl.price()).equal(fp(1))
+      expect(await newColl.refPerTok()).equal(fp(1))
+      expect(await newColl.targetPerRef()).equal(fp(1))
+      expect(await newColl.pricePerTarget()).equal(fp(1))
+
+      // Check reward asset
+      const rewardToken = await ConAt('ERC20Fuzz', await newColl.rewardERC20())
+      const rewardAsset = await ConAt(
+        'AssetMock',
+        await comp.assetRegistry.toAsset(rewardToken.address)
+      )
+      expect(await rewardToken.name()).to.equal('RewardA 3')
+      expect(await rewardToken.symbol()).to.equal('RA3')
+      expect(await rewardAsset.price()).to.equal(fp('1'))
+    })
+
+    it('can create random collateral with new token and reward', async () => {
+      let updatedErc20s = await comp.assetRegistry.erc20s()
+      expect(updatedErc20s.length).to.equal(26)
+
+      // Push some price models, by default uses STABLE Price Model
+      // Note: Will use STABLE for the remaining price models
+      await scenario.pushPriceModel(0, fp('5'), 0, 0) // for Reward asset - Constant
+      await scenario.pushPriceModel(3, fp('1'), fp('1'), fp('1.5')) // for ref per tok in collateral- Walk
+      await scenario.pushPriceModel(1, fp('2'), fp('2'), fp('2')) // for target per ref in collateral- Manual
+      await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for uoa per target
+      await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for deviation
+
+      // Register a new  RANDOM collateral from a new token (with reward)
+      await scenario.registerAsset(0, 0, exa, exa, 0, 1)
+
+      // Check 2 new tokens registered
+      updatedErc20s = await comp.assetRegistry.erc20s()
+      expect(updatedErc20s.length).to.equal(28)
+
+      // Check collateral values - RANDOM - Created with symbol CA3 (next index available)
+      const newToken = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA3'))
+      const newRandomColl = await ConAt(
+        'CollateralMock',
+        await comp.assetRegistry.toColl(newToken.address)
+      )
+
+      expect(await newRandomColl.price()).to.equal(fp(2))
+      expect(await newRandomColl.refPerTok()).to.equal(fp(1))
+      expect(await newRandomColl.targetPerRef()).to.equal(fp(2))
+      expect(await newRandomColl.pricePerTarget()).to.equal(fp(1))
+
+      // Check reward asset
+      const rewardToken = await ConAt('ERC20Fuzz', await newRandomColl.rewardERC20())
+      const rewardAsset = await ConAt(
+        'AssetMock',
+        await comp.assetRegistry.toAsset(rewardToken.address)
+      )
+      expect(await rewardToken.name()).to.equal('RewardA 4')
+      expect(await rewardToken.symbol()).to.equal('RA4')
+      expect(await rewardAsset.price()).to.equal(fp('5'))
     })
 
     it('can set prime basket and refresh', async () => {
@@ -1065,6 +1142,38 @@ describe('The Chaos Operations scenario', () => {
       await scenario.connect(alice).unfreeze()
       await scenario.revokeRole(0, 0)
       expect(await main.frozen()).to.equal(false)
+    })
+
+    it('can create Price Models', async () => {
+      await scenario.pushPriceModel(0, fp('1'), fp('0.95'), fp('1.5'))
+      await scenario.pushPriceModel(1, fp('1000'), fp('1'), fp('1'))
+      await scenario.pushPriceModel(2, fp('500000'), fp('500000'), fp('50000'))
+      await scenario.pushPriceModel(3, fp('0.5'), fp('0'), fp('0.8'))
+
+      // Check created price models
+      const p0 = await scenario.priceModels(0)
+      expect(p0.kind).to.equal(PriceModelKind.CONSTANT)
+      expect(p0.curr).to.equal(fp('1'))
+      expect(p0.low).to.equal(fp('0.95'))
+      expect(p0.high).to.equal(p0.curr.add(fp('1.5')))
+
+      const p1 = await scenario.priceModels(1)
+      expect(p1.kind).to.equal(PriceModelKind.MANUAL)
+      expect(p1.curr).to.equal(fp('1000'))
+      expect(p1.low).to.equal(fp('1'))
+      expect(p1.high).to.equal(p1.curr.add(fp('1')))
+
+      const p2 = await scenario.priceModels(2)
+      expect(p2.kind).to.equal(PriceModelKind.BAND)
+      expect(p2.curr).to.equal(fp('500000'))
+      expect(p2.low).to.equal(fp('500000'))
+      expect(p2.high).to.equal(p2.curr.add(fp('50000')))
+
+      const p3 = await scenario.priceModels(3)
+      expect(p3.kind).to.equal(PriceModelKind.WALK)
+      expect(p3.curr).to.equal(fp('0.5'))
+      expect(p3.low).to.equal(0)
+      expect(p3.high).to.equal(p3.curr.add(fp('0.8')))
     })
   })
 

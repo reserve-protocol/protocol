@@ -53,7 +53,7 @@ contract ChaosOpsScenario {
     uint256 internal tokenIdNonce = 3;
 
     // Register and track priceModels that can be used in new assets/collateral
-    PriceModel[] internal priceModels;
+    PriceModel[] public priceModels;
     uint256 internal priceModelIndex;
 
     // Once constructed, everything is set up for random echidna runs to happen:
