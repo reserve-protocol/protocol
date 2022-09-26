@@ -30,8 +30,7 @@ library TradingLibP1 {
     //   trade.sell == sell and trade.buy == buy,
     //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage),
     //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
-    //   1 < trade.sellAmount <= GNOSIS_MAX_TOKENS,
-    //   trade.buyAmount <= GNOSIS_MAX_TOKENS,
+    //   1 < trade.sellAmount
     //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
     //
     // If notDust is false, no such trade exists.
@@ -249,7 +248,7 @@ library TradingLibP1 {
         uint192 maxSurplus; // {UoA}
         uint192 maxDeficit; // {UoA}
 
-        // We're at the stack varlimit in this function; there are at least 2
+        // We're at the stack var limit in this function; there are at least 2
         // locations we'd like to use cached values but can't.
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
