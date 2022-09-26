@@ -3,7 +3,7 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IRTokenConfig, IRTokenSetup, networkConfig } from '../../../common/configuration'
-import { getRTokenConfig } from './rTokenConfig'
+import { getRTokenConfig, RTOKEN_NAME } from './rTokenConfig'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp } from '../../../common/numbers'
 import {
@@ -14,9 +14,6 @@ import {
   IRTokenDeployments,
 } from '../common'
 import { AssetRegistryP1, DeployerP1, FacadeWrite, MainP1 } from '../../../typechain'
-
-// Define the Token to deploy
-const RTOKEN_NAME = 'RTKN'
 
 async function main() {
   // ==== Read Configuration ====
