@@ -72,7 +72,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
-        require(val > 0 && val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
     }

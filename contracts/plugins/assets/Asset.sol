@@ -15,6 +15,8 @@ contract Asset is IAsset {
 
     IERC20 public immutable override rewardERC20;
 
+    uint8 public immutable erc20Decimals;
+
     uint192 public immutable override maxTradeVolume; // {UoA}
 
     uint192 public immutable override fallbackPrice; // {UoA}
@@ -40,6 +42,7 @@ contract Asset is IAsset {
         fallbackPrice = fallbackPrice_;
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
+        erc20Decimals = erc20.decimals();
         rewardERC20 = rewardERC20_;
         maxTradeVolume = maxTradeVolume_;
         oracleTimeout = oracleTimeout_;
@@ -52,7 +55,7 @@ contract Asset is IAsset {
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192) {
-        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20.decimals()));
+        return shiftl_toFix(erc20.balanceOf(account), -int8(erc20Decimals));
     }
 
     /// @return If the asset is an instance of ICollateral or not

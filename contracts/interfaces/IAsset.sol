@@ -25,6 +25,9 @@ interface IAsset {
     /// @return The ERC20 contract of the token with decimals() available
     function erc20() external view returns (IERC20Metadata);
 
+    /// @return The number of decimals in the ERC20; just for gas optimization
+    function erc20Decimals() external view returns (uint8);
+
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external view returns (bool);
 

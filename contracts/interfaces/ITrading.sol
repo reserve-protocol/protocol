@@ -58,7 +58,11 @@ interface ITrading is IRewardable {
 }
 
 interface TestITrading is ITrading {
+    /// @custom:governance
     function setMaxTradeSlippage(uint192 val) external;
+
+    /// @custom:governance
+    function setMinTradeVolume(uint192 val) external;
 
     /// @return The number of ongoing trades open
     function tradesOpen() external view returns (uint48);

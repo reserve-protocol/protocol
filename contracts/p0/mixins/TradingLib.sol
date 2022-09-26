@@ -46,13 +46,13 @@ library TradingLibP0 {
         trade.buy = buy;
 
         // Don't sell dust
-        assert(isEnoughToSell(sell, sellAmount, minTradeVolume()));
+        if (!isEnoughToSell(sell, sellAmount, minTradeVolume())) return (false, trade);
 
         // {sellTok}
         uint192 s = fixMin(sellAmount, maxTradeSize(sell));
 
         // {qSellTok}
-        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
+        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
@@ -60,7 +60,7 @@ library TradingLibP0 {
             buy.price(),
             CEIL
         );
-        trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
+        trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20Decimals()), CEIL);
 
         return (true, trade);
     }
@@ -110,8 +110,8 @@ library TradingLibP0 {
             );
         }
 
-        assert(isEnoughToSell(surplus, surplusAmount, minTradeVolume()) == doTrade);
-        assert(!doTrade || req.sellAmount > 0);
+        // At this point doTrade _must_ be true, otherwise nextTradePair assumptions are broken
+        assert(doTrade);
 
         return (doTrade, req);
     }
@@ -339,7 +339,7 @@ library TradingLibP0 {
         uint192 minTradeVolume_
     ) private view returns (bool) {
         // {qTok} = {tok} / {tok/qTok}
-        uint256 amtQTok = shiftl_toFix(amt, -int8(asset.erc20().decimals()));
+        uint256 amtQTok = amt.shiftl_toUint(int8(asset.erc20Decimals()));
 
         // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
         // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
@@ -355,13 +355,12 @@ library TradingLibP0 {
     function minTradeSize(IAsset asset, uint192 minTradeVolume_) private view returns (uint192) {
         uint192 price; // {UoA/tok}
         try asset.price() returns (uint192 p) {
-            price = p;
+            price = (p > 0) ? p : asset.fallbackPrice();
         } catch {
             price = asset.fallbackPrice();
         }
 
-        // TODO remove?
-        assert(price.gt(0));
+        require(price > 0, "insufficient asset pricing");
 
         // {tok} = {UoA} / {UoA/tok}
         return minTradeVolume_.div(price);
@@ -372,13 +371,12 @@ library TradingLibP0 {
     function maxTradeSize(IAsset asset) private view returns (uint192) {
         uint192 price; // {UoA/tok}
         try asset.price() returns (uint192 p) {
-            price = p;
+            price = (p > 0) ? p : asset.fallbackPrice();
         } catch {
             price = asset.fallbackPrice();
         }
 
-        // TODO remove?
-        assert(price.gt(0));
+        require(price > 0, "insufficient asset pricing");
 
         // {tok} = {UoA} / {UoA/tok}
         return asset.maxTradeVolume().div(price);

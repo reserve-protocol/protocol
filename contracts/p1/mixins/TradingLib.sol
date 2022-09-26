@@ -45,13 +45,13 @@ library TradingLibP1 {
         trade.buy = buy;
 
         // Don't sell dust
-        assert(isEnoughToSell(sell, sellAmount, minTradeVolume()));
+        if (!isEnoughToSell(sell, sellAmount, minTradeVolume())) return (false, trade);
 
         // {sellTok}
         uint192 s = fixMin(sellAmount, maxTradeSize(sell));
 
         // {qSellTok}
-        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20().decimals()), FLOOR);
+        trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(maxTradeSlippage())).mulDiv(
@@ -59,7 +59,7 @@ library TradingLibP1 {
             buy.price(),
             CEIL
         );
-        trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20().decimals()), CEIL);
+        trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20Decimals()), CEIL);
 
         return (true, trade);
     }
@@ -109,8 +109,8 @@ library TradingLibP1 {
             );
         }
 
-        assert(isEnoughToSell(surplus, surplusAmount, minTradeVolume()) == doTrade);
-        assert(!doTrade || req.sellAmount > 0);
+        // At this point doTrade _must_ be true, otherwise nextTradePair assumptions are broken
+        assert(doTrade);
 
         return (doTrade, req);
     }
@@ -343,7 +343,7 @@ library TradingLibP1 {
         return
             amt.gte(minTradeSize(asset, minTradeVolume_)) &&
             // {qTok} = {tok} / {tok/qTok}
-            shiftl_toFix(amt, -int8(asset.erc20().decimals())) > 1;
+            amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }
 
     // === Getters ===
@@ -354,13 +354,12 @@ library TradingLibP1 {
     function minTradeSize(IAsset asset, uint192 minTradeVolume_) private view returns (uint192) {
         uint192 price; // {UoA/tok}
         try asset.price() returns (uint192 p) {
-            price = p;
+            price = (p > 0) ? p : asset.fallbackPrice();
         } catch {
             price = asset.fallbackPrice();
         }
 
-        // TODO remove?
-        assert(price > 0);
+        require(price > 0, "insufficient asset pricing");
 
         // {tok} = {UoA} / {UoA/tok}
         return minTradeVolume_.div(price);
@@ -371,13 +370,12 @@ library TradingLibP1 {
     function maxTradeSize(IAsset asset) private view returns (uint192) {
         uint192 price; // {UoA/tok}
         try asset.price() returns (uint192 p) {
-            price = p;
+            price = (p > 0) ? p : asset.fallbackPrice();
         } catch {
             price = asset.fallbackPrice();
         }
 
-        // TODO remove?
-        assert(price > 0);
+        require(price > 0, "insufficient asset pricing");
 
         // {tok} = {UoA} / {UoA/tok}
         return asset.maxTradeVolume().div(price);

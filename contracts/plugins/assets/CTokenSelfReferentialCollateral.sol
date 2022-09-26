@@ -58,7 +58,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
             chainlinkFeed_,
             erc20_,
             rewardERC20_,
-            maxTradeVolume,
+            maxTradeVolume_,
             oracleTimeout_,
             targetName_
         )
