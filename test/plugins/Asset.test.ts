@@ -179,7 +179,7 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
+    it('Should calculate trade min correctly', async () => {
       // Check initial values
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
@@ -192,7 +192,7 @@ describe('Assets contracts #fast', () => {
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
-    it('Should calculate trade min/max correctly - RToken', async () => {
+    it('Should calculate trade min correctly - RToken', async () => {
       // Check initial values
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
