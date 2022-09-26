@@ -608,10 +608,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const newEURFeed = await ChainlinkFeedFactory.deploy(8, bn('1e8'))
         newEURCollateral = <FiatCollateral>(
           await FiatCollateralFactory.deploy(
+            fp('1'),
             newEURFeed.address,
             token1.address,
             ZERO_ADDRESS,
-            config.rTokenTradingRange,
+            config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('EUR'),
             await collateral1.defaultThreshold(),
@@ -622,10 +623,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         const backupEURFeed = await ChainlinkFeedFactory.deploy(8, bn('1e8'))
         backupEURCollateral = <Collateral>(
           await FiatCollateralFactory.deploy(
+            fp('1'),
             backupEURFeed.address,
             backupToken1.address,
             ZERO_ADDRESS,
-            config.rTokenTradingRange,
+            config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('EUR'),
             await backupCollateral1.defaultThreshold(),
@@ -1014,7 +1016,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
 
         // Trigger recapitalization
         const minBuyAmt: BigNumber = issueAmount
-          .sub(bn(2).mul(config.rTokenTradingRange.minAmt))
+          .sub(bn(2).mul(config.minTradeVolume))
           .sub(issueAmount.div(100))
         const sellAmt: BigNumber = minBuyAmt.mul(100).div(99).add(1)
         // const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
@@ -1089,7 +1091,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount) // Supply remains constant
 
         // Check price in USD of the current RToken - Haircut of 1%+dust taken
-        const dustPriceImpact = fp('1').mul(config.rTokenTradingRange.minAmt).div(issueAmount)
+        const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
         expect(await rTokenAsset.price()).to.equal(fp('0.99').sub(dustPriceImpact.mul(2)))
       })
 
@@ -1365,10 +1367,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
         const newCollateral0: FiatCollateral = <FiatCollateral>(
           await CollateralFactory.deploy(
+            fp('1'),
             chainlinkFeed.address,
             token0.address,
             ZERO_ADDRESS,
-            { minAmt: bn('1'), maxAmt: bn('50e18'), minVal: bn('1'), maxVal: bn('50e18') },
+            bn('25e18'),
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),
             await backupCollateral1.defaultThreshold(),
@@ -1602,7 +1605,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.price()).to.equal(fp('1'))
       })
 
-      it('Should recapitalize correctly in case of default - MinTradeSize too large', async () => {
+      it('Should recapitalize correctly in case of default - MinTradeVolume too large', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -1652,7 +1655,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
         expect(await rTokenAsset.price()).to.equal(fp('0'))
 
-        // Running auctions will trigger recapitalization - only half of the balance is available
+        // Running auctions will trigger recapitalization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -1694,27 +1697,10 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // Deploy new RSR Asset with larger min trade size
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-        const newTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-        newTradingRange.minAmt = stakeAmount.div(2).sub(1)
-        newTradingRange.minVal = stakeAmount.div(2).sub(1)
-        const newRSRAsset: Asset = <Asset>(
-          await AssetFactory.deploy(
-            await rsrAsset.chainlinkFeed(),
-            rsr.address,
-            ZERO_ADDRESS,
-            newTradingRange,
-            await rsrAsset.oracleTimeout()
-          )
-        )
+        // Raise minTradeVolume
+        await backingManager.connect(owner).setMinTradeVolume(stakeAmount.div(2).sub(1))
 
-        // Swap RSR Asset
-        await assetRegistry.connect(owner).swapRegistered(newRSRAsset.address)
-
-        // Ru auctions - NO RSR Auction launched
+        // Run auctions - NO RSR Auction launched
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1729,7 +1715,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        //  Should not have seized RSR
+        // Should not have seized RSR
         expect(await rsr.balanceOf(stRSR.address)).to.equal(stakeAmount)
 
         // Check state
