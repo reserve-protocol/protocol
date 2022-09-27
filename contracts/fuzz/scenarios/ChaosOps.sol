@@ -1047,6 +1047,29 @@ contract ChaosOpsScenario {
         prevRTokenRate = rTokenRate();
     }
 
+    function echidna_assetRegistryInvariants() external view returns (bool) {
+        return AssetRegistryP1Fuzz(address(main.assetRegistry())).invariantsHold();
+    }
+
+    function echidna_basketInvariants() external view returns (bool) {
+        return BasketHandlerP1Fuzz(address(main.basketHandler())).invariantsHold();
+    }
+
+    // Calling basketHandler.refreshBasket() provides some properties
+    function echidna_refreshBasketProperties() external returns (bool) {
+        assert(main.hasRole(OWNER, address(this)));
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        bh.savePrev();
+        bh.refreshBasket();
+
+        // TODO: Check config properly applied (Target names, etc)
+        return true; // bh.validate..()
+    }
+
+    function echidna_distributorInvariants() external view returns (bool) {
+        return DistributorP1Fuzz(address(main.distributor())).invariantsHold();
+    }
+
     function echidna_stRSRInvariants() external view returns (bool) {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
