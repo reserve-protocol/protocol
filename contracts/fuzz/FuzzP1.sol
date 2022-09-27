@@ -74,7 +74,10 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
     function invariantsHold() external view returns (bool) {
         // if basket.erc20s is empty then disabled == true
         bool disabledIfEmptyProp = (basket.erc20s.length == 0 && !basket.disabled) ? false : true;
+        return disabledIfEmptyProp;
+    }
 
+    function isValidBasketAfterRefresh() external view returns (bool) {
         // basket is a valid Basket:
         // basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
         bool validBasketProp = true;
@@ -92,8 +95,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         }
 
         // TODO: Config invariants. Do they hold all the time?
-
-        return disabledIfEmptyProp && validBasketProp;
+        return validBasketProp;
     }
 }
 

@@ -1061,9 +1061,7 @@ contract ChaosOpsScenario {
         BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
         bh.savePrev();
         bh.refreshBasket();
-
-        // TODO: Check config properly applied (Target names, etc)
-        return true; // bh.validate..()
+        return bh.isValidBasketAfterRefresh();
     }
 
     function echidna_distributorInvariants() external view returns (bool) {
