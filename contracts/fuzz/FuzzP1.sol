@@ -144,6 +144,8 @@ contract BrokerP1Fuzz is BrokerP1 {
 }
 
 contract DistributorP1Fuzz is DistributorP1 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
@@ -240,7 +242,17 @@ contract StRSRP1Fuzz is StRSRP1 {
         bool stakesProp = totalStakes == 0 ? stakeRSR == 0 && stakeRate == FIX_ONE : stakeRSR > 0;
         bool draftsProp = totalDrafts == 0 ? draftRSR == 0 && draftRate == FIX_ONE : draftRSR > 0;
 
-        return stakesProp && draftsProp;
+        bool totalStakesCovered = true;
+        if (totalStakes > 0) {
+            if (stakeRSR * stakeRate < totalStakes * 1e18) totalStakesCovered = false;
+        }
+
+        bool totalDraftsCovered = true;
+        if (totalDrafts > 0) {
+            if (draftRSR * draftRate < totalDrafts * 1e18) totalDraftsCovered = false;
+        }
+
+        return stakesProp && draftsProp && totalStakesCovered && totalDraftsCovered;
     }
 
     function _msgSender() internal view virtual override returns (address) {
