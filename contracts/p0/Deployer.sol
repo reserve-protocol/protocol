@@ -16,7 +16,6 @@ import "contracts/p0/RToken.sol";
 import "contracts/p0/StRSR.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDeployer.sol";
-import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/String.sol";
 
@@ -28,25 +27,21 @@ contract DeployerP0 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IFacade public immutable facade;
     IAsset public immutable rsrAsset;
 
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IFacade facade_,
         IAsset rsrAsset_
     ) {
         require(
             address(rsr_) != address(0) &&
                 address(gnosis_) != address(0) &&
-                address(facade_) != address(0) &&
                 address(rsrAsset_) != address(0),
             "invalid address"
         );
         rsr = rsr_;
         gnosis = gnosis_;
-        facade = facade_;
         rsrAsset = rsrAsset_;
     }
 

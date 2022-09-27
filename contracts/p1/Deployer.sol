@@ -11,7 +11,6 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IDistributor.sol";
-import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
@@ -31,7 +30,6 @@ contract DeployerP1 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IFacade public immutable facade;
     IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
@@ -42,14 +40,12 @@ contract DeployerP1 is IDeployer {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IFacade facade_,
         IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
         require(
             address(rsr_) != address(0) &&
                 address(gnosis_) != address(0) &&
-                address(facade_) != address(0) &&
                 address(rsrAsset_) != address(0) &&
                 address(implementations_.main) != address(0) &&
                 address(implementations_.trade) != address(0) &&
@@ -68,7 +64,6 @@ contract DeployerP1 is IDeployer {
 
         rsr = rsr_;
         gnosis = gnosis_;
-        facade = facade_;
         rsrAsset = rsrAsset_;
         implementations = implementations_;
     }
