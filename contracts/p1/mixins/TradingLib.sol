@@ -170,7 +170,7 @@ library TradingLibP1 {
         //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(this)) * c.price()
         //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
         //          need to be given in order to have enough of c to cover `numBUs` BUs)
-        uint192 shortfall = collateralShortfall(erc20s, basketTargetHigh); // {UoA}
+        uint192 shortfall = collateralShortfall(erc20s, basketTargetHigh, basketPrice); // {UoA}
 
         // ==== Further adjust the low backing estimate downwards to account for trading frictions
 
@@ -269,6 +269,7 @@ library TradingLibP1 {
     }
 
     /// @param backing {UoA} An amount of backing in UoA terms
+    /// @param basketPrice {UoA/BU} The price of a BU in UoA terms, at precise prices
     /// @return shortfall {UoA} The missing re-collateralization in UoA terms
     // Specifically, returns:
     //   sum( shortfall(c, basketTargetHigh / basketPrice) for each erc20 c in the basket)
@@ -276,16 +277,13 @@ library TradingLibP1 {
     //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
     //          need to be given in order to have enough of c to cover `numBUs` BUs)
     // precondition: erc20s contains no duplicates; all basket tokens are in erc20s
-    function collateralShortfall(IERC20[] memory erc20s, uint192 backing)
-        private
-        view
-        returns (uint192 shortfall)
-    {
+    function collateralShortfall(
+        IERC20[] memory erc20s,
+        uint192 backing,
+        uint192 basketPrice
+    ) private view returns (uint192 shortfall) {
+        assert(basketPrice > 0);
         IBasketHandler bh = basket();
-
-        uint192 basketPrice = bh.price(); // {UoA/BU}
-        // TODO could be 0?
-        // moreover, this price call could revert
 
         // accumulate shortfall
         for (uint256 i = 0; i < erc20s.length; ++i) {
