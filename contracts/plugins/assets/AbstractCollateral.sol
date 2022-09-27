@@ -8,7 +8,9 @@ import "./OracleLib.sol";
 
 /**
  * @title Collateral
- * @notice Parent class for all collateral
+ * Parent class for all collateral
+ * @dev By default, expects all units to be equal: tok == ref == target == UoA
+ * @dev But no user is likely to want that, and that's why this contract is abstract
  */
 abstract contract Collateral is ICollateral, Asset {
     using OracleLib for AggregatorV3Interface;
@@ -32,11 +34,6 @@ abstract contract Collateral is ICollateral, Asset {
     ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;
-    }
-
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override(Asset, IAsset) returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
     }
 
     // solhint-disable-next-line no-empty-blocks

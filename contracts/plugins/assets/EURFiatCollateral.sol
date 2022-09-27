@@ -8,7 +8,8 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 
 /**
  * @title EURFiatCollateral
- * @notice Collateral plugin for a EURO fiatcoin collateral, such as EURT
+ * @notice Collateral plugin for a EURO fiatcoin collateral, like EURT
+ * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} != {UoA}
  */
 contract EURFiatCollateral is Collateral {
     using FixLib for uint192;

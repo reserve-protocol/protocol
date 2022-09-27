@@ -19,6 +19,11 @@ interface ICToken {
 
 // ==== End External Interfaces ====
 
+/**
+ * @title CTokenNonFiatCollateral
+ * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
+ * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ */
 contract CTokenFiatCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
