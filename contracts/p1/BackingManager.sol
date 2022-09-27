@@ -122,7 +122,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * Argument for why this can't hurt RToken holders
              */
 
-            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();
+            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize(this);
 
             if (doTrade) {
                 // Seize RSR if needed

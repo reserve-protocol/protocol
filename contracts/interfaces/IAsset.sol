@@ -14,11 +14,12 @@ import "./IMain.sol";
  */
 interface IAsset {
     /// Can return 0, can revert
+    /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
     function price() external view returns (uint192);
 
     /// Can return 0
-    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// Should not revert if `enableFailover` is true. Can revert if false.
     /// @param enableFailover Whether to try the fallback price in case precise price reverts
     /// @return isFallback If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price

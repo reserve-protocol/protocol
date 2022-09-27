@@ -6,8 +6,6 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/p1/mixins/TradingLib.sol";
 
-// Little weird using P1 TradingLib here...
-
 contract RTokenAsset is IAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -42,38 +40,41 @@ contract RTokenAsset is IAsset {
     }
 
     /// Can return 0 and revert
-    /// @return p {UoA/tok} An estimate of the current RToken redemption price
-    function price() public view virtual returns (uint192 p) {
-        return _price(false);
+    /// @return {UoA/tok} An estimate of the current RToken redemption price
+    function price() public view virtual returns (uint192) {
+        (bool isFallback, uint192 price_) = _price(false);
+        require(!isFallback, "RTokenAsset: need fallback prices");
+        return price_;
     }
 
     /// Can return 0
-    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// Should not revert if `enableFailover` is true. Can revert if false.
     /// @param enableFailover Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
+    /// @return If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool enableFailover) public view virtual returns (bool isFallback, uint192) {
-        // TODO fix?
-        return (false, _price(enableFailover));
+    function price(bool enableFailover) public view virtual returns (bool, uint192) {
+        return _price(enableFailover);
     }
 
-    /// @return p {UoA/tok} The redemption price of the RToken, with or without failovers
-    function _price(bool enableFailover) private view returns (uint192 p) {
-        // TODO handle failover case
-
+    /// @return isFallback If the price is a failover price
+    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function _price(bool enableFailover) private view returns (bool, uint192) {
         uint192 basketsBottom; // {BU}
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();
         } else {
             TradingLibP1.BasketRange memory range = TradingLibP1.basketRange(
-                assetRegistry.erc20s(),
-                backingManager.minTradeVolume() // TODO what about RevenueTraders?
+                backingManager,
+                assetRegistry.erc20s()
             ); // will exclude UoA value from RToken balances at BackingManager
             basketsBottom = range.bottom;
         }
 
+        // {UoA/tok}
+        (bool isFallback_, uint192 price_) = basketHandler.price(enableFailover);
+
         // {UoA/tok} = {BU} * {UoA/tok}
-        return basketsBottom.mul(basketHandler.price());
+        return (isFallback_, basketsBottom.mul(price_));
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

@@ -1,6 +1,6 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
-import { CTokenSelfReferentialCollateral, CTokenMock, ERC20Mock } from '../../../typechain'
+import { CTokenSelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referential Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
@@ -10,6 +10,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
+  .addParam('delayUntilDefault', 'Seconds until a default is recognized')
   .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
   .addParam('oracleLib', 'Oracle library address')
@@ -34,6 +35,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,
+        params.delayUntilDefault,
         params.decimals,
         params.comptroller
       )

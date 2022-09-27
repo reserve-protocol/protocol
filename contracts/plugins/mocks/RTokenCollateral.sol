@@ -116,7 +116,9 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view virtual returns (uint192) {
+        (, uint192 basketPrice) = basketHandler.price(false);
+
         // price of a BU in the RToken
-        return basketHandler.price();
+        return basketPrice;
     }
 }

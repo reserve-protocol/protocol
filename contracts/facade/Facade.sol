@@ -363,8 +363,10 @@ contract Facade is IFacade {
         uint256 supply = rToken.totalSupply();
         if (supply == 0) return (0, 0);
 
+        (, uint192 basketPrice) = rToken.main().basketHandler().price(false);
+
         // {UoA} = {BU} * {UoA/BU}
-        uint192 uoaNeeded = rToken.basketsNeeded().mul(rToken.main().basketHandler().price());
+        uint192 uoaNeeded = rToken.basketsNeeded().mul(basketPrice);
 
         // Useful abbreviations
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();

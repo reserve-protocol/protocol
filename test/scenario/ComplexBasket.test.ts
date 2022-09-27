@@ -352,6 +352,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       oracleLib: oracleLib.address,
       noOutput: true,
     })
@@ -374,6 +375,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
+        delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
         decimals: bn(18).toString(),
         comptroller: compoundMock.address,
         oracleLib: oracleLib.address,

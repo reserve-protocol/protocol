@@ -49,6 +49,7 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
+            this,
             sell,
             reg.toAsset(tokenToBuy),
             sell.bal(address(this))
