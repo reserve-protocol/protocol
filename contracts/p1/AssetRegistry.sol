@@ -13,10 +13,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Registered ERC20s
-    EnumerableSet.AddressSet private _erc20s;
+    EnumerableSet.AddressSet internal _erc20s;
 
     // Registered Assets
-    mapping(IERC20 => IAsset) private assets;
+    mapping(IERC20 => IAsset) internal assets;
 
     function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
