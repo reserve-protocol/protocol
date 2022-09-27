@@ -9,6 +9,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 /**
  * @title FiatCollateral
  * @notice Such as USDC, DAI, USDT, but also EUR stablecoins
+ * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} == {UoA}
  */
 contract FiatCollateral is Collateral {
     using FixLib for uint192;

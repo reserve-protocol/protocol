@@ -28,6 +28,11 @@ interface AToken {
 
 // ==== End External ====
 
+/**
+ * @title ATokenFiatCollateral
+ * @notice Collateral plugin for an aToken for a UoA-pegged asset, like aUSDC or a aUSDP
+ * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ */
 contract ATokenFiatCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;

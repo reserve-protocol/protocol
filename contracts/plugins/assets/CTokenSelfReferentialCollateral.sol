@@ -16,10 +16,8 @@ interface ICToken {
 
 /**
  * @title CTokenSelfReferentialCollateral
- * @notice Collateral plugin for a cToken of a self-referential asset. For example:
- *   - cETH
- *   - cRSR
- *   - ...
+ * @notice Collateral plugin for a cToken of a self-referential asset, like cETH or cRSR.
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract CTokenSelfReferentialCollateral is Collateral {
     using FixLib for uint192;

@@ -19,9 +19,8 @@ interface ICToken {
 
 /**
  * @title CTokenNonFiatCollateral
- * @notice Collateral plugin for a cToken of a nonfiat collateral that requires default checks
- * For example:
- *   - cWBTC
+ * @notice Collateral plugin for a cToken of nonfiat collateral that requires default checks,
+ * like cWBTC. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract CTokenNonFiatCollateral is Collateral {
     using FixLib for uint192;

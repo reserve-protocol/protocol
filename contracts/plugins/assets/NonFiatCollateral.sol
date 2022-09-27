@@ -9,6 +9,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 /**
  * @title NonFiatCollateral
  * @notice Collateral plugin for a nonfiat collateral that requires default checks, such as WBTC.
+ * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
  */
 contract NonFiatCollateral is Collateral {
     using FixLib for uint192;

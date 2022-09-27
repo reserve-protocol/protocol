@@ -7,13 +7,9 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 
 /**
  * @title SelfReferentialCollateral
- * @notice Self-referential collateral is collateral where {target} == {ref} == {tok}
- * Such as:
- *   - WETH
- *   - COMP
- *   - MKR
- *   - ...
- *
+ * @notice Collateral plugin for collateral that is its own target and reference unit,
+ * like COMP, MKR, etc.
+ * Expected: {tok} == {ref} == {target}, and {target} is probably not {UoA}
  * Self-referential collateral cannot default, though it can become UNPRICED.
  */
 contract SelfReferentialCollateral is Collateral {
