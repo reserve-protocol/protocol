@@ -84,7 +84,7 @@ contract RTokenAsset is IAsset {
             // downcast is safe: total attoUoA from any single asset is well under 1e47
             // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
             p += uint192(
-                (withFailover ? asset.priceWithFailover() : asset.price() * uint256(q)) / FIX_ONE
+                ((withFailover ? asset.priceWithFailover() : asset.price()) * uint256(q)) / FIX_ONE
             );
         }
     }
