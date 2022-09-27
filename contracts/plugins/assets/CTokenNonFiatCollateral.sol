@@ -31,17 +31,7 @@ contract CTokenNonFiatCollateral is Collateral {
 
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
@@ -75,11 +65,11 @@ contract CTokenNonFiatCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(
             address(targetUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
@@ -88,7 +78,6 @@ contract CTokenNonFiatCollateral is Collateral {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
@@ -121,28 +110,21 @@ contract CTokenNonFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            // p {target/ref}
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                // We don't need the return value from this next feed, but it should still function
-                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
-                    priceable = p > 0 && p2 > 0;
+            // p {UoA/tok}
+            try this.price() returns (uint192 p) {
+                // {target/ref}
+                uint192 peg = targetPerRef();
 
-                    // {target/ref}
-                    uint192 peg = targetPerRef();
+                // D18{target/ref}= D18{target/ref} * D18{1} / D18
+                uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
-                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
-
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) {
-                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                    } else whenDefault = NEVER;
-                } catch {
-                    priceable = false;
-                }
+                // If the price is below the default-threshold price, default eventually
+                // uint192(+/-) is the same as Fix.plus/minus
+                if (p < peg - delta || p > peg + delta) {
+                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                } else whenDefault = NEVER;
             } catch {
-                priceable = false;
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             }
         }
         prevReferencePrice = referencePrice;
@@ -153,17 +135,6 @@ contract CTokenNonFiatCollateral is Collateral {
         }
 
         // No interactions beyond the initial refresher
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
-        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

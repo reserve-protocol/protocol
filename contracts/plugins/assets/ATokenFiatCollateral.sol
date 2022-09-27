@@ -32,17 +32,7 @@ contract ATokenFiatCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
@@ -69,14 +59,13 @@ contract ATokenFiatCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
 
         prevReferencePrice = refPerTok();
     }
@@ -97,9 +86,7 @@ contract ATokenFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                priceable = p > 0;
-
+            try this.price() returns (uint192 p) {
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
@@ -113,7 +100,7 @@ contract ATokenFiatCollateral is Collateral {
                     whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
                 } else whenDefault = NEVER;
             } catch {
-                priceable = false;
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             }
         }
         prevReferencePrice = referencePrice;
@@ -121,17 +108,6 @@ contract ATokenFiatCollateral is Collateral {
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
         }
     }
 

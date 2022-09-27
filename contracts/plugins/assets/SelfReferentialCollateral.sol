@@ -30,7 +30,8 @@ contract SelfReferentialCollateral is Collateral {
         IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
-        bytes32 targetName_
+        bytes32 targetName_,
+        uint256 delayUntilDefault_
     )
         Collateral(
             fallbackPrice_,
@@ -39,7 +40,8 @@ contract SelfReferentialCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {}
 

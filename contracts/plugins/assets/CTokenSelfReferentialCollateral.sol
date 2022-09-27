@@ -25,14 +25,6 @@ contract CTokenSelfReferentialCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     int8 public immutable referenceERC20Decimals;
@@ -50,6 +42,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
+        uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
         address comptrollerAddr_
     )
@@ -60,7 +53,8 @@ contract CTokenSelfReferentialCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
@@ -93,10 +87,10 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                priceable = p > 0;
+            try this.price() returns (uint192) {
+                whenDefault = NEVER;
             } catch {
-                priceable = false;
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             }
         }
         prevReferencePrice = referencePrice;
@@ -106,15 +100,6 @@ contract CTokenSelfReferentialCollateral is Collateral {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
         // No interactions beyond the initial refresher
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
-        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

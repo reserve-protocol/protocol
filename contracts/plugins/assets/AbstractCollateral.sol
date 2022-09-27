@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/interfaces/IAsset.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
@@ -13,7 +14,15 @@ import "./OracleLib.sol";
 abstract contract Collateral is ICollateral, Asset {
     using OracleLib for AggregatorV3Interface;
 
-    bool public priceable;
+    // Default Status:
+    // whenDefault == NEVER: no risk of default (initial value)
+    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
+    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
+    // whenDefault <= block.timestamp: default has already happened (permanently)
+    uint256 internal constant NEVER = type(uint256).max;
+    uint256 public whenDefault = NEVER;
+
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
@@ -21,6 +30,7 @@ abstract contract Collateral is ICollateral, Asset {
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param delayUntilDefault_ {s} The number of seconds an oracle can mulfunction
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
@@ -28,10 +38,13 @@ abstract contract Collateral is ICollateral, Asset {
         IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
-        bytes32 targetName_
+        bytes32 targetName_,
+        uint256 delayUntilDefault_
     ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
+        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         targetName = targetName_;
+        delayUntilDefault = delayUntilDefault_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -42,10 +55,10 @@ abstract contract Collateral is ICollateral, Asset {
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
         CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            priceable = p > 0;
+        try this.price() returns (uint192) {
+            whenDefault = NEVER;
         } catch {
-            priceable = false;
+            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
         }
 
         CollateralStatus newStatus = status();
@@ -54,9 +67,15 @@ abstract contract Collateral is ICollateral, Asset {
         }
     }
 
-    /// @return The collateral's status -- either SOUND or UNPRICED
-    function status() public view virtual returns (CollateralStatus) {
-        return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+    /// @return The collateral's status
+    function status() public view virtual override returns (CollateralStatus) {
+        if (whenDefault == NEVER) {
+            return CollateralStatus.SOUND;
+        } else if (whenDefault > block.timestamp) {
+            return CollateralStatus.IFFY;
+        } else {
+            return CollateralStatus.DISABLED;
+        }
     }
 
     /// @return If the asset is an instance of ICollateral or not

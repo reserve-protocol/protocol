@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/RTokenAsset.sol";
@@ -18,7 +19,15 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 contract RTokenCollateral is RTokenAsset, ICollateral {
     using FixLib for uint192;
 
-    IBasketHandler public immutable basketHandler; // of the RToken being used as collateral
+    // Default Status:
+    // whenDefault == NEVER: no risk of default (initial value)
+    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
+    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
+    // whenDefault <= block.timestamp: default has already happened (permanently)
+    uint256 internal constant NEVER = type(uint256).max;
+    uint256 public whenDefault = NEVER;
+
+    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     bool public priceable;
 
@@ -29,11 +38,12 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     constructor(
         IRToken erc20_,
         uint192 maxTradeVolume_,
-        bytes32 targetName_
+        bytes32 targetName_,
+        uint256 delayUntilDefault_
     ) RTokenAsset(erc20_, maxTradeVolume_) {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;
-        basketHandler = erc20_.main().basketHandler();
+        delayUntilDefault = delayUntilDefault_;
     }
 
     /// @return p {UoA/tok} The redemption price of the RToken
@@ -41,9 +51,19 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         return super.price();
     }
 
+    /// Can return 0
+    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// @return isFallback If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function priceWithFailover() public view override(RTokenAsset, IAsset) returns (uint192) {
-        return super.priceWithFailover();
+    function price(bool enableFailover)
+        public
+        view
+        override(RTokenAsset, IAsset)
+        returns (bool isFallback, uint192)
+    {
+        // TODO fix?
+        return super.price(enableFailover);
     }
 
     function refresh() external virtual override {
@@ -51,9 +71,9 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
         // No default checks -- we outsource stability to the collateral RToken
         try this.price() returns (uint192 p) {
-            priceable = p > 0;
+            whenDefault = NEVER;
         } catch {
-            priceable = false;
+            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
         }
 
         CollateralStatus newStatus = status();
@@ -62,9 +82,15 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         }
     }
 
-    /// @return The collateral's status -- either SOUND or UNPRICED
-    function status() public view virtual returns (CollateralStatus) {
-        return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
+    /// @return The collateral's status
+    function status() public view virtual override returns (CollateralStatus) {
+        if (whenDefault == NEVER) {
+            return CollateralStatus.SOUND;
+        } else if (whenDefault > block.timestamp) {
+            return CollateralStatus.IFFY;
+        } else {
+            return CollateralStatus.DISABLED;
+        }
     }
 
     /// @return If the asset is an instance of ICollateral or not
