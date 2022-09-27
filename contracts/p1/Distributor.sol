@@ -19,6 +19,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     // ==== Invariants ====
     // distribution is nonzero. (That is, distribution has at least one nonzero value)
+    //     (and thus this.totals() != {0, 0})
     // distribution[FURNACE].rsrDist == 0
     // distribution[ST_RSR].rTokenDist == 0
     // distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries

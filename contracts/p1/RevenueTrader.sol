@@ -45,6 +45,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     // If erc20 is any other registered asset (checked):
     //   actions:
     //     tryTrade(prepareTradeSell(toAsset(erc20), toAsset(tokenToBuy), bal))
+    //     (i.e, start a trade, selling as much of our bal of erc20 as we can, to buy tokenToBuy)
     function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 

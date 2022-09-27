@@ -12,6 +12,13 @@ import "contracts/p1/StRSR.sol";
  *   It is heavily based on OZ's ERC20VotesUpgradeable
  */
 contract StRSRP1Votes is StRSRP1, IStRSRVotes {
+    // A Checkpoint[] is a value history; it faithfully represents the history of value so long
+    // as that value is only ever set by _writeCheckpoint. For any *previous* block number N, the
+    // recorded value at the end of block N was cp.val, where cp in the value history is the
+    // Checkpoint value with fromBlock maximal such that fromBlock <= N.
+
+    // In particular, if the value changed during block N, there will be exactly one
+    // entry cp with cp.fromBlock = N, and cp.val is the value at the _end_ of that block.
     struct Checkpoint {
         uint48 fromBlock;
         uint224 val;
@@ -20,12 +27,16 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     bytes32 private constant _DELEGATE_TYPEHASH =
         keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
+    // _delegates[account] is the address of the delegate that `accountt` has specified
     mapping(address => address) private _delegates;
 
+    // era history
     Checkpoint[] private _eras; // {era}
 
     // {era} => ...
+    // `_checkpoints[era][account]` is the history of voting power of `account` during era `era`
     mapping(uint256 => mapping(address => Checkpoint[])) private _checkpoints; // {qStRSR}
+    // `_totalSupplyCheckpoints[era]` is the history of totalSupply values during era `era`
     mapping(uint256 => Checkpoint[]) private _totalSupplyCheckpoints; // {qStRSR}
 
     // When RSR is seized, stakeholders are divested not only of their economic position,
@@ -79,12 +90,14 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         return _checkpointsLookup(_eras, blockNumber);
     }
 
+    /// Return the value from history `ckpts` that was current for block number `blockNumber`
     function _checkpointsLookup(Checkpoint[] storage ckpts, uint256 blockNumber)
         private
         view
         returns (uint256)
     {
-        // We run a binary search to look for the earliest checkpoint taken after `blockNumber`.
+        // We run a binary search to set `high` to the index of the earliest checkpoint
+        // taken after blockNumber, or ckpts.length if no checkpoint was taken after blockNumber
         uint256 high = ckpts.length;
         uint256 low = 0;
         while (low < high) {
@@ -95,7 +108,6 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
                 low = mid + 1;
             }
         }
-
         return high == 0 ? 0 : ckpts[high - 1].val;
     }
 
@@ -176,6 +188,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         }
     }
 
+    // Set this block's value in the history `ckpts`
     function _writeCheckpoint(
         Checkpoint[] storage ckpts,
         function(uint256, uint256) view returns (uint256) op,
