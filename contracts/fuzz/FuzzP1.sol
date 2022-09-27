@@ -29,8 +29,23 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 // Every component must override _msgSender() in this one, common way!
 
 contract AssetRegistryP1Fuzz is AssetRegistryP1 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        //     invariant: _erc20s == keys(assets)
+        //    invariant: addr == assets[addr].erc20() where: addr in assets
+        bool erc20sInAssetsProp = true;
+        uint256 n = _erc20s.length();
+        for (uint256 i = 0; i < n; ++i) {
+            IERC20 erc20 = IERC20(_erc20s.at(i));
+            IAsset asset = assets[erc20];
+            if (address(asset.erc20()) != address(erc20)) erc20sInAssetsProp = false;
+        }
+        return erc20sInAssetsProp;
     }
 }
 
@@ -55,6 +70,32 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         }
         return true;
     }
+
+    function invariantsHold() external view returns (bool) {
+        // if basket.erc20s is empty then disabled == true
+        bool disabledIfEmptyProp = true;
+        if (basket.erc20s.length == 0) {
+            if (!basket.disabled) disabledIfEmptyProp = false;
+        }
+
+        // basket is a valid Basket:
+        // basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
+        bool validBasketProp = true;
+        if (!basket.disabled) {
+            uint256 n = basket.erc20s.length;
+            for (uint256 i = 0; i < n; i++) {
+                IERC20 erc20 = basket.erc20s[i];
+                ICollateral coll = main.assetRegistry().toColl(erc20);
+                if (coll.status() == CollateralStatus.DISABLED || quantity(erc20) == FIX_ZERO) {
+                    validBasketProp = false;
+                }
+            }
+        }
+
+        // TODO: Config invariants. Do they hold all the time?
+
+        return disabledIfEmptyProp && validBasketProp;
+    }
 }
 
 contract BackingManagerP1Fuzz is BackingManagerP1 {
@@ -72,7 +113,6 @@ contract BrokerP1Fuzz is BrokerP1 {
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
-
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
             address(trade),
@@ -106,6 +146,31 @@ contract BrokerP1Fuzz is BrokerP1 {
 contract DistributorP1Fuzz is DistributorP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        // ==== Invariants ====
+        // distribution is nonzero
+        bool distNotEmptyProp = true;
+        RevenueTotals memory revTotals = totals();
+        if (revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0) distNotEmptyProp = false;
+
+        // No invalid distributions to FURNACE and STRSR
+        bool noInvalidDistProp = true;
+        if (distribution[FURNACE].rsrDist > 0 || distribution[ST_RSR].rTokenDist > 0)
+            noInvalidDistProp = false;
+
+        // Valid share values for destinations
+        bool validShareAmtsProp = true;
+        uint256 n = destinations.length();
+        for (uint256 i = 0; i < n; ++i) {
+            RevenueShare storage share = distribution[destinations.at(i)];
+            if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
+        }
+
+        // TODO: distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries
+        // if distribution[dest] != (0,0) then dest in destinations // TODO: make this iff
+        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp;
     }
 }
 
