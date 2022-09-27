@@ -445,10 +445,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Accept and burn RToken
         _burn(redeemer, amount);
 
-        bool nonzero = false;
+        bool allZero = true;
         for (uint256 i = 0; i < erc20length; ++i) {
             if (amounts[i] == 0) continue;
-            if (!nonzero) nonzero = true;
+            if (allZero) allZero = false;
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
@@ -458,7 +458,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (!nonzero) revert("Empty redemption");
+        if (allZero) revert("Empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate

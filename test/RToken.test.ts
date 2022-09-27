@@ -1722,20 +1722,28 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       })
 
       it('Should revert if empty redemption #fast', async function () {
-        // Eliminate all token balances
+        // Eliminate most token balances
         const bal = issueAmount.div(4)
         await token0.connect(owner).burn(backingManager.address, bal)
         await token1.connect(owner).burn(backingManager.address, toBNDecimals(bal, 6))
         await token2.connect(owner).burn(backingManager.address, bal)
-        await token3.connect(owner).burn(backingManager.address, toBNDecimals(bal, 8).mul(50))
 
-        // Try to redeem
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.be.revertedWith(
+        // Should not revert with empty redemption yet
+        await rToken.connect(addr1).redeem(issueAmount.div(2))
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
+
+        // Burn the rest
+        await token3
+          .connect(owner)
+          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+
+        // Now it should revert
+        await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
           'Empty redemption'
         )
 
         // Check values
-        expect(await rToken.totalSupply()).to.equal(issueAmount)
+        expect(await rToken.totalSupply()).to.equal(issueAmount.div(2))
       })
 
       it('Should revert if basket is DISABLED #fast', async function () {
@@ -2057,6 +2065,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
       const coll: FiatCollateral = <FiatCollateral>(
         await CollateralFactory.deploy(
+          fp('1'),
           oracle.address,
           erc20.address,
           fp('1e36'),

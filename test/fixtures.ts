@@ -442,7 +442,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     libraries: { TradingLibP0: tradingLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
-    await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrAsset.address)
+    await DeployerFactory.deploy(rsr.address, gnosisAddr, rsrAsset.address)
   )
 
   if (IMPLEMENTATION == Implementation.P1) {
@@ -518,13 +518,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
-      await DeployerFactory.deploy(
-        rsr.address,
-        gnosisAddr,
-        facade.address,
-        rsrAsset.address,
-        implementations
-      )
+      await DeployerFactory.deploy(rsr.address, gnosisAddr, rsrAsset.address, implementations)
     )
   }
 
