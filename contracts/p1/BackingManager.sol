@@ -27,6 +27,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     uint48 public tradingDelay; // {s} how long to wait until resuming trading after switching
     uint192 public backingBuffer; // {%} how much extra backing collateral to keep
 
+    // ==== Invariants ====
+    // tradingDelay <= MAX_TRADING_DELAY and backingBuffer <= MAX_BACKING_BUFFER
+    //
+    // ... and the *much* more complicated temporal properties for _manageTokens()
+
     function init(
         IMain main_,
         uint48 tradingDelay_,
@@ -39,7 +44,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         setBackingBuffer(backingBuffer_);
     }
 
-    // Give RToken max allowance over a registered token
+    /// Give RToken max allowance over the registered token `erc20`
     /// @custom:interaction CEI
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
@@ -53,8 +58,10 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         );
     }
 
-    /// Mointain the overall backing policy; handout assets otherwise
+    /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction
+    // checks: the addresses in `erc20s` are unique
+    // effect: _manageTokens(erc20s)
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.allUnique(erc20s), "duplicate tokens");
@@ -65,6 +72,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @dev Tokens must be in sorted order!
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction
+    // checks: the addresses in `erc20s` are unique (and sorted)
+    // effect: _manageTokens(erc20s)
     function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
         require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
@@ -73,6 +82,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Maintain the overall backing policy; handout assets otherwise
     /// @custom:interaction RCEI
+    // only called internally, from manageTokens*, so erc20s has no duplicates unique
+    // (but not necessarily all registered or valid!)
     function _manageTokens(IERC20[] calldata erc20s) private {
         // == Refresh ==
         main.assetRegistry().refresh();
@@ -132,15 +143,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     function handoutExcessAssets(IERC20[] calldata erc20s) private {
         /**
          * Assumptions:
-         *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements
+         *   - Fully capitalized. All collateral, and therefore assets, meet balance requirements.
          *   - All backing capital is held at BackingManager's address. No capital is out on-trade
          *   - Neither RToken nor RSR are in the basket
          *   - Each address in erc20s is unique
          *
          * Steps:
          *   1. Forward all held RSR to the RSR trader to prevent using it for RToken appreciation
-         *   2. Using whatever balances of collateral is there, mint as much RToken as possible.
-         *      Update `basketNeeded`.
+         *      (action: send rsr().balanceOf(this) to rsrTrader)
+         *   2. Using whatever balances of collateral are there, fast-issue all RToken possible.
+         *      (in detail: mint RToken and set basketsNeeded so that the BU/rtok exchange rate is
+         *       roughly constant, and strictly does not decrease,
          *   3. Handout all surplus asset balances (including collateral and RToken) to the
          *      RSR and RToken traders according to the distribution totals.
          */
@@ -151,7 +164,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
         if (main.rsr().balanceOf(address(this)) > 0) {
-            // We consider this an interaction "within our system" even though RSR is already live
+            // For CEI, this is an interaction "within our system" even though RSR is already live
             IERC20Upgradeable(address(main.rsr())).safeTransfer(
                 address(main.rsrTrader()),
                 main.rsr().balanceOf(address(this))
@@ -159,6 +172,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // Mint revenue RToken and update `basketsNeeded`
+        // property across this block (DESIRED TODO):
+        //   where rate(R) == R.basketsNeeded / R.totalSupply,
+        //   rate(rToken') >== rate(rToken)
+        //   (>== is "no less than, and practically equal to")
+        // ... and rToken'.basketsNeeded <== basketHandler.basketsHeldBy(this)
         uint192 needed; // {BU}
         {
             IRToken rToken = main.rToken();
@@ -172,16 +190,18 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
                     decimals
                 );
+
                 rToken.mint(address(this), rTok);
                 rToken.setBasketsNeeded(held);
                 needed = held;
             }
         }
-        // Post-conditions:
-        // - Still fully capitalized
-        // - BU exchange rate {BU/rTok} did not decrease
 
-        // Keep a small surplus of individual collateral
+        // At this point, even though basketsNeeded may have changed:
+        // - We're fully capitalized
+        // - The BU exchange rate {BU/rTok} did not decrease
+
+        // Keep a small buffer of individual collateral; "excess" assets are beyond the buffer.
         needed = needed.mul(FIX_ONE.plus(backingBuffer));
 
         // Handout excess assets above what is needed, including any recently minted RToken
@@ -194,10 +214,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
             uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             if (asset.bal(address(this)).gt(req)) {
-                // delta: {qTok}
+                // delta: {qTok}, the excess quantity of this asset that we hold
                 uint256 delta = asset.bal(address(this)).minus(req).shiftl_toUint(
                     int8(IERC20Metadata(address(erc20s[i])).decimals())
                 );
+                // no div-by-0: Distributor guarantees (totals.rTokenTotal + totals.rsrTotal) > 0
+                // initial division is intentional here! We'd rather save the dust than be unfair
                 toRSR[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rsrTotal;
                 toRToken[i] = (delta / (totals.rTokenTotal + totals.rsrTotal)) * totals.rTokenTotal;
             }
@@ -215,21 +237,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
     function compromiseBasketsNeeded() private {
-        // TODO this might be the one assert we actually keep
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
     }
 
-    /// Require that all tokens in this array are unique
-    function requireUnique(IERC20[] calldata erc20s) internal pure {
-        for (uint256 i = 1; i < erc20s.length; i++) {
-            for (uint256 j = 0; j < i; j++) {
-                require(erc20s[i] != erc20s[j], "duplicate tokens");
-            }
-        }
-    }
-
-    // === Setters ===
+    // === Governance Setters ===
 
     /// @custom:governance
     function setTradingDelay(uint48 val) public governance {

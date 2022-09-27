@@ -70,7 +70,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     // checks:
-    //   (not external, so isn't the site for auth or pause checks)
+    //   (not external, so we don't need auth or pause checks)
     //   trades[req.sell] == 0
     // actions:
     //   req.sell.increaseAllowance(broker, req.sellAmount)
