@@ -73,10 +73,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
 
     function invariantsHold() external view returns (bool) {
         // if basket.erc20s is empty then disabled == true
-        bool disabledIfEmptyProp = true;
-        if (basket.erc20s.length == 0) {
-            if (!basket.disabled) disabledIfEmptyProp = false;
-        }
+        bool disabledIfEmptyProp = (basket.erc20s.length == 0 && !basket.disabled) ? false : true;
 
         // basket is a valid Basket:
         // basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
@@ -86,7 +83,9 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
             for (uint256 i = 0; i < n; i++) {
                 IERC20 erc20 = basket.erc20s[i];
                 ICollateral coll = main.assetRegistry().toColl(erc20);
-                if (coll.status() == CollateralStatus.DISABLED || quantity(erc20) == FIX_ZERO) {
+                if (
+                    coll.status() == CollateralStatus.DISABLED /*|| quantity(erc20) == FIX_ZERO*/
+                ) {
                     validBasketProp = false;
                 }
             }
