@@ -25,7 +25,7 @@ Given all that, **never merge `fuzz` into `master`**.
 
 ### Running Echidna
 
-    yarn compile && echdina-test . --contract ${CONTRACT} \
+    yarn compile && echidna-test . --contract ${CONTRACT} \
       --config tools/echidna.config.yml
 
 Echidna runs are typically pretty slow. Frequently, your system has to generate _lots_ and _lots_ of iterations for any particular property under test, but it _can_ make surprising progress after a long runtime. This means that you'll probably either do things just a few tests at a time, reasoning interactively and getting things right, or you'll launch a long fuzzing campaign on a remote system, and then await the results.
