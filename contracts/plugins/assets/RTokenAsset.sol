@@ -81,11 +81,12 @@ contract RTokenAsset is IAsset {
             // D18{tok} = D18 * {qTok} / {qTok/tok}
             uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
 
+            // {UoA/tok}
+            uint192 assetPrice = withFailover ? asset.priceWithFailover() : asset.price();
+
             // downcast is safe: total attoUoA from any single asset is well under 1e47
             // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192(
-                ((withFailover ? asset.priceWithFailover() : asset.price()) * uint256(q)) / FIX_ONE
-            );
+            p += uint192((assetPrice * uint256(q)) / FIX_ONE);
         }
     }
 
