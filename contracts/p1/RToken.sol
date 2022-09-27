@@ -242,27 +242,32 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         //   lastItem'(issuer) = lastItem(issuer) + iss
         //   for each token index i, erc20s[i].transferFrom(issuer, this, iss.deposits[i])
 
-        // Push issuance onto queue
+        // Append issuance to queue (whether that needs a new allocation with push() or not)
         IssueItem storage curr = (queue.right < queue.items.length)
             ? queue.items[queue.right]
             : queue.items.push();
         curr.when = vestingEnd;
-        curr.amtRToken = amtRToken;
-        curr.amtBaskets = amtBaskets;
-        curr.deposits = deposits;
 
         // Accumulate
         if (queue.right > 0) {
             IssueItem storage prev = queue.items[queue.right - 1];
             curr.amtRToken = prev.amtRToken + amtRToken;
+
             // D18{BU} = D18{BU} + D18{BU}; uint192(+) is the same as Fix.plus
             curr.amtBaskets = prev.amtBaskets + amtBaskets;
+
+            curr.deposits = new uint256[](deposits.length);
             for (uint256 i = 0; i < deposits.length; ++i) {
                 curr.deposits[i] = prev.deposits[i] + deposits[i];
             }
+        } else {
+            // queue.right == 0
+            curr.amtRToken = amtRToken;
+            curr.amtBaskets = amtBaskets;
+            curr.deposits = deposits;
         }
 
-        // Configure queue
+        // overwrite intentionally: we may have stale values in `tokens` and `basketNonce`
         queue.basketNonce = basketNonce;
         queue.tokens = erc20s;
         queue.right++;
