@@ -4,9 +4,18 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
+import "contracts/p1/mixins/TradingLib.sol";
+
+// Little weird using P1 TradingLib here...
 
 contract RTokenAsset is IAsset {
+    using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
+
+    // Component addresses are not mutable in protocol, so it's safe to cache these
+    IBasketHandler public immutable basketHandler;
+    IAssetRegistry public immutable assetRegistry;
+    IBackingManager public immutable backingManager;
 
     IERC20Metadata public immutable erc20;
 
@@ -20,74 +29,51 @@ contract RTokenAsset is IAsset {
     constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
+
+        IMain main = erc20_.main();
+        basketHandler = main.basketHandler();
+        assetRegistry = main.assetRegistry();
+        backingManager = main.backingManager();
+
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
         rewardERC20 = IERC20(address(0));
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// @return p {UoA/tok} The redemption price of the RToken
+    /// Can return 0 and revert
+    /// @return p {UoA/tok} An estimate of the current RToken redemption price
     function price() public view virtual returns (uint192 p) {
         return _price(false);
     }
 
-    /// @return p {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function priceWithFailover() public view virtual returns (uint192 p) {
-        // solhint-disable no-empty-blocks
-        try this.price() returns (uint192 price_) {
-            p = price_;
-        } catch {}
-        // solhint-enable no-empty-blocks
-
-        if (p == 0) {
-            p = _price(true);
-        }
+    /// Can return 0
+    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// @return isFallback If the price is a failover price
+    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+    function price(bool enableFailover) public view virtual returns (bool isFallback, uint192) {
+        // TODO fix?
+        return (false, _price(enableFailover));
     }
 
     /// @return p {UoA/tok} The redemption price of the RToken, with or without failovers
-    function _price(bool withFailover) private view returns (uint192 p) {
-        IMain main = IRToken(address(erc20)).main();
-        IAssetRegistry assetRegistry = main.assetRegistry();
-        address backingMgr = address(main.backingManager());
-        uint256 totalSupply = IRToken(address(erc20)).totalSupply();
-        uint256 basketsNeeded = IRToken(address(erc20)).basketsNeeded();
+    function _price(bool enableFailover) private view returns (uint192 p) {
+        // TODO handle failover case
 
-        require(totalSupply > 0, "no supply");
-
-        // downcast is safe: basketsNeeded is <= 1e39
-        // D18{BU} = D18{BU} * D18{rTok} / D18{rTok}
-        uint192 amtBUs = uint192((basketsNeeded * FIX_ONE_256) / totalSupply);
-
-        (address[] memory erc20s, uint256[] memory quantities) = main.basketHandler().quote(
-            amtBUs,
-            FLOOR
-        );
-
-        uint256 erc20length = erc20s.length;
-
-        // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
-        for (uint256 i = 0; i < erc20length; ++i) {
-            IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
-
-            // TODO consider how to treat case of RToken that has just swapped basket _fully_
-            // if we respect the prorated logic, then the price is zero
-
-            // {qTok} =  {qRTok} * {qTok} / {qRTok}
-            uint256 prorated = (FIX_ONE_256 * IERC20(erc20s[i]).balanceOf(backingMgr)) /
-                (totalSupply);
-
-            if (prorated < quantities[i]) quantities[i] = prorated;
-
-            // D18{tok} = D18 * {qTok} / {qTok/tok}
-            uint192 q = shiftl_toFix(quantities[i], -int8(IERC20Metadata(erc20s[i]).decimals()));
-
-            // {UoA/tok}
-            uint192 assetPrice = withFailover ? asset.priceWithFailover() : asset.price();
-
-            // downcast is safe: total attoUoA from any single asset is well under 1e47
-            // D18{UoA} = D18{UoA} + (D18{UoA/tok} * D18{tok} / D18
-            p += uint192((assetPrice * uint256(q)) / FIX_ONE);
+        uint192 basketsBottom; // {BU}
+        if (basketHandler.fullyCollateralized()) {
+            basketsBottom = IRToken(address(erc20)).basketsNeeded();
+        } else {
+            TradingLibP1.BasketRange memory range = TradingLibP1.basketRange(
+                assetRegistry.erc20s(),
+                backingManager.minTradeVolume() // TODO what about RevenueTraders?
+            ); // will exclude UoA value from RToken balances at BackingManager
+            basketsBottom = range.bottom;
         }
+
+        // {UoA/tok} = {BU} * {UoA/tok}
+        return basketsBottom.mul(basketHandler.price());
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

@@ -58,7 +58,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
             if (sell.isCollateral()) {
                 CollateralStatus status = ICollateral(address(sell)).status();
 
-                assert(status != CollateralStatus.UNPRICED); // this indicates a TradingLib error
                 if (status == CollateralStatus.IFFY) return;
                 if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
             }

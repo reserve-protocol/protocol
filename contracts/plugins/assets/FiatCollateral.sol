@@ -15,17 +15,7 @@ contract FiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -49,13 +39,12 @@ contract FiatCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
     }
 
     /// Refresh exchange rates and update default status.
@@ -66,9 +55,7 @@ contract FiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            priceable = p > 0;
-
+        try this.price() returns (uint192 p) {
             // {UoA/ref} = {UoA/target} * {target/ref}
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
 
@@ -81,23 +68,12 @@ contract FiatCollateral is Collateral {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             } else whenDefault = NEVER;
         } catch {
-            priceable = false;
+            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
         }
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
         }
     }
 }

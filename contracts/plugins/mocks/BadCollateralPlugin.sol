@@ -56,8 +56,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
             whenDefault = block.timestamp;
         } else if (checkSoftDefault) {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                priceable = p > 0;
-
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
@@ -71,7 +69,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                     whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
                 } else whenDefault = NEVER;
             } catch {
-                priceable = false;
+                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             }
         }
         prevReferencePrice = referencePrice;

@@ -13,11 +13,16 @@ import "./IMain.sol";
  * is eligible to be an asset.
  */
 interface IAsset {
-    /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price(), without considering fallback prices
     function price() external view returns (uint192);
 
+    /// Can return 0
+    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// @return isFallback If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function priceWithFailover() external view returns (uint192);
+    function price(bool enableFailover) external view returns (bool isFallback, uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
@@ -52,13 +57,11 @@ interface TestIAsset is IAsset {
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
-/// - being DISABLED is worse than being UNPRICED, IFFY, or SOUND
-/// - being UNPRICED is worse than being IFFY or SOUND
+/// - being DISABLED is worse than being IFFY, or SOUND
 /// - being IFFY is worse than being SOUND.
 enum CollateralStatus {
     SOUND,
-    IFFY, // When a peg is not holding
-    UNPRICED, // When a problem is detected with the chainlink feed
+    IFFY, // When a peg is not holding or a chainlink feed is stale
     DISABLED // When the collateral has completely defaulted
 }
 

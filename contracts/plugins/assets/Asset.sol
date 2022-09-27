@@ -48,17 +48,23 @@ contract Asset is IAsset {
         oracleTimeout = oracleTimeout_;
     }
 
-    /// @return {UoA/tok} The current oracle price of 1 whole token in the UoA, can revert
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
     function price() public view virtual returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
     }
 
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function priceWithFailover() public view virtual returns (uint192) {
+    /// Can return 0
+    /// Cannot revert if `enableFailover` is true. Can revert if false.
+    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// @return isFallback If the price is a enableFailover price
+    /// @return {UoA/tok} The current price, or if it's reverting, a fallback price
+    function price(bool enableFailover) public view virtual returns (bool isFallback, uint192) {
         try this.price() returns (uint192 p) {
-            return (p > 0) ? p : fallbackPrice;
+            return (false, p);
         } catch {
-            return fallbackPrice;
+            require(enableFailover, "price reverted without failover enabled");
+            return (true, fallbackPrice);
         }
     }
 

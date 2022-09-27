@@ -17,17 +17,7 @@ contract EURFiatCollateral is Collateral {
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     /// @param uoaPerRefFeed_ {UoA/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
@@ -54,14 +44,13 @@ contract EURFiatCollateral is Collateral {
             rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
 
@@ -79,12 +68,15 @@ contract EURFiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
+        bool ok;
+
+        // solhint-disable no-empty-blocks
+
         // p1 {UoA/ref}
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
             // We don't need the return value from this next feed, but it should still function
             // p2 {UoA/target}
             try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
-                priceable = p1 > 0 && p2 > 0;
                 if (p2 > 0) {
                     // {target/ref}
                     uint192 peg = targetPerRef();
@@ -96,31 +88,18 @@ contract EURFiatCollateral is Collateral {
                     uint192 p = p1.div(p2);
 
                     // If the price is below the default-threshold price, default eventually
-                    if (p < peg - delta || p > peg + delta) {
-                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                    } else whenDefault = NEVER;
+                    if (p >= peg - delta && p <= peg + delta) ok = true;
                 }
-            } catch {
-                priceable = false;
-            }
-        } catch {
-            priceable = false;
-        }
+            } catch {}
+        } catch {}
+
+        // solhint-enable no-empty-blocks
+
+        if (!ok) whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
         }
     }
 
