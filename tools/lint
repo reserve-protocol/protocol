@@ -1,14 +1,15 @@
-#!/bin/bash -eu
+#!/bin/bash -euo pipefail
 
 # cd to project root
 while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
 # strictly solhint system code
-find contracts -name '*.sol' | \
-  xargs yarn exec solhint
+git ls-files | egrep 'contracts/.*\.sol' | \
+    xargs yarn exec solhint || exit $?
+
 
 # more-gently solhint test code
-find contracts/fuzz -name '*.sol' | \
-  xargs yarn exec solhint \
-        --config contracts/fuzz/.solhint.json \
-        --ignore-path contracts/fuzz/.solhintignore
+git ls-files | egrep 'contracts/fuzz.*\.sol' | \
+    xargs yarn exec solhint \
+          --config contracts/fuzz/.solhint.json \
+          --ignore-path contracts/fuzz/.solhintignore || exit $?

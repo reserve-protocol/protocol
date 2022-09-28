@@ -9,6 +9,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -38,6 +39,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     }
 
     // Give RToken max allowance over a registered token
+    /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
     /// @custom:interaction
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
@@ -50,8 +52,21 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function manageTokens(IERC20[] calldata erc20s) external notPausedOrFrozen {
         // Token list must not contain duplicates
-        requireUnique(erc20s);
+        require(ArrayLib.allUnique(erc20s), "duplicate tokens");
+        _manageTokens(erc20s);
+    }
 
+    /// Mointain the overall backing policy; handout assets otherwise
+    /// @dev Tokens must be in sorted order!
+    /// @dev Performs a uniqueness check on the erc20s list in O(n)
+    /// @custom:interaction
+    function manageTokensSortedOrder(IERC20[] calldata erc20s) external notPausedOrFrozen {
+        // Token list must not contain duplicates
+        require(ArrayLib.sortedAndAllUnique(erc20s), "duplicate/unsorted tokens");
+        _manageTokens(erc20s);
+    }
+
+    function _manageTokens(IERC20[] calldata erc20s) private {
         // Call keepers before
         main.poke();
 
@@ -76,16 +91,10 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              * collateral default, the size of the BU price band should decrease with each trade
              * until it is 0, at which point capitalization is restored.
              *
-             * TODO
-             * Argument for why this converges
-             *
              * ======
              *
              * If we run out of capital and are still undercapitalized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
-             *
-             * TODO
-             * Argument for why this is ok and won't accidentally hurt RToken holders
              */
 
             (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareTradeRecapitalize();

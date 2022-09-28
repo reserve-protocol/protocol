@@ -21,9 +21,6 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     mapping(IERC20 => ITrade) public trades;
     uint48 public tradesOpen;
 
-    // The latest end time for any trade in `trades`.
-    uint48 private latestEndtime;
-
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
 
@@ -48,13 +45,12 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     /// Try to initiate a trade with a trading partner provided by the broker
     function tryTrade(TradeRequest memory req) internal {
         IBroker broker = main.broker();
-        require(address(trades[req.sell.erc20()]) == address(0), "trade already open");
+        assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
 
         req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
         ITrade trade = broker.openTrade(req);
 
-        if (trade.endTime() > latestEndtime) latestEndtime = trade.endTime();
         trades[req.sell.erc20()] = trade;
         tradesOpen++;
         emit TradeStarted(

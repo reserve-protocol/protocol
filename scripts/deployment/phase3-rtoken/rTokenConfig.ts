@@ -30,8 +30,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        maxRedemptionCharge: fp('0.05'), // 5% per hour
-        redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+        scalingRedemptionRate: fp('0.05'), // 5% per hour
+        redemptionRateFloor: fp('1e6'), // 1M RToken
       },
       votingDelay: bn(7200), // in blocks, 1 day
       votingPeriod: bn(14400), // in blocks, 2 days
@@ -67,8 +67,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        maxRedemptionCharge: fp('0.05'), // 5% per hour
-        redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+        scalingRedemptionRate: fp('0.05'), // 5% per hour
+        redemptionRateFloor: fp('1e6'), // 1M RToken
       },
       votingDelay: bn(7200), // in blocks, 1 day
       votingPeriod: bn(14400), // in blocks, 2 days
@@ -103,8 +103,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
         shortFreeze: bn('259200'), // 3 days
         longFreeze: bn('2592000'), // 30 days
         issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-        maxRedemptionCharge: fp('0.05'), // 5% per hour
-        redemptionVirtualSupply: fp('2e7'), // 20M RToken (at $1)
+        scalingRedemptionRate: fp('0.05'), // 5% per hour
+        redemptionRateFloor: fp('1e6'), // 1M RToken
       },
       votingDelay: bn(5), // 5 blocks
       votingPeriod: bn(100), // 100 blocks

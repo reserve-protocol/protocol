@@ -12,6 +12,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   IAssetRegistry,
   IBasketHandler,
@@ -57,6 +58,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
   let facade: Facade
+  let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -247,6 +249,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       backingManager,
       basketHandler,
       facade,
+      facadeTest,
     } = await loadFixture(defaultFixture))
 
     // Mint initial balances
@@ -274,7 +277,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -364,9 +367,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
 
       if (process.env.REPORT_GAS) {
-        await snapshotGasCost(facade.runAuctionsForAllTraders(rToken.address))
+        await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
       }
@@ -402,7 +405,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.equal(fp('1'))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -481,9 +484,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
 
       if (process.env.REPORT_GAS) {
-        await snapshotGasCost(facade.runAuctionsForAllTraders(rToken.address))
+        await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
-        await expect(facade.runAuctionsForAllTraders(rToken.address))
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
       }

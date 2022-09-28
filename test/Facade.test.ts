@@ -2,13 +2,15 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { BN_SCALE_FACTOR } from '../common/constants'
+import { ZERO_ADDRESS } from '../common/constants'
 import { bn, fp } from '../common/numbers'
+import { IConfig } from '../common/configuration'
 import {
   CTokenMock,
   ERC20Mock,
   Facade,
-  FacadeP1,
+  FacadeTest,
+  OracleLib,
   StaticATokenMock,
   StRSRP1,
   TestIStRSR,
@@ -16,8 +18,12 @@ import {
   USDCMock,
 } from '../typechain'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import snapshotGasCost from './utils/snapshotGasCost'
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const describeGas =
+  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
 describe('Facade contract', () => {
   let owner: SignerWithAddress
@@ -32,8 +38,6 @@ describe('Facade contract', () => {
   let aToken: StaticATokenMock
   let cToken: CTokenMock
   let rsr: ERC20Mock
-  let compToken: ERC20Mock
-  let aaveToken: ERC20Mock
   let basket: Collateral[]
 
   // Assets
@@ -42,8 +46,12 @@ describe('Facade contract', () => {
   let aTokenAsset: Collateral
   let cTokenAsset: Collateral
 
+  let config: IConfig
+  let oracleLib: OracleLib
+
   // Facade
   let facade: Facade
+  let facadeTest: FacadeTest
 
   // Main
   let rToken: TestIRToken
@@ -61,7 +69,7 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, compToken, aaveToken, basket, facade, rToken } = await loadFixture(
+    ;({ oracleLib, stRSR, rsr, basket, facade, facadeTest, rToken, config } = await loadFixture(
       defaultFixture
     ))
 
@@ -78,12 +86,9 @@ describe('Facade contract', () => {
 
   describe('Views', () => {
     let issueAmount: BigNumber
-    let initialQuotes: BigNumber[]
 
     beforeEach(async () => {
       await rToken.connect(owner).setIssuanceRate(fp('1'))
-
-      initialQuotes = [bn('0.25e18'), bn('0.25e6'), bn('0.25e18'), bn('1.25e9')]
 
       // Mint Tokens
       initialBal = bn('10000000000e18')
@@ -125,38 +130,6 @@ describe('Facade contract', () => {
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
 
-    it('Should return currentAssets correctly', async () => {
-      const initialQuantities: BigNumber[] = initialQuotes.map((q) => {
-        return q.mul(issueAmount).div(BN_SCALE_FACTOR)
-      })
-
-      const [tokens, quantities] = await facade.callStatic.currentAssets(rToken.address)
-
-      // Get Backing ERC20s addresses
-      const backingERC20Addrs: string[] = await Promise.all(
-        basket.map(async (c): Promise<string> => {
-          return await c.erc20()
-        })
-      )
-
-      // Check token addresses
-      expect(tokens[0]).to.equal(rToken.address)
-      expect(quantities[0]).to.equal(bn(0))
-
-      expect(tokens[1]).to.equal(rsr.address)
-      expect(quantities[1]).to.equal(bn(0))
-
-      expect(tokens[2]).to.equal(aaveToken.address)
-      expect(quantities[2]).to.equal(bn(0))
-
-      expect(tokens[3]).to.equal(compToken.address)
-      expect(quantities[3]).to.equal(bn(0))
-
-      // Backing tokens
-      expect(tokens.slice(4, 8)).to.eql(backingERC20Addrs)
-      expect(quantities.slice(4, 8)).to.eql(initialQuantities)
-    })
-
     it('Should return backingOverview correctly', async () => {
       let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
@@ -196,8 +169,27 @@ describe('Facade contract', () => {
       expect(insurance).to.equal(0)
     })
 
-    it('Should return totalAssetValue correctly', async () => {
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
+    it('Should return basketBreakdown correctly', async () => {
+      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      expect(erc20s.length).to.equal(4)
+      expect(breakdown.length).to.equal(4)
+      expect(targets.length).to.equal(4)
+      expect(erc20s[0]).to.equal(token.address)
+      expect(erc20s[1]).to.equal(usdc.address)
+      expect(erc20s[2]).to.equal(aToken.address)
+      expect(erc20s[3]).to.equal(cToken.address)
+      expect(breakdown[0]).to.equal(fp('0.25'))
+      expect(breakdown[1]).to.equal(fp('0.25'))
+      expect(breakdown[2]).to.equal(fp('0.25'))
+      expect(breakdown[3]).to.equal(fp('0.25'))
+      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return totalAssetValue correctly - FacadeTest', async () => {
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
     })
 
     it('Should return RToken price correctly', async () => {
@@ -206,11 +198,9 @@ describe('Facade contract', () => {
 
     // P1 only
     if (IMPLEMENTATION == Implementation.P1) {
-      let facadeP1: FacadeP1
       let stRSRP1: StRSRP1
 
       beforeEach(async () => {
-        facadeP1 = await ethers.getContractAt('FacadeP1', facade.address)
         stRSRP1 = await ethers.getContractAt('StRSRP1', stRSR.address)
       })
 
@@ -220,7 +210,7 @@ describe('Facade contract', () => {
         // Issue rTokens
         await rToken.connect(addr1).issue(largeIssueAmount)
         await rToken.connect(addr1).issue(largeIssueAmount.add(1))
-        const pendings = await facadeP1.pendingIssuances(rToken.address, addr1.address)
+        const pendings = await facade.pendingIssuances(rToken.address, addr1.address)
 
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
@@ -240,7 +230,7 @@ describe('Facade contract', () => {
         await stRSRP1.connect(addr1).unstake(unstakeAmount)
         await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
 
-        const pendings = await facadeP1.pendingUnstakings(rToken.address, addr1.address)
+        const pendings = await facade.pendingUnstakings(rToken.address, addr1.address)
         expect(pendings.length).to.eql(2)
         expect(pendings[0][0]).to.eql(bn(0)) // index
         expect(pendings[0][2]).to.eql(unstakeAmount) // amount
@@ -249,5 +239,43 @@ describe('Facade contract', () => {
         expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
       })
     }
+  })
+
+  describeGas('Gas Reporting', () => {
+    const numAssets = 200
+
+    beforeEach(async () => {
+      const m = await ethers.getContractAt('MainP1', await rToken.main())
+      const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await m.assetRegistry())
+      const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
+      const AssetFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const feed = await tokenAsset.chainlinkFeed()
+
+      // Get to numAssets registered assets
+      for (let i = 0; i < numAssets; i++) {
+        const erc20 = await ERC20Factory.deploy('Name', 'Symbol')
+        const asset = await AssetFactory.deploy(
+          feed,
+          erc20.address,
+          ZERO_ADDRESS,
+          config.rTokenTradingRange,
+          bn(2).pow(47)
+        )
+        await assetRegistry.connect(owner).register(asset.address)
+        const assets = await assetRegistry.erc20s()
+        if (assets.length > numAssets) break
+      }
+      expect((await assetRegistry.erc20s()).length).to.be.gte(numAssets)
+    })
+
+    it(`getActCalldata - gas reporting for ${numAssets} registered assets`, async () => {
+      await snapshotGasCost(facade.getActCalldata(rToken.address))
+      const [addr, bytes] = await facade.callStatic.getActCalldata(rToken.address)
+      // Should return 0 addr and 0 bytes, otherwise we didn't use maximum gas
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(bytes).to.equal('0x')
+    })
   })
 })

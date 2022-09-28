@@ -11,6 +11,7 @@ import "contracts/interfaces/IBasket.sol";
 import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/p0/mixins/Component.sol";
+import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/Basket.sol";
 
@@ -64,19 +65,27 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         external
         governance
     {
+        require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
+        requireValidCollArray(erc20s);
+
+        // Clean up previous basket config
+        for (uint256 i = 0; i < config.erc20s.length; ++i) {
+            delete config.targetAmts[config.erc20s[i]];
+            delete config.targetNames[config.erc20s[i]];
+        }
         delete config.erc20s;
+
+        // Set up new config basket
         IAssetRegistry reg = main.assetRegistry();
         bytes32[] memory names = new bytes32[](erc20s.length);
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 rsr = main.rsr();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
-            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
-            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount");
+            require(0 < targetAmts[i], "invalid target amount; must be nonzero");
+            require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
@@ -94,18 +103,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 max,
         IERC20[] memory erc20s
     ) external governance {
+        requireValidCollArray(erc20s);
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
         IAssetRegistry reg = main.assetRegistry();
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 rsr = main.rsr();
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
             // In that case the basket is set to disabled.
-            require(erc20s[i] != rToken && erc20s[i] != rsr, "cannot use RSR/RToken in basket");
             require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
 
             conf.erc20s.push(erc20s[i]);
@@ -127,7 +134,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
-        if (basket.disabled) return CollateralStatus.DISABLED;
+        if (basket.disabled || basket.erc20s.length == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
@@ -234,7 +241,10 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 targetWeight = config.targetAmts[erc20];
             totalWeights[targetIndex] = totalWeights[targetIndex].plus(targetWeight);
 
-            if (goodCollateral(erc20) && targetWeight.gt(FIX_ZERO)) {
+            if (
+                targetWeight.gt(FIX_ZERO) &&
+                goodCollateralForTarget(config.targetNames[erc20], erc20)
+            ) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
             }
@@ -250,7 +260,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
             for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; j++) {
-                if (goodCollateral(backup.erc20s[j])) size++;
+                if (goodCollateralForTarget(targetNames.at(i), backup.erc20s[j])) size++;
             }
 
             // If we need backup collateral, but there's no good backup collateral, basket default!
@@ -263,7 +273,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 fixSize = toFix(size);
             for (uint256 j = 0; j < backup.erc20s.length && assigned < size; j++) {
                 IERC20 erc20 = backup.erc20s[j];
-                if (goodCollateral(erc20)) {
+                if (goodCollateralForTarget(targetNames.at(i), erc20)) {
                     newBasket.add(
                         erc20,
                         needed.div(fixSize, CEIL).div(reg.toColl(erc20).targetPerRef(), CEIL)
@@ -283,12 +293,45 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         emit BasketSet(basket.erc20s, refAmts, basket.disabled);
     }
 
-    /// Good collateral is both (i) registered, (ii) collateral, and (3) not DISABLED
+    /// Require that erc20s is a "valid collateral array"
+    // i.e, it contains no duplicates, no instances of rsr, strsr, rtoken, or the 0 address
+    function requireValidCollArray(IERC20[] memory erc20s) internal view {
+        IERC20 rsr = main.rsr();
+        IERC20 rToken = IERC20(address(main.rToken()));
+        IERC20 stRSR = IERC20(address(main.stRSR()));
+        IERC20 zero = IERC20(address(0));
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            require(erc20s[i] != rsr, "RSR is not valid collateral");
+            require(erc20s[i] != rToken, "RToken is not valid collateral");
+            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
+            require(erc20s[i] != zero, "address zero is not valid collateral");
+        }
+        require(ArrayLib.allUnique(erc20s), "contains duplicates");
+    }
+
+    /// Good collateral is: registered, Collateral, not DISABLED, and not a forbidden token
     function goodCollateral(IERC20 erc20) private view returns (bool) {
+        if (erc20 == IERC20(address(0))) return false;
+        if (erc20 == main.rsr()) return false;
+        if (erc20 == IERC20(address(main.rToken()))) return false;
+        if (erc20 == IERC20(address(main.stRSR()))) return false;
+
         IAssetRegistry reg = main.assetRegistry();
         return
             reg.isRegistered(erc20) &&
             reg.toAsset(erc20).isCollateral() &&
             reg.toColl(erc20).status() != CollateralStatus.DISABLED;
+    }
+
+    /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
+    /// and not a system token or 0 addr
+    function goodCollateralForTarget(bytes32 targetName, IERC20 erc20)
+        private
+        view
+        returns (bool good)
+    {
+        good = goodCollateral(erc20);
+        if (good) good = good && targetName == main.assetRegistry().toColl(erc20).targetName();
     }
 }

@@ -8,7 +8,7 @@ import "./IMain.sol";
 
 /// A range of whole token quantities to bound trading
 struct TradingRange {
-    /// Used when prices are available
+    /// Used when prices are available; optional
     uint192 minVal; // {UoA}
     uint192 maxVal; // {UoA}
     // Always applied
@@ -73,19 +73,7 @@ enum CollateralStatus {
 library CollateralStatusComparator {
     /// @return Whether a is worse than b
     function worseThan(CollateralStatus a, CollateralStatus b) internal pure returns (bool) {
-        // Short-circuit the normal case
-        if (a == CollateralStatus.SOUND) return false;
-
-        // This is written out in order to make it harder to accidentally expand the enum
-        // without thinking about linear ordering constraints.
-        return
-            (a == CollateralStatus.IFFY && b == CollateralStatus.SOUND) ||
-            (a == CollateralStatus.UNPRICED &&
-                (b == CollateralStatus.SOUND || b == CollateralStatus.IFFY)) ||
-            (a == CollateralStatus.DISABLED &&
-                (b == CollateralStatus.SOUND ||
-                    b == CollateralStatus.IFFY ||
-                    b == CollateralStatus.UNPRICED));
+        return uint256(a) > uint256(b);
     }
 }
 

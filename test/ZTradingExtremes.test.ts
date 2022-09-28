@@ -13,6 +13,7 @@ import {
   CTokenMock,
   ERC20Mock,
   Facade,
+  FacadeTest,
   FiatCollateral,
   GnosisMock,
   GnosisTrade,
@@ -62,6 +63,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let stRSR: TestIStRSR
   let rToken: TestIRToken
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -104,6 +106,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       distributor,
       rToken,
       facade,
+      facadeTest,
       rsrTrader,
       rTokenTrader,
       rsrAsset,
@@ -250,7 +253,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     for (let i = 0; didStuff && i < 10; i++) {
       didStuff = false
       // Close any auctions and start new ones
-      await facade.runAuctionsForAllTraders(rToken.address)
+      await facadeTest.runAuctionsForAllTraders(rToken.address)
 
       expect(await backingManager.tradesOpen()).to.equal(0)
       const traders = [rsrTrader, rTokenTrader]
@@ -344,7 +347,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -472,7 +475,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await expect(basketHandler.connect(owner).refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -552,7 +555,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       for (let i = 0; i < basketSize + 1 && uncapitalized; i++) {
         // Close any open auctions and launch new ones
-        await facade.runAuctionsForAllTraders(rToken.address)
+        await facadeTest.runAuctionsForAllTraders(rToken.address)
 
         for (const erc20 of erc20s) {
           const tradeAddr = await backingManager.trades(erc20)
@@ -649,7 +652,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await stRSR.connect(addr1).stake(fp('1e29'))
 
       // Issue rTokens
-      await issueMany(rToken, rTokenSupply, addr1)
+      await issueMany(facade, rToken, rTokenSupply, addr1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(rTokenSupply)
 
       // === Execution ===
@@ -758,7 +761,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         const targetUnit = ethers.utils.formatBytes32String((i % targetUnits).toString())
         const erc20 = await makeToken(`Token ${i}`, targetUnit, targetPerRefs)
         primeERC20s.push(erc20.address)
-        targetAmts.push(basketTargetAmt.div(targetUnits))
+        let targetAmt = basketTargetAmt.div(targetUnits)
+        if (targetAmt.eq(bn(0))) targetAmt = bn(1)
+        targetAmts.push(targetAmt)
       }
 
       const backups: [string[]] = [[]]
@@ -796,7 +801,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     const size = SLOW ? 256 : 4 // Currently 256 takes >5 minutes to execute 32 cases
 
-    const primeTokens = [size, 0]
+    const primeTokens = [size, 1]
 
     const backupTokens = [size, 0]
 
@@ -805,8 +810,8 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     // 1e18 range centered around the expected case of fp('1')
     const targetPerRefs = [fp('1e-9'), fp('1e9')]
 
-    // min weight: 0, max weight: 1000
-    const basketTargetAmts = [fp('0'), fp('1e3')]
+    // min weight: 0 (will wind up as 1), max weight: 1000
+    const basketTargetAmts = [bn(0), fp('1e3')]
 
     const dimensions = [primeTokens, backupTokens, targetUnits, targetPerRefs, basketTargetAmts]
 

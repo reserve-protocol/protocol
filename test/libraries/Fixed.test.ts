@@ -1141,7 +1141,7 @@ describe('In FixLib,', () => {
         fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
           const loExpected = (x * y) % WORD
           const hiExpected = (x * y) / WORD
-          const [loResult, hiResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
+          const [hiResult, loResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
           expect(hiResult).to.equal(hiExpected)
           expect(loResult).to.equal(loExpected)
         }),
@@ -1156,7 +1156,7 @@ describe('In FixLib,', () => {
       )
     })
     it('fullMul(0,0) = (0,0)', async () => {
-      const [lo, hi]: BigNumber[] = await caller.fullMul_(bn(0), bn(0))
+      const [hi, lo]: BigNumber[] = await caller.fullMul_(bn(0), bn(0))
       expect(lo).to.equal(bn(0))
       expect(hi).to.equal(bn(0))
     })
