@@ -65,12 +65,8 @@ contract EURFiatCollateral is Collateral {
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
-
-        bool ok;
-
-        // solhint-disable no-empty-blocks
 
         // p1 {UoA/ref}
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
@@ -88,17 +84,14 @@ contract EURFiatCollateral is Collateral {
                     uint192 p = p1.div(p2);
 
                     // If the price is below the default-threshold price, default eventually
-                    if (p >= peg - delta && p <= peg + delta) ok = true;
+                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                    else markStatus(CollateralStatus.SOUND);
                 }
-            } catch {}
-        } catch {}
-
-        // solhint-enable no-empty-blocks
-
-        if (ok) {
-            whenDefault = NEVER;
-        } else {
-            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            } catch {
+                markStatus(CollateralStatus.IFFY);
+            }
+        } catch {
+            markStatus(CollateralStatus.IFFY);
         }
 
         CollateralStatus newStatus = status();

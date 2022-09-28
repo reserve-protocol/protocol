@@ -62,7 +62,6 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         override(RTokenAsset, IAsset)
         returns (bool isFallback, uint192)
     {
-        // TODO fix?
         return super.price(allowFallback);
     }
 
@@ -101,7 +100,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual returns (uint192) {
-        // one RToken per RToken!
+        // TODO make {ref} the basket unit
         return FIX_ONE;
     }
 

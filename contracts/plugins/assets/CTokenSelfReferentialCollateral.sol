@@ -76,19 +76,19 @@ contract CTokenSelfReferentialCollateral is Collateral {
         // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
 
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                whenDefault = NEVER;
+                markStatus(CollateralStatus.SOUND);
             } catch {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;

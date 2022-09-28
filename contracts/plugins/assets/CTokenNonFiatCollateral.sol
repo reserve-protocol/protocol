@@ -100,14 +100,14 @@ contract CTokenNonFiatCollateral is Collateral {
         // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
 
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else {
             // p {target/ref}
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
@@ -121,14 +121,13 @@ contract CTokenNonFiatCollateral is Collateral {
 
                     // If the price is below the default-threshold price, default eventually
                     // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) {
-                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                    } else whenDefault = NEVER;
+                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                    else markStatus(CollateralStatus.SOUND);
                 } catch {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                    markStatus(CollateralStatus.IFFY);
                 }
             } catch {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;

@@ -52,7 +52,7 @@ contract FiatCollateral is Collateral {
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // {UoA/ref}
@@ -65,11 +65,10 @@ contract FiatCollateral is Collateral {
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (p < peg - delta || p > peg + delta) {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-            } else whenDefault = NEVER;
+            if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+            else markStatus(CollateralStatus.SOUND);
         } catch {
-            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            markStatus(CollateralStatus.IFFY);
         }
 
         CollateralStatus newStatus = status();

@@ -28,7 +28,8 @@ library TradingLibP1 {
     //
     // If notDust is true, then the returned trade satisfies:
     //   trade.sell == sell and trade.buy == buy,
-    //   trade.minBuyAmount ~= trade.sellAmount * sell.strictPrice() / buy.strictPrice() * (1-maxTradeSlippage),
+    //   trade.minBuyAmount ~=
+    //        trade.sellAmount * sell.strictPrice() / buy.strictPrice() * (1-maxTradeSlippage),
     //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
     //   1 < trade.sellAmount
     //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
@@ -52,16 +53,12 @@ library TradingLibP1 {
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
-        uint192 buyPrice = buy.strictPrice();
-
-        // buy.strictPrice() cannot be zero in BackingManager's usage of this function
-        // buy.strictPrice() could plausibly be zero in RevenueTrader's usage of this function
-        require(buyPrice > 0, "buy asset has zero price");
+        // buy.strictPrice() == 0 case is handled in RevenueTrader and prepareTradeRecapitalize
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(trader.maxTradeSlippage())).mulDiv(
             sell.strictPrice(),
-            buyPrice,
+            buy.strictPrice(),
             CEIL
         );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20Decimals()), CEIL);
@@ -103,6 +100,7 @@ library TradingLibP1 {
         ) = nextTradePair(trader, erc20s, range);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
+        // assert(deficit.strictPrice() > 0); // P0 only
 
         // If we cannot trust surplus.strictPrice(), eliminate the minBuyAmount requirement
 
@@ -227,7 +225,7 @@ library TradingLibP1 {
 
         IERC20 rsrERC20 = rsr(trader);
         IERC20 rToken_ = IERC20(address(rToken(trader)));
-        uint192 minTradeVolume_ = trader.minTradeVolume();
+        uint192 minTradeVolume_ = trader.minTradeVolume(); // {UoA}
 
         IBasketHandler bh = basket(trader);
         uint192 potentialDustLoss; // {UoA}
@@ -471,6 +469,7 @@ library TradingLibP1 {
 
         // sell.strictPrice() cannot be zero below, because `nextTradePair` does not consider
         // assets with zero price
+        // assert(sell.strictPrice() > 0); // P0 only
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
         uint192 exactSellAmount = deficitAmount.mulDiv(buy.strictPrice(), sell.strictPrice(), CEIL);

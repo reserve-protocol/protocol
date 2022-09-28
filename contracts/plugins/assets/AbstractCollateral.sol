@@ -17,12 +17,12 @@ abstract contract Collateral is ICollateral, Asset {
     using OracleLib for AggregatorV3Interface;
 
     // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
+    // _whenDefault == NEVER: no risk of default (initial value)
+    // _whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
+    //                In this case, the asset may recover, reachiving _whenDefault == NEVER.
+    // _whenDefault <= block.timestamp: default has already happened (permanently)
+    uint256 private constant NEVER = type(uint256).max;
+    uint256 private _whenDefault = NEVER;
 
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
@@ -51,13 +51,13 @@ abstract contract Collateral is ICollateral, Asset {
 
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
         try this.strictPrice() returns (uint192) {
-            whenDefault = NEVER;
+            markStatus(CollateralStatus.SOUND);
         } catch {
-            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            markStatus(CollateralStatus.IFFY);
         }
 
         CollateralStatus newStatus = status();
@@ -68,13 +68,37 @@ abstract contract Collateral is ICollateral, Asset {
 
     /// @return The collateral's status
     function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
+        if (_whenDefault == NEVER) {
             return CollateralStatus.SOUND;
-        } else if (whenDefault > block.timestamp) {
+        } else if (_whenDefault > block.timestamp) {
             return CollateralStatus.IFFY;
         } else {
             return CollateralStatus.DISABLED;
         }
+    }
+
+    // === Helpers for child classes ===
+
+    function markStatus(CollateralStatus status_) internal {
+        if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
+
+        if (status_ == CollateralStatus.SOUND) {
+            _whenDefault = NEVER;
+        } else if (status_ == CollateralStatus.IFFY) {
+            _whenDefault = Math.min(block.timestamp + delayUntilDefault, _whenDefault);
+        } else if (status_ == CollateralStatus.DISABLED) {
+            _whenDefault = block.timestamp;
+        }
+    }
+
+    function alreadyDefaulted() internal view returns (bool) {
+        return _whenDefault <= block.timestamp;
+    }
+
+    // === End child helpers
+
+    function whenDefault() public view returns (uint256) {
+        return _whenDefault;
     }
 
     /// @return If the asset is an instance of ICollateral or not

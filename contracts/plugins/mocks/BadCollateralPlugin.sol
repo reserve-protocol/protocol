@@ -47,13 +47,13 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
 
     /// Refresh exchange rates and update default status.
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (checkHardDefault && referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else if (checkSoftDefault) {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 // Check for soft default of underlying reference token
@@ -66,10 +66,10 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
+                    markStatus(CollateralStatus.IFFY);
+                } else markStatus(CollateralStatus.SOUND);
             } catch {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;

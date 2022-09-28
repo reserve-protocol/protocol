@@ -42,7 +42,7 @@ contract RTokenAsset is IAsset {
     /// Can return 0 and revert
     /// @return {UoA/tok} An estimate of the current RToken redemption price
     function strictPrice() public view virtual returns (uint192) {
-        (bool isFallback, uint192 price_) = _price(false);
+        (bool isFallback, uint192 price_) = price(false);
         require(!isFallback, "RTokenAsset: need fallback prices");
         return price_;
     }
@@ -53,12 +53,6 @@ contract RTokenAsset is IAsset {
     /// @return If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
     function price(bool allowFallback) public view virtual returns (bool, uint192) {
-        return _price(allowFallback);
-    }
-
-    /// @return If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function _price(bool allowFallback) private view returns (bool, uint192) {
         uint192 basketsBottom; // {BU}
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();

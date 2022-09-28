@@ -53,16 +53,12 @@ library TradingLibP0 {
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
-        uint192 buyPrice = buy.strictPrice();
-
-        // buy.strictPrice() cannot be zero in BackingManager's usage of this function
-        // buy.strictPrice() could plausibly be zero in RevenueTrader's usage of this function
-        require(buyPrice > 0, "buy asset has zero price");
+        // buy.strictPrice() == 0 case is handled in RevenueTrader and prepareTradeRecapitalize
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(trader.maxTradeSlippage())).mulDiv(
             sell.strictPrice(),
-            buyPrice,
+            buy.strictPrice(),
             CEIL
         );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20Decimals()), CEIL);
@@ -104,6 +100,7 @@ library TradingLibP0 {
         ) = nextTradePair(trader, erc20s, range);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
+        assert(deficit.strictPrice() > 0); // P0 only
 
         // If we cannot trust surplus.strictPrice(), eliminate the minBuyAmount requirement
 
