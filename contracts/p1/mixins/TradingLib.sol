@@ -22,6 +22,8 @@ library TradingLibP1 {
     /// Prepare a trade to sell `sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param sellAmount {sellTok}
+    /// @param sellPrice {UoA/sellTok}
+    /// @param buyPrice {UoA/buyTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return trade The prepared trade
     // Recall: struct TradeRequest is {IAsset sell, IAsset buy, uint sellAmount, uint minBuyAmount}
@@ -39,8 +41,12 @@ library TradingLibP1 {
         ITrading trader,
         IAsset sell,
         IAsset buy,
-        uint192 sellAmount
+        uint192 sellAmount,
+        uint192 sellPrice,
+        uint192 buyPrice
     ) public view returns (bool notDust, TradeRequest memory trade) {
+        assert(buyPrice > 0); // checked for in RevenueTrader / prepareTradeRecapitalize
+
         trade.sell = sell;
         trade.buy = buy;
 
@@ -48,17 +54,15 @@ library TradingLibP1 {
         if (!isEnoughToSell(sell, sellAmount, trader.minTradeVolume())) return (false, trade);
 
         // {sellTok}
-        uint192 s = fixMin(sellAmount, maxTradeSize(sell));
+        uint192 s = fixMin(sellAmount, maxTradeSize(sell)); // use sell.price(true) indirectly
 
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
-        // buy.strictPrice() == 0 case is handled in RevenueTrader and prepareTradeRecapitalize
-
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(trader.maxTradeSlippage())).mulDiv(
-            sell.strictPrice(),
-            buy.strictPrice(),
+            sellPrice,
+            buyPrice,
             CEIL
         );
         trade.minBuyAmount = b.shiftl_toUint(int8(buy.erc20Decimals()), CEIL);
@@ -100,7 +104,11 @@ library TradingLibP1 {
         ) = nextTradePair(trader, erc20s, range);
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
-        // assert(deficit.strictPrice() > 0); // P0 only
+
+        // TODO make nextTradePair return a struct that contains these prices too
+        uint192 sellPrice = surplus.strictPrice(); // {UoA/tok}
+        uint192 buyPrice = deficit.strictPrice(); // {UoA/tok}
+        assert(buyPrice > 0);
 
         // If we cannot trust surplus.strictPrice(), eliminate the minBuyAmount requirement
 
@@ -108,7 +116,14 @@ library TradingLibP1 {
             surplus.isCollateral() &&
             assetRegistry_.toColl(surplus.erc20()).status() != CollateralStatus.SOUND
         ) {
-            (doTrade, req) = prepareTradeSell(trader, surplus, deficit, surplusAmount);
+            (doTrade, req) = prepareTradeSell(
+                trader,
+                surplus,
+                deficit,
+                surplusAmount,
+                sellPrice,
+                buyPrice
+            );
             req.minBuyAmount = 0;
         } else {
             (doTrade, req) = prepareTradeToCoverDeficit(
@@ -116,7 +131,9 @@ library TradingLibP1 {
                 surplus,
                 deficit,
                 surplusAmount,
-                deficitAmount
+                deficitAmount,
+                sellPrice,
+                buyPrice
             );
         }
 
@@ -462,17 +479,19 @@ library TradingLibP1 {
         IAsset sell,
         IAsset buy,
         uint192 maxSellAmount,
-        uint192 deficitAmount
+        uint192 deficitAmount,
+        uint192 sellPrice,
+        uint192 buyPrice
     ) private view returns (bool notDust, TradeRequest memory trade) {
         // Don't buy dust.
         deficitAmount = fixMax(deficitAmount, minTradeSize(buy, trader.minTradeVolume()));
 
         // sell.strictPrice() cannot be zero below, because `nextTradePair` does not consider
         // assets with zero price
-        // assert(sell.strictPrice() > 0); // P0 only
+        assert(sellPrice > 0);
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        uint192 exactSellAmount = deficitAmount.mulDiv(buy.strictPrice(), sell.strictPrice(), CEIL);
+        uint192 exactSellAmount = deficitAmount.mulDiv(buyPrice, sellPrice, CEIL);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage
@@ -483,7 +502,7 @@ library TradingLibP1 {
 
         uint192 sellAmount = fixMin(slippedSellAmount, maxSellAmount);
 
-        return prepareTradeSell(trader, sell, buy, sellAmount);
+        return prepareTradeSell(trader, sell, buy, sellAmount, sellPrice, buyPrice);
     }
 
     /// @param asset The asset in question

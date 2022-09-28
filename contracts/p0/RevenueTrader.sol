@@ -45,17 +45,21 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
-        IAsset assetToBuy = reg.toAsset(tokenToBuy);
+        IAsset buy = reg.toAsset(tokenToBuy);
+        uint192 sellPrice = sell.strictPrice(); // {UoA/tok}
+        uint192 buyPrice = buy.strictPrice(); // {UoA/tok}
 
-        require(assetToBuy.strictPrice() > 0, "buy asset has zero price");
+        require(buyPrice > 0, "buy asset has zero price");
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
             this,
             sell,
-            assetToBuy,
-            sell.bal(address(this))
+            buy,
+            sell.bal(address(this)),
+            sellPrice,
+            buyPrice
         );
 
         if (launch) {
