@@ -1148,9 +1148,7 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
       selfReferentialCollateral = <SelfReferentialCollateral>(
         await SelfRefCollateralFactory.deploy(
@@ -1160,7 +1158,8 @@ describe('Collateral contracts', () => {
           ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH')
+          ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT
         )
       )
     })
@@ -1245,6 +1244,7 @@ describe('Collateral contracts', () => {
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           await selfRefToken.decimals(),
           compoundMock.address
         )
@@ -1264,6 +1264,7 @@ describe('Collateral contracts', () => {
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           await selfRefToken.decimals(),
           compoundMock.address
         )
@@ -1280,6 +1281,7 @@ describe('Collateral contracts', () => {
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           0,
           compoundMock.address
         )
@@ -1296,6 +1298,7 @@ describe('Collateral contracts', () => {
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           18,
           ZERO_ADDRESS
         )

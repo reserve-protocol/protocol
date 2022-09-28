@@ -92,7 +92,7 @@ contract NonFiatCollateral is Collateral {
         if (ok) {
             whenDefault = NEVER;
         } else {
-            Math.min(block.timestamp + delayUntilDefault, whenDefault);
+            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
         }
 
         CollateralStatus newStatus = status();
