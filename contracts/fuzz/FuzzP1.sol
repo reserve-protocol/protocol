@@ -88,9 +88,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
                 ICollateral coll = main.assetRegistry().toColl(erc20);
                 if (
                     coll.status() == CollateralStatus.DISABLED /*|| quantity(erc20) == FIX_ZERO*/
-                ) {
-                    validBasketProp = false;
-                }
+                ) validBasketProp = false;
             }
         }
 
@@ -102,6 +100,14 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
 contract BackingManagerP1Fuzz is BackingManagerP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        bool tradingDelayProp = (tradingDelay > MAX_TRADING_DELAY) ? false : true;
+        bool backingBufferProp = (backingBuffer > MAX_BACKING_BUFFER) ? false : true;
+        bool maxTradeSlippageProp = (maxTradeSlippage > MAX_TRADE_SLIPPAGE) ? false : true;
+
+        return tradingDelayProp && backingBufferProp && maxTradeSlippageProp;
     }
 }
 
@@ -154,14 +160,16 @@ contract DistributorP1Fuzz is DistributorP1 {
     function invariantsHold() external view returns (bool) {
         // ==== Invariants ====
         // distribution is nonzero
-        bool distNotEmptyProp = true;
         RevenueTotals memory revTotals = totals();
-        if (revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0) distNotEmptyProp = false;
+        bool distNotEmptyProp = (revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0)
+            ? false
+            : true;
 
         // No invalid distributions to FURNACE and STRSR
-        bool noInvalidDistProp = true;
-        if (distribution[FURNACE].rsrDist > 0 || distribution[ST_RSR].rTokenDist > 0)
-            noInvalidDistProp = false;
+        bool noInvalidDistProp = (distribution[FURNACE].rsrDist > 0 ||
+            distribution[ST_RSR].rTokenDist > 0)
+            ? false
+            : true;
 
         // Valid share values for destinations
         bool validShareAmtsProp = true;
@@ -186,6 +194,11 @@ contract FurnaceP1Fuzz is FurnaceP1 {
 contract RevenueTraderP1Fuzz is RevenueTraderP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        bool maxTradeSlippageProp = (maxTradeSlippage > MAX_TRADE_SLIPPAGE) ? false : true;
+        return maxTradeSlippageProp;
     }
 }
 

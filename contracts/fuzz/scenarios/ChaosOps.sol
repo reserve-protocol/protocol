@@ -1047,8 +1047,16 @@ contract ChaosOpsScenario {
         prevRTokenRate = rTokenRate();
     }
 
+    function echidna_mainInvariants() external view returns (bool) {
+        return main.invariantsHold();
+    }
+
     function echidna_assetRegistryInvariants() external view returns (bool) {
         return AssetRegistryP1Fuzz(address(main.assetRegistry())).invariantsHold();
+    }
+
+    function echidna_backingManagerInvariants() external view returns (bool) {
+        return BackingManagerP1Fuzz(address(main.backingManager())).invariantsHold();
     }
 
     function echidna_basketInvariants() external view returns (bool) {
@@ -1066,6 +1074,14 @@ contract ChaosOpsScenario {
 
     function echidna_distributorInvariants() external view returns (bool) {
         return DistributorP1Fuzz(address(main.distributor())).invariantsHold();
+    }
+
+    function echidna_rsrTraderInvariants() external view returns (bool) {
+        return RevenueTraderP1Fuzz(address(main.rsrTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenTraderInvariants() external view returns (bool) {
+        return RevenueTraderP1Fuzz(address(main.rTokenTrader())).invariantsHold();
     }
 
     function echidna_stRSRInvariants() external view returns (bool) {

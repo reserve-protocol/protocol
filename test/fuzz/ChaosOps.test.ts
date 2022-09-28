@@ -1178,17 +1178,21 @@ describe('The Chaos Operations scenario', () => {
   })
 
   it('has only initially-true properties', async () => {
-    // TODO: Replace with new properties
-    //expect(await scenario.echidna_ratesNeverFall()).to.be.true
-    //expect(await scenario.echidna_isFullyCollateralized()).to.be.true
-    //expect(await scenario.echidna_quoteProportionalToBasket()).to.be.true
+    expect(await scenario.echidna_mainInvariants()).to.be.true
+    expect(await scenario.echidna_assetRegistryInvariants()).to.be.true
+    expect(await scenario.echidna_backingManagerInvariants()).to.be.true
+    expect(await scenario.echidna_basketInvariants()).to.be.true
+    expect(await scenario.echidna_distributorInvariants()).to.be.true
+    expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
+    expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
 
-    // emulate echidna_refreshBasketIsNoop, since it's not a view and we need its value
+    // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
     await comp.basketHandler.savePrev()
     await whileImpersonating(scenario.address, async (asOwner) => {
       await comp.basketHandler.connect(asOwner).refreshBasket()
     })
-    expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
+    expect(await comp.basketHandler.isValidBasketAfterRefresh()).to.be.true
   })
 
   it('does not fail on refreshBasket after just one call to updatePrice', async () => {

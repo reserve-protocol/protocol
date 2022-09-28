@@ -224,4 +224,22 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         this.unspoof(address(this));
     }
+
+    function invariantsHold() external view returns (bool) {
+        // Long freezes
+        bool maxLongFreezesProp = true;
+        bool longFreezeRoleProp = true;
+        for (uint256 i = 0; i < users.length + constAddrs.length; i++) {
+            address addr;
+            if (i < users.length) {
+                addr = users[i];
+            } else {
+                addr = constAddrs[i - users.length];
+            }
+
+            if (longFreezes[addr] > LONG_FREEZE_CHARGES) maxLongFreezesProp = false;
+            if (hasRole(LONG_FREEZER, addr) && longFreezes[addr] == 0) longFreezeRoleProp = false;
+        }
+        return maxLongFreezesProp && longFreezeRoleProp;
+    }
 }
