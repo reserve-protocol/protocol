@@ -285,11 +285,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check BU price
-      expect(await basketHandler.price()).to.equal(fp('1'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
     })
   })
 
@@ -1486,7 +1486,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should exclude defaulted collateral when checking price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
 
       // Default one of the collaterals
       // Set Token1 to default - 50% price reduction
@@ -1503,7 +1503,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await basketHandler.price()).to.equal(fp('0.75'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('0.75'))
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {

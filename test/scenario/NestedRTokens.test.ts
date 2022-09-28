@@ -215,8 +215,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
 
       // Prices should be aware
-      expect(await one.rTokenAsset.price()).to.equal(fp('0.5'))
-      expect(await rTokenCollateral.price()).to.equal(fp('0.5'))
+      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('0.5'))
+      expect(await rTokenCollateral.strictPrice()).to.equal(fp('0.5'))
     })
 
     it("should view donations of the other's RToken as revenue", async () => {
@@ -329,13 +329,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await one.rToken.totalSupply()).to.equal(issueAmt)
       expect(await two.rToken.totalSupply()).to.equal(issueAmt)
-      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenCollateral.price()).to.equal(fp('1'))
+      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
     })
 
     it('should propagate appreciation of the inner-most collateral to price', async () => {
-      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenCollateral.price()).to.equal(fp('1'))
+      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
 
       // Cause appreciation
       await staticATokenERC20.setExchangeRate(fp('1.5'))
@@ -384,8 +384,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Appreciation should be passed through to both tokens
       await setOraclePrice(aTokenCollateral.address, bn('1e8'))
       const expectedPrice = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
-      expect(await one.rTokenAsset.price()).to.be.closeTo(expectedPrice, fp('0.05'))
-      expect(await rTokenCollateral.price()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await rTokenCollateral.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
     })
   })
 })

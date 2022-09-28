@@ -122,7 +122,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Take backing
       await token0.connect(owner).burn(backingManager.address, issueAmount)
@@ -539,7 +539,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {

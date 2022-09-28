@@ -350,7 +350,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
-      expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
+      expect(await compAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
@@ -360,7 +360,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.erc20()).to.equal(aaveToken.address)
       expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
       expect(await aaveToken.decimals()).to.equal(18)
-      expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
+      expect(await aaveAsset.strictPrice()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
@@ -371,7 +371,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
       expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
       expect(await rsr.decimals()).to.equal(18)
-      expect(await rsrAsset.price()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
+      expect(await rsrAsset.strictPrice()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
       expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
@@ -438,7 +438,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.tokenCollateral.refPerTok()).to.equal(fp('1'))
         expect(await tkInf.tokenCollateral.targetPerRef()).to.equal(fp('1'))
         expect(await tkInf.tokenCollateral.pricePerTarget()).to.equal(fp('1'))
-        expect(await tkInf.tokenCollateral.price()).to.be.closeTo(fp('1'), fp('0.05')) // Should always be close to $1
+        expect(await tkInf.tokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.05')) // Should always be close to $1
 
         expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
@@ -499,7 +499,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
-        expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
+        expect(await ctkInf.cTokenCollateral.strictPrice()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
 
         const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
         expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
@@ -576,7 +576,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.000005')
         )
 
-        expect(await atkInf.aTokenCollateral.price()).to.be.closeTo(fp('1'), fp('0.095'))
+        expect(await atkInf.aTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.095'))
 
         const calldata = atkInf.stataToken.interface.encodeFunctionData('claimRewardsToSelf', [
           true,
@@ -652,7 +652,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.targetPrice,
           fp('0.5')
         )
-        expect(await tkInf.nonFiatTokenCollateral.price()).to.be.closeTo(
+        expect(await tkInf.nonFiatTokenCollateral.strictPrice()).to.be.closeTo(
           tkInf.targetPrice.mul(tkInf.refPrice).div(BN_SCALE_FACTOR),
           fp('0.5')
         ) // ref price approx 1.00062
@@ -719,7 +719,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
-        expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(
+        expect(await ctkInf.cTokenCollateral.strictPrice()).to.be.closeTo(
           ctkInf.targetPrice.mul(ctkInf.refPrice).mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR.pow(2)),
           fp('0.5')
         ) // close to $633 usd
@@ -775,7 +775,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.price,
           fp('0.5')
         )
-        expect(await tkInf.selfRefTokenCollateral.price()).to.be.closeTo(tkInf.price, fp('0.5'))
+        expect(await tkInf.selfRefTokenCollateral.strictPrice()).to.be.closeTo(
+          tkInf.price,
+          fp('0.5')
+        )
         expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -837,7 +840,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
-        expect(await ctkInf.cTokenCollateral.price()).to.be.closeTo(
+        expect(await ctkInf.cTokenCollateral.strictPrice()).to.be.closeTo(
           ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
           fp('0.5')
         )
@@ -896,7 +899,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.targetPrice,
           fp('0.01')
         )
-        expect(await tkInf.eurFiatTokenCollateral.price()).to.be.closeTo(tkInf.refPrice, fp('0.01')) // ref price approx 1.07
+        expect(await tkInf.eurFiatTokenCollateral.strictPrice()).to.be.closeTo(
+          tkInf.refPrice,
+          fp('0.01')
+        ) // ref price approx 1.07
         expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -910,8 +916,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
-      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(compAsset.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Setup Assets with no price feed
       const nonpriceAsset: Asset = <Asset>(
@@ -928,7 +934,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Assets with invalid price feed will revert
-      await expect(nonpriceAsset.price()).to.be.reverted
+      await expect(nonpriceAsset.strictPrice()).to.be.reverted
 
       // Reverts with a feed with zero price
       const invalidPriceAsset: Asset = <Asset>(
@@ -947,19 +953,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidPriceAsset.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidPriceAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
     })
 
     it('Should handle invalid/stale Price - Collateral - Fiat', async () => {
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      await expect(daiCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(usdcCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(usdtCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(busdCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(usdpCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(tusdCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(daiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(usdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(usdtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(busdCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(usdpCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(tusdCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await daiCollateral.refresh()
@@ -996,7 +1002,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Collateral with no price should revert
-      await expect(nonPriceCollateral.price()).to.be.reverted
+      await expect(nonPriceCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonPriceCollateral.refresh()
@@ -1022,7 +1028,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidFiatCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // Refresh should mark status UNPRICED
       await invalidFiatCollateral.refresh()
@@ -1034,9 +1040,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expect(cDaiCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(cUsdcCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(cUsdtCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(cUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(cUsdtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await cDaiCollateral.refresh()
@@ -1069,7 +1075,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.price()).to.be.reverted
+      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceCtokenCollateral.refresh()
@@ -1097,7 +1103,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // Refresh should mark status UNPRICED
       await invalidpriceCtokenCollateral.refresh()
@@ -1109,10 +1117,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Aave
-      await expect(aDaiCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(aUsdcCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(aUsdtCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(aBusdCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(aDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aUsdtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aBusdCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await aDaiCollateral.refresh()
@@ -1145,7 +1153,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // ATokens - Collateral with no price info should revert
-      await expect(nonpriceAtokenCollateral.price()).to.be.reverted
+      await expect(nonpriceAtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceAtokenCollateral.refresh()
@@ -1171,7 +1179,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidPriceAtokenCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceAtokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidPriceAtokenCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // Refresh should mark status UNPRICED
       await invalidPriceAtokenCollateral.refresh()
@@ -1183,7 +1193,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Aave
-      await expect(wbtcCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(wbtcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       await wbtcCollateral.refresh()
       expect(await wbtcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
@@ -1210,7 +1220,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Non-fiat Collateral with no price should revert
-      await expect(nonpriceNonFiatCollateral.price()).to.be.reverted
+      await expect(nonpriceNonFiatCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceNonFiatCollateral.refresh()
@@ -1240,7 +1250,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await v3Aggregator.updateAnswer(bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidPriceNonFiatCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // Refresh should mark status UNPRICED
       await invalidPriceNonFiatCollateral.refresh()
@@ -1252,7 +1264,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expect(cWBTCCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cWBTCCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await cWBTCCollateral.refresh()
@@ -1284,7 +1296,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenNonFiatCollateral.price()).to.be.reverted
+      await expect(nonpriceCtokenNonFiatCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceCtokenNonFiatCollateral.refresh()
@@ -1318,7 +1330,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await v3Aggregator.updateAnswer(bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenNonFiatCollateral.price()).to.be.revertedWith(
+      await expect(invalidpriceCtokenNonFiatCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
@@ -1332,7 +1344,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Aave
-      await expect(wethCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(wethCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       await wethCollateral.refresh()
       expect(await wethCollateral.status()).to.equal(CollateralStatus.UNPRICED)
@@ -1355,7 +1367,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Non-fiat Collateral with no price should revert
-      await expect(nonpriceSelfReferentialCollateral.price()).to.be.reverted
+      await expect(nonpriceSelfReferentialCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceSelfReferentialCollateral.refresh()
@@ -1382,7 +1394,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidPriceSelfReferentialCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceSelfReferentialCollateral.price()).to.be.revertedWith(
+      await expect(invalidPriceSelfReferentialCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
@@ -1398,7 +1410,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expect(cETHCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(cETHCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await cETHCollateral.refresh()
@@ -1424,7 +1436,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenSelfReferentialCollateral.price()).to.be.reverted
+      await expect(nonpriceCtokenSelfReferentialCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonpriceCtokenSelfReferentialCollateral.refresh()
@@ -1455,7 +1467,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await setOraclePrice(invalidPriceCtokenSelfReferentialCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceCtokenSelfReferentialCollateral.price()).to.be.revertedWith(
+      await expect(invalidPriceCtokenSelfReferentialCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
@@ -1470,7 +1482,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      await expect(eurtCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(eurtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Refresh should mark status UNPRICED
       await eurtCollateral.refresh()
@@ -1497,7 +1509,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Collateral with no price should revert
-      await expect(nonPriceEURCollateral.price()).to.be.reverted
+      await expect(nonPriceEURCollateral.strictPrice()).to.be.reverted
 
       // Refresh should mark status UNPRICED
       await nonPriceEURCollateral.refresh()
@@ -1527,7 +1539,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await v3Aggregator.updateAnswer(bn(0))
 
       // Reverts with zero price
-      await expect(invalidPriceEURCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(invalidPriceEURCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // Refresh should mark status UNPRICED
       await invalidPriceEURCollateral.refresh()
@@ -1578,7 +1592,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await basketHandler.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check RToken price
@@ -1588,7 +1602,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-      expect(await rTokenAsset.price()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
     it('Should issue/reedem correctly with simple basket ', async function () {
@@ -1698,9 +1712,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
 
       // Check rates and prices
-      const aDaiPrice1: BigNumber = await aDaiCollateral.price() // ~1.07546
+      const aDaiPrice1: BigNumber = await aDaiCollateral.strictPrice() // ~1.07546
       const aDaiRefPerTok1: BigNumber = await aDaiCollateral.refPerTok() // ~ 1.07287
-      const cDaiPrice1: BigNumber = await cDaiCollateral.price() // ~ 0.022015 cents
+      const cDaiPrice1: BigNumber = await cDaiCollateral.strictPrice() // ~ 0.022015 cents
       const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
 
       expect(aDaiPrice1).to.be.closeTo(fp('1'), fp('0.095'))
@@ -1722,9 +1736,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDaiCollateral.refresh()
 
       // Check rates and prices - Have changed, slight inrease
-      const aDaiPrice2: BigNumber = await aDaiCollateral.price() // ~1.07548
+      const aDaiPrice2: BigNumber = await aDaiCollateral.strictPrice() // ~1.07548
       const aDaiRefPerTok2: BigNumber = await aDaiCollateral.refPerTok() // ~1.07288
-      const cDaiPrice2: BigNumber = await cDaiCollateral.price() // ~0.022016
+      const cDaiPrice2: BigNumber = await cDaiCollateral.strictPrice() // ~0.022016
       const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
@@ -1753,9 +1767,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await cDaiCollateral.refresh()
 
       // Check rates and prices - Have changed significantly
-      const aDaiPrice3: BigNumber = await aDaiCollateral.price() // ~1.1873
+      const aDaiPrice3: BigNumber = await aDaiCollateral.strictPrice() // ~1.1873
       const aDaiRefPerTok3: BigNumber = await aDaiCollateral.refPerTok() // ~1.1845
-      const cDaiPrice3: BigNumber = await cDaiCollateral.price() // ~0.03294
+      const cDaiPrice3: BigNumber = await cDaiCollateral.strictPrice() // ~0.03294
       const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
 
       // Check rates and price increase
@@ -1893,26 +1907,26 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const btcTargetPrice = fp('31311.5') // June 6, 2022
         const wbtcRefPrice = fp('1.00062') // approx price wbtc-btc
         const btcPrice = btcTargetPrice.mul(wbtcRefPrice).div(BN_SCALE_FACTOR)
-        expect(await wbtcCollateral.price()).to.be.closeTo(btcPrice, fp('0.5'))
+        expect(await wbtcCollateral.strictPrice()).to.be.closeTo(btcPrice, fp('0.5'))
 
         // cWBTC
         const cWBTCPrice = btcTargetPrice
           .mul(wbtcRefPrice)
           .mul(fp('0.02020'))
           .div(BN_SCALE_FACTOR.pow(2))
-        expect(await cWBTCCollateral.price()).to.be.closeTo(cWBTCPrice, fp('0.5')) // close to $633 usd
+        expect(await cWBTCCollateral.strictPrice()).to.be.closeTo(cWBTCPrice, fp('0.5')) // close to $633 usd
 
         // WETH
         const ethTargetPrice = fp('1859') //approx price June 2022
-        expect(await wethCollateral.price()).to.be.closeTo(ethTargetPrice, fp('0.5'))
+        expect(await wethCollateral.strictPrice()).to.be.closeTo(ethTargetPrice, fp('0.5'))
 
         // cETH
         const cETHPrice = ethTargetPrice.mul(fp('0.02020')).div(BN_SCALE_FACTOR)
-        expect(await cETHCollateral.price()).to.be.closeTo(cETHPrice, fp('0.5'))
+        expect(await cETHCollateral.strictPrice()).to.be.closeTo(cETHPrice, fp('0.5'))
 
         // EURT
         const eurPrice = fp('1.07') // approx price EUR-USD June 6, 2022
-        expect(await eurtCollateral.price()).to.be.closeTo(eurPrice, fp('0.01')) // ref price approx 1.07
+        expect(await eurtCollateral.strictPrice()).to.be.closeTo(eurPrice, fp('0.01')) // ref price approx 1.07
 
         // Aproximate total price of Basket in USD
         const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
@@ -1930,9 +1944,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check initial values
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
+        expect(await basketHandler.strictPrice()).to.be.closeTo(
+          totalPriceUSD,
+          point1Pct(totalPriceUSD)
+        )
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+        await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2125,7 +2142,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check prices
         // USDT
         const usdtPrice = fp('1') // June 2022
-        expect(await usdtCollateral.price()).to.be.closeTo(usdtPrice, fp('0.01'))
+        expect(await usdtCollateral.strictPrice()).to.be.closeTo(usdtPrice, fp('0.01'))
 
         // Aproximate total price of Basket in USD
         const totalPriceUSD = usdtPrice
@@ -2139,9 +2156,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check initial values
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
+        expect(await basketHandler.strictPrice()).to.be.closeTo(
+          totalPriceUSD,
+          point1Pct(totalPriceUSD)
+        )
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+        await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)

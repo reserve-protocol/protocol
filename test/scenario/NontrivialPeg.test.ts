@@ -179,7 +179,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
       it('should not produce revenue', async () => {
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await rTokenAsset.price()).to.equal(fp('2')) // sum of target amounts
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('2')) // sum of target amounts
         await expectEvents(
           backingManager
             .connect(owner)
@@ -214,7 +214,7 @@ describe(`The peg (target/ref) should be arbitrary - P${IMPLEMENTATION}`, () => 
         )
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.fullyCollateralized()).to.equal(true)
-        expect(await rTokenAsset.price()).to.equal(fp('2')) // sum of target amounts
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('2')) // sum of target amounts
       })
     })
   })

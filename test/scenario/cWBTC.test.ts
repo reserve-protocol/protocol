@@ -259,7 +259,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
-      expect(await cWBTCCollateral.price()).to.equal(fp('95000').mul(3).div(2).div(50))
+      expect(await cWBTCCollateral.strictPrice()).to.equal(fp('95000').mul(3).div(2).div(50))
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {

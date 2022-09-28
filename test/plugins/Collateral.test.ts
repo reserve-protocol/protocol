@@ -163,7 +163,7 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await tokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
-      expect(await tokenCollateral.price()).to.equal(fp('1'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
       expect(await tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -182,7 +182,7 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
       expect(await usdcCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await usdcCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -204,7 +204,7 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.prevReferencePrice()).to.equal(
         await aTokenCollateral.refPerTok()
       )
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
       let calldata = aToken.interface.encodeFunctionData('claimRewardsToSelf', [true])
       expect(await aTokenCollateral.getClaimCalldata()).to.eql([aToken.address, calldata])
       expect(await aTokenCollateral.rewardERC20()).to.equal(aaveToken.address)
@@ -228,7 +228,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.prevReferencePrice()).to.equal(
         await cTokenCollateral.refPerTok()
       )
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
       calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -427,10 +427,10 @@ describe('Collateral contracts', () => {
   describe('Prices #fast', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
-      expect(await tokenCollateral.price()).to.equal(fp('1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1'))
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -443,10 +443,10 @@ describe('Collateral contracts', () => {
       await setOraclePrice(usdcCollateral.address, bn('1.1e8')) // 10%
 
       // Check new prices
-      expect(await tokenCollateral.price()).to.equal(fp('1.1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1.1'))
-      expect(await aTokenCollateral.price()).to.equal(fp('1.1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.022'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.022'))
 
       // Check refPerTok remains the same
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -455,13 +455,13 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Check RToken price
-      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
       // Check initial prices
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -472,15 +472,15 @@ describe('Collateral contracts', () => {
       await cToken.setExchangeRate(fp(2))
 
       // Check prices doubled
-      expect(await aTokenCollateral.price()).to.equal(fp('2'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.04'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('2'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.04'))
 
       // RefPerTok also doubles in this case
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('2'))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.04'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {
@@ -488,22 +488,22 @@ describe('Collateral contracts', () => {
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should revert in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(tokenCollateral.address)
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -643,22 +643,22 @@ describe('Collateral contracts', () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Check new prices
-      await expect(usdcCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(cTokenCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(aTokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(usdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(cTokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aTokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
     })
 
-    it('Enters UNPRICED state when price becomes stale', async () => {
+    it('Enters IFFY state when price becomes stale', async () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
       await usdcCollateral.refresh()
       await tokenCollateral.refresh()
       await cTokenCollateral.refresh()
       await aTokenCollateral.refresh()
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -832,28 +832,28 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.refPerTok()).to.equal(fp('1'))
       expect(await nonFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await nonFiatCollateral.pricePerTarget()).to.equal(fp('20000'))
-      expect(await nonFiatCollateral.price()).to.equal(fp('20000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('20000'))
       expect(await nonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await nonFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await nonFiatCollateral.price()).to.equal(fp('20000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('20000'))
 
       // Update values in Oracle increase by 10%
       await targetUnitOracle.updateAnswer(bn('22000e8')) // $22k
 
       // Check new prices
-      expect(await nonFiatCollateral.price()).to.equal(fp('22000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('22000'))
 
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(nonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Restore price
       await targetUnitOracle.updateAnswer(bn('20000e8'))
@@ -862,11 +862,11 @@ describe('Collateral contracts', () => {
 
       // Check the other oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(nonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -1084,7 +1084,7 @@ describe('Collateral contracts', () => {
         await cTokenNonFiatCollateral.refPerTok()
       )
 
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('400')) // 0.02 of 20K
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('400')) // 0.02 of 20K
       const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenNonFiatCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -1094,7 +1094,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('400'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('400'))
 
       // Check refPerTok initial values
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -1103,7 +1103,7 @@ describe('Collateral contracts', () => {
       await cNonFiatToken.setExchangeRate(fp(2))
 
       // Check price doubled
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('800'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('800'))
 
       // RefPerTok also doubles in this case
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.04'))
@@ -1112,15 +1112,15 @@ describe('Collateral contracts', () => {
       await targetUnitOracle.updateAnswer(bn('22000e8')) // $22k
 
       // Check new price
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('880'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('880'))
 
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(cTokenNonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await cTokenNonFiatCollateral.refresh()
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       // Restore
       await targetUnitOracle.updateAnswer(bn('22000e8'))
       await cTokenNonFiatCollateral.refresh()
@@ -1128,11 +1128,11 @@ describe('Collateral contracts', () => {
 
       // Revert if price is zero - Update the other Oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(cTokenNonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await cTokenNonFiatCollateral.refresh()
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -1183,28 +1183,30 @@ describe('Collateral contracts', () => {
       expect(await selfReferentialCollateral.refPerTok()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await selfReferentialCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracle increase by 10%
       await setOraclePrice(selfReferentialCollateral.address, bn('1.1e8'))
 
       // Check new prices
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1.1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1.1'))
 
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
-      await expect(selfReferentialCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(selfReferentialCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // When refreshed, sets status to Unpriced
       await selfReferentialCollateral.refresh()
-      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -1326,7 +1328,7 @@ describe('Collateral contracts', () => {
         await cTokenSelfReferentialCollateral.refPerTok()
       )
 
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.02'))
       const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenSelfReferentialCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -1336,7 +1338,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await cTokenSelfReferentialCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -1345,7 +1347,7 @@ describe('Collateral contracts', () => {
       await cSelfRefToken.setExchangeRate(fp(2))
 
       // Check price doubled
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.04'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.04'))
 
       // RefPerTok also doubles in this case
       expect(await cTokenSelfReferentialCollateral.refPerTok()).to.equal(fp('0.04'))
@@ -1354,17 +1356,17 @@ describe('Collateral contracts', () => {
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('1.1e8'))
 
       // Check new prices
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.044'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.044'))
 
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
-      await expect(cTokenSelfReferentialCollateral.price()).to.be.revertedWith(
+      await expect(cTokenSelfReferentialCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // When refreshed, sets status to Unpriced
       await cTokenSelfReferentialCollateral.refresh()
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -1483,7 +1485,7 @@ describe('Collateral contracts', () => {
       const targetFeed = await ethers.getContractAt('MockV3Aggregator', targetFeedAddr)
       await targetFeed.updateAnswer(0)
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1506,29 +1508,29 @@ describe('Collateral contracts', () => {
       expect(await eurFiatCollateral.refPerTok()).to.equal(fp('1'))
       expect(await eurFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await eurFiatCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('1'))
       expect(await eurFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await eurFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracle = double price
       await referenceUnitOracle.updateAnswer(bn('2e8'))
       await targetUnitOracle.updateAnswer(bn('2e8'))
 
       // Check new prices
-      expect(await eurFiatCollateral.price()).to.equal(fp('2'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('2'))
 
       // Revert if price is zero - Update Oracles and check prices
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(eurFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(eurFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Restore
       await referenceUnitOracle.updateAnswer(bn('2e8'))
@@ -1538,7 +1540,7 @@ describe('Collateral contracts', () => {
       // Check the other oracle - When refreshed, sets status to Unpriced
       await targetUnitOracle.updateAnswer(bn('0'))
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 

@@ -221,7 +221,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
   })
 
@@ -577,7 +577,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price should revert pre-issuae
-      await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+      await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -900,7 +900,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price should revert pre-issuae
-      await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+      await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -908,7 +908,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount))
 
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
@@ -916,7 +916,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      expect(await rTokenAsset.price()).to.equal(0)
+      expect(await rTokenAsset.strictPrice()).to.equal(0)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 

@@ -172,7 +172,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
   })
 
   it('should not produce revenue', async () => {
-    expect(await basketHandler.price()).to.equal(price)
+    expect(await basketHandler.strictPrice()).to.equal(price)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     await expectEvents(
@@ -218,7 +218,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
         },
       ]
     )
-    expect(await basketHandler.price()).to.equal(price)
+    expect(await basketHandler.strictPrice()).to.equal(price)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
@@ -228,7 +228,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await setOraclePrice(collateral0.address, bn('1e8').div(2))
     await setOraclePrice(collateral1.address, bn('2e8').div(2))
     await setOraclePrice(collateral2.address, bn('4e8').div(2))
-    expect(await basketHandler.price()).to.equal(price.div(2))
+    expect(await basketHandler.strictPrice()).to.equal(price.div(2))
 
     // Redeem
     await rToken.connect(addr1).redeem(issueAmt)

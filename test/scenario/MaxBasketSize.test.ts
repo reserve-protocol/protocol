@@ -290,7 +290,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Mint and approve initial balances
@@ -418,7 +418,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
+      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Mint and approve initial balances
