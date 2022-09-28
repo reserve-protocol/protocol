@@ -576,8 +576,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // RToken price should revert pre-issuae
-      await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
+      // RToken price pre-issuance
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -899,8 +899,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      // RToken price should revert pre-issuae
-      await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
+      // RToken price pre-issuance
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -916,7 +916,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
-      expect(await rTokenAsset.strictPrice()).to.equal(0)
+      // Should expect maxTradeSlippage + dust losses -- remember no insurance available
+      // maxTradeSlippage + dust losses
+      const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
+      expect(await rTokenAsset.strictPrice()).to.equal(
+        fp('1').mul(99).div(100).sub(dustPriceImpact.mul(2))
+      )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 

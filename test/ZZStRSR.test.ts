@@ -691,7 +691,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not complete withdrawal if basket defaulted', async () => {
+      it('Should not complete withdrawal if IFFY or DISABLED', async () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
@@ -710,22 +710,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-      })
 
-      it('Should not complete withdrawal if UNPRICED collateral', async () => {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        // Move past DELAY_UNTIL_DEFAULT
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+        // Still can't withdraw
         await collateral1.refresh()
-        expect(await basketHandler.status()).to.equal(CollateralStatus.UNPRICED)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'basket defaulted'
         )
-
-        // Nothing completed
-        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
-        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
       it('Should not withdraw before stakingWithdrawalDelay', async () => {
