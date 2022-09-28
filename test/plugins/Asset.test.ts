@@ -63,8 +63,8 @@ describe('Assets contracts #fast', () => {
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    collateral0 = <Collateral>await ethers.getContractAt('Asset', collateral[0].address)
-    collateral1 = <Collateral>await ethers.getContractAt('Asset', collateral[1].address)
+    collateral0 = <Collateral>await ethers.getContractAt('FiatCollateral', collateral[0].address)
+    collateral1 = <Collateral>await ethers.getContractAt('FiatCollateral', collateral[1].address)
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
@@ -89,7 +89,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsr.decimals()).to.equal(18)
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
-      expect(await rsrAsset.price()).to.equal(fp('1'))
+      expect(await rsrAsset.strictPrice()).to.equal(fp('1'))
       expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -99,7 +99,7 @@ describe('Assets contracts #fast', () => {
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
-      expect(await compAsset.price()).to.equal(fp('1'))
+      expect(await compAsset.strictPrice()).to.equal(fp('1'))
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -109,7 +109,7 @@ describe('Assets contracts #fast', () => {
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
-      expect(await aaveAsset.price()).to.equal(fp('1'))
+      expect(await aaveAsset.strictPrice()).to.equal(fp('1'))
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -119,8 +119,7 @@ describe('Assets contracts #fast', () => {
       expect(await rToken.decimals()).to.equal(18)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
@@ -129,10 +128,10 @@ describe('Assets contracts #fast', () => {
   describe('Prices', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
-      expect(await rsrAsset.price()).to.equal(fp('1'))
-      expect(await compAsset.price()).to.equal(fp('1'))
-      expect(await aaveAsset.price()).to.equal(fp('1'))
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rsrAsset.strictPrice()).to.equal(fp('1'))
+      expect(await compAsset.strictPrice()).to.equal(fp('1'))
+      expect(await aaveAsset.strictPrice()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracles increase by 10-20%
       await setOraclePrice(compAsset.address, bn('1.1e8')) // 10%
@@ -140,23 +139,22 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(rsrAsset.address, bn('1.2e8')) // 20%
 
       // Check new prices
-      expect(await rsrAsset.price()).to.equal(fp('1.2'))
-      expect(await compAsset.price()).to.equal(fp('1.1'))
-      expect(await aaveAsset.price()).to.equal(fp('1.2'))
-      expect(await rTokenAsset.price()).to.equal(fp('1')) // No changes
-      expect(await rTokenAsset.price()).to.equal(await rTokenAsset.price())
+      expect(await rsrAsset.strictPrice()).to.equal(fp('1.2'))
+      expect(await compAsset.strictPrice()).to.equal(fp('1.1'))
+      expect(await aaveAsset.strictPrice()).to.equal(fp('1.2'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1')) // No changes
     })
 
     it('Should calculate RToken price correctly', async () => {
       // Check initial price
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Update values of underlying tokens - increase all by 10%
       await setOraclePrice(collateral0.address, bn('1.1e8')) // 10%
       await setOraclePrice(collateral1.address, bn('1.1e8')) // 10%
 
       // Price of RToken should increase by 10%
-      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1.1'))
     })
 
     it('Should revert price if price is zero', async () => {
@@ -166,16 +164,16 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(rsrAsset.address, bn('0'))
 
       // Check new prices
-      await expect(rsrAsset.price()).to.be.revertedWith('PriceOutsideRange()')
-      await expect(compAsset.price()).to.be.revertedWith('PriceOutsideRange()')
-      await expect(aaveAsset.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(rsrAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(compAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(aaveAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
     })
 
-    it('Should revert price if supply is zero', async () => {
+    it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
       await rToken.connect(wallet).redeem(amt)
-      await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
@@ -207,9 +205,9 @@ describe('Assets contracts #fast', () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Check new prices
-      await expect(rsrAsset.price()).to.be.revertedWith('StalePrice()')
-      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
-      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(rsrAsset.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(compAsset.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.strictPrice()).to.be.revertedWith('StalePrice()')
     })
 
     it('Should revert in case of invalid timestamp', async () => {
@@ -218,9 +216,9 @@ describe('Assets contracts #fast', () => {
       await setInvalidOracleTimestamp(aaveAsset.address)
 
       // Check price of token
-      await expect(rsrAsset.price()).to.be.revertedWith('StalePrice()')
-      await expect(compAsset.price()).to.be.revertedWith('StalePrice()')
-      await expect(aaveAsset.price()).to.be.revertedWith('StalePrice()')
+      await expect(rsrAsset.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(compAsset.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aaveAsset.strictPrice()).to.be.revertedWith('StalePrice()')
     })
   })
 
