@@ -290,8 +290,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -418,8 +420,10 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.strictPrice()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)

@@ -418,8 +418,10 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check other values
     expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-    expect(await basketHandler.strictPrice()).to.equal(totalPriceUSD)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+    const [isFallback, price] = await basketHandler.price(true)
+    expect(isFallback).to.equal(false)
+    expect(price).to.equal(totalPriceUSD)
 
     const issueAmt = bn('10e18')
 
@@ -430,10 +432,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await rToken.connect(addr1).issue(issueAmt)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     expect(await rToken.totalSupply()).to.equal(issueAmt)
-    expect(await basketHandler.strictPrice()).to.equal(totalPriceUSD)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
       issueAmt.mul(totalPriceUSD.div(BN_SCALE_FACTOR))
     )
+
+    const [isFallback2, price2] = await basketHandler.price(true)
+    expect(isFallback2).to.equal(false)
+    expect(price2).to.equal(totalPriceUSD)
 
     // Set expected quotes
     const expectedTkn0: BigNumber = issueAmt.mul(targetAmts[0]).div(await collateral[0].refPerTok())

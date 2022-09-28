@@ -1592,8 +1592,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Check other values
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
@@ -1944,12 +1946,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check initial values
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.strictPrice()).to.be.closeTo(
-          totalPriceUSD,
-          point1Pct(totalPriceUSD)
-        )
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
+        const [isFallback, price] = await basketHandler.price(true)
+        expect(isFallback).to.equal(false)
+        expect(price).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2156,12 +2157,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Check initial values
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-        expect(await basketHandler.strictPrice()).to.be.closeTo(
-          totalPriceUSD,
-          point1Pct(totalPriceUSD)
-        )
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
+        const [isFallback, price] = await basketHandler.price(true)
+        expect(isFallback).to.equal(false)
+        expect(price).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)

@@ -380,6 +380,8 @@ library TradingLibP0 {
         uint192 minTradeVolume_ = trader.minTradeVolume();
 
         // TODO
+        // We should prefer trading SOUND assets to IFFY assets, if both are above the dust amount
+        //
         // We can do _much much_ better in terms of gas usage than we currently are, but for now
         // this function is in its highly unoptimized form so we can confirm overall
         // proper behavior
@@ -389,21 +391,7 @@ library TradingLibP0 {
 
             IAsset asset = assetRegistry(trader).toAsset(erc20s[i]);
 
-            uint192 price_; // {UoA}
-            {
-                bool isFallback;
-                (isFallback, price_) = asset.price(true);
-
-                // Skip asset if: (i) using a fallback price, or (ii) Collateral + !SOUND
-                if (
-                    isFallback ||
-                    (asset.isCollateral() &&
-                        ICollateral(address(asset)).status() != CollateralStatus.SOUND)
-                ) {
-                    continue;
-                }
-            }
-
+            (, uint192 price_) = asset.price(true); // {UoA/tok} allow fallback prices
             uint192 bal = asset.bal(address(trader)); // {tok}
 
             // {tok} = {BU} * {tok/BU}
@@ -448,6 +436,8 @@ library TradingLibP0 {
                 surplusAmt = rsrAvailable;
             }
         }
+
+        if (address(deficit) != address(0)) {}
     }
 
     /// Assuming we have `maxSellAmount` sell tokens available, prepare a trade to cover as much of

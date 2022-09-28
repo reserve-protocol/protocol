@@ -172,7 +172,9 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
   })
 
   it('should not produce revenue', async () => {
-    expect(await basketHandler.strictPrice()).to.equal(price)
+    const [isFallback, price_] = await basketHandler.price(true)
+    expect(isFallback).to.equal(false)
+    expect(price_).to.equal(price)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     await expectEvents(
@@ -218,7 +220,9 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
         },
       ]
     )
-    expect(await basketHandler.strictPrice()).to.equal(price)
+    const [isFallback2, price2] = await basketHandler.price(true)
+    expect(isFallback2).to.equal(false)
+    expect(price2).to.equal(price)
     expect(await basketHandler.fullyCollateralized()).to.equal(true)
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
@@ -228,7 +232,9 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     await setOraclePrice(collateral0.address, bn('1e8').div(2))
     await setOraclePrice(collateral1.address, bn('2e8').div(2))
     await setOraclePrice(collateral2.address, bn('4e8').div(2))
-    expect(await basketHandler.strictPrice()).to.equal(price.div(2))
+    const [isFallback, price_] = await basketHandler.price(true)
+    expect(isFallback).to.equal(false)
+    expect(price_).to.equal(price.div(2))
 
     // Redeem
     await rToken.connect(addr1).redeem(issueAmt)

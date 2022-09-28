@@ -95,11 +95,11 @@ abstract contract Collateral is ICollateral, Asset {
         return _whenDefault <= block.timestamp;
     }
 
-    // === End child helpers
-
     function whenDefault() public view returns (uint256) {
         return _whenDefault;
     }
+
+    // === End child helpers
 
     /// @return If the asset is an instance of ICollateral or not
     function isCollateral() external pure virtual override(Asset, IAsset) returns (bool) {

@@ -68,7 +68,7 @@ contract RTokenAsset is IAsset {
         (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
-        // to convert between uint256 and uint192. Fits due to assumed max totalSupply.
+        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
         if (supply == 0) return (isFallback_, price_);
