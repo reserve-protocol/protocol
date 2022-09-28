@@ -97,8 +97,9 @@ function shiftl_toFix(
 ) pure returns (uint192) {
     shiftLeft += 18;
 
-    if (x == 0 || shiftLeft < -77) return 0; // shift would clear a uint256; 0 -> 0
-    if (77 < shiftLeft) revert UIntOutOfBounds(); // would unconditionally overflow x
+    if (x == 0) return 0;
+    if (shiftLeft <= -77) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
+    if (57 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
 
     uint256 coeff = 10**abs(shiftLeft);
     uint256 shifted = (shiftLeft >= 0) ? x * coeff : _divrnd(x, coeff, rounding);
