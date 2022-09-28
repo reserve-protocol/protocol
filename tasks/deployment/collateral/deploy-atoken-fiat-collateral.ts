@@ -20,10 +20,7 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
     const chainId = await getChainId(hre)
 
     const ATokenCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'ATokenFiatCollateral',
-      {
-        libraries: { OracleLib: params.oracleLib },
-      }
+      'ATokenFiatCollateral'
     )
 
     const collateral = <ATokenFiatCollateral>(
