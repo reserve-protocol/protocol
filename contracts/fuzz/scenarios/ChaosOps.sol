@@ -1063,6 +1063,10 @@ contract ChaosOpsScenario {
         return BasketHandlerP1Fuzz(address(main.basketHandler())).invariantsHold();
     }
 
+    function echidna_brokerInvariants() external view returns (bool) {
+        return BrokerP1Fuzz(address(main.broker())).invariantsHold();
+    }
+
     // Calling basketHandler.refreshBasket() provides some properties
     function echidna_refreshBasketProperties() external returns (bool) {
         assert(main.hasRole(OWNER, address(this)));

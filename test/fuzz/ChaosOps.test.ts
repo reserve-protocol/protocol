@@ -1182,6 +1182,7 @@ describe('The Chaos Operations scenario', () => {
     expect(await scenario.echidna_assetRegistryInvariants()).to.be.true
     expect(await scenario.echidna_backingManagerInvariants()).to.be.true
     expect(await scenario.echidna_basketInvariants()).to.be.true
+    expect(await scenario.echidna_brokerInvariants()).to.be.true
     expect(await scenario.echidna_distributorInvariants()).to.be.true
     expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true

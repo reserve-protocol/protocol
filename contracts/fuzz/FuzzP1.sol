@@ -148,6 +148,19 @@ contract BrokerP1Fuzz is BrokerP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
+
+    function invariantsHold() external view returns (bool) {
+        // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+        bool tradesProp = true;
+        for (uint256 i = 0; i < tradeSet.length(); i++) {
+            if (!trades[tradeSet.at(i)]) tradesProp = false;
+        }
+
+        bool auctionLengthProp = (auctionLength == 0 || auctionLength > MAX_AUCTION_LENGTH)
+            ? false
+            : true;
+        return tradesProp && auctionLengthProp;
+    }
 }
 
 contract DistributorP1Fuzz is DistributorP1 {
