@@ -55,7 +55,7 @@ contract NonFiatCollateral is Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
         return uoaPerTargetFeed.price(oracleTimeout).mul(chainlinkFeed.price(oracleTimeout));
     }
@@ -89,7 +89,11 @@ contract NonFiatCollateral is Collateral {
 
         // solhint-enable no-empty-blocks
 
-        if (!ok) whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+        if (ok) {
+            whenDefault = NEVER;
+        } else {
+            Math.min(block.timestamp + delayUntilDefault, whenDefault);
+        }
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {

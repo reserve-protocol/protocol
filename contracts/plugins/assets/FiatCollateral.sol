@@ -55,7 +55,8 @@ contract FiatCollateral is Collateral {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
-        try this.price() returns (uint192 p) {
+        // {UoA/ref}
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
             // {UoA/ref} = {UoA/target} * {target/ref}
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
 

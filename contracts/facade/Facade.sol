@@ -289,7 +289,7 @@ contract Facade is IFacade {
             int8 decimals = int8(IERC20Metadata(erc20s[i]).decimals());
 
             // {UoA} = {qTok} * {tok/qTok} * {UoA/tok}
-            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(coll.price());
+            uoaAmts[i] = shiftl_toFix(deposits[i], -decimals).mul(coll.strictPrice());
             uoaSum += uoaAmts[i];
             targets[i] = coll.targetName();
         }
@@ -385,7 +385,7 @@ contract Facade is IFacade {
                 IAsset asset = assetRegistry.toAsset(IERC20(erc20s[i]));
 
                 // {UoA} = {tok} * {UoA/tok}
-                uint192 uoa = asset.bal(backingMgr).mul(asset.price());
+                uint192 uoa = asset.bal(backingMgr).mul(asset.strictPrice());
                 uoaHeld = uoaHeld.plus(uoa);
             }
 
@@ -403,7 +403,7 @@ contract Facade is IFacade {
             );
 
             // {UoA} = {tok} * {UoA/tok}
-            uint192 rsrUoA = rsrBal.mul(rsrAsset.price());
+            uint192 rsrUoA = rsrBal.mul(rsrAsset.strictPrice());
 
             // {1} = {UoA} / {UoA}
             insurance = rsrUoA.div(uoaNeeded);
@@ -412,6 +412,6 @@ contract Facade is IFacade {
 
     /// @return {UoA/tok} The price of the RToken as given by the relevant RTokenAsset
     function price(IRToken rToken) external view returns (uint192) {
-        return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).price();
+        return rToken.main().assetRegistry().toAsset(IERC20(address(rToken))).strictPrice();
     }
 }

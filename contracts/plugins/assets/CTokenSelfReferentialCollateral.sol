@@ -64,7 +64,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
@@ -85,7 +85,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            try this.price() returns (uint192) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
                 whenDefault = NEVER;
             } catch {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);

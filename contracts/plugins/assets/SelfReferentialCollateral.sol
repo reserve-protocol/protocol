@@ -10,7 +10,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
  * @notice Collateral plugin for collateral that is its own target and reference unit,
  * like COMP, MKR, etc.
  * Expected: {tok} == {ref} == {target}, and {target} is probably not {UoA}
- * Self-referential collateral cannot default, though it can become UNPRICED.
+ * Self-referential collateral can default if the oracle becomes stale for long enough.
  */
 contract SelfReferentialCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;

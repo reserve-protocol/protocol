@@ -16,14 +16,14 @@ interface IAsset {
     /// Can return 0, can revert
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
-    function price() external view returns (uint192);
+    function strictPrice() external view returns (uint192);
 
     /// Can return 0
-    /// Should not revert if `enableFailover` is true. Can revert if false.
-    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// Should not revert if `allowFallback` is true. Can revert if false.
+    /// @param allowFallback Whether to try the fallback price in case precise price reverts
     /// @return isFallback If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool enableFailover) external view returns (bool isFallback, uint192);
+    function price(bool allowFallback) external view returns (bool isFallback, uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);

@@ -81,11 +81,6 @@ contract DeployerP0 is IDeployer {
             broker: new BrokerP0()
         });
 
-        // Deploy RToken/RSR Assets
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
-        assets[1] = rsrAsset;
-
         // Init Main
         main.init(components, rsr, params.shortFreeze, params.longFreeze);
 
@@ -109,9 +104,6 @@ contract DeployerP0 is IDeployer {
             params.maxTradeSlippage,
             params.minTradeVolume
         );
-
-        // Init Asset Registry
-        main.assetRegistry().init(main, assets);
 
         // Init Distributor
         main.distributor().init(main, params.dist);
@@ -145,6 +137,14 @@ contract DeployerP0 is IDeployer {
             params.scalingRedemptionRate,
             params.redemptionRateFloor
         );
+
+        // Deploy RToken/RSR Assets
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = new RTokenAsset(components.rToken, params.rTokenMaxTradeVolume);
+        assets[1] = rsrAsset;
+
+        // Init Asset Registry
+        main.assetRegistry().init(main, assets);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

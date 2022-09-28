@@ -47,30 +47,31 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     }
 
     /// @return p {UoA/tok} The redemption price of the RToken
-    function price() public view override(RTokenAsset, IAsset) returns (uint192) {
-        return super.price();
+    function strictPrice() public view override(RTokenAsset, IAsset) returns (uint192) {
+        return super.strictPrice();
     }
 
     /// Can return 0
-    /// Cannot revert if `enableFailover` is true. Can revert if false.
-    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// Cannot revert if `allowFallback` is true. Can revert if false.
+    /// @param allowFallback Whether to try the fallback price in case precise price reverts
     /// @return isFallback If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool enableFailover)
+    function price(bool allowFallback)
         public
         view
         override(RTokenAsset, IAsset)
         returns (bool isFallback, uint192)
     {
         // TODO fix?
-        return super.price(enableFailover);
+        return super.price(allowFallback);
     }
 
     function refresh() external virtual override {
+        if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 
         // No default checks -- we outsource stability to the collateral RToken
-        try this.price() returns (uint192 p) {
+        try this.strictPrice() returns (uint192) {
             whenDefault = NEVER;
         } catch {
             whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);

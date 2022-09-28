@@ -29,7 +29,7 @@ library TradingLibP0 {
     //
     // If notDust is true, then the returned trade satisfies:
     //   trade.sell == sell and trade.buy == buy,
-    //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage),
+    //   trade.minBuyAmount ~= trade.sellAmount * sell.strictPrice() / buy.strictPrice() * (1-maxTradeSlippage),
     //   trade.sellAmount <= sell.maxTradeSize().toQTok(sell)
     //   1 < trade.sellAmount
     //   and trade.sellAmount is maximal such that trade.sellAmount <= sellAmount.toQTok(sell)
@@ -53,15 +53,15 @@ library TradingLibP0 {
         // {qSellTok}
         trade.sellAmount = s.shiftl_toUint(int8(sell.erc20Decimals()), FLOOR);
 
-        uint192 buyPrice = buy.price();
+        uint192 buyPrice = buy.strictPrice();
 
-        // buy.price() cannot be zero in BackingManager's usage of this function
-        // buy.price() could plausibly be zero in RevenueTrader's usage of this function
+        // buy.strictPrice() cannot be zero in BackingManager's usage of this function
+        // buy.strictPrice() could plausibly be zero in RevenueTrader's usage of this function
         require(buyPrice > 0, "buy asset has zero price");
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
         uint192 b = s.mul(FIX_ONE.minus(trader.maxTradeSlippage())).mulDiv(
-            sell.price(),
+            sell.strictPrice(),
             buyPrice,
             CEIL
         );
@@ -82,7 +82,7 @@ library TradingLibP0 {
     // actions:
     //   let range = basketRange(all erc20s)
     //   let (surplus, deficit, amts...) = nextTradePair(all erc20s, range)
-    //   if surplus.price() is reliable, prepareTradeToCoverDeficit(surplus, deficit, amts...)
+    //   if surplus.strictPrice() is reliable, prepareTradeToCoverDeficit(surplus, deficit, amts...)
     //   otherwise, prepareTradeSell(surplus, deficit, surplusAmt) with a 0 minBuyAmount
     function prepareTradeRecapitalize(ITrading trader)
         external
@@ -105,7 +105,7 @@ library TradingLibP0 {
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
-        // If we cannot trust surplus.price(), eliminate the minBuyAmount requirement
+        // If we cannot trust surplus.strictPrice(), eliminate the minBuyAmount requirement
 
         if (
             surplus.isCollateral() &&
@@ -145,12 +145,12 @@ library TradingLibP0 {
     // - The best price we might get for a trade is the current price estimate (frictionlessly)
     // - The worst price we might get for a trade between SOUND or IFFY collateral is the current
     //     price estimate * ( 1 - maxTradeSlippage )
-    // - The worst price we might get for an UNPRICED or DISABLED collateral is 0.
+    // - The worst price we might get for an IFFY or DISABLED collateral is 0.
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions
-    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.price())
-    //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
+    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.strictPrice())
+    //   because (totalAssetValue(erc20s) / basket.strictPrice()) is how many BUs we can hold assuming
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded
     // range.bottom = TODO
 
@@ -178,7 +178,7 @@ library TradingLibP0 {
 
         // {UoA}, Total value of collateral in shortfall of `basketTargetHigh`. Specifically:
         //   sum( shortfall(c, basketTargetHigh / basketPrice) for each erc20 c in the basket)
-        //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.price()
+        //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.strictPrice()
         //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
         //          need to be given in order to have enough of c to cover `numBUs` BUs)
         uint192 shortfall = collateralShortfall(trader, erc20s, basketTargetHigh, basketPrice); // {UoA}
@@ -284,7 +284,7 @@ library TradingLibP0 {
     /// @return shortfall {UoA} The missing re-collateralization in UoA terms
     // Specifically, returns:
     //   sum( shortfall(c, basketTargetHigh / basketPrice) for each erc20 c in the basket)
-    //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.price()
+    //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.strictPrice()
     //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
     //          need to be given in order to have enough of c to cover `numBUs` BUs)
     // precondition: erc20s contains no duplicates; all basket tokens are in erc20s
@@ -457,7 +457,7 @@ library TradingLibP0 {
     //   1 < trade.sellAmount <= min(maxSellAmount.toQTok(sell),
     //                               sell.maxTradeSize().toQTok(sell),
     //                               GNOSIS_MAX_TOKENS)
-    //   trade.minBuyAmount ~= trade.sellAmount * sell.price() / buy.price() * (1-maxTradeSlippage)
+    //   trade.minBuyAmount ~= trade.sellAmount * sell.strictPrice() / buy.strictPrice() * (1-maxTradeSlippage)
     //
     //   trade.sellAmount (and trade.minBuyAmount) are maximal satisfying all these conditions
     function prepareTradeToCoverDeficit(
@@ -470,11 +470,11 @@ library TradingLibP0 {
         // Don't buy dust.
         deficitAmount = fixMax(deficitAmount, minTradeSize(buy, trader.minTradeVolume()));
 
-        // sell.price() cannot be zero below, because `nextTradePair` does not consider
+        // sell.strictPrice() cannot be zero below, because `nextTradePair` does not consider
         // assets with zero price
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
-        uint192 exactSellAmount = deficitAmount.mulDiv(buy.price(), sell.price(), CEIL);
+        uint192 exactSellAmount = deficitAmount.mulDiv(buy.strictPrice(), sell.strictPrice(), CEIL);
         // exactSellAmount: Amount to sell to buy `deficitAmount` if there's no slippage
 
         // slippedSellAmount: Amount needed to sell to buy `deficitAmount`, counting slippage

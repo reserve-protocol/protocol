@@ -41,24 +41,24 @@ contract RTokenAsset is IAsset {
 
     /// Can return 0 and revert
     /// @return {UoA/tok} An estimate of the current RToken redemption price
-    function price() public view virtual returns (uint192) {
+    function strictPrice() public view virtual returns (uint192) {
         (bool isFallback, uint192 price_) = _price(false);
         require(!isFallback, "RTokenAsset: need fallback prices");
         return price_;
     }
 
     /// Can return 0
-    /// Should not revert if `enableFailover` is true. Can revert if false.
-    /// @param enableFailover Whether to try the fallback price in case precise price reverts
+    /// Should not revert if `allowFallback` is true. Can revert if false.
+    /// @param allowFallback Whether to try the fallback price in case precise price reverts
     /// @return If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool enableFailover) public view virtual returns (bool, uint192) {
-        return _price(enableFailover);
+    function price(bool allowFallback) public view virtual returns (bool, uint192) {
+        return _price(allowFallback);
     }
 
-    /// @return isFallback If the price is a failover price
+    /// @return If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function _price(bool enableFailover) private view returns (bool, uint192) {
+    function _price(bool allowFallback) private view returns (bool, uint192) {
         uint192 basketsBottom; // {BU}
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();
@@ -70,11 +70,17 @@ contract RTokenAsset is IAsset {
             basketsBottom = range.bottom;
         }
 
-        // {UoA/tok}
-        (bool isFallback_, uint192 price_) = basketHandler.price(enableFailover);
+        // {UoA/BU}
+        (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
 
-        // {UoA/tok} = {BU} * {UoA/tok}
-        return (isFallback_, basketsBottom.mul(price_));
+        // Here we take advantage of the fact that we know RToken has 18 decimals
+        // to convert between uint256 and uint192. Fits due to assumed max totalSupply.
+        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
+
+        if (supply == 0) return (isFallback_, price_);
+
+        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
+        return (isFallback_, basketsBottom.mulDiv(price_, supply));
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

@@ -84,7 +84,7 @@ contract CTokenNonFiatCollateral is Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
             targetUnitChainlinkFeed
@@ -109,19 +109,24 @@ contract CTokenNonFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             whenDefault = block.timestamp;
         } else {
-            // p {UoA/tok}
-            try this.price() returns (uint192 p) {
-                // {target/ref}
-                uint192 peg = targetPerRef();
+            // p {target/ref}
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+                // We don't need the return value from this next feed, but it should still function
+                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192) {
+                    // {target/ref}
+                    uint192 peg = targetPerRef();
 
-                // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
+                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
-                // If the price is below the default-threshold price, default eventually
-                // uint192(+/-) is the same as Fix.plus/minus
-                if (p < peg - delta || p > peg + delta) {
+                    // If the price is below the default-threshold price, default eventually
+                    // uint192(+/-) is the same as Fix.plus/minus
+                    if (p < peg - delta || p > peg + delta) {
+                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
+                    } else whenDefault = NEVER;
+                } catch {
                     whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
+                }
             } catch {
                 whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
             }

@@ -51,8 +51,10 @@ abstract contract Collateral is ICollateral, Asset {
 
     // solhint-disable-next-line no-empty-blocks
     function refresh() external virtual {
+        if (whenDefault <= block.timestamp) return;
+
         CollateralStatus oldStatus = status();
-        try this.price() returns (uint192) {
+        try this.strictPrice() returns (uint192) {
             whenDefault = NEVER;
         } catch {
             whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
