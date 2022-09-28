@@ -109,16 +109,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * collateral default, the size of the BU price band should decrease with each trade
              * until it is 0, at which point capitalization is restored.
              *
-             * TODO
-             * Argument for why this converges
-             *
-             * ======
-             *
              * If we run out of capital and are still undercapitalized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              *
-             * TODO
-             * Argument for why this can't hurt RToken holders
+             * TODO: Document our arguments for this procedure.
+             * See: https://app.asana.com/0/1202557536393044/1203043664234023/f
              */
 
             (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();

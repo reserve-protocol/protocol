@@ -31,7 +31,8 @@ struct BackupConfig {
 //     if name is in values(targetNames), then backups[name] is a valid BackupConfig
 //     erc20s is a valid collateral array
 //
-// TODO: keys(targetAmts) can be a strict superset of erc20s. We'll change this.
+// TODO: keys(targetAmts) can be a strict superset of erc20s.
+// Ticket: https://app.asana.com/0/1202557536393044/1203043664234027/f
 // In the meantime, treat erc20s as the canonical set of keys for the target* maps
 struct BasketConfig {
     // The collateral erc20s in the prime (explicitly governance-set) basket
@@ -131,7 +132,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is a valid Basket:
     //   basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
     // config is a valid BasketConfig:
-    //   erc20s == keys(targetAmts) == keys(targetNames)  // TODO: currently erc20s subset keys(...)
+    //   erc20s == keys(targetAmts) == keys(targetNames)
     //   erc20s is a valid collateral array
     //   for b in vals(backups), b.erc20s is a valid collateral array.
     // if basket.erc20s is empty then disabled == true
@@ -188,8 +189,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = reg.toColl(e).targetName, for e in erc20s
-    //
-    // TODO: config'.targetAmts and .targetNames might have other old nonzero values. Clear them.
     function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
         external
         governance
@@ -346,7 +345,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             uint192 bal = coll.bal(account); // {tok}
 
-            // {tok/BU} = {ref/BU} / {ref/tok}    refPerTok() > 0 because it didn't throw? TODO
+            // {tok/BU} = {ref/BU} / {ref/tok}
+            // TODO: div by 0? https://app.asana.com/0/1202557536393044/1203043664234029/f
             uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
 
             // {BU} = {tok} / {tok/BU}

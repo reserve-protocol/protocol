@@ -142,10 +142,19 @@ library TradingLibP1 {
     }
 
     // ==== End of external interface; Begin private helpers ===
+
+    // It's a precondition for all of these private helpers that their `erc20s` argument contains at
+    // least all basket collateral, plus any registered assets for which the BackingManager has a
+    // nonzero balance. Really, you should just pass in assetRegistry().erc20s(). We would prefer
+    // to look it up from inside each function, and avoid the extra parameter to get wrong, but the
+    // erc20s() call is pretty expensive.
+    //
+    // TODO: profile to verify that this gas optimization is actually worth the inelegance it
+    // introduces,
+
     /// The plausible range of BUs that the BackingManager will own by the end of recapitalization.
     /// @param erc20s Assets this computation presumes may be traded to raise funds.
     //
-    // TODO: what if erc20s does not contain all basket collateral?
     //
     // This function returns a "plausible range of BUs" assuming that the trading process follows
     //     the follwing rules:
