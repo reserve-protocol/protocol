@@ -68,7 +68,21 @@ contract DeployerP1 is IDeployer {
         implementations = implementations_;
     }
 
-    /// Deploys an instance of the entire system
+    /// Deploys an instance of the entire system, oriented around some mandate.
+    ///
+    /// The mandate describes what goals its governors should try to achieve. By succinctly
+    /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
+    /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
+    ///
+    /// Example Mandates:
+    ///
+    /// - Capital preservation first. Spending power preservation second. Permissionless
+    ///     access third.
+    /// - Capital preservation above all else. All revenues fund the insurance pool.
+    /// - Risk-neutral pursuit of profit for token holders.
+    ///     Maximize (gross revenue - payments for insurance and governance).
+    /// - This RToken holds only FooCoin, to provide a trade for hedging against its
+    ///     possible collapse.
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param mandate An IPFS link or direct string; describes what the RToken _should be_

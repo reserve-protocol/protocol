@@ -26,7 +26,19 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable after init. Expected to be an IPFS link, but can be the mandate itself.
+    /// The mandate describes what goals its governors should try to achieve. By succinctly
+    /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
+    /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
+    ///
+    /// Example Mandates:
+    ///
+    /// - Capital preservation first. Spending power preservation second. Permissionless
+    ///     access third.
+    /// - Capital preservation above all else. All revenues fund the insurance pool.
+    /// - Risk-neutral pursuit of profit for token holders.
+    ///     Maximize (gross revenue - payments for insurance and governance).
+    /// - This RToken holds only FooCoin, to provide a trade for hedging against its
+    ///     possible collapse.
     string public mandate;
 
     // ==== Governance Params ====
