@@ -25,6 +25,7 @@
     "test:coverage": "hardhat coverage --temp artifacts",
     "test:serial": "hardhat test",
     "test:recompile": "hardhat compile --force && mocha --require hardhat/register --recursive --exit",
+    "test:fuzz": "hardhat test test/fuzz/*.test.ts",
     "lint": "bash tools/lint",
     "eslint": "eslint test/",
     "prepare": "husky install",
