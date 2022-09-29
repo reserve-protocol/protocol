@@ -19,10 +19,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     const chainId = await getChainId(hre)
 
     const SelfReferentialCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'SelfReferentialCollateral',
-      {
-        libraries: { OracleLib: params.oracleLib },
-      }
+      'SelfReferentialCollateral'
     )
 
     const collateral = <Collateral>(
