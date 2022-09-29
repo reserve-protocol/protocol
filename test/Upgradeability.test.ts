@@ -26,6 +26,7 @@ import {
   IBasketHandler,
   MainP1,
   MainP1V2,
+  PermitLib,
   RevenueTraderP1,
   RevenueTraderP1V2,
   RewardableLibP1,
@@ -78,6 +79,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: TradingLibP1
   let rewardableLib: RewardableLibP1
+  let permitLib: PermitLib
 
   // Factories
   let MainFactory: ContractFactory
@@ -121,6 +123,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       gnosis,
       rsrTrader,
       rTokenTrader,
+      permitLib,
     } = await loadFixture(defaultFixture))
 
     // Deploy TradingLib external library
@@ -134,7 +137,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
     RTokenFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
+      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
     })
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
     RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
@@ -149,7 +152,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     TradeFactory = await ethers.getContractFactory('GnosisTrade')
-    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
+    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
+      libraries: { PermitLib: permitLib.address },
+    })
 
     // Import deployed proxies
     await upgrades.forceImport(main.address, MainFactory)
@@ -370,6 +375,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
         }
       )
       await newStRSR.deployed()
@@ -631,7 +637,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - RToken', async () => {
       // Upgrading
       const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2', {
-        libraries: { RewardableLibP1: rewardableLib.address },
+        libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
       })
       const rTokenV2: RTokenP1V2 = <RTokenP1V2>await upgrades.upgradeProxy(
         rToken.address,
@@ -662,9 +668,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - StRSR', async () => {
       // Upgrading
-      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2')
-      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
-        await upgrades.upgradeProxy(stRSR.address, StRSRV2Factory)
+      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2', {
+        libraries: { PermitLib: permitLib.address },
+      })
+      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>await upgrades.upgradeProxy(
+        stRSR.address,
+        StRSRV2Factory,
+        {
+          unsafeAllow: ['external-library-linking'],
+        }
       )
 
       // Check address is maintained

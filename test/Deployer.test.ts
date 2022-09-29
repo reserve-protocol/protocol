@@ -12,6 +12,7 @@ import {
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  PermitLib,
   RTokenAsset,
   TestIBackingManager,
   TestIBroker,
@@ -84,8 +85,11 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
       const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
+      const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+      const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
+
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-        libraries: { TradingLibP0: tradingLib.address },
+        libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
       })
       return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {

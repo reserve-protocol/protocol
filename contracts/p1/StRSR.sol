@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Fixed.sol";
+import "contracts/libraries/Permit.sol";
 import "contracts/p1/mixins/Component.sol";
 
 /*
@@ -751,24 +752,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
         );
 
-        bytes32 hash = _hashTypedDataV4(structHash);
-
-        if (AddressUpgradeable.isContract(owner)) {
-            require(
-                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
-                    0x1626ba7e,
-                "ERC1271: Unauthorized"
-            );
-        } else {
-            require(
-                SignatureCheckerUpgradeable.isValidSignatureNow(
-                    owner,
-                    hash,
-                    abi.encodePacked(r, s, v)
-                ),
-                "ERC20Permit: invalid signature"
-            );
-        }
+        PermitLib.requireSignature(owner, _hashTypedDataV4(structHash), v, r, s);
 
         _approve(owner, spender, value);
     }

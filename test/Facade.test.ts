@@ -69,7 +69,6 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-
     ;({ stRSR, rsr, basket, facade, facadeTest, rToken, config, main } = await loadFixture(
       defaultFixture
     ))

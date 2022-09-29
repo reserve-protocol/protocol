@@ -33,6 +33,7 @@ import {
   MainP1,
   MockV3Aggregator,
   OracleLib,
+  PermitLib,
   RevenueTraderP1,
   RewardableLibP1,
   RTokenAsset,
@@ -367,6 +368,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
   oracleLib: OracleLib
+  permitLib: PermitLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -404,6 +406,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
   const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
+  // Deploy TradingLib external library
+  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
+
   // Deploy OracleLib external library
   const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
   const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
@@ -439,7 +445,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address },
+    libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosisAddr, facade.address, rsrAsset.address)
@@ -491,11 +497,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
     const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
+      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
     })
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
+      libraries: { PermitLib: permitLib.address },
+    })
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
     // Setup Implementation addresses
@@ -666,5 +674,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rsrTrader,
     rTokenTrader,
     oracleLib,
+    permitLib,
   }
 }

@@ -35,6 +35,7 @@ import {
   MainP1,
   NonFiatCollateral,
   OracleLib,
+  PermitLib,
   RevenueTraderP1,
   RewardableLibP1,
   RTokenAsset,
@@ -671,6 +672,10 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
   const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
 
+  // Deploy PermitLib external library
+  const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+  const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
+
   // Deploy Facade
   const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
   facade = <Facade>await FacadeFactory.deploy()
@@ -698,7 +703,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-    libraries: { TradingLibP0: tradingLib.address },
+    libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
   })
   let deployer: TestIDeployer = <DeployerP0>(
     await DeployerFactory.deploy(rsr.address, gnosis.address, facade.address, rsrAsset.address)
@@ -746,11 +751,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     const brokerImpl: BrokerP1 = <BrokerP1>await BrokerImplFactory.deploy()
 
     const RTokenImplFactory: ContractFactory = await ethers.getContractFactory('RTokenP1', {
-      libraries: { RewardableLibP1: rewardableLib.address },
+      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
     })
     const rTokenImpl: RTokenP1 = <RTokenP1>await RTokenImplFactory.deploy()
 
-    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes')
+    const StRSRImplFactory: ContractFactory = await ethers.getContractFactory('StRSRP1Votes', {
+      libraries: { PermitLib: permitLib.address },
+    })
     const stRSRImpl: StRSRP1Votes = <StRSRP1Votes>await StRSRImplFactory.deploy()
 
     // Setup Implementation addresses
