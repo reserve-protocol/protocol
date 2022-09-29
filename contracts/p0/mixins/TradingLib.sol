@@ -18,7 +18,6 @@ import "contracts/libraries/Fixed.sol";
  *  2. prepareTradeRecapitalize
  */
 library TradingLibP0 {
-    using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
     /// Prepare a trade to sell `sellAmount` that guarantees a reasonable closing price,
@@ -345,6 +344,19 @@ library TradingLibP0 {
         uint192 deficit; // {UoA}
     }
 
+    /// Prefer selling assets in this order: DISABLED -> SOUND -> IFFY.
+    /// @return If we prefer to sell `status2` over `status1`
+    function preferToSell(CollateralStatus status1, CollateralStatus status2)
+        private
+        pure
+        returns (bool)
+    {
+        // NOTE: If we change the CollaetralStatus enum then this has to change!
+        if (status1 == CollateralStatus.DISABLED) return false;
+        if (status1 == CollateralStatus.SOUND) return status2 == CollateralStatus.DISABLED;
+        return status2 != CollateralStatus.IFFY;
+    }
+
     // Choose next sell/buy pair to trade, with reference to the basket range
     // Exclude dust amounts for surplus
     /// @return surplus Surplus asset OR address(0)
@@ -365,7 +377,8 @@ library TradingLibP0 {
     //   if `deficit` == 0, then no token is in deficit at all, and deficitAmt == 0
     //
     // Then, just if we have deficit and no surplus, consider treating available RSR as surplus.
-    // Prefer selling SOUND assets over IFFY non-backing collateral, but still consider it.
+    //
+    // Prefer selling assets in this order: DISABLED -> SOUND -> IFFY.
     function nextTradePair(
         ITrading trader,
         IERC20[] memory erc20s,
@@ -381,7 +394,7 @@ library TradingLibP0 {
         )
     {
         MaxSurplusDeficit memory maxes;
-        maxes.surplusStatus = CollateralStatus.DISABLED;
+        maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
         uint192 minTradeVolume_ = trader.minTradeVolume();
 
         // TODO
@@ -400,6 +413,7 @@ library TradingLibP0 {
             // {tok} = {BU} * {tok/BU}
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
             uint192 needed = range.top.mul(basket(trader).quantity(erc20s[i]), CEIL); // {tok}
+
             if (bal.gt(needed)) {
                 uint192 amtExtra = bal.minus(needed); // {tok}
 
@@ -411,7 +425,7 @@ library TradingLibP0 {
 
                 // Select the most-in-surplus "best" asset, as defined by (status, max surplusAmt)
                 if (
-                    (maxes.surplusStatus.worseThan(status) ||
+                    (preferToSell(maxes.surplusStatus, status) ||
                         (delta.gt(maxes.surplus) && maxes.surplusStatus == status)) &&
                     isEnoughToSell(asset, amtExtra, minTradeVolume_)
                 ) {
@@ -444,7 +458,7 @@ library TradingLibP0 {
             uint192 rsrAvailable = rsrAsset.bal(address(trader)).plus(
                 rsrAsset.bal(address(stRSR(trader)))
             );
-            if (rsrAvailable.gt(minTradeSize(rsrAsset, minTradeVolume_))) {
+            if (isEnoughToSell(rsrAsset, rsrAvailable, minTradeVolume_)) {
                 surplus = rsrAsset;
                 surplusAmt = rsrAvailable;
             }
