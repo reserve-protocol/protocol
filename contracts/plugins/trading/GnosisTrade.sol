@@ -168,11 +168,12 @@ contract GnosisTrade is ITrade {
         require(msg.sender == origin, "only origin can settle");
 
         // Optionally process settlement of the auction in Gnosis
-        if (atStageSolutionSubmission()) {
+        if (!isAuctionCleared()) {
             gnosis.settleAuction(auctionId);
+            assert(isAuctionCleared());
         }
 
-        assert(atStageFinished());
+        // At this point we know the auction has cleared
 
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
@@ -215,12 +216,7 @@ contract GnosisTrade is ITrade {
 
     // === Private ===
 
-    function atStageSolutionSubmission() private view returns (bool) {
-        GnosisAuctionData memory data = gnosis.auctionData(auctionId);
-        return data.auctionEndDate != 0 && data.clearingPriceOrder == bytes32(0);
-    }
-
-    function atStageFinished() private view returns (bool) {
+    function isAuctionCleared() private view returns (bool) {
         GnosisAuctionData memory data = gnosis.auctionData(auctionId);
         return data.clearingPriceOrder != bytes32(0);
     }
