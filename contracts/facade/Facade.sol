@@ -276,9 +276,21 @@ contract Facade is IFacade {
     {
         uint256[] memory deposits;
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
+        IBasketHandler basketHandler = rToken.main().basketHandler();
 
-        // ({ERC20}, {qTok})
-        (erc20s, deposits) = issue(rToken, FIX_ONE);
+        // (erc20s, deposits) = issue(rToken, FIX_ONE);
+
+        // solhint-disable-next-line no-empty-blocks
+        try rToken.main().furnace().melt() {} catch {}
+
+        // D18{BU} = D18{BU} * {qRTok} / {qRTok}
+        uint192 amtBaskets = uint192(
+            rToken.totalSupply() > 0
+                ? mulDiv256(rToken.basketsNeeded(), FIX_ONE, rToken.totalSupply())
+                : FIX_ONE
+        );
+
+        (erc20s, deposits) = basketHandler.quote(amtBaskets, CEIL);
 
         // Calculate uoaAmts
         uint192 uoaSum;
