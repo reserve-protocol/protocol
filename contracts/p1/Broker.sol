@@ -12,6 +12,9 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 
+// Gnosis: uint96 ~= 7e28
+uint256 constant GNOSIS_MAX_TOKENS = 7e28;
+
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -86,6 +89,9 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
 
+        // Apply Gnosis EasyAuction-specific resizing
+        req = resizeTrade(req, GNOSIS_MAX_TOKENS);
+
         // == Interactions ==
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             caller,
@@ -107,6 +113,26 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         disabled = true;
     }
 
+    /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
+    function resizeTrade(TradeRequest memory req, uint256 maxTokensAllowed)
+        private
+        pure
+        returns (TradeRequest memory)
+    {
+        // {qTok}
+        uint256 maxQuantity = (req.minBuyAmount > req.sellAmount)
+            ? req.minBuyAmount
+            : req.sellAmount;
+
+        // Set both sellAmount and minBuyAmount <= maxTokensAllowed
+        if (maxQuantity > maxTokensAllowed) {
+            req.sellAmount = mulDiv256(req.sellAmount, maxTokensAllowed, maxQuantity, CEIL);
+            req.minBuyAmount = mulDiv256(req.minBuyAmount, maxTokensAllowed, maxQuantity, FLOOR);
+        }
+
+        return req;
+    }
+
     // === Setters ===
 
     /// @custom:governance
@@ -124,11 +150,4 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[46] private __gap;
 }

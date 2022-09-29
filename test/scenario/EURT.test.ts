@@ -105,11 +105,12 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       eurt.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('EURO'),
       DEFAULT_THRESHOLD,
@@ -180,7 +181,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
 
     it('should calculate price correctly', async () => {
       await referenceUnitOracle.updateAnswer(bn('0.475e8')) // 5% below peg
-      expect(await eurtCollateral.price()).to.equal(fp('0.475'))
+      expect(await eurtCollateral.strictPrice()).to.equal(fp('0.475'))
     })
 
     it('should redeem after EUR price increase for same quantities', async () => {

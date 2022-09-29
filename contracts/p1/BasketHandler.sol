@@ -292,14 +292,19 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
+    /// @param allowFallback Whether to fail over to the fallback price or not
+    /// @return isFallback If any fallback prices were used
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (uint192 p) {
+    function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() != CollateralStatus.DISABLED) {
-                p = p.plus(coll.price().mul(quantity(basket.erc20s[i])));
+                (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+                isFallback = isFallback || isFallback_;
+
+                p = p.plus(price_.mul(quantity(basket.erc20s[i])));
             }
         }
     }

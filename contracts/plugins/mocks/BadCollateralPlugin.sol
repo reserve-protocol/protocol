@@ -9,25 +9,27 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkSoftDefault = true; // peg
     bool public checkHardDefault = true; // defi invariant
 
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     )
         ATokenFiatCollateral(
+            fallbackPrice_,
             chainlinkFeed_,
             erc20_,
             rewardERC20_,
-            tradingRange_,
+            maxTradeVolume_,
             oracleTimeout_,
             targetName_,
             defaultThreshold_,
@@ -45,17 +47,15 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
 
     /// Refresh exchange rates and update default status.
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (checkHardDefault && referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else if (checkSoftDefault) {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                priceable = p > 0;
-
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
@@ -66,10 +66,10 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
+                    markStatus(CollateralStatus.IFFY);
+                } else markStatus(CollateralStatus.SOUND);
             } catch {
-                priceable = false;
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;

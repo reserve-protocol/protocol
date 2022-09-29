@@ -9,6 +9,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 /**
  * @title NonFiatCollateral
  * @notice Collateral plugin for a nonfiat collateral that requires default checks, such as WBTC.
+ * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
  */
 contract NonFiatCollateral is Collateral {
     using FixLib for uint192;
@@ -16,54 +17,45 @@ contract NonFiatCollateral is Collateral {
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     /// @param targetPerRefFeed_ {target/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface targetPerRefFeed_,
         AggregatorV3Interface uoaPerTargetFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     )
         Collateral(
+            fallbackPrice_,
             targetPerRefFeed_,
             erc20_,
             rewardERC20_,
-            tradingRange_,
+            maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
         return uoaPerTargetFeed.price(oracleTimeout).mul(chainlinkFeed.price(oracleTimeout));
     }
@@ -73,15 +65,13 @@ contract NonFiatCollateral is Collateral {
     /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
     /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // p {target/ref}
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
             // We don't need the return value from this next feed, but it should still function
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
-                priceable = p > 0 && p2 > 0;
-
+            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192) {
                 // {target/ref}
                 uint192 peg = targetPerRef();
 
@@ -89,14 +79,13 @@ contract NonFiatCollateral is Collateral {
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
                 // If the price is below the default-threshold price, default eventually
-                if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
+                if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                else markStatus(CollateralStatus.SOUND);
             } catch {
-                priceable = false;
+                markStatus(CollateralStatus.IFFY);
             }
         } catch {
-            priceable = false;
+            markStatus(CollateralStatus.IFFY);
         }
 
         CollateralStatus newStatus = status();
@@ -105,71 +94,8 @@ contract NonFiatCollateral is Collateral {
         }
     }
 
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
-        }
-    }
-
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
         return uoaPerTargetFeed.price(oracleTimeout);
     }
-
-    // solhint-disable no-empty-blocks
-
-    /// @return min {tok} The minimium trade size
-    function minTradeSize() external view override returns (uint192 min) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p1) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
-                // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-
-                // Below we violate our standard practice and put D18 on a uint256,
-                // which is on purpose. Consider p1 == p2 == 2^128. An early downcast
-                // to uint192 before the min256 calculation could potentially truncate.
-
-                // D18{UoA/tok} = p1.mul(p2);
-                uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
-
-                // {tok} = {UoA} / {UoA/tok}
-                // return tradingRange.minVal.div(p, CEIL);
-                uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
-                if (type(uint192).max < min256) revert UIntOutOfBounds();
-                min = uint192(min256);
-            } catch {}
-        } catch {}
-        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
-        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
-    }
-
-    /// @return max {tok} The maximum trade size
-    function maxTradeSize() external view override returns (uint192 max) {
-        try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p1) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p2) {
-                // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-
-                // Below we violate our standard practice and put D18 on a uint256,
-                // which is on purpose. Consider p1 == p2 == 2^128. An early downcast
-                // to uint192 before the min256 calculation could potentially truncate.
-
-                // D18{UoA/tok} = p1.mul(p2);
-                uint256 p = (uint256(p1) * p2) / FIX_ONE_256;
-
-                // {tok} = {UoA} / {UoA/tok}
-                // return tradingRange.maxVal.div(p);
-                uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
-                if (type(uint192).max < max256) revert UIntOutOfBounds();
-                max = uint192(max256);
-            } catch {}
-        } catch {}
-        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
-        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
-    }
-
-    // solhint-enable no-empty-blocks
 }

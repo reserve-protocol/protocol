@@ -14,7 +14,6 @@ export interface IDeployments {
   rewardableLib: string
   oracleLib: string
   tradingLib: string
-  rTokenPricingLib: string
   facade: string
   facadeWriteLib: string
   facadeWrite: string

@@ -95,32 +95,26 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
           libraries: { OracleLib: one.oracleLib.address },
         })
       ).deploy(
+        fp('1'),
         chainlinkFeed.address,
         staticATokenERC20.address,
         one.aaveToken.address,
-        one.config.rTokenTradingRange,
+        one.config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
         DELAY_UNTIL_DEFAULT
       )
-      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral', {
-        libraries: { OracleLib: one.oracleLib.address },
-      })
+      const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
-        await one.rToken.main(),
-        one.config.rTokenTradingRange,
-        ethers.utils.formatBytes32String('RTK')
+        one.rToken.address,
+        one.config.rTokenMaxTradeVolume,
+        ethers.utils.formatBytes32String('RTK'),
+        DELAY_UNTIL_DEFAULT
       )
-      const rTokenAsset = await (
-        await ethers.getContractFactory('RTokenAsset', {
-          libraries: { RTokenPricingLib: one.rTokenPricing.address },
-        })
-      ).deploy(two.rToken.address, one.config.rTokenTradingRange)
 
       // Set up aToken to back RToken0 and issue
       await one.assetRegistry.connect(owner).register(aTokenCollateral.address)
-      await one.assetRegistry.connect(owner).register(rTokenAsset.address)
       await one.basketHandler.connect(owner).setPrimeBasket([staticATokenERC20.address], [fp('1')])
       await one.basketHandler.refreshBasket()
       await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
@@ -218,75 +212,16 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
 
       // Prices should be aware
-      expect(await one.rTokenAsset.price()).to.equal(fp('0.5'))
-      expect(await rTokenCollateral.price()).to.equal(fp('0.5'))
+      expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
+      expect(await rTokenCollateral.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
     })
 
     it("should view donations of the other's RToken as revenue", async () => {
-      // The inner RToken should sell any donated outer RToken
-      expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
-      await two.rToken.connect(addr1).transfer(one.backingManager.address, issueAmt)
-
-      // Inner revenue auctions
-      let rTokSellAmt = issueAmt.mul(2).div(5)
-      let rsrSellAmt = issueAmt.mul(3).div(5)
-      await expectEvents(one.facadeTest.runAuctionsForAllTraders(one.rToken.address), [
-        {
-          contract: one.rTokenTrader,
-          name: 'TradeStarted',
-          args: [
-            anyValue,
-            two.rToken.address,
-            one.rToken.address,
-            rTokSellAmt,
-            rTokSellAmt.mul(99).div(100),
-          ],
-          emitted: true,
-        },
-        {
-          contract: one.rsrTrader,
-          name: 'TradeStarted',
-          args: [
-            anyValue,
-            two.rToken.address,
-            one.rsr.address,
-            rsrSellAmt,
-            rsrSellAmt.mul(99).div(100),
-          ],
-          emitted: true,
-        },
-      ])
-
-      // Ignore the RToken auction
-      // Sell RSR to the inner RToken system in order to buyback outer RTokens
-      await one.rsr.connect(addr1).approve(one.gnosis.address, initialBal)
-      await one.gnosis.placeBid(0, {
-        bidder: addr1.address,
-        sellAmount: rsrSellAmt,
-        buyAmount: rsrSellAmt.mul(99).div(100),
-      })
-
-      // Advance time till auction ended
-      await advanceTime(one.config.auctionLength.add(100).toString())
-
-      // Settle trade
-      await expect(one.rsrTrader.settleTrade(two.rToken.address))
-        .to.emit(one.rsrTrader, 'TradeSettled')
-        .withArgs(
-          anyValue,
-          two.rToken.address,
-          one.rsr.address,
-          rsrSellAmt,
-          rsrSellAmt.mul(99).div(100)
-        )
-
-      // Redeem half the outer RToken we just bought back
-      expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt.mul(3).div(5)) // only 3/5ths
-      await two.rToken.connect(addr1).redeem(issueAmt.div(2))
-      expect(await two.rToken.balanceOf(addr1.address)).to.equal(issueAmt.div(10)) // 1/10th
-      expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt.div(2))
-      expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
-      expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      // Issue
+      await staticATokenERC20.connect(owner).mint(addr1.address, issueAmt)
+      await staticATokenERC20.connect(addr1).approve(one.rToken.address, issueAmt)
+      await one.rToken.connect(addr1).issue(issueAmt)
+      expect(await one.rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Donate the inner RToken to the outer RToken
       await one.rToken.connect(addr1).transfer(two.backingManager.address, issueAmt.div(2))
@@ -294,8 +229,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Outer RToken should launch revenue auctions with the donated inner RToken
-      rTokSellAmt = issueAmt.div(2).mul(2).div(5)
-      rsrSellAmt = issueAmt.div(2).mul(3).div(5)
+      const rTokSellAmt = issueAmt.div(2).mul(2).div(5)
+      const rsrSellAmt = issueAmt.div(2).mul(3).div(5)
 
       // Note that here the outer RToken actually mints itself as the first step
       await expectEvents(two.facadeTest.runAuctionsForAllTraders(two.rToken.address), [
@@ -330,15 +265,15 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.basketHandler.fullyCollateralized()).to.equal(true)
       expect(await one.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await one.rToken.totalSupply()).to.equal(issueAmt)
-      expect(await two.rToken.totalSupply()).to.equal(issueAmt)
-      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenCollateral.price()).to.equal(fp('1'))
+      expect(await one.rToken.totalSupply()).to.equal(issueAmt.mul(2))
+      expect(await two.rToken.totalSupply()).to.equal(issueAmt.mul(3).div(2))
+      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
     })
 
     it('should propagate appreciation of the inner-most collateral to price', async () => {
-      expect(await one.rTokenAsset.price()).to.equal(fp('1'))
-      expect(await rTokenCollateral.price()).to.equal(fp('1'))
+      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
 
       // Cause appreciation
       await staticATokenERC20.setExchangeRate(fp('1.5'))
@@ -371,7 +306,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
             one.rToken.address,
             one.rsr.address,
             rsrSellAmt,
-            rsrSellAmt.mul(99).div(100).add(1),
+            rsrSellAmt.mul(99).div(100).add(31),
           ],
           emitted: true,
         },
@@ -387,8 +322,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Appreciation should be passed through to both tokens
       await setOraclePrice(aTokenCollateral.address, bn('1e8'))
       const expectedPrice = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
-      expect(await one.rTokenAsset.price()).to.be.closeTo(expectedPrice, fp('0.05'))
-      expect(await rTokenCollateral.price()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
+      expect(await rTokenCollateral.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
     })
   })
 })

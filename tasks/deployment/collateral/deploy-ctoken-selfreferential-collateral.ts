@@ -1,17 +1,16 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
-import { CTokenSelfReferentialCollateral, CTokenMock, ERC20Mock } from '../../../typechain'
+import { CTokenSelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referential Collateral')
+  .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('cToken', 'CToken address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingValMin', 'Trade Range - Min in UoA')
-  .addParam('tradingValMax', 'Trade Range - Max in UoA')
-  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
-  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
+  .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
+  .addParam('delayUntilDefault', 'Seconds until a default is recognized')
   .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
   .addParam('oracleLib', 'Oracle library address')
@@ -29,17 +28,14 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
 
     const collateral = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
+        params.fallbackPrice,
         params.priceFeed,
         params.cToken,
         params.rewardToken,
-        {
-          minVal: params.tradingValMin,
-          maxVal: params.tradingValMax,
-          minAmt: params.tradingAmtMin,
-          maxAmt: params.tradingAmtMax,
-        },
+        params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,
+        params.delayUntilDefault,
         params.decimals,
         params.comptroller
       )

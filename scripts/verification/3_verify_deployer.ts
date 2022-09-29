@@ -31,8 +31,7 @@ async function main() {
       deployments.rsrAsset,
       deployments.implementations,
     ],
-    'contracts/p1/Deployer.sol:DeployerP1',
-    { RTokenPricingLib: deployments.rTokenPricingLib }
+    'contracts/p1/Deployer.sol:DeployerP1'
   )
 }
 

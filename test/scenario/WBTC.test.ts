@@ -107,11 +107,12 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('20000'),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,
@@ -213,7 +214,7 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
     it('should calculate price correctly', async () => {
       await referenceUnitOracle.updateAnswer(bn('0.95e8')) // 5% below peg
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
-      expect(await wbtcCollateral.price()).to.equal(fp('95000'))
+      expect(await wbtcCollateral.strictPrice()).to.equal(fp('95000'))
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {

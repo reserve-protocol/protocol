@@ -27,6 +27,8 @@ import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../f
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
 describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -105,16 +107,16 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     wethCollateral = await (
-      await ethers.getContractFactory('SelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('SelfReferentialCollateral')
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       weth.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH')
+      ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // cETH
@@ -127,12 +129,14 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1').div(50),
       chainlinkFeed.address,
       cETH.address,
       compToken.address,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT,
       await weth.decimals(),
       compoundMock.address
     )

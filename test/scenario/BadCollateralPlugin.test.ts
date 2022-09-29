@@ -103,10 +103,11 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       token0.address,
       aaveToken.address,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,
@@ -164,7 +165,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
-      expect(await rTokenAsset.price()).to.equal(fp('0.9'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), bn('1'))
     })
 
     it('should increase the issuance basket as collateral loses value', async () => {
@@ -207,9 +208,9 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(initialBal.div(2))
 
       // RToken price should follow depegging
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       await setOraclePrice(collateral0.address, bn('2e8')) // 100% increase, would normally trigger soft default
-      expect(await rTokenAsset.price()).to.equal(fp('2'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('2'))
 
       // Should remain SOUND because missing soft default checks
       expect(await collateral0.status()).to.equal(CollateralStatus.SOUND)

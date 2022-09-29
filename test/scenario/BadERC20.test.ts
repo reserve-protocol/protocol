@@ -101,10 +101,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       token0.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),
       DEFAULT_THRESHOLD,
@@ -202,7 +203,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.price()
+      await collateral0.strictPrice()
       await collateral0.targetPerRef()
       await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
@@ -239,10 +240,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.status()).to.equal(1) // OPEN state
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(backupToken.address)
-    })
-
-    it('should revert on RTokenAsset.price', async () => {
-      await expect(rTokenAsset.price()).to.be.revertedWith('No Decimals')
     })
   })
 
@@ -303,7 +300,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.price()
+      await collateral0.strictPrice()
       await collateral0.targetPerRef()
       await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
@@ -323,7 +320,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still have price', async () => {
-      await rTokenAsset.price()
+      await rTokenAsset.strictPrice()
     })
 
     it('should still melt', async () => {

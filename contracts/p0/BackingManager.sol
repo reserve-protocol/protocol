@@ -30,10 +30,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 maxTradeVolume_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -97,7 +98,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
-            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareTradeRecapitalize();
+            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareTradeRecapitalize(this);
 
             if (doTrade) {
                 // Seize RSR if needed
@@ -156,7 +157,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             if (bal.gt(req)) {
                 // delta: {qTok}
-                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()));
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
                 uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
 
                 {

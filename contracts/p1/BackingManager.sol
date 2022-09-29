@@ -36,10 +36,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
     ) external initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -116,7 +117,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * See: https://app.asana.com/0/1202557536393044/1203043664234023/f
              */
 
-            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize();
+            (bool doTrade, TradeRequest memory req) = TradingLibP1.prepareTradeRecapitalize(this);
 
             if (doTrade) {
                 // Seize RSR if needed

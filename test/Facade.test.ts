@@ -10,7 +10,6 @@ import {
   ERC20Mock,
   Facade,
   FacadeTest,
-  OracleLib,
   StaticATokenMock,
   StRSRP1,
   TestIMain,
@@ -48,7 +47,6 @@ describe('Facade contract', () => {
   let cTokenAsset: Collateral
 
   let config: IConfig
-  let oracleLib: OracleLib
 
   // Facade
   let facade: Facade
@@ -71,8 +69,10 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ oracleLib, stRSR, rsr, basket, facade, facadeTest, rToken, config, main } =
-      await loadFixture(defaultFixture))
+
+    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, config, main } = await loadFixture(
+      defaultFixture
+    ))
 
     // Get assets and tokens
     ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
@@ -250,19 +250,18 @@ describe('Facade contract', () => {
       const m = await ethers.getContractAt('MainP1', await rToken.main())
       const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await m.assetRegistry())
       const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-      const AssetFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      const AssetFactory = await ethers.getContractFactory('Asset')
       const feed = await tokenAsset.chainlinkFeed()
 
       // Get to numAssets registered assets
       for (let i = 0; i < numAssets; i++) {
         const erc20 = await ERC20Factory.deploy('Name', 'Symbol')
         const asset = await AssetFactory.deploy(
+          fp('1'),
           feed,
           erc20.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           bn(2).pow(47)
         )
         await assetRegistry.connect(owner).register(asset.address)

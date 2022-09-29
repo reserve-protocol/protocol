@@ -3,13 +3,11 @@ import { task } from 'hardhat/config'
 import { CTokenFiatCollateral, CTokenMock, ERC20Mock } from '../../../typechain'
 
 task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
+  .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('cToken', 'CToken address')
   .addParam('rewardToken', 'Reward token address')
-  .addParam('tradingValMin', 'Trade Range - Min in UoA')
-  .addParam('tradingValMax', 'Trade Range - Max in UoA')
-  .addParam('tradingAmtMin', 'Trade Range - Min in whole toks')
-  .addParam('tradingAmtMax', 'Trade Range - Max in whole toks')
+  .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
@@ -36,15 +34,11 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
     })
 
     const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.connect(deployer).deploy(
+      params.fallbackPrice,
       params.priceFeed,
       params.cToken,
       params.rewardToken,
-      {
-        minVal: params.tradingValMin,
-        maxVal: params.tradingValMax,
-        minAmt: params.tradingAmtMin,
-        maxAmt: params.tradingAmtMax,
-      },
+      params.maxTradeVolume,
       params.oracleTimeout,
       params.targetName,
       params.defaultThreshold,

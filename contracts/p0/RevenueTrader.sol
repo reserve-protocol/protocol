@@ -19,11 +19,12 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
     ) public initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, minTradeVolume_);
         tokenToBuy = tokenToBuy_;
     }
 
@@ -44,20 +45,27 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
+        IAsset buy = reg.toAsset(tokenToBuy);
+        uint192 sellPrice = sell.strictPrice(); // {UoA/tok}
+        uint192 buyPrice = buy.strictPrice(); // {UoA/tok}
+
+        require(buyPrice > 0, "buy asset has zero price");
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
+            this,
             sell,
-            reg.toAsset(tokenToBuy),
-            sell.bal(address(this))
+            buy,
+            sell.bal(address(this)),
+            sellPrice,
+            buyPrice
         );
 
         if (launch) {
             if (sell.isCollateral()) {
                 CollateralStatus status = ICollateral(address(sell)).status();
 
-                assert(status != CollateralStatus.UNPRICED); // this indicates a TradingLib error
                 if (status == CollateralStatus.IFFY) return;
                 if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
             }

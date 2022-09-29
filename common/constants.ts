@@ -20,7 +20,6 @@ export const BN_SCALE_FACTOR = BigNumber.from(SCALE_FACTOR.toString())
 export enum CollateralStatus {
   SOUND,
   IFFY,
-  UNPRICED,
   DISABLED,
 }
 

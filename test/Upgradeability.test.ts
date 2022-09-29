@@ -223,7 +223,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BackingManager', async () => {
       const newBackingMgr: BackingManagerP1 = <BackingManagerP1>await upgrades.deployProxy(
         BackingManagerFactory,
-        [main.address, config.tradingDelay, config.backingBuffer, config.maxTradeSlippage],
+        [
+          main.address,
+          config.tradingDelay,
+          config.backingBuffer,
+          config.maxTradeSlippage,
+          config.minTradeVolume,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -308,7 +314,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [main.address, rsr.address, config.maxTradeSlippage],
+        [main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume],
         {
           initializer: 'init',
           kind: 'uups',
