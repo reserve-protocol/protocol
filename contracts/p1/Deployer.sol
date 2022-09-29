@@ -83,6 +83,8 @@ contract DeployerP1 is IDeployer {
     ///     Maximize (gross revenue - payments for insurance and governance).
     /// - This RToken holds only FooCoin, to provide a trade for hedging against its
     ///     possible collapse.
+    ///
+    /// The mandate may also be a URI to a longer body of text
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param mandate An IPFS link or direct string; describes what the RToken _should be_

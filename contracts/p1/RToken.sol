@@ -39,6 +39,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     ///     Maximize (gross revenue - payments for insurance and governance).
     /// - This RToken holds only FooCoin, to provide a trade for hedging against its
     ///     possible collapse.
+    ///
+    /// The mandate may also be a URI to a longer body of text
     string public mandate;
 
     // ==== Governance Params ====
