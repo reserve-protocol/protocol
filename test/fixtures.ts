@@ -368,6 +368,7 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
   oracleLib: OracleLib
+  permitLib: PermitLib
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
@@ -673,5 +674,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rsrTrader,
     rTokenTrader,
     oracleLib,
+    permitLib,
   }
 }
