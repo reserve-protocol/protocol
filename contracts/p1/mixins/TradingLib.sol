@@ -408,7 +408,7 @@ library TradingLibP1 {
                 CollateralStatus status;
                 if (asset.isCollateral()) status = ICollateral(address(asset)).status();
 
-                // Select the most-in-surplus "best" asset, as defined by the (status, max surplusAmt)
+                // Select the most-in-surplus "best" asset, as defined by (status, max surplusAmt)
                 if (
                     (maxes.surplusStatus.worseThan(status) ||
                         (delta.gt(maxes.surplus) && maxes.surplusStatus == status)) &&
