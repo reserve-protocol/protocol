@@ -24,8 +24,8 @@ function defaultParams() pure returns (DeploymentParams memory params) {
         shortFreeze: 345600, // 4 days
         longFreeze: 1814400, // 3 weeks
         issuanceRate: FixLib.divu(toFix(25), 1_000_000), // 0.025% per block or ~0.1% per minute
-        maxRedemptionCharge: FixLib.divu(FIX_ONE, 20),
-        redemptionVirtualSupply: toFix(20_000_000)
+        scalingRedemptionRate: FixLib.divu(FIX_ONE, 20),
+        redemptionRateFloor: toFix(1_000_000)
     });
 }
 

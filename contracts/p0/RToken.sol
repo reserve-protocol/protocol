@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 // solhint-disable-next-line max-line-length
-import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
@@ -16,6 +14,7 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/RedemptionBattery.sol";
 import "contracts/p0/mixins/Component.sol";
 import "contracts/p0/mixins/Rewardable.sol";
+import "contracts/vendor/ERC20PermitUpgradeable.sol";
 
 struct SlowIssuance {
     address issuer;
@@ -32,7 +31,7 @@ struct SlowIssuance {
  * @title RTokenP0
  * @notice An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
@@ -67,11 +66,6 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     RedemptionBatteryLib.Battery private battery;
 
-    // set to 0 to disable
-    uint192 public maxRedemptionCharge; // {1} fraction of supply that can be redeemed at once
-
-    uint256 public redemptionVirtualSupply; // {qRTok}
-
     function init(
         IMain main_,
         string memory name_,
@@ -81,32 +75,45 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         uint192 maxRedemptionCharge_,
         uint256 redemptionVirtualSupply_
     ) public initializer {
+        require(bytes(name_).length > 0, "name empty");
+        require(bytes(symbol_).length > 0, "symbol empty");
+        require(bytes(mandate_).length > 0, "mandate empty");
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setMaxRedemption(maxRedemptionCharge_);
-        setRedemptionVirtualSupply(redemptionVirtualSupply_);
+        setScalingRedemptionRate(maxRedemptionCharge_);
+        setRedemptionRateFloor(redemptionVirtualSupply_);
     }
 
     function setIssuanceRate(uint192 val) public governance {
-        require(val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
+        require(val > 0 && val <= MAX_ISSUANCE_RATE, "invalid issuanceRate");
         emit IssuanceRateSet(issuanceRate, val);
         issuanceRate = val;
     }
 
-    /// @custom:governance
-    function setMaxRedemption(uint192 val) public governance {
-        require(val <= FIX_ONE, "invalid fraction");
-        emit MaxRedemptionSet(maxRedemptionCharge, val);
-        maxRedemptionCharge = val;
+    /// @return {1/hour} The max redemption charging rate
+    function scalingRedemptionRate() external view returns (uint192) {
+        return battery.scalingRedemptionRate;
     }
 
     /// @custom:governance
-    function setRedemptionVirtualSupply(uint256 val) public governance {
-        emit RedemptionVirtualSupplySet(redemptionVirtualSupply, val);
-        redemptionVirtualSupply = val;
+    function setScalingRedemptionRate(uint192 val) public governance {
+        require(val <= FIX_ONE, "invalid fraction");
+        emit ScalingRedemptionRateSet(battery.scalingRedemptionRate, val);
+        battery.scalingRedemptionRate = val;
+    }
+
+    /// @return {qRTok/hour} The min redemption charging rate, in {qRTok}
+    function redemptionRateFloor() external view returns (uint256) {
+        return battery.redemptionRateFloor;
+    }
+
+    /// @custom:governance
+    function setRedemptionRateFloor(uint256 val) public governance {
+        emit RedemptionRateFloorSet(battery.redemptionRateFloor, val);
+        battery.redemptionRateFloor = val;
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -169,7 +176,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 vestedAmount = tryVestIssuance(issuer, index);
             emit IssuancesCompleted(issuer, index, index, vestedAmount);
             assert(vestedAmount == iss.amount);
-            delete issuances[issuer][index];
+            // Remove issuance
+            issuances[issuer].pop();
         }
     }
 
@@ -190,12 +198,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         address account = _msgSender();
 
+        require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
+
         SlowIssuance[] storage queue = issuances[account];
+
+        uint256 amtRToken; // {qRTok}
+        uint256 numCanceled;
+        uint256 left;
         (uint256 first, uint256 last) = earliest ? (0, endId) : (endId, queue.length);
 
-        uint256 left;
-        uint256 amtRToken; // {qRTok}
-        bool canceled = false;
+        // Refund issuances that have not yet been processed
         for (uint256 n = first; n < last && n < queue.length; n++) {
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
@@ -204,12 +216,19 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 }
                 amtRToken += iss.amount;
                 iss.processed = true;
-                canceled = true;
+                numCanceled++;
 
-                if (left == 0) left = n;
+                if (numCanceled == 1) left = n;
             }
         }
-        if (canceled) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        if (numCanceled > 0) emit IssuancesCanceled(account, left, last, amtRToken);
+
+        // Empty queue from right
+        for (int256 i = int256(queue.length) - 1; i >= 0; i--) {
+            if (!queue[uint256(i)].processed) break;
+            queue.pop();
+        }
     }
 
     /// Completes all vested slow issuances for the account, callable by anyone
@@ -221,7 +240,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket unsound");
 
-        refundAndClearStaleIssuances(account);
+        // Perform range validations - P1 compatibility
+        if (leftIndex(account) == endId) return;
+        require(leftIndex(account) <= endId && endId <= rightIndex(account), "out of range");
+
+        // Only continue with vesting if basket did not change - P1 compatibility
+        bool someProcessed = refundAndClearStaleIssuances(account);
+        if (someProcessed) return;
 
         uint256 first;
         uint256 totalVested;
@@ -234,8 +259,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
+    /// In P1 this function is over in the Facade
     function endIdForVest(address account) external view returns (uint256) {
-        uint256 i = 0;
+        uint256 i = leftIndex(account);
         uint192 currBlock = toFix(block.number);
         SlowIssuance[] storage queue = issuances[account];
 
@@ -271,19 +297,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         // {1} = {qRTok} / {qRTok}
         uint192 prorate = toFix(amount).divu(totalSupply());
 
+        // Revert if redemption exceeds battery capacity
+        battery.discharge(totalSupply(), amount); // reverts on over-redemption
+
         // Accept and burn RToken
         _burn(_msgSender(), amount);
-
-        // Revert if redemption exceeds battery capacity
-        if (maxRedemptionCharge > 0) {
-            // {1} = {qRTok} / {qRTok}
-            uint192 dischargeAmt = FIX_ONE.muluDivu(
-                amount,
-                Math.max(redemptionVirtualSupply, totalSupply()),
-                CEIL
-            );
-            battery.discharge(dischargeAmt, maxRedemptionCharge);
-        }
 
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded.minus(baskets));
         basketsNeeded = basketsNeeded.minus(baskets);
@@ -299,9 +317,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
             uint256 prorata = prorate.mulu_toUint(bal);
             amounts[i] = Math.min(amounts[i], prorata);
             // Send withdrawal
-            IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
-
-            if (!nonzero && amounts[i] > 0) nonzero = true;
+            if (amounts[i] > 0) {
+                IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
+                if (!nonzero) nonzero = true;
+            }
         }
 
         if (!nonzero) revert("Empty redemption");
@@ -333,11 +352,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
-        uint256 supply = totalSupply();
-        if (redemptionVirtualSupply > supply) supply = redemptionVirtualSupply;
-
-        // {qRTok} = {1} * {qRTok}
-        return battery.currentCharge(maxRedemptionCharge).mulu_toUint(supply);
+        return battery.currentCharge(totalSupply());
     }
 
     /// Tries to vest an issuance
@@ -345,7 +360,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        require(iss.blockAvailableAt.lte(toFix(block.number)), "not ready");
+        require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
         if (!iss.processed) {
@@ -380,13 +395,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
         return allVestAt;
     }
 
-    function refundAndClearStaleIssuances(address account) private {
+    function refundAndClearStaleIssuances(address account) private returns (bool) {
         (uint256 basketNonce, ) = main.basketHandler().lastSet();
-        bool clearQueue = false;
         bool someProcessed = false;
         uint256 amount;
         uint256 startIndex;
         uint256 endIndex;
+
         for (uint256 i = 0; i < issuances[account].length; i++) {
             SlowIssuance storage iss = issuances[account][i];
             if (!iss.processed && iss.basketNonce != basketNonce) {
@@ -401,12 +416,44 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20Upgradeable, ERC20PermitUpg
                 iss.processed = true;
                 endIndex = i + 1;
             }
-            if (iss.basketNonce != basketNonce) clearQueue = true;
         }
 
-        if (clearQueue) {
+        if (someProcessed) {
             emit IssuancesCanceled(account, startIndex, endIndex, amount);
-            delete issuances[account]; // to mimic RTokenP1 endIds for future issuance
+            // Clear queue
+            for (int256 i = int256(issuances[account].length) - 1; i >= 0; i--) {
+                issuances[account].pop();
+            }
         }
+        return someProcessed;
+    }
+
+    /// Returns the left index of currently-valid items for `account`
+    /// For P1 Compatibility - Equivalent to RTokenP1.IssueQueue.left
+    function leftIndex(address account) private view returns (uint256) {
+        SlowIssuance[] storage queue = issuances[account];
+        uint256 _left;
+        for (uint256 i = 0; i < queue.length; i++) {
+            SlowIssuance storage iss = queue[i];
+            if (!iss.processed) {
+                break;
+            }
+            _left++;
+        }
+        return _left;
+    }
+
+    /// Returns the right index of currently-valid items
+    /// For P1 Compatibility - Equivalent to RTokenP1.IssueQueue.right
+    function rightIndex(address account) private view returns (uint256) {
+        SlowIssuance[] storage queue = issuances[account];
+        uint256 _right = leftIndex(account);
+        for (uint256 i = _right; i < queue.length; i++) {
+            SlowIssuance storage iss = queue[i];
+            if (!iss.processed) {
+                _right++;
+            }
+        }
+        return _right;
     }
 }

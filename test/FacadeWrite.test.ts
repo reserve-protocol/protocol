@@ -24,6 +24,7 @@ import {
   ERC20Mock,
   IBasketHandler,
   Facade,
+  FacadeTest,
   FacadeWrite,
   FiatCollateral,
   Governance,
@@ -86,6 +87,7 @@ describe('FacadeWrite contract', () => {
 
   // Facade
   let facade: Facade
+  let facadeTest: FacadeTest
   let facadeWriteLibAddr: string
 
   // Core contracts
@@ -118,9 +120,8 @@ describe('FacadeWrite contract', () => {
     ;[deployerUser, owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ rsr, compToken, compAsset, basket, config, facade, deployer } = await loadFixture(
-      defaultFixture
-    ))
+    ;({ rsr, compToken, compAsset, basket, config, facade, facadeTest, deployer } =
+      await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenAsset = <FiatCollateral>basket[0]
@@ -379,13 +380,16 @@ describe('FacadeWrite contract', () => {
       })
 
       it('Should grant allowances to RToken correctly', async () => {
-        // Basket
-        const backing = await facade.basketTokens(rToken.address)
-        expect(backing[0]).to.equal(token.address)
-        expect(backing[1]).to.equal(usdc.address)
-
-        expect(await token.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
-        expect(await usdc.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+        const erc20s = await assetRegistry.erc20s()
+        for (const erc20 of erc20s) {
+          // Should have allowances for everything except RToken + RSR
+          if (erc20 != rToken.address && erc20 != rsr.address) {
+            const ERC20 = await ethers.getContractAt('ERC20Mock', erc20)
+            expect(await ERC20.allowance(backingManager.address, rToken.address)).to.equal(
+              MAX_UINT256
+            )
+          }
+        }
       })
 
       it('Should not allow to complete setup if not deployer', async () => {
@@ -467,7 +471,7 @@ describe('FacadeWrite contract', () => {
           expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           expect(await basketHandler.price()).to.equal(fp('1'))
-          expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+          expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
           // Check BU price
           expect(await basketHandler.price()).to.equal(fp('1'))

@@ -58,9 +58,8 @@ su echidna
 ## Install system packages
 
 ``` bash
-sudo apt update
-sudo apt install emacs-nox # So that we have a text editor at all. Install your own favorite text editor if you like, or just use nano, whatever.
-sudo apt install python3-pip unzip moreutils # moreutils gives us ts
+sudo apt-cache update
+sudo apt-get install emacs-nox python3-pip unzip moreutils # moreutils gives us ts
 
 # Local packages will be installed to ~/.local/bin; we want them on PATH.
 export PATH="$PATH:$HOME/.local/bin" && hash -r
@@ -140,6 +139,10 @@ gcloud compute instances create test-0 \
 gcloud compute config-ssh
 ssh test-0.us-central1-a.rtoken-fuzz
 
+# Drop in my personal setup (for tmux and emacs QoL improvements)
+git clone https://github.com/fiddlemath/dotfiles.git
+cd dotfiles && . install.sh && cd ..
+
 # not bothering with a separate echidna user. I already have a non-root user, and I don't expect to share this setup with anyone, so the extra login step is just a nuisance.
 
 sudo apt update
@@ -168,18 +171,14 @@ rm echidna-test-2.0.2-Ubuntu-18.04.tar.gz
 git clone https://github.com/crytic/echidna-parade.git
 pip install -e echidna-parade/
 
-# Drop in my personal setup (for tmux and emacs QoL improvements)
-git clone https://github.com/fiddlemath/dotfiles.git
-cd dotfiles && . install.sh && cd ..
-
-# Get our code
-git clone https://github.com/reserve-protocol/protocol.git
-cd protocol
-git switch fuzz
-
 # Install google cloud ops agent, for memory utilization plots
 curl -sSO https://dl.google.com/cloudagents/add-google-cloud-ops-agent-repo.sh
 sudo bash add-google-cloud-ops-agent-repo.sh --also-install
+
+### Get our code
+git clone https://github.com/reserve-protocol/protocol.git
+cd protocol
+git switch fuzz
 
 # Install local dependencies. --force is necessary and seems to work fine.
 npm install --force 
@@ -187,7 +186,24 @@ npm install --force
 # Compile our code
 TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
 
-# Test run echidna briefly, see that it actually works
-echidna-test . --config tools/echidna.config.yml \
-  --contract NormalOpsScenario --test-limit 100
 ```
+
+In protocol/tools/echinda.config.yml:
+
+- set seqLen: 100
+- set testLimit: 10000000
+- remove solcArgs
+
+Write launch-parade.sh:
+
+``` bash
+nice echidna-parade protocol --name parade \
+    --contract NormalOpsScenario \
+    --config protocol/tools/echidna.config.yml \ 
+    --ncores 4 \
+    --timeout -1 \
+    --gen_time 1800 --initial_time 3600 \
+    --minseqLen 10 --maxseqLen 100 \
+    --clean-results
+```
+

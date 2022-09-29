@@ -20,7 +20,7 @@ import {
   CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
-  Facade,
+  FacadeTest,
   FiatCollateral,
   MockV3Aggregator,
   NonFiatCollateral,
@@ -75,7 +75,7 @@ describe('Collateral contracts', () => {
   let backingManager: TestIBackingManager
 
   // Facade
-  let facade: Facade
+  let facadeTest: FacadeTest
 
   // Factories
   let FiatCollateralFactory: ContractFactory
@@ -106,7 +106,7 @@ describe('Collateral contracts', () => {
       config,
       backingManager,
       rToken,
-      facade,
+      facadeTest,
       oracleLib,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
@@ -775,7 +775,6 @@ describe('Collateral contracts', () => {
       // Depeg one of the underlying tokens - Reducing price 20%
       // Should also impact on the aToken and cToken
       await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
-      await setOraclePrice(tokenCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
@@ -896,7 +895,7 @@ describe('Collateral contracts', () => {
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim and Sweep rewards - From Main
-      await facade.claimRewards(rToken.address)
+      await facadeTest.claimRewards(rToken.address)
 
       // Check rewards were transfered to BackingManager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
@@ -913,7 +912,9 @@ describe('Collateral contracts', () => {
 
       // Force call to fail, set an invalid COMP token in Comptroller
       await compoundMock.connect(owner).setCompToken(cTokenCollateral.address)
-      await expect(facade.claimRewards(rToken.address)).to.be.revertedWith('rewards claim failed')
+      await expect(facadeTest.claimRewards(rToken.address)).to.be.revertedWith(
+        'rewards claim failed'
+      )
 
       // Check funds not yet swept
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
@@ -2043,6 +2044,14 @@ describe('Collateral contracts', () => {
           DELAY_UNTIL_DEFAULT
         )
       ).to.be.revertedWith('missing chainlink feed')
+    })
+
+    it('Should not revert during refresh when price2 is 0', async () => {
+      const targetFeedAddr = await eurFiatCollateral.uoaPerTargetFeed()
+      const targetFeed = await ethers.getContractAt('MockV3Aggregator', targetFeedAddr)
+      await targetFeed.updateAnswer(0)
+      await eurFiatCollateral.refresh()
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
     })
 
     it('Should setup collateral correctly', async function () {

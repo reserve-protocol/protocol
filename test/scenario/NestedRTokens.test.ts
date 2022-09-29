@@ -230,7 +230,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Inner revenue auctions
       let rTokSellAmt = issueAmt.mul(2).div(5)
       let rsrSellAmt = issueAmt.mul(3).div(5)
-      await expectEvents(one.facade.runAuctionsForAllTraders(one.rToken.address), [
+      await expectEvents(one.facadeTest.runAuctionsForAllTraders(one.rToken.address), [
         {
           contract: one.rTokenTrader,
           name: 'TradeStarted',
@@ -298,7 +298,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       rsrSellAmt = issueAmt.div(2).mul(3).div(5)
 
       // Note that here the outer RToken actually mints itself as the first step
-      await expectEvents(two.facade.runAuctionsForAllTraders(two.rToken.address), [
+      await expectEvents(two.facadeTest.runAuctionsForAllTraders(two.rToken.address), [
         {
           contract: two.rToken,
           name: 'Transfer', // Mint
@@ -350,7 +350,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await staticATokenERC20.balanceOf(one.backingManager.address)).to.equal(issueAmt)
 
       // Note the inner RToken mints internally since it has excess backing
-      await expectEvents(one.facade.runAuctionsForAllTraders(one.rToken.address), [
+      await expectEvents(one.facadeTest.runAuctionsForAllTraders(one.rToken.address), [
         {
           contract: one.rToken,
           name: 'Transfer',

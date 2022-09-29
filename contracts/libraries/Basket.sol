@@ -13,7 +13,9 @@ library BasketLib {
     using BasketLib for Basket;
     using FixLib for uint192;
 
-    // Empty self
+    /// Set self to a fresh, empty basket
+    // self'.erc20s = [] (empty list)
+    // self'.refAmts = {} (empty map)
     function empty(Basket storage self) internal {
         for (uint256 i = 0; i < self.erc20s.length; i++) {
             self.refAmts[self.erc20s[i]] = FIX_ZERO;
@@ -25,7 +27,7 @@ library BasketLib {
     }
 
     /// Set `self` equal to `other`
-    function copy(Basket storage self, Basket storage other) internal {
+    function setFrom(Basket storage self, Basket storage other) internal {
         empty(self);
         for (uint256 i = 0; i < other.erc20s.length; i++) {
             self.erc20s.push(other.erc20s[i]);
@@ -37,6 +39,8 @@ library BasketLib {
     }
 
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
+    // self'.refAmts[tok] = self.refAmts[tok] + weight
+    // self'.erc20s is keys(self'.refAmts)
     function add(
         Basket storage self,
         IERC20 tok,

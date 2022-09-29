@@ -10,17 +10,24 @@ describe('StringLib,', () => {
     stringCaller = await (<Promise<StringCallerMock>>CallerFactory.deploy())
   })
 
-  it('should lowercase RTKN correctly', async () => {
-    expect(await stringCaller.toLower('RTKN')).to.equal('rtkn')
-  })
+  const asciiLower = (s: string): string =>
+    Array.from(s)
+      .map((c: string) => (c >= 'A' && c <= 'Z' ? c.toLowerCase() : c))
+      .join('')
 
-  it('should lowercase USD+ correctly', async () => {
-    expect(await stringCaller.toLower('USD+')).to.equal('usd+')
-  })
+  function test(input: string) {
+    const lower = asciiLower(input)
+    return it(`should convert "${input}" to "${lower}"`, async () => {
+      expect(await stringCaller.toLower(input)).to.equal(lower)
+    })
+  }
 
-  it('should lowercase partially capitalized symbols correctly', async () => {
-    expect(await stringCaller.toLower('AbCdEfGhIjKlMnOpQrStUvWxYz')).to.equal(
-      'abcdefghijklmnopqrstuvwxyz'
-    )
-  })
+  test('RTKN')
+  test('USD+')
+  test('AbCdEfGhIjKlMnOpQrStUvWxYz')
+  test(')(*(@#*&$%^asldnoiwDDihdhQlsihdg')
+  test('"中文 EspaÑol Deutsch English हिन्दी')
+  test('hello ŅņŁ AbCxYz')
+  test('x ц x')
+  test('💩c0In')
 })

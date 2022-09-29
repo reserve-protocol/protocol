@@ -162,7 +162,7 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - rToken.redeem()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
-- backingManager.manageTokens()
+- backingManager.manageTokens\*()
 - {rsrTrader,rTokenTrader}.manageToken()
 - \*.claimAndSweepRewards()
 
@@ -263,7 +263,7 @@ This implies that the core contracts in P1 (`Main` and core components) are mean
 
 ### Writing upgrade-safe contracts
 
-The OpenZepplin documentation has good material on [how to write upgradable contracts][writing-upgradable].
+The OpenZeppelin documentation has good material on [how to write upgradable contracts][writing-upgradable].
 
 Prior to initial launch, the most glaring consequence of keeping this upgrade pattern is that core P1 contracts cannot rely on their constructor to initialize values in contract state. Instead, each contract must define a separate initializer function to initialize its state.
 
@@ -300,8 +300,14 @@ Note that `delegatecall` can also be dangerous for other reasons, such as transf
 
 Here, "contract state" refers to the normal storage variables of a smart contract.
 
-- P1 core contracts MUST NOT contain `immutable` state variables. (P1 core contract MAY define `constant` values.)
+- P1 core contracts MUST NOT contain `immutable` state variables. (P1 core contracts MAY define `constant` values.)
 - P1 core contracts MUST NOT set state variables in their constructor.
-- P1 core contracts MUST NOT initialized state variables where they are declared.
+- P1 core contracts MUST NOT initialize state variables where they are declared.
 
 Instead of any of these, P1 core contracts will probably each define an initializer funcion, per the usual OZ upgradability pattern. A P1 core contract MAY depend on that initializer having run before any other functions.
+
+### Storage Gaps
+
+All our upgradeable contracts (and their base classes) implement storage gaps mimicking the standard OZ practice from `@openzeppelin/contracts-upgradeable`. That is: at the bottom of each of these contracts there is a `uint256[X] private __gap` declaration, where X is set to 50 minus the number of storage slots that the class uses. Remember, constants do not use storage slots, and some data members may pack together!
+
+It's also not absolutely crucial for the gaps to be sized correctly; the practice OZ suggests is to allocate 50 slots to each inheritance class contract, but it's not a big deal if there are a few more or few less (I think).

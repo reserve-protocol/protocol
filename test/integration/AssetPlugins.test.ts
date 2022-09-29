@@ -24,6 +24,7 @@ import {
   ERC20Mock,
   EURFiatCollateral,
   Facade,
+  FacadeTest,
   FiatCollateral,
   IAToken,
   IERC20,
@@ -139,6 +140,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let rTokenAsset: RTokenAsset
   let main: TestIMain
   let facade: Facade
+  let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
@@ -189,6 +191,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         rToken,
         rTokenAsset,
         facade,
+        facadeTest,
         config,
         // oracleLib,
       } = await loadFixture(defaultFixture))
@@ -349,6 +352,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compAsset.price()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await compAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await compAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
 
       // stkAAVE Token
       expect(await aaveAsset.isCollateral()).to.equal(false)
@@ -358,6 +363,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.price()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
       expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await aaveAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await aaveAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+
+      // RSR Token
+      expect(await rsrAsset.isCollateral()).to.equal(false)
+      expect(await rsrAsset.erc20()).to.equal(rsr.address)
+      expect(await rsrAsset.erc20()).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
+      expect(await rsr.decimals()).to.equal(18)
+      expect(await rsrAsset.price()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
+      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      expect(await rsrAsset.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
+      expect(await rsrAsset.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
     })
 
     it('Should setup collateral correctly - Fiatcoins', async () => {
@@ -425,6 +444,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+        expect(await tkInf.tokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.tokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -489,6 +514,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -584,6 +616,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.token.address)
         expect(await atkInf.stataToken.ASSET()).to.equal(atkInf.tokenAddress)
         expect(await atkInf.stataToken.REWARD_TOKEN()).to.equal(aaveToken.address)
+
+        expect(await atkInf.aTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await atkInf.aTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -636,6 +675,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ) // ref price approx 1.00062
         expect(await tkInf.nonFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.nonFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.nonFiatTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.nonFiatTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -704,6 +750,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -750,6 +803,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.selfRefTokenCollateral.price()).to.be.closeTo(tkInf.price, fp('0.5'))
         expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.selfRefTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.selfRefTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -816,6 +876,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           calldata,
         ])
         expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+
+        expect(await ctkInf.cTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await ctkInf.cTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -865,6 +932,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.eurFiatTokenCollateral.price()).to.be.closeTo(tkInf.refPrice, fp('0.01')) // ref price approx 1.07
         expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
         expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        expect(await tkInf.eurFiatTokenCollateral.minTradeSize()).to.equal(
+          config.rTokenTradingRange.minAmt
+        )
+        expect(await tkInf.eurFiatTokenCollateral.maxTradeSize()).to.equal(
+          config.rTokenTradingRange.maxAmt
+        )
       }
     })
 
@@ -1523,7 +1597,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.price()).to.be.closeTo(fp('1'), fp('0.015'))
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
@@ -1589,7 +1663,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         issueAmount,
         fp('150')
       ) // approx 10K in value
@@ -1615,7 +1689,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       )
 
       // Check asset value left
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         bn(0),
         fp('0.001')
       ) // Near zero
@@ -1653,7 +1727,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value
-      const totalAssetValue1: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
 
       // Advance time and blocks slightly
@@ -1682,7 +1758,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value increased
-      const totalAssetValue2: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
       // Advance time and blocks significantly
@@ -1711,7 +1789,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
 
       // Check total asset value increased
-      const totalAssetValue3: BigNumber = await facade.callStatic.totalAssetValue(rToken.address)
+      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the udpated rates
@@ -1740,7 +1820,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(75331e8), bn('5e7')) // ~= 2481 usd in value
 
       //  Check total asset value (remainder)
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         fp('2742'), // ~=  260usd + 2481 usd (from above)
         fp('1')
       )
@@ -1784,7 +1864,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await rToken.totalSupply()).to.equal(issueAmount)
 
       // Check asset value
-      expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         issueAmount,
         fp('150')
       ) // approx 10K in value
@@ -1869,7 +1949,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
 
         // Check rToken balance
@@ -1940,7 +2020,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           totalPriceUSD,
           point1Pct(totalPriceUSD)
         )
@@ -1975,7 +2055,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
 
         //  Check asset value left
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           bn(0),
           fp('0.001')
         ) // Near zero
@@ -2078,7 +2158,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await basketHandler.price()).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         await expect(rTokenAsset.price()).to.be.revertedWith('no supply')
 
         // Check rToken balance
@@ -2108,7 +2188,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
         // Check asset value
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           totalPriceUSD,
           point1Pct(totalPriceUSD)
         )
@@ -2127,7 +2207,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await usdt.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBal, 6))
 
         //  Check asset value left
-        expect(await facade.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
           bn(0),
           fp('0.001')
         ) // Near zero
