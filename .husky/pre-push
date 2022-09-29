@@ -4,6 +4,6 @@
 set -exuo pipefail
 
 bash tools/lint && \
-yarn eslint && \
+yarn eslint:fuzz && \
 yarn compile && \
 yarn test:fuzz

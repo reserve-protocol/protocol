@@ -28,6 +28,7 @@
     "test:fuzz": "hardhat test test/fuzz/*.test.ts",
     "lint": "bash tools/lint",
     "eslint": "eslint test/",
+    "eslint:fuzz": "eslint test/fuzz",
     "prepare": "husky install",
     "prettier": "bash tools/prettier",
     "size": "hardhat size-contracts",
