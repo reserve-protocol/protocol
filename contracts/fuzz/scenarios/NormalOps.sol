@@ -515,13 +515,13 @@ contract NormalOpsScenario {
         // 1e18 is RToken.MAX_ISSUANCE_RATE
     }
 
-    function setMaxRedemption(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setMaxRedemption(uint192(between(0, 1e18, seed)));
+    function setScalingRedemptionRate(uint256 seed) public {
+        RTokenP1(address(main.rToken())).setScalingRedemptionRate(uint192(between(0, 1e18, seed)));
         // 1e18 is RToken.MAX_REDEMPTION
     }
 
-    function setRedemptionVirtualSupply(uint256 value) public {
-        RTokenP1(address(main.rToken())).setRedemptionVirtualSupply(value);
+    function setRedemptionRateFloor(uint256 value) public {
+        RTokenP1(address(main.rToken())).setRedemptionRateFloor(value);
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {

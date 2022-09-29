@@ -559,9 +559,8 @@ contract ChaosOpsScenario {
         RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
         uint256 preSupply = rtoken.totalSupply();
 
-        (uint256 left, ) = rtoken.idRange(user);
-        uint256 endIDForVest = rtoken.endIdForVest(user);
-        uint256 id = between(left == 0 ? 0 : left - 1, endIDForVest + 1, seedID);
+        (uint256 left, uint256 right) = rtoken.idRange(user);
+        uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
 
         // Do vest
         rtoken.vest(user, id);
@@ -855,13 +854,13 @@ contract ChaosOpsScenario {
         // 1e18 is RToken.MAX_ISSUANCE_RATE
     }
 
-    function setMaxRedemption(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setMaxRedemption(uint192(between(0, 1e18, seed)));
+    function setScalingRedemptionRate(uint256 seed) public {
+        RTokenP1(address(main.rToken())).setScalingRedemptionRate(uint192(between(0, 1e18, seed)));
         // 1e18 is RToken.MAX_REDEMPTION
     }
 
-    function setRedemptionVirtualSupply(uint256 value) public {
-        RTokenP1(address(main.rToken())).setRedemptionVirtualSupply(value);
+    function setRedemptionRateFloor(uint256 value) public {
+        RTokenP1(address(main.rToken())).setRedemptionRateFloor(value);
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
