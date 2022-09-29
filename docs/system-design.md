@@ -129,49 +129,27 @@ The fraction of revenues that should go towards RToken holders vs stakers, as gi
 Anticipated value: 60% to stakers and 40% to RToken holders.
 Mainnet reasonable range: 0% to 100%
 
-### `rTokenTradingRange`
-
-#### `rTokenTradingRange.minVal`
+### `minTradeVolume`
 
 Dimension: `{UoA}`
 
-The min of the RToken trading range in terms of the unit of account. As long as the RToken remains priceable, no trades involving RToken can occur below this trade size. Note that both tokens contribute to trade sizing in any given trade.
+The minimum sized trade that can be performed, in terms of the unit of account. Setting this too high will result in auctions happening infrequently. Setting this too low may allow adversaries to cause auctions that incur large amounts of slippage.
 
 This parameter can be set to zero.
 
 Anticipated value: `1e22` = $10k
-Mainnet reasonable range: 1e21 to 1e27.
+Mainnet reasonable range: 1e20 to 1e24
 
-#### `rTokenTradingRange.maxVal`
+#### `rTokenMaxTradeVolume`
 
 Dimension: `{UoA}`
 
-The max of the RToken trading range in terms of the unit of account. As long as the RToken remains priceable, no trades involving RToken can occur above this trade size.
+The maximum sized trade for any trade involving RToken, in terms of the unit of account.
 
 This parameter can be set to zero.
 
 Anticipated value: `1e24` = $1M
 Mainnet reasonable range: 1e22 to 1e27.
-
-#### `rTokenTradingRange.minAmt`
-
-Dimension: `{qRTok}`
-
-The min of the RToken trading range in terms of RToken token quantities. This limit cannot be set to 0 and is always enforced --- even at the same time as the UoA limits --- and even when the RToken becomes UNPRICEABLE.
-
-Since token prices can change quickly in short periods of time, it is recommended to set these generously. In general the UoA limits should be tighter than the qRTok limits.
-
-Anticipated value: `1e21` = 1000 RToken
-Mainnet reasonable range: 1e20 to 1e24.
-
-#### `rTokenTradingRange.maxAmt`
-
-Dimension: `{qRTok}`
-
-The max of the RToken trading range in terms of RToken token quantities. This limit cannot be set to 0 and is always enforced --- even at the same time as the UoA limits --- and even when the RToken becomes UNPRICEABLE.
-
-Anticipated value: `1e25` = 10M RToken
-Mainnet reasonable range: 1e21 to 1e27.
 
 ### `rewardPeriod`
 
