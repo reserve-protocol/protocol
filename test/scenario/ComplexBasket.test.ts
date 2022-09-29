@@ -1251,7 +1251,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-    // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+    // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
     const sellAmt: BigNumber = await cWBTC.balanceOf(backingManager.address)
 
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1454,7 +1454,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-    // Running auctions will trigger recapitalization - cETH partial sale for weth
+    // Running auctions will trigger recollateralization - cETH partial sale for weth
     const sellAmt = toBNDecimals(MAX_TRADE_VOLUME, 8).div(12)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
 

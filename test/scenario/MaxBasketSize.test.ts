@@ -378,7 +378,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-      // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+      // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
       const firstDefaultedToken = await ethers.getContractAt('ERC20Mock', backing[1])
 
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
@@ -496,7 +496,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-      // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+      // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
       const firstDefaultedToken = await ethers.getContractAt(
         'ERC20Mock',
         backing[maxBasketSize - tokensToDefault]

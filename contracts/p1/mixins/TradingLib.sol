@@ -78,7 +78,7 @@ library TradingLibP1 {
 
     /// Select and prepare a trade that moves us closer to capitalization, using the
     /// basket range to avoid overeager/duplicate trading.
-    // This is the "main loop" for recapitalization trading:
+    // This is the "main loop" for recollateralization trading:
     // actions:
     //   let range = basketRange(all erc20s)
     //   let (surplus, deficit, amts...) = nextTradePair(all erc20s, range)
@@ -154,7 +154,7 @@ library TradingLibP1 {
     // TODO: profile to verify that this gas optimization is actually worth the inelegance it
     // introduces,
 
-    /// The plausible range of BUs that the BackingManager will own by the end of recapitalization.
+    /// The plausible range of BUs that the BackingManager will own after recollateralization.
     /// @param erc20s Assets this computation presumes may be traded to raise funds.
     //
     //
@@ -193,7 +193,7 @@ library TradingLibP1 {
         (uint192 assetsHigh, uint192 assetsLow) = totalAssetValue(trader, erc20s); // {UoA}
 
         // {UoA}, Optimistic estimate of the value of our basket units at the end of this
-        //   recapitalization process.
+        //   recollateralization process.
         uint192 basketTargetHigh = fixMin(
             assetsHigh,
             rToken(trader).basketsNeeded().mul(basketPrice)
@@ -214,7 +214,7 @@ library TradingLibP1 {
         uint192 shortfallSlippage = trader.maxTradeSlippage().mul(shortfall);
 
         // {UoA}, Pessimistic estimate of the value of our basket units at the end of this
-        //   recapitalization process.
+        //   recollateralization process.
         uint192 basketTargetLow = assetsLow.gt(shortfallSlippage)
             ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
             : 0;

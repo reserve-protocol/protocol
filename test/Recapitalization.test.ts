@@ -818,7 +818,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should only start recapitalization after tradingDelay', async () => {
+      it('Should only start recollateralization after tradingDelay', async () => {
         // Set trading delay
         const newDelay = 3600
         await backingManager.connect(owner).setTradingDelay(newDelay) // 1 hour
@@ -831,7 +831,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(3, [token1.address], [fp('1')], false)
 
-        // Trigger recapitalization
+        // Trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
@@ -891,7 +891,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check price in USD of the current redemption basket
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
-        // Trigger recapitalization
+        // Trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
@@ -1011,7 +1011,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check price in USD of the current RToken -- no backing swapped in yet
         expect(await rTokenAsset.strictPrice()).to.equal(fp('0.9898'))
 
-        // Trigger recapitalization
+        // Trigger recollateralization
         const minBuyAmt: BigNumber = issueAmount
           .sub(bn(2).mul(config.minTradeVolume))
           .sub(issueAmount.div(100))
@@ -1127,7 +1127,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check price in USD of the current RToken -- retains price because of insurance
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
-        // Trigger recapitalization
+        // Trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
@@ -1307,7 +1307,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Set Token0 to default - 50% price reduction
         await setOraclePrice(collateral0.address, bn('0.5e8'))
 
-        // Running auctions will not trigger recapitalization until collateral defauls
+        // Running auctions will not trigger recollateralization until collateral defauls
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.be.revertedWith(
           'basket not sound'
         )
@@ -1338,7 +1338,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Check price in USD of the current RToken - No backing = 0 price
         expect(await rTokenAsset.strictPrice()).to.equal(fp('0'))
 
-        // Running auctions should not trigger recapitalization
+        // Running auctions should not trigger recollateralization
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address)).to.not.emit(
           backingManager,
           'TradeStarted'
@@ -1421,7 +1421,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
-        // Running auctions will trigger recapitalization - only half of the balance is available
+        // Running auctions will trigger recollateralization - only half of the balance is available
         const sellAmt: BigNumber = (await token0.balanceOf(backingManager.address)).div(2)
 
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -1652,7 +1652,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rToken.totalSupply()).to.equal(issueAmount)
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1')) // rentains value because insurance
 
-        // Running auctions will trigger recapitalization
+        // Running auctions will trigger recollateralization
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -1814,7 +1814,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(0)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Running auctions will trigger recapitalization - All token balance can be redeemed
+        // Running auctions will trigger recollateralization - All token balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -2152,7 +2152,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         await assetRegistry.refresh()
         await basketHandler.refreshBasket()
 
-        // Running auctions will trigger recapitalization - All balance can be redeemed
+        // Running auctions will trigger recollateralization - All balance can be redeemed
         const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
 
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -2428,7 +2428,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        // Running auctions will trigger recapitalization - All balance will be redeemed
+        // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
         // Run auctions
@@ -2689,7 +2689,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        // Running auctions will trigger recapitalization - All balance will be redeemed
+        // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
         // Run auctions
@@ -3014,7 +3014,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        // Running auctions will trigger recapitalization - All balance will be redeemed
+        // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
         const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
@@ -3416,7 +3416,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         ;[, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e18'))
         expect(quotes).to.eql(newQuotes)
 
-        // Running auctions will trigger recapitalization - All balance will be redeemed
+        // Running auctions will trigger recollateralization - All balance will be redeemed
         const sellAmt0: BigNumber = await token0.balanceOf(backingManager.address)
         const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
         const sellAmt3: BigNumber = (await token3.balanceOf(backingManager.address)).mul(pow10(10)) // convert to 18 decimals for simplification
@@ -3897,7 +3897,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
       await assetRegistry.refresh()
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
 
-      // Running auctions will trigger recapitalization - All balance will be redeemed
+      // Running auctions will trigger recollateralization - All balance will be redeemed
       const sellAmt2: BigNumber = await token2.balanceOf(backingManager.address)
 
       // Run auctions - First Settle trades then Manage Funds
