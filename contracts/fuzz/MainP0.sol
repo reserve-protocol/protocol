@@ -173,8 +173,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
             "Rtkn",
             "fnord",
             params.issuanceRate,
-            params.maxRedemptionCharge,
-            params.redemptionVirtualSupply
+            params.scalingRedemptionRate,
+            params.redemptionRateFloor
         );
         stRSR.init(
             this,

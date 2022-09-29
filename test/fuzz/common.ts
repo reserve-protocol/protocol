@@ -57,8 +57,8 @@ export const CONFIG: IConfig = {
   shortFreeze: bn(345600),
   longFreeze: bn(1814400),
   issuanceRate: fp('0.00025'), // 0.025% per block or ~0.1% per minute
-  maxRedemptionCharge: fp('0.05'),
-  redemptionVirtualSupply: fp('2e7'),
+  scalingRedemptionRate: fp('0.05'),
+  redemptionRateFloor: fp('2e7'),
 }
 
 export const ZERO_COMPONENTS = {

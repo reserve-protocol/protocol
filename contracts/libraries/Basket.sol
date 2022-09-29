@@ -28,7 +28,7 @@ library BasketLib {
     }
 
     /// Set `self` equal to `other`
-    function copy(Basket storage self, Basket storage other) internal {
+    function setFrom(Basket storage self, Basket storage other) internal {
         empty(self);
         for (uint256 i = 0; i < other.erc20s.length; i++) {
             self.erc20s.push(other.erc20s[i]);

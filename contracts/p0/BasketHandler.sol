@@ -283,7 +283,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             }
         }
 
-        basket.copy(newBasket);
+        basket.setFrom(newBasket);
 
         // Keep records, emit event
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);

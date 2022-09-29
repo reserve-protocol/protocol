@@ -35,7 +35,7 @@ contract BasketHandlerP0Fuzz is BasketHandlerP0 {
     }
 
     function savePrev() external {
-        prev.copy(basket);
+        prev.setFrom(basket);
     }
 
     function prevEqualsCurr() external view returns (bool) {
