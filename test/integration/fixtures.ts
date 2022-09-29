@@ -172,9 +172,7 @@ async function collateralFixture(
     }
   )
 
-  const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
   const CTokenSelfReferentialCollateralFactory = await ethers.getContractFactory(
     'CTokenSelfReferentialCollateral',
@@ -379,7 +377,8 @@ async function collateralFixture(
           ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String(targetName)
+          ethers.utils.formatBytes32String(targetName),
+          delayUntilDefault
         )
       ),
     ]
@@ -406,6 +405,7 @@ async function collateralFixture(
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
+          delayUntilDefault,
           (await referenceERC20.decimals()).toString(),
           comptroller.address
         )

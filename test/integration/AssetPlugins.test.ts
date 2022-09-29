@@ -65,6 +65,8 @@ let owner: SignerWithAddress
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
 const point1Pct = (value: BigNumber): BigNumber => {
   return value.div(1000)
 }
@@ -967,19 +969,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(usdpCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
       await expect(tusdCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await daiCollateral.refresh()
       await usdcCollateral.refresh()
       await usdtCollateral.refresh()
       await busdCollateral.refresh()
       await usdpCollateral.refresh()
       await tusdCollateral.refresh()
-      expect(await daiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await usdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await busdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await usdpCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await tusdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await daiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await usdtCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await busdCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await usdpCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await tusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
@@ -1004,9 +1006,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Collateral with no price should revert
       await expect(nonPriceCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonPriceCollateral.refresh()
-      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidFiatCollateral: FiatCollateral = <FiatCollateral>await (
@@ -1030,9 +1032,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Reverts with zero price
       await expect(invalidFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidFiatCollateral.refresh()
-      expect(await invalidFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - CTokens Fiat', async () => {
@@ -1044,13 +1046,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(cUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
       await expect(cUsdtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await cDaiCollateral.refresh()
       await cUsdcCollateral.refresh()
       await cUsdtCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
@@ -1077,9 +1079,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceCtokenCollateral.refresh()
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
@@ -1107,9 +1109,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - ATokens Fiat', async () => {
@@ -1122,15 +1124,15 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(aUsdtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
       await expect(aBusdCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await aDaiCollateral.refresh()
       await aUsdcCollateral.refresh()
       await aUsdtCollateral.refresh()
       await aBusdCollateral.refresh()
-      expect(await aDaiCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aUsdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aBusdCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await aDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aUsdtCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aBusdCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
@@ -1155,9 +1157,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // ATokens - Collateral with no price info should revert
       await expect(nonpriceAtokenCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceAtokenCollateral.refresh()
-      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
@@ -1183,9 +1185,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidPriceAtokenCollateral.refresh()
-      expect(await invalidPriceAtokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidPriceAtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - Non-Fiatcoins', async () => {
@@ -1196,7 +1198,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(wbtcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       await wbtcCollateral.refresh()
-      expect(await wbtcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await wbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
@@ -1222,9 +1224,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Non-fiat Collateral with no price should revert
       await expect(nonpriceNonFiatCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceNonFiatCollateral.refresh()
-      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Non-Fiat collateral with zero price
       const invalidPriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
@@ -1254,9 +1256,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidPriceNonFiatCollateral.refresh()
-      expect(await invalidPriceNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidPriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - CTokens Non-Fiat', async () => {
@@ -1266,9 +1268,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Compound
       await expect(cWBTCCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await cWBTCCollateral.refresh()
-      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cWBTCCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
@@ -1298,9 +1300,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenNonFiatCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceCtokenNonFiatCollateral.refresh()
-      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <
@@ -1334,9 +1336,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidpriceCtokenNonFiatCollateral.refresh()
-      expect(await invalidpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - Self-Referential', async () => {
@@ -1347,15 +1349,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(wethCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       await wethCollateral.refresh()
-      expect(await wethCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await wethCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Self referential collateral with no price
       const nonpriceSelfReferentialCollateral: SelfReferentialCollateral = <
         SelfReferentialCollateral
       >await (
-        await ethers.getContractFactory('SelfReferentialCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('SelfReferentialCollateral')
       ).deploy(
         fp('1'),
         NO_PRICE_DATA_FEED,
@@ -1363,23 +1363,22 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('ETH')
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT
       )
 
       // Non-fiat Collateral with no price should revert
       await expect(nonpriceSelfReferentialCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceSelfReferentialCollateral.refresh()
-      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Self referential collateral with zero price
       const invalidPriceSelfReferentialCollateral: SelfReferentialCollateral = <
         SelfReferentialCollateral
       >await (
-        await ethers.getContractFactory('SelfReferentialCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('SelfReferentialCollateral')
       ).deploy(
         fp('1'),
         mockChainlinkFeed.address,
@@ -1387,7 +1386,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('ETH')
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT
       )
 
       // Set price = 0
@@ -1398,11 +1398,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidPriceSelfReferentialCollateral.refresh()
-      expect(await invalidPriceSelfReferentialCollateral.status()).to.equal(
-        CollateralStatus.UNPRICED
-      )
+      expect(await invalidPriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should handle invalid/stale Price - Collateral - CTokens Self-Referential', async () => {
@@ -1412,9 +1410,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Compound
       await expect(cETHCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await cETHCollateral.refresh()
-      expect(await cETHCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cETHCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // CTokens Collateral with no price
       const nonpriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
@@ -1431,6 +1429,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT,
         await weth.decimals(),
         compoundMock.address
       )
@@ -1438,11 +1437,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenSelfReferentialCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonpriceCtokenSelfReferentialCollateral.refresh()
-      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(
-        CollateralStatus.UNPRICED
-      )
+      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidPriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
@@ -1459,6 +1456,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT,
         await weth.decimals(),
         compoundMock.address
       )
@@ -1471,10 +1469,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidPriceCtokenSelfReferentialCollateral.refresh()
       expect(await invalidPriceCtokenSelfReferentialCollateral.status()).to.equal(
-        CollateralStatus.UNPRICED
+        CollateralStatus.IFFY
       )
     })
 
@@ -1484,7 +1482,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       await expect(eurtCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await eurtCollateral.refresh()
 
       const defaultThreshold = fp('0.05') // 5%
@@ -1511,9 +1509,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Collateral with no price should revert
       await expect(nonPriceEURCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await nonPriceEURCollateral.refresh()
-      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Reverts with a feed with zero price
       const invalidPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
@@ -1543,9 +1541,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status UNPRICED
+      // Refresh should mark status IFFY
       await invalidPriceEURCollateral.refresh()
-      expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -1947,10 +1945,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
         const [isFallback, price] = await basketHandler.price(true)
         expect(isFallback).to.equal(false)
         expect(price).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
+        expect(await rTokenAsset.strictPrice()).to.be.closeTo(
+          totalPriceUSD,
+          point1Pct(totalPriceUSD)
+        )
 
         // Check rToken balance
         expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -2158,7 +2159,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-        await expect(rTokenAsset.strictPrice()).to.be.revertedWith('no supply')
+        expect(await rTokenAsset.strictPrice()).to.be.closeTo(usdtPrice, point1Pct(usdtPrice))
         const [isFallback, price] = await basketHandler.price(true)
         expect(isFallback).to.equal(false)
         expect(price).to.be.closeTo(totalPriceUSD, point1Pct(totalPriceUSD))
