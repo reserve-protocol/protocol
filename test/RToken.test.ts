@@ -91,7 +91,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   }
 
   // Implementation-agnostic testing interface for issuances
-  const expectIssuance = async (account: string, index: number, issuance: Partial<IIssuance>) => {
+  const expectUnprocessedIssuance = async (
+    account: string,
+    index: number,
+    issuance: Partial<IIssuance>
+  ) => {
     if (IMPLEMENTATION == Implementation.P0) {
       const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
       const [, amount, baskets, basketNonce, blockAvailableAt, processed] =
@@ -135,12 +139,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
   }
 
-  const expectNoIssuance = async (account: string, index: number) => {
+  const expectProcessedIssuance = async (account: string, index: number) => {
     if (IMPLEMENTATION == Implementation.P1) {
       const rTokenP1 = <RTokenP1>await ethers.getContractAt('RTokenP1', rToken.address)
       await expect(rTokenP1.issueItem(account, index)).to.be.revertedWith('out of range')
     } else if (IMPLEMENTATION == Implementation.P0) {
       const rTokenP0 = <RTokenP0>await ethers.getContractAt('RTokenP0', rToken.address)
+      expect(await rTokenP0.validP1IssueItemIndex(account, index)).to.eql(false)
       await expect(rTokenP0.issuances(account, index)).to.be.reverted
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
@@ -463,7 +468,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Cancel should not work (in fact it has deleted the issuance)
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       await expect(rToken.connect(addr1).cancel(0, false)).to.not.emit(rToken, 'IssuancesCanceled')
       await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
@@ -601,11 +606,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      await expectIssuance(addr1.address, 0, {
+      await expectUnprocessedIssuance(addr1.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce.add(1),
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
-        processed: false,
       })
 
       // Process issuance
@@ -629,7 +633,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ])
 
       // Check minting was deleted
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -692,11 +696,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Check if minting was registered
       let currentBlockNumber = await getLatestBlockNumber()
       const blockAddPct: BigNumber = issueAmount.mul(BN_SCALE_FACTOR).div(MIN_ISSUANCE_PER_BLOCK)
-      await expectIssuance(addr1.address, 0, {
+      await expectUnprocessedIssuance(addr1.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce,
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
-        processed: false,
       })
 
       // Issue new RTokens with different user
@@ -723,7 +726,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ])
 
       // Check previous minting was processed and funds sent to minter
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
@@ -750,11 +753,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check the new issuance is not processed
       currentBlockNumber = await getLatestBlockNumber()
-      await expectIssuance(addr2.address, 0, {
+      await expectUnprocessedIssuance(addr2.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce,
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
-        processed: false,
       })
 
       // Complete 2nd issuance
@@ -762,7 +764,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr2.address, await endIdForVest(addr2.address))
 
       // Check issuance is confirmed
-      await expectNoIssuance(addr2.address, 0)
+      await expectProcessedIssuance(addr2.address, 0)
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
@@ -797,9 +799,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('basket unsound')
 
       // Check previous minting was not processed
-      await expectIssuance(addr1.address, 0, {
-        processed: false,
-      })
+      await expectUnprocessedIssuance(addr1.address, 0, {})
       expect(await rToken.totalSupply()).to.equal(bn('0'))
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -962,19 +962,16 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check if minting was registered
       const currentBlockNumber = await getLatestBlockNumber()
-      await expectIssuance(addr1.address, 0, {
+      await expectUnprocessedIssuance(addr1.address, 0, {
         amount: issueAmount,
         basketNonce: initialBasketNonce,
         blockAvailableAt: fp(currentBlockNumber + 3),
-        processed: false,
       })
 
       // Nothing should process
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
       // Check previous minting was not processed[, , , , , sm_proc] = await rToken.issuances(addr1.address, 0)
-      await expectIssuance(addr1.address, 0, {
-        processed: false,
-      })
+      await expectUnprocessedIssuance(addr1.address, 0, {})
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
@@ -988,7 +985,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
@@ -1008,11 +1005,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
 
-      // Process slow issuances
+      // Process slow issuances, resetting indices
       await advanceTime(100)
       await advanceTime(100)
       await advanceTime(100)
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
+      await expectProcessedIssuance(addr1.address, 0)
 
       // Check issuance was confirmed
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -1035,19 +1033,20 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Using issuance rate of 50% = 2 blocks
       const blockAddPct: BigNumber = newIssuanceAmt.mul(BN_SCALE_FACTOR).div(ISSUANCE_PER_BLOCK)
-      await expectIssuance(addr1.address, 1, {
+      await expectUnprocessedIssuance(addr1.address, 0, {
         amount: newIssuanceAmt,
         basketNonce: initialBasketNonce,
         blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
-        processed: false,
       })
 
       // Should not process
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
-      // Check previous minting was not processed
-      await expectIssuance(addr1.address, 1, {
-        processed: false,
+      // Check minting was not processed
+      await expectUnprocessedIssuance(addr1.address, 0, {
+        amount: newIssuanceAmt,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: fp(currentBlockNumber - 1).add(blockAddPct),
       })
       expect(await rToken.totalSupply()).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -1061,8 +1060,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectNoIssuance(addr1.address, 0)
-      await expectNoIssuance(addr1.address, 1)
+      await expectProcessedIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 1)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
@@ -1315,7 +1314,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(before3)
 
       // Check initial state
-      await expectIssuance(addr1.address, 0, { processed: false })
+      await expectUnprocessedIssuance(addr1.address, 0, { processed: false })
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Cancel the last 3 issuances
@@ -1358,9 +1357,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
       // Check initial state
-      await expectIssuance(addr1.address, 0, {
-        processed: false,
-      })
+      await expectUnprocessedIssuance(addr1.address, 0, {})
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 
       // Cancel with issuer
@@ -1380,7 +1377,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // We've cleared the queue so calls to cancel should revert
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
@@ -1403,9 +1400,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Check if minting was registered
-      await expectIssuance(addr1.address, 0, {
-        processed: false,
-      })
+      await expectUnprocessedIssuance(addr1.address, 0, {})
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0))
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1))
@@ -1417,16 +1412,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Create another issuance
       await rToken.connect(addr1).issue(issueAmount)
 
-      // Check initial state
-      await expectIssuance(addr1.address, 1, {
-        processed: false,
-      })
+      // Check initial state -- reuses same index
+      await expectUnprocessedIssuance(addr1.address, 0, {})
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn0.mul(2)))
       expect(await token1.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn1.mul(2)))
@@ -1434,12 +1427,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3.mul(2)))
 
       // Cancel with issuer
-      await expect(rToken.connect(addr1).cancel(2, true))
+      await expect(rToken.connect(addr1).cancel(1, true))
         .to.emit(rToken, 'IssuancesCanceled')
-        .withArgs(addr1.address, 1, 2, issueAmount)
+        .withArgs(addr1.address, 0, 1, issueAmount)
 
       // Check minting was cancelled and not tokens minted
-      await expectNoIssuance(addr1.address, 1)
+      await expectProcessedIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 1)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check balances returned to user
@@ -1452,7 +1446,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Another call will not do anything
-      await expect(rToken.connect(addr1).cancel(0, true)).to.be.revertedWith('out of range')
+      await rToken.connect(addr1).cancel(0, true)
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
@@ -1518,7 +1512,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
-      await expectNoIssuance(addr1.address, 0)
+      await expectProcessedIssuance(addr1.address, 0)
       expect(await endIdForVest(addr1.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
 

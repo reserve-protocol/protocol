@@ -551,8 +551,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
-        require(index < issueQueues[account].right, "out of range");
-        return issueQueues[account].items[index];
+        IssueQueue storage item = issueQueues[account];
+        require(index >= item.left && index < item.right, "out of range");
+        return item.items[index];
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block

@@ -66,6 +66,18 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     RedemptionBatteryLib.Battery private battery;
 
+    // === For P1 compatibility in testing ===
+
+    // IssueItem: One edge of an issuance
+    struct IssueItem {
+        uint192 when; // D18{fractional block number}
+        uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
+        uint192 amtBaskets; // D18{BU} Total amount of baskets that should back those RTokens
+        uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
+    }
+
+    // ===
+
     function init(
         IMain main_,
         string memory name_,
@@ -365,6 +377,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
     function redemptionLimit() external view returns (uint256) {
         return battery.currentCharge(totalSupply());
+    }
+
+    /// For testing compatibility with P1
+    function validP1IssueItemIndex(address account, uint256 index) external view returns (bool) {
+        return leftIndex(account) >= index && index < rightIndex(account);
     }
 
     /// Tries to vest an issuance
