@@ -31,14 +31,7 @@ import {
   setNextBlockTimestamp,
 } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import {
-  Collateral,
-  defaultFixture,
-  Implementation,
-  IMPLEMENTATION,
-  SLOW,
-  ORACLE_TIMEOUT,
-} from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION, SLOW } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
