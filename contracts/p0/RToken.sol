@@ -248,14 +248,23 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         bool someProcessed = refundAndClearStaleIssuances(account);
         if (someProcessed) return;
 
+        SlowIssuance[] storage queue = issuances[account];
         uint256 first;
         uint256 totalVested;
-        for (uint256 i = 0; i < endId && i < issuances[account].length; i++) {
+        for (uint256 i = 0; i < endId && i < queue.length; i++) {
             uint256 vestedAmount = tryVestIssuance(account, i);
             totalVested += vestedAmount;
             if (first == 0 && vestedAmount > 0) first = i;
         }
         if (totalVested > 0) emit IssuancesCompleted(account, first, endId, totalVested);
+
+        // Empty queue if no ongoing issuances
+        if (endId == queue.length) {
+            for (int256 i = int256(queue.length) - 1; i >= 0; i--) {
+                assert(queue[uint256(i)].processed);
+                queue.pop();
+            }
+        }
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.

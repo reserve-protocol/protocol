@@ -683,9 +683,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         emit Issuance(account, amtRToken, amtBaskets);
         emit IssuancesCompleted(account, queue.left, endId, amtRToken);
 
-        // TODO: If queue is now empty, set queue.left = queue.right = 0
-        // Ticket: https://app.asana.com/0/1202557536393044/1203033852623709/f
-        queue.left = endId;
+        if (endId == queue.right) {
+            // empty the queue - left is implicitly queue.left already
+            queue.left = 0;
+            queue.right = 0;
+        } else {
+            queue.left = endId;
+        }
 
         // == Interactions ==
         _mint(account, amtRToken);

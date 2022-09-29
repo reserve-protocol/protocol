@@ -628,8 +628,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         },
       ])
 
-      // Check minting is confirmed
-      await expectIssuance(addr1.address, 0, { processed: true })
+      // Check minting was deleted
+      await expectNoIssuance(addr1.address, 0)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -723,9 +723,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       ])
 
       // Check previous minting was processed and funds sent to minter
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
+      await expectNoIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(main.address)).to.equal(0)
@@ -764,9 +762,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr2.address, await endIdForVest(addr2.address))
 
       // Check issuance is confirmed
-      await expectIssuance(addr2.address, 0, {
-        processed: true,
-      })
+      await expectNoIssuance(addr2.address, 0)
       expect(await rToken.balanceOf(addr2.address)).to.equal(issueAmount)
 
       // Check asset value
@@ -992,9 +988,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
+      await expectNoIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
 
@@ -1067,9 +1061,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectIssuance(addr1.address, 1, {
-        processed: true,
-      })
+      await expectNoIssuance(addr1.address, 0)
+      await expectNoIssuance(addr1.address, 1)
       expect(await rToken.totalSupply()).to.equal(issueAmount.add(newIssuanceAmt))
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount.add(newIssuanceAmt))
@@ -1424,9 +1417,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.vest(addr1.address, await endIdForVest(addr1.address))
 
       // Check previous minting was processed and funds sent to minter
-      await expectIssuance(addr1.address, 0, {
-        processed: true,
-      })
+      await expectNoIssuance(addr1.address, 0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Create another issuance
@@ -1461,7 +1452,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
       // Another call will not do anything
-      await rToken.connect(addr1).cancel(0, true)
+      await expect(rToken.connect(addr1).cancel(0, true)).to.be.revertedWith('out of range')
       await expect(rToken.connect(addr1).cancel(1, true)).to.be.revertedWith('out of range')
     })
 
