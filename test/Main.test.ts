@@ -1479,7 +1479,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(2, [], [], true)
+        .withArgs(3, [], [], true)
 
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       // toks = await facade.basketTokens(rToken.address)
@@ -1565,7 +1565,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap basket should not find valid basket because no backup config
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs(1, [], [], true)
+        .withArgs(2, [], [], true)
 
       // Check values - All zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)

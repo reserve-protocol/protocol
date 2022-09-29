@@ -76,7 +76,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   const deployNewDeployer = async (
     rsr: string,
     gnosis: string,
-    facade: string,
     rsrAsset: string,
     implementations?: IImplementations
   ): Promise<TestIDeployer> => {
@@ -134,37 +133,30 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       ) => {
         implementations.components[name] = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.components[name] = mock.address
       }
 
       if (IMPLEMENTATION == Implementation.P0) {
         await expect(
-          deployNewDeployer(rsr.address, gnosis.address, facade.address, ZERO_ADDRESS)
+          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS, rsrAsset.address)
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, ZERO_ADDRESS, facade.address, rsrAsset.address)
+          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(ZERO_ADDRESS, gnosis.address, facade.address, rsrAsset.address)
+          deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
-        await expect(
-          deployNewDeployer(rsr.address, gnosis.address, facade.address, rsrAsset.address)
-        ).to.not.be.reverted
+        await expect(deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address)).to.not.be
+          .reverted
       } else if (IMPLEMENTATION == Implementation.P1) {
         const implementations: IImplementations = {
           main: mock.address,
@@ -184,69 +176,33 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            ZERO_ADDRESS,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            ZERO_ADDRESS,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            ZERO_ADDRESS,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(
-            ZERO_ADDRESS,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         // Check implementations
         // Main
         implementations.main = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.main = mock.address
 
         // Trade
         implementations.trade = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.trade = mock.address
 
@@ -262,13 +218,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         await validateComponent(implementations, 'stRSR')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.not.be.reverted
       }
     })

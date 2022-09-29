@@ -504,7 +504,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Basket switches to empty basket
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(1, [], [], true)
+          .withArgs(2, [], [], true)
 
         // Check state - Basket is disabled even though fully capitalized
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -756,7 +756,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Basket should switch to empty and defaulted
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
-          .withArgs(2, [], [], true)
+          .withArgs(3, [], [], true)
 
         // Check state - Basket is disabled
         expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
@@ -1279,7 +1279,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       })
 
-      it('Should not trade if only held asset is DISABLED and no RSR available', async () => {
+      it.only('Should not trade if only held asset is DISABLED and no RSR available', async () => {
         // Undo the RSR stake
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
