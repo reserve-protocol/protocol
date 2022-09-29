@@ -83,9 +83,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
 
     await backingManager.connect(owner).setBackingBuffer(0)
 
-    const SelfReferentialFactory = await ethers.getContractFactory('SelfReferentialCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    const SelfReferentialFactory = await ethers.getContractFactory('SelfReferentialCollateral')
     const ChainlinkFeedFactory = await ethers.getContractFactory('MockV3Aggregator')
 
     // WETH against ETH

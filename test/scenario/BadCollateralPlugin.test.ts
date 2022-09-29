@@ -165,7 +165,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       await rToken.connect(addr1).redeem(initialBal.div(2))
       expect(await rToken.totalSupply()).to.equal(initialBal.div(2))
       expect(await token0.balanceOf(addr1.address)).to.equal(initialBal.div(2))
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('0.9'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), bn('1'))
     })
 
     it('should increase the issuance basket as collateral loses value', async () => {

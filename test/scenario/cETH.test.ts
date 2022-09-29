@@ -107,9 +107,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     wethCollateral = await (
-      await ethers.getContractFactory('SelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('SelfReferentialCollateral')
     ).deploy(
       fp('1'),
       chainlinkFeed.address,

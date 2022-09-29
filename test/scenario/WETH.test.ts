@@ -12,7 +12,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   TestIBackingManager,
   TestIStRSR,
   TestIRevenueTrader,
@@ -55,7 +54,6 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -85,7 +83,6 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       basketHandler,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -97,9 +94,7 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     wethCollateral = await (
-      await ethers.getContractFactory('SelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('SelfReferentialCollateral')
     ).deploy(
       fp('1'),
       chainlinkFeed.address,

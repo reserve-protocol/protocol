@@ -241,10 +241,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(backupToken.address)
     })
-
-    it('should revert on RTokenAsset.price', async () => {
-      await expect(rTokenAsset.strictPrice()).to.be.revertedWith('No Decimals')
-    })
   })
 
   describe('with censorship', function () {
