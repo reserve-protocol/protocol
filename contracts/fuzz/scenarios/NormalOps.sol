@@ -310,7 +310,7 @@ contract NormalOpsScenario {
         RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(main.rToken()));
         uint256 preSupply = rtoken.totalSupply();
 
-        (uint256 left, right) = rtoken.idRange(user);
+        (uint256 left, uint256 right) = rtoken.idRange(user);
         uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
 
         // Do vest

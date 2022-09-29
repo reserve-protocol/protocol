@@ -281,7 +281,7 @@ contract DiffTestScenario {
             address user = msg.sender;
             RTokenP1Fuzz rtoken = RTokenP1Fuzz(address(p[N].rToken()));
 
-            (uint256 left, right) = rtoken.idRange(user);
+            (uint256 left, uint256 right) = rtoken.idRange(user);
             uint256 id = between(left == 0 ? 0 : left - 1, right + 1, seedID);
 
             // Do vest

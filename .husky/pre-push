@@ -6,4 +6,4 @@ set -exuo pipefail
 bash tools/lint && \
 yarn eslint && \
 yarn compile && \
-yarn exec hardhat test test/fuzz/*.test.ts
+yarn test:fuzz

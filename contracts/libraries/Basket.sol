@@ -13,7 +13,6 @@ library BasketLib {
     using BasketLib for Basket;
     using FixLib for uint192;
 
-
     /// Set self to a fresh, empty basket
     // self'.erc20s = [] (empty list)
     // self'.refAmts = {} (empty map)
