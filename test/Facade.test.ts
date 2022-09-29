@@ -12,6 +12,7 @@ import {
   FacadeTest,
   StaticATokenMock,
   StRSRP1,
+  TestIMain,
   TestIStRSR,
   TestIRToken,
   USDCMock,
@@ -53,6 +54,7 @@ describe('Facade contract', () => {
 
   // Main
   let rToken: TestIRToken
+  let main: TestIMain
   let stRSR: TestIStRSR
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -67,7 +69,8 @@ describe('Facade contract', () => {
     ;[owner, addr1, addr2, other] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, config } = await loadFixture(
+
+    ;({ stRSR, rsr, basket, facade, facadeTest, rToken, config, main } = await loadFixture(
       defaultFixture
     ))
 
@@ -167,7 +170,8 @@ describe('Facade contract', () => {
       expect(insurance).to.equal(0)
     })
 
-    it('Should return basketBreakdown correctly', async () => {
+    it('Should return basketBreakdown correctly for paused token', async () => {
+      await main.connect(owner).pause()
       const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
       expect(erc20s.length).to.equal(4)
       expect(breakdown.length).to.equal(4)

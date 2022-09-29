@@ -2115,7 +2115,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     }
 
     // ==== Generate the tests
-    const MAX_RTOKENS = bn('1e48') // TODO: should be 1e36, but I know that throws error for now...
+    const MAX_RTOKENS = bn('1e48')
     const MAX_WEIGHT = fp(1000)
     const MIN_WEIGHT = fp('1e-6')
     const MIN_ISSUANCE_FRACTION = fp('1e-6')

@@ -26,7 +26,8 @@ contract DistributorP1 is ComponentP1, IDistributor {
     // all distribution-share values are <= 10000
 
     // ==== destinations:
-    // if distribution[dest] != (0,0) then dest in destinations // TODO: make this iff
+    // if distribution[dest] != (0,0) then dest in destinations
+    // TODO: make iff. https://app.asana.com/0/1202557536393044/1203043664234031/f
 
     address public constant FURNACE = address(1);
     address public constant ST_RSR = address(2);
