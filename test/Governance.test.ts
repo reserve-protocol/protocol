@@ -625,7 +625,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSRVotes.connect(signer).seizeRSR(stkAmt1))
           .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('2'))
+          .withArgs(fp('1'), fp('0.5'))
       })
 
       // Create another proposal to replace broker
