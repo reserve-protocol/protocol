@@ -18,6 +18,7 @@ import "contracts/libraries/Fixed.sol";
  *  2. prepareTradeRecapitalize
  */
 library TradingLibP0 {
+    using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
     /// Prepare a trade to sell `sellAmount` that guarantees a reasonable closing price,
