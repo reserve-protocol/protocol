@@ -27,6 +27,8 @@ import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../f
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
 describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -115,7 +117,8 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH')
+      ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // cETH
@@ -135,6 +138,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT,
       await weth.decimals(),
       compoundMock.address
     )

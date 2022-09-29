@@ -23,6 +23,7 @@ import {
 import { defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
 describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -97,7 +98,8 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH')
+      ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // MKR against MKR
@@ -110,7 +112,8 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('MKR')
+      ethers.utils.formatBytes32String('MKR'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // COMP against COMP
@@ -123,7 +126,8 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('COMP')
+      ethers.utils.formatBytes32String('COMP'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // Basket configuration

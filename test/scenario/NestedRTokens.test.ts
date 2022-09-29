@@ -109,7 +109,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         one.rToken.address,
         one.config.rTokenMaxTradeVolume,
-        ethers.utils.formatBytes32String('RTK')
+        ethers.utils.formatBytes32String('RTK'),
+        DELAY_UNTIL_DEFAULT
       )
       const rTokenAsset = await (
         await ethers.getContractFactory('RTokenAsset')
