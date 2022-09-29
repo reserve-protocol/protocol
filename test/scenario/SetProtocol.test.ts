@@ -13,7 +13,6 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   SelfReferentialCollateral,
-  OracleLib,
   TestIBackingManager,
   TestIStRSR,
   TestIRevenueTrader,
@@ -52,7 +51,6 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
 
@@ -76,7 +74,6 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
       rTokenTrader,
       rsrTrader,
     } = await loadFixture(defaultFixture))
