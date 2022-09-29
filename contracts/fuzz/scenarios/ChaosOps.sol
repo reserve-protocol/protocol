@@ -1079,6 +1079,10 @@ contract ChaosOpsScenario {
         return DistributorP1Fuzz(address(main.distributor())).invariantsHold();
     }
 
+    function echidna_furnaceInvariants() external view returns (bool) {
+        return FurnaceP1Fuzz(address(main.furnace())).invariantsHold();
+    }
+
     function echidna_rsrTraderInvariants() external view returns (bool) {
         return RevenueTraderP1Fuzz(address(main.rsrTrader())).invariantsHold();
     }

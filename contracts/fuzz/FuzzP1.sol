@@ -73,7 +73,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
 
     function invariantsHold() external view returns (bool) {
         // if basket.erc20s is empty then disabled == true
-        bool disabledIfEmptyProp = (basket.erc20s.length == 0 && !basket.disabled) ? false : true;
+        bool disabledIfEmptyProp = basket.erc20s.length > 0 || basket.disabled;
         return disabledIfEmptyProp;
     }
 
@@ -103,9 +103,9 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        bool tradingDelayProp = (tradingDelay > MAX_TRADING_DELAY) ? false : true;
-        bool backingBufferProp = (backingBuffer > MAX_BACKING_BUFFER) ? false : true;
-        bool maxTradeSlippageProp = (maxTradeSlippage > MAX_TRADE_SLIPPAGE) ? false : true;
+        bool tradingDelayProp = tradingDelay <= MAX_TRADING_DELAY;
+        bool backingBufferProp = backingBuffer <= MAX_BACKING_BUFFER;
+        bool maxTradeSlippageProp = maxTradeSlippage <= MAX_TRADE_SLIPPAGE;
 
         return tradingDelayProp && backingBufferProp && maxTradeSlippageProp;
     }
@@ -156,9 +156,7 @@ contract BrokerP1Fuzz is BrokerP1 {
             if (!trades[tradeSet.at(i)]) tradesProp = false;
         }
 
-        bool auctionLengthProp = (auctionLength == 0 || auctionLength > MAX_AUCTION_LENGTH)
-            ? false
-            : true;
+        bool auctionLengthProp = auctionLength > 0 && auctionLength <= MAX_AUCTION_LENGTH;
         return tradesProp && auctionLengthProp;
     }
 }
@@ -174,33 +172,42 @@ contract DistributorP1Fuzz is DistributorP1 {
         // ==== Invariants ====
         // distribution is nonzero
         RevenueTotals memory revTotals = totals();
-        bool distNotEmptyProp = (revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0)
-            ? false
-            : true;
+        bool distNotEmptyProp = !(revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0);
 
         // No invalid distributions to FURNACE and STRSR
-        bool noInvalidDistProp = (distribution[FURNACE].rsrDist > 0 ||
-            distribution[ST_RSR].rTokenDist > 0)
-            ? false
-            : true;
+        bool noInvalidDistProp = distribution[FURNACE].rsrDist == 0 &&
+            distribution[ST_RSR].rTokenDist == 0;
 
         // Valid share values for destinations
         bool validShareAmtsProp = true;
+        bool destinationsProp = true;
         uint256 n = destinations.length();
         for (uint256 i = 0; i < n; ++i) {
             RevenueShare storage share = distribution[destinations.at(i)];
             if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
-        }
 
-        // TODO: distribution has no more than MAX_DESTINATIONS_ALLOWED key-value entries
-        // if distribution[dest] != (0,0) then dest in destinations // TODO: make this iff
-        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp;
+            // TODO: Uncomment once IFF is implemented for if distribution[dest] != (0,0) then dest in destinations
+            // if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
+        }
+        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp;
     }
 }
 
 contract FurnaceP1Fuzz is FurnaceP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        bool periodProp = period > 0 && period <= MAX_PERIOD;
+        bool ratioProp = ratio <= MAX_RATIO;
+
+        // TODO: lastPayout was the timestamp of the end of the last period we paid out
+        //   (or, if no periods have been paid out, the timestamp init() was called)
+        // lastPayoutBal was rtoken.balanceOf(this) after the last period we paid out
+        //   (or, if no periods have been paid out, that balance when init() was called)
+
+        return periodProp && ratioProp;
     }
 }
 
@@ -210,7 +217,7 @@ contract RevenueTraderP1Fuzz is RevenueTraderP1 {
     }
 
     function invariantsHold() external view returns (bool) {
-        bool maxTradeSlippageProp = (maxTradeSlippage > MAX_TRADE_SLIPPAGE) ? false : true;
+        bool maxTradeSlippageProp = maxTradeSlippage <= MAX_TRADE_SLIPPAGE;
         return maxTradeSlippageProp;
     }
 }
@@ -268,16 +275,8 @@ contract StRSRP1Fuzz is StRSRP1 {
     function invariantsHold() external view returns (bool) {
         bool stakesProp = totalStakes == 0 ? stakeRSR == 0 && stakeRate == FIX_ONE : stakeRSR > 0;
         bool draftsProp = totalDrafts == 0 ? draftRSR == 0 && draftRate == FIX_ONE : draftRSR > 0;
-
-        bool totalStakesCovered = true;
-        if (totalStakes > 0) {
-            if (stakeRSR * stakeRate < totalStakes * 1e18) totalStakesCovered = false;
-        }
-
-        bool totalDraftsCovered = true;
-        if (totalDrafts > 0) {
-            if (draftRSR * draftRate < totalDrafts * 1e18) totalDraftsCovered = false;
-        }
+        bool totalStakesCovered = stakeRSR * stakeRate >= totalStakes * 1e18;
+        bool totalDraftsCovered = draftRSR * draftRate >= totalDrafts * 1e18;
 
         return stakesProp && draftsProp && totalStakesCovered && totalDraftsCovered;
     }

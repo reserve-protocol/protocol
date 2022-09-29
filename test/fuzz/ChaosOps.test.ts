@@ -1184,6 +1184,7 @@ describe('The Chaos Operations scenario', () => {
     expect(await scenario.echidna_basketInvariants()).to.be.true
     expect(await scenario.echidna_brokerInvariants()).to.be.true
     expect(await scenario.echidna_distributorInvariants()).to.be.true
+    expect(await scenario.echidna_furnaceInvariants()).to.be.true
     expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
@@ -1207,9 +1208,10 @@ describe('The Chaos Operations scenario', () => {
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
-  it('does not have falling rates after a tiny issuance', async () => {
-    await scenario.connect(alice).issue(1)
-    //expect(await scenario.echidna_ratesNeverFall()).to.be.true
+  it('maintains stRSR invariants after seizing RSR', async () => {
+    await scenario.connect(alice).stake(4)
+    await scenario.seizeRSR(1)
+    expect(await scenario.echidna_stRSRInvariants()).to.be.true
   })
 
   it('does not have the backingManager double-revenue bug', async () => {
