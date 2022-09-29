@@ -164,8 +164,8 @@ library TradingLibP0 {
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions
-    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.strictPrice())
-    //   because (totalAssetValue(erc20s) / basket.strictPrice()) is how many BUs we can hold assuming
+    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.price())
+    //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded
     // range.bottom = TODO
 
@@ -193,10 +193,11 @@ library TradingLibP0 {
 
         // {UoA}, Total value of collateral in shortfall of `basketTargetHigh`. Specifically:
         //   sum( shortfall(c, basketTargetHigh / basketPrice) for each erc20 c in the basket)
-        //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.strictPrice()
-        //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
-        //          need to be given in order to have enough of c to cover `numBUs` BUs)
-        uint192 shortfall = collateralShortfall(trader, erc20s, basketTargetHigh, basketPrice); // {UoA}
+        //   where shortfall(c, BUs) == (BUs * bh.quantity(c) - c.balanceOf(trader)) * c.price()
+        //         (that is, shortfall(c, BUs) is the market value of the c that `this` would
+        //          need to be given in order to have enough of c to cover `BUs` BUs)
+        // {UoA}
+        uint192 shortfall = collateralShortfall(trader, erc20s, basketTargetHigh, basketPrice);
 
         // ==== Further adjust the low backing estimate downwards to account for trading frictions
 
@@ -299,7 +300,7 @@ library TradingLibP0 {
     /// @return shortfall {UoA} The missing re-collateralization in UoA terms
     // Specifically, returns:
     //   sum( shortfall(c, basketTargetHigh / basketPrice) for each erc20 c in the basket)
-    //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.strictPrice()
+    //   where shortfall(c, numBUs) == (numBus * bh.quantity(c) - c.balanceOf(trader)) * c.price()
     //         (that is, shortfall(c, numBUs) is the market value of the c that `this` would
     //          need to be given in order to have enough of c to cover `numBUs` BUs)
     // precondition: erc20s contains no duplicates; all basket tokens are in erc20s
@@ -436,8 +437,6 @@ library TradingLibP0 {
                 surplusAmt = rsrAvailable;
             }
         }
-
-        if (address(deficit) != address(0)) {}
     }
 
     /// Assuming we have `maxSellAmount` sell tokens available, prepare a trade to cover as much of
@@ -448,9 +447,9 @@ library TradingLibP0 {
     /// @return notDust Whether the prepared trade is large enough to be worth trading
     /// @return trade The prepared trade
     //
-    // Returns prepareTradeSell(sell, buy, sellAmount), where
+    // Returns prepareTradeSell(sell, buy, sellAmount, sellPrice, buyPrice), where
     //   sellAmount = min(maxSellAmount,
-    //                    deficitAmount * (buy.price / sell.price) / (1-maxTradeSlippage))
+    //                    deficitAmount * (buyPrice / sellPrice) / (1-maxTradeSlippage))
     //   i.e, the minimum of maxSellAmount and (a sale amount that, at current prices and maximum
     //   slippage, will yield at least the requested deficitAmount)
     //
@@ -462,7 +461,7 @@ library TradingLibP0 {
     //   1 < trade.sellAmount <= min(maxSellAmount.toQTok(sell),
     //                               sell.maxTradeSize().toQTok(sell),
     //                               GNOSIS_MAX_TOKENS)
-    //   trade.minBuyAmount ~= trade.sellAmount * sell.strictPrice() / buy.strictPrice() * (1-maxTradeSlippage)
+    //   trade.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   trade.sellAmount (and trade.minBuyAmount) are maximal satisfying all these conditions
     function prepareTradeToCoverDeficit(
