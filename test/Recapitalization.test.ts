@@ -1697,7 +1697,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         // Raise minTradeVolume
         await backingManager.connect(owner).setMinTradeVolume(stakeAmount.div(2).sub(1))
 
-        // Run auctions - NO RSR Auction launched
+        // Run auctions - NO RSR Auction launched but haircut taken
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
@@ -1709,6 +1709,11 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
             contract: backingManager,
             name: 'TradeStarted',
             emitted: false,
+          },
+          {
+            contract: rToken,
+            name: 'BasketsNeededChanged',
+            emitted: true,
           },
         ])
 
@@ -1727,8 +1732,8 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
         expect(await backupToken1.balanceOf(backingManager.address)).to.equal(minBuyAmt)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
-        // Check price in USD of the current RToken - retains price value because of insurance
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        // Check price in USD of the current RToken - haircut of 50%
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('0.5'))
       })
 
       it('Should recapitalize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {

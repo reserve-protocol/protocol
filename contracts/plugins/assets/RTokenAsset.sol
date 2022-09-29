@@ -53,6 +53,15 @@ contract RTokenAsset is IAsset {
     /// @return If the price is a failover price
     /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
     function price(bool allowFallback) public view virtual returns (bool, uint192) {
+        // {UoA/BU}
+        (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
+
+        // Here we take advantage of the fact that we know RToken has 18 decimals
+        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
+        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
+
+        if (supply == 0) return (isFallback_, price_);
+
         uint192 basketsBottom; // {BU}
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();
@@ -63,15 +72,6 @@ contract RTokenAsset is IAsset {
             ); // will exclude UoA value from RToken balances at BackingManager
             basketsBottom = range.bottom;
         }
-
-        // {UoA/BU}
-        (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
-
-        // Here we take advantage of the fact that we know RToken has 18 decimals
-        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
-        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
-
-        if (supply == 0) return (isFallback_, price_);
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         return (isFallback_, basketsBottom.mulDiv(price_, supply));
