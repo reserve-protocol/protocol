@@ -17,6 +17,7 @@ import "contracts/libraries/Fixed.sol";
  *  2. prepareTradeRecapitalize
  */
 library TradingLibP1 {
+    using CollateralStatusComparator for CollateralStatus;
     using FixLib for uint192;
 
     /// Prepare a trade to sell `sellAmount` that guarantees a reasonable closing price,
@@ -338,6 +339,7 @@ library TradingLibP1 {
 
     // Used in memory in `nextTradePair` to duck the stack limit
     struct MaxSurplusDeficit {
+        CollateralStatus surplusStatus; // starts SOUND
         uint192 surplus; // {UoA}
         uint192 deficit; // {UoA}
     }
@@ -362,6 +364,7 @@ library TradingLibP1 {
     //   if `deficit` == 0, then no token is in deficit at all, and deficitAmt == 0
     //
     // Then, just if we have deficit and no surplus, consider treating available RSR as surplus.
+    // Prefer selling SOUND assets over IFFY non-backing collateral, but still consider it.
     function nextTradePair(
         ITrading trader,
         IERC20[] memory erc20s,
@@ -377,11 +380,10 @@ library TradingLibP1 {
         )
     {
         MaxSurplusDeficit memory maxes;
+        maxes.surplusStatus = CollateralStatus.DISABLED;
         uint192 minTradeVolume_ = trader.minTradeVolume();
 
         // TODO
-        // We should prefer trading SOUND assets to IFFY assets, if both are above the dust amount
-        //
         // We can do _much much_ better in terms of gas usage than we currently are, but for now
         // this function is in its highly unoptimized form so we can confirm overall
         // proper behavior
@@ -402,10 +404,20 @@ library TradingLibP1 {
 
                 // {UoA} = {tok} * {UoA/tok}
                 uint192 delta = amtExtra.mul(price_, FLOOR);
-                if (delta.gt(maxes.surplus) && isEnoughToSell(asset, amtExtra, minTradeVolume_)) {
+
+                CollateralStatus status;
+                if (asset.isCollateral()) status = ICollateral(address(asset)).status();
+
+                // Select the most-in-surplus "best" asset, as defined by the (status, max surplusAmt)
+                if (
+                    (maxes.surplusStatus.worseThan(status) ||
+                        (delta.gt(maxes.surplus) && maxes.surplusStatus == status)) &&
+                    isEnoughToSell(asset, amtExtra, minTradeVolume_)
+                ) {
                     surplus = asset;
-                    maxes.surplus = delta;
                     surplusAmt = amtExtra;
+                    maxes.surplusStatus = status;
+                    maxes.surplus = delta;
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
@@ -417,8 +429,8 @@ library TradingLibP1 {
                     uint192 delta = amtShort.mul(price_, CEIL);
                     if (delta.gt(maxes.deficit)) {
                         deficit = ICollateral(address(asset));
-                        maxes.deficit = delta;
                         deficitAmt = amtShort;
+                        maxes.deficit = delta;
                     }
                 }
             }
@@ -455,11 +467,9 @@ library TradingLibP1 {
     // Which means we should get that, if notDust is true, then:
     //   trade.sell = sell and trade.buy = buy
     //
-    //   1 <= trade.minBuyAmount <= min(max(deficitAmount, buy.minTradeSize()).toQTok(buy),
-    //                                  GNOSIS_MAX_TOKENS)
-    //   1 < trade.sellAmount <= min(maxSellAmount.toQTok(sell),
-    //                               sell.maxTradeSize().toQTok(sell),
-    //                               GNOSIS_MAX_TOKENS)
+    //   1 <= trade.minBuyAmount <= max(deficitAmount, buy.minTradeSize()).toQTok(buy)
+    //   1 < trade.sellAmount <= max(sellAmount.toQTok(sell),
+    //                               sell.maxTradeSize().toQTok(sell))
     //   trade.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   trade.sellAmount (and trade.minBuyAmount) are maximal satisfying all these conditions
