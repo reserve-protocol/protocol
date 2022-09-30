@@ -78,7 +78,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         setLongFreeze(longFreeze_);
     }
 
-    // checks: caller is an admin for role
+    // checks: caller is an admin for role, account is not 0
     // effects:
     // - account has the `role` role
     // - if role is LONG_FREEZER, then longFreezes'[account] == LONG_FREEZE_CHARGES
@@ -87,6 +87,7 @@ abstract contract Auth is AccessControlUpgradeable, IAuth {
         override(AccessControlUpgradeable, IAccessControlUpgradeable)
         onlyRole(getRoleAdmin(role))
     {
+        require(account != address(0), "cannot grant role to address 0");
         if (role == LONG_FREEZER) longFreezes[account] = LONG_FREEZE_CHARGES;
         _grantRole(role, account);
     }
