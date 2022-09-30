@@ -532,7 +532,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   })
 
   context('Recovery from default', function () {
-    const runRecapitalizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
+    const runRecollateralizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
       let uncapitalized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
@@ -650,7 +650,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       await assetRegistry.refresh()
       await basketHandler.refreshBasket()
-      await runRecapitalizationAuctions(rTokenSupply, basketSize)
+      await runRecollateralizationAuctions(rTokenSupply, basketSize)
     }
 
     let dimensions
@@ -688,7 +688,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     })
   })
 
-  // This one is not really like the others, but it would muddy up Recapitalization.test.ts
+  // This one is not really like the others, but it would muddy up Recollateralization.test.ts
   context('Basket Switching', function () {
     let CollateralFactory: ContractFactory
 

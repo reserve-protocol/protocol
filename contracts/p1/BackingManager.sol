@@ -103,7 +103,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             handoutExcessAssets(erc20s);
         } else {
             /*
-             * Recapitalization
+             * Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the

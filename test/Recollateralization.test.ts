@@ -44,7 +44,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
 
-describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
+describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
@@ -768,7 +768,7 @@ describe(`Recapitalization - P${IMPLEMENTATION}`, () => {
     })
   })
 
-  describe('Recapitalization', function () {
+  describe('Recollateralization', function () {
     context('With very simple Basket - Single stablecoin', function () {
       let issueAmount: BigNumber
       let stakeAmount: BigNumber
