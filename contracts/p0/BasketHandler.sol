@@ -364,14 +364,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
+            uint192 refPerTok = coll.refPerTok();
+            if (refPerTok == 0) return FIX_ZERO;
             uint192 bal = coll.bal(account); // {tok}
 
             // {tok/BU} = {ref/BU} / {ref/tok}
-            // TODO: div by 0? https://app.asana.com/0/1202557536393044/1203043664234029/f
-            uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
+            uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
 
             // {BU} = either {BU} or {tok} / {tok/BU}; q > 0 because q = (n).div(_, CEIL) and n > 0
-            baskets = fixMin(baskets, q.eq(FIX_ZERO) ? FIX_MAX : bal.div(q));
+            baskets = fixMin(baskets, bal.div(q));
         }
     }
 
