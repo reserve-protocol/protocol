@@ -483,7 +483,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     const RevTraderImplFactory: ContractFactory = await ethers.getContractFactory(
       'RevenueTraderP1',
-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+      { libraries: { RewardableLibP1: rewardableLib.address } }
     )
     const revTraderImpl: RevenueTraderP1 = <RevenueTraderP1>await RevTraderImplFactory.deploy()
 

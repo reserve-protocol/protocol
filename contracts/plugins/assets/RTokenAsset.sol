@@ -6,6 +6,8 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/p1/mixins/TradingLib.sol";
 
+/// Once an RToken gets large eonugh to get a price feed, replacing this asset with
+/// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
@@ -66,8 +68,24 @@ contract RTokenAsset is IAsset {
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();
         } else {
+            IMain main = backingManager.main();
+            ComponentCache memory components = ComponentCache({
+                trader: backingManager,
+                bh: main.basketHandler(),
+                reg: main.assetRegistry(),
+                stRSR: main.stRSR(),
+                rsr: main.rsr(),
+                rToken: main.rToken()
+            });
+            TradingRules memory rules = TradingRules({
+                minTradeVolume: backingManager.minTradeVolume(),
+                maxTradeSlippage: backingManager.maxTradeSlippage()
+            });
+
+            // Note: Extremely wasteful in terms of gas. Replace with price feed ASAP
             TradingLibP1.BasketRange memory range = TradingLibP1.basketRange(
-                backingManager,
+                components,
+                rules,
                 assetRegistry.erc20s()
             ); // will exclude UoA value from RToken balances at BackingManager
             basketsBottom = range.bottom;

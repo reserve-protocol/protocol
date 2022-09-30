@@ -173,7 +173,7 @@ async function main() {
   // 7. *********** RevenueTrader *************/
 
   const RevTraderImplFactory = await ethers.getContractFactory('RevenueTraderP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, TradingLibP1: deployments.tradingLib },
+    libraries: { RewardableLibP1: deployments.rewardableLib },
   })
   revTraderImpl = <RevenueTraderP1>await RevTraderImplFactory.connect(burner).deploy()
   await revTraderImpl.deployed()

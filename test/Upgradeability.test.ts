@@ -141,7 +141,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     })
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
     RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
-      libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+      libraries: { RewardableLibP1: rewardableLib.address },
     })
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
       libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },

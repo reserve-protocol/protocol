@@ -220,7 +220,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
           'RevenueTraderP1',
           {
-            libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+            libraries: { RewardableLibP1: rewardableLib.address },
           }
         )
 
