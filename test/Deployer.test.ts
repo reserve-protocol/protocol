@@ -142,10 +142,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address)
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
           deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
@@ -175,10 +171,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
 
         await expect(
           deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS, implementations)
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
-          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
