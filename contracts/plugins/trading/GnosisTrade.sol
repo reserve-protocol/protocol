@@ -84,7 +84,7 @@ contract GnosisTrade is ITrade {
         address origin_,
         IGnosis gnosis_,
         uint48 auctionLength,
-        TradeRequest memory req
+        TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sellAmount <= type(uint96).max, "sellAmount too large");
         require(req.minBuyAmount <= type(uint96).max, "minBuyAmount too large");

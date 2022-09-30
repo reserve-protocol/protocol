@@ -88,8 +88,14 @@ contract BrokerP1 is ComponentP1, IBroker {
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
         trades[address(trade)] = true;
 
-        // Apply Gnosis EasyAuction-specific resizing
-        req = resizeTrade(req, GNOSIS_MAX_TOKENS);
+        // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
+        // max(sellAmount, minBuyAmount) <= maxTokensAllowed, while maintaining their proportion
+        uint256 maxQty = (req.minBuyAmount > req.sellAmount) ? req.minBuyAmount : req.sellAmount;
+
+        if (maxQty > GNOSIS_MAX_TOKENS) {
+            req.sellAmount = mulDiv256(req.sellAmount, GNOSIS_MAX_TOKENS, maxQty, CEIL);
+            req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
+        }
 
         // == Interactions ==
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
@@ -110,26 +116,6 @@ contract BrokerP1 is ComponentP1, IBroker {
         require(trades[_msgSender()], "unrecognized trade contract");
         emit DisabledSet(disabled, true);
         disabled = true;
-    }
-
-    /// @param maxTokensAllowed {qTok} The max number of sell tokens allowed by the trading platform
-    function resizeTrade(TradeRequest memory req, uint256 maxTokensAllowed)
-        private
-        pure
-        returns (TradeRequest memory)
-    {
-        // {qTok}
-        uint256 maxQuantity = (req.minBuyAmount > req.sellAmount)
-            ? req.minBuyAmount
-            : req.sellAmount;
-
-        // Set both sellAmount and minBuyAmount <= maxTokensAllowed
-        if (maxQuantity > maxTokensAllowed) {
-            req.sellAmount = mulDiv256(req.sellAmount, maxTokensAllowed, maxQuantity, CEIL);
-            req.minBuyAmount = mulDiv256(req.minBuyAmount, maxTokensAllowed, maxQuantity, FLOOR);
-        }
-
-        return req;
     }
 
     // === Setters ===
