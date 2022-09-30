@@ -86,12 +86,10 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
         libraries: { TradingLibP0: tradingLib.address },
       })
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset)
+      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
-      return <TestIDeployer>(
-        await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset, implementations)
-      )
+      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset, implementations)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
