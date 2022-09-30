@@ -215,8 +215,20 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     function quantity(IERC20 erc20) public view returns (uint192) {
-        if (!goodCollateral(erc20)) return FIX_ZERO;
+        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+            uint192 refPerTok = coll.refPerTok();
+            if (refPerTok > 0) {
+                // {tok/BU} = {ref/BU} / {ref/tok}
+                if (!goodCollateral(erc20)) return FIX_ZERO;
+                return basket.refAmts[erc20].div(refPerTok, CEIL);
+            } else {
+                return FIX_MAX;
+            }
+        } catch {
+            return FIX_ZERO;
+        }
 
         // {tok/BU} = {ref/BU} / {ref/tok}
         return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok(), CEIL);
@@ -234,9 +246,22 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 (bool isFallback_, uint192 price_) = coll.price(allowFallback);
                 isFallback = isFallback || isFallback_;
 
-                p = p.plus(price_.mul(quantity(basket.erc20s[i])));
+                if(!allowFallback) {
+                    p = p.plus(price_.mul(quantity(basket.erc20s[i])));
+                } else {
+                    try this.add_product(p, price_, q) returns (uint192 sum) {
+                        p = sum;
+                    } catch {
+                        return (true, FIX_MAX);
+                    }
+                }
             }
         }
+    }
+
+    // Returns a + (b * c). Pulled out into separate function for exception-catching in price()
+    function add_product(uint192 a, uint192 b, uint192 c) external pure returns (uint192) {
+        return a.plus(b.mul(c));
     }
 
     /// @param amount {BU}
@@ -270,9 +295,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             uint192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account);
             uint192 q = quantity(basket.erc20s[i]); // {tok/BU}
 
-            // {BU} = {tok} / {tok/BU}
-            if (q.eq(FIX_ZERO)) return FIX_ZERO;
-            else baskets = fixMin(baskets, bal.div(q));
+            // {BU} = either {BU} or {tok} / {tok/BU}
+            baskets = fixMin(baskets, q.eq(FIX_ZERO) ? FIX_MAX : bal.div(q));
         }
     }
 
@@ -398,7 +422,9 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return
             reg.isRegistered(erc20) &&
             reg.toAsset(erc20).isCollateral() &&
-            reg.toColl(erc20).status() != CollateralStatus.DISABLED;
+            reg.toColl(erc20).status() != CollateralStatus.DISABLED &&
+            reg.toColl(erc20).refPerTok() > 0 &&
+            reg.toColl(erc20).targetPerRef() > 0;
     }
 
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
