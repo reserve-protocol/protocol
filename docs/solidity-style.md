@@ -124,8 +124,8 @@ Ranges here are formatted like "[min, max, granularity]" For instance, the range
   - 10x the `attoUoA` maximum.
 - `{qBU}`: [0, 1e57]
   - 1e57 is 1e48 `{qRTok}` \* 1e9 (the max RToken exchange rate)
-- `{qTok}` of collateral tokens: [0, 2^256-1]
-  - Just assume that collateral token quantities are any possible `uint256`.
+- `{qTok}` of collateral tokens: [0, 1e57]
+  - TODO: principled reason for this
 - `{qTok}` of reward tokens: [0, 1e29]
   - These are typically fixed-supply, and 1e11 total tokens is the largest fixed supply we've encountered.
 
