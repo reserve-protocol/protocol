@@ -273,18 +273,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         }
     }
 
-    /// @return {tok/BU} The quantity of an ERC20 token in the basket; 0 if not in the basket
+    /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
+    // Returns 0 if erc20 is not registered, disabled, or not in the basket
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+            if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
+
             uint192 refPerTok = coll.refPerTok();
-            if (refPerTok > 0) {
-                // {tok/BU} = {ref/BU} / {ref/tok}
-                if (!goodCollateral(erc20)) return FIX_ZERO;
-                return basket.refAmts[erc20].div(refPerTok, CEIL);
-            } else {
-                return FIX_MAX;
-            }
+            if (refPerTok == 0) return FIX_MAX;
+            // {tok/BU} = {ref/BU} / {ref/tok}
+            return basket.refAmts[erc20].div(refPerTok, CEIL);
         } catch {
             return FIX_ZERO;
         }
@@ -587,8 +587,8 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             return
                 targetName == coll.targetName() &&
                 coll.status() != CollateralStatus.DISABLED &&
-                reg.toColl(erc20).refPerTok() > 0 &&
-                reg.toColl(erc20).targetPerRef() > 0;
+                coll.refPerTok() > 0 &&
+                coll.targetPerRef() > 0;
         } catch {
             return false;
         }
