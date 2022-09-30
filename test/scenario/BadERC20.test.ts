@@ -197,7 +197,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([backupToken.address], [fp('1')], false)
+        .withArgs(3, [backupToken.address], [fp('1')], false)
       await expect(backingManager.manageTokens([])).to.be.reverted // can't catch No Decimals
     })
 
@@ -227,12 +227,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and use RSR to recapitalize', async () => {
+    it('should be able to unregister and use RSR to recollateralize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([backupToken.address], [fp('1')], false)
+        .withArgs(3, [backupToken.address], [fp('1')], false)
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token
@@ -290,7 +290,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([backupToken.address], [fp('1')], false)
+        .withArgs(3, [backupToken.address], [fp('1')], false)
       await expect(backingManager.manageTokens([])).to.be.revertedWith('censored')
 
       // Should work now
@@ -328,12 +328,12 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and use RSR to recapitalize', async () => {
+    it('should be able to unregister and use RSR to recollateralize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([backupToken.address], [fp('1')], false)
+        .withArgs(3, [backupToken.address], [fp('1')], false)
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
 
       // Should be trading RSR for backup token

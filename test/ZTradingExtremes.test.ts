@@ -28,7 +28,6 @@ import {
   TestIRToken,
   StaticATokenMock,
 } from '../typechain'
-import { whileImpersonating } from './utils/impersonation'
 import { advanceTime } from './utils/time'
 import { defaultFixture, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
@@ -264,9 +263,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           const [, , buy, sellAmt, buyAmt] = await gnosis.auctions(auctionId)
           expect(buy == rToken.address || buy == rsr.address)
           if (buy == rToken.address) {
-            await whileImpersonating(backingManager.address, async (bmSigner) => {
-              await rToken.connect(bmSigner).mint(addr1.address, buyAmt)
-            })
+            await issueMany(facade, rToken, buyAmt, addr1)
             await rToken.connect(addr1).approve(gnosis.address, buyAmt)
             await gnosis.placeBid(auctionId, {
               bidder: addr1.address,
@@ -535,7 +532,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   })
 
   context('Recovery from default', function () {
-    const runRecapitalizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
+    const runRecollateralizationAuctions = async (rTokenSupply: BigNumber, basketSize: number) => {
       let uncapitalized = true
       const basketsNeeded = await rToken.basketsNeeded()
 
@@ -653,7 +650,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       await assetRegistry.refresh()
       await basketHandler.refreshBasket()
-      await runRecapitalizationAuctions(rTokenSupply, basketSize)
+      await runRecollateralizationAuctions(rTokenSupply, basketSize)
     }
 
     let dimensions
@@ -691,7 +688,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     })
   })
 
-  // This one is not really like the others, but it would muddy up Recapitalization.test.ts
+  // This one is not really like the others, but it would muddy up Recollateralization.test.ts
   context('Basket Switching', function () {
     let CollateralFactory: ContractFactory
 

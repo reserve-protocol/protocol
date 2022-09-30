@@ -27,7 +27,6 @@ async function main() {
     [
       deployments.prerequisites.RSR,
       deployments.prerequisites.GNOSIS_EASY_AUCTION,
-      deployments.facade,
       deployments.rsrAsset,
       deployments.implementations,
     ],

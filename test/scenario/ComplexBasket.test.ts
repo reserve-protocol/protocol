@@ -416,7 +416,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(backing.length).to.equal(8)
 
     // Check other values
-    expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+    expect(await basketHandler.nonce()).to.be.gt(bn(0))
+    expect(await basketHandler.timestamp()).to.be.gt(bn(0))
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
     const [isFallback, price] = await basketHandler.price(true)
@@ -1187,7 +1188,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await cETH.balanceOf(rTokenTrader.address)).to.equal(0)
   })
 
-  it('Should recapitalize basket correctly - cWBTC', async () => {
+  it('Should recollateralize basket correctly - cWBTC', async () => {
     // Set RSR price to 25 cts for less auctions
     const rsrPrice = fp('0.25') // 0.25 usd
     await setOraclePrice(rsrAsset.address, toBNDecimals(rsrPrice, 8))
@@ -1250,7 +1251,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-    // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+    // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
     const sellAmt: BigNumber = await cWBTC.balanceOf(backingManager.address)
 
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1390,7 +1391,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 
-  it('Should recapitalize basket correctly - cETH, multiple auctions', async () => {
+  it('Should recollateralize basket correctly - cETH, multiple auctions', async () => {
     // Set RSR price to 2 usd
     const rsrPrice = fp('2') // 2 usd
     await setOraclePrice(rsrAsset.address, toBNDecimals(rsrPrice, 8))
@@ -1453,7 +1454,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(newBacking.length).to.equal(7) // One less token
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-    // Running auctions will trigger recapitalization - cETH partial sale for weth
+    // Running auctions will trigger recollateralization - cETH partial sale for weth
     const sellAmt = toBNDecimals(MAX_TRADE_VOLUME, 8).div(12)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
 

@@ -21,10 +21,11 @@ interface IBasketHandler is IComponent {
     event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
 
     /// Emitted when the reference basket is set
+    /// @param nonce The basket nonce
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
     /// @param disabled True when the list of erc20s + refAmts may not be correct
-    event BasketSet(IERC20[] erc20s, uint192[] refAmts, bool disabled);
+    event BasketSet(uint256 indexed nonce, IERC20[] erc20s, uint192[] refAmts, bool disabled);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
@@ -91,7 +92,9 @@ interface IBasketHandler is IComponent {
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
     function price(bool allowFallback) external view returns (bool isFallback, uint192 p);
 
-    /// @return nonce The basket nonce, a monotonically increasing unique identifier
+    /// @return The basket nonce, a monotonically increasing unique identifier
+    function nonce() external view returns (uint48);
+
     /// @return timestamp The timestamp at which the basket was last set
-    function lastSet() external view returns (uint256 nonce, uint256 timestamp);
+    function timestamp() external view returns (uint48);
 }

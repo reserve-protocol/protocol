@@ -66,6 +66,18 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     RedemptionBatteryLib.Battery private battery;
 
+    // === For P1 compatibility in testing ===
+
+    // IssueItem: One edge of an issuance
+    struct IssueItem {
+        uint192 when; // D18{fractional block number}
+        uint256 amtRToken; // {qRTok} Total amount of RTokens that have vested by `when`
+        uint192 amtBaskets; // D18{BU} Total amount of baskets that should back those RTokens
+        uint256[] deposits; // {qTok}, Total amounts of basket collateral deposited for vesting
+    }
+
+    // ===
+
     function init(
         IMain main_,
         string memory name_,
@@ -142,7 +154,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         }
 
         // Add a new SlowIssuance ticket to the queue
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         SlowIssuance memory iss = SlowIssuance({
             issuer: issuer,
             amount: amount,
@@ -248,14 +260,23 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         bool someProcessed = refundAndClearStaleIssuances(account);
         if (someProcessed) return;
 
+        SlowIssuance[] storage queue = issuances[account];
         uint256 first;
         uint256 totalVested;
-        for (uint256 i = 0; i < endId && i < issuances[account].length; i++) {
+        for (uint256 i = 0; i < endId && i < queue.length; i++) {
             uint256 vestedAmount = tryVestIssuance(account, i);
             totalVested += vestedAmount;
             if (first == 0 && vestedAmount > 0) first = i;
         }
         if (totalVested > 0) emit IssuancesCompleted(account, first, endId, totalVested);
+
+        // Empty queue if no ongoing issuances
+        if (endId == queue.length) {
+            for (int256 i = int256(queue.length) - 1; i >= 0; i--) {
+                assert(queue[uint256(i)].processed);
+                queue.pop();
+            }
+        }
     }
 
     /// Return the highest index that could be completed by a vestIssuances call.
@@ -309,7 +330,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         // ==== Send back collateral tokens ====
         IBackingManager backingMgr = main.backingManager();
 
-        bool nonzero = false;
+        bool allZero = true;
         for (uint256 i = 0; i < erc20s.length; i++) {
             // Bound each withdrawal by the prorata share, in case we're currently under-capitalized
             uint256 bal = IERC20(erc20s[i]).balanceOf(address(backingMgr));
@@ -319,11 +340,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             // Send withdrawal
             if (amounts[i] > 0) {
                 IERC20(erc20s[i]).safeTransferFrom(address(backingMgr), _msgSender(), amounts[i]);
-                if (!nonzero) nonzero = true;
+                if (allZero) allZero = false;
             }
         }
 
-        if (!nonzero) revert("Empty redemption");
+        if (allZero) revert("Empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
@@ -333,6 +354,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     function mint(address recipient, uint256 amount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amount);
+        requireValidBUExchangeRate();
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -340,6 +362,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     function melt(uint256 amount) external notPausedOrFrozen {
         _burn(_msgSender(), amount);
         emit Melted(amount);
+        requireValidBUExchangeRate();
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -348,6 +371,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+        requireValidBUExchangeRate();
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
@@ -355,11 +379,16 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         return battery.currentCharge(totalSupply());
     }
 
+    /// For testing compatibility with P1
+    function validP1IssueItemIndex(address account, uint256 index) external view returns (bool) {
+        return leftIndex(account) >= index && index < rightIndex(account);
+    }
+
     /// Tries to vest an issuance
     /// @return issued The total amount of RToken minted
     function tryVestIssuance(address issuer, uint256 index) internal returns (uint256 issued) {
         SlowIssuance storage iss = issuances[issuer][index];
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         require(iss.blockAvailableAt.lte(toFix(block.number)), "issuance not ready");
         assert(iss.basketNonce == basketNonce); // this should always be true at this point
 
@@ -396,7 +425,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     }
 
     function refundAndClearStaleIssuances(address account) private returns (bool) {
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
         bool someProcessed = false;
         uint256 amount;
         uint256 startIndex;
@@ -428,6 +457,25 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         return someProcessed;
     }
 
+    /// Require the BU to RToken exchange rate to be in [1e-9, 1e9]
+    function requireValidBUExchangeRate() private view {
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply;
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply;
+
+        // We can't assume we can downcast to uint192 safely. Note that the
+        // uint192 check below is redundant but this is P0 so we keep it.
+        require(
+            low <= type(uint192).max &&
+                high <= type(uint192).max &&
+                uint192(low) >= FIX_ONE / 1e9 &&
+                uint192(high) <= FIX_ONE * 1e9,
+            "BU rate out of range"
+        );
+    }
+
     /// Returns the left index of currently-valid items for `account`
     /// For P1 Compatibility - Equivalent to RTokenP1.IssueQueue.left
     function leftIndex(address account) private view returns (uint256) {
@@ -455,5 +503,25 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             }
         }
         return _right;
+    }
+
+    /**
+     * @dev Hook that is called before any transfer of tokens. This includes
+     * minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * will be transferred to `to`.
+     * - when `from` is zero, `amount` tokens will be minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+     * - `from` and `to` are never both zero.
+     */
+    function _beforeTokenTransfer(
+        address,
+        address to,
+        uint256
+    ) internal virtual override {
+        require(to != address(this), "RToken transfer to self");
     }
 }

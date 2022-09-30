@@ -468,7 +468,8 @@ describe('FacadeWrite contract', () => {
           expect(backing.length).to.equal(2)
 
           // Check other values
-          expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+          expect(await basketHandler.nonce()).to.be.gt(bn(0))
+          expect(await basketHandler.timestamp()).to.be.gt(bn(0))
           expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 

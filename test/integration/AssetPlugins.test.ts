@@ -1588,7 +1588,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(backing.length).to.equal(3)
 
       // Check other values
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
@@ -1942,7 +1943,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing.length).to.equal(5)
 
         // Check initial values
-        expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+        expect(await basketHandler.nonce()).to.be.gt(bn(0))
+        expect(await basketHandler.timestamp()).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         const [isFallback, price] = await basketHandler.price(true)
@@ -2156,7 +2158,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing.length).to.equal(1)
 
         // Check initial values
-        expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+        expect(await basketHandler.nonce()).to.be.gt(bn(0))
+        expect(await basketHandler.timestamp()).to.be.gt(bn(0))
         expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
         expect(await rTokenAsset.strictPrice()).to.be.closeTo(usdtPrice, point1Pct(usdtPrice))

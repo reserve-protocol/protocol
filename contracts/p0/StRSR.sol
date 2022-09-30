@@ -309,7 +309,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     }
 
     function exchangeRate() public view returns (uint192) {
-        return (rsrBacking == 0 || totalStaked == 0) ? FIX_ONE : divuu(totalStaked, rsrBacking);
+        return (rsrBacking == 0 || totalStaked == 0) ? FIX_ONE : divuu(rsrBacking, totalStaked);
     }
 
     // ==== ERC20 Interface ====
@@ -345,6 +345,7 @@ contract StRSRP0 is IStRSR, ComponentP0, EIP712Upgradeable {
     ) private {
         require(from != address(0), "ERC20: transfer from the zero address");
         require(to != address(0), "ERC20: transfer to the zero address");
+        require(to != address(this), "StRSR transfer to self");
 
         uint256 fromBalance = balances[from];
 

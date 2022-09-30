@@ -111,8 +111,11 @@ contract GnosisTrade is ITrade {
         // Downsize our sell amount to adjust for fee
         // {qTok} = {qTok} * {1} / {1}
         uint96 sellAmount = uint96(
-            mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
-        ); // Safe downcast; require'd < uint96.max
+            _divrnd(req.sellAmount * FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator(), CEIL)
+        );
+        // TODO this CEIL hasn't been analyzed in depth
+        // It seems like it should be fine even for small feeNumerators
+
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
 
         uint256 minBuyAmtPerOrder = Math.max(
@@ -165,11 +168,12 @@ contract GnosisTrade is ITrade {
         require(msg.sender == origin, "only origin can settle");
 
         // Optionally process settlement of the auction in Gnosis
-        if (atStageSolutionSubmission()) {
+        if (!isAuctionCleared()) {
             gnosis.settleAuction(auctionId);
+            assert(isAuctionCleared());
         }
 
-        assert(atStageFinished());
+        // At this point we know the auction has cleared
 
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
@@ -212,12 +216,7 @@ contract GnosisTrade is ITrade {
 
     // === Private ===
 
-    function atStageSolutionSubmission() private view returns (bool) {
-        GnosisAuctionData memory data = gnosis.auctionData(auctionId);
-        return data.auctionEndDate != 0 && data.clearingPriceOrder == bytes32(0);
-    }
-
-    function atStageFinished() private view returns (bool) {
+    function isAuctionCleared() private view returns (bool) {
         GnosisAuctionData memory data = gnosis.auctionData(auctionId);
         return data.clearingPriceOrder != bytes32(0);
     }

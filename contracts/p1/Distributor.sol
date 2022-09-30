@@ -158,8 +158,12 @@ contract DistributorP1 is ComponentP1, IDistributor {
         require(share.rsrDist <= 10000, "RSR distribution too high");
         require(share.rTokenDist <= 10000, "RToken distribution too high");
 
-        destinations.add(dest);
-        require(destinations.length() <= MAX_DESTINATIONS_ALLOWED, "Too many destinations");
+        if (share.rsrDist == 0 && share.rTokenDist == 0) {
+            destinations.remove(dest);
+        } else {
+            destinations.add(dest);
+            require(destinations.length() <= MAX_DESTINATIONS_ALLOWED, "Too many destinations");
+        }
 
         distribution[dest] = share;
         emit DistributionSet(dest, share.rTokenDist, share.rsrDist);

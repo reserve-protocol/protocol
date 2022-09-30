@@ -61,7 +61,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
     }
 
     function numCheckpoints(address account) public view returns (uint48) {
-        return SafeCastUpgradeable.toUint32(_checkpoints[era][account].length);
+        return SafeCastUpgradeable.toUint48(_checkpoints[era][account].length);
     }
 
     function delegates(address account) public view returns (address) {
@@ -149,6 +149,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         address to,
         uint256 amount
     ) internal override {
+        super._afterTokenTransfer(from, to, amount);
         _moveVotingPower(delegates(from), delegates(to), amount);
     }
 
@@ -203,7 +204,7 @@ contract StRSRP1Votes is StRSRP1, IStRSRVotes {
         } else {
             ckpts.push(
                 Checkpoint({
-                    fromBlock: SafeCastUpgradeable.toUint32(block.number),
+                    fromBlock: SafeCastUpgradeable.toUint48(block.number),
                     val: SafeCastUpgradeable.toUint224(newWeight)
                 })
             );

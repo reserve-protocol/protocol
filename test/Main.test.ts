@@ -283,7 +283,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing.length).to.equal(4)
 
       // Check other values
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
@@ -1431,7 +1433,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing.length).to.equal(4)
 
       // Not updated so basket last changed is not set
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(1))
+      expect(await basketHandler.nonce()).to.be.gt(bn(1))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await main.connect(owner).unpause()
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
@@ -1476,7 +1479,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], true)
+        .withArgs(2, [], [], true)
 
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       // toks = await facade.basketTokens(rToken.address)
@@ -1544,7 +1547,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           args: [token1.address, newAsset.address],
           emitted: true,
         },
-        { contract: basketHandler, name: 'BasketSet', args: [[], [], true], emitted: true },
+        { contract: basketHandler, name: 'BasketSet', args: [1, [], [], true], emitted: true },
       ])
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
@@ -1562,7 +1565,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap basket should not find valid basket because no backup config
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], true)
+        .withArgs(1, [], [], true)
 
       // Check values - All zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
@@ -1583,7 +1586,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap basket should now find valid basket
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], false)
+        .withArgs(2, [], [], false)
 
       // Check values - Should no longer be zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.not.equal(0)
@@ -1597,7 +1600,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
       await expect(assetRegistry.connect(owner).unregister(collateral3.address))
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], true)
+        .withArgs(2, [], [], true)
 
       // Check values - All zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
@@ -1609,7 +1612,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap basket should now find valid basket
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], false)
+        .withArgs(3, [], [], false)
 
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(2)) // 0.5 of each
@@ -1634,7 +1637,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Should be empty basket
       await expect(basketHandler.refreshBasket())
         .to.emit(basketHandler, 'BasketSet')
-        .withArgs([], [], true)
+        .withArgs(3, [], [], true)
 
       // Check values - All zero
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)

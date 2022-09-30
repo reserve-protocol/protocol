@@ -4,12 +4,12 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig, MAX_PERIOD, MAX_RATIO } from '../common/configuration'
 import { bn, fp } from '../common/numbers'
-import { whileImpersonating } from './utils/impersonation'
+import { issueMany } from './utils/issue'
 import {
   CTokenMock,
   ERC20Mock,
+  Facade,
   StaticATokenMock,
-  TestIBackingManager,
   TestIFurnace,
   TestIMain,
   TestIRToken,
@@ -35,7 +35,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let main: TestIMain
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let backingManager: TestIBackingManager
+  let facade: Facade
   let basket: Collateral[]
 
   // Config
@@ -382,17 +382,24 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       bal: BigNumber
     ): Promise<TestIFurnace> => {
       // Deploy fixture
-      ;({ main, rToken, backingManager, furnace } = await loadFixture(defaultFixture))
+      ;({ main, rToken, facade, furnace } = await loadFixture(defaultFixture))
 
       await furnace.connect(owner).setPeriod(period)
       await furnace.connect(owner).setRatio(ratio)
 
+      const max256 = bn(2).pow(256).sub(1)
+      await token0.connect(owner).mint(addr1.address, max256)
+      await token1.connect(owner).mint(addr1.address, max256)
+      await token2.connect(owner).mint(addr1.address, max256)
+      await token3.connect(owner).mint(addr1.address, max256)
+      await token0.connect(addr1).approve(rToken.address, max256)
+      await token1.connect(addr1).approve(rToken.address, max256)
+      await token2.connect(addr1).approve(rToken.address, max256)
+      await token3.connect(addr1).approve(rToken.address, max256)
+
       // Issue and send tokens to furnace
       if (bal.gt(bn('0'))) {
-        await whileImpersonating(backingManager.address, async (bmSigner) => {
-          // Create new bal
-          await rToken.connect(bmSigner).mint(furnace.address, bal)
-        })
+        await issueMany(facade, rToken, bal, addr1)
       }
 
       // Charge battery

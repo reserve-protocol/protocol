@@ -362,7 +362,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
-        uint192 initRate = stakeRate;
+        uint192 initRate = exchangeRate();
 
         uint256 rsrBalance = main.rsr().balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
@@ -405,13 +405,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         seizedRSR += (rewards * rsrAmount + (rsrBalance - 1)) / rsrBalance;
 
         // Transfer RSR to caller
-        emit ExchangeRateSet(initRate, stakeRate);
+        emit ExchangeRateSet(initRate, exchangeRate());
         IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
     }
 
-    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    /// @return D18{qRSR/qStRSR} The exchange rate between RSR and StRSR
     function exchangeRate() public view returns (uint192) {
-        return stakeRate;
+        // D18{qRSR/qStRSR} = D18 * D18 / D18{qStRSR/qRSR}
+        return (FIX_SCALE_SQ + (stakeRate / 2)) / stakeRate; // ROUND method
     }
 
     /// Return the maximum value of endId such that withdraw(endId) can immediately work
@@ -484,7 +485,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         if (block.timestamp < payoutLastPaid + rewardPeriod) return;
         uint48 numPeriods = (uint48(block.timestamp) - payoutLastPaid) / rewardPeriod;
 
-        uint192 initRate = stakeRate;
+        uint192 initRate = exchangeRate();
 
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         // Apply payout to RSR backing
@@ -506,7 +507,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
             : uint192((totalStakes * FIX_ONE_256 + (stakeRSR - 1)) / stakeRSR);
 
         emit RewardsPaid(payout);
-        emit ExchangeRateSet(initRate, stakeRate);
+        emit ExchangeRateSet(initRate, exchangeRate());
     }
 
     /// @param rsrAmount {qRSR}
@@ -729,10 +730,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     /// Used by StRSRVotes to track voting
     // solhint-disable no-empty-blocks
     function _afterTokenTransfer(
-        address from,
+        address,
         address to,
-        uint256 amount
-    ) internal virtual {}
+        uint256
+    ) internal virtual {
+        require(to != address(this), "StRSR transfer to self");
+    }
 
     // === ERC20Permit ===
     // This section extracted from OZ:ERC20PermitUpgradeable

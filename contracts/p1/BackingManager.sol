@@ -86,22 +86,24 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // only called internally, from manageTokens*, so erc20s has no duplicates unique
     // (but not necessarily all registered or valid!)
     function _manageTokens(IERC20[] calldata erc20s) private {
+        IBasketHandler bh = main.basketHandler();
+
         // == Refresh ==
         main.assetRegistry().refresh();
 
         if (tradesOpen > 0) return;
         // Only trade when all the collateral assets in the basket are SOUND
-        require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
+        require(bh.status() == CollateralStatus.SOUND, "basket not sound");
 
-        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        uint48 basketTimestamp = bh.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (main.basketHandler().fullyCollateralized()) {
+        if (bh.fullyCollateralized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
             /*
-             * Recapitalization
+             * Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
@@ -232,7 +234,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
-    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
@@ -259,5 +261,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }

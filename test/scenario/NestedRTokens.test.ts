@@ -195,7 +195,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         'TradeStarted'
       )
 
-      // Launch recapitalization auction in inner RToken
+      // Launch recollateralization auction in inner RToken
       const buyAmt = issueAmt.div(2)
       const sellAmt = buyAmt.mul(100).div(99).add(1)
       await expect(one.backingManager.manageTokens([]))
