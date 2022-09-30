@@ -326,7 +326,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                         uint256 nextP = p + delta; // {D18} = {D18} + {D18}
 
                         // if we overflowed +, or would otherwise overflow the downcast to uint192:
-                        if (nextP < rawDelta || nextP > FIX_MAX) return (true, FIX_MAX);
+                        if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
                         p = uint192(nextP);
                     }
                 }
@@ -600,9 +600,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         if (erc20 == IERC20(address(main.stRSR()))) return false;
 
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return targetName == coll.targetName()
-                && coll.status() != CollateralStatus.DISABLED
-                && coll.refPerTok() > 0 && coll.targetPerRef() > 0;
+            return
+                targetName == coll.targetName() &&
+                coll.status() != CollateralStatus.DISABLED &&
+                coll.refPerTok() > 0 &&
+                coll.targetPerRef() > 0;
         } catch {
             return false;
         }

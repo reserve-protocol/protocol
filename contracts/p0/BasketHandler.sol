@@ -229,9 +229,6 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         } catch {
             return FIX_ZERO;
         }
-
-        // {tok/BU} = {ref/BU} / {ref/tok}
-        return basket.refAmts[erc20].div(main.assetRegistry().toColl(erc20).refPerTok(), CEIL);
     }
 
     /// @param allowFallback Whether to fail over to the fallback price or not
@@ -246,10 +243,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 (bool isFallback_, uint192 price_) = coll.price(allowFallback);
                 isFallback = isFallback || isFallback_;
 
-                if(!allowFallback) {
-                    p = p.plus(price_.mul(quantity(basket.erc20s[i])));
+                uint192 q = quantity(basket.erc20s[i]);
+                if (!allowFallback) {
+                    p = p.plus(price_.mul(q));
                 } else {
-                    try this.add_product(p, price_, q) returns (uint192 sum) {
+                    try this.addProduct(p, price_, q) returns (uint192 sum) {
                         p = sum;
                     } catch {
                         return (true, FIX_MAX);
@@ -260,7 +258,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     // Returns a + (b * c). Pulled out into separate function for exception-catching in price()
-    function add_product(uint192 a, uint192 b, uint192 c) external pure returns (uint192) {
+    function addProduct(
+        uint192 a,
+        uint192 b,
+        uint192 c
+    ) external pure returns (uint192) {
         return a.plus(b.mul(c));
     }
 
