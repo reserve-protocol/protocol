@@ -101,7 +101,5 @@ interface TestIDeployer is IDeployer {
 
     function gnosis() external view returns (IGnosis);
 
-    function facade() external view returns (IFacade);
-
     function rsrAsset() external view returns (IAsset);
 }

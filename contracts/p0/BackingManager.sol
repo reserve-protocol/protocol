@@ -76,14 +76,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Do not trade when not SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
-        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        uint48 basketTimestamp = main.basketHandler().timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCollateralized()) {
             handoutExcessAssets(erc20s);
         } else {
             /*
-             * Recapitalization
+             * Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
@@ -173,7 +173,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
-    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));

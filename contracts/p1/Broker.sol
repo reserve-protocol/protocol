@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -16,7 +15,7 @@ import "contracts/plugins/trading/GnosisTrade.sol";
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
 
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
+contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
@@ -150,4 +149,11 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
         emit DisabledSet(disabled, disabled_);
         disabled = disabled_;
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[46] private __gap;
 }

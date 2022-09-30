@@ -11,7 +11,6 @@ import "contracts/interfaces/IBasketHandler.sol";
 import "contracts/interfaces/IBroker.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IDistributor.sol";
-import "contracts/interfaces/IFacade.sol";
 import "contracts/interfaces/IFurnace.sol";
 import "contracts/interfaces/IRevenueTrader.sol";
 import "contracts/interfaces/IRToken.sol";
@@ -31,7 +30,6 @@ contract DeployerP1 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
-    IFacade public immutable facade;
     IAsset public immutable rsrAsset;
 
     // Implementation contracts for Upgradeability
@@ -42,14 +40,12 @@ contract DeployerP1 is IDeployer {
     constructor(
         IERC20Metadata rsr_,
         IGnosis gnosis_,
-        IFacade facade_,
         IAsset rsrAsset_,
         Implementations memory implementations_
     ) {
         require(
             address(rsr_) != address(0) &&
                 address(gnosis_) != address(0) &&
-                address(facade_) != address(0) &&
                 address(rsrAsset_) != address(0) &&
                 address(implementations_.main) != address(0) &&
                 address(implementations_.trade) != address(0) &&
@@ -68,12 +64,27 @@ contract DeployerP1 is IDeployer {
 
         rsr = rsr_;
         gnosis = gnosis_;
-        facade = facade_;
         rsrAsset = rsrAsset_;
         implementations = implementations_;
     }
 
-    /// Deploys an instance of the entire system
+    /// Deploys an instance of the entire system, oriented around some mandate.
+    ///
+    /// The mandate describes what goals its governors should try to achieve. By succinctly
+    /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
+    /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
+    ///
+    /// Example Mandates:
+    ///
+    /// - Capital preservation first. Spending power preservation second. Permissionless
+    ///     access third.
+    /// - Capital preservation above all else. All revenues fund the insurance pool.
+    /// - Risk-neutral pursuit of profit for token holders.
+    ///     Maximize (gross revenue - payments for insurance and governance).
+    /// - This RToken holds only FooCoin, to provide a trade for hedging against its
+    ///     possible collapse.
+    ///
+    /// The mandate may also be a URI to a longer body of text
     /// @param name The name of the RToken to deploy
     /// @param symbol The symbol of the RToken to deploy
     /// @param mandate An IPFS link or direct string; describes what the RToken _should be_

@@ -121,8 +121,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // basket is the current basket.
     Basket private basket;
 
-    uint48 public nonce; // A unique identifier for this basket instance
-    uint48 public timestamp; // The timestamp when this basket was last set
+    uint48 public override nonce; // A unique identifier for this basket instance
+    uint48 public override timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
@@ -150,7 +150,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function disableBasket() external {
         require(_msgSender() == address(main.assetRegistry()), "asset registry only");
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
-        emit BasketSet(basket.erc20s, refAmts, true);
+        emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
     }
 
@@ -257,12 +257,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// ie, whether the protocol is currently fully collateralized
     function fullyCollateralized() external view returns (bool) {
         return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
-    }
-
-    /// @return nonce_ The current basket nonce
-    /// @return timestamp_ The timestamp when the basket was last set
-    function lastSet() external view returns (uint256 nonce_, uint256 timestamp_) {
-        return (nonce, timestamp);
     }
 
     /// @return status_ The status of the basket
@@ -539,7 +533,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
-        emit BasketSet(basket.erc20s, refAmts, disabled);
+        emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
     }
 
     /// Require that erc20s is a valid collateral array
@@ -579,5 +573,5 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[48] private __gap;
+    uint256[47] private __gap;
 }

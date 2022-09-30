@@ -26,7 +26,21 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Immutable after init. Expected to be an IPFS link, but can be the mandate itself.
+    /// The mandate describes what goals its governors should try to achieve. By succinctly
+    /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
+    /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
+    ///
+    /// Example Mandates:
+    ///
+    /// - Capital preservation first. Spending power preservation second. Permissionless
+    ///     access third.
+    /// - Capital preservation above all else. All revenues fund the insurance pool.
+    /// - Risk-neutral pursuit of profit for token holders.
+    ///     Maximize (gross revenue - payments for insurance and governance).
+    /// - This RToken holds only FooCoin, to provide a trade for hedging against its
+    ///     possible collapse.
+    ///
+    /// The mandate may also be a URI to a longer body of text
     string public mandate;
 
     // ==== Governance Params ====
@@ -161,7 +175,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
         IBasketHandler bh = main.basketHandler(); // OK to save: can only be changed by gov
 
-        (uint256 basketNonce, ) = bh.lastSet();
+        uint48 basketNonce = bh.nonce();
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
@@ -174,7 +188,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             main.assetRegistry().refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
-            (basketNonce, ) = bh.lastSet();
+            basketNonce = bh.nonce();
             queue = issueQueues[issuer];
         }
 
@@ -333,7 +347,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(status == CollateralStatus.SOUND, "basket unsound");
 
         IssueQueue storage queue = issueQueues[account];
-        (uint256 basketNonce, ) = main.basketHandler().lastSet();
+        uint48 basketNonce = main.basketHandler().nonce();
 
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets;
@@ -445,10 +459,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // Accept and burn RToken
         _burn(redeemer, amount);
 
-        bool nonzero = false;
+        bool allZero = true;
         for (uint256 i = 0; i < erc20length; ++i) {
             if (amounts[i] == 0) continue;
-            if (!nonzero) nonzero = true;
+            if (allZero) allZero = false;
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
@@ -458,7 +472,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             );
         }
 
-        if (!nonzero) revert("Empty redemption");
+        if (allZero) revert("Empty redemption");
     }
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
@@ -472,6 +486,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         _mint(recipient, amtRToken);
+        requireValidBUExchangeRate();
     }
 
     /// Melt a quantity of RToken from the caller's account, increasing the basket rate
@@ -483,6 +498,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     function melt(uint256 amtRToken) external notPausedOrFrozen {
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
+        requireValidBUExchangeRate();
     }
 
     /// An affordance of last resort for Main in order to ensure re-capitalization
@@ -493,6 +509,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(_msgSender() == address(main.backingManager()), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
+        requireValidBUExchangeRate();
     }
 
     /// Claim all rewards and sweep to BackingManager
@@ -536,8 +553,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     /// @dev This function is only here because solidity can't autogenerate our getter
     function issueItem(address account, uint256 index) external view returns (IssueItem memory) {
-        require(index < issueQueues[account].right, "out of range");
-        return issueQueues[account].items[index];
+        IssueQueue storage item = issueQueues[account];
+        require(index >= item.left && index < item.right, "out of range");
+        return item.items[index];
     }
 
     /// @return {qRTok} The maximum redemption that can be performed in the current block
@@ -680,9 +698,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         emit Issuance(account, amtRToken, amtBaskets);
         emit IssuancesCompleted(account, queue.left, endId, amtRToken);
 
-        // TODO: If queue is now empty, set queue.left = queue.right = 0
-        // Ticket: https://app.asana.com/0/1202557536393044/1203033852623709/f
-        queue.left = endId;
+        if (endId == queue.right) {
+            // empty the queue - left is implicitly queue.left already
+            queue.left = 0;
+            queue.right = 0;
+        } else {
+            queue.left = endId;
+        }
 
         // == Interactions ==
         _mint(account, amtRToken);
@@ -693,6 +715,41 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
                 amtDeposits[i]
             );
         }
+    }
+
+    /// Require the BU to RToken exchange rate to be in [1e-9, 1e9]
+    function requireValidBUExchangeRate() private view {
+        uint256 supply = totalSupply();
+        if (supply == 0) return;
+
+        // Note: These are D18s, even though they are uint256s. This is because
+        // we cannot assume we stay inside our valid range here, as that is what
+        // we are checking in the first place
+        uint256 low = (FIX_ONE_256 * basketsNeeded) / supply; // D18{BU/rTok}
+        uint256 high = (FIX_ONE_256 * basketsNeeded + (supply - 1)) / supply; // D18{BU/rTok}
+
+        // 1e9 = FIX_ONE / 1e9; 1e27 = FIX_ONE * 1e9
+        require(uint192(low) >= 1e9 && uint192(high) <= 1e27, "BU rate out of range");
+    }
+
+    /**
+     * @dev Hook that is called before any transfer of tokens. This includes
+     * minting and burning.
+     *
+     * Calling conditions:
+     *
+     * - when `from` and `to` are both non-zero, `amount` of ``from``'s tokens
+     * will be transferred to `to`.
+     * - when `from` is zero, `amount` tokens will be minted for `to`.
+     * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
+     * - `from` and `to` are never both zero.
+     */
+    function _beforeTokenTransfer(
+        address,
+        address to,
+        uint256
+    ) internal virtual override {
+        require(to != address(this), "RToken transfer to self");
     }
 
     /**

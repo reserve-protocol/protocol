@@ -2784,6 +2784,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       )
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           compToken.address,
           compToken.address,

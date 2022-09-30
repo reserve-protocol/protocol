@@ -21,7 +21,6 @@ export async function issueMany(
   const ISS_BLOCKS = bn(1e8) // How many blocks to wait between issuances; tweak to tune performance
   const MIN_ISSUANCE_RATE = fp(10000) // {rtoken / block}
 
-  let supply = await rToken.totalSupply()
   let issued = bn(0)
   const initBalance = await rToken.balanceOf(user.address)
   const issuanceRate = await rToken.issuanceRate()
@@ -29,7 +28,7 @@ export async function issueMany(
     // Find currIssue, the amount to issue this round
     const yetToIssue = toIssue.sub(issued)
     const baseAmt = MIN_ISSUANCE_RATE.mul(ISS_BLOCKS)
-    const succAmt = supply.mul(issuanceRate).mul(ISS_BLOCKS).div(fp('1'))
+    const succAmt = (await rToken.totalSupply()).mul(issuanceRate).mul(ISS_BLOCKS).div(fp('1'))
     const maxAmt = baseAmt.gt(succAmt) ? baseAmt : succAmt
     const currIssue = maxAmt.lt(yetToIssue) ? maxAmt : yetToIssue
 
@@ -48,10 +47,8 @@ export async function issueMany(
     }
 
     issued = issued.add(currIssue)
-    supply = supply.add(currIssue)
   }
 
   // assert that this worked
   expect(await rToken.balanceOf(user.address)).to.equal(initBalance.add(toIssue))
-  expect(await rToken.totalSupply()).to.equal(supply)
 }
