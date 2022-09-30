@@ -284,7 +284,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-            uint192 refPerTok = coll.refPerTok();
+            uint192 refPerTok = coll.refPerTok(); // {ref/tok}
             if (refPerTok > 0) {
                 // {tok/BU} = {ref/BU} / {ref/tok}
                 return basket.refAmts[erc20].div(refPerTok, CEIL);
