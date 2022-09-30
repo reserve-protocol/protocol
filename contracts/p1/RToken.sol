@@ -111,14 +111,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // then the issuance "between" them is 5000 RTokens. If we waited long enough and then called
     // vest() on that account, we'd vest 5000 RTokens *to* that account.
     //
-    // You can vest up to an IssueItem queue[i] when i > left and block.number + 1 >=
-    // queue[i].when.toUint().
+    // You can vestUpTo an IssueItem queue[i] if
+    //   left < i <= right, and
+    //   block.number >= queue[i].when.toUint()
     //
-    //   (The most natural thing would probably be to allow vesting up to `item` at any block `N`
-    //   where `N >= item.when`. However, we'd like people to be able to make single-block issuances
-    //   in a single transaction, so we instead allow vesting up to `item` in any block `N` where `N
-    //   + 1 >= item.when`.)
-
     // We define a (partial) ordering on IssueItems: item1 < item2 iff the following all hold:
     //   item1.when < item2.when
     //   item2.amtRToken < item2.amtRToken
