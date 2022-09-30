@@ -227,7 +227,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and use RSR to recapitalize', async () => {
+    it('should be able to unregister and use RSR to recollateralize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())
@@ -328,7 +328,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await furnace.melt()
     })
 
-    it('should be able to unregister and use RSR to recapitalize', async () => {
+    it('should be able to unregister and use RSR to recollateralize', async () => {
       await assetRegistry.connect(owner).unregister(collateral0.address)
       expect(await assetRegistry.isRegistered(collateral0.address)).to.equal(false)
       await expect(basketHandler.refreshBasket())

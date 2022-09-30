@@ -1188,7 +1188,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await cETH.balanceOf(rTokenTrader.address)).to.equal(0)
   })
 
-  it('Should recapitalize basket correctly - cWBTC', async () => {
+  it('Should recollateralize basket correctly - cWBTC', async () => {
     // Set RSR price to 25 cts for less auctions
     const rsrPrice = fp('0.25') // 0.25 usd
     await setOraclePrice(rsrAsset.address, toBNDecimals(rsrPrice, 8))
@@ -1391,7 +1391,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
 
-  it('Should recapitalize basket correctly - cETH, multiple auctions', async () => {
+  it('Should recollateralize basket correctly - cETH, multiple auctions', async () => {
     // Set RSR price to 2 usd
     const rsrPrice = fp('2') // 2 usd
     await setOraclePrice(rsrAsset.address, toBNDecimals(rsrPrice, 8))

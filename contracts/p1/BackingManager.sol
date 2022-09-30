@@ -233,7 +233,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
     }
 
-    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));

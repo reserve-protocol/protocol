@@ -861,7 +861,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
-      it('Should recapitalize correctly when switching basket - Full amount covered', async () => {
+      it('Should recollateralize correctly when switching basket - Full amount covered', async () => {
         // Setup prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -976,7 +976,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       })
 
-      it('Should recapitalize correctly when switching basket - Taking Haircut - No RSR', async () => {
+      it('Should recollateralize correctly when switching basket - Taking Haircut - No RSR', async () => {
         // Empty out the staking pool
         await stRSR.connect(addr1).unstake(stakeAmount)
         await advanceTime(config.unstakingDelay.toString())
@@ -1092,7 +1092,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('0.99').sub(dustPriceImpact.mul(2)))
       })
 
-      it('Should recapitalize correctly when switching basket - Using RSR for remainder', async () => {
+      it('Should recollateralize correctly when switching basket - Using RSR for remainder', async () => {
         // Set prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 
@@ -1355,7 +1355,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         })
       })
 
-      it('Should recapitalize correctly in case of default - Using RSR for remainder', async () => {
+      it('Should recollateralize correctly in case of default - Using RSR for remainder', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -1612,7 +1612,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       })
 
-      it('Should recapitalize correctly in case of default - MinTradeVolume too large', async () => {
+      it('Should recollateralize correctly in case of default - MinTradeVolume too large', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -1746,7 +1746,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('0.5'))
       })
 
-      it('Should recapitalize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
+      it('Should recollateralize correctly in case of default - Using RSR for remainder - Multiple tokens and auctions - No overshoot', async () => {
         // Set backing buffer and max slippage to zero for simplification
         await backingManager.connect(owner).setMaxTradeSlippage(0)
         await backingManager.connect(owner).setBackingBuffer(0)
@@ -2351,7 +2351,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         await rsr.connect(owner).mint(addr1.address, initialBal)
       })
 
-      it('Should recapitalize correctly in case of default - Using RSR', async () => {
+      it('Should recollateralize correctly in case of default - Using RSR', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -2597,7 +2597,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it('Should recapitalize correctly in case of default - Using RSR - Multiple Backup tokens - Returns surplus', async () => {
+      it('Should recollateralize correctly in case of default - Using RSR - Multiple Backup tokens - Returns surplus', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
         await assetRegistry.connect(owner).register(backupCollateral2.address)
@@ -2954,7 +2954,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await token2.balanceOf(backingManager.address)).to.equal(0)
       })
 
-      it('Should recapitalize correctly in case of default - Taking Haircut - Single backup token', async () => {
+      it('Should recollateralize correctly in case of default - Taking Haircut - Single backup token', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
 
@@ -3352,7 +3352,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should recapitalize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
+      it('Should recollateralize correctly in case of default - Taking Haircut - Multiple Backup tokens', async () => {
         // Register Collateral
         await assetRegistry.connect(owner).register(backupCollateral1.address)
         await assetRegistry.connect(owner).register(backupCollateral2.address)

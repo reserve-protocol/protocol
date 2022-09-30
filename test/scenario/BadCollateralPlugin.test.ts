@@ -186,7 +186,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await token0.balanceOf(addr1.address)).to.be.gt(initialBal.div(6))
     })
 
-    it('should use RSR to recapitalize, breaking the economic model fundamentally', async () => {
+    it('should use RSR to recollateralize, breaking the economic model fundamentally', async () => {
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
       const trade = await getTrade(backingManager, rsr.address)
       expect(await trade.sell()).to.equal(rsr.address)

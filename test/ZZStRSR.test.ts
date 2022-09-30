@@ -1157,7 +1157,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         // error = error.add(calcErr(1)) // this is just adding 1 each time
         error = error.add(calcErr(2))
 
-        console.log(i, (await stRSR.exchangeRate()).sub(newRate).abs())
         // Check exchange rate does not exceed more than 1 per round
         expect(near(await stRSR.exchangeRate(), newRate, error)).to.equal(true)
 

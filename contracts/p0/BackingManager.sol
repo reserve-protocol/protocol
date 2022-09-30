@@ -173,7 +173,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
-    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
