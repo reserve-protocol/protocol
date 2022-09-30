@@ -248,7 +248,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
                 if (!allowFallback) {
                     p = p.plus(price_.mul(q));
                 } else {
-                    try this.add_product(p, price_, q) returns (uint192 sum) {
+                    try this.addProduct(p, price_, q) returns (uint192 sum) {
                         p = sum;
                     } catch {
                         return (isFallback, FIX_MAX);
@@ -259,7 +259,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     }
 
     // Returns a + (b * c). Pulled out into separate function for exception-catching in price()
-    function add_product(
+    function addProduct(
         uint192 a,
         uint192 b,
         uint192 c
