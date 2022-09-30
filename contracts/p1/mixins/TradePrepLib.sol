@@ -21,7 +21,7 @@ library TradePrepLib {
     ///   sell The sell asset
     ///   buy The buy asset
     ///   sellAmount {sellTok}
-    ///   buyAmount {buyTok}
+    ///   buyAmount {buyTok} IGNORED
     ///   sellPrice {UoA/sellTok} Can be 0
     ///   buyPrice {UoA/buyTok} Cannot be zero
     /// @return notDust True when the trade is larger than the dust amount

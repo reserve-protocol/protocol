@@ -9,8 +9,8 @@ import "contracts/libraries/Fixed.sol";
 import "./TradePrepLib.sol";
 
 /// Struct purposes:
-///   1. Stay under stack limit
-///   2. Cache information such as prices, to save on gas
+///   1. Stay under stack limit with fewer vars
+///   2. Cache information such as component addresses + trading rules to save on gas
 
 struct ComponentCache {
     ITrading trader;
@@ -30,7 +30,7 @@ struct TradeInfo {
     IAsset sell;
     IAsset buy;
     uint192 sellAmount; // {sellTok}
-    uint192 buyAmount; // {buyTok} TODO is this needed?
+    uint192 buyAmount; // {buyTok}
     uint192 sellPrice; // {UoA/sellTok}
     uint192 buyPrice; // {UoA/buyTok}
 }
@@ -40,9 +40,9 @@ struct TradeInfo {
  * @notice An informal extension of the Trading mixin that provides trade preparation views
  * @dev The caller must implement the ITrading interface!
  *
- * External-facing interface:
- *  1. prepareTradeSell
- *  2. prepareTradeRecapitalize
+ * Interface:
+ *  1. prepareTradeRecapitalize (external)
+ *  2. basketRange (internal)
  */
 library TradingLibP1 {
     using FixLib for uint192;
@@ -53,9 +53,9 @@ library TradingLibP1 {
     // This is the "main loop" for recollateralization trading:
     // actions:
     //   let range = basketRange(all erc20s)
-    //   let (surplus, deficit, amts...) = nextTradePair(all erc20s, range)
-    //   if surplus.strictPrice() is reliable, prepareTradeToCoverDeficit(surplus, deficit, amts...)
-    //   otherwise, prepareTradeSell(surplus, deficit, surplusAmt) with a 0 minBuyAmount
+    //   let trade = nextTradePair(...)
+    //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
+    //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
     function prepareTradeRecapitalize(ITrading trader)
         external
         view
@@ -141,8 +141,8 @@ library TradingLibP1 {
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
     // Given these assumptions
-    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.price())
-    //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
+    // range.top = min(rToken.basketsNeeded, totalAssetValue(...) / basket.price())
+    //   because (totalAssetValue(...) / basket.price()) is how many BUs we can hold assuming
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded
     // range.bottom = TODO
 
@@ -194,7 +194,9 @@ library TradingLibP1 {
         range.bottom = basketTargetLow.div(basketPrice, CEIL);
     }
 
-    // ===== Private =====
+    // ===========================================================================================
+
+    // === Private ===
 
     /// Total value of the erc20s under management by BackingManager
     /// This may include BackingManager's balances _and_ staked RSR hold by stRSR
@@ -203,7 +205,7 @@ library TradingLibP1 {
     /// @return assetsLow {UoA} The low estimate of the total value of assets under management
 
     // preconditions:
-    //   `this` is backingManager
+    //   components.trader is backingManager
     //   erc20s has no duplicates
     // checks:
     //   for e in erc20s, e has a registered asset in the assetRegistry
@@ -288,13 +290,15 @@ library TradingLibP1 {
     // If bal(e) < (quantity(e) * range.bottom), then e is in deficit by the difference
     //
     // First, ignoring RSR:
-    //   `sell` is the token from erc20s with the greatest surplus value (in UoA),
+    //   `trade.sell` is the token from erc20s with the greatest surplus value (in UoA),
     //   and sellAmount is the quantity of that token that it's in surplus (in qTok).
-    //   if `sell` == 0, then no token is in surplus by at least minTradeSize and sellAmount == 0
+    //   if `trade.sell` == 0, then no token is in surplus by at least minTradeSize,
+    //        and `trade.sellAmount` and `trade.sellPrice` are unset.
     //
-    //   `buy` is the token from erc20s with the greatest deficit value (in UoA),
+    //   `trade.buy` is the token from erc20s with the greatest deficit value (in UoA),
     //   and buyAmount is the quantity of that token that it's in deficit (in qTok).
-    //   if `buy` == 0, then no token is in deficit at all, and buyAmount == 0
+    //   if `trade.buy` == 0, then no token is in deficit at all,
+    //        and `trade.buyAmount` and `trade.buyPrice` are unset.
     //
     // Then, just if we have a buy asset and no sell asset, consider selling available RSR.
     //
@@ -376,8 +380,6 @@ library TradingLibP1 {
             }
         }
     }
-
-    // === Private Helpers ===
 
     /// @param backing {UoA} An amount of backing in UoA terms
     /// @param basketPrice {UoA/BU} The price of a BU in UoA terms, at precise prices
