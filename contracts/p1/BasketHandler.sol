@@ -284,7 +284,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-            uint192 refPerTok = coll.refPerTok();
+            uint192 refPerTok = coll.refPerTok(); // {ref/tok}
             if (refPerTok > 0) {
                 // {tok/BU} = {ref/BU} / {ref/tok}
                 return basket.refAmts[erc20].div(refPerTok, CEIL);
@@ -320,13 +320,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                         // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
                         uint256 rawDelta = price_ * q; // {D36} = {D18} * {D18}
                         // if we overflowed *, then return FIX_MAX
-                        if (rawDelta / price_ != q) return (true, FIX_MAX);
+                        if (rawDelta / price_ != q) return (isFallback, FIX_MAX);
                         uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
 
                         uint256 nextP = p + delta; // {D18} = {D18} + {D18}
 
                         // if we overflowed +, or would otherwise overflow the downcast to uint192:
-                        if (nextP < rawDelta || nextP > FIX_MAX) return (true, FIX_MAX);
+                        if (nextP < p || nextP > FIX_MAX) return (isFallback, FIX_MAX);
                         p = uint192(nextP);
                     }
                 }
@@ -378,14 +378,15 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             // We know that basket.refAmts[basket.erc20s[i]] > 0, so we have no baskets.
             if (refPerTok == 0) return FIX_ZERO;
 
-            // {tok}
-            uint192 bal = coll.bal(account);
-
             // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
             uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
 
-            // {BU} = {tok} / {tok/BU}.  q > 0 because q = (n).div(_, CEIL) and n > 0
-            baskets = fixMin(baskets, bal.div(q));
+            // q can be zero as well
+            if (q > 0) {
+                // coll.bal(account).div(q) cannot overflow, because .bal <= 1e39
+                // {BU} = {tok} / {tok/BU}.  q > 0 because q = (n).div(_, CEIL) and n > 0
+                baskets = fixMin(baskets, coll.bal(account).div(q));
+            }
         }
     }
 
@@ -600,9 +601,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         if (erc20 == IERC20(address(main.stRSR()))) return false;
 
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return targetName == coll.targetName()
-                && coll.status() != CollateralStatus.DISABLED
-                && coll.refPerTok() > 0 && coll.targetPerRef() > 0;
+            return
+                targetName == coll.targetName() &&
+                coll.status() != CollateralStatus.DISABLED &&
+                coll.refPerTok() > 0 &&
+                coll.targetPerRef() > 0;
         } catch {
             return false;
         }
