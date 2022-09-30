@@ -175,7 +175,7 @@ library TradingLibP0 {
         returns (BasketRange memory range)
     {
         // basketPrice: The current UoA value of one basket.
-        (, uint192 basketPrice) = basket(trader).price(true);
+        (, uint192 basketPrice) = basket(trader).price(false); // basket collateral is SOUND
 
         // assetsHigh: The most value we could get from the assets in erc20,
         //             assuming frictionless trades at currently-estimated prices.
@@ -281,11 +281,7 @@ library TradingLibP0 {
             potentialDustLoss = potentialDustLoss.plus(minTradeVolume_);
 
             // Consider only reliable sources of value for the assetsLow estimate
-            if (
-                !isFallback &&
-                (!asset.isCollateral() ||
-                    ICollateral(address(asset)).status() == CollateralStatus.SOUND)
-            ) {
+            if (!isFallback) {
                 assetsLow = assetsLow.plus(val);
             }
         }
