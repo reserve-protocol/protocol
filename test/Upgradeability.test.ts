@@ -603,7 +603,6 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           libraries: {
             RewardableLibP1: rewardableLib.address,
-            RecollateralizationLibP1: tradingLib.address,
           },
         }
       )
