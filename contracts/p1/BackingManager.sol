@@ -184,12 +184,13 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
                 int8 decimals = int8(rToken.decimals());
                 uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
-                // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
-                uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
-                    decimals
-                );
+                // {BU} = {BU} - {BU}
+                uint192 extraBUs = held.minus(needed);
 
-                rToken.mint(address(this), rTok);
+                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
+                uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
+
+                rToken.mint(address(this), rTok.shiftl_toUint(decimals));
                 rToken.setBasketsNeeded(held);
                 needed = held;
             }
