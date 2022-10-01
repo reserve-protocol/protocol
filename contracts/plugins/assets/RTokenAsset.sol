@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
-import "contracts/p1/mixins/TradingLib.sol";
+import "contracts/p1/mixins/CollateralizationLib.sol";
 
 /// Once an RToken gets large eonugh to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
@@ -83,7 +83,7 @@ contract RTokenAsset is IAsset {
             });
 
             // Note: Extremely wasteful in terms of gas. Replace with price feed ASAP
-            TradingLibP1.BasketRange memory range = TradingLibP1.basketRange(
+            CollateralizationLibP1.BasketRange memory range = CollateralizationLibP1.basketRange(
                 components,
                 rules,
                 assetRegistry.erc20s()

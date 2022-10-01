@@ -6,7 +6,7 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
-import "./TradePrepLib.sol";
+import "./TradeLib.sol";
 
 /// Struct purposes:
 ///   1. Stay under stack limit with fewer vars
@@ -36,17 +36,21 @@ struct TradeInfo {
 }
 
 /**
- * @title TradingLibP1
+ * @title CollateralizationLibP1
  * @notice An informal extension of the Trading mixin that provides trade preparation views
+ *   Users:
+ *     - BackingManager
+ *     - RTokenAsset
+ *
  * @dev The caller must implement the ITrading interface!
  *
  * Interface:
  *  1. prepareTradeRecapitalize (external)
  *  2. basketRange (internal)
  */
-library TradingLibP1 {
+library CollateralizationLibP1 {
     using FixLib for uint192;
-    using TradePrepLib for TradeInfo;
+    using TradeLib for TradeInfo;
 
     /// Select and prepare a trade that moves us closer to capitalization, using the
     /// basket range to avoid overeager/duplicate trading.
@@ -242,7 +246,7 @@ library TradingLibP1 {
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             bool inBasket = components.bh.quantity(erc20s[i]).gt(FIX_ZERO);
-            if (!inBasket && !TradePrepLib.isEnoughToSell(asset, bal, rules.minTradeVolume)) {
+            if (!inBasket && !TradeLib.isEnoughToSell(asset, bal, rules.minTradeVolume)) {
                 continue;
             }
 
@@ -336,7 +340,7 @@ library TradingLibP1 {
                 if (
                     (preferToSell(maxes.surplusStatus, status) ||
                         (delta.gt(maxes.surplus) && maxes.surplusStatus == status)) &&
-                    TradePrepLib.isEnoughToSell(asset, amtExtra, rules.minTradeVolume)
+                    TradeLib.isEnoughToSell(asset, amtExtra, rules.minTradeVolume)
                 ) {
                     trade.sell = asset;
                     trade.sellAmount = amtExtra;
@@ -372,7 +376,7 @@ library TradingLibP1 {
             uint192 rsrAvailable = rsrAsset.bal(address(components.trader)).plus(
                 rsrAsset.bal(address(components.stRSR))
             );
-            if (TradePrepLib.isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)) {
+            if (TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)) {
                 (, uint192 price_) = rsrAsset.price(true); // {UoA/tok} allow fallback prices
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;

@@ -6,24 +6,27 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/ITrading.sol";
 import "contracts/libraries/Fixed.sol";
-import "./TradingLib.sol";
+import "./CollateralizationLib.sol";
 
 /**
- * @title TradePrepLib
+ * @title TradeLib
  * @notice An internal lib for preparing individual trades on particular asset pairs
+ *   Users:
+ *     - BackingManagerLib
+ *     - RevenueTrader
  */
-library TradePrepLib {
+library TradeLib {
     using FixLib for uint192;
 
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param trade:
-    ///   sell The sell asset
-    ///   buy The buy asset
-    ///   sellAmount {sellTok}
-    ///   buyAmount {buyTok} IGNORED
-    ///   sellPrice {UoA/sellTok} Can be 0
-    ///   buyPrice {UoA/buyTok} Cannot be zero
+    ///   sell != 0
+    ///   buy != 0
+    ///   sellAmount >= 0 {sellTok}
+    ///   buyAmount (unused) {buyTok}
+    ///   sellPrice >= 0 {UoA/sellTok}
+    ///   buyPrice > 0 {UoA/buyTok}
     /// @return notDust True when the trade is larger than the dust amount
     /// @return req The prepared trade request to send to the Broker
     //
@@ -42,14 +45,14 @@ library TradePrepLib {
         returns (bool notDust, TradeRequest memory req)
     {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / prepareTradeRecapitalize
-        // trade.sellPrice can be zero
+        // assert(trade.buyPrice >= 0);
 
         // Don't sell dust
         if (!isEnoughToSell(trade.sell, trade.sellAmount, rules.minTradeVolume)) {
             return (false, req);
         }
 
-        // {sellTok} - uses sell.price(true)
+        // {sellTok} - reads trade.sell.price(true)
         uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell));
 
         // {qSellTok}
@@ -70,8 +73,14 @@ library TradePrepLib {
 
     /// Assuming we have `trade.sellAmount` sell tokens available, prepare a trade to cover as
     /// much of our deficit of `trade.buyAmount` buy tokens as possible, given expected trade
-    /// slippage the sell asset's maxTradeVolume().
-    /// @param trade.sellAmount {sellTok} maxSellAmount
+    /// slippage and the sell asset's maxTradeVolume().
+    /// @param trade:
+    ///   sell != 0
+    ///   buy != 0
+    ///   sellAmount (unused) {sellTok}
+    ///   buyAmount >= 0 {buyTok}
+    ///   sellPrice > 0 {UoA/sellTok}
+    ///   buyPrice > 0 {UoA/buyTok}
     /// @return notDust Whether the prepared trade is large enough to be worth trading
     /// @return req The prepared trade request to send to the Broker
     //

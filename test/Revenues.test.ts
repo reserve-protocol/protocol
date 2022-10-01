@@ -38,7 +38,7 @@ import {
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
-  TradingLibP1,
+  CollateralizationLibP1,
   USDCMock,
   FiatCollateral,
 } from '../typechain'
@@ -208,8 +208,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('invalid token address')
       } else if (IMPLEMENTATION == Implementation.P1) {
         // Deploy TradingLib external library
-        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
-        const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+        const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+          'CollateralizationLibP1'
+        )
+        const tradingLib: CollateralizationLibP1 = <CollateralizationLibP1>(
+          await TradingLibFactory.deploy()
+        )
 
         // Deploy RewardableLib external library
         const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(

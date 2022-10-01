@@ -52,7 +52,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  TradingLibP1,
+  CollateralizationLibP1,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
@@ -685,8 +685,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const facadeTest = <FacadeTest>await FacadeTestFactory.deploy()
 
   // Deploy TradingLib external library
-  const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
-  const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
+  const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+    'CollateralizationLibP1'
+  )
+  const tradingLib: CollateralizationLibP1 = <CollateralizationLibP1>(
+    await TradingLibFactory.deploy()
+  )
 
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
@@ -723,7 +727,12 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     const BackingMgrImplFactory: ContractFactory = await ethers.getContractFactory(
       'BackingManagerP1',
-      { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+      {
+        libraries: {
+          RewardableLibP1: rewardableLib.address,
+          CollateralizationLibP1: tradingLib.address,
+        },
+      }
     )
     const backingMgrImpl: BackingManagerP1 = <BackingManagerP1>await BackingMgrImplFactory.deploy()
 

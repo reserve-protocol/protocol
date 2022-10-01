@@ -43,7 +43,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  TradingLibP1,
+  CollateralizationLibP1,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
@@ -77,7 +77,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let tradingLib: TradingLibP1
+  let tradingLib: CollateralizationLibP1
   let rewardableLib: RewardableLibP1
   let permitLib: PermitLib
 
@@ -127,8 +127,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     } = await loadFixture(defaultFixture))
 
     // Deploy TradingLib external library
-    const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
-    tradingLib = <TradingLibP1>await TradingLibFactory.deploy()
+    const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+      'CollateralizationLibP1'
+    )
+    tradingLib = <CollateralizationLibP1>await TradingLibFactory.deploy()
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
@@ -144,7 +146,10 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       libraries: { RewardableLibP1: rewardableLib.address },
     })
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
-      libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+      libraries: {
+        RewardableLibP1: rewardableLib.address,
+        CollateralizationLibP1: tradingLib.address,
+      },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
 
@@ -462,7 +467,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Upgrading
       const BackingMgrV2Factory: ContractFactory = await ethers.getContractFactory(
         'BackingManagerP1V2',
-        { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+        {
+          libraries: {
+            RewardableLibP1: rewardableLib.address,
+            CollateralizationLibP1: tradingLib.address,
+          },
+        }
       )
       const backingMgrV2: BackingManagerP1V2 = <BackingManagerP1V2>await upgrades.upgradeProxy(
         backingManager.address,
@@ -590,7 +600,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       // Upgrading
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
         'RevenueTraderP1V2',
-        { libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address } }
+        {
+          libraries: {
+            RewardableLibP1: rewardableLib.address,
+            CollateralizationLibP1: tradingLib.address,
+          },
+        }
       )
       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,

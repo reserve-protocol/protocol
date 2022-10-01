@@ -82,7 +82,7 @@ async function main() {
       desc: 'RSR / RToken Traders',
       contract: 'contracts/p1/RevenueTrader.sol:RevenueTraderP1',
       libraries: {
-        TradingLibP1: deployments.tradingLib,
+        CollateralizationLibP1: deployments.tradingLib,
       },
     },
     {
