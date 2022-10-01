@@ -298,19 +298,18 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            if (coll.status() != CollateralStatus.DISABLED) {
-                (bool isFallback_, uint192 price_) = coll.price(allowFallback);
-                isFallback = isFallback || isFallback_;
 
-                uint192 q = quantity(basket.erc20s[i]);
-                if (!allowFallback) {
-                    p = p.plus(price_.mul(q));
-                } else {
-                    try this.addProduct(p, price_, q) returns (uint192 sum) {
-                        p = sum;
-                    } catch {
-                        return (true, FIX_MAX);
-                    }
+            (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+            isFallback = isFallback || isFallback_;
+            uint192 qty = quantity(basket.erc20s[i]);
+
+            if (!allowFallback) {
+                p = p.plus(price_.mul(qty));
+            } else {
+                try this.addProduct(p, price_, qty) returns (uint192 sum) {
+                    p = sum;
+                } catch {
+                    return (true, FIX_MAX);
                 }
             }
         }

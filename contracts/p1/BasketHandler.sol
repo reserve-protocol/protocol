@@ -298,31 +298,29 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            if (coll.status() != CollateralStatus.DISABLED) {
-                (bool isFallback_, uint192 price_) = coll.price(allowFallback);
-                isFallback = isFallback || isFallback_;
-                if (price_ == 0) continue;
 
-                uint192 q = quantity(basket.erc20s[i]);
+            (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+            isFallback = isFallback || isFallback_;
+            if (price_ == 0) continue;
+            uint192 qty = quantity(basket.erc20s[i]);
 
-                if (!allowFallback) {
-                    p = p.plus(price_.mul(q));
-                } else {
-                    // if allowFallback, compute p := p + price * q,
-                    // but return FIX_MAX instead of throwing overflow errors.
-                    unchecked {
-                        // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
-                        uint256 rawDelta = price_ * q; // {D36} = {D18} * {D18}
-                        // if we overflowed *, then return FIX_MAX
-                        if (rawDelta / price_ != q) return (true, FIX_MAX);
-                        uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
+            if (!allowFallback) {
+                p = p.plus(price_.mul(qty));
+            } else {
+                // if allowFallback, compute p := p + price * qty,
+                // but return FIX_MAX instead of throwing overflow errors.
+                unchecked {
+                    // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
+                    uint256 rawDelta = price_ * qty; // {D36} = {D18} * {D18}
+                    // if we overflowed *, then return FIX_MAX
+                    if (rawDelta / price_ != qty) return (true, FIX_MAX);
+                    uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
 
-                        uint256 nextP = p + delta; // {D18} = {D18} + {D18}
+                    uint256 nextP = p + delta; // {D18} = {D18} + {D18}
 
-                        // if we overflowed +, or would otherwise overflow the downcast to uint192:
-                        if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
-                        p = uint192(nextP);
-                    }
+                    // if we overflowed +, or would otherwise overflow the downcast to uint192:
+                    if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
+                    p = uint192(nextP);
                 }
             }
         }
