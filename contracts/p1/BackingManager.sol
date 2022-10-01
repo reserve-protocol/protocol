@@ -120,7 +120,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              */
 
             (bool doTrade, TradeRequest memory req) = CollateralizationLibP1
-                .prepareTradeRecapitalize(this);
+                .prepareRecollateralizationTrade(this);
 
             if (doTrade) {
                 // Seize RSR if needed

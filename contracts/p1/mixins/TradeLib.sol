@@ -44,7 +44,7 @@ library TradeLib {
         view
         returns (bool notDust, TradeRequest memory req)
     {
-        assert(trade.buyPrice > 0); // checked for in RevenueTrader / prepareTradeRecapitalize
+        assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
         // assert(trade.buyPrice >= 0);
 
         // Don't sell dust

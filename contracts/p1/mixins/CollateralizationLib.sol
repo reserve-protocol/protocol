@@ -45,7 +45,7 @@ struct TradeInfo {
  * @dev The caller must implement the ITrading interface!
  *
  * Interface:
- *  1. prepareTradeRecapitalize (external)
+ *  1. prepareRecollateralizationTrade (external)
  *  2. basketRange (internal)
  */
 library CollateralizationLibP1 {
@@ -60,7 +60,7 @@ library CollateralizationLibP1 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareTradeRecapitalize(ITrading trader)
+    function prepareRecollateralizationTrade(ITrading trader)
         external
         view
         returns (bool doTrade, TradeRequest memory req)
