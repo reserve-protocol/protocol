@@ -36,7 +36,7 @@ struct TradeInfo {
 }
 
 /**
- * @title CollateralizationLibP1
+ * @title RecollateralizationLibP1
  * @notice An informal extension of the Trading mixin that provides trade preparation views
  *   Users:
  *     - BackingManager
@@ -45,10 +45,10 @@ struct TradeInfo {
  * @dev The caller must implement the ITrading interface!
  *
  * Interface:
- *  1. prepareTradeRecapitalize (external)
+ *  1. prepareRecollateralizationTrade (external)
  *  2. basketRange (internal)
  */
-library CollateralizationLibP1 {
+library RecollateralizationLibP1 {
     using FixLib for uint192;
     using TradeLib for TradeInfo;
 
@@ -60,7 +60,7 @@ library CollateralizationLibP1 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareTradeRecapitalize(ITrading trader)
+    function prepareRecollateralizationTrade(ITrading trader)
         external
         view
         returns (bool doTrade, TradeRequest memory req)

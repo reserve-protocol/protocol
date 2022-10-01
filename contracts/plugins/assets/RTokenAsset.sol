@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/Asset.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
-import "contracts/p1/mixins/CollateralizationLib.sol";
+import "contracts/p1/mixins/RecollateralizationLib.sol";
 
 /// Once an RToken gets large eonugh to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
@@ -68,6 +68,11 @@ contract RTokenAsset is IAsset {
         if (basketHandler.fullyCollateralized()) {
             basketsBottom = IRToken(address(erc20)).basketsNeeded();
         } else {
+            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
+            // there is _some_ asset to represent the RToken itself when it is deployed, in
+            // the absence of an external price feed. Any RToken that gets reasonably big
+            // should switch over to an asset with a price feed.
+
             IMain main = backingManager.main();
             ComponentCache memory components = ComponentCache({
                 trader: backingManager,
@@ -82,12 +87,9 @@ contract RTokenAsset is IAsset {
                 maxTradeSlippage: backingManager.maxTradeSlippage()
             });
 
-            // Note: Extremely wasteful in terms of gas. Replace with price feed ASAP
-            CollateralizationLibP1.BasketRange memory range = CollateralizationLibP1.basketRange(
-                components,
-                rules,
-                assetRegistry.erc20s()
-            ); // will exclude UoA value from RToken balances at BackingManager
+            // will exclude UoA value from RToken balances at BackingManager
+            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
+                .basketRange(components, rules, assetRegistry.erc20s());
             basketsBottom = range.bottom;
         }
 

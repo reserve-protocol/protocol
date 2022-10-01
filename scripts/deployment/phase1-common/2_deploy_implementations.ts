@@ -113,7 +113,7 @@ async function main() {
   const BackingMgrImplFactory = await ethers.getContractFactory('BackingManagerP1', {
     libraries: {
       RewardableLibP1: deployments.rewardableLib,
-      CollateralizationLibP1: deployments.tradingLib,
+      RecollateralizationLibP1: deployments.tradingLib,
     },
   })
   backingMgrImpl = <BackingManagerP1>await BackingMgrImplFactory.connect(burner).deploy()

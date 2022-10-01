@@ -43,7 +43,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
-  CollateralizationLibP1,
+  RecollateralizationLibP1,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
@@ -77,7 +77,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let tradingLib: CollateralizationLibP1
+  let tradingLib: RecollateralizationLibP1
   let rewardableLib: RewardableLibP1
   let permitLib: PermitLib
 
@@ -128,9 +128,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     // Deploy TradingLib external library
     const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
-      'CollateralizationLibP1'
+      'RecollateralizationLibP1'
     )
-    tradingLib = <CollateralizationLibP1>await TradingLibFactory.deploy()
+    tradingLib = <RecollateralizationLibP1>await TradingLibFactory.deploy()
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
@@ -148,7 +148,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
       libraries: {
         RewardableLibP1: rewardableLib.address,
-        CollateralizationLibP1: tradingLib.address,
+        RecollateralizationLibP1: tradingLib.address,
       },
     })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
@@ -470,7 +470,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           libraries: {
             RewardableLibP1: rewardableLib.address,
-            CollateralizationLibP1: tradingLib.address,
+            RecollateralizationLibP1: tradingLib.address,
           },
         }
       )
@@ -603,7 +603,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           libraries: {
             RewardableLibP1: rewardableLib.address,
-            CollateralizationLibP1: tradingLib.address,
+            RecollateralizationLibP1: tradingLib.address,
           },
         }
       )

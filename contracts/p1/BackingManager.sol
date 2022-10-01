@@ -9,7 +9,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/Array.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Trading.sol";
-import "contracts/p1/mixins/CollateralizationLib.sol";
+import "contracts/p1/mixins/RecollateralizationLib.sol";
 
 /**
  * @title BackingManager
@@ -119,8 +119,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              * See: https://app.asana.com/0/1202557536393044/1203043664234023/f
              */
 
-            (bool doTrade, TradeRequest memory req) = CollateralizationLibP1
-                .prepareTradeRecapitalize(this);
+            (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
+                .prepareRecollateralizationTrade(this);
 
             if (doTrade) {
                 // Seize RSR if needed

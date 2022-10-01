@@ -5,9 +5,9 @@ import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { CollateralizationLibP1, RewardableLibP1, OracleLib, PermitLib } from '../../../typechain'
+import { RecollateralizationLibP1, RewardableLibP1, OracleLib, PermitLib } from '../../../typechain'
 
-let tradingLib: CollateralizationLibP1
+let tradingLib: RecollateralizationLibP1
 let rewardableLib: RewardableLibP1
 let oracleLib: OracleLib
 let permitLib: PermitLib
@@ -32,8 +32,8 @@ async function main() {
   // ******************** Deploy libraries ****************************************/
 
   // Deploy TradingLib external library
-  const TradingLibFactory = await ethers.getContractFactory('CollateralizationLibP1')
-  tradingLib = <CollateralizationLibP1>await TradingLibFactory.connect(burner).deploy()
+  const TradingLibFactory = await ethers.getContractFactory('RecollateralizationLibP1')
+  tradingLib = <RecollateralizationLibP1>await TradingLibFactory.connect(burner).deploy()
   await tradingLib.deployed()
   deployments.tradingLib = tradingLib.address
 

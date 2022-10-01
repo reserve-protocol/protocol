@@ -50,7 +50,7 @@ import {
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
-  CollateralizationLibP1,
+  RecollateralizationLibP1,
   USDCMock,
   NonFiatCollateral,
   SelfReferentialCollateral,
@@ -458,9 +458,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     // Deploy TradingLib external library
     const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
-      'CollateralizationLibP1'
+      'RecollateralizationLibP1'
     )
-    const tradingLib: CollateralizationLibP1 = <CollateralizationLibP1>(
+    const tradingLib: RecollateralizationLibP1 = <RecollateralizationLibP1>(
       await TradingLibFactory.deploy()
     )
 
@@ -476,7 +476,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       {
         libraries: {
           RewardableLibP1: rewardableLib.address,
-          CollateralizationLibP1: tradingLib.address,
+          RecollateralizationLibP1: tradingLib.address,
         },
       }
     )

@@ -25,7 +25,7 @@ async function main() {
     chainId,
     deployments.tradingLib,
     [],
-    'contracts/p1/mixins/TradingLib.sol:CollateralizationLibP1'
+    'contracts/p1/mixins/TradingLib.sol:RecollateralizationLibP1'
   )
 
   /** ******************** Verify Rewardable Library ****************************************/
