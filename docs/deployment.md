@@ -50,15 +50,15 @@ The deployment process consists of two steps:
 1. Deploy everything:
 
 ```
-hardhat run scripts/deploy_all.ts --network {NETWORK}
+hardhat run scripts/deploy.ts --network {NETWORK}
 ```
 
-If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy_all.ts` in order to pick up execution at another point.
+If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy.ts` in order to pick up execution at another point.
 
 2. Verify everything:
 
 ```
-hardhat run scripts/verify_all.ts --network {NETWORK}
+hardhat run scripts/verify.ts --network {NETWORK}
 ```
 
 The verification scripts are smart enough to only verify those that are unverified.
@@ -83,7 +83,7 @@ A specific set of files will be created for that specific network after each pha
 
 ### With Mainnet forking
 
-- Before running the `deploy_all` script (or any particular script), run in a separate terminal a local forking node:
+- Before running the `deploy` script (or any particular script), run in a separate terminal a local forking node:
 
 ```bash
 FORK=true npx hardhat node
@@ -118,6 +118,8 @@ Gas costs from Goerli; excludes collateral deployments:
 Total: ~66M gas
 
 ## Mainnet Deployment Instructions
+
+First, clear any stale `*-tmp-*.json` deployment files if it's important for the entire script to run in one go, such as on a Mainnet deployment.
 
 4 phases
 
@@ -164,7 +166,7 @@ To complete the environment configuration:
 Finally, run the `check_env` script in order to confirm the 3 environment variables are configured correctly.
 
 ```
-npx hardhat run scripts/check_env.ts --network mainnet
+yarn check_env --network mainnet
 ```
 
 If this passes successfully it will print the deployer address and the current ETH balance. Next:
@@ -178,13 +180,15 @@ End state: Your `.env` file is known to be good. You did all of this without scr
 
 [Screensharing ok]
 
-Open a new terminal session and from the project root run the deploy_all script:
+Open a new terminal session and from the project root run the deploy script:
 
 ```
-hardhat run scripts/deploy_all.ts --network mainnet
+yarn deploy --network mainnet
 ```
 
-It should manage itself fairly well. On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, we can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy_all.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
+Underlying target: `scripts/deploy.ts`
+
+It should manage itself fairly well. On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, we can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
 
 Three files should be produced as a result of this process.
 
@@ -201,12 +205,14 @@ End state: All three files contain populated JSON objects. There should not be a
 Next, run:
 
 ```
-hardhat run scripts/verify_all.ts --network mainnet
+yarn verify --network mainnet
 ```
 
-`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+Underlying target: `scripts/verify.ts`
 
-It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+`verify.ts` works a bit differently than `deploy.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+
+It may be that `verify.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
 Manual verification steps:
 
