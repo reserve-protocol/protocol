@@ -31,7 +31,8 @@ async function main() {
   console.log('=================================')
   console.log(`Environment checks complete! Ready to deploy to chain ${chainId}!`)
 
-  const ethBal = (await hre.ethers.provider.getBalance(deployer.address)).div(bn('1e18'))
+  const decaEthBal = (await hre.ethers.provider.getBalance(deployer.address)).div(bn('1e16'))
+  const ethBal = (decaEthBal.toNumber() / 100).toFixed(2)
   console.log(`The deployment address is ${deployer.address} and it holds >=${ethBal} ETH`)
 }
 
