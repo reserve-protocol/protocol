@@ -5,9 +5,9 @@ import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validateImplementations } from '../utils'
-import { FacadeP1 } from '../../../typechain'
+import { Facade } from '../../../typechain'
 
-let facade: FacadeP1
+let facade: Facade
 
 async function main() {
   // ==== Read Configuration ====
@@ -34,8 +34,8 @@ async function main() {
   }
 
   // ******************** Deploy Facade ****************************************/
-  const FacadeFactory = await ethers.getContractFactory('FacadeP1')
-  facade = <FacadeP1>await FacadeFactory.connect(burner).deploy()
+  const FacadeFactory = await ethers.getContractFactory('Facade')
+  facade = <Facade>await FacadeFactory.connect(burner).deploy()
   await facade.deployed()
 
   // Write temporary deployments file

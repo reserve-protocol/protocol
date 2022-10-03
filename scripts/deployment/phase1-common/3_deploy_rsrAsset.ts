@@ -30,11 +30,11 @@ async function main() {
 
   // ******************** Deploy RSR Asset ****************************************/
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
-    fallbackPrice: await getCurrentPrice(deployments.prerequisites.RSR_FEED),
+    fallbackPrice: (await getCurrentPrice(deployments.prerequisites.RSR_FEED)).toString(),
     priceFeed: deployments.prerequisites.RSR_FEED,
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp(chainId == 1 ? '1e6' : '0'), // $1m,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: deployments.oracleLib,
   })

@@ -41,11 +41,11 @@ async function main() {
 
   /********  Deploy StkAAVE Asset **************************/
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
-    fallbackPrice: await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE),
+    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })
@@ -55,11 +55,11 @@ async function main() {
 
   /********  Deploy Comp Asset **************************/
   const { asset: compAsset } = await hre.run('deploy-asset', {
-    fallbackPrice: await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP),
+    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
     rewardToken: ZERO_ADDRESS,
-    maxTradeVolume: fp(chainId == 1 ? '1e6' : '0').toString(), // $1m,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
   })
