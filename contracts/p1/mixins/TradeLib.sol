@@ -142,21 +142,19 @@ library TradeLib {
 
     /// @param asset The asset in question
     /// @param amt {tok} The number of whole tokens we plan to sell
-    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
+    /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume
     ) internal view returns (bool) {
         (, uint192 price) = asset.price(true); // {UoA/tok}
-        // can be a fallback price
-
         // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
         // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
         // likely to be true of all the trading platforms we integrate with.
         return
-            amt.gte(minTradeSize(minTradeVolume_, price)) &&
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }
@@ -164,11 +162,11 @@ library TradeLib {
     // === Private ===
 
     /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price
-    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
+    /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return {tok} The min trade size for the asset in whole tokens
-    function minTradeSize(uint192 minTradeVolume_, uint192 price) private pure returns (uint192) {
+    function minTradeSize(uint192 minTradeVolume, uint192 price) private pure returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
-        return price == 0 ? FIX_MAX : minTradeVolume_.div(price, CEIL);
+        return price == 0 ? FIX_MAX : minTradeVolume.div(price, CEIL);
     }
 
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
