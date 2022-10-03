@@ -521,6 +521,8 @@ contract ChaosOpsScenario {
 
         if (postSupply == preSupply) noteIssuance(amount);
         else noteQuickIssuance(amount);
+
+        assertRTokenIssuances(msg.sender);
     }
 
     // do allowances as needed, and *then* do issuance
@@ -540,6 +542,8 @@ contract ChaosOpsScenario {
 
         if (postSupply == preSupply) noteIssuance(amount);
         else noteQuickIssuance(amount);
+
+        assertRTokenIssuances(msg.sender);
     }
 
     function cancelIssuance(uint256 seedID, bool earliest) public asSender {
@@ -721,6 +725,7 @@ contract ChaosOpsScenario {
 
     function payRTokenProfits() public {
         main.furnace().melt();
+        assertFurnacePayouts();
     }
 
     // Basket handler
@@ -1028,8 +1033,6 @@ contract ChaosOpsScenario {
     }
 
     // ================ System Properties ================
-    // TODO: Complete with invariants/properties
-
     uint192 public prevRSRRate; // {StRSR/RSR}
     uint192 public prevRTokenRate; // {RTok/BU}
 
@@ -1044,6 +1047,14 @@ contract ChaosOpsScenario {
     function saveRates() public {
         prevRSRRate = main.stRSR().exchangeRate();
         prevRTokenRate = rTokenRate();
+    }
+
+    function assertRTokenIssuances(address user) public view {
+        RTokenP1Fuzz(address(main.rToken())).assertIssuances(user);
+    }
+
+    function assertFurnacePayouts() public view {
+        FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
     }
 
     function echidna_mainInvariants() external view returns (bool) {
@@ -1089,6 +1100,10 @@ contract ChaosOpsScenario {
 
     function echidna_rTokenTraderInvariants() external view returns (bool) {
         return RevenueTraderP1Fuzz(address(main.rTokenTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenInvariants() external view returns (bool) {
+        return RTokenP1Fuzz(address(main.rToken())).invariantsHold();
     }
 
     function echidna_stRSRInvariants() external view returns (bool) {

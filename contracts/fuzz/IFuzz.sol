@@ -78,6 +78,9 @@ interface IMainFuzz is IMain {
     // number of registered users
     function numUsers() external view returns (uint256);
 
+    // number of constant addresses
+    function numConstAddrs() external view returns (uint256);
+
     // lookup user at index; error if index >= numUsers()
     function users(uint256 index) external view returns (address);
 
@@ -86,4 +89,7 @@ interface IMainFuzz is IMain {
 
     // return an arbitrary address: a contract, 0x0, 0x1, or a user from the registry
     function someAddr(uint256 seed) external view returns (address);
+
+    // deployment timestamp
+    function deployedAt() external view returns (uint48);
 }

@@ -36,6 +36,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
+    uint48 public deployedAt;
+
     function _msgSender() internal view virtual override returns (address) {
         return translateAddr(msg.sender);
     }
@@ -106,6 +108,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         return users[seed % users.length];
     }
 
+    function numConstAddrs() public view returns (uint256) {
+        return constAddrs.length;
+    }
+
     function someAddr(uint256 seed) public view returns (address) {
         // constAddrs.length: constant addresses, mostly deployed contracts
         // numUsers: addresses from the user registry
@@ -150,6 +156,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(0));
         constAddrs.push(address(1));
         constAddrs.push(address(2));
+
+        deployedAt = uint24(block.timestamp);
     }
 
     // Initialize self and components

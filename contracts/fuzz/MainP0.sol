@@ -37,6 +37,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
+    uint48 public deployedAt;
+
     // ==== Scenario handles ====
     // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
     // allowing the spoof() and unspoof() functions to work.
@@ -103,6 +105,10 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         return users[seed % users.length];
     }
 
+    function numConstAddrs() public view returns (uint256) {
+        return constAddrs.length;
+    }
+
     function someAddr(uint256 seed) public view returns (address) {
         // constAddrs.length: constant addresses, mostly deployed contracts
         // numUsers: addresses from the user registry
@@ -147,6 +153,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         constAddrs.push(address(0));
         constAddrs.push(address(1));
         constAddrs.push(address(2));
+
+        deployedAt = uint24(block.timestamp);
     }
 
     // Initialize self and components
