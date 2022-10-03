@@ -246,14 +246,13 @@ library RecollateralizationLibP1 {
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
             bool inBasket = components.bh.quantity(erc20s[i]).gt(FIX_ZERO);
-            if (!inBasket && !TradeLib.isEnoughToSell(asset, bal, rules.minTradeVolume)) {
+            (bool isFallback, uint192 price) = asset.price(true); // {UoA}
+            if (!inBasket && !TradeLib.isEnoughToSell(asset, price, bal, rules.minTradeVolume)) {
                 continue;
             }
 
-            (bool isFallback, uint192 p) = asset.price(true); // {UoA}
-
             // {UoA} = {UoA} + {UoA/tok} * {tok}
-            uint192 val = p.mul(bal, FLOOR);
+            uint192 val = price.mul(bal, FLOOR);
 
             // Consider all managed assets at face-value prices
             assetsHigh = assetsHigh.plus(val);
@@ -327,11 +326,10 @@ library RecollateralizationLibP1 {
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
             uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                uint192 amtExtra = bal.minus(needed); // {tok}
                 (, uint192 price_) = asset.price(true); // {UoA/tok} allow fallback prices
 
                 // {UoA} = {tok} * {UoA/tok}
-                uint192 delta = amtExtra.mul(price_, FLOOR);
+                uint192 delta = bal.minus(needed).mul(price_, FLOOR);
 
                 CollateralStatus status; // starts SOUND
                 if (asset.isCollateral()) status = ICollateral(address(asset)).status();
@@ -340,10 +338,10 @@ library RecollateralizationLibP1 {
                 if (
                     (preferToSell(maxes.surplusStatus, status) ||
                         (delta.gt(maxes.surplus) && maxes.surplusStatus == status)) &&
-                    TradeLib.isEnoughToSell(asset, amtExtra, rules.minTradeVolume)
+                    TradeLib.isEnoughToSell(asset, price_, bal.minus(needed), rules.minTradeVolume)
                 ) {
                     trade.sell = asset;
-                    trade.sellAmount = amtExtra;
+                    trade.sellAmount = bal.minus(needed);
                     trade.sellPrice = price_;
 
                     maxes.surplusStatus = status;
@@ -376,8 +374,9 @@ library RecollateralizationLibP1 {
             uint192 rsrAvailable = rsrAsset.bal(address(components.trader)).plus(
                 rsrAsset.bal(address(components.stRSR))
             );
-            if (TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)) {
-                (, uint192 price_) = rsrAsset.price(true); // {UoA/tok} allow fallback prices
+            (, uint192 price_) = rsrAsset.price(true); // {UoA/tok} allow fallback prices
+
+            if (TradeLib.isEnoughToSell(rsrAsset, price_, rsrAvailable, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = price_;
