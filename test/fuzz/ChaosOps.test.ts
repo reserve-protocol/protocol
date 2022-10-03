@@ -1187,6 +1187,7 @@ describe('The Chaos Operations scenario', () => {
     expect(await scenario.echidna_furnaceInvariants()).to.be.true
     expect(await scenario.echidna_rsrTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
+    expect(await scenario.echidna_rTokenInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
 
     // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
@@ -1208,10 +1209,38 @@ describe('The Chaos Operations scenario', () => {
     expect(await comp.basketHandler.prevEqualsCurr()).to.be.true
   })
 
+  it('maintains basket invariants after refresh', async () => {
+    await scenario.setBackupConfig(0)
+    await scenario.unregisterAsset(0)
+    // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
+    await comp.basketHandler.savePrev()
+    await whileImpersonating(scenario.address, async (asOwner) => {
+      await comp.basketHandler.connect(asOwner).refreshBasket()
+    })
+    expect(await comp.basketHandler.isValidBasketAfterRefresh()).to.be.true
+
+    expect(await comp.basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+  })
+
   it('maintains stRSR invariants after seizing RSR', async () => {
     await scenario.connect(alice).stake(4)
     await scenario.seizeRSR(1)
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
+  })
+
+  it('maintains RToken invariants after calling issue', async () => {
+    // As Alice, make allowances
+    const [tokenAddrs, amts] = await comp.rToken.quote(20000n * exa, RoundingMode.CEIL)
+    for (let i = 0; i < amts.length; i++) {
+      const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
+      await token.connect(alice).approve(comp.rToken.address, amts[i])
+    }
+    // Issue RTokens and succeed
+    await scenario.connect(alice).justIssue(20000n * exa)
+
+    await comp.rToken.assertIssuances(aliceAddr)
+
+    expect(await scenario.echidna_rTokenInvariants()).to.be.true
   })
 
   it('does not have the backingManager double-revenue bug', async () => {
@@ -1225,7 +1254,5 @@ describe('The Chaos Operations scenario', () => {
     await scenario.pushBackingToManage(0)
     await scenario.pushBackingToManage(0)
     await expect(scenario.manageBackingTokens()).to.be.reverted
-
-    // expect(await scenario.echidna_isFullyCollateralized()).to.be.true
   })
 })
