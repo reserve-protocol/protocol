@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/p1/mixins/Trading.sol";
-import "contracts/p1/mixins/TradingLib.sol";
+import "contracts/p1/mixins/TradeLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.
@@ -65,32 +65,36 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
         IAsset buy = reg.toAsset(tokenToBuy);
-        uint192 sellPrice = sell.strictPrice(); // {UoA/tok}
-        uint192 buyPrice = buy.strictPrice(); // {UoA/tok}
 
-        require(buyPrice > 0, "buy asset has zero price");
+        TradeInfo memory trade = TradeInfo({
+            sell: sell,
+            buy: buy,
+            sellAmount: sell.bal(address(this)),
+            buyAmount: 0,
+            sellPrice: sell.strictPrice(),
+            buyPrice: buy.strictPrice()
+        });
+        TradingRules memory rules = TradingRules({
+            minTradeVolume: minTradeVolume,
+            maxTradeSlippage: maxTradeSlippage
+        });
+
+        require(trade.buyPrice > 0, "buy asset has zero price");
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory trade) = TradingLibP1.prepareTradeSell(
-            this,
-            sell,
-            buy,
-            sell.bal(address(this)),
-            sellPrice,
-            buyPrice
-        );
+        (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(trade, rules);
 
         if (launch) {
             if (sell.isCollateral()) {
                 CollateralStatus status = ICollateral(address(sell)).status();
 
                 if (status == CollateralStatus.IFFY) return;
-                if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
+                if (status == CollateralStatus.DISABLED) req.minBuyAmount = 0;
             }
 
             // == Interactions then return ==
-            tryTrade(trade);
+            tryTrade(req);
         }
     }
 

@@ -38,7 +38,6 @@ import {
   TestIRToken,
   TestIStRSR,
   TradingLibP0,
-  TradingLibP1,
   USDCMock,
   FiatCollateral,
 } from '../typechain'
@@ -207,10 +206,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           newTrader.init(main.address, ZERO_ADDRESS, bn('100'), config.minTradeVolume)
         ).to.be.revertedWith('invalid token address')
       } else if (IMPLEMENTATION == Implementation.P1) {
-        // Deploy TradingLib external library
-        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP1')
-        const tradingLib: TradingLibP1 = <TradingLibP1>await TradingLibFactory.deploy()
-
         // Deploy RewardableLib external library
         const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
           'RewardableLibP1'
@@ -220,7 +215,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
           'RevenueTraderP1',
           {
-            libraries: { RewardableLibP1: rewardableLib.address, TradingLibP1: tradingLib.address },
+            libraries: { RewardableLibP1: rewardableLib.address },
           }
         )
 

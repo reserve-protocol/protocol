@@ -111,7 +111,10 @@ async function main() {
 
   // 2. ******* Backing Manager ***********/
   const BackingMgrImplFactory = await ethers.getContractFactory('BackingManagerP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, TradingLibP1: deployments.tradingLib },
+    libraries: {
+      RewardableLibP1: deployments.rewardableLib,
+      RecollateralizationLibP1: deployments.tradingLib,
+    },
   })
   backingMgrImpl = <BackingManagerP1>await BackingMgrImplFactory.connect(burner).deploy()
   await backingMgrImpl.deployed()
@@ -173,7 +176,7 @@ async function main() {
   // 7. *********** RevenueTrader *************/
 
   const RevTraderImplFactory = await ethers.getContractFactory('RevenueTraderP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, TradingLibP1: deployments.tradingLib },
+    libraries: { RewardableLibP1: deployments.rewardableLib },
   })
   revTraderImpl = <RevenueTraderP1>await RevTraderImplFactory.connect(burner).deploy()
   await revTraderImpl.deployed()

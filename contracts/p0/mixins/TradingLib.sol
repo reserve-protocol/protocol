@@ -15,7 +15,7 @@ import "contracts/libraries/Fixed.sol";
  *
  * External-facing interface:
  *  1. prepareTradeSell
- *  2. prepareTradeRecapitalize
+ *  2. prepareRecollateralizationTrade
  */
 library TradingLibP0 {
     using FixLib for uint192;
@@ -46,7 +46,7 @@ library TradingLibP0 {
         uint192 sellPrice,
         uint192 buyPrice
     ) public view returns (bool notDust, TradeRequest memory trade) {
-        assert(buyPrice > 0); // checked for in RevenueTrader / prepareTradeRecapitalize
+        assert(buyPrice > 0); // checked for in RevenueTrader / prepareRecollateralizationTrade
 
         trade.sell = sell;
         trade.buy = buy;
@@ -85,7 +85,7 @@ library TradingLibP0 {
     //   let (surplus, deficit, amts...) = nextTradePair(all erc20s, range)
     //   if surplus.strictPrice() is reliable, prepareTradeToCoverDeficit(surplus, deficit, amts...)
     //   otherwise, prepareTradeSell(surplus, deficit, surplusAmt) with a 0 minBuyAmount
-    function prepareTradeRecapitalize(ITrading trader)
+    function prepareRecollateralizationTrade(ITrading trader)
         external
         view
         returns (bool doTrade, TradeRequest memory req)
@@ -543,7 +543,7 @@ library TradingLibP0 {
         if (price == 0) return FIX_MAX;
 
         // {tok} = {UoA} / {UoA/tok}
-        return minTradeVolume_.div(price);
+        return minTradeVolume_.div(price, ROUND);
     }
 
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
@@ -553,7 +553,7 @@ library TradingLibP0 {
         if (price == 0) return FIX_MAX;
 
         // {tok} = {UoA} / {UoA/tok}
-        return asset.maxTradeVolume().div(price);
+        return asset.maxTradeVolume().div(price, ROUND);
     }
 
     /// @return The AssetRegistry
