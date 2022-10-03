@@ -48,8 +48,5 @@ struct BasketConfig {
 struct Basket {
     IERC20[] erc20s; // Weak Invariant: after `refreshBasket`, no bad collateral || disabled
     mapping(IERC20 => uint192) refAmts; // {ref/BU}
-    uint48 nonce;
-    uint48 timestamp;
-    bool disabled;
     // Invariant: targetAmts == refAmts.map(amt => amt * coll.targetPerRef()) || disabled
 }

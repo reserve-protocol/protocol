@@ -31,6 +31,13 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     BasketConfig internal config;
     Basket internal basket;
 
+    uint48 public nonce; // A unique identifier for this basket instance
+    uint48 public timestamp; // The timestamp when this basket was last set
+
+    // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
+    // be paused.
+    bool private disabled;
+
     function init(IMain main_) public initializer {
         __Component_init(main_);
     }
@@ -41,7 +48,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         require(_msgSender() == address(main.assetRegistry()), "asset registry only");
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
         emit BasketSet(basket.erc20s, refAmts, true);
-        basket.disabled = true;
+        disabled = true;
     }
 
     /// Switch the basket, only callable directly by governance
@@ -125,16 +132,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         return basketsHeldBy(address(main.backingManager())).gte(main.rToken().basketsNeeded());
     }
 
-    /// @return nonce The current basket nonce
-    /// @return timestamp The timestamp when the basket was last set
-    function lastSet() external view returns (uint256 nonce, uint256 timestamp) {
-        nonce = basket.nonce;
-        timestamp = basket.timestamp;
+    /// @return nonce_ The current basket nonce
+    /// @return timestamp_ The timestamp when the basket was last set
+    function lastSet() external view returns (uint256 nonce_, uint256 timestamp_) {
+        return (nonce, timestamp);
     }
 
     /// @return status_ The worst collateral status of the basket
     function status() public view returns (CollateralStatus status_) {
-        if (basket.disabled || basket.erc20s.length == 0) return CollateralStatus.DISABLED;
+        if (disabled || basket.erc20s.length == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             if (!goodCollateral(basket.erc20s[i])) return CollateralStatus.DISABLED;
@@ -187,7 +193,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @return baskets {BU} The balance of basket units held by `account`
     /// @dev Returns FIX_ZERO for an empty basket
     function basketsHeldBy(address account) public view returns (uint192 baskets) {
-        if (basket.erc20s.length == 0 || basket.disabled) return FIX_ZERO;
+        if (basket.erc20s.length == 0 || disabled) return FIX_ZERO;
         baskets = FIX_MAX;
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             uint192 bal = main.assetRegistry().toColl(basket.erc20s[i]).bal(account);
@@ -265,7 +271,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
             // If we need backup collateral, but there's no good backup collateral, basket default!
             // Remove bad collateral and mark basket disabled; pauses most protocol functions
-            if (size == 0) newBasket.disabled = true;
+            if (size == 0) disabled = true;
 
             // Set backup basket weights
             uint256 assigned = 0;
@@ -290,7 +296,7 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         for (uint256 i = 0; i < basket.erc20s.length; i++) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
-        emit BasketSet(basket.erc20s, refAmts, basket.disabled);
+        emit BasketSet(basket.erc20s, refAmts, disabled);
     }
 
     /// Require that erc20s is a "valid collateral array"

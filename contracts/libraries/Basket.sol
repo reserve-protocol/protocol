@@ -21,9 +21,6 @@ library BasketLib {
             self.refAmts[self.erc20s[i]] = FIX_ZERO;
         }
         delete self.erc20s;
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
-        self.disabled = false;
     }
 
     /// Set `self` equal to `other`
@@ -33,9 +30,6 @@ library BasketLib {
             self.erc20s.push(other.erc20s[i]);
             self.refAmts[other.erc20s[i]] = other.refAmts[other.erc20s[i]];
         }
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
-        self.disabled = other.disabled;
     }
 
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
@@ -52,7 +46,5 @@ library BasketLib {
         } else {
             self.refAmts[tok] = self.refAmts[tok].plus(weight);
         }
-        self.nonce++;
-        self.timestamp = uint48(block.timestamp);
     }
 }
