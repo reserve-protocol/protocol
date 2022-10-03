@@ -50,6 +50,10 @@ abstract contract Collateral is ICollateral, Asset {
     }
 
     // solhint-disable-next-line no-empty-blocks
+
+    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// refPerTok() has ever decreased since the last refresh() call!
+    /// (In this base class, refPerTok() is constant, so this is trivially satisfied.)
     function refresh() external virtual {
         if (alreadyDefaulted()) return;
 

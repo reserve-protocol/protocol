@@ -17,7 +17,7 @@ async function main() {
   console.log(`Deployer account: ${deployer.address}\n`)
 
   // Part 1/2 of the *overall* deployment process: Deploy all contracts
-  // See `verify_all.ts` for part 2
+  // See `verify.ts` for part 2
 
   const scripts = [
     'phase1-common/0_setup_deployments.ts',

@@ -42,21 +42,12 @@ async function main() {
 
   // Get RToken Configuration
   const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
-  const tradingRange = rTokenConf.params.rTokenTradingRange
 
   /********************** Verify RTokenAsset ****************************************/
   await verifyContract(
     chainId,
     rTokenDeployments.rTokenAsset,
-    [
-      rTokenDeployments.components.rToken,
-      {
-        minVal: tradingRange.minVal,
-        maxVal: tradingRange.maxVal,
-        minAmt: tradingRange.minAmt,
-        maxAmt: tradingRange.maxAmt,
-      },
-    ],
+    [rTokenDeployments.components.rToken, rTokenConf.params.rTokenMaxTradeVolume],
     'contracts/plugins/assets/RTokenAsset.sol:RTokenAsset'
   )
 

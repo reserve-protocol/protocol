@@ -275,13 +275,16 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
 
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered, disabled, or not in the basket
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
+            uint192 refPerTok = coll.refPerTok();
+            if (refPerTok == 0) return FIX_MAX;
             // {tok/BU} = {ref/BU} / {ref/tok}
-            return basket.refAmts[erc20].div(coll.refPerTok(), CEIL);
+            return basket.refAmts[erc20].div(refPerTok, CEIL);
         } catch {
             return FIX_ZERO;
         }
@@ -295,13 +298,30 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            if (coll.status() != CollateralStatus.DISABLED) {
-                (bool isFallback_, uint192 price_) = coll.price(allowFallback);
-                isFallback = isFallback || isFallback_;
 
-                p = p.plus(price_.mul(quantity(basket.erc20s[i])));
+            (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+            isFallback = isFallback || isFallback_;
+            uint192 qty = quantity(basket.erc20s[i]);
+
+            if (!allowFallback) {
+                p = p.plus(price_.mul(qty));
+            } else {
+                try this.addProduct(p, price_, qty) returns (uint192 sum) {
+                    p = sum;
+                } catch {
+                    return (true, FIX_MAX);
+                }
             }
         }
+    }
+
+    // Returns a + (b * c). Pulled out into separate function for exception-catching in price()
+    function addProduct(
+        uint192 a,
+        uint192 b,
+        uint192 c
+    ) external pure returns (uint192) {
+        return a.plus(b.mul(c));
     }
 
     /// Return the current issuance/redemption value of `amount` BUs
@@ -343,14 +363,15 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
+            uint192 refPerTok = coll.refPerTok();
+            if (refPerTok == 0) return FIX_ZERO;
             uint192 bal = coll.bal(account); // {tok}
 
             // {tok/BU} = {ref/BU} / {ref/tok}
-            // TODO: div by 0? https://app.asana.com/0/1202557536393044/1203043664234029/f
-            uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
+            uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
 
-            // {BU} = {tok} / {tok/BU}
-            baskets = fixMin(baskets, bal.div(q)); // q > 0 because q = (n).div(_, CEIL) and n > 0
+            // {BU} = either {BU} or {tok} / {tok/BU}; q > 0 because q = (n).div(_, CEIL) and n > 0
+            baskets = fixMin(baskets, bal.div(q));
         }
     }
 
@@ -563,7 +584,11 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
         if (erc20 == IERC20(address(main.stRSR()))) return false;
 
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return targetName == coll.targetName() && coll.status() != CollateralStatus.DISABLED;
+            return
+                targetName == coll.targetName() &&
+                coll.status() != CollateralStatus.DISABLED &&
+                coll.refPerTok() > 0 &&
+                coll.targetPerRef() > 0;
         } catch {
             return false;
         }

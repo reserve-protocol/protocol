@@ -320,6 +320,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
     })
 
+    it('Should prevent granting roles to the zero address', async () => {
+      await expect(main.connect(owner).grantRole(PAUSER, ZERO_ADDRESS)).to.be.revertedWith(
+        'cannot grant role to address 0'
+      )
+    })
+
     it('Should not allow to initialize components twice', async () => {
       // Attempt to reinitialize - Asset Registry
       const assets = [rTokenAsset.address, rsrAsset.address, compAsset.address, aaveAsset.address]

@@ -31,8 +31,6 @@ struct BackupConfig {
 //     if name is in values(targetNames), then backups[name] is a valid BackupConfig
 //     erc20s is a valid collateral array
 //
-// TODO: keys(targetAmts) can be a strict superset of erc20s.
-// Ticket: https://app.asana.com/0/1202557536393044/1203043664234027/f
 // In the meantime, treat erc20s as the canonical set of keys for the target* maps
 struct BasketConfig {
     // The collateral erc20s in the prime (explicitly governance-set) basket
@@ -274,13 +272,19 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// @return {tok/BU} The token-quantity of an ERC20 token in the basket.
     // Returns 0 if erc20 is not registered, disabled, or not in the basket
+    // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-            // {tok/BU} = {ref/BU} / {ref/tok}
-            return basket.refAmts[erc20].div(coll.refPerTok(), CEIL);
+            uint192 refPerTok = coll.refPerTok(); // {ref/tok}
+            if (refPerTok > 0) {
+                // {tok/BU} = {ref/BU} / {ref/tok}
+                return basket.refAmts[erc20].div(refPerTok, CEIL);
+            } else {
+                return FIX_MAX;
+            }
         } catch {
             return FIX_ZERO;
         }
@@ -294,11 +298,30 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
-            if (coll.status() != CollateralStatus.DISABLED) {
-                (bool isFallback_, uint192 price_) = coll.price(allowFallback);
-                isFallback = isFallback || isFallback_;
 
-                p = p.plus(price_.mul(quantity(basket.erc20s[i])));
+            (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+            isFallback = isFallback || isFallback_;
+            if (price_ == 0) continue;
+            uint192 qty = quantity(basket.erc20s[i]);
+
+            if (!allowFallback) {
+                p = p.plus(price_.mul(qty));
+            } else {
+                // if allowFallback, compute p := p + price * qty,
+                // but return FIX_MAX instead of throwing overflow errors.
+                unchecked {
+                    // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
+                    uint256 rawDelta = price_ * qty; // {D36} = {D18} * {D18}
+                    // if we overflowed *, then return FIX_MAX
+                    if (rawDelta / price_ != qty) return (true, FIX_MAX);
+                    uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
+
+                    uint256 nextP = p + delta; // {D18} = {D18} + {D18}
+
+                    // if we overflowed +, or would otherwise overflow the downcast to uint192:
+                    if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
+                    p = uint192(nextP);
+                }
             }
         }
     }
@@ -342,14 +365,19 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
-            uint192 bal = coll.bal(account); // {tok}
+            uint192 refPerTok = coll.refPerTok();
+            // If refPerTok is 0, then we have zero of coll's reference unit.
+            // We know that basket.refAmts[basket.erc20s[i]] > 0, so we have no baskets.
+            if (refPerTok == 0) return FIX_ZERO;
 
-            // {tok/BU} = {ref/BU} / {ref/tok}
-            // TODO: div by 0? https://app.asana.com/0/1202557536393044/1203043664234029/f
-            uint192 q = basket.refAmts[basket.erc20s[i]].div(coll.refPerTok(), CEIL);
+            // {tok}
+            uint192 bal = coll.bal(account);
 
-            // {BU} = {tok} / {tok/BU}
-            baskets = fixMin(baskets, bal.div(q)); // q > 0 because q = (n).div(_, CEIL) and n > 0
+            // {tok/BU} = {ref/BU} / {ref/tok}.  0-division averted by condition above.
+            uint192 q = basket.refAmts[basket.erc20s[i]].div(refPerTok, CEIL);
+
+            // {BU} = {tok} / {tok/BU}.  q > 0 because q = (n).div(_, CEIL) and n > 0
+            baskets = fixMin(baskets, bal.div(q));
         }
     }
 
@@ -462,6 +490,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             if (goodCollateral(config.targetNames[erc20], erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
                 newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
+                // this div is safe: targetPerRef() > 0: goodCollateral check
             }
         }
 
@@ -509,6 +538,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                     newBasket.add(
                         erc20,
                         needed.div(reg.toColl(erc20).targetPerRef().mulu(size), CEIL)
+                        // this div is safe: targetPerRef > 0: goodCollateral check
                     );
                     assigned++;
                 }
@@ -554,7 +584,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     }
 
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
-    /// and not a system token or 0 addr
+    /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == main.rsr()) return false;
@@ -562,7 +592,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         if (erc20 == IERC20(address(main.stRSR()))) return false;
 
         try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
-            return targetName == coll.targetName() && coll.status() != CollateralStatus.DISABLED;
+            return
+                targetName == coll.targetName() &&
+                coll.status() != CollateralStatus.DISABLED &&
+                coll.refPerTok() > 0 &&
+                coll.targetPerRef() > 0;
         } catch {
             return false;
         }

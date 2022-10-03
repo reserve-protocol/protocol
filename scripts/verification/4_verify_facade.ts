@@ -21,7 +21,7 @@ async function main() {
   deployments = <IDeployments>getDeploymentFile(getDeploymentFilename(chainId))
 
   /** ******************** Verify Facade ****************************************/
-  await verifyContract(chainId, deployments.facade, [], 'contracts/facade/Facade.sol:FacadeP1')
+  await verifyContract(chainId, deployments.facade, [], 'contracts/facade/Facade.sol:Facade')
 }
 
 main().catch((error) => {
