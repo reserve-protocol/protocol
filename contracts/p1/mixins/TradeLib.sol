@@ -53,7 +53,7 @@ library TradeLib {
         }
 
         // {sellTok} - reads trade.sell.price(true)
-        uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell));
+        uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
 
         // {qSellTok}
         req.sellAmount = s.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR);
@@ -107,7 +107,10 @@ library TradeLib {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.
-        trade.buyAmount = fixMax(trade.buyAmount, minTradeSize(trade.buy, rules.minTradeVolume));
+        trade.buyAmount = fixMax(
+            trade.buyAmount,
+            minTradeSize(rules.minTradeVolume, trade.buyPrice)
+        );
 
         // {sellTok} = {buyTok} * {UoA/buyTok} / {UoA/sellTok}
         uint192 exactSellAmount = trade.buyAmount.mulDiv(trade.buyPrice, trade.sellPrice, CEIL);
@@ -125,40 +128,38 @@ library TradeLib {
 
     /// @param asset The asset in question
     /// @param amt {tok} The number of whole tokens we plan to sell
-    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
+    /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
-        uint192 minTradeVolume_
+        uint192 minTradeVolume
     ) internal view returns (bool) {
+        (, uint192 price) = asset.price(true); // {UoA/tok}
+
         // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
         // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
         // likely to be true of all the trading platforms we integrate with.
         return
-            amt.gte(minTradeSize(asset, minTradeVolume_)) &&
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }
 
-    /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price
-    /// @param minTradeVolume_ {UoA} The min trade volume, passed in for gas optimization
-    /// @return {tok} The min trade size for the asset in whole tokens
-    function minTradeSize(IAsset asset, uint192 minTradeVolume_) internal view returns (uint192) {
-        (, uint192 price) = asset.price(true); // {UoA/tok}
-        if (price == 0) return FIX_MAX;
+    // === Private ===
 
+    /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price
+    /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
+    /// @return {tok} The min trade size for the asset in whole tokens
+    function minTradeSize(uint192 minTradeVolume, uint192 price) private pure returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
-        return minTradeVolume_.div(price);
+        return price == 0 ? FIX_MAX : minTradeVolume.div(price, CEIL);
     }
 
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
     /// @return {tok} The max trade size for the asset in whole tokens
-    function maxTradeSize(IAsset asset) internal view returns (uint192) {
-        (, uint192 price) = asset.price(true); // {UoA/tok}
-        if (price == 0) return FIX_MAX;
-
+    function maxTradeSize(IAsset asset, uint192 price) internal view returns (uint192) {
         // {tok} = {UoA} / {UoA/tok}
-        return asset.maxTradeVolume().div(price);
+        return price == 0 ? FIX_MAX : asset.maxTradeVolume().div(price, CEIL);
     }
 }
