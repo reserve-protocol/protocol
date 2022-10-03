@@ -51,7 +51,8 @@ library TradeLib {
         uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mul(trade.sellPrice).div(
+        uint192 b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
+            trade.sellPrice,
             trade.buyPrice,
             CEIL
         );

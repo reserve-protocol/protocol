@@ -543,7 +543,7 @@ library TradingLibP0 {
         if (price == 0) return FIX_MAX;
 
         // {tok} = {UoA} / {UoA/tok}
-        return minTradeVolume_.div(price);
+        return minTradeVolume_.div(price, ROUND);
     }
 
     /// Calculates the maxTradeSize for an asset based on the asset's maxTradeVolume and price
@@ -553,7 +553,7 @@ library TradingLibP0 {
         if (price == 0) return FIX_MAX;
 
         // {tok} = {UoA} / {UoA/tok}
-        return asset.maxTradeVolume().div(price);
+        return asset.maxTradeVolume().div(price, ROUND);
     }
 
     /// @return The AssetRegistry
