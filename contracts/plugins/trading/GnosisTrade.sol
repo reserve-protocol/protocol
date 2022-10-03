@@ -111,11 +111,14 @@ contract GnosisTrade is ITrade {
         // Downsize our sell amount to adjust for fee
         // {qTok} = {qTok} * {1} / {1}
         uint96 sellAmount = uint96(
-            _divrnd(req.sellAmount * FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator(), CEIL)
+            _divrnd(
+                req.sellAmount * FEE_DENOMINATOR,
+                FEE_DENOMINATOR + gnosis.feeNumerator(),
+                FLOOR
+            )
         );
-        // TODO this CEIL hasn't been analyzed in depth
-        // It seems like it should be fine even for small feeNumerators
 
+        // Don't decrease minBuyAmount even if fees are in effect. The fee is part of the slippage
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
 
         uint256 minBuyAmtPerOrder = Math.max(
@@ -128,7 +131,7 @@ contract GnosisTrade is ITrade {
 
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), initBal);
 
         auctionId = gnosis.initiateAuction(
             sell,
