@@ -5,7 +5,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
-import { CollateralStatus, RoundingMode } from '../../common/constants'
+import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
@@ -1174,6 +1174,156 @@ describe('The Chaos Operations scenario', () => {
       expect(p3.curr).to.equal(fp('0.5'))
       expect(p3.low).to.equal(0)
       expect(p3.high).to.equal(p3.curr.add(fp('0.8')))
+    })
+
+    it('can perform a revenue auction', async () => {
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
+      const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('RA0'))
+
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(0)
+      expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.equal(0)
+
+      // mint some c0 to backing manager
+      await c0.mint(comp.backingManager.address, exa)
+
+      await scenario.updateRewards(0, 20000n * exa) // set C0 rewards to 20Kexa R0
+
+      // claim rewards
+      await scenario.claimProtocolRewards(2) // claim rewards in backing manager (2)
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(20000n * exa)
+
+      // Manage C0 and R0 in backing manager
+      await scenario.pushBackingToManage(0)
+      await scenario.pushBackingToManage(1)
+
+      // Manage revenue asset in Backing Manager
+      await scenario.manageBackingTokens()
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(0)
+      expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(12000n * exa) // 60%
+      expect(await r0.balanceOf(comp.rTokenTrader.address)).to.equal(8000n * exa) // 40%
+
+      // Perform auction of R0
+      await scenario.manageTokenInRSRTrader(1)
+      expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
+
+      // Check trade
+      const tradeInTrader = await ConAt('TradeMock', await comp.rsrTrader.trades(r0.address))
+      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      expect(tradeInTrader.address).to.equal(tradeInBroker.address)
+
+      expect(await r0.balanceOf(tradeInTrader.address)).to.equal(12000n * exa)
+      expect(await tradeInTrader.status()).to.equal(TradeStatus.OPEN)
+      expect(await tradeInTrader.canSettle()).to.be.false
+
+      // Wait and settle the trade
+      await advanceTime(await comp.broker.auctionLength())
+      expect(await tradeInTrader.canSettle()).to.be.true
+
+      // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
+      await scenario.pushSeedForTrades(await tradeInTrader.requestedBuyAmt())
+
+      // Settle trades
+      await scenario.settleTrades()
+      expect(await tradeInTrader.status()).to.equal(TradeStatus.CLOSED)
+
+      expect(await r0.balanceOf(tradeInTrader.address)).to.equal(0)
+      // Check received RSR
+      expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.be.gt(0)
+    })
+
+    it('can perform a recollateralization', async () => {
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
+      const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
+
+      // Setup backup
+      await scenario.pushBackingForBackup(tokenIDs.get('CA0') as number)
+      await scenario.setBackupConfig(0)
+
+      // Setup a simple basket of two tokens, only target type A
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.5').sub(1))
+      await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.5').sub(1))
+      await scenario.setPrimeBasket()
+
+      // Switch basket
+      await scenario.refreshBasket()
+
+      // Issue some RTokens
+      // As Alice, make allowances
+      const [tokenAddrs, amts] = await comp.rToken.quote(15000n * exa, RoundingMode.CEIL)
+      for (let i = 0; i < amts.length; i++) {
+        const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
+        await token.connect(alice).approve(comp.rToken.address, amts[i])
+      }
+      // Issue RTokens
+      await scenario.connect(alice).justIssue(15000n * exa)
+
+      // Wait, then vest as Alice
+      await helpers.mine(100)
+      await scenario.connect(alice).vestIssuance(1)
+
+      // No c0 tokens in backing manager
+      expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
+
+      // Stake RSR
+      await scenario.connect(alice).stake(100000n * exa)
+
+      // Default one token in the basket CA2
+      const defaultTokenId = Number(tokenIDs.get('CA2'))
+      const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(c2.address))
+      expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+      expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+      await scenario.updatePrice(defaultTokenId, 0, fp(1), fp(1), fp(1)) // Will default CA2
+
+      // Call main poke to perform refresh on assets
+      await scenario.poke()
+
+      // Collateral defaulted
+      expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await comp.basketHandler.fullyCollateralized()).to.equal(false)
+
+      // Trying to manage tokens will fail due to unsound basket
+      await scenario.pushBackingToManage(2)
+      await scenario.pushBackingToManage(4)
+      await expect(scenario.manageBackingTokens()).to.be.reverted
+
+      // Refresh basket - will perform basket switch - New basket: CA1 and CA0
+      await scenario.refreshBasket()
+
+      // Manage backing tokens, will create auction
+      await scenario.manageBackingTokens()
+
+      // Check trade
+      const tradeInBackingManager = await ConAt(
+        'TradeMock',
+        await comp.backingManager.trades(c2.address)
+      )
+      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      expect(tradeInBackingManager.address).to.equal(tradeInBroker.address)
+
+      expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
+      expect(await tradeInBackingManager.canSettle()).to.be.false
+
+      // All defaulted tokens moved to trader
+      expect(await c2.balanceOf(comp.backingManager.address)).to.equal(0)
+      expect(await c2.balanceOf(tradeInBackingManager.address)).to.be.gt(0)
+
+      // Wait and settle the trade
+      await advanceTime(await comp.broker.auctionLength())
+      expect(await tradeInBackingManager.canSettle()).to.be.true
+
+      // No C0 tokens in backing manager
+      expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
+
+      // Settle trades - set some seed > 0
+      await scenario.pushSeedForTrades(fp(1000000))
+      await scenario.settleTrades()
+
+      expect(await tradeInBackingManager.status()).to.equal(TradeStatus.CLOSED)
+
+      // Check balances after
+      expect(await c2.balanceOf(tradeInBackingManager.address)).to.equal(0)
+      expect(await c0.balanceOf(comp.backingManager.address)).to.be.gt(0)
     })
   })
 
