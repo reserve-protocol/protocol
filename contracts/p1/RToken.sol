@@ -181,9 +181,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         assetRegistry.refresh();
 
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
-        IBasketHandler bh = basketHandler; // OK to save: can only be changed by gov
 
-        uint48 basketNonce = bh.nonce();
+        uint48 basketNonce = basketHandler.nonce();
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
@@ -196,12 +195,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             assetRegistry.refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
-            basketNonce = bh.nonce();
+            basketNonce = basketHandler.nonce();
             queue = issueQueues[issuer];
         }
 
         // == Checks-effects block ==
-        CollateralStatus status = bh.status();
+        CollateralStatus status = basketHandler.status();
         require(status == CollateralStatus.SOUND, "basket unsound");
 
         furnace.melt();
@@ -222,7 +221,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             totalSupply() > 0 ? mulDiv256(basketsNeeded, amtRToken, totalSupply()) : amtRToken
         );
 
-        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
+            amtBaskets,
+            CEIL
+        );
 
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
@@ -353,11 +355,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().refresh();
 
         // == Checks ==
-        CollateralStatus status = main.basketHandler().status();
+        CollateralStatus status = basketHandler.status();
         require(status == CollateralStatus.SOUND, "basket unsound");
 
         IssueQueue storage queue = issueQueues[account];
-        uint48 basketNonce = main.basketHandler().nonce();
+        uint48 basketNonce = basketHandler.nonce();
 
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets;
@@ -418,7 +420,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address redeemer = _msgSender();
         require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
-        require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
@@ -435,10 +437,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, supply));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
-            baskets,
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
