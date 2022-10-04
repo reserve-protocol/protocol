@@ -38,7 +38,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
-    bool private disabled;
+    bool internal disabled;
 
     // ==== Invariants ====
     // basket is a valid Basket:

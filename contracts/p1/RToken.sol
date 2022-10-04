@@ -53,7 +53,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     // ==== Slow Issuance State====
 
     // When all pending issuances will have vested.
-    uint192 private allVestAt; // D18{fractional block number}
+    uint192 internal allVestAt; // D18{fractional block number}
 
     // Enforce a fixed issuanceRate throughout the entire block by caching it.
     // Both of these MUST only be modified by whenFinished()
