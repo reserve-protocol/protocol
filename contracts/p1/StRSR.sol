@@ -43,8 +43,13 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // solhint-disable const-name-snakecase
     uint8 public constant decimals = 18;
 
-    /// === Financial State: Stakes (balances) ===
+    // Component addresses, immutable after init()
+    IAssetRegistry private assetRegistry;
+    IBackingManager private backingManager;
+    IBasketHandler private basketHandler;
+    IERC20 private rsr;
 
+    /// === Financial State: Stakes (balances) ===
     // Era. If stake balances are wiped out due to RSR seizure, increment the era to zero balances.
     // Only ever directly written by beginEra()
     uint256 internal era;
@@ -165,6 +170,12 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         __EIP712_init(name_, "1");
         name = name_;
         symbol = symbol_;
+
+        assetRegistry = main_.assetRegistry();
+        backingManager = main_.backingManager();
+        basketHandler = main_.basketHandler();
+        rsr = IERC20(address(main_.rsr()));
+
         payoutLastPaid = uint48(block.timestamp);
         rsrRewardsAtLastPayout = main_.rsr().balanceOf(address(this));
         setUnstakingDelay(unstakingDelay_);
@@ -220,7 +231,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit Staked(era, account, rsrAmount, stakeAmount);
 
         // == Interactions ==
-        IERC20Upgradeable(address(main.rsr())).safeTransferFrom(account, address(this), rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransferFrom(account, address(this), rsrAmount);
     }
 
     /// Begins a delayed unstaking for `amount` StRSR
@@ -286,12 +297,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //   rsr.transfer(account, rsrOut)
     function withdraw(address account, uint256 endId) external notPausedOrFrozen {
         // == Refresh ==
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         // == Checks + Effects ==
-        IBasketHandler bh = main.basketHandler();
-        require(bh.fullyCollateralized(), "RToken uncapitalized");
-        require(bh.status() == CollateralStatus.SOUND, "basket defaulted");
+        require(basketHandler.fullyCollateralized(), "RToken uncapitalized");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket defaulted");
 
         uint256 firstId = firstRemainingDraft[draftEra][account];
         CumulativeDraft[] storage queue = draftQueues[draftEra][account];
@@ -321,7 +331,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
         emit UnstakingCompleted(firstId, endId, draftEra, account, rsrAmount);
 
         // == Interaction ==
-        IERC20Upgradeable(address(main.rsr())).safeTransfer(account, rsrAmount);
+        IERC20Upgradeable(address(rsr)).safeTransfer(account, rsrAmount);
     }
 
     /// @param rsrAmount {qRSR}
@@ -360,11 +370,11 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     //   seized >= rsrAmount, which should be a logical consequence of the above effects
 
     function seizeRSR(uint256 rsrAmount) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(backingManager), "not backing manager");
         require(rsrAmount > 0, "Amount cannot be zero");
         uint192 initRate = exchangeRate();
 
-        uint256 rsrBalance = main.rsr().balanceOf(address(this));
+        uint256 rsrBalance = rsr.balanceOf(address(this));
         require(rsrAmount <= rsrBalance, "Cannot seize more RSR than we hold");
 
         uint256 seizedRSR;
@@ -406,7 +416,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
         // Transfer RSR to caller
         emit ExchangeRateSet(initRate, exchangeRate());
-        IERC20Upgradeable(address(main.rsr())).safeTransfer(_msgSender(), seizedRSR);
+        IERC20Upgradeable(address(rsr)).safeTransfer(_msgSender(), seizedRSR);
     }
 
     /// @return D18{qRSR/qStRSR} The exchange rate between RSR and StRSR
@@ -575,7 +585,7 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
 
     /// @return {qRSR} The balance of RSR that this contract owns dedicated to future RSR rewards.
     function rsrRewards() internal view returns (uint256) {
-        return main.rsr().balanceOf(address(this)) - stakeRSR - draftRSR;
+        return rsr.balanceOf(address(this)) - stakeRSR - draftRSR;
     }
 
     // ==== ERC20 ====

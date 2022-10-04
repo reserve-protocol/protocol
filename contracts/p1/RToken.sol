@@ -59,6 +59,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== End Governance Params ====
 
+    // ==== Peer components ====
+    IAssetRegistry private assetRegistry;
+    IBasketHandler private basketHandler;
+    IBackingManager private backingManager;
+    IFurnace private furnace;
+
     // The number of baskets that backingManager must hold
     // in order for this RToken to be fully collateralized.
     // The exchange rate for issuance and redemption is totalSupply()/basketsNeeded {BU}/{qRTok}.
@@ -153,6 +159,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+
+        assetRegistry = main_.assetRegistry();
+        basketHandler = main_.basketHandler();
+        backingManager = main_.backingManager();
+        furnace = main_.furnace();
+
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setScalingRedemptionRate(maxRedemptionCharge_);
@@ -166,10 +178,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
-        IBasketHandler bh = main.basketHandler(); // OK to save: can only be changed by gov
+        IBasketHandler bh = basketHandler; // OK to save: can only be changed by gov
 
         uint48 basketNonce = bh.nonce();
         IssueQueue storage queue = issueQueues[issuer];
@@ -181,7 +193,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(issuer, queue.left, queue.right);
 
             // Refresh collateral after interaction
-            main.assetRegistry().refresh();
+            assetRegistry.refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
             basketNonce = bh.nonce();
@@ -192,7 +204,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         CollateralStatus status = bh.status();
         require(status == CollateralStatus.SOUND, "basket unsound");
 
-        main.furnace().melt();
+        furnace.melt();
 
         // AT THIS POINT:
         //   all contract invariants hold
@@ -236,13 +248,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
             emit Issuance(issuer, amtRToken, amtBaskets);
 
-            address backingMgr = address(main.backingManager());
-
             // == Interactions then return: transfer tokens ==
             // Complete issuance
             _mint(issuer, amtRToken);
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, backingMgr, deposits[i]);
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    address(backingManager),
+                    deposits[i]
+                );
             }
             return;
         }
@@ -430,7 +444,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
         //   where balances[i] = erc20s[i].balanceOf(this)
 
-        IBackingManager backingMgr = main.backingManager();
         uint256 erc20length = erc20s.length;
 
         // D18{1} = D18 * {qRTok} / {qRTok}
@@ -441,7 +454,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         for (uint256 i = 0; i < erc20length; ++i) {
             // {qTok} = D18{1} * {qTok} / D18
             uint256 prorata = (prorate *
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))) / FIX_ONE;
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager))) / FIX_ONE;
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
@@ -462,7 +475,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                address(backingMgr),
+                address(backingManager),
                 redeemer,
                 amounts[i]
             );
@@ -480,7 +493,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(backingManager), "not backing manager");
         _mint(recipient, amtRToken);
         requireValidBUExchangeRate();
     }
@@ -502,7 +515,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
         requireValidBUExchangeRate();
@@ -705,7 +718,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         for (uint256 i = 0; i < tokensLen; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(
-                address(main.backingManager()),
+                address(backingManager),
                 amtDeposits[i]
             );
         }

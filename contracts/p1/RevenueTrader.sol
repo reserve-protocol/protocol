@@ -17,6 +17,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
     // Immutable after init()
     IERC20 public tokenToBuy;
+    IAssetRegistry private assetRegistry;
+    IDistributor private distributor;
 
     function init(
         IMain main_,
@@ -26,7 +28,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     ) external initializer {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, minTradeVolume_);
+        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
         tokenToBuy = tokenToBuy_;
     }
 
@@ -54,17 +56,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==
-            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
-                address(main.distributor()),
-                bal
-            );
-            main.distributor().distribute(erc20, address(this), bal);
+            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(address(distributor), bal);
+            distributor.distribute(erc20, address(this), bal);
             return;
         }
 
-        IAssetRegistry reg = main.assetRegistry();
-        IAsset sell = reg.toAsset(erc20);
-        IAsset buy = reg.toAsset(tokenToBuy);
+        IAsset sell = assetRegistry.toAsset(erc20);
+        IAsset buy = assetRegistry.toAsset(tokenToBuy);
 
         TradeInfo memory trade = TradeInfo({
             sell: sell,

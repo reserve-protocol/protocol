@@ -33,8 +33,19 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
     uint8 public constant MAX_DESTINATIONS_ALLOWED = 100;
 
+    IERC20 private rsr;
+    IERC20 private rToken;
+    address private furnace;
+    address private stRSR;
+
     function init(IMain main_, RevenueShare calldata dist) external initializer {
         __Component_init(main_);
+
+        rsr = main_.rsr();
+        rToken = IERC20(address(main_.rToken()));
+        furnace = address(main_.furnace());
+        stRSR = address(main_.stRSR());
+
         _ensureNonZeroDistribution(dist.rTokenDist, dist.rsrDist);
         _setDistribution(FURNACE, RevenueShare(dist.rTokenDist, 0));
         _setDistribution(ST_RSR, RevenueShare(0, dist.rsrDist));
@@ -78,9 +89,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
         address from,
         uint256 amount
     ) external notPausedOrFrozen {
-        IERC20 rsr = main.rsr();
-
-        require(erc20 == rsr || erc20 == IERC20(address(main.rToken())), "RSR or RToken");
+        require(erc20 == rsr || erc20 == rToken, "RSR or RToken");
         bool isRSR = erc20 == rsr; // if false: isRToken
         uint256 tokensPerShare;
         {
@@ -92,8 +101,6 @@ contract DistributorP1 is ComponentP1, IDistributor {
 
         // Evenly distribute revenue tokens per distribution share.
         // This rounds "early", and that's deliberate!
-        address furnace = address(main.furnace());
-        address stRSR = address(main.stRSR());
 
         Transfer[] memory transfers = new Transfer[](destinations.length());
         uint256 numTransfers;
