@@ -87,10 +87,7 @@ async function main() {
       fp('0.05').toString(), // 5%
       bn('86400').toString(), // 24h
     ],
-    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral',
-    {
-      OracleLib: stage1Deployments.oracleLib,
-    }
+    'contracts/plugins/assets/ATokenFiatCollateral.sol:ATokenFiatCollateral'
   )
   /********************** Verify CTokenFiatCollateral - cDAI  ****************************************/
   asset = await ethers.getContractAt('Asset', deployments.collateral.cDAI as string)
@@ -110,10 +107,7 @@ async function main() {
       bn(18).toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenFiatCollateral.sol:CTokenFiatCollateral',
-    {
-      OracleLib: stage1Deployments.oracleLib,
-    }
+    'contracts/plugins/assets/CTokenFiatCollateral.sol:CTokenFiatCollateral'
   )
   /********************** Verify CTokenNonFiatCollateral - cWBTC  ****************************************/
   asset = await ethers.getContractAt('Asset', deployments.collateral.cWBTC as string)
@@ -134,10 +128,7 @@ async function main() {
       bn(8).toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral',
-    {
-      OracleLib: stage1Deployments.oracleLib,
-    }
+    'contracts/plugins/assets/CTokenNonFiatCollateral.sol:CTokenNonFiatCollateral'
   )
   /********************** Verify CTokenSelfReferentialFiatCollateral - cETH  ****************************************/
   asset = await ethers.getContractAt('Asset', deployments.collateral.cETH as string)
@@ -156,10 +147,7 @@ async function main() {
       bn(18).toString(),
       networkConfig[chainId].COMPTROLLER,
     ],
-    'contracts/plugins/assets/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral',
-    {
-      OracleLib: stage1Deployments.oracleLib,
-    }
+    'contracts/plugins/assets/CTokenSelfReferentialCollateral.sol:CTokenSelfReferentialCollateral'
   )
   /********************** Verify NonFiatCollateral - wBTC  ****************************************/
   asset = await ethers.getContractAt('Asset', deployments.collateral.WBTC as string)
@@ -215,10 +203,7 @@ async function main() {
       fp('0.05').toString(), // 5%
       bn('86400').toString(), // 24h
     ],
-    'contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral',
-    {
-      OracleLib: stage1Deployments.oracleLib,
-    }
+    'contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral'
   )
 }
 

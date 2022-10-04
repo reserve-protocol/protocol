@@ -56,9 +56,6 @@ async function main() {
       name: 'backingManager',
       desc: 'BackingManager',
       contract: 'contracts/p1/BackingManager.sol:BackingManagerP1',
-      libraries: {
-        TradingLibP1: deployments.tradingLib,
-      },
     },
     {
       name: 'basketHandler',
@@ -89,9 +86,9 @@ async function main() {
       name: 'rToken',
       desc: 'RToken',
       contract: 'contracts/p1/RToken.sol:RTokenP1',
-      libraries: {
-        PermitLib: deployments.permitLib,
-      },
+      // libraries: {
+      //   PermitLib: deployments.permitLib,
+      // },
     },
     {
       name: 'stRSR',
