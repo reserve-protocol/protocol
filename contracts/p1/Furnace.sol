@@ -20,6 +20,8 @@ contract FurnaceP1 is ComponentP1, IFurnace {
     uint48 public lastPayout; // {seconds} The last time we did a payout
     uint256 public lastPayoutBal; // {qRTok} The balance of RToken at the last payout
 
+    IRToken private rToken;
+
     // ==== Invariants ====
     // ratio <= MAX_RATIO = 1e18
     // 0 < period <= MAX_PERIOD
@@ -34,10 +36,11 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         uint192 ratio_
     ) external initializer {
         __Component_init(main_);
+        rToken = main_.rToken();
         setPeriod(period_);
         setRatio(ratio_);
         lastPayout = uint48(block.timestamp);
-        lastPayoutBal = main_.rToken().balanceOf(address(this));
+        lastPayoutBal = rToken.balanceOf(address(this));
     }
 
     // [furnace-payout-formula]:
@@ -73,7 +76,6 @@ contract FurnaceP1 is ComponentP1, IFurnace {
         // Paying out the ratio r, N times, equals paying out the ratio (1 - (1-r)^N) 1 time.
         uint192 payoutRatio = FIX_ONE.minus(FIX_ONE.minus(ratio).powu(numPeriods));
 
-        IRToken rToken = main.rToken();
         uint256 amount = payoutRatio.mulu_toUint(lastPayoutBal);
 
         lastPayout += numPeriods * period;

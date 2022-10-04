@@ -20,6 +20,9 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     uint192 public constant MIN_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
+    // Peer contracts, immutable after init()
+    IBroker private broker;
+
     // All open trades
     mapping(IERC20 => ITrade) public trades;
     uint48 public tradesOpen;
@@ -34,10 +37,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
-        internal
-        onlyInitializing
-    {
+    function __Trading_init(
+        IMain main_,
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
+    ) internal onlyInitializing {
+        broker = main_.broker();
         setMaxTradeSlippage(maxTradeSlippage_);
         setMinTradeVolume(minTradeVolume_);
     }
@@ -89,11 +94,8 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(
-            address(main.broker()),
-            req.sellAmount
-        );
-        ITrade trade = main.broker().openTrade(req);
+        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(broker), req.sellAmount);
+        ITrade trade = broker.openTrade(req);
 
         trades[sell] = trade;
         tradesOpen++;

@@ -111,6 +111,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     uint192 public constant MAX_TARGET_AMT = 1e3 * FIX_ONE; // {target/BU} max basket weight
 
+    // Peer components
+    IAssetRegistry private assetRegistry;
+    IBackingManager private backingManager;
+    IERC20 private rsr;
+    IRToken private rToken;
+    IStRSR private stRSR;
+
     // config is the basket configuration, from which basket will be computed in a basket-switch
     // event. config is only modified by governance through setPrimeBakset and setBackupConfig
     BasketConfig private config;
@@ -138,6 +145,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // BasketHandler.init() just leaves the BasketHandler state zeroed
     function init(IMain main_) external initializer {
         __Component_init(main_);
+
+        assetRegistry = main_.assetRegistry();
+        backingManager = main_.backingManager();
+        rsr = main_.rsr();
+        rToken = main_.rToken();
+        stRSR = main_.stRSR();
+
         disabled = true;
     }
 
@@ -146,7 +160,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // checks: caller is assetRegistry
     // effects: disabled' = true
     function disableBasket() external {
-        require(_msgSender() == address(main.assetRegistry()), "asset registry only");
+        require(_msgSender() == address(assetRegistry), "asset registry only");
         uint192[] memory refAmts = new uint192[](basket.erc20s.length);
         emit BasketSet(nonce, basket.erc20s, refAmts, true);
         disabled = true;
@@ -162,7 +176,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //            that satisfies basketConfig) and disabled' = false
     //   Or no such basket exists and disabled' = true
     function refreshBasket() external {
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         require(
             main.hasRole(OWNER, _msgSender()) ||
@@ -203,7 +217,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         delete config.erc20s;
 
         // Set up new config basket
-        IAssetRegistry reg = main.assetRegistry();
+        IAssetRegistry reg = assetRegistry;
         bytes32[] memory names = new bytes32[](erc20s.length);
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
@@ -240,7 +254,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
-        IAssetRegistry reg = main.assetRegistry();
+        IAssetRegistry reg = assetRegistry;
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
@@ -254,7 +268,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return Whether this contract owns enough collateral to cover rToken.basketsNeeded() BUs
     /// ie, whether the protocol is currently fully collateralized
     function fullyCollateralized() external view returns (bool) {
-        return basketsHeldBy(address(main.backingManager())) >= main.rToken().basketsNeeded();
+        return basketsHeldBy(address(backingManager)) >= rToken.basketsNeeded();
     }
 
     /// @return status_ The status of the basket
@@ -265,7 +279,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         if (disabled || size == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < size; ++i) {
-            CollateralStatus s = main.assetRegistry().toColl(basket.erc20s[i]).status();
+            CollateralStatus s = assetRegistry.toColl(basket.erc20s[i]).status();
             if (s.worseThan(status_)) status_ = s;
         }
     }
@@ -275,7 +289,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
     // Otherwise returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) public view returns (uint192) {
-        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+        try assetRegistry.toColl(erc20) returns (ICollateral coll) {
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
             uint192 refPerTok = coll.refPerTok(); // {ref/tok}
@@ -297,7 +311,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
+            ICollateral coll = assetRegistry.toColl(basket.erc20s[i]);
 
             (bool isFallback_, uint192 price_) = coll.price(allowFallback);
             isFallback = isFallback || isFallback_;
@@ -362,7 +376,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         baskets = FIX_MAX;
 
         for (uint256 i = 0; i < length; ++i) {
-            ICollateral coll = main.assetRegistry().toColl(basket.erc20s[i]);
+            ICollateral coll = assetRegistry.toColl(basket.erc20s[i]);
             if (coll.status() == CollateralStatus.DISABLED) return FIX_ZERO;
 
             uint192 refPerTok = coll.refPerTok();
@@ -444,7 +458,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// (The mutator that actually does all the work in this contract.)
     function _switchBasket() private {
-        IAssetRegistry reg = main.assetRegistry();
+        IAssetRegistry reg = assetRegistry;
         disabled = false;
 
         // targetNames := {}
@@ -568,15 +582,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Require that erc20s is a valid collateral array
     function requireValidCollArray(IERC20[] calldata erc20s) internal view {
-        IERC20 rsr = main.rsr();
-        IERC20 rToken = IERC20(address(main.rToken()));
-        IERC20 stRSR = IERC20(address(main.stRSR()));
         IERC20 zero = IERC20(address(0));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             require(erc20s[i] != rsr, "RSR is not valid collateral");
-            require(erc20s[i] != rToken, "RToken is not valid collateral");
-            require(erc20s[i] != stRSR, "stRSR is not valid collateral");
+            require(erc20s[i] != IERC20(address(rToken)), "RToken is not valid collateral");
+            require(erc20s[i] != IERC20(address(stRSR)), "stRSR is not valid collateral");
             require(erc20s[i] != zero, "address zero is not valid collateral");
         }
 
@@ -587,11 +598,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
         if (erc20 == IERC20(address(0))) return false;
-        if (erc20 == main.rsr()) return false;
-        if (erc20 == IERC20(address(main.rToken()))) return false;
-        if (erc20 == IERC20(address(main.stRSR()))) return false;
+        if (erc20 == rsr) return false;
+        if (erc20 == IERC20(address(rToken))) return false;
+        if (erc20 == IERC20(address(stRSR))) return false;
 
-        try main.assetRegistry().toColl(erc20) returns (ICollateral coll) {
+        try assetRegistry.toColl(erc20) returns (ICollateral coll) {
             return
                 targetName == coll.targetName() &&
                 coll.status() != CollateralStatus.DISABLED &&
