@@ -200,7 +200,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     // effects:
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
-    //   config'.targetNames[e] = reg.toColl(e).targetName, for e in erc20s
+    //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
     function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
         external
         governance
@@ -217,19 +217,18 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         delete config.erc20s;
 
         // Set up new config basket
-        IAssetRegistry reg = assetRegistry;
         bytes32[] memory names = new bytes32[](erc20s.length);
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the prime basket to have its asset unregistered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             require(0 < targetAmts[i], "invalid target amount; must be nonzero");
             require(targetAmts[i] <= MAX_TARGET_AMT, "invalid target amount; too large");
 
             config.erc20s.push(erc20s[i]);
             config.targetAmts[erc20s[i]] = targetAmts[i];
-            names[i] = reg.toColl(erc20s[i]).targetName();
+            names[i] = assetRegistry.toColl(erc20s[i]).targetName();
             config.targetNames[erc20s[i]] = names[i];
         }
 
@@ -254,12 +253,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         BackupConfig storage conf = config.backups[targetName];
         conf.max = max;
         delete conf.erc20s;
-        IAssetRegistry reg = assetRegistry;
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             // This is a nice catch to have, but in general it is possible for
             // an ERC20 in the backup config to have its asset altered.
-            require(reg.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
+            require(assetRegistry.toAsset(erc20s[i]).isCollateral(), "token is not collateral");
             conf.erc20s.push(erc20s[i]);
         }
         emit BackupConfigSet(targetName, max, erc20s);
@@ -458,7 +456,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Select and save the next basket, based on the BasketConfig and Collateral statuses
     /// (The mutator that actually does all the work in this contract.)
     function _switchBasket() private {
-        IAssetRegistry reg = assetRegistry;
         disabled = false;
 
         // targetNames := {}
@@ -503,7 +500,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
             if (goodCollateral(config.targetNames[erc20], erc20) && targetWeight.gt(FIX_ZERO)) {
                 goodWeights[targetIndex] = goodWeights[targetIndex].plus(targetWeight);
-                newBasket.add(erc20, targetWeight.div(reg.toColl(erc20).targetPerRef(), CEIL));
+                newBasket.add(
+                    erc20,
+                    targetWeight.div(assetRegistry.toColl(erc20).targetPerRef(), CEIL)
+                );
                 // this div is safe: targetPerRef() > 0: goodCollateral check
             }
         }
@@ -551,7 +551,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                     // = targetWeight(newBasket,erc20) + unsoundPrimeWt(tgt) / len(backups(tgt))
                     newBasket.add(
                         erc20,
-                        needed.div(reg.toColl(erc20).targetPerRef().mulu(size), CEIL)
+                        needed.div(assetRegistry.toColl(erc20).targetPerRef().mulu(size), CEIL)
                         // this div is safe: targetPerRef > 0: goodCollateral check
                     );
                     assigned++;

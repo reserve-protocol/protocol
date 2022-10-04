@@ -105,19 +105,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // only called internally, from manageTokens*, so erc20s has no duplicates unique
     // (but not necessarily all registered or valid!)
     function _manageTokens(IERC20[] calldata erc20s) private {
-        IBasketHandler bh = basketHandler;
-
         // == Refresh ==
         assetRegistry.refresh();
 
         if (tradesOpen > 0) return;
         // Only trade when all the collateral assets in the basket are SOUND
-        require(bh.status() == CollateralStatus.SOUND, "basket not sound");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
 
-        uint48 basketTimestamp = bh.timestamp();
+        uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (bh.fullyCollateralized()) {
+        if (basketHandler.fullyCollateralized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
