@@ -53,7 +53,6 @@ The deployment process consists of three high-level commands:
 hardhat run scripts/deploy.ts --network {NETWORK}
 OR
 yarn deploy --network {NETWORK}
->>>>>>> c8f7d028 (documentation)
 ```
 
 If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy.ts` in order to pick up execution at another point.
@@ -66,12 +65,12 @@ OR
 yarn confirm --network {NETWORK}
 ```
 
-3. Verify everything:
+3. Verify everything on Etherscan:
 
 ```
-hardhat run scripts/verify.ts --network {NETWORK}
+hardhat run scripts/verify_etherscan.ts --network {NETWORK}
 OR
-yarn verify --network {NETWORK}
+yarn verify_etherscan --network {NETWORK}
 ```
 
 The verification scripts are smart enough to only verify those that are unverified.
@@ -223,17 +222,17 @@ yarn confirm --network mainnet
 
 End state: All addresses are verified, the contracts are in the correct state, and it's time to connect the Register to the new mainnet addresses!
 
-### Verify
+### Verify on Etherscan
 
 [Screensharing ok]
 
 Next, run:
 
 ```
-yarn verify --network mainnet
+yarn verify_etherscan --network mainnet
 ```
 
-`verify.ts` works a bit differently than `deploy.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+`verify_etherscan.ts` works a bit differently than `deploy.ts`; verification is smart enough to skip over contracts that have already been verified.
 
 It may be that `verify.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
