@@ -1,7 +1,5 @@
 import hre from 'hardhat'
 
-import { expect } from 'chai'
-
 import { bn } from '../../common/numbers'
 import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
@@ -10,7 +8,7 @@ import {
   getRTokenDeploymentFilename,
   IRTokenDeployments,
 } from '../deployment/common'
-import { RTOKEN_NAME, getRTokenConfig } from '../deployment/phase3-rtoken/rTokenConfig'
+import { RTOKEN_NAME } from '../deployment/phase3-rtoken/rTokenConfig'
 
 async function main() {
   // ********** Read config **********
@@ -25,8 +23,6 @@ async function main() {
   }
 
   // Get RToken Configuration
-  const rTokenConf = getRTokenConfig(chainId, RTOKEN_NAME)
-
   // Check previous step completed
   const rTokenDeploymentFilename = getRTokenDeploymentFilename(chainId, RTOKEN_NAME)
   const rTokenDeployments = <IRTokenDeployments>getDeploymentFile(rTokenDeploymentFilename)
@@ -35,8 +31,8 @@ async function main() {
 
   if (isMainnet) {
     // Confirm Main is paused
-    console.log('Checking main is paused')
-    expect(await mainComponent.paused()).to.equal(true)
+    console.log('Checking main is configured correctly')
+    if (!(await mainComponent.paused())) throw new Error('main is unpaused')
 
     // Confirm governance is configured correctly
     const timelock = await hre.ethers.getContractAt(
@@ -44,7 +40,9 @@ async function main() {
       rTokenDeployments.timelock
     )
     console.log('Checking timelock is configured correctly')
-    expect(await timelock.getMinDelay()).to.be.gte(bn('1e12'))
+    if ((await timelock.getMinDelay()).lt(bn('1e12'))) {
+      throw new Error('timelock duration too short')
+    }
   }
 
   // TODO ...more
