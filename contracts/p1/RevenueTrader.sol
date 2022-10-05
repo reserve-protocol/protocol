@@ -29,6 +29,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         require(address(tokenToBuy_) != address(0), "invalid token address");
         __Component_init(main_);
         __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
+        assetRegistry = main_.assetRegistry();
+        distributor = main_.distributor();
         tokenToBuy = tokenToBuy_;
     }
 
