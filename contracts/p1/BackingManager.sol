@@ -102,8 +102,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
-            /*
-             * Recollateralization
+            /* Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
@@ -114,9 +113,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              *
              * If we run out of capital and are still undercapitalized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
-             *
-             * TODO: Document our arguments for this procedure.
-             * See: https://app.asana.com/0/1202557536393044/1203043664234023/f
              */
 
             (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
@@ -171,11 +167,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // Mint revenue RToken and update `basketsNeeded`
-        // property across this block (TODO analysis, want this):
+        // across this block:
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
-        //   rate(rToken') >== rate(rToken)
-        //   (>== is "no less than, and practically equal to")
-        // ... and rToken'.basketsNeeded <== basketHandler.basketsHeldBy(this)
+        //   rate(rToken') >= rate(rToken)
+        //   (>== is "no less than, and nearly equal to")
+        //    and rToken'.basketsNeeded <= basketHandler.basketsHeldBy(this)
+        // and rToken'.totalSupply is maximal satisfying this.
         uint192 needed; // {BU}
         {
             IRToken rToken = main.rToken();
