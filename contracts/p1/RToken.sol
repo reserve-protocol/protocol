@@ -663,8 +663,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 amtRToken;
         uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
-        // D18{block} ~~ D18 * {block}  // TODO: should be block.number + 1.
-        // TODO ticket: https://app.asana.com/0/1202557536393044/1203033852623707/f
         require(rightItem.when <= FIX_ONE_256 * block.number, "issuance not ready");
 
         uint256 tokensLen = queue.tokens.length;

@@ -28,7 +28,6 @@ contract GnosisTrade is ITrade {
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
-    // TODO: choose value: https://app.asana.com/0/1202557536393044/1203043664234019/f
     uint96 public constant MAX_ORDERS = 1e5;
 
     // raw "/" for compile-time const
@@ -153,7 +152,7 @@ contract GnosisTrade is ITrade {
     // checks:
     //   state is OPEN
     //   caller is `origin`
-    //   now >= endTime (TODO: https://app.asana.com/0/1202557536393044/1202973813430872/f )
+    //   now >= endTime
     // actions:
     //   (if not already called) call gnosis.settleAuction(auctionID), which:
     //     settles the Gnosis Auction

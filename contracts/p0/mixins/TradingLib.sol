@@ -106,7 +106,6 @@ library TradingLibP0 {
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
-        // TODO make nextTradePair return a struct that contains these prices too
         uint192 sellPrice = surplus.strictPrice(); // {UoA/tok}
         uint192 buyPrice = deficit.strictPrice(); // {UoA/tok}
         assert(buyPrice > 0);
@@ -148,8 +147,6 @@ library TradingLibP0 {
     /// The plausible range of BUs that the BackingManager will own after recollateralization.
     /// @param erc20s Assets this computation presumes may be traded to raise funds.
     //
-    // TODO: what if erc20s does not contain all basket collateral?
-    //
     // This function returns a "plausible range of BUs" assuming that the trading process follows
     //     the follwing rules:
     //
@@ -163,7 +160,7 @@ library TradingLibP0 {
     // - The worst price we might get for an UNPRICED or DISABLED collateral is 0.
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
-    // Given these assumptions
+    // Given these assumptions...
     // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.price())
     //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded

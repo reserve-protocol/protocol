@@ -171,7 +171,7 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         }
 
         // Mint revenue RToken and update `basketsNeeded`
-        // property across this block (DESIRED TODO):
+        // property across this block (TODO analysis, want this):
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
         //   rate(rToken') >== rate(rToken)
         //   (>== is "no less than, and practically equal to")
