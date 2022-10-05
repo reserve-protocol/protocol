@@ -120,12 +120,9 @@ library RecollateralizationLibP1 {
 
     // It's a precondition for all of these private helpers that their `erc20s` argument contains at
     // least all basket collateral, plus any registered assets for which the BackingManager has a
-    // nonzero balance. Really, you should just pass in assetRegistry().erc20s(). We would prefer
-    // to look it up from inside each function, and avoid the extra parameter to get wrong, but the
-    // erc20s() call is pretty expensive.
-    //
-    // TODO: profile to verify that this gas optimization is actually worth the inelegance it
-    // introduces,
+    // nonzero balance. Any user of these functions should just pass in assetRegistry().erc20s(). We
+    // would prefer to look it up from inside each function, and avoid the extra parameter to get
+    // wrong, but the erc20s() call is pretty expensive.
 
     /// The plausible range of BUs that the BackingManager will own by the end of recapitalization.
     /// @param erc20s Assets this computation presumes may be traded to raise funds.
@@ -144,12 +141,19 @@ library RecollateralizationLibP1 {
     // - The worst price we might get for an UNPRICED or DISABLED collateral is 0.
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
-    // Given these assumptions
-    // range.top = min(rToken.basketsNeeded, totalAssetValue(...) / basket.price())
-    //   because (totalAssetValue(...) / basket.price()) is how many BUs we can hold assuming
+    // Given these assumptions, the following hold:
+    //
+    // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).high / basket.price())
+    //   because (totalAssetValue(erc20s).high / basket.price()) is how many BUs we can hold given
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded
-    // range.bottom = TODO
-
+    //
+    // range.bottom = max(0, min(pessimisticBUs, range.top)), where:
+    //   pessimisticBUs = (assetsLow - maxTradeSlippage * buShortfall(range.top)) / basket.price()
+    //     is the number of BUs that we are *sure* we have the assets to collateralize
+    //     (making the above assumptions about actual trade prices), and
+    //   buShortfall(range.top) = the total value of the assets we'd need to buy in order
+    //     in order to fully collataeralize `range.top` BUs,
+    //
     function basketRange(
         ComponentCache memory components,
         TradingRules memory rules,

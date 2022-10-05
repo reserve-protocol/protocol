@@ -160,12 +160,19 @@ library TradingLibP0 {
     // - The worst price we might get for an UNPRICED or DISABLED collateral is 0.
     // - Given all that, we're aiming to hold as many BUs as possible using the assets we own.
     //
-    // Given these assumptions...
-    // range.top = min(rToken(trader).basketsNeeded, totalAssetValue(erc20s) / basket.price())
-    //   because (totalAssetValue(erc20s) / basket.price()) is how many BUs we can hold assuming
+    // Given these assumptions, the following hold:
+    //
+    // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).high / basket.price())
+    //   because (totalAssetValue(erc20s).high / basket.price()) is how many BUs we can hold given
     //   "best plausible" prices, and we won't try to hold more than rToken(trader).basketsNeeded
-    // range.bottom = TODO
-
+    //
+    // range.bottom = max(0, min(pessimisticBUs, range.top)), where:
+    //   pessimisticBUs = (assetsLow - maxTradeSlippage * buShortfall(range.top)) / basket.price()
+    //     is the number of BUs that we are *sure* we have the assets to collateralize
+    //     (making the above assumptions about actual trade prices), and
+    //   buShortfall(range.top) = the total value of the assets we'd need to buy in order
+    //     in order to fully collataeralize `range.top` BUs,
+    //
     function basketRange(ITrading trader, IERC20[] memory erc20s)
         internal
         view
@@ -389,11 +396,6 @@ library TradingLibP0 {
         MaxSurplusDeficit memory maxes;
         maxes.surplusStatus = CollateralStatus.IFFY; // least-desirable sell status
         uint192 minTradeVolume_ = trader.minTradeVolume();
-
-        // TODO
-        // We can do _much much_ better in terms of gas usage than we currently are, but for now
-        // this function is in its highly unoptimized form so we can confirm overall
-        // proper behavior
 
         for (uint256 i = 0; i < erc20s.length; ++i) {
             if (erc20s[i] == rsr(trader)) continue;
