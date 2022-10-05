@@ -167,6 +167,11 @@ describe('Assets contracts #fast', () => {
       await expect(rsrAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
       await expect(compAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
       await expect(aaveAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Fallback price is returned - use RSR as example
+      const [isFallback, price] = await rsrAsset.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
     })
 
     it('Should not revert RToken price if supply is zero', async () => {

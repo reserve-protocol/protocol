@@ -350,7 +350,26 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           fp('0.125'),
         ]
         await assetRegistry.refresh()
-        await expect(basketHandler.refreshBasket())
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+        //  Call via Facade - should detect call to Basket handler
+        const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(basketHandler.address)
+        expect(data).to.not.equal('0x')
+
+        // Call refresh basket via Facade - Equivalent to:
+        // await expect(basketHandler.refreshBasket())
+        // .to.emit(basketHandler, 'BasketSet')
+        //  .withArgs(2, newTokens, newRefAmounts, false)
+
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(2, newTokens, newRefAmounts, false)
 
@@ -951,13 +970,27 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         // Advance time till auction ended
         await advanceTime(config.auctionLength.add(100).toString())
 
-        // End current auction, should  not start any new auctions
+        // Trade is ready to be settled - Call settle trade via  Facade
+        const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(backingManager.address)
+        expect(data).to.not.equal('0x')
+
+        // End current auction - could be done also directly in the next call to runAuctionsForAllTraders
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(backingManager, 'TradeSettled')
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6))
+
+        // Should  not start any new auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: backingManager,
             name: 'TradeSettled',
-            args: [anyValue, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
-            emitted: true,
+            emitted: false,
           },
           { contract: backingManager, name: 'TradeStarted', emitted: false },
         ])
@@ -1018,7 +1051,22 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = minBuyAmt.mul(100).div(99).add(1)
         // const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
-        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
+        // Call manage tokens from Facade to run auctions - could be done with runAuctionsForAllTraders
+        const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(backingManager.address)
+        expect(data).to.not.equal('0x')
+
+        // Call manage tokens - Equivalent to:
+        // await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
+        //   .to.emit(backingManager, 'TradeStarted')
+        //   .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
           .to.emit(backingManager, 'TradeStarted')
           .withArgs(anyValue, token0.address, token1.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
