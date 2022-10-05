@@ -2,6 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+import { getChainId } from '../common/blockchain-utils'
 import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
@@ -227,6 +228,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+    })
+
+    it('Should setup the DomainSeparator for Permit correctly', async () => {
+      const chainId = await getChainId(hre)
+      const _name = await rToken.name()
+      const version = '1'
+      const verifyingContract = rToken.address
+      expect(await rToken.DOMAIN_SEPARATOR()).to.equal(
+        await ethers.utils._TypedDataEncoder.hashDomain({
+          name: _name,
+          version,
+          chainId,
+          verifyingContract,
+        })
+      )
     })
   })
 
@@ -473,7 +489,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
-    it('Should be able to refund multiple issuances when calling vest if basket changed', async function () {
+    it('Should be able to refund issuances when calling vest if basket changed', async function () {
       const issueAmount: BigNumber = bn('20000e18')
 
       // Start issuances
@@ -496,10 +512,46 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Refresh from owner should succeed
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
       // Vest should return tokens
       await expect(rToken.connect(addr1).vest(addr1.address, 3))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
+    })
+
+    it('Should be able to refund issuances when calling issue if basket changed', async function () {
+      const issueAmount: BigNumber = bn('20000e18')
+
+      // Start issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Refresh from owner should succeed
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Prepare a new issuance
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+
+      // Issue should return tokens
+      await expect(rToken.connect(addr1).issue(issueAmount))
         .to.emit(rToken, 'IssuancesCanceled')
         .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
     })
@@ -1331,6 +1383,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check total asset value did not change
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+
+      // Cancel only the first issuance
+      await expect(rToken.connect(addr1).cancel(1, true))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 1, bn('1e24'))
     })
 
     it('Should allow the issuer to rollback minting', async function () {
@@ -2023,6 +2080,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('should permit spend with ERC1271 support', async () => {
       // ERC1271 with approvals turned on
+      expect(await rToken.nonces(erc1271Mock.address)).to.equal(0)
       await erc1271Mock.enableApprovals()
       await rToken.permit(
         erc1271Mock.address,
@@ -2037,6 +2095,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, issueAmount)
       expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.nonces(erc1271Mock.address)).to.equal(1)
     })
   })
 

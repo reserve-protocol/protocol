@@ -19,6 +19,7 @@ import {
   SHORT_FREEZER,
   LONG_FREEZER,
   PAUSER,
+  MAX_UINT192,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
 import { setOraclePrice } from './utils/oracles'
@@ -1654,6 +1655,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(0)
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
+    })
+
+    it('Should return FIX_MAX quantity for collateral when refPerTok = 0', async () => {
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Set Token2 to hard default - Zero rate
+      await token2.setExchangeRate(fp('0'))
+      expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
     })
 
     it('Should not put backup tokens with different targetName in the basket', async () => {

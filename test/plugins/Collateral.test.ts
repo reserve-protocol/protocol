@@ -490,6 +490,11 @@ describe('Collateral contracts', () => {
       // Check price of token
       await expect(tokenCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
+      // Fallback price is returned
+      const [isFallback, price] = await tokenCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
+
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)

@@ -81,7 +81,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ main, basket, rToken, furnace, config } = await loadFixture(defaultFixture))
+    ;({ main, basket, rToken, facade, furnace, config } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
@@ -365,8 +365,20 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
 
       const expAmt2 = decayFn(hndAmt, 2) // 2 periods
 
-      // Melt
-      await expect(furnace.connect(addr1).melt())
+      // Melt - This time via Facade - get next call
+      const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(furnace.address)
+      expect(data).to.not.equal('0x')
+
+      // Melt tokens in Furnace. Equivalent to:
+      //  await expect(furnace.connect(addr1).melt())
+
+      await expect(
+        addr1.sendTransaction({
+          to: addr,
+          data,
+        })
+      )
         .to.emit(rToken, 'Melted')
         .withArgs(bn(expAmt1).sub(expAmt2))
 

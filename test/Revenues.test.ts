@@ -20,6 +20,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
+  Facade,
   FacadeTest,
   GnosisMock,
   IAssetRegistry,
@@ -99,6 +100,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let rToken: TestIRToken
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
+  let facade: Facade
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager
@@ -139,6 +141,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       stRSR,
       broker,
       gnosis,
+      facade,
       facadeTest,
       rsrTrader,
       rTokenTrader,
@@ -737,6 +740,255 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+      })
+
+      it('Should claim rewards and handle revenue auctions correctly - via Facade', async () => {
+        rewardAmountAAVE = bn('0.5e18')
+
+        // AAVE Rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Collect revenue
+        // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
+        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+
+        const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
+        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+
+        // Can also claim through Facade
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Check status of destinations at this point
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
+        expect(await rToken.balanceOf(furnace.address)).to.equal(0)
+
+        // Via Facade get next call - will transfer RToken to Trader
+        let [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(backingManager.address)
+        expect(data).to.not.equal('0x')
+
+        // Manage tokens in Backing Manager
+        await owner.sendTransaction({
+          to: addr,
+          data,
+        })
+
+        // Next call would start Revenue auction - RTokenTrader
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(rTokenTrader.address)
+        expect(data).to.not.equal('0x')
+
+        // Manage tokens in RTokenTrader
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(rTokenTrader, 'TradeStarted')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+        // AAVE -> RToken Auction
+        await expectTrade(rTokenTrader, {
+          sell: aaveToken.address,
+          buy: rToken.address,
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          externalId: bn('0'),
+        })
+
+        // Via Facade get next call - will open RSR trade
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(rsrTrader.address)
+        expect(data).to.not.equal('0x')
+
+        // Manage tokens in RSRTrader
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(rsrTrader, 'TradeStarted')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+
+        // Check auctions registered
+        // AAVE -> RSR Auction
+        await expectTrade(rsrTrader, {
+          sell: aaveToken.address,
+          buy: rsr.address,
+          endTime: (await getLatestBlockTimestamp()) + Number(config.auctionLength),
+          externalId: bn('1'),
+        })
+
+        // Check funds in Market
+        expect(await aaveToken.balanceOf(gnosis.address)).to.equal(rewardAmountAAVE)
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // Mock auction by minting the buy tokens (in this case RSR and RToken)
+        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmtRToken,
+          buyAmount: minBuyAmtRToken,
+        })
+        await gnosis.placeBid(1, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: minBuyAmt,
+        })
+
+        // Settle RToken trades via Facade
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(rTokenTrader.address)
+        expect(data).to.not.equal('0x')
+
+        // Close auction in RToken Trader
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(rTokenTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+
+        // Now settle trade in RSR Trader
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(rsrTrader.address)
+        expect(data).to.not.equal('0x')
+
+        // Close auction in RSR Trader
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(rsrTrader, 'TradeSettled')
+          .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
+
+        // No auctions will be processed now
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: rsrTrader,
+            name: 'TradeSettled',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeSettled',
+            emitted: false,
+          },
+          {
+            contract: rsrTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+          {
+            contract: rTokenTrader,
+            name: 'TradeStarted',
+            emitted: false,
+          },
+        ])
+
+        // Check balances sent to corresponding destinations
+        // StRSR
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        // Furnace
+        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+
+        // Check no new calls to make from Facade
+        // Now settle trade in RSR Trader
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(ZERO_ADDRESS)
+        expect(data).to.equal('0x')
+
+        // Claim additional Revenue but only send to RSR (to trigger RSR trader directly)
+        // Set f = 1
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(FURNACE_DEST, bn(0), bn(0))
+
+        // Avoid dropping 20 qCOMP by making there be exactly 1 distribution share.
+        await expect(
+          distributor
+            .connect(owner)
+            .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(1) })
+        )
+          .to.emit(distributor, 'DistributionSet')
+          .withArgs(STRSR_DEST, bn(0), bn(1))
+
+        // Set new rewards
+        await token2.setRewards(backingManager.address, rewardAmountAAVE)
+
+        // Claim new rewards
+        await expectEvents(facadeTest.claimRewards(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, bn(0)],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, rewardAmountAAVE],
+            emitted: true,
+          },
+        ])
+
+        // Via Facade get next call - will transfer RSR to Trader
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(backingManager.address)
+        expect(data).to.not.equal('0x')
+
+        // Manage tokens in Backing Manager
+        await owner.sendTransaction({
+          to: addr,
+          data,
+        })
+
+        // Next call would start Revenue auction - RSR Trader
+        ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+        expect(addr).to.equal(rsrTrader.address)
+        expect(data).to.not.equal('0x')
+
+        // Manage tokens in RTokenTrader
+        await expect(
+          owner.sendTransaction({
+            to: addr,
+            data,
+          })
+        )
+          .to.emit(rsrTrader, 'TradeStarted')
+          .withArgs(
+            anyValue,
+            aaveToken.address,
+            rsr.address,
+            rewardAmountAAVE,
+            rewardAmountAAVE.sub(rewardAmountAAVE.div(100))
+          )
       })
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
