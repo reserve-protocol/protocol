@@ -14,12 +14,9 @@ import mainnetAddrs from '../../../scripts/addresses/mainnet-test/1-tmp-assets-c
 import {
   ATokenFiatCollateral,
   ERC20Mock,
-  Facade,
   FiatCollateral,
   IAToken,
   StaticATokenLM,
-  TestIMain,
-  TestIRToken,
   USDCMock,
 } from '../../../typechain'
 
@@ -34,8 +31,6 @@ const holderUSDT = '0xf977814e90da44bfa03b6295a0616a897441acec'
 const holderAUSDT = '0x611f97d450042418e7338cbdd19202711563df01'
 const holderBUSD = '0xf977814e90da44bfa03b6295a0616a897441acec'
 const holderABUSD = '0x3ddfa8ec3052539b6c9549f12cea2c295cff5296'
-
-let owner: SignerWithAddress
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -71,11 +66,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
   let aUsdtCollateral: ATokenFiatCollateral
   let aBusdCollateral: ATokenFiatCollateral
 
-  // Contracts to retrieve after deploy
-  let rToken: TestIRToken
-  let main: TestIMain
-  let facade: Facade
-
   let initialBal: BigNumber
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
@@ -85,8 +75,6 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
 
   describe.skip('Static ATokens', () => {
     const setup = async (blockNumber: number) => {
-      ;[owner] = await ethers.getSigners()
-
       // Use Mainnet fork
       await hre.network.provider.request({
         method: 'hardhat_reset',
@@ -113,8 +101,8 @@ describeFork(`Static ATokens - Mainnet Check - Mainnet Forking P${IMPLEMENTATION
     })
 
     beforeEach(async () => {
-      ;[owner, , , addr1] = await ethers.getSigners()
-      ;({ main, rToken, facade } = await loadFixture(defaultFixture))
+      ;[, , , addr1] = await ethers.getSigners()
+      await loadFixture(defaultFixture)
 
       // Get tokens
       dai = <ERC20Mock>(
