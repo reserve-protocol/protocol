@@ -243,7 +243,7 @@ describe('Facade contract', () => {
   })
 
   describeGas('Gas Reporting', () => {
-    const numAssets = 200
+    const numAssets = 128
 
     beforeEach(async () => {
       const m = await ethers.getContractAt('MainP1', await rToken.main())
