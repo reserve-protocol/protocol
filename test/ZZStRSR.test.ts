@@ -17,7 +17,6 @@ import {
   StRSRP1Votes,
   StaticATokenMock,
   TestIBackingManager,
-  TestIFurnace,
   TestIMain,
   TestIRToken,
   TestIStRSR,
@@ -60,7 +59,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let basketHandler: IBasketHandler
   let rToken: TestIRToken
   let facade: Facade
-  let furnace: TestIFurnace
 
   // StRSR
   let stRSR: TestIStRSR
@@ -154,7 +152,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       basketsNeededAmts,
       config,
       main,
-      furnace,
       backingManager,
       basketHandler,
       rToken,
@@ -1075,34 +1072,20 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
       const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake)
 
-      // Payout rewards - via Facade this time
-      // First do a melt which will first be executed from getActCallData
-      await furnace.melt()
-
-      const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(stRSR.address)
-      expect(data).to.not.equal('0x')
-
-      // Payout rewards. Equivalent to "await expect(stRSR.payoutRewards()))""
-      await expectEvents(
-        addr1.sendTransaction({
-          to: addr,
-          data,
-        }),
-        [
-          {
-            contract: stRSR,
-            name: 'ExchangeRateSet',
-            emitted: true,
-          },
-          {
-            contract: stRSR,
-            name: 'RewardsPaid',
-            args: [addedRSRStake],
-            emitted: true,
-          },
-        ]
-      )
+      // Payout rewards
+      await expectEvents(stRSR.payoutRewards(), [
+        {
+          contract: stRSR,
+          name: 'ExchangeRateSet',
+          emitted: true,
+        },
+        {
+          contract: stRSR,
+          name: 'RewardsPaid',
+          args: [addedRSRStake],
+          emitted: true,
+        },
+      ])
 
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
       expect(await stRSR.exchangeRate()).to.be.lte(newRate)
