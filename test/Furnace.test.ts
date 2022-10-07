@@ -81,7 +81,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     ;[owner, addr1, addr2] = await ethers.getSigners()
 
     // Deploy fixture
-    ;({ main, basket, rToken, facade, furnace, config } = await loadFixture(defaultFixture))
+    ;({ main, basket, rToken, furnace, config } = await loadFixture(defaultFixture))
 
     // Setup issuance of RTokens for users
     initialBal = bn('100e18')
