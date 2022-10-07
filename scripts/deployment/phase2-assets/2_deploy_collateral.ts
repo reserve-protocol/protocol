@@ -168,7 +168,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await adaiStaticToken.deployed()
@@ -211,7 +211,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await ausdcStaticToken.deployed()
@@ -254,7 +254,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await ausdtStaticToken.deployed()
@@ -296,7 +296,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await abusdStaticToken.deployed()

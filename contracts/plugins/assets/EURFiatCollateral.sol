@@ -86,6 +86,8 @@ contract EURFiatCollateral is Collateral {
                     // If the price is below the default-threshold price, default eventually
                     if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
                     else markStatus(CollateralStatus.SOUND);
+                } else {
+                    markStatus(CollateralStatus.IFFY);
                 }
             } catch {
                 markStatus(CollateralStatus.IFFY);
