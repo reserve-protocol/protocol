@@ -1086,7 +1086,6 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           emitted: true,
         },
       ])
-
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
       expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
