@@ -165,4 +165,8 @@ interface TestIRToken is IRToken {
 
     /// @return {qRTok/hour} The lowest possible hourly redemption limit
     function redemptionRateFloor() external view returns (uint256);
+
+    function increaseAllowance(address, uint256) external returns (bool);
+
+    function decreaseAllowance(address, uint256) external returns (bool);
 }
