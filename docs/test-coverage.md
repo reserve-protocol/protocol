@@ -14,7 +14,10 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 
 ### contracts/p1/RToken.sol:RTokenP1
 - `refundSpan()`: The revert stamement `revert("Bad refundSpan")` will never occur with the current version of the code, as this is an `internal` function and the parameters for `left` and `right` are always stored in the contract and maintained with valid values doing the entire lifecycle.
-         
+
+### contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral
+- `refresh()`: The check for `if (p2 > 0)` will never be false, because if the obtained price is 0 in the `_price()`  function an exception is thrown, and would be captured in the `try/catch` stamement right above.
+
 ### P0 contracts
 
 There might be a slighly lower coverage for `P0` due to differences in the implementation which are not worth tackling with specific test cases, but we make sure it is also very close to full coverage, and that all relevant paths and logic statements are covered as well.
