@@ -20,6 +20,8 @@ interface IFacade {
 
     // ============
 
+    function claimAndSweepRewards(RTokenP1 rToken) external;
+
     struct Pending {
         uint256 index;
         uint256 availableAt;
