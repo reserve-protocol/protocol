@@ -1905,10 +1905,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'InvalidATokenFiatCollateralMock',
           { libraries: { OracleLib: oracleLib.address } }
         )
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(
             fp('1'),
-            ONE_ADDRESS,
+            chainlinkFeed.address,
             token2.address,
             aaveToken.address,
             config.rTokenMaxTradeVolume,

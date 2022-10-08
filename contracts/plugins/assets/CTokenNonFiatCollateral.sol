@@ -123,10 +123,13 @@ contract CTokenNonFiatCollateral is Collateral {
                     // uint192(+/-) is the same as Fix.plus/minus
                     if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
                     else markStatus(CollateralStatus.SOUND);
-                } catch {
+                } catch (bytes memory errData) {
+                    // see: docs/solidity-style.md#Catching-Empty-Data
+                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
-            } catch {
+            } catch (bytes memory errData) {
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
         }

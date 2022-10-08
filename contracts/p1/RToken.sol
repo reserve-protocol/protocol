@@ -40,7 +40,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// - This RToken holds only FooCoin, to provide a trade for hedging against its
     ///     possible collapse.
     ///
-    /// The mandate may also be a URI to a longer body of text
+    /// The mandate may also be a URI to a longer body of text, presumably on IPFS or some other
+    /// immutable data store.
     string public mandate;
 
     // ==== Governance Params ====
