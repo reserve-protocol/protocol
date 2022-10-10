@@ -216,11 +216,13 @@ Next, run:
 yarn confirm --network mainnet
 ```
 
-- For each asset, confirm `fallbackPrice()` and `price()` are close.
-- Confirm `main.paused()` is true
-- Confirm `timelockController.minDelay()` is > 1e12
+This checks that:
 
-End state: All addresses are verified, the contracts are in the correct state, and it's time to connect the Register to the new mainnet addresses!
+- For each asset, confirm `fallbackPrice()` and `price()` are close.
+- `main.paused()` is true
+- `timelockController.minDelay()` is > 1e12
+
+End state: All addresses are verified, the contracts are in the correct state, and it's time to verify the contracts on Etherscan.
 
 ### Verify on Etherscan
 
@@ -234,7 +236,7 @@ yarn verify_etherscan --network mainnet
 
 `verify_etherscan.ts` works a bit differently than `deploy.ts`; verification is smart enough to skip over contracts that have already been verified.
 
-It may be that `verify.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+It may be that `verify_etherscan` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
 Manual verification steps:
 
