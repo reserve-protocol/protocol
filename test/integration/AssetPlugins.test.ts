@@ -1006,9 +1006,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Collateral with no price should revert
       await expect(nonPriceCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonPriceCollateral.refresh()
-      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonPriceCollateral.refresh()).to.be.reverted
+      expect(await nonPriceCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
       const invalidFiatCollateral: FiatCollateral = <FiatCollateral>await (
@@ -1079,9 +1079,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceCtokenCollateral.refresh()
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
       const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
@@ -1157,9 +1157,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // ATokens - Collateral with no price info should revert
       await expect(nonpriceAtokenCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceAtokenCollateral.refresh()
-      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceAtokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceAtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
       const invalidPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
@@ -1224,9 +1224,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Non-fiat Collateral with no price should revert
       await expect(nonpriceNonFiatCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceNonFiatCollateral.refresh()
-      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceNonFiatCollateral.refresh()).to.be.reverted
+      expect(await nonpriceNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Non-Fiat collateral with zero price
       const invalidPriceNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>await (
@@ -1300,9 +1300,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenNonFiatCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceCtokenNonFiatCollateral.refresh()
-      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceCtokenNonFiatCollateral.refresh()).to.be.reverted
+      expect(await nonpriceCtokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
       const invalidpriceCtokenNonFiatCollateral: CTokenNonFiatCollateral = <
@@ -1370,9 +1370,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Non-fiat Collateral with no price should revert
       await expect(nonpriceSelfReferentialCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceSelfReferentialCollateral.refresh()
-      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceSelfReferentialCollateral.refresh()).to.be.reverted
+      expect(await nonpriceSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Self referential collateral with zero price
       const invalidPriceSelfReferentialCollateral: SelfReferentialCollateral = <
@@ -1437,9 +1437,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenSelfReferentialCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonpriceCtokenSelfReferentialCollateral.refresh()
-      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceCtokenSelfReferentialCollateral.refresh()).to.be.reverted
+      expect(await nonpriceCtokenSelfReferentialCollateral.status()).to.equal(
+        CollateralStatus.SOUND
+      )
 
       // Reverts with a feed with zero price
       const invalidPriceCtokenSelfReferentialCollateral: CTokenSelfReferentialCollateral = <
@@ -1509,9 +1511,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // Collateral with no price should revert
       await expect(nonPriceEURCollateral.strictPrice()).to.be.reverted
 
-      // Refresh should mark status IFFY
-      await nonPriceEURCollateral.refresh()
-      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
+      // Refresh should also revert - status is not modified
+      await expect(nonPriceEURCollateral.refresh()).to.be.reverted
+      expect(await nonPriceEURCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
       const invalidPriceEURCollateral: EURFiatCollateral = <EURFiatCollateral>await (
