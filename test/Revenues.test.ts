@@ -4,13 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-  ONE_ADDRESS,
-} from '../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
 import {
