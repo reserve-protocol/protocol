@@ -14,14 +14,7 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 
 ### contracts/p1/RToken.sol:RTokenP1
 - `refundSpan()`: The revert stamement `revert("Bad refundSpan")` will never occur with the current version of the code, as this is an `internal` function and the parameters for `left` and `right` are always stored in the contract and maintained with valid values doing the entire lifecycle.
-
-### contracts/p1/mixins/TradingLib.sol:TradingLibP1
-
-- `nextTradePair()`: 
-    * The check for `bal.lt(surplusAmt)` when calculating the *surplus* component, will never be *true*, because `surplusAmt` can be at most equal to `bal` in the current version. But for additional security the check is maintained to make sure we never revert if for some reason these occurs after implementing changes to how `surplusAmt` is calculated.
-    
-    * The check at the end for `rsrAvailable.gt(rsrAsset.minTradeSize())` will never be *false*, because if the RSR balances is below the `minTradeSize` will be discarded previously as part of the `basket.top` and `basket.bottom` calculations. But we will leave this as an extra safety check. Could be tested if the values of the `BasketRange` are manipulated in a way to force this situation but would not occur when using the contracts through its `public` interface.
-            
+         
 ### P0 contracts
 
 There might be a slighly lower coverage for `P0` due to differences in the implementation which are not worth tackling with specific test cases, but we make sure it is also very close to full coverage, and that all relevant paths and logic statements are covered as well.

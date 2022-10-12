@@ -40,7 +40,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// - This RToken holds only FooCoin, to provide a trade for hedging against its
     ///     possible collapse.
     ///
-    /// The mandate may also be a URI to a longer body of text
+    /// The mandate may also be a URI to a longer body of text, presumably on IPFS or some other
+    /// immutable data store.
     string public mandate;
 
     // ==== Governance Params ====
@@ -58,6 +59,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     uint192 public maxRedemptionCharge;
 
     // ==== End Governance Params ====
+
+    // ==== Peer components ====
+    IAssetRegistry private assetRegistry;
+    IBasketHandler private basketHandler;
+    IBackingManager private backingManager;
+    IFurnace private furnace;
 
     // The number of baskets that backingManager must hold
     // in order for this RToken to be fully collateralized.
@@ -153,6 +160,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+
+        assetRegistry = main_.assetRegistry();
+        basketHandler = main_.basketHandler();
+        backingManager = main_.backingManager();
+        furnace = main_.furnace();
+
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setScalingRedemptionRate(maxRedemptionCharge_);
@@ -166,12 +179,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(amtRToken > 0, "Cannot issue zero");
 
         // == Refresh ==
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
-        IBasketHandler bh = main.basketHandler(); // OK to save: can only be changed by gov
 
-        uint48 basketNonce = bh.nonce();
+        uint48 basketNonce = basketHandler.nonce();
         IssueQueue storage queue = issueQueues[issuer];
 
         // Refund issuances against old baskets
@@ -181,18 +193,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             refundSpan(issuer, queue.left, queue.right);
 
             // Refresh collateral after interaction
-            main.assetRegistry().refresh();
+            assetRegistry.refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
-            basketNonce = bh.nonce();
+            basketNonce = basketHandler.nonce();
             queue = issueQueues[issuer];
         }
 
         // == Checks-effects block ==
-        CollateralStatus status = bh.status();
+        CollateralStatus status = basketHandler.status();
         require(status == CollateralStatus.SOUND, "basket unsound");
 
-        main.furnace().melt();
+        furnace.melt();
 
         // AT THIS POINT:
         //   all contract invariants hold
@@ -210,7 +222,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             totalSupply() > 0 ? mulDiv256(basketsNeeded, amtRToken, totalSupply()) : amtRToken
         );
 
-        (address[] memory erc20s, uint256[] memory deposits) = bh.quote(amtBaskets, CEIL);
+        (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(
+            amtBaskets,
+            CEIL
+        );
 
         // Add amtRToken's worth of issuance delay to allVestAt
         uint192 vestingEnd = whenFinished(amtRToken); // D18{block number}
@@ -236,13 +251,15 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
             emit Issuance(issuer, amtRToken, amtBaskets);
 
-            address backingMgr = address(main.backingManager());
-
             // == Interactions then return: transfer tokens ==
             // Complete issuance
             _mint(issuer, amtRToken);
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, backingMgr, deposits[i]);
+                IERC20Upgradeable(erc20s[i]).safeTransferFrom(
+                    issuer,
+                    address(backingManager),
+                    deposits[i]
+                );
             }
             return;
         }
@@ -339,11 +356,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         main.assetRegistry().refresh();
 
         // == Checks ==
-        CollateralStatus status = main.basketHandler().status();
+        CollateralStatus status = basketHandler.status();
         require(status == CollateralStatus.SOUND, "basket unsound");
 
         IssueQueue storage queue = issueQueues[account];
-        uint48 basketNonce = main.basketHandler().nonce();
+        uint48 basketNonce = basketHandler.nonce();
 
         // == Interactions ==
         // ensure that the queue models issuances against the current basket, not previous baskets;
@@ -404,7 +421,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         address redeemer = _msgSender();
         require(balanceOf(redeemer) >= amount, "not enough RToken");
         // Allow redemption during IFFY + UNPRICED
-        require(main.basketHandler().status() != CollateralStatus.DISABLED, "collateral default");
+        require(basketHandler.status() != CollateralStatus.DISABLED, "collateral default");
 
         // Failure to melt results in a lower redemption price, so we can allow it when paused
         // solhint-disable-next-line no-empty-blocks
@@ -421,16 +438,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 baskets = uint192(mulDiv256(basketsNeeded_, amount, supply));
         emit Redemption(redeemer, amount, baskets);
 
-        (address[] memory erc20s, uint256[] memory amounts) = main.basketHandler().quote(
-            baskets,
-            FLOOR
-        );
+        (address[] memory erc20s, uint256[] memory amounts) = basketHandler.quote(baskets, FLOOR);
 
         // ==== Prorate redemption ====
         // i.e, set amounts = min(amounts, balances * amount / totalSupply)
         //   where balances[i] = erc20s[i].balanceOf(this)
 
-        IBackingManager backingMgr = main.backingManager();
         uint256 erc20length = erc20s.length;
 
         // D18{1} = D18 * {qRTok} / {qRTok}
@@ -441,7 +454,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         for (uint256 i = 0; i < erc20length; ++i) {
             // {qTok} = D18{1} * {qTok} / D18
             uint256 prorata = (prorate *
-                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingMgr))) / FIX_ONE;
+                IERC20Upgradeable(erc20s[i]).balanceOf(address(backingManager))) / FIX_ONE;
             if (prorata < amounts[i]) amounts[i] = prorata;
         }
 
@@ -462,7 +475,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
             // Send withdrawal
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(
-                address(backingMgr),
+                address(backingManager),
                 redeemer,
                 amounts[i]
             );
@@ -480,7 +493,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
     function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(backingManager), "not backing manager");
         _mint(recipient, amtRToken);
         requireValidBUExchangeRate();
     }
@@ -502,7 +515,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
     function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
-        require(_msgSender() == address(main.backingManager()), "not backing manager");
+        require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
         requireValidBUExchangeRate();
@@ -663,8 +676,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint256 amtRToken;
         uint192 amtBaskets;
         IssueItem storage rightItem = queue.items[endId - 1];
-        // D18{block} ~~ D18 * {block}  // TODO: should be block.number + 1.
-        // TODO ticket: https://app.asana.com/0/1202557536393044/1203033852623707/f
         require(rightItem.when <= FIX_ONE_256 * block.number, "issuance not ready");
 
         uint256 tokensLen = queue.tokens.length;
@@ -707,7 +718,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         for (uint256 i = 0; i < tokensLen; ++i) {
             IERC20Upgradeable(queue.tokens[i]).safeTransfer(
-                address(main.backingManager()),
+                address(backingManager),
                 amtDeposits[i]
             );
         }
@@ -753,5 +764,5 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[42] private __gap;
+    uint256[36] private __gap;
 }

@@ -15,4 +15,11 @@ module.exports = {
     'plugins/aave',
     'fuzz',
   ],
+  configureYulOptimizer: true,
+  solcOptimizerDetails: {
+    yul: true,
+    yulDetails: {
+      stackAllocation: true,
+    }
+  },
 }

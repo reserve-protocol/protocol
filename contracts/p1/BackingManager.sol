@@ -21,6 +21,15 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // Cache of peer components
+    IAssetRegistry private assetRegistry;
+    IBasketHandler private basketHandler;
+    IDistributor private distributor;
+    IRToken private rToken;
+    IERC20 private rsr;
+    IStRSR private stRSR;
+    IRevenueTrader private rsrTrader;
+    IRevenueTrader private rTokenTrader;
     uint48 public constant MAX_TRADING_DELAY = 31536000; // {s} 1 year
     uint192 public constant MAX_BACKING_BUFFER = 1e18; // {%}
 
@@ -40,7 +49,17 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         uint192 minTradeVolume_
     ) external initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_, minTradeVolume_);
+        __Trading_init(main_, maxTradeSlippage_, minTradeVolume_);
+
+        assetRegistry = main_.assetRegistry();
+        basketHandler = main_.basketHandler();
+        distributor = main_.distributor();
+        rsr = main_.rsr();
+        rsrTrader = main_.rsrTrader();
+        rTokenTrader = main_.rTokenTrader();
+        rToken = main_.rToken();
+        stRSR = main_.stRSR();
+
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -50,11 +69,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
-        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
+        require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        uint256 currAllowance = erc20.allowance(address(this), address(main.rToken()));
+        uint256 currAllowance = erc20.allowance(address(this), address(rToken));
         IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
-            address(main.rToken()),
+            address(rToken),
             type(uint256).max - currAllowance
         );
     }
@@ -86,24 +105,21 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     // only called internally, from manageTokens*, so erc20s has no duplicates unique
     // (but not necessarily all registered or valid!)
     function _manageTokens(IERC20[] calldata erc20s) private {
-        IBasketHandler bh = main.basketHandler();
-
         // == Refresh ==
-        main.assetRegistry().refresh();
+        assetRegistry.refresh();
 
         if (tradesOpen > 0) return;
         // Only trade when all the collateral assets in the basket are SOUND
-        require(bh.status() == CollateralStatus.SOUND, "basket not sound");
+        require(basketHandler.status() == CollateralStatus.SOUND, "basket not sound");
 
-        uint48 basketTimestamp = bh.timestamp();
+        uint48 basketTimestamp = basketHandler.timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
-        if (bh.fullyCollateralized()) {
+        if (basketHandler.fullyCollateralized()) {
             // == Interaction (then return) ==
             handoutExcessAssets(erc20s);
         } else {
-            /*
-             * Recollateralization
+            /* Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
@@ -114,9 +130,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
              *
              * If we run out of capital and are still undercapitalized, we compromise
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
-             *
-             * TODO: Document our arguments for this procedure.
-             * See: https://app.asana.com/0/1202557536393044/1203043664234023/f
              */
 
             (bool doTrade, TradeRequest memory req) = RecollateralizationLibP1
@@ -124,9 +137,9 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
             if (doTrade) {
                 // Seize RSR if needed
-                if (req.sell.erc20() == main.rsr()) {
+                if (req.sell.erc20() == rsr) {
                     uint256 bal = req.sell.erc20().balanceOf(address(this));
-                    if (req.sellAmount > bal) main.stRSR().seizeRSR(req.sellAmount - bal);
+                    if (req.sellAmount > bal) stRSR.seizeRSR(req.sellAmount - bal);
                 }
 
                 tryTrade(req);
@@ -157,28 +170,24 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
          *      RSR and RToken traders according to the distribution totals.
          */
 
-        IBasketHandler basketHandler = main.basketHandler();
-        address rsrTrader = address(main.rsrTrader());
-        address rTokenTrader = address(main.rTokenTrader());
-
         // Forward any RSR held to StRSR pool; RSR should never be sold for RToken yield
-        if (main.rsr().balanceOf(address(this)) > 0) {
+        if (rsr.balanceOf(address(this)) > 0) {
             // For CEI, this is an interaction "within our system" even though RSR is already live
-            IERC20Upgradeable(address(main.rsr())).safeTransfer(
-                address(main.rsrTrader()),
-                main.rsr().balanceOf(address(this))
+            IERC20Upgradeable(address(rsr)).safeTransfer(
+                address(rsrTrader),
+                rsr.balanceOf(address(this))
             );
         }
 
         // Mint revenue RToken and update `basketsNeeded`
-        // property across this block (DESIRED TODO):
+        // across this block:
         //   where rate(R) == R.basketsNeeded / R.totalSupply,
-        //   rate(rToken') >== rate(rToken)
-        //   (>== is "no less than, and practically equal to")
-        // ... and rToken'.basketsNeeded <== basketHandler.basketsHeldBy(this)
+        //   rate(rToken') >= rate(rToken)
+        //   (>== is "no less than, and nearly equal to")
+        //    and rToken'.basketsNeeded <= basketHandler.basketsHeldBy(this)
+        // and rToken'.totalSupply is maximal satisfying this.
         uint192 needed; // {BU}
         {
-            IRToken rToken = main.rToken();
             needed = rToken.basketsNeeded(); // {BU}
             uint192 held = basketHandler.basketsHeldBy(address(this)); // {BU}
             if (held.gt(needed)) {
@@ -206,11 +215,11 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
         // Handout excess assets above what is needed, including any recently minted RToken
         uint256 length = erc20s.length;
-        RevenueTotals memory totals = main.distributor().totals();
+        RevenueTotals memory totals = distributor.totals();
         uint256[] memory toRSR = new uint256[](length);
         uint256[] memory toRToken = new uint256[](length);
         for (uint256 i = 0; i < length; ++i) {
-            IAsset asset = main.assetRegistry().toAsset(erc20s[i]);
+            IAsset asset = assetRegistry.toAsset(erc20s[i]);
 
             uint192 req = needed.mul(basketHandler.quantity(erc20s[i]), CEIL);
             if (asset.bal(address(this)).gt(req)) {
@@ -228,8 +237,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         // == Interactions ==
         for (uint256 i = 0; i < length; ++i) {
             IERC20Upgradeable erc20 = IERC20Upgradeable(address(erc20s[i]));
-            if (toRToken[i] > 0) erc20.safeTransfer(rTokenTrader, toRToken[i]);
-            if (toRSR[i] > 0) erc20.safeTransfer(rsrTrader, toRSR[i]);
+            if (toRToken[i] > 0) erc20.safeTransfer(address(rTokenTrader), toRToken[i]);
+            if (toRSR[i] > 0) erc20.safeTransfer(address(rsrTrader), toRSR[i]);
         }
 
         // It's okay if there is leftover dust for RToken or a surplus asset (not RSR)
@@ -237,8 +246,8 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
 
     /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
-        assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
-        main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));
+        assert(tradesOpen == 0 && !basketHandler.fullyCollateralized());
+        rToken.setBasketsNeeded(basketHandler.basketsHeldBy(address(this)));
     }
 
     // === Governance Setters ===
@@ -262,5 +271,5 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[48] private __gap;
+    uint256[41] private __gap;
 }

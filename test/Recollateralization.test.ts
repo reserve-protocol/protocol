@@ -350,6 +350,11 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
           fp('0.125'),
         ]
         await assetRegistry.refresh()
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+        // Refresh basket
         await expect(basketHandler.refreshBasket())
           .to.emit(basketHandler, 'BasketSet')
           .withArgs(2, newTokens, newRefAmounts, false)

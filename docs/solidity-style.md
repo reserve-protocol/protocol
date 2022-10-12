@@ -253,6 +253,26 @@ Necessarily, we leave it to the deployers of any further Collateral plugins to e
   - have the `nonReentrant` modifier AND be part of a contract that uses `ReentrancyGuard`, or
   - be listed in [Exceptions](#exceptions) above and contain comments explaining why it's reentrancy-safe.
 
+## Catching Empty Data
+
+In our Collateral contracts, we aim to catch general errors coming from price feeds, and update the Collateral state to IFFY. For instance:
+
+``` solidity
+try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+    // [...]
+    // If the price is below the default-threshold price, default eventually
+    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+    else markStatus(CollateralStatus.SOUND);
+} catch (bytes memory errData) {
+    if (errData.length == 0) revert();
+    markStatus(CollateralStatus.IFFY);
+}
+```
+
+Notice, though, that we're _not_ going IFFY when `errData` is empty, but instead just reverting with another empty error. Why? Well, it's not very well-documented (and honestly it feels like a likely candidate for future change in the EVM), but the EVM emits a error with empty low-level data if it hits an out-of-gas error. This is an issue for us, though, because if the collateral contract goes IFFY on any out-of-gas error, then an attacker can set a collateral contract to IFFY at will, just by crafting an otherwise-legitimate transaction targeted to run out of gas during the `chainlinkFeed.price_()` call.
+
+So, to err on the side of non-griefability, these collateral contracts allow empty errors to pass through, rather than catching them and going IFFY.
+
 ## Upgrades
 
 Components of production version P1 are designed to be upgradeable using the Proxy Upgrade Pattern, as implemented by OpenZeppelin. More information about this general pattern is available in the [OZ documentation][proxy-docs].

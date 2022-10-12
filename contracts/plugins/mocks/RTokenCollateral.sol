@@ -100,7 +100,8 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view virtual returns (uint192) {
-        // TODO make {ref} the basket unit
+        // {ref} should probably be this RToken's basket unit, and refPerTok() should
+        // return its RToken-to-BU exchange rate. But this is just for testing...
         return FIX_ONE;
     }
 

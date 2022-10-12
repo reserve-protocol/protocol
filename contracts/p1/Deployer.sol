@@ -169,7 +169,7 @@ contract DeployerP1 is IDeployer {
         main.init(components, rsr, params.shortFreeze, params.longFreeze);
 
         // Init Backing Manager
-        main.backingManager().init(
+        components.backingManager.init(
             main,
             params.tradingDelay,
             params.backingBuffer,
@@ -178,11 +178,11 @@ contract DeployerP1 is IDeployer {
         );
 
         // Init Basket Handler
-        main.basketHandler().init(main);
+        components.basketHandler.init(main);
 
         // Init Revenue Traders
-        main.rsrTrader().init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
-        main.rTokenTrader().init(
+        components.rsrTrader.init(main, rsr, params.maxTradeSlippage, params.minTradeVolume);
+        components.rTokenTrader.init(
             main,
             IERC20(address(rToken)),
             params.maxTradeSlippage,
@@ -190,12 +190,12 @@ contract DeployerP1 is IDeployer {
         );
 
         // Init Distributor
-        main.distributor().init(main, params.dist);
+        components.distributor.init(main, params.dist);
 
         // Init Furnace
-        main.furnace().init(main, params.rewardPeriod, params.rewardRatio);
+        components.furnace.init(main, params.rewardPeriod, params.rewardRatio);
 
-        main.broker().init(main, gnosis, implementations.trade, params.auctionLength);
+        components.broker.init(main, gnosis, implementations.trade, params.auctionLength);
 
         // Init StRSR
         {
@@ -212,7 +212,7 @@ contract DeployerP1 is IDeployer {
         }
 
         // Init RToken
-        main.rToken().init(
+        components.rToken.init(
             main,
             name,
             symbol,
@@ -228,7 +228,7 @@ contract DeployerP1 is IDeployer {
         assets[1] = rsrAsset;
 
         // Init Asset Registry
-        main.assetRegistry().init(main, assets);
+        components.assetRegistry.init(main, assets);
 
         // Transfer Ownership
         main.grantRole(OWNER, owner);

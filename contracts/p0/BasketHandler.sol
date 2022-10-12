@@ -32,8 +32,6 @@ struct BackupConfig {
 //     if name is in values(targetNames), then backups[name] is a valid BackupConfig
 //     erc20s is a valid collateral array
 //
-// TODO: keys(targetAmts) can be a strict superset of erc20s.
-// Ticket: https://app.asana.com/0/1202557536393044/1203043664234027/f
 // In the meantime, treat erc20s as the canonical set of keys for the target* maps
 struct BasketConfig {
     // The collateral erc20s in the prime (explicitly governance-set) basket

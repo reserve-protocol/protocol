@@ -23,6 +23,10 @@ contract BrokerP1 is ComponentP1, IBroker {
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
 
+    IBackingManager private backingManager;
+    IRevenueTrader private rsrTrader;
+    IRevenueTrader private rTokenTrader;
+
     // The trade contract to clone on openTrade(). Immutable after init.
     ITrade public tradeImplementation;
 
@@ -56,6 +60,11 @@ contract BrokerP1 is ComponentP1, IBroker {
             "invalid Trade Implementation address"
         );
         __Component_init(main_);
+
+        backingManager = main_.backingManager();
+        rsrTrader = main_.rsrTrader();
+        rTokenTrader = main_.rTokenTrader();
+
         gnosis = gnosis_;
         tradeImplementation = tradeImplementation_;
         setAuctionLength(auctionLength_);
@@ -78,9 +87,9 @@ contract BrokerP1 is ComponentP1, IBroker {
 
         address caller = _msgSender();
         require(
-            caller == address(main.backingManager()) ||
-                caller == address(main.rsrTrader()) ||
-                caller == address(main.rTokenTrader()),
+            caller == address(backingManager) ||
+                caller == address(rsrTrader) ||
+                caller == address(rTokenTrader),
             "only traders"
         );
 
@@ -141,5 +150,5 @@ contract BrokerP1 is ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[44] private __gap;
 }

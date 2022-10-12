@@ -12,6 +12,9 @@ import "contracts/p1/mixins/Component.sol";
 contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // Peer-component addresses
+    IBasketHandler private basketHandler;
+
     // Registered ERC20s
     EnumerableSet.AddressSet private _erc20s;
 
@@ -30,6 +33,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = {a.erc20(): a for a in assets_}
     function init(IMain main_, IAsset[] calldata assets_) external initializer {
         __Component_init(main_);
+        basketHandler = main_.basketHandler();
         uint256 length = assets_.length;
         for (uint256 i = 0; i < length; ++i) {
             _register(assets_[i]);
@@ -70,11 +74,11 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function swapRegistered(IAsset asset) external governance returns (bool swapped) {
         require(_erc20s.contains(address(asset.erc20())), "no ERC20 collision");
 
-        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+        uint192 quantity = basketHandler.quantity(asset.erc20());
 
         swapped = _registerIgnoringCollisions(asset);
 
-        if (quantity > 0) main.basketHandler().disableBasket();
+        if (quantity > 0) basketHandler.disableBasket();
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -84,13 +88,13 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     function unregister(IAsset asset) external governance {
         require(_erc20s.contains(address(asset.erc20())), "no asset to unregister");
         require(assets[asset.erc20()] == asset, "asset not found");
-        uint192 quantity = main.basketHandler().quantity(asset.erc20());
+        uint192 quantity = basketHandler.quantity(asset.erc20());
 
         _erc20s.remove(address(asset.erc20()));
         assets[asset.erc20()] = IAsset(address(0));
         emit AssetUnregistered(asset.erc20(), asset);
 
-        if (quantity > 0) main.basketHandler().disableBasket();
+        if (quantity > 0) basketHandler.disableBasket();
     }
 
     /// Return the Asset registered for erc20; revert if erc20 is not registered.
@@ -163,5 +167,5 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[48] private __gap;
+    uint256[47] private __gap;
 }
