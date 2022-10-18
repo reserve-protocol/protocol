@@ -20,6 +20,7 @@ import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fi
 import { makeDecayFn } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
+import { ZERO_ADDRESS } from '../common/constants'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -123,6 +124,14 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await expect(
         newFurnace.init(main.address, newConfig.rewardPeriod, newConfig.rewardRatio)
       ).to.be.revertedWith('invalid period')
+    })
+
+    // Applies to all components - used here as an example
+    it('Deployment does not accept invalid main address', async () => {
+      const newFurnace: TestIFurnace = <TestIFurnace>await deployNewFurnace()
+      await expect(
+        newFurnace.init(ZERO_ADDRESS, config.rewardPeriod, config.rewardRatio)
+      ).to.be.revertedWith('main is zero address')
     })
   })
 
