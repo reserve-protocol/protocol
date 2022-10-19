@@ -9,11 +9,9 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 ## Uncovered sections
 
 ### contracts/p1/BasketHandler.sol:BasketHandlerP1
-
 -- `goodCollateral()`: The validations against the `zero` address, `rsr`, `stRSR`, and `rToken` will never be true, because tokens in both the *basket* and *backup* configs are previously validated in `setPrimeBasket()` and `setBackupConfig()` respectively, by calling the `requireValidCollArray()` function on the input array.
 
 ### contracts/p1/StRSR.sol:StRSRP1
-
 - `_burn()`:  Both require statements that check for `account != address(0)` and `accountBalance >= amount` will never be false. Within the `unstake()` function, right before calling `_burn()` we are validating the user has enough balance which covers these two validations, as the zero address will never have a positive balance. No other calls to `_burn` are included in the contract.
 
 ### contracts/p1/RToken.sol:RTokenP1
@@ -21,6 +19,9 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 
 ### contracts/plugins/assets/EURFiatCollateral.sol:EURFiatCollateral
 - `refresh()`: The check for `if (p2 > 0)` will never be false, because if the obtained price is 0 in the `_price()`  function an exception is thrown, and would be captured in the `try/catch` stamement right above.
+
+### contracts/plugins/assets/RTokenAsset.sol:RTokenAsset
+- `strictPrice()`: The require statement that checks for `!isFallback` will always succeed, because the code would have reverted if there was any collateral in the *RToken* that needed fallback prices.
 
 ### P0 contracts
 

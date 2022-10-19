@@ -61,6 +61,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
+  let rsrAsset: Asset
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
@@ -117,6 +118,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // Deploy fixture
     ;({
       rsr,
+      rsrAsset,
       compToken,
       aaveToken,
       compoundMock,
@@ -1451,6 +1453,59 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
+      })
+
+      it('Should not trade if price for buy token = 0', async () => {
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimAndSweepRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Set expected values, based on f = 0.6
+        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
+        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
+
+        // Check status of traders at this point
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Handout COMP tokens to Traders
+        await backingManager.manageTokens([compToken.address])
+
+        // Check funds sent to traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        // Set RSR Price to 0
+        await setOraclePrice(rsrAsset.address, bn(0))
+
+        // Should revert
+        await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
+          'PriceOutsideRange()'
+        )
+
+        // Funds still in Traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
       })
 
       it('Should report violation when auction behaves incorrectly', async () => {

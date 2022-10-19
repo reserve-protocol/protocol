@@ -169,7 +169,20 @@ describe('Assets contracts #fast', () => {
       await expect(aaveAsset.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // Fallback price is returned - use RSR as example
-      const [isFallback, price] = await rsrAsset.price(true)
+      let [isFallback, price] = await rsrAsset.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
+
+      // Update values of underlying tokens to 0
+      await setOraclePrice(collateral0.address, bn(0))
+      await setOraclePrice(collateral1.address, bn(0))
+
+      await expect(rTokenAsset.strictPrice()).to.be.revertedWith(
+        'price reverted without failover enabled'
+      )
+
+      // Fallback price is returned
+      ;[isFallback, price] = await rTokenAsset.price(true)
       expect(isFallback).to.equal(true)
       expect(price).to.equal(fp('1'))
     })
