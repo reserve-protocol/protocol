@@ -293,6 +293,7 @@ export const MAX_TARGET_AMT = BigNumber.from(10).pow(21)
 export const MAX_RATIO = BigNumber.from(10).pow(18)
 export const MAX_ISSUANCE_RATE = BigNumber.from(10).pow(18)
 export const MAX_TRADE_VOLUME = BigNumber.from(10).pow(48)
+export const MAX_MIN_TRADE_VOLUME = BigNumber.from(10).pow(29)
 
 // Timestamps
 export const MAX_ORACLE_TIMEOUT = BigNumber.from(2).pow(48).sub(1)

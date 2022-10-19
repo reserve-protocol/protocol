@@ -8,6 +8,7 @@ import {
   MAX_TRADE_SLIPPAGE,
   MAX_BACKING_BUFFER,
   MAX_TARGET_AMT,
+  MAX_MIN_TRADE_VOLUME,
   IComponents,
 } from '../common/configuration'
 import {
@@ -936,6 +937,32 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE.add(1))
       ).to.be.revertedWith('invalid maxTradeSlippage')
+    })
+
+    it('Should allow to update minTradeVolume if OWNER and perform validations', async () => {
+      const newValue: BigNumber = fp('0.02')
+
+      // Check existing value
+      expect(await backingManager.minTradeVolume()).to.equal(config.minTradeVolume)
+
+      // If not owner cannot update
+      await expect(backingManager.connect(other).setMinTradeVolume(newValue)).to.be.reverted
+
+      // Check value did not change
+      expect(await backingManager.minTradeVolume()).to.equal(config.minTradeVolume)
+
+      // Update with owner
+      await expect(backingManager.connect(owner).setMinTradeVolume(newValue))
+        .to.emit(backingManager, 'MinTradeVolumeSet')
+        .withArgs(config.minTradeVolume, newValue)
+
+      // Check value was updated
+      expect(await backingManager.minTradeVolume()).to.equal(newValue)
+
+      // Cannot update with value > max
+      await expect(
+        backingManager.connect(owner).setMinTradeVolume(MAX_MIN_TRADE_VOLUME.add(1))
+      ).to.be.revertedWith('invalid minTradeVolume')
     })
 
     it('Should allow to update backingBuffer if OWNER and perform validations', async () => {
