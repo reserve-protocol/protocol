@@ -385,6 +385,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
+    it('Should not issue RTokens if UNPRICED collateral', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket unsound')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
     it('Should not vest RTokens if paused', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
