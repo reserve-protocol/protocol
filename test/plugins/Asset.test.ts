@@ -68,7 +68,6 @@ describe('Assets contracts #fast', () => {
 
   beforeEach(async () => {
     // Deploy fixture
-    let collateral: Collateral[]
     ;({
       rsr,
       rsrAsset,
@@ -77,7 +76,6 @@ describe('Assets contracts #fast', () => {
       aaveToken,
       aaveAsset,
       basket,
-      collateral,
       backingManager,
       config,
       rToken,
