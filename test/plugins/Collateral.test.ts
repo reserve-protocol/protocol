@@ -1211,6 +1211,18 @@ describe('Collateral contracts', () => {
       // When refreshed, sets status to Unpriced
       await selfReferentialCollateral.refresh()
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Advance time
+      const delayUntilDefault: BigNumber = await selfReferentialCollateral.delayUntilDefault()
+      await advanceTime(Number(delayUntilDefault) + 1)
+
+      // Refresh
+      await selfReferentialCollateral.refresh()
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Another call would not change the state
+      await selfReferentialCollateral.refresh()
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
     })
   })
 
