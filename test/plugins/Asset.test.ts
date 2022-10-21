@@ -6,7 +6,19 @@ import { advanceTime } from '../utils/time'
 import { ZERO_ADDRESS, ONE_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import { setInvalidOracleTimestamp, setOraclePrice } from '../utils/oracles'
-import { Asset, ERC20Mock, RTokenAsset, TestIRToken } from '../../typechain'
+import {
+  Asset,
+  ATokenFiatCollateral,
+  CTokenFiatCollateral,
+  CTokenMock,
+  ERC20Mock,
+  FiatCollateral,
+  RTokenAsset,
+  StaticATokenMock,
+  TestIBackingManager,
+  TestIRToken,
+  USDCMock,
+} from '../../typechain'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -17,10 +29,16 @@ describe('Assets contracts #fast', () => {
   let compToken: ERC20Mock
   let aaveToken: ERC20Mock
   let rToken: TestIRToken
+  let token: ERC20Mock
+  let usdc: USDCMock
+  let aToken: StaticATokenMock
+  let cToken: CTokenMock
 
-  // Tokens/Assets
-  let collateral0: Collateral
-  let collateral1: Collateral
+  // Assets
+  let collateral0: FiatCollateral
+  let collateral1: FiatCollateral
+  let collateral2: ATokenFiatCollateral
+  let collateral3: CTokenFiatCollateral
 
   // Assets
   let rsrAsset: Asset
@@ -35,9 +53,11 @@ describe('Assets contracts #fast', () => {
   // Main
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+  let backingManager: TestIBackingManager
 
   // Factory
   let AssetFactory: ContractFactory
+  let RTokenAssetFactory: ContractFactory
 
   const amt = fp('1e4')
 
@@ -58,13 +78,23 @@ describe('Assets contracts #fast', () => {
       aaveAsset,
       basket,
       collateral,
+      backingManager,
       config,
       rToken,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    collateral0 = <Collateral>await ethers.getContractAt('FiatCollateral', collateral[0].address)
-    collateral1 = <Collateral>await ethers.getContractAt('FiatCollateral', collateral[1].address)
+    // Get collateral tokens
+    collateral0 = <FiatCollateral>basket[0]
+    collateral1 = <FiatCollateral>basket[1]
+    collateral2 = <ATokenFiatCollateral>basket[2]
+    collateral3 = <CTokenFiatCollateral>basket[3]
+    token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
+    usdc = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
+    aToken = <StaticATokenMock>(
+      await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
+    )
+    cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
@@ -79,6 +109,7 @@ describe('Assets contracts #fast', () => {
     await rToken.connect(wallet).issue(amt)
 
     AssetFactory = await ethers.getContractFactory('Asset')
+    RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
   })
 
   describe('Deployment', () => {
@@ -187,6 +218,15 @@ describe('Assets contracts #fast', () => {
       expect(price).to.equal(fp('1'))
     })
 
+    it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
+      await token.burn(backingManager.address, await token.balanceOf(backingManager.address))
+      await usdc.burn(backingManager.address, await usdc.balanceOf(backingManager.address))
+      await aToken.burn(backingManager.address, await aToken.balanceOf(backingManager.address))
+      await cToken.burn(backingManager.address, await cToken.balanceOf(backingManager.address))
+
+      expect(await rTokenAsset.strictPrice()).to.equal(0)
+    })
+
     it('Should not revert RToken price if supply is zero', async () => {
       // Redeem RToken to make price function revert
       // Note: To get RToken price to 0, a full basket refresh needs to occur (covered in RToken tests)
@@ -293,6 +333,16 @@ describe('Assets contracts #fast', () => {
       await expect(
         AssetFactory.deploy(1, ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
       ).to.be.revertedWith('invalid max trade volume')
+    })
+
+    it('Should validate constructor in RTokenAsset', async () => {
+      await expect(
+        RTokenAssetFactory.deploy(ZERO_ADDRESS, config.rTokenMaxTradeVolume)
+      ).to.be.revertedWith('missing erc20')
+
+      await expect(RTokenAssetFactory.deploy(rToken.address, 0)).to.be.revertedWith(
+        'invalid max trade volume'
+      )
     })
   })
 })
