@@ -1506,6 +1506,29 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Funds still in Traders
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
         expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        // Set RToken price to 0 (Full haircut)
+        await token0
+          .connect(owner)
+          .burn(backingManager.address, await token0.balanceOf(backingManager.address))
+        await token1
+          .connect(owner)
+          .burn(backingManager.address, await token1.balanceOf(backingManager.address))
+        await token2
+          .connect(owner)
+          .burn(backingManager.address, await token2.balanceOf(backingManager.address))
+        await token3
+          .connect(owner)
+          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+
+        // Should revert
+        await expect(rTokenTrader.manageToken(compToken.address)).to.be.revertedWith(
+          'buy asset has zero price'
+        )
+
+        // Funds still in Traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
       })
 
       it('Should report violation when auction behaves incorrectly', async () => {
