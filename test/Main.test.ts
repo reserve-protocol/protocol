@@ -1548,6 +1548,45 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(price2).to.equal(fp('0.75')) // no insurance to buffer the price
     })
 
+    it('Should handle collateral wih price = 0 when checking basket price', async () => {
+      // Check status and price
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.equal(fp('1'))
+
+      // Set fallback to 0 for one of the collaterals (swapping the collateral)
+      const ZeroPriceATokenFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
+        'InvalidATokenFiatCollateralMock',
+        {
+          libraries: { OracleLib: oracleLib.address },
+        }
+      )
+      const newColl2 = <ATokenFiatCollateral>await ZeroPriceATokenFiatCollateralFactory.deploy(
+        bn('1'), // Will not be used, 0 will be returned instead
+        await collateral2.chainlinkFeed(),
+        await collateral2.erc20(),
+        await collateral2.rewardERC20(),
+        await collateral2.maxTradeVolume(),
+        await collateral2.oracleTimeout(),
+        ethers.utils.formatBytes32String('USD'),
+        await collateral2.defaultThreshold(),
+        await collateral2.delayUntilDefault()
+      )
+
+      // Swap collateral
+      await assetRegistry.connect(owner).swapRegistered(newColl2.address)
+
+      // Set price = 0
+      await setOraclePrice(newColl2.address, bn('0'))
+
+      // Check status and price again
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+      const [isFallback2, price2] = await basketHandler.price(true)
+      expect(isFallback2).to.equal(true)
+      expect(price2).to.equal(fp('0.75'))
+    })
+
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
@@ -1690,6 +1729,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
+    })
+
+    it('Should return no basketsHeld when refPerTok = 0', async () => {
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+
+      // Set Token2 to hard default - Zero rate
+      await token2.setExchangeRate(fp('0'))
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
     it('Should not put backup tokens with different targetName in the basket', async () => {
