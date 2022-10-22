@@ -7,7 +7,6 @@ import "contracts/plugins/assets/ICToken.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-
 /**
  * @title CTokenNonFiatCollateral
  * @notice Collateral plugin for a cToken of nonfiat collateral that requires default checks,

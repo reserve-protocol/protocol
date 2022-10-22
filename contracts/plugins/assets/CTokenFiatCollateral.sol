@@ -103,7 +103,7 @@ contract CTokenFiatCollateral is Collateral {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
             }
-                markStatus(CollateralStatus.IFFY);
+            markStatus(CollateralStatus.IFFY);
         }
         prevReferencePrice = referencePrice;
 
