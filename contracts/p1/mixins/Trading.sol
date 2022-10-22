@@ -89,6 +89,10 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
+    //
+    // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
+    // this contract that changes state this function refers to.
+    // slither-disable-next-line reentrancy-vulnerabilities-1
     function tryTrade(TradeRequest memory req) internal nonReentrant {
         /*  */
         IERC20 sell = req.sell.erc20();
