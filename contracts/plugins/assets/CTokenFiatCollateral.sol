@@ -3,21 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
-
-// ==== External Interfaces ====
-// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
-interface ICToken {
-    /// @dev From Compound Docs:
-    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    function exchangeRateCurrent() external returns (uint256);
-
-    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
-    function exchangeRateStored() external view returns (uint256);
-}
-
-// ==== End External Interfaces ====
+import "contracts/plugins/assets/ICToken.sol";
+import "contracts/libraries/Fixed.sol";
 
 /**
  * @title CTokenNonFiatCollateral
@@ -114,8 +102,8 @@ contract CTokenFiatCollateral is Collateral {
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                markStatus(CollateralStatus.IFFY);
             }
+                markStatus(CollateralStatus.IFFY);
         }
         prevReferencePrice = referencePrice;
 
