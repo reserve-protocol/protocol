@@ -37,8 +37,9 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
-        if (erc20 == tokenToBuy) {
-            erc20.safeIncreaseAllowance(address(main.distributor()), bal);
+        if (erc20 == tokenToBuy) { 
+            erc20.safeApprove(address(main.distributor()), 0);
+            erc20.safeApprove(address(main.distributor()), bal);
             main.distributor().distribute(erc20, address(this), bal);
             return;
         }
