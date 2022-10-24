@@ -981,6 +981,91 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
       })
 
+      it('Should recollateralize correctly when switching basket - Using fallback price', async () => {
+        // Set price to 0 for token (will use fallback)
+        await setOraclePrice(collateral0.address, bn(0))
+
+        // Setup prime basket
+        await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
+
+        // Switch Basket
+        await expect(basketHandler.connect(owner).refreshBasket())
+          .to.emit(basketHandler, 'BasketSet')
+          .withArgs(3, [token1.address], [fp('1')], false)
+
+        // Check state remains SOUND
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+
+        // Check price in USD of the current redemption basket
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+
+        // Trigger recollateralization
+        const sellAmt: BigNumber = await token0.balanceOf(backingManager.address)
+
+        await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
+          .to.emit(backingManager, 'TradeStarted')
+          .withArgs(anyValue, token0.address, token1.address, sellAmt, bn(0))
+
+        const auctionTimestamp: number = await getLatestBlockTimestamp()
+
+        // Check auction registered
+        // Token0 -> Token1 Auction
+        await expectTrade(backingManager, {
+          sell: token0.address,
+          buy: token1.address,
+          endTime: auctionTimestamp + Number(config.auctionLength),
+          externalId: bn('0'),
+        })
+
+        // Check state
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(false)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check Gnosis
+        expect(await token0.balanceOf(gnosis.address)).to.equal(issueAmount)
+
+        // Perform Mock Bids for the new Token (addr1 has balance)
+        // Get all tokens for simplification
+        await token1.connect(addr1).approve(gnosis.address, toBNDecimals(sellAmt, 6))
+        await gnosis.placeBid(0, {
+          bidder: addr1.address,
+          sellAmount: sellAmt,
+          buyAmount: toBNDecimals(sellAmt, 6),
+        })
+
+        // Advance time till auction ended
+        await advanceTime(config.auctionLength.add(100).toString())
+
+        // End current auction, should  not start any new auctions
+        await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
+          {
+            contract: backingManager,
+            name: 'TradeSettled',
+            args: [anyValue, token0.address, token1.address, sellAmt, toBNDecimals(sellAmt, 6)],
+            emitted: true,
+          },
+          { contract: backingManager, name: 'TradeStarted', emitted: false },
+        ])
+
+        // Check state - Order restablished
+        expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
+        expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+        expect(await token1.balanceOf(backingManager.address)).to.equal(
+          toBNDecimals(issueAmount, 6)
+        )
+        expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+        // Check price in USD of the current RToken
+        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      })
+
       it('Should recollateralize correctly when switching basket - Taking Haircut - No RSR', async () => {
         // Empty out the staking pool
         await stRSR.connect(addr1).unstake(stakeAmount)
