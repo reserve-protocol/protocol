@@ -130,7 +130,9 @@ contract GnosisTrade is ITrade {
 
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), initBal);
+        // Set allowance (two safeApprove calls to support USDT)
+        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), 0);
+        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), initBal);
 
         auctionId = gnosis.initiateAuction(
             sell,
