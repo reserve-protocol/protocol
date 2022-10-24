@@ -187,7 +187,15 @@ Ok, that was a lot about the theory behind our accounting units. Below are some 
 
 ## Important Properties for Collateral Plugins
 
-Collateral plugins should be permisionless and should be able to be used by any number of RTokens simultaneously.
+### Collateral plugins should be permisionless and should be able to be used by any number of RTokens simultaneously
+
+### Token balances cannot be rebasing
+
+Some defi protocols have chosen to provide returns in the form of an increasing token balance, called a rebase. ATokens from Aave and stETH from Lido are both rebasing tokens: over time token balances simply increase of their own accord. While people tend to like this, smart contracts certainly don't. In order to have a rebasing token be handled by the protocol, **it must be wrapped** to be turned into a token that appreciates solely via exchange rate increases.
+
+In general any rebasing token can be wrapped to be turned into an appreciating exchange rate token, and vice versa. It's even possible to split the difference, if you want. But for a token to be used in the Reserve protocol as collateral, it's important that _all_ rebasing be eliminated from the token.
+
+For an example of what a token wrapper that performs this transformation looks like, check out `contracts/plugins/aave/StaticATokenLM.sol`. This is a standard wrapper used by many protocols to wrap Aave ATokens into StaticATokens.
 
 ### `refresh()` should never revert
 
