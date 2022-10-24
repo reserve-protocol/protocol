@@ -68,14 +68,12 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
     /// @custom:interaction CEI
     // checks: erc20 in assetRegistry
     // action: set allowance on erc20 for rToken to UINT_MAX
+    // Using two safeApprove calls instead of safeIncreaseAllowance to support USDT
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(assetRegistry.isRegistered(erc20), "erc20 unregistered");
         // == Interaction ==
-        uint256 currAllowance = erc20.allowance(address(this), address(rToken));
-        IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(
-            address(rToken),
-            type(uint256).max - currAllowance
-        );
+        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), 0);
+        IERC20Upgradeable(address(erc20)).safeApprove(address(main.rToken()), type(uint256).max);
     }
 
     /// Maintain the overall backing policy; handout assets otherwise

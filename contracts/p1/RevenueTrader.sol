@@ -43,7 +43,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     //
     // If erc20 is tokenToBuy:
     //   actions:
-    //     erc20.increaseAllowance(distributor, bal)
+    //     erc20.increaseAllowance(distributor, bal) - two safeApprove calls to support USDT
     //     distributor.distribute(erc20, this, bal)
     //
     // If erc20 is any other registered asset (checked):
@@ -58,7 +58,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         if (erc20 == tokenToBuy) {
             // == Interactions then return ==
-            IERC20Upgradeable(address(erc20)).safeIncreaseAllowance(address(distributor), bal);
+            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), 0);
+            IERC20Upgradeable(address(erc20)).safeApprove(address(distributor), bal);
             distributor.distribute(erc20, address(this), bal);
             return;
         }
