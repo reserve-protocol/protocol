@@ -111,7 +111,7 @@ interface ICollateral is IAsset {
 
 ### Accounting Units
 
-The first thing a collateral plugin designer needs to do is select the 3 accounting units for the collateral token in consideration. For the most part this boils down to finding some **reference unit that the collateral unit never depreciates with respect to**.
+The first thing a collateral plugin designer needs to do is select the 3 accounting units for the collateral token in consideration. For the most part this boils down to finding some **reference unit that the collateral unit never depreciates with respect to**. We call this the "monotonically increasing" constraint.
 
 #### Collateral unit `{tok}`
 
@@ -132,7 +132,7 @@ It's often the case that the collateral token is directly redeemable for the ref
 
 ##### Synthetic reference units (advanced)
 
-In some cases, a synthetic reference unit will be required. Let's take the case of the **UNIV2LP** token for a like-kind stablecoin pool such as the USDC/USDT pair.
+In some cases, a synthetic reference unit will be required. Let's take the case of an **UNIV2LP** token for a like-kind stablecoin pool such as the USDC/USDT pair.
 
 (Note: In UNIV2 trading fees are automatically re-invested back into the pool)
 
@@ -140,20 +140,16 @@ In some cases, a synthetic reference unit will be required. Let's take the case 
   It's tempting to say the LP token strictly appreciates relative to the number of USDC + USDT in the pool, but this isn't actually true. Let's see why.
   When the price moves away from the 1:1 point, more tokens are taken in than are given away. From the trader's perspective, this is a "bad" price, assuming both USDC and USDT have not lost their peg. As long as the trade moves the pool further away from the 1:1 point, then it's true that the sum of USDC + USDT balances in the pool increases monotonically.
   But we can't count on this always being the case! Any trade that returns the pool closer to the 1:1 point is "good" from the trader's perspective; they buy more USD stablecoin than they sell. When the pool is imbalanced, it might be willing to sell 101 USDC for 100 USDT. In this case, using the raw total of USDC + USDT balances would result in a measure that sometimes decreases with respect to the LP token. Even though this happens rarely, this means **it would not work to use the sum of the USDC + USDT balances as the reference unit for an LP token**.
-- But, with a little creativity, we can come up with a synthetic unit that _does_ have the property we care about. How? In general the approach that will work here is to look for some type of floor measure that we can be confident will never decrease. Here is a candidate measure:
 
-  Let the reference unit be the sum of _stored_ USDC and USDT balances, where stored values are updated latently/pessimistically. That is: when examining token balances, only look at the minority side of the pool, and only update the stored token balance if it exceeds the previously stored balance.
+Fortunately, each AMM pool has _some_ invariant it preserves in order to quote prices to traders. In the case of UNIV2, this is the constant-product formula `x * y = k`, where `x` and `y` are the token balances. This means `x * y` adheres to our monotonically increasing constraint already; the product can never fall.
 
-  (Note: This explanation assumes a constant LP token balance. In practice this will likely have to be implemented via tracking two exchange rates in order to account for RToken issuances/redemptions that may change how many LP tokens are held. Pseudocode below.)
+However, its units are wrong. We need to the square root of the product in order to get back to a (synthetic) token balance. [TODO: expand this justification]
 
-  ```
-  refresh():
-    maxRate = max(USDC/LP, USDT/LP)
-    a = max(a, USDC/LP) if USDC/LP <= maxRate else a
-    b = max(b, USDT/LP) if USDT/LP <= maxRate else b
-  ```
+A good reference unit for a UNIV2 position is: `sqrt( USDC.balanceOf(pool) * USDT.balanceOf(pool))`
 
-If this seems confusing, that's because it is kind of confusing. At the time of this writing, this repo does not yet contain a collateral plugin with a synthetic reference unit, and that is because they are genuinely difficult to write! We recommend only the bravest head down this path.
+In general this is extensible to any AMM curve on any number of assets. For Curve/Balancer, one would only need to replace the inside of the expression above with the pool invariant and alter the `sqrt` to be an `n-root` where `n` is the number of tokens in the pool.
+
+In its general form this looks like: `( amm_invariant ) ^ (1/num_assets)`
 
 ##### Common Misconceptions
 
@@ -195,7 +191,9 @@ Some defi protocols have chosen to provide returns in the form of an increasing 
 
 In general any rebasing token can be wrapped to be turned into an appreciating exchange rate token, and vice versa. It's even possible to split the difference, if you want. But for a token to be used in the Reserve protocol as collateral, it's important that _all_ rebasing be eliminated from the token.
 
-For an example of what a token wrapper that performs this transformation looks like, check out `contracts/plugins/aave/StaticATokenLM.sol`. This is a standard wrapper used by many protocols to wrap Aave ATokens into StaticATokens.
+To use a rebasing token as collateral backing, the ERC20 needs to be replaced with an ERC20 that is non-rebasing. This is _not_ a change to the collateral plugin contract itself. Instead, the collateral plugin designer needs to provide a wrapping ERC20 contract that RToken issuers/redeemers will have to deposit/withdraw into when they perform issuance/redemption. In the future this transformation should be provided as a type of zap, but at the time of this writing everything is still manual.
+
+For an example of what a token wrapper that performs this transformation looks like, check out `contracts/plugins/aave/StaticATokenLM.sol`. This is a standard wrapper used by many protocols to wrap Aave ATokens into StaticATokens. A thinned-down version of this contract makes a good starting point for developing other ERC20 wrappers. But if the defi protocol is well-integrated into defi, it's likely there already exists a wrapping token contract that can be vendored and used directly.
 
 ### `refresh()` should never revert
 
