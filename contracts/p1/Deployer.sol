@@ -104,6 +104,8 @@ contract DeployerP1 is IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
+        require(owner != address(0) && owner != address(this), "invalid owner");
+
         // Main - Proxy
         MainP1 main = MainP1(
             address(new ERC1967Proxy(address(implementations.main), new bytes(0)))
