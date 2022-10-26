@@ -1739,6 +1739,22 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
+    it('Should return FIX_MAX as basket price in case of overflow (for individual collateral)', async () => {
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Set RefperTok = 0
+      await token2.setExchangeRate(fp('0'))
+      expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
+
+      // Also set price of underlying to 0 so Fallback price is used
+      await setOraclePrice(collateral2.address, bn(0))
+
+      // Check BU price
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(MAX_UINT192)
+    })
+
     it('Should not put backup tokens with different targetName in the basket', async () => {
       // Swap out collateral for bad target name
       const CollFactory = await ethers.getContractFactory('FiatCollateral', {
