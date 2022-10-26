@@ -273,6 +273,16 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       ).to.be.revertedWith('mandate empty')
     })
 
+    it('Should not allow invalid owner address', async () => {
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', ZERO_ADDRESS, config)
+      ).to.be.revertedWith('invalid owner')
+
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', deployer.address, config)
+      ).to.be.revertedWith('invalid owner')
+    })
+
     it('Should setup Main correctly', async () => {
       // Assets
       // RSR
