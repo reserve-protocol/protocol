@@ -5,23 +5,11 @@ import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
-import {
-  IConfig,
-  IRTokenConfig,
-  IRTokenSetup,
-  networkConfig,
-} from '../../common/configuration'
+import { IConfig, IRTokenConfig, IRTokenSetup, networkConfig } from '../../common/configuration'
 import { ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
-import {
-  ERC20Mock,
-  FacadeWrite,
-  FiatCollateral,
-  IERC20,
-  TestIDeployer,
-  TestIMain,
-} from '../../typechain'
+import { FacadeWrite, FiatCollateral, TestIDeployer, TestIMain } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -29,13 +17,11 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
-  let addr1: SignerWithAddress
 
   // Assets
   let collateral: Collateral[]
 
   // Tokens and Assets
-  let usdt: ERC20Mock
   let usdtCollateral: FiatCollateral
 
   // Contracts to retrieve after deploy
@@ -46,8 +32,6 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
 
   let rTokenConfig: IRTokenConfig
   let rTokenSetup: IRTokenSetup
-  
-  let erc20s: IERC20[]
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -66,10 +50,8 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
     })
 
     beforeEach(async () => {
-      ;[owner, addr1] = await ethers.getSigners()
-      ;({ erc20s, collateral, deployer, config } = await loadFixture(
-        defaultFixture
-      ))
+      ;[owner] = await ethers.getSigners()
+      ;({ collateral, deployer, config } = await loadFixture(defaultFixture))
 
       // Deploy DFacadeWriteLib lib
       const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
@@ -84,13 +66,12 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
       facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
       // Get tokens
-      usdt = <ERC20Mock>erc20s[2] // USDT
-      usdtCollateral = <FiatCollateral>collateral[2] // USDT   
+      usdtCollateral = <FiatCollateral>collateral[2] // USDT
     })
 
     it('Should allow to deploy USDT in both prime and backup basket', async () => {
-       // Set parameters
-       rTokenConfig = {
+      // Set parameters
+      rTokenConfig = {
         name: 'RTKN RToken',
         symbol: 'RTKN',
         mandate: 'mandate',
@@ -111,7 +92,7 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
       }
       // Deploy RToken via FacadeWrite
       const receipt = await (
-        await facadeWrite.connect(addr1).deployRToken(rTokenConfig, rTokenSetup)
+        await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
       ).wait()
 
       const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
