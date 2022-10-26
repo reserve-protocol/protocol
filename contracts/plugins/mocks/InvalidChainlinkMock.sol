@@ -29,7 +29,7 @@ contract InvalidMockV3Aggregator is MockV3Aggregator {
         )
     {
         if (simplyRevert) {
-            revert();  // Revert with no reason
+            revert(); // Revert with no reason
         } else {
             // Run out of gas
             this.infiniteLoop{ gas: 10 }();
