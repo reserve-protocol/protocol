@@ -4,6 +4,6 @@
   "exclude_medium": false,
   "exclude_high": false,
   "solc_disable_warnings": true,
-  "filter_paths": "/fuzz/|/test/|/mocks/|node_modules/",
-  "detectors_to_exclude": ""
+  "filter_paths": "/fuzz/|/test/|/mocks/|/node_modules/|/p0/",
+  "detectors_to_exclude": "incorrect-versions-of-solidity,conformance-to-solidity-naming-conventions"
 }
