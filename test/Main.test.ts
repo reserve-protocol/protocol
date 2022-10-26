@@ -935,7 +935,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Cannot update with value > max
       await expect(
-        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE.add(1))
+        backingManager.connect(owner).setMaxTradeSlippage(MAX_TRADE_SLIPPAGE)
       ).to.be.revertedWith('invalid maxTradeSlippage')
     })
 
