@@ -11,6 +11,8 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 ### contracts/p1/BasketHandler.sol:BasketHandlerP1
 -- `goodCollateral()`: The validations against the `zero` address, `rsr`, `stRSR`, and `rToken` will never be true, because tokens in both the *basket* and *backup* configs are previously validated in `setPrimeBasket()` and `setBackupConfig()` respectively, by calling the `requireValidCollArray()` function on the input array.
 
+-- `price():` The overflow check at the end `if (nextP < delta || nextP > FIX_MAX) ...` could not be hit so far without falling into previous validations in the code. An issue will be created for further investigation.
+
 ### contracts/p1/RToken.sol:RTokenP1
 - `refundSpan()`: The revert stamement `revert("Bad refundSpan")` will never occur with the current version of the code, as this is an `internal` function and the parameters for `left` and `right` are always stored in the contract and maintained with valid values doing the entire lifecycle.
 
