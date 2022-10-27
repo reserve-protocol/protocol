@@ -367,8 +367,12 @@ async function main() {
     `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
   )
 
+  fallbackPrice = fp('1')
+    .mul(await ausdpStaticToken.rate())
+    .div(bn('1e27'))
+
   const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDP)).toString(), // close enougth
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     staticAToken: ausdpStaticToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
@@ -474,10 +478,17 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDP  **************************/
 
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cUSDP as string
+  )
+
+  fallbackPrice = fp('1')
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e28'))
+
   const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDP))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     cToken: networkConfig[chainId].tokens.cUSDP,
     rewardToken: networkConfig[chainId].tokens.COMP,
