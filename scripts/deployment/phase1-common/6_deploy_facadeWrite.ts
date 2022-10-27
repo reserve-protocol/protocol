@@ -12,10 +12,9 @@ let facadeWrite: FacadeWrite
 async function main() {
   // ==== Read Configuration ====
   const [burner] = await hre.ethers.getSigners()
-
   const chainId = await getChainId(hre)
 
-  console.log(`Deploying FacadeWrite to network ${hre.network.name} (${chainId})
+  console.log(`Deploying Facade to network ${hre.network.name} (${chainId})
     with burner account: ${burner.address}`)
 
   if (!networkConfig[chainId]) {
@@ -25,14 +24,13 @@ async function main() {
   const deploymentFilename = getDeploymentFilename(chainId)
   const deployments = <IDeployments>getDeploymentFile(deploymentFilename)
 
-  // Validate implementations
   await validateImplementations(deployments)
 
   // Check previous step executed
-  if (!deployments.deployer) {
-    throw new Error(`Missing Deployer contract in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.deployer))) {
-    throw new Error(`Deployer contract not found in network ${hre.network.name}`)
+  if (!deployments.rsrAsset) {
+    throw new Error(`Missing deployed contracts in network ${hre.network.name}`)
+  } else if (!(await isValidContract(hre, deployments.rsrAsset))) {
+    throw new Error(`RSR Asset contract not found in network ${hre.network.name}`)
   }
 
   // ******************** Deploy FacadeWrite ****************************************/

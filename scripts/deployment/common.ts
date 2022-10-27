@@ -15,9 +15,10 @@ export interface IDeployments {
   oracleLib: string
   tradingLib: string
   permitLib: string
-  facade: string
+  facadeRead: string
   facadeWriteLib: string
   facadeWrite: string
+  facadeAct: string
   deployer: string
   rsrAsset: string
   implementations: IImplementations
