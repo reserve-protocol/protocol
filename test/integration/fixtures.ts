@@ -24,7 +24,8 @@ import {
   DistributorP1,
   ERC20Mock,
   EURFiatCollateral,
-  Facade,
+  FacadeRead,
+  FacadeAct,
   FacadeTest,
   FurnaceP1,
   GnosisTrade,
@@ -624,7 +625,8 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: Facade
+  facade: FacadeRead
+  facadeAct: FacadeAct
   facadeTest: FacadeTest
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
@@ -635,7 +637,6 @@ interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
   owner,
 ]): Promise<DefaultFixture> {
-  let facade: Facade
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
   const { gnosis } = await gnosisFixture()
@@ -676,9 +677,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
   const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
 
-  // Deploy Facade
-  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  facade = <Facade>await FacadeFactory.deploy()
+  // Deploy FacadeRead
+  const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
+  const facade = <FacadeRead>await FacadeReadFactory.deploy()
+
+  // Deploy FacadeAct
+  const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
+  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -786,10 +791,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
         stRSR: stRSRImpl.address,
       },
     }
-
-    // Deploy Facade
-    const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-    facade = <Facade>await FacadeFactory.deploy()
 
     const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
     deployer = <DeployerP1>(
@@ -924,6 +925,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     broker,
     gnosis,
     facade,
+    facadeAct,
     facadeTest,
     rsrTrader,
     rTokenTrader,

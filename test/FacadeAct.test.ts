@@ -13,18 +13,16 @@ import {
   ATokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  Facade,
+  FacadeAct,
   FacadeTest,
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
   StaticATokenMock,
-  StRSRP1,
   TestIBackingManager,
   TestIDistributor,
   TestIFurnace,
-  TestIMain,
   TestIRevenueTrader,
   TestIStRSR,
   TestIRToken,
@@ -40,11 +38,10 @@ const describeGas =
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
-describe('Facade contract', () => {
+describe('FacadeAct contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
-  let other: SignerWithAddress
 
   // Tokens
   let initialBal: BigNumber
@@ -70,12 +67,11 @@ describe('Facade contract', () => {
   let config: IConfig
 
   // Facade
-  let facade: Facade
+  let facadeAct: FacadeAct
   let facadeTest: FacadeTest
 
   // Main
   let rToken: TestIRToken
-  let main: TestIMain
   let stRSR: TestIStRSR
   let furnace: TestIFurnace
   let basketHandler: IBasketHandler
@@ -95,7 +91,7 @@ describe('Facade contract', () => {
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2, other] = await ethers.getSigners()
+    ;[owner, addr1, addr2] = await ethers.getSigners()
     let erc20s: ERC20Mock[]
 
       // Deploy fixture
@@ -110,11 +106,10 @@ describe('Facade contract', () => {
       erc20s,
       collateral,
       basket,
-      facade,
+      facadeAct,
       facadeTest,
       rToken,
       config,
-      main,
       furnace,
       rTokenTrader,
       rsrTrader,
@@ -136,164 +131,6 @@ describe('Facade contract', () => {
     backupCollateral1 = <FiatCollateral>collateral[2]
     backupToken2 = erc20s[9] // aUSDT
     backupCollateral2 = <ATokenFiatCollateral>collateral[9]
-  })
-
-  describe('Views', () => {
-    let issueAmount: BigNumber
-
-    beforeEach(async () => {
-      await rToken.connect(owner).setIssuanceRate(fp('1'))
-
-      // Mint Tokens
-      initialBal = bn('10000000000e18')
-      await token.connect(owner).mint(addr1.address, initialBal)
-      await usdc.connect(owner).mint(addr1.address, initialBal)
-      await aToken.connect(owner).mint(addr1.address, initialBal)
-      await cToken.connect(owner).mint(addr1.address, initialBal)
-
-      await token.connect(owner).mint(addr2.address, initialBal)
-      await usdc.connect(owner).mint(addr2.address, initialBal)
-      await aToken.connect(owner).mint(addr2.address, initialBal)
-      await cToken.connect(owner).mint(addr2.address, initialBal)
-
-      // Issue some RTokens
-      issueAmount = bn('100e18')
-
-      // Provide approvals
-      await token.connect(addr1).approve(rToken.address, initialBal)
-      await usdc.connect(addr1).approve(rToken.address, initialBal)
-      await aToken.connect(addr1).approve(rToken.address, initialBal)
-      await cToken.connect(addr1).approve(rToken.address, initialBal)
-
-      // Issue rTokens
-      await rToken.connect(addr1).issue(issueAmount)
-    })
-
-    it('should return the correct facade address', async () => {
-      expect(await facade.stToken(rToken.address)).to.equal(stRSR.address)
-    })
-
-    it('Should return maxIssuable correctly', async () => {
-      // Check values
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        bn('39999999900e18')
-      )
-      expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        bn('40000000000e18')
-      )
-      expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
-    })
-
-    it('Should return backingOverview correctly', async () => {
-      let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
-
-      // Check values - Fully capitalized and no insurance
-      expect(backing).to.equal(fp('1'))
-      expect(insurance).to.equal(0)
-
-      // Mint some RSR
-      const stakeAmount = bn('50e18') // Half in value compared to issued RTokens
-      await rsr.connect(owner).mint(addr1.address, stakeAmount.mul(2))
-
-      // Stake some RSR
-      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
-      await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
-
-      // Check values - Fully capitalized and fully insured
-      expect(backing).to.equal(fp('1'))
-      expect(insurance).to.equal(fp('0.5'))
-
-      // Stake more RSR
-      await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
-      await stRSR.connect(addr1).stake(stakeAmount)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
-
-      expect(backing).to.equal(fp('1'))
-      expect(insurance).to.equal(fp('1'))
-
-      // Redeem all RTokens
-      await rToken.connect(addr1).redeem(issueAmount)
-
-      // Check values = 0 (no supply)
-      ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
-
-      // Check values - No supply, returns 0
-      expect(backing).to.equal(0)
-      expect(insurance).to.equal(0)
-    })
-
-    it('Should return basketBreakdown correctly for paused token', async () => {
-      await main.connect(owner).pause()
-      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
-      expect(erc20s.length).to.equal(4)
-      expect(breakdown.length).to.equal(4)
-      expect(targets.length).to.equal(4)
-      expect(erc20s[0]).to.equal(token.address)
-      expect(erc20s[1]).to.equal(usdc.address)
-      expect(erc20s[2]).to.equal(aToken.address)
-      expect(erc20s[3]).to.equal(cToken.address)
-      expect(breakdown[0]).to.equal(fp('0.25'))
-      expect(breakdown[1]).to.equal(fp('0.25'))
-      expect(breakdown[2]).to.equal(fp('0.25'))
-      expect(breakdown[3]).to.equal(fp('0.25'))
-      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
-    })
-
-    it('Should return totalAssetValue correctly - FacadeTest', async () => {
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
-    })
-
-    it('Should return RToken price correctly', async () => {
-      expect(await facade.price(rToken.address)).to.equal(fp('1'))
-    })
-
-    // P1 only
-    if (IMPLEMENTATION == Implementation.P1) {
-      let stRSRP1: StRSRP1
-
-      beforeEach(async () => {
-        stRSRP1 = await ethers.getContractAt('StRSRP1', stRSR.address)
-      })
-
-      it('Should return pending issuances', async () => {
-        const largeIssueAmount = initialBal.div(10)
-
-        // Issue rTokens
-        await rToken.connect(addr1).issue(largeIssueAmount)
-        await rToken.connect(addr1).issue(largeIssueAmount.add(1))
-        const pendings = await facade.pendingIssuances(rToken.address, addr1.address)
-
-        expect(pendings.length).to.eql(2)
-        expect(pendings[0][0]).to.eql(bn(0)) // index
-        expect(pendings[0][2]).to.eql(largeIssueAmount) // amount
-
-        expect(pendings[1][0]).to.eql(bn(1)) // index
-        expect(pendings[1][2]).to.eql(largeIssueAmount.add(1)) // amount
-      })
-
-      it('Should return pending unstakings', async () => {
-        const unstakeAmount = bn('10000e18')
-        await rsr.connect(owner).mint(addr1.address, unstakeAmount.mul(10))
-
-        // Stake
-        await rsr.connect(addr1).approve(stRSR.address, unstakeAmount.mul(10))
-        await stRSRP1.connect(addr1).stake(unstakeAmount.mul(10))
-        await stRSRP1.connect(addr1).unstake(unstakeAmount)
-        await stRSRP1.connect(addr1).unstake(unstakeAmount.add(1))
-
-        const pendings = await facade.pendingUnstakings(rToken.address, addr1.address)
-        expect(pendings.length).to.eql(2)
-        expect(pendings[0][0]).to.eql(bn(0)) // index
-        expect(pendings[0][2]).to.eql(unstakeAmount) // amount
-
-        expect(pendings[1][0]).to.eql(bn(1)) // index
-        expect(pendings[1][2]).to.eql(unstakeAmount.add(1)) // amount
-      })
-    }
   })
 
   // P1 only
@@ -333,7 +170,7 @@ describe('Facade contract', () => {
 
     it('No call required', async () => {
       // Via Facade get next cal - No action required
-      const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
     })
@@ -366,7 +203,7 @@ describe('Facade contract', () => {
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
 
       //  Call via Facade - should detect call to Basket handler
-      const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(basketHandler.address)
       expect(data).to.not.equal('0x')
 
@@ -396,7 +233,7 @@ describe('Facade contract', () => {
       const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
 
       // Run auction via Facade
-      let [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
@@ -430,7 +267,7 @@ describe('Facade contract', () => {
       await advanceTime(config.auctionLength.add(100).toString())
 
       // Trade is ready to be settled - Call settle trade via  Facade
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
@@ -463,7 +300,7 @@ describe('Facade contract', () => {
       await facadeTest.claimRewards(rToken.address)
 
       // Via Facade get next call - will transfer RToken to Trader
-      let [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
@@ -474,7 +311,7 @@ describe('Facade contract', () => {
       })
 
       // Next call would start Revenue auction - RTokenTrader
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(rTokenTrader.address)
       expect(data).to.not.equal('0x')
 
@@ -489,7 +326,7 @@ describe('Facade contract', () => {
         .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
       // Via Facade get next call - will open RSR trade
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(rsrTrader.address)
       expect(data).to.not.equal('0x')
 
@@ -524,7 +361,7 @@ describe('Facade contract', () => {
       })
 
       // Settle RToken trades via Facade
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(rTokenTrader.address)
       expect(data).to.not.equal('0x')
 
@@ -539,7 +376,7 @@ describe('Facade contract', () => {
         .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
 
       // Now settle trade in RSR Trader
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(rsrTrader.address)
       expect(data).to.not.equal('0x')
 
@@ -554,7 +391,7 @@ describe('Facade contract', () => {
         .withArgs(anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt)
 
       // Check no new calls to make from Facade
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
 
@@ -579,7 +416,7 @@ describe('Facade contract', () => {
       await facadeTest.claimRewards(rToken.address)
 
       // Via Facade get next call - will transfer RSR to Trader
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
@@ -590,7 +427,7 @@ describe('Facade contract', () => {
       })
 
       // Next call would start Revenue auction - RSR Trader
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(rsrTrader.address)
       expect(data).to.not.equal('0x')
 
@@ -625,7 +462,7 @@ describe('Facade contract', () => {
       await advanceTime(period + 1)
 
       // Melt via Facade
-      let [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(furnace.address)
       expect(data).to.not.equal('0x')
 
@@ -638,7 +475,7 @@ describe('Facade contract', () => {
       ).to.not.emit(rToken, 'Melted')
 
       // Do not melt twice in same period
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
 
@@ -649,7 +486,7 @@ describe('Facade contract', () => {
       const expAmt = decayFn(hndAmt, 1) // 1 period
 
       // Melt via Facade
-      ;[addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(furnace.address)
       expect(data).to.not.equal('0x')
 
@@ -714,7 +551,7 @@ describe('Facade contract', () => {
       // First do a melt which will first be executed from getActCallData
       await furnace.melt()
 
-      const [addr, data] = await facade.callStatic.getActCalldata(rToken.address)
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(stRSR.address)
       expect(data).to.not.equal('0x')
 
@@ -773,8 +610,8 @@ describe('Facade contract', () => {
     })
 
     it(`getActCalldata - gas reporting for ${numAssets} registered assets`, async () => {
-      await snapshotGasCost(facade.getActCalldata(rToken.address))
-      const [addr, bytes] = await facade.callStatic.getActCalldata(rToken.address)
+      await snapshotGasCost(facadeAct.getActCalldata(rToken.address))
+      const [addr, bytes] = await facadeAct.callStatic.getActCalldata(rToken.address)
       // Should return 0 addr and 0 bytes, otherwise we didn't use maximum gas
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(bytes).to.equal('0x')

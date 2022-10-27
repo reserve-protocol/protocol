@@ -11,7 +11,7 @@ import {
   CTokenMock,
   ERC20Mock,
   ERC1271Mock,
-  Facade,
+  FacadeRead,
   IBasketHandler,
   PermitLib,
   StRSRP0,
@@ -59,7 +59,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rToken: TestIRToken
-  let facade: Facade
+  let facade: FacadeRead
   let permitLib: PermitLib
 
   // StRSR

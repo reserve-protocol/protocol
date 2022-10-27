@@ -15,7 +15,7 @@ import {
   CTokenMock,
   ERC20Mock,
   ERC1271Mock,
-  Facade,
+  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
@@ -80,7 +80,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   // Main
   let main: TestIMain
   let rToken: TestIRToken
-  let facade: Facade
+  let facade: FacadeRead
   let facadeTest: FacadeTest
   let assetRegistry: IAssetRegistry
   let backingManager: TestIBackingManager

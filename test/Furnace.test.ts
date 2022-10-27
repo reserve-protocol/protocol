@@ -8,7 +8,7 @@ import { issueMany } from './utils/issue'
 import {
   CTokenMock,
   ERC20Mock,
-  Facade,
+  FacadeRead,
   StaticATokenMock,
   TestIFurnace,
   TestIMain,
@@ -36,7 +36,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let main: TestIMain
   let furnace: TestIFurnace
   let rToken: TestIRToken
-  let facade: Facade
+  let facade: FacadeRead
   let basket: Collateral[]
 
   // Config

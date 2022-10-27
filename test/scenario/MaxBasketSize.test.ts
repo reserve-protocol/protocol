@@ -11,7 +11,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  Facade,
+  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
@@ -58,7 +58,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
-  let facade: Facade
+  let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
   let oracleLib: OracleLib
