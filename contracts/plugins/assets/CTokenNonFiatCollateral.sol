@@ -3,19 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
+import "contracts/plugins/assets/ICToken.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
-
-// ==== External Interfaces ====
-// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
-interface ICToken {
-    /// @dev From Compound Docs:
-    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    function exchangeRateCurrent() external returns (uint256);
-
-    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
-    function exchangeRateStored() external view returns (uint256);
-}
 
 /**
  * @title CTokenNonFiatCollateral
@@ -123,10 +113,13 @@ contract CTokenNonFiatCollateral is Collateral {
                     // uint192(+/-) is the same as Fix.plus/minus
                     if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
                     else markStatus(CollateralStatus.SOUND);
-                } catch {
+                } catch (bytes memory errData) {
+                    // see: docs/solidity-style.md#Catching-Empty-Data
+                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
-            } catch {
+            } catch (bytes memory errData) {
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
         }

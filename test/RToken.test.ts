@@ -1,9 +1,11 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
+import { signERC2612Permit } from 'eth-permit'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
+import { getChainId } from '../common/blockchain-utils'
 import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
-import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
@@ -30,7 +32,12 @@ import {
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
-import { advanceTime, advanceBlocks, getLatestBlockNumber } from './utils/time'
+import {
+  advanceTime,
+  advanceBlocks,
+  getLatestBlockNumber,
+  getLatestBlockTimestamp,
+} from './utils/time'
 import {
   Collateral,
   defaultFixture,
@@ -228,6 +235,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(fp('1'))
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
+
+    it('Should setup the DomainSeparator for Permit correctly', async () => {
+      const chainId = await getChainId(hre)
+      const _name = await rToken.name()
+      const version = '1'
+      const verifyingContract = rToken.address
+      expect(await rToken.DOMAIN_SEPARATOR()).to.equal(
+        await ethers.utils._TypedDataEncoder.hashDomain({
+          name: _name,
+          version,
+          chainId,
+          verifyingContract,
+        })
+      )
+    })
   })
 
   describe('Configuration #fast', () => {
@@ -363,6 +385,24 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await rToken.totalSupply()).to.equal(bn(0))
     })
 
+    it('Should not issue RTokens if UNPRICED collateral', async function () {
+      const issueAmount: BigNumber = bn('10e18')
+
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Start issuance pre-pause
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+
+      // Try to issue
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith('basket unsound')
+
+      // Check values
+      expect(await rToken.totalSupply()).to.equal(bn(0))
+    })
+
     it('Should not vest RTokens if paused', async function () {
       const issueAmount: BigNumber = bn('100000e18')
 
@@ -473,7 +513,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.connect(addr1).cancel(0, true)).to.not.emit(rToken, 'IssuancesCanceled')
     })
 
-    it('Should be able to refund multiple issuances when calling vest if basket changed', async function () {
+    it('Should be able to refund issuances when calling vest if basket changed', async function () {
       const issueAmount: BigNumber = bn('20000e18')
 
       // Start issuances
@@ -496,10 +536,46 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).issue(issueAmount)
 
       // Refresh from owner should succeed
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
 
       // Vest should return tokens
       await expect(rToken.connect(addr1).vest(addr1.address, 3))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
+    })
+
+    it('Should be able to refund issuances when calling issue if basket changed', async function () {
+      const issueAmount: BigNumber = bn('20000e18')
+
+      // Start issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+      await token1.connect(addr1).approve(rToken.address, issueAmount)
+      await token2.connect(addr1).approve(rToken.address, issueAmount)
+      await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await rToken.connect(addr1).issue(issueAmount)
+
+      // Refresh from owner should succeed
+      await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
+      await basketHandler.connect(owner).refreshBasket()
+
+      // Prepare a new issuance
+      await token0.connect(addr1).approve(rToken.address, issueAmount)
+
+      // Issue should return tokens
+      await expect(rToken.connect(addr1).issue(issueAmount))
         .to.emit(rToken, 'IssuancesCanceled')
         .withArgs(addr1.address, 0, 3, issueAmount.mul(3))
     })
@@ -1331,6 +1407,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check total asset value did not change
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+
+      // Cancel only the first issuance
+      await expect(rToken.connect(addr1).cancel(1, true))
+        .to.emit(rToken, 'IssuancesCanceled')
+        .withArgs(addr1.address, 0, 1, bn('1e24'))
     })
 
     it('Should allow the issuer to rollback minting', async function () {
@@ -1972,6 +2053,264 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
   })
 
+  describe('Transfers #fast', () => {
+    let amount: BigNumber
+
+    beforeEach(async function () {
+      amount = bn('10e18')
+
+      // Provide approvals
+      await token0.connect(addr1).approve(rToken.address, initialBal)
+      await token1.connect(addr1).approve(rToken.address, initialBal)
+      await token2.connect(addr1).approve(rToken.address, initialBal)
+      await token3.connect(addr1).approve(rToken.address, initialBal)
+
+      // Issue rTokens
+      await rToken.connect(addr1).issue(amount)
+    })
+
+    it('Should transfer tokens between accounts', async function () {
+      const addr1BalancePrev = await rToken.balanceOf(addr1.address)
+      const addr2BalancePrev = await rToken.balanceOf(addr2.address)
+      const totalSupplyPrev = await rToken.totalSupply()
+
+      //  Perform transfer
+      await rToken.connect(addr1).transfer(addr2.address, amount)
+
+      expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev.sub(amount))
+      expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev.add(amount))
+      expect(await rToken.totalSupply()).to.equal(totalSupplyPrev)
+    })
+
+    it('Should not transfer if no balance', async function () {
+      const addr1BalancePrev = await rToken.balanceOf(addr1.address)
+      const addr2BalancePrev = await rToken.balanceOf(addr2.address)
+      const totalSupplyPrev = await rToken.totalSupply()
+
+      //  Perform transfer with user with no balance
+      await expect(rToken.connect(addr2).transfer(addr1.address, amount)).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance'
+      )
+
+      // Nothing transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await rToken.totalSupply()).to.equal(totalSupplyPrev)
+    })
+
+    it('Should not transfer from/to zero address', async function () {
+      const addr1BalancePrev = await rToken.balanceOf(addr1.address)
+      const addr2BalancePrev = await rToken.balanceOf(addr2.address)
+      const totalSupplyPrev = await rToken.totalSupply()
+
+      // Attempt to send to zero address
+      await expect(rToken.connect(addr1).transfer(ZERO_ADDRESS, amount)).to.be.revertedWith(
+        'ERC20: transfer to the zero address'
+      )
+
+      // Attempt to send from zero address - Impersonation is the only way to get to this validation
+      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
+        await expect(rToken.connect(signer).transfer(addr2.address, amount)).to.be.revertedWith(
+          'ERC20: transfer from the zero address'
+        )
+      })
+
+      // Nothing transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await rToken.totalSupply()).to.equal(totalSupplyPrev)
+    })
+
+    it('Should not allow transfer/transferFrom to address(this)', async () => {
+      // transfer
+      await expect(rToken.connect(addr1).transfer(rToken.address, 1)).to.be.revertedWith(
+        'RToken transfer to self'
+      )
+
+      // transferFrom
+      await rToken.connect(addr1).approve(addr2.address, 1)
+      await expect(
+        rToken.connect(addr2).transferFrom(addr1.address, rToken.address, 1)
+      ).to.be.revertedWith('RToken transfer to self')
+    })
+
+    it('Should transferFrom between accounts', async function () {
+      const addr1BalancePrev = await rToken.balanceOf(addr1.address)
+      const addr2BalancePrev = await rToken.balanceOf(addr2.address)
+      const totalSupplyPrev = await rToken.totalSupply()
+
+      // Set allowance and transfer
+      await rToken.connect(addr1).approve(addr2.address, amount)
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      await rToken.connect(addr2).transferFrom(addr1.address, other.address, amount)
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev.sub(amount))
+      expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await rToken.balanceOf(other.address)).to.equal(amount)
+      expect(await rToken.totalSupply()).to.equal(totalSupplyPrev)
+    })
+
+    it('Should set allowance when using "Permit"', async () => {
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      const permit = await signERC2612Permit(
+        addr1,
+        rToken.address,
+        addr1.address,
+        addr2.address,
+        amount.toString()
+      )
+
+      await expect(
+        rToken.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      )
+        .to.emit(rToken, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
+    })
+
+    it('Should perform validations on "Permit"', async () => {
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      // Set invalid signature
+      const permit = await signERC2612Permit(
+        addr1,
+        rToken.address,
+        addr1.address,
+        addr2.address,
+        amount.add(1).toString()
+      )
+
+      // Attempt to run permit with invalid signature
+      await expect(
+        rToken.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          permit.deadline,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: invalid signature')
+
+      // Attempt to run permit with expired deadline
+      await expect(
+        rToken.permit(
+          addr1.address,
+          addr2.address,
+          amount,
+          (await getLatestBlockTimestamp()) - 1,
+          permit.v,
+          permit.r,
+          permit.s
+        )
+      ).to.be.revertedWith('ERC20Permit: expired deadline')
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+    })
+
+    it('Should not transferFrom if no allowance', async function () {
+      const addr1BalancePrev = await rToken.balanceOf(addr1.address)
+      const addr2BalancePrev = await rToken.balanceOf(addr2.address)
+      const totalSupplyPrev = await rToken.totalSupply()
+
+      // Transfer
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+      await expect(
+        rToken.connect(addr2).transferFrom(addr1.address, other.address, amount)
+      ).to.be.revertedWith('ERC20: insufficient allowance')
+
+      // Nothing transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(addr1BalancePrev)
+      expect(await rToken.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
+      expect(await rToken.balanceOf(other.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(totalSupplyPrev)
+    })
+
+    it('Should perform validations on approvals', async function () {
+      expect(await rToken.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
+      expect(await rToken.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
+
+      // Attempt to set allowance to zero address
+      await expect(rToken.connect(addr1).approve(ZERO_ADDRESS, amount)).to.be.revertedWith(
+        'ERC20: approve to the zero address'
+      )
+
+      // Attempt set allowance from zero address - Impersonation is the only way to get to this validation
+      await whileImpersonating(ZERO_ADDRESS, async (signer) => {
+        await expect(rToken.connect(signer).approve(addr2.address, amount)).to.be.revertedWith(
+          'ERC20: approve from the zero address'
+        )
+      })
+
+      // Nothing set
+      expect(await rToken.allowance(addr1.address, ZERO_ADDRESS)).to.equal(0)
+      expect(await rToken.allowance(ZERO_ADDRESS, addr2.address)).to.equal(0)
+    })
+
+    it('Should allow to increase/decrease allowances', async function () {
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      //  Increase allowance
+      await expect(rToken.connect(addr1).increaseAllowance(addr2.address, amount))
+        .to.emit(rToken, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      // Increase again
+      await expect(rToken.connect(addr1).increaseAllowance(addr2.address, amount))
+        .to.emit(rToken, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount.mul(2))
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount.mul(2))
+
+      // Decrease allowance
+      await expect(rToken.connect(addr1).decreaseAllowance(addr2.address, amount))
+        .to.emit(rToken, 'Approval')
+        .withArgs(addr1.address, addr2.address, amount)
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
+
+      // Should not allow to decrease below zero
+      await expect(
+        rToken.connect(addr1).decreaseAllowance(addr2.address, amount.add(1))
+      ).to.be.revertedWith('ERC20: decreased allowance below zero')
+
+      // No changes
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(amount)
+    })
+
+    it('Should not decrease allowance when Max allowance pattern is used', async function () {
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(0)
+
+      // Increase to maximum allowance
+      await expect(rToken.connect(addr1).increaseAllowance(addr2.address, MAX_UINT256))
+        .to.emit(rToken, 'Approval')
+        .withArgs(addr1.address, addr2.address, MAX_UINT256)
+
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
+
+      // Perform a transfer, should not decrease allowance (Max allowance pattern assumed)
+      await rToken.connect(addr2).transferFrom(addr1.address, other.address, amount)
+
+      // Remains the same
+      expect(await rToken.allowance(addr1.address, addr2.address)).to.equal(MAX_UINT256)
+    })
+  })
+
   describe('ERC1271 permit #fast', () => {
     const issueAmount = bn('100e18') // fits into one block
     let erc1271Mock: ERC1271Mock
@@ -2023,6 +2362,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     it('should permit spend with ERC1271 support', async () => {
       // ERC1271 with approvals turned on
+      expect(await rToken.nonces(erc1271Mock.address)).to.equal(0)
       await erc1271Mock.enableApprovals()
       await rToken.permit(
         erc1271Mock.address,
@@ -2037,6 +2377,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(addr1).transferFrom(erc1271Mock.address, addr1.address, issueAmount)
       expect(await rToken.balanceOf(erc1271Mock.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rToken.nonces(erc1271Mock.address)).to.equal(1)
     })
   })
 

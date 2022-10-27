@@ -44,7 +44,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - DAI  **************************/
   const { collateral: daiCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.DAI)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     tokenAddress: networkConfig[chainId].tokens.DAI,
     rewardToken: ZERO_ADDRESS,
@@ -63,7 +63,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDC  **************************/
   const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDC)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     tokenAddress: networkConfig[chainId].tokens.USDC,
     rewardToken: ZERO_ADDRESS,
@@ -82,7 +82,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDT  **************************/
   const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDT)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     tokenAddress: networkConfig[chainId].tokens.USDT,
     rewardToken: ZERO_ADDRESS,
@@ -101,7 +101,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDP  **************************/
   const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDP)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     tokenAddress: networkConfig[chainId].tokens.USDP,
     rewardToken: ZERO_ADDRESS,
@@ -120,7 +120,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - TUSD  **************************/
   const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.TUSD)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.TUSD,
     tokenAddress: networkConfig[chainId].tokens.TUSD,
     rewardToken: ZERO_ADDRESS,
@@ -137,7 +137,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - BUSD  **************************/
   const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BUSD)).toString(),
+    fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     tokenAddress: networkConfig[chainId].tokens.BUSD,
     rewardToken: ZERO_ADDRESS,
@@ -168,7 +168,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await adaiStaticToken.deployed()
@@ -180,8 +180,12 @@ async function main() {
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
   )
 
+  let fallbackPrice = fp('1')
+    .mul(await adaiStaticToken.rate())
+    .div(bn('1e27'))
+
   const { collateral: aDaiCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.DAI)).toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     staticAToken: adaiStaticToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
@@ -211,7 +215,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await ausdcStaticToken.deployed()
@@ -223,8 +227,12 @@ async function main() {
     `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
   )
 
+  fallbackPrice = fp('1')
+    .mul(await ausdcStaticToken.rate())
+    .div(bn('1e27'))
+
   const { collateral: aUsdcCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDC)).toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     staticAToken: ausdcStaticToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
@@ -254,7 +262,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await ausdtStaticToken.deployed()
@@ -266,8 +274,12 @@ async function main() {
     `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
   )
 
+  fallbackPrice = fp('1')
+    .mul(await ausdtStaticToken.rate())
+    .div(bn('1e27'))
+
   const { collateral: aUsdtCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDT)).toString(), // close enougth
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     staticAToken: ausdtStaticToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
@@ -296,7 +308,7 @@ async function main() {
       networkConfig[chainId].AAVE_LENDING_POOL as string,
       aToken.address,
       'Static ' + (await aToken.name()),
-      'stat' + (await aToken.symbol())
+      's' + (await aToken.symbol())
     )
   )
   await abusdStaticToken.deployed()
@@ -308,8 +320,12 @@ async function main() {
     `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
   )
 
+  fallbackPrice = fp('1')
+    .mul(await abusdStaticToken.rate())
+    .div(bn('1e27'))
+
   const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BUSD)).toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     staticAToken: abusdStaticToken.address,
     rewardToken: networkConfig[chainId].tokens.stkAAVE,
@@ -328,10 +344,16 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
 
+  let cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cDAI as string
+  )
+  fallbackPrice = fp('1')
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e28'))
+
   const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.DAI))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     cToken: networkConfig[chainId].tokens.cDAI,
     rewardToken: networkConfig[chainId].tokens.COMP,
@@ -351,10 +373,16 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDC  **************************/
 
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cUSDC as string
+  )
+  fallbackPrice = fp('1')
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e16'))
+
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDC))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     cToken: networkConfig[chainId].tokens.cUSDC,
     rewardToken: networkConfig[chainId].tokens.COMP,
@@ -374,10 +402,16 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDT  **************************/
 
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cUSDT as string
+  )
+  fallbackPrice = fp('1')
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e16'))
+
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.USDT))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     cToken: networkConfig[chainId].tokens.cUSDT,
     rewardToken: networkConfig[chainId].tokens.COMP,
@@ -397,10 +431,16 @@ async function main() {
 
   /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
 
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cWBTC as string
+  )
+  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC))
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e18'))
+
   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     cToken: networkConfig[chainId].tokens.cWBTC,
@@ -421,10 +461,16 @@ async function main() {
 
   /********  Deploy CToken Self-Referential Collateral - cETH  **************************/
 
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cETH as string
+  )
+  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH))
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e28'))
+
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH))
-      .div(50)
-      .toString(),
+    fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     cToken: networkConfig[chainId].tokens.cETH,
     rewardToken: networkConfig[chainId].tokens.COMP,
@@ -483,7 +529,7 @@ async function main() {
 
   /********  Deploy EURO Fiat Collateral  - EURT **************************/
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EUR)).toString(),
+    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
     tokenAddress: networkConfig[chainId].tokens.EURT,

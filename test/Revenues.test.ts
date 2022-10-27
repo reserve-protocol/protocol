@@ -4,13 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import {
-  BN_SCALE_FACTOR,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-  ONE_ADDRESS,
-} from '../common/constants'
+import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
 import {
@@ -67,6 +61,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
   // Non-backing assets
   let rsr: ERC20Mock
+  let rsrAsset: Asset
   let compToken: ERC20Mock
   let compoundMock: ComptrollerMock
   let aaveToken: ERC20Mock
@@ -123,6 +118,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // Deploy fixture
     ;({
       rsr,
+      rsrAsset,
       compToken,
       aaveToken,
       compoundMock,
@@ -1459,6 +1455,82 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       })
 
+      it('Should not trade if price for buy token = 0', async () => {
+        // Set COMP tokens as reward
+        rewardAmountCOMP = bn('1e18')
+
+        // COMP Rewards
+        await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
+
+        // Collect revenue
+        await expectEvents(backingManager.claimAndSweepRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [compToken.address, rewardAmountCOMP],
+            emitted: true,
+          },
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [aaveToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmountCOMP)
+
+        // Set expected values, based on f = 0.6
+        const expectedToTrader = rewardAmountCOMP.mul(60).div(100)
+        const expectedToFurnace = rewardAmountCOMP.sub(expectedToTrader)
+
+        // Check status of traders at this point
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+        // Handout COMP tokens to Traders
+        await backingManager.manageTokens([compToken.address])
+
+        // Check funds sent to traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        // Set RSR Price to 0
+        await setOraclePrice(rsrAsset.address, bn(0))
+
+        // Should revert
+        await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
+          'PriceOutsideRange()'
+        )
+
+        // Funds still in Traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+
+        // Set RToken price to 0 (Full haircut)
+        await token0
+          .connect(owner)
+          .burn(backingManager.address, await token0.balanceOf(backingManager.address))
+        await token1
+          .connect(owner)
+          .burn(backingManager.address, await token1.balanceOf(backingManager.address))
+        await token2
+          .connect(owner)
+          .burn(backingManager.address, await token2.balanceOf(backingManager.address))
+        await token3
+          .connect(owner)
+          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+
+        // Should revert
+        await expect(rTokenTrader.manageToken(compToken.address)).to.be.revertedWith(
+          'buy asset has zero price'
+        )
+
+        // Funds still in Traders
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
+        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
+      })
+
       it('Should report violation when auction behaves incorrectly', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
@@ -1905,10 +1977,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           'InvalidATokenFiatCollateralMock',
           { libraries: { OracleLib: oracleLib.address } }
         )
+        const chainlinkFeed = <MockV3Aggregator>(
+          await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+        )
+
         const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
           await ATokenCollateralFactory.deploy(
             fp('1'),
-            ONE_ADDRESS,
+            chainlinkFeed.address,
             token2.address,
             aaveToken.address,
             config.rTokenMaxTradeVolume,

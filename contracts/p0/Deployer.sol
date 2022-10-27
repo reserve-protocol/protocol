@@ -59,6 +59,8 @@ contract DeployerP0 is IDeployer {
         address owner,
         DeploymentParams memory params
     ) external returns (address) {
+        require(owner != address(0) && owner != address(this), "invalid owner");
+
         MainP0 main = new MainP0();
 
         // Components
