@@ -579,6 +579,28 @@ describe('FacadeAct contract', () => {
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
       expect(await stRSR.exchangeRate()).to.be.lte(newRate)
     })
+
+    it('Should not revert if f=1', async () => {
+      await distributor.connect(owner).setDistribution(FURNACE_DEST, { rTokenDist: 0, rsrDist: 0 })
+      // Transfer free tokens to RTokenTrader
+      const hndAmt: BigNumber = bn('10e18')
+      await rToken.connect(addr1).transfer(rTokenTrader.address, hndAmt)
+
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(data).to.equal('0x')
+    })
+
+    it('Should not revert if f=0', async () => {
+      await distributor.connect(owner).setDistribution(STRSR_DEST, { rTokenDist: 0, rsrDist: 0 })
+      // Transfer free tokens to RTokenTrader
+      const hndAmt: BigNumber = bn('10e18')
+      await rsr.connect(addr1).transfer(rsrTrader.address, hndAmt)
+
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(data).to.equal('0x')
+    })
   })
 
   describeGas('Gas Reporting', () => {
