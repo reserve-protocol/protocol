@@ -100,14 +100,17 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let aUsdc: IAToken
   let aUsdt: IAToken
   let aBusd: IAToken
+  let aUsdp: IAToken
   let stataDai: StaticATokenLM
   let stataUsdc: StaticATokenLM
   let stataUsdt: StaticATokenLM
   let stataBusd: StaticATokenLM
+  let stataUsdp: StaticATokenLM
 
   let cDai: CTokenMock
   let cUsdc: CTokenMock
   let cUsdt: CTokenMock
+  let cUsdp: CTokenMock
 
   let wbtc: ERC20Mock
   let cWBTC: CTokenMock
@@ -126,10 +129,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let aUsdcCollateral: ATokenFiatCollateral
   let aUsdtCollateral: ATokenFiatCollateral
   let aBusdCollateral: ATokenFiatCollateral
+  let aUsdpCollateral: ATokenFiatCollateral
 
   let cDaiCollateral: CTokenFiatCollateral
   let cUsdcCollateral: CTokenFiatCollateral
   let cUsdtCollateral: CTokenFiatCollateral
+  let cUsdpCollateral: CTokenFiatCollateral
 
   let wbtcCollateral: NonFiatCollateral
   let cWBTCCollateral: CTokenNonFiatCollateral
@@ -209,15 +214,17 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       cDai = <CTokenMock>erc20s[6] // cDAI
       cUsdc = <CTokenMock>erc20s[7] // cUSDC
       cUsdt = <CTokenMock>erc20s[8] // cUSDT
-      stataDai = <StaticATokenLM>erc20s[9] // static aDAI
-      stataUsdc = <StaticATokenLM>erc20s[10] // static aUSDC
-      stataUsdt = <StaticATokenLM>erc20s[11] // static aUSDT
-      stataBusd = <StaticATokenLM>erc20s[12] // static aBUSD
-      wbtc = <ERC20Mock>erc20s[13] // wBTC
-      cWBTC = <CTokenMock>erc20s[14] // cWBTC
-      weth = <ERC20Mock>erc20s[15] // wETH
-      cETH = <CTokenMock>erc20s[16] // cETH
-      eurt = <ERC20Mock>erc20s[17] // eurt
+      cUsdp = <CTokenMock>erc20s[9] // cUSDT
+      stataDai = <StaticATokenLM>erc20s[10] // static aDAI
+      stataUsdc = <StaticATokenLM>erc20s[11] // static aUSDC
+      stataUsdt = <StaticATokenLM>erc20s[12] // static aUSDT
+      stataBusd = <StaticATokenLM>erc20s[13] // static aBUSD
+      stataUsdp = <StaticATokenLM>erc20s[14] // static aUSDP
+      wbtc = <ERC20Mock>erc20s[15] // wBTC
+      cWBTC = <CTokenMock>erc20s[16] // cWBTC
+      weth = <ERC20Mock>erc20s[17] // wETH
+      cETH = <CTokenMock>erc20s[18] // cETH
+      eurt = <ERC20Mock>erc20s[19] // eurt
 
       // Get plain aTokens
       aDai = <IAToken>(
@@ -246,6 +253,12 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
       )
 
+      aUsdp = <IAToken>(
+        await ethers.getContractAt(
+          'contracts/plugins/aave/IAToken.sol:IAToken',
+          networkConfig[chainId].tokens.aUSDP || ''
+        )
+      )
       // Get collaterals
       daiCollateral = <FiatCollateral>collateral[0] // DAI
       usdcCollateral = <FiatCollateral>collateral[1] // USDC
@@ -256,15 +269,17 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       cDaiCollateral = <CTokenFiatCollateral>collateral[6] // cDAI
       cUsdcCollateral = <CTokenFiatCollateral>collateral[7] // cUSDC
       cUsdtCollateral = <CTokenFiatCollateral>collateral[8] // cUSDT
-      aDaiCollateral = <ATokenFiatCollateral>collateral[9] // aDAI
-      aUsdcCollateral = <ATokenFiatCollateral>collateral[10] // aUSDC
-      aUsdtCollateral = <ATokenFiatCollateral>collateral[11] // aUSDT
-      aBusdCollateral = <ATokenFiatCollateral>collateral[12] // aBUSD
-      wbtcCollateral = <NonFiatCollateral>collateral[13] // wBTC
-      cWBTCCollateral = <CTokenNonFiatCollateral>collateral[14] // cWBTC
-      wethCollateral = <SelfReferentialCollateral>collateral[15] // wETH
-      cETHCollateral = <CTokenSelfReferentialCollateral>collateral[16] // cETH
-      eurtCollateral = <EURFiatCollateral>collateral[17] // EURT
+      cUsdpCollateral = <CTokenFiatCollateral>collateral[9] // cUSDP
+      aDaiCollateral = <ATokenFiatCollateral>collateral[10] // aDAI
+      aUsdcCollateral = <ATokenFiatCollateral>collateral[11] // aUSDC
+      aUsdtCollateral = <ATokenFiatCollateral>collateral[12] // aUSDT
+      aBusdCollateral = <ATokenFiatCollateral>collateral[13] // aBUSD
+      aUsdpCollateral = <ATokenFiatCollateral>collateral[14] // aUSDP
+      wbtcCollateral = <NonFiatCollateral>collateral[15] // wBTC
+      cWBTCCollateral = <CTokenNonFiatCollateral>collateral[16] // cWBTC
+      wethCollateral = <SelfReferentialCollateral>collateral[17] // wETH
+      cETHCollateral = <CTokenSelfReferentialCollateral>collateral[18] // cETH
+      eurtCollateral = <EURFiatCollateral>collateral[19] // EURT
 
       // Get assets and tokens for default basket
       daiCollateral = <FiatCollateral>basket[0]
@@ -456,6 +471,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         cToken: CTokenMock
         cTokenAddress: string
         cTokenCollateral: CTokenFiatCollateral
+        refPerTok: BigNumber
       }
 
       // Compound - cUSDC and cUSDT
@@ -466,6 +482,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cToken: cDai,
           cTokenAddress: networkConfig[chainId].tokens.cDAI || '',
           cTokenCollateral: cDaiCollateral,
+          refPerTok: fp('0.022'),
         },
         {
           token: usdc,
@@ -473,6 +490,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cToken: cUsdc,
           cTokenAddress: networkConfig[chainId].tokens.cUSDC || '',
           cTokenCollateral: cUsdcCollateral,
+          refPerTok: fp('0.022'),
         },
         {
           token: usdt,
@@ -480,6 +498,15 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cToken: cUsdt,
           cTokenAddress: networkConfig[chainId].tokens.cUSDT || '',
           cTokenCollateral: cUsdtCollateral,
+          refPerTok: fp('0.022'),
+        },
+        {
+          token: usdp,
+          tokenAddress: networkConfig[chainId].tokens.USDP || '',
+          cToken: cUsdp,
+          cTokenAddress: networkConfig[chainId].tokens.cUSDP || '',
+          cTokenCollateral: cUsdpCollateral,
+          refPerTok: fp('0.020'),
         },
       ]
 
@@ -495,13 +522,19 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await ctkInf.cTokenCollateral.targetName()).to.equal(
           ethers.utils.formatBytes32String('USD')
         )
-        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
+        expect(await ctkInf.cTokenCollateral.refPerTok()).to.be.closeTo(
+          ctkInf.refPerTok,
+          fp('0.001')
+        )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
         expect(await ctkInf.cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
         expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
           await ctkInf.cTokenCollateral.refPerTok()
         )
-        expect(await ctkInf.cTokenCollateral.strictPrice()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
+        expect(await ctkInf.cTokenCollateral.strictPrice()).to.be.closeTo(
+          ctkInf.refPerTok,
+          fp('0.001')
+        ) // close to $0.022 cents
 
         const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
         expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
@@ -558,6 +591,14 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aToken: aBusd,
           aTokenAddress: networkConfig[chainId].tokens.aBUSD || '',
           aTokenCollateral: aBusdCollateral,
+        },
+        {
+          token: usdp,
+          tokenAddress: networkConfig[chainId].tokens.USDP || '',
+          stataToken: stataUsdp,
+          aToken: aUsdp,
+          aTokenAddress: networkConfig[chainId].tokens.aUSDP || '',
+          aTokenCollateral: aUsdpCollateral,
         },
       ]
 
