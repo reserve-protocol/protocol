@@ -16,8 +16,8 @@ async function main() {
   console.log(`Starting full deployment on network ${hre.network.name} (${chainId})`)
   console.log(`Deployer account: ${deployer.address}\n`)
 
-  // Part 1/2 of the *overall* deployment process: Deploy all contracts
-  // See `verify.ts` for part 2
+  // Part 1/3 of the *overall* deployment process: Deploy all contracts
+  // See `confirm.ts` for part 2
 
   const scripts = [
     'phase1-common/0_setup_deployments.ts',
