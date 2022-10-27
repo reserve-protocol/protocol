@@ -20,7 +20,8 @@ import {
   ERC20Mock,
   DeployerP0,
   DeployerP1,
-  Facade,
+  FacadeRead,
+  FacadeAct,
   FacadeTest,
   DistributorP1,
   FurnaceP1,
@@ -362,7 +363,8 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
   stRSR: TestIStRSR
-  facade: Facade
+  facade: FacadeRead
+  facadeAct: FacadeAct
   facadeTest: FacadeTest
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
@@ -414,9 +416,13 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
   const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
 
-  // Deploy Facade
-  const FacadeFactory: ContractFactory = await ethers.getContractFactory('Facade')
-  const facade = <Facade>await FacadeFactory.deploy()
+  // Deploy FacadeRead
+  const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
+  const facade = <FacadeRead>await FacadeReadFactory.deploy()
+
+  // Deploy FacadeAct
+  const FacadeActFactory: ContractFactory = await ethers.getContractFactory('FacadeAct')
+  const facadeAct = <FacadeAct>await FacadeActFactory.deploy()
 
   // Deploy FacadeTest
   const FacadeTestFactory: ContractFactory = await ethers.getContractFactory('FacadeTest')
@@ -673,6 +679,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     gnosis,
     easyAuction,
     facade,
+    facadeAct,
     facadeTest,
     rsrTrader,
     rTokenTrader,

@@ -23,7 +23,7 @@ import {
   CTokenMock,
   ERC20Mock,
   IBasketHandler,
-  Facade,
+  FacadeRead,
   FacadeTest,
   FacadeWrite,
   FiatCollateral,
@@ -86,7 +86,7 @@ describe('FacadeWrite contract', () => {
   let timelock: TimelockController
 
   // Facade
-  let facade: Facade
+  let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeWriteLibAddr: string
 

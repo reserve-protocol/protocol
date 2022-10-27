@@ -23,6 +23,8 @@ For a much more detailed explanation of the economic design, including an hour-l
   - [Deployment](docs/deployment.md): How to do test deployments in our environment.
 - [System Design](docs/system-design.md): The overall architecture of our system, and some detailed descriptions about what our protocol is _intended_ to do.
 - [Our Solidity Style](docs/solidity-style.md): Common practices, details, and conventions relevant to reading and writing our Solidity source code, estpecially where those go beyond standard practice.
+- [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
+- [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
 
 ## Parallel Prototypes
 

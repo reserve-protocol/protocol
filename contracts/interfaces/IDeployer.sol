@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "./IAsset.sol";
 import "./IDistributor.sol";
-import "./IFacade.sol";
 import "./IGnosis.sol";
 import "./IMain.sol";
 import "./IRToken.sol";
