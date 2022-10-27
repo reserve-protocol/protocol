@@ -493,6 +493,14 @@ async function collateralFixture(
     USDT_USD_PRICE_FEED,
     compToken
   )
+
+  const cusdp = await makeCTokenCollateral(
+    networkConfig[chainId].tokens.cUSDP as string,
+    usdp[0],
+    USDP_USD_PRICE_FEED,
+    compToken
+  )
+
   const adai = await makeATokenCollateral(
     networkConfig[chainId].tokens.aDAI as string,
     DAI_USD_PRICE_FEED,
@@ -511,6 +519,12 @@ async function collateralFixture(
   const abusd = await makeATokenCollateral(
     networkConfig[chainId].tokens.aBUSD as string,
     BUSD_USD_PRICE_FEED,
+    aaveToken
+  )
+
+  const ausdp = await makeATokenCollateral(
+    networkConfig[chainId].tokens.aUSDP as string,
+    USDP_USD_PRICE_FEED,
     aaveToken
   )
 
@@ -561,10 +575,12 @@ async function collateralFixture(
     cdai[0],
     cusdc[0],
     cusdt[0],
+    cusdp[0],
     adai[0],
     ausdc[0],
     ausdt[0],
     abusd[0],
+    ausdp[0],
     wbtc[0],
     cWBTC[0],
     weth[0],
@@ -581,10 +597,12 @@ async function collateralFixture(
     cdai[1],
     cusdc[1],
     cusdt[1],
+    cusdp[1],
     adai[1],
     ausdc[1],
     ausdt[1],
     abusd[1],
+    ausdp[1],
     wbtc[1],
     cWBTC[1],
     weth[1],

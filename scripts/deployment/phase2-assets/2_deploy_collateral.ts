@@ -342,6 +342,53 @@ async function main() {
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
+  /********  Deploy AToken Fiat Collateral - aUSDP  **************************/
+
+  // Get AToken to retrieve name and symbol
+  aToken = <ATokenMock>(
+    await ethers.getContractAt('ATokenMock', networkConfig[chainId].tokens.aUSDP as string)
+  )
+
+  // Wrap in StaticAToken
+  const ausdpStaticToken: StaticATokenLM = <StaticATokenLM>(
+    await StaticATokenFactory.connect(burner).deploy(
+      networkConfig[chainId].AAVE_LENDING_POOL as string,
+      aToken.address,
+      'Static ' + (await aToken.name()),
+      's' + (await aToken.symbol())
+    )
+  )
+  await ausdpStaticToken.deployed()
+
+  // Sleep 20s to allow sync
+  await new Promise((r) => setTimeout(r, 20000))
+
+  console.log(
+    `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
+  )
+
+  fallbackPrice = fp('1')
+    .mul(await ausdpStaticToken.rate())
+    .div(bn('1e27'))
+
+  const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
+    fallbackPrice: fallbackPrice.toString(),
+    priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
+    staticAToken: ausdpStaticToken.address,
+    rewardToken: networkConfig[chainId].tokens.stkAAVE,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
+    oracleTimeout: getOracleTimeout(chainId).toString(),
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    oracleLib: phase1Deployment.oracleLib,
+  })
+
+  assetCollDeployments.collateral.aUSDP = aUsdpCollateral
+  deployedCollateral.push(aUsdpCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
 
   let cToken = await hre.ethers.getContractAt(
@@ -426,6 +473,36 @@ async function main() {
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
   deployedCollateral.push(cUsdtCollateral.toString())
+
+  fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
+
+  /********  Deploy CToken Fiat Collateral - cUSDP  **************************/
+
+  cToken = await hre.ethers.getContractAt(
+    'CTokenMock',
+    networkConfig[chainId].tokens.cUSDP as string
+  )
+
+  fallbackPrice = fp('1')
+    .mul(await cToken.exchangeRateStored())
+    .div(bn('1e28'))
+
+  const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
+    fallbackPrice: fallbackPrice.toString(),
+    priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
+    cToken: networkConfig[chainId].tokens.cUSDP,
+    rewardToken: networkConfig[chainId].tokens.COMP,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
+    oracleTimeout: getOracleTimeout(chainId).toString(),
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    comptroller: networkConfig[chainId].COMPTROLLER,
+    oracleLib: phase1Deployment.oracleLib,
+  })
+
+  assetCollDeployments.collateral.cUSDP = cUsdpCollateral
+  deployedCollateral.push(cUsdpCollateral.toString())
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
