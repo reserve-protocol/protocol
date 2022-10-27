@@ -88,6 +88,8 @@ contract FacadeAct is IFacadeAct {
             } else {
                 // collateralized
 
+                RevenueTotals memory revTotals = main.distributor().totals();
+
                 // check revenue traders
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     // rTokenTrader: if there's a trade to settle
@@ -114,28 +116,35 @@ contract FacadeAct is IFacadeAct {
                     }
 
                     // rTokenTrader: check if we can start any trades
-                    uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                    cache.rTokenTrader.manageToken(erc20s[i]);
-                    if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
-                        // A trade started; do cache.rTokenTrader.manageToken
-                        return (
-                            address(cache.rTokenTrader),
-                            abi.encodeWithSelector(
-                                cache.rTokenTrader.manageToken.selector,
-                                erc20s[i]
-                            )
-                        );
+                    if (revTotals.rTokenTotal > 0) {
+                        uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
+                        cache.rTokenTrader.manageToken(erc20s[i]);
+                        if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                            // A trade started; do cache.rTokenTrader.manageToken
+                            return (
+                                address(cache.rTokenTrader),
+                                abi.encodeWithSelector(
+                                    cache.rTokenTrader.manageToken.selector,
+                                    erc20s[i]
+                                )
+                            );
+                        }
                     }
 
-                    // rsrTrader: check if we can start any trades
-                    tradesOpen = cache.rsrTrader.tradesOpen();
-                    cache.rsrTrader.manageToken(erc20s[i]);
-                    if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
-                        // A trade started; do cache.rsrTrader.manageToken
-                        return (
-                            address(cache.rsrTrader),
-                            abi.encodeWithSelector(cache.rsrTrader.manageToken.selector, erc20s[i])
-                        );
+                    if (revTotals.rsrTotal > 0) {
+                        // rsrTrader: check if we can start any trades
+                        uint48 tradesOpen = cache.rsrTrader.tradesOpen();
+                        cache.rsrTrader.manageToken(erc20s[i]);
+                        if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
+                            // A trade started; do cache.rsrTrader.manageToken
+                            return (
+                                address(cache.rsrTrader),
+                                abi.encodeWithSelector(
+                                    cache.rsrTrader.manageToken.selector,
+                                    erc20s[i]
+                                )
+                            );
+                        }
                     }
                 }
 
@@ -148,7 +157,7 @@ contract FacadeAct is IFacadeAct {
                     address[] memory twoERC20s = new address[](2);
 
                     // rTokenTrader
-                    if (address(erc20s[i]) != address(rToken)) {
+                    if (revTotals.rTokenTotal > 0 && address(erc20s[i]) != address(rToken)) {
                         // rTokenTrader: check if we can start any trades
                         uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
                         cache.rTokenTrader.manageToken(erc20s[i]);
@@ -166,7 +175,7 @@ contract FacadeAct is IFacadeAct {
                     }
 
                     // rsrTrader
-                    if (erc20s[i] != cache.rsr) {
+                    if (revTotals.rsrTotal > 0 && erc20s[i] != cache.rsr) {
                         // rsrTrader: check if we can start any trades
                         uint48 tradesOpen = cache.rsrTrader.tradesOpen();
                         cache.rsrTrader.manageToken(erc20s[i]);
