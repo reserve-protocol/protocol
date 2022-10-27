@@ -1,6 +1,8 @@
 import { IGovParams, IRTokenConfig, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
 
+export const RTOKEN_NAME = 'RTKN'
+
 export type IRToken = { [key: string]: IRTokenConfig & IGovParams }
 
 export const rTokenConfig: { [key: string]: IRToken } = {
