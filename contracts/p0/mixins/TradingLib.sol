@@ -106,8 +106,8 @@ library TradingLibP0 {
 
         if (address(surplus) == address(0) || address(deficit) == address(0)) return (false, req);
 
-        uint192 sellPrice = surplus.strictPrice(); // {UoA/tok}
-        uint192 buyPrice = deficit.strictPrice(); // {UoA/tok}
+        (, uint192 sellPrice) = surplus.price(true); // {UoA/tok}
+        (, uint192 buyPrice) = deficit.price(true); // {UoA/tok}
         assert(buyPrice > 0);
 
         // If we cannot trust surplus.strictPrice(), eliminate the minBuyAmount requirement

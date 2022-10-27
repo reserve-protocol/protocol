@@ -46,17 +46,11 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // ==== Governance Params ====
 
-    // {qRTok} The min value of total supply to use for redemption throttling
-    // The redemption capacity is always at least maxRedemptionCharge * redemptionVirtualSupply
-    uint256 public redemptionVirtualSupply;
-
     // D18{1} fraction of supply that may be issued per block
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // {1} fraction of supply that may be redeemed at once. Set to 0 to disable.
-    // Always, maxRedemptionCharge <= FIX_ONE
-    uint192 public maxRedemptionCharge;
+    // also: battery.redemptionRateFloor + battery.scalingRedemptionRate
 
     // ==== End Governance Params ====
 
@@ -151,8 +145,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         string calldata symbol_,
         string calldata mandate_,
         uint192 issuanceRate_,
-        uint192 maxRedemptionCharge_,
-        uint256 redemptionVirtualSupply_
+        uint192 scalingRedemptionRate_,
+        uint256 redemptionRateFloor_
     ) external initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -168,8 +162,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setScalingRedemptionRate(maxRedemptionCharge_);
-        setRedemptionRateFloor(redemptionVirtualSupply_);
+        setScalingRedemptionRate(scalingRedemptionRate_);
+        setRedemptionRateFloor(redemptionRateFloor_);
     }
 
     /// Begin a time-delayed issuance of RToken for basket collateral
@@ -764,5 +758,5 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[36] private __gap;
+    uint256[38] private __gap;
 }

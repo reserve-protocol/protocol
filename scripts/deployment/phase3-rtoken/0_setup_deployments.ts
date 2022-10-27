@@ -3,7 +3,7 @@ import hre from 'hardhat'
 
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { getRTokenConfig } from './rTokenConfig'
+import { getRTokenConfig, RTOKEN_NAME } from './rTokenConfig'
 import {
   fileExists,
   getDeploymentFile,
@@ -13,9 +13,6 @@ import {
   IRTokenDeployments,
 } from '../common'
 import { validatePrerequisites } from '../utils'
-
-// Define the Token to deploy - Will create deployment file
-const RTOKEN_NAME = 'RTKN'
 
 async function main() {
   // ==== Read Configuration ====

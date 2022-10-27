@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import hre, { ethers, upgrades, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
@@ -13,6 +13,7 @@ import {
   ERC1271Mock,
   Facade,
   IBasketHandler,
+  PermitLib,
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
@@ -59,6 +60,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let basketHandler: IBasketHandler
   let rToken: TestIRToken
   let facade: Facade
+  let permitLib: PermitLib
 
   // StRSR
   let stRSR: TestIStRSR
@@ -156,6 +158,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       basketHandler,
       rToken,
       facade,
+      permitLib,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -208,6 +211,46 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           verifyingContract,
         })
       )
+    })
+
+    it('Should perform validations on init', async () => {
+      let StRSRFactory: ContractFactory = await ethers.getContractFactory('StRSRP0', {
+        libraries: { PermitLib: permitLib.address },
+      })
+      let newStRSR: TestIStRSR = <TestIStRSR>await StRSRFactory.deploy()
+
+      if (IMPLEMENTATION == Implementation.P1) {
+        // Create a new StRSR
+        StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
+          libraries: { PermitLib: permitLib.address },
+        })
+        newStRSR = <TestIStRSR>await StRSRFactory.deploy()
+        newStRSR = <TestIStRSR>await upgrades.deployProxy(StRSRFactory, [], {
+          kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
+        })
+      }
+
+      await expect(
+        newStRSR.init(
+          main.address,
+          '',
+          'rtknRSR',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio
+        )
+      ).to.be.revertedWith('name empty')
+      await expect(
+        newStRSR.init(
+          main.address,
+          'rtknRSR Token',
+          '',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio
+        )
+      ).to.be.revertedWith('symbol empty')
     })
   })
 

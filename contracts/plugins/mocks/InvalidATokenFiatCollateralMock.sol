@@ -32,6 +32,15 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
         )
     {}
 
+    // Returns 0 in case of failure - Used only as a Mock for testing
+    function price(bool) public view override returns (bool isFallback, uint192) {
+        try this.strictPrice() returns (uint192 p) {
+            return (false, p);
+        } catch {
+            return (true, 0);
+        }
+    }
+
     /// Invalid claim calldata
     function getClaimCalldata() external pure override returns (address _to, bytes memory _cd) {
         _to = address(0);

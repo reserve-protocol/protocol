@@ -45,27 +45,39 @@ const networkConfig = {
 
 ## Deployment Overview
 
-The deployment process consists of two steps:
+The deployment process consists of three high-level commands:
 
 1. Deploy everything:
 
 ```
 hardhat run scripts/deploy.ts --network {NETWORK}
+OR
+yarn deploy --network {NETWORK}
 ```
 
 If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy.ts` in order to pick up execution at another point.
 
-2. Verify everything:
+2. Confirm the deployment:
 
 ```
-hardhat run scripts/verify.ts --network {NETWORK}
+hardhat run scripts/confirm.ts --network {NETWORK}
+OR
+yarn confirm --network {NETWORK}
+```
+
+3. Verify everything on Etherscan:
+
+```
+hardhat run scripts/verify_etherscan.ts --network {NETWORK}
+OR
+yarn verify_etherscan --network {NETWORK}
 ```
 
 The verification scripts are smart enough to only verify those that are unverified.
 
 ### Deploy Phases
 
-Within the _deployment_ step, there are 3 phases:
+Within the _deployment_ step (step 1 from above), there are 3 phases:
 
 - **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only **once** for all RTokens. Scripts are located in `/scripts/deployment/phase1-common`.
 
@@ -186,10 +198,6 @@ Open a new terminal session and from the project root run the deploy script:
 yarn deploy --network mainnet
 ```
 
-Underlying target: `scripts/deploy.ts`
-
-It should manage itself fairly well. On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, we can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
-
 Three files should be produced as a result of this process.
 
 - `1-tmp-deployments.json`
@@ -198,31 +206,39 @@ Three files should be produced as a result of this process.
 
 End state: All three files contain populated JSON objects. There should not be any empty string entries in any of the files. All 3 files should exist.
 
-### Verify
+### Confirm
 
 [Screensharing ok]
 
 Next, run:
 
 ```
-yarn verify --network mainnet
+yarn confirm --network mainnet
 ```
 
-Underlying target: `scripts/verify.ts`
+This checks that:
 
-`verify.ts` works a bit differently than `deploy.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+- For each asset, confirm `fallbackPrice()` and `price()` are close.
+- `main.paused()` is true
+- `timelockController.minDelay()` is > 1e12
 
-It may be that `verify.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+End state: All addresses are verified, the contracts are in the correct state, and it's time to verify the contracts on Etherscan.
+
+### Verify on Etherscan
+
+[Screensharing ok]
+
+Next, run:
+
+```
+yarn verify_etherscan --network mainnet
+```
+
+`verify_etherscan.ts` works a bit differently than `deploy.ts`; verification is smart enough to skip over contracts that have already been verified.
+
+It may be that `verify_etherscan` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
 Manual verification steps:
 
 - For each address in the output files, make sure it is verified on Etherscan.
 - Make sure the staticATokens are verified too. These are not directly in the output file. To do this you'll need to look at the ATokenCollateral plugins and read out their erc20 addresses, which will be the staticATokens.
-
-TODO: write a script to confirm all of this
-
-- For each asset, confirm `fallbackPrice()` and `price()` are close.
-- Confirm `main.paused()` is true
-- Confirm `timelockController.minDelay()` is > 1e12
-
-End state: All addresses are verified, the contracts are in the correct state, and it's time to connect the Register to the new mainnet addresses!

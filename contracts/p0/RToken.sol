@@ -84,8 +84,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         string memory symbol_,
         string calldata mandate_,
         uint192 issuanceRate_,
-        uint192 maxRedemptionCharge_,
-        uint256 redemptionVirtualSupply_
+        uint192 scalingRedemptionRate_,
+        uint256 redemptionRateFloor_
     ) public initializer {
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
@@ -95,8 +95,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         __ERC20Permit_init(name_);
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
-        setScalingRedemptionRate(maxRedemptionCharge_);
-        setRedemptionRateFloor(redemptionVirtualSupply_);
+        setScalingRedemptionRate(scalingRedemptionRate_);
+        setRedemptionRateFloor(redemptionRateFloor_);
     }
 
     function setIssuanceRate(uint192 val) public governance {

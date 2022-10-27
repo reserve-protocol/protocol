@@ -2135,6 +2135,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           newBasketERC20s.push(await newBasket[i].erc20())
           // Grant allowance
           await backingManager.grantRTokenAllowance(await newBasket[i].erc20())
+
+          // Another call to grant allowance should not revert
+          await backingManager.grantRTokenAllowance(await newBasket[i].erc20())
         }
         // Set non-empty basket
         await basketHandler.connect(owner).setPrimeBasket(newBasketERC20s, newBasketsNeededAmts)
