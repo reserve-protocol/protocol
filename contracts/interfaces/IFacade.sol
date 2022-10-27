@@ -13,15 +13,6 @@ import "./IStRSR.sol";
  * - @custom:view - Regular view
 v */
 interface IFacade {
-    /// Returns the next call a keeper of MEV searcher should make in order to progress the system
-    /// Returns zero bytes to indicate no action should be made
-    /// @custom:static-call
-    function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
-
-    // ============
-
-    function claimAndSweepRewards(RTokenP1 rToken) external;
-
     struct Pending {
         uint256 index;
         uint256 availableAt;
