@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IFacade.sol";
+import "contracts/interfaces/IFacadeRead.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IStRSR.sol";
 import "contracts/libraries/Fixed.sol";
@@ -17,88 +17,51 @@ import "contracts/p1/StRSRVotes.sol";
 
 /**
  * @title Facade
- * @notice A UX-friendly layer for non-governance protocol interactions
- * @custom:static-call - Use ethers callStatic() in order to get result after update
+ * @notice A UX-friendly layer for reading out the state of an RToken in summary views.
+ * @custom:static-call - Use ethers callStatic() to get result after update; do not execute
  */
-contract Facade is IFacade {
+contract FacadeRead is IFacadeRead {
     using FixLib for uint192;
 
-    /// @param account The account for the query
-    /// @return issuances All the pending RToken issuances for an account
-    /// @custom:view
-    function pendingIssuances(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory issuances)
-    {
-        (, uint256 left, uint256 right) = rToken.issueQueues(account);
-        issuances = new Pending[](right - left);
-        for (uint256 i = 0; i < right - left; i++) {
-            RTokenP1.IssueItem memory issueItem = rToken.issueItem(account, i + left);
-            uint256 diff = i + left == 0
-                ? issueItem.amtRToken
-                : issueItem.amtRToken - rToken.issueItem(account, i + left - 1).amtRToken;
-            issuances[i] = Pending(i + left, issueItem.when, diff);
-        }
+    // === Static Calls ===
+
+    /// @return {qRTok} How many RToken `account` can issue given current holdings
+    /// @custom:static-call
+    function maxIssuable(IRToken rToken, address account) external returns (uint256) {
+        IMain main = rToken.main();
+        main.poke();
+        // {BU}
+
+        uint192 held = main.basketHandler().basketsHeldBy(account);
+        uint192 needed = rToken.basketsNeeded();
+
+        int8 decimals = int8(rToken.decimals());
+
+        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
+        if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
+
+        uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
+
+        // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
+        return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
     }
 
-    /// @param account The account for the query
-    /// @return unstakings All the pending RToken issuances for an account
-    /// @custom:view
-    function pendingUnstakings(RTokenP1 rToken, address account)
-        external
-        view
-        returns (Pending[] memory unstakings)
+    /// @custom:static-call
+    function issue(IRToken rToken, uint256 amount)
+        public
+        returns (address[] memory tokens, uint256[] memory deposits)
     {
-        StRSRP1Votes stRSR = StRSRP1Votes(address(rToken.main().stRSR()));
-        uint256 era = stRSR.currentEra();
-        uint256 left = stRSR.firstRemainingDraft(era, account);
-        uint256 right = stRSR.draftQueueLen(era, account);
+        IMain main = rToken.main();
+        main.poke();
+        IRToken rTok = rToken;
+        IBasketHandler bh = main.basketHandler();
 
-        unstakings = new Pending[](right - left);
-        for (uint256 i = 0; i < right - left; i++) {
-            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+        // Compute # of baskets to create `amount` qRTok
+        uint192 baskets = (rTok.totalSupply() > 0) // {BU}
+            ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
+            : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
 
-            uint192 diff = drafts;
-            if (i + left > 0) {
-                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
-                diff = drafts - prevDrafts;
-            }
-
-            unstakings[i] = Pending(i + left, availableAt, diff);
-        }
-    }
-
-    /// @return A non-inclusive ending index
-    function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256) {
-        (uint256 queueLeft, uint256 queueRight) = rToken.queueBounds(account);
-        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
-
-        RTokenP1.IssueItem memory item;
-
-        // Handle common edge cases in O(1)
-        if (queueLeft == queueRight) return queueLeft;
-
-        item = rToken.issueItem(account, queueLeft);
-        if (blockNumber < item.when) return queueLeft;
-
-        item = rToken.issueItem(account, queueRight - 1);
-        if (item.when <= blockNumber) return queueRight;
-
-        // find left and right (using binary search where always left <= right) such that:
-        //     left == right - 1
-        //     queue[left].when <= block.timestamp
-        //     right == queueRight  or  block.timestamp < queue[right].when
-        uint256 left = queueLeft;
-        uint256 right = queueRight;
-        while (left < right - 1) {
-            uint256 test = (left + right) / 2;
-            // In this condition: D18{block} < D18{block}
-            item = rToken.issueItem(account, test);
-            if (item.when < blockNumber) left = test;
-            else right = test;
-        }
-        return right;
+        (tokens, deposits) = bh.quote(baskets, CEIL);
     }
 
     /// @return erc20s The ERC20 addresses in the current basket
@@ -151,7 +114,86 @@ contract Facade is IFacade {
         }
     }
 
-    // ============
+    // === Views ===
+
+    /// @param account The account for the query
+    /// @return issuances All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingIssuances(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending[] memory issuances)
+    {
+        (, uint256 left, uint256 right) = rToken.issueQueues(account);
+        issuances = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            RTokenP1.IssueItem memory issueItem = rToken.issueItem(account, i + left);
+            uint256 diff = i + left == 0
+                ? issueItem.amtRToken
+                : issueItem.amtRToken - rToken.issueItem(account, i + left - 1).amtRToken;
+            issuances[i] = Pending(i + left, issueItem.when, diff);
+        }
+    }
+
+    /// @param account The account for the query
+    /// @return unstakings All the pending RToken issuances for an account
+    /// @custom:view
+    function pendingUnstakings(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending[] memory unstakings)
+    {
+        StRSRP1Votes stRSR = StRSRP1Votes(address(rToken.main().stRSR()));
+        uint256 era = stRSR.currentEra();
+        uint256 left = stRSR.firstRemainingDraft(era, account);
+        uint256 right = stRSR.draftQueueLen(era, account);
+
+        unstakings = new Pending[](right - left);
+        for (uint256 i = 0; i < right - left; i++) {
+            (uint192 drafts, uint64 availableAt) = stRSR.draftQueues(era, account, i + left);
+
+            uint192 diff = drafts;
+            if (i + left > 0) {
+                (uint192 prevDrafts, ) = stRSR.draftQueues(era, account, i + left - 1);
+                diff = drafts - prevDrafts;
+            }
+
+            unstakings[i] = Pending(i + left, availableAt, diff);
+        }
+    }
+
+    /// @return A non-inclusive ending index
+    /// @custom:view
+    function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256) {
+        (uint256 queueLeft, uint256 queueRight) = rToken.queueBounds(account);
+        uint256 blockNumber = FIX_ONE_256 * block.number; // D18{block} = D18{1} * {block}
+
+        RTokenP1.IssueItem memory item;
+
+        // Handle common edge cases in O(1)
+        if (queueLeft == queueRight) return queueLeft;
+
+        item = rToken.issueItem(account, queueLeft);
+        if (blockNumber < item.when) return queueLeft;
+
+        item = rToken.issueItem(account, queueRight - 1);
+        if (item.when <= blockNumber) return queueRight;
+
+        // find left and right (using binary search where always left <= right) such that:
+        //     left == right - 1
+        //     queue[left].when <= block.timestamp
+        //     right == queueRight  or  block.timestamp < queue[right].when
+        uint256 left = queueLeft;
+        uint256 right = queueRight;
+        while (left < right - 1) {
+            uint256 test = (left + right) / 2;
+            // In this condition: D18{block} < D18{block}
+            item = rToken.issueItem(account, test);
+            if (item.when < blockNumber) left = test;
+            else right = test;
+        }
+        return right;
+    }
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     function basketTokens(IRToken rToken) external view returns (address[] memory tokens) {
@@ -163,45 +205,6 @@ contract Facade is IFacade {
     function stToken(IRToken rToken) external view returns (IStRSR stTokenAddress) {
         IMain main = rToken.main();
         stTokenAddress = main.stRSR();
-    }
-
-    /// @return {qRTok} How many RToken `account` can issue given current holdings
-    /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external returns (uint256) {
-        IMain main = rToken.main();
-        main.poke();
-        // {BU}
-
-        uint192 held = main.basketHandler().basketsHeldBy(account);
-        uint192 needed = rToken.basketsNeeded();
-
-        int8 decimals = int8(rToken.decimals());
-
-        // return {qRTok} = {BU} * {(1 RToken) qRTok/BU)}
-        if (needed.eq(FIX_ZERO)) return held.shiftl_toUint(decimals);
-
-        uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
-
-        // {qRTok} = {BU} * {rTok} / {BU} * {qRTok/rTok}
-        return held.mulDiv(totalSupply, needed).shiftl_toUint(decimals);
-    }
-
-    /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount)
-        public
-        returns (address[] memory tokens, uint256[] memory deposits)
-    {
-        IMain main = rToken.main();
-        main.poke();
-        IRToken rTok = rToken;
-        IBasketHandler bh = main.basketHandler();
-
-        // Compute # of baskets to create `amount` qRTok
-        uint192 baskets = (rTok.totalSupply() > 0) // {BU}
-            ? rTok.basketsNeeded().muluDivu(amount, rTok.totalSupply()) // {BU * qRTok / qRTok}
-            : shiftl_toFix(amount, -int8(rTok.decimals())); // {qRTok / qRTok}
-
-        (tokens, deposits) = bh.quote(baskets, CEIL);
     }
 
     /// @return backing The worst-case collaterazation % the protocol will have after done trading

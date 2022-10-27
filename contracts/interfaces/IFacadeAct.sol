@@ -17,6 +17,6 @@ interface IFacadeAct {
     /// @custom:static-call
     function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
 
-    /// Claims rewards from all places they can accrue. Can be targeted by getActCalldata
+    /// Claims rewards from all places they can accrue.
     function claimAndSweepRewards(RTokenP1 rToken) external;
 }
