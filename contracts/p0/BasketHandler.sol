@@ -56,10 +56,10 @@ struct Basket {
 }
 
 /*
- * @title BasketLib
+ * @title BasketLibP0
  */
-library BasketLib {
-    using BasketLib for Basket;
+library BasketLibP0 {
+    using BasketLibP0 for Basket;
     using FixLib for uint192;
 
     /// Set self to a fresh, empty basket
@@ -104,7 +104,7 @@ library BasketLib {
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
 contract BasketHandlerP0 is ComponentP0, IBasketHandler {
-    using BasketLib for Basket;
+    using BasketLibP0 for Basket;
     using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;

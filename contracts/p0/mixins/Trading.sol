@@ -54,7 +54,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
 
-        req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
+        req.sell.erc20().safeApprove(address(broker), 0);
+        req.sell.erc20().safeApprove(address(broker), req.sellAmount);
+
         ITrade trade = broker.openTrade(req);
 
         trades[req.sell.erc20()] = trade;

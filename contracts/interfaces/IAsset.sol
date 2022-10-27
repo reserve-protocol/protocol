@@ -90,9 +90,6 @@ interface ICollateral is IAsset {
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
-    /// @dev This default check assumes that the collateral's price() value is expected
-    /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
-    /// collateral you're defining, you MUST redefine refresh()!!
     function refresh() external;
 
     /// @return The canonical name of this collateral's target unit.
