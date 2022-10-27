@@ -173,6 +173,9 @@ contract GnosisTrade is ITrade {
 
         // Optionally process settlement of the auction in Gnosis
         if (!isAuctionCleared()) {
+            // By design, we don't rely on this return value at all, just the
+            // "cleared" state of the auction, and the token balances this contract owns.
+            // slither-disable-next-line unused-return
             gnosis.settleAuction(auctionId);
             assert(isAuctionCleared());
         }
