@@ -3,10 +3,11 @@ pragma solidity 0.8.9;
 
 // From https://gist.github.com/ottodevs/c43d0a8b4b891ac2da675f825b1d1dbf
 library StringLib {
-    /// Convert all uppercase letters in str to lowercase
-    /// @dev This turns out to work for UTF-8 in general. We won't lowercase
-    /// capital letters outside of 7-bit ASCII, but we won't change any multi-byte
-    /// codepoints either.
+    /// Convert any basic uppercase chars (A-Z) in str to lowercase
+    /// @dev This is safe for general Unicode strings in UTF-8, because every byte representing a
+    /// multibyte codepoint has its high bit set to 1, and this only modifies bytes with a high bit
+    /// set to 0. As a result, this function will _not_ transform any multi-byte capital letters,
+    /// like Ö, À, or Æ, to lowercase. That's much harder, and this is sufficient for our purposes.
     function toLower(string memory str) internal pure returns (string memory) {
         bytes memory bStr = bytes(str);
         bytes memory bLower = new bytes(bStr.length);
