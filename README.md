@@ -26,6 +26,33 @@ For a much more detailed explanation of the economic design, including an hour-l
 - [Writing Collateral Plugins](docs/collateral.md): An overview of how to develop collateral plugins and the concepts / questions involved.
 - [MEV](docs/mev.md): A resource for MEV searchers and others looking to interact with the deployed protocol programatically.
 
+## Mainnet Addresses (v1.1.0)
+
+| Contract       | Address                                    |
+| -------------- | ------------------------------------------ |
+| rewardableLib  | 0x13B63e7094B61CCbe79CAe3fb602DFd12D59314a |
+| tradingLib     | 0x9C75314AFD011F22648ca9C655b61674e27bA4AC |
+| permitLib      | 0x46c600CB3Fb7Bf386F8f53952D64aC028e289AFb |
+| oracleLib      | 0xFa93538Ed210486bfdE01b7E2295392fE7153106 |
+| facadeRead     | 0xfd529fa21FBd569Bcf7c7f49694568fD66e8d1e9 |
+| facadeAct      | 0x182e86Ad4a6139ced4f9Fa4ED3f1Cd9E4F7449e7 |
+| facadeWriteLib | 0x37C8ebD57864D38C8F7987B6762e0301b0bAfF6d |
+| facadeWrite    | 0x6419FE6cf428150e2d8ED38a3316b1bB468F79a7 |
+| deployer       | 0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e |
+| rsrAsset       | 0x184460704886f9F2A7F3A0c2887680867954dC6E |
+| main           | 0xcd77df48E548dda056f8563f2520fFD94aD147eE |
+| trade          | 0xa8d818C719c1034E731Feba2088F4F011D44ACB3 |
+| assetRegistry  | 0xd3025304C6487FC5c39010bEA0B46cc0690ab229 |
+| backingManager | 0x38eF27D791cd60074Fa0345E8F82Df25e1f80B41 |
+| basketHandler  | 0xDf99ccA98349DeF0eaB8eC37C1a0B270de38E682 |
+| broker         | 0xf67454a5e8081F52768cD350A4Ac9E832c5101b6 |
+| distributor    | 0x6bae9bE78cbE3Cd93FC02D974a66F9700E4a299C |
+| furnace        | 0x02Ee6862cF431D7CEaa78112D635D2Be7DdFC178 |
+| rsrTrader      | 0xaB6b734b618a4824fCCa63014cfaC30CDB41Db2a |
+| rTokenTrader   | 0xaB6b734b618a4824fCCa63014cfaC30CDB41Db2a |
+| rToken         | 0x8b906361048D277452506d3f791020A1cA798aF3 |
+| stRSR          | 0xB7F55aA5C7d09C091C1bD22B3352e8cb3fACF289 |
+
 ## Parallel Prototypes
 
 We have a `p0` and `p1` implementation for each contract in our core system. The `p0` version is our _specification_ prototype, and is intended to be as easy as possible to understand. The `p1` version should behave identically, except that it employs substantial optimizations and more complicated algorithms in order to achieve lower gas costs.
