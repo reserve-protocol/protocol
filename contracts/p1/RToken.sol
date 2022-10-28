@@ -26,9 +26,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    /// Semantic Version (see: https://semver.org/)
-    string public semver;
-
     /// The mandate describes what goals its governors should try to achieve. By succinctly
     /// explaining the RToken’s purpose and what the RToken is intended to do, it provides common
     /// ground for the governors to decide upon priorities and how to weigh tradeoffs.
@@ -761,5 +758,5 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[37] private __gap;
+    uint256[38] private __gap;
 }
