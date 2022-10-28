@@ -387,6 +387,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expect(
         rToken.init(
           main.address,
+          '2.0.0',
           'RTKN RToken',
           'RTKN',
           'Manifesto',
