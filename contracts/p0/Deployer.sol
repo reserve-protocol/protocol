@@ -25,6 +25,8 @@ import "contracts/libraries/String.sol";
  */
 contract DeployerP0 is IDeployer {
     string public constant ENS = "reserveprotocol.eth";
+    string public constant semver = SEMANTIC_VERSION; // see: https://semver.org/
+
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -127,6 +129,7 @@ contract DeployerP0 is IDeployer {
         // Init RToken
         main.rToken().init(
             main,
+            semver,
             name,
             symbol,
             mandate,
@@ -153,7 +156,7 @@ contract DeployerP0 is IDeployer {
         main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
-        emit RTokenCreated(main, components.rToken, components.stRSR, owner);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner, semver);
         return (address(components.rToken));
     }
 }

@@ -93,6 +93,7 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     // Initialization
     function init(
         IMain main_,
+        string calldata semver_,
         string memory name_,
         string memory symbol_,
         string memory mandate_,
@@ -169,4 +170,6 @@ interface TestIRToken is IRToken {
     function increaseAllowance(address, uint256) external returns (bool);
 
     function decreaseAllowance(address, uint256) external returns (bool);
+
+    function semver() external view returns (string memory);
 }

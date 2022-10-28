@@ -28,6 +28,8 @@ contract DeployerP1 is IDeployer {
     using Clones for address;
 
     string public constant ENS = "reserveprotocol.eth";
+    string public constant semver = SEMANTIC_VERSION; // see: https://semver.org/
+
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -216,6 +218,7 @@ contract DeployerP1 is IDeployer {
         // Init RToken
         components.rToken.init(
             main,
+            semver,
             name,
             symbol,
             mandate,
@@ -242,7 +245,7 @@ contract DeployerP1 is IDeployer {
         main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
-        emit RTokenCreated(main, components.rToken, components.stRSR, owner);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner, semver);
         return (address(components.rToken));
     }
 }

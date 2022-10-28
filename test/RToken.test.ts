@@ -26,6 +26,7 @@ import {
   RTokenP1,
   StaticATokenMock,
   TestIBackingManager,
+  TestIDeployer,
   TestIMain,
   TestIRToken,
   USDCMock,
@@ -78,6 +79,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let config: IConfig
 
   // Main
+  let deployer: TestIDeployer
   let main: TestIMain
   let rToken: TestIRToken
   let facade: FacadeRead
@@ -185,6 +187,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       basket,
       basketHandler,
       config,
+      deployer,
       facade,
       facadeTest,
       main,
@@ -221,6 +224,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   describe('Deployment #fast', () => {
     it('Deployment should setup RToken correctly', async () => {
+      expect(await rToken.semver()).to.equal(await deployer.semver())
       expect(await rToken.name()).to.equal('RTKN RToken')
       expect(await rToken.symbol()).to.equal('RTKN')
       expect(await rToken.decimals()).to.equal(18)

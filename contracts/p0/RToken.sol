@@ -37,6 +37,9 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20 for IERC20;
 
+    /// Semantic Version (see: https://semver.org/)
+    string public semver;
+
     /// Weakly immutable: expected to be an IPFS link but could be the mandate itself
     string public mandate;
 
@@ -80,6 +83,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     function init(
         IMain main_,
+        string calldata semver_,
         string memory name_,
         string memory symbol_,
         string calldata mandate_,
@@ -87,12 +91,15 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         uint192 scalingRedemptionRate_,
         uint256 redemptionRateFloor_
     ) public initializer {
+        require(bytes(semver_).length > 0, "semver empty");
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         require(bytes(mandate_).length > 0, "mandate empty");
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+
+        semver = semver_;
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setScalingRedemptionRate(scalingRedemptionRate_);

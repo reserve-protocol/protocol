@@ -10,6 +10,8 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
 
+string constant SEMANTIC_VERSION = "1.1.0"; // see: https://semver.org
+
 /**
  * @title DeploymentParams
  * @notice The set of protocol params needed to configure a new system deployment.
@@ -66,11 +68,13 @@ interface IDeployer {
     /// @param rToken The address of the RToken ERC20
     /// @param stRSR The address of the StRSR ERC20 staking pool/token
     /// @param owner The owner of the newly deployed system
+    /// @param version The semantic versioning version string (see: https://semver.org)
     event RTokenCreated(
         IMain indexed main,
         IRToken indexed rToken,
         IStRSR stRSR,
-        address indexed owner
+        address indexed owner,
+        string version
     );
 
     //
@@ -101,4 +105,6 @@ interface TestIDeployer is IDeployer {
     function gnosis() external view returns (IGnosis);
 
     function rsrAsset() external view returns (IAsset);
+
+    function semver() external view returns (string memory);
 }
