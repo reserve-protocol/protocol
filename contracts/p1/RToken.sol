@@ -144,7 +144,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     function init(
         IMain main_,
-        string calldata semver_,
         string calldata name_,
         string calldata symbol_,
         string calldata mandate_,
@@ -152,7 +151,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         uint192 scalingRedemptionRate_,
         uint256 redemptionRateFloor_
     ) external initializer {
-        require(bytes(semver_).length > 0, "semver empty");
         require(bytes(name_).length > 0, "name empty");
         require(bytes(symbol_).length > 0, "symbol empty");
         require(bytes(mandate_).length > 0, "mandate empty");
@@ -165,7 +163,6 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         backingManager = main_.backingManager();
         furnace = main_.furnace();
 
-        semver = semver_;
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setScalingRedemptionRate(scalingRedemptionRate_);

@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
 import "contracts/mixins/Auth.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * @title Main
  * @notice The center of the system around which Components orbit.
  */
 // solhint-disable max-states-count
-contract MainP1 is Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain {
+contract MainP1 is Versioned, Initializable, Auth, ComponentRegistry, UUPSUpgradeable, IMain {
     IERC20 public rsr;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

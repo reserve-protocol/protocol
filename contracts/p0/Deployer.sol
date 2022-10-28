@@ -18,14 +18,14 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/String.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * @title DeployerP0
  * @notice The factory contract that deploys the entire P0 system.
  */
-contract DeployerP0 is IDeployer {
+contract DeployerP0 is IDeployer, Versioned {
     string public constant ENS = "reserveprotocol.eth";
-    string public constant semver = SEMANTIC_VERSION; // see: https://semver.org/
 
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
@@ -129,7 +129,6 @@ contract DeployerP0 is IDeployer {
         // Init RToken
         main.rToken().init(
             main,
-            semver,
             name,
             symbol,
             mandate,
@@ -156,7 +155,7 @@ contract DeployerP0 is IDeployer {
         main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
-        emit RTokenCreated(main, components.rToken, components.stRSR, owner, semver);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
     }
 }

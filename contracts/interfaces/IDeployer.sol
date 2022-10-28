@@ -9,8 +9,7 @@ import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
-
-string constant SEMANTIC_VERSION = "1.1.0"; // see: https://semver.org
+import "./IVersioned.sol";
 
 /**
  * @title DeploymentParams
@@ -62,7 +61,7 @@ struct Implementations {
  * @title IDeployer
  * @notice Factory contract for an RToken system instance
  */
-interface IDeployer {
+interface IDeployer is IVersioned {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param rToken The address of the RToken ERC20
@@ -105,6 +104,4 @@ interface TestIDeployer is IDeployer {
     function gnosis() external view returns (IGnosis);
 
     function rsrAsset() external view returns (IAsset);
-
-    function semver() external view returns (string memory);
 }
