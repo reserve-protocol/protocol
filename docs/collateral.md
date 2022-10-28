@@ -11,7 +11,7 @@ The core protocol depends on two **plugin** types:
 2. _Trading_ (not discussed here)
    `contracts/plugins/trading`
 
-In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is IAsset`). An Asset desribes how to interact with and price an ERC20 token. If a token is to handled by the protocol, it requires an Asset plugin contract. This contract must be registered with the `AssetRegistry` associated with the RToken instance in consideration.
+In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is IAsset`). An Asset describes how to interact with and price an ERC20 token. If a token is to handled by the protocol, it requires an Asset plugin contract. This contract must be registered with the `AssetRegistry` associated with the RToken instance in consideration.
 
 A Collateral is everything an Asset is and more:
 
