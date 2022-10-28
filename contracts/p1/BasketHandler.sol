@@ -465,9 +465,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // targetNames = set(values(config.targetNames))
         // (and this stays true; targetNames is not touched again in this function)
-        for (uint256 i = 0; i < config.erc20s.length; ++i) {
+        uint256 basketLength = config.erc20s.length;
+        for (uint256 i = 0; i < basketLength; ++i) {
             targetNames.add(config.targetNames[config.erc20s[i]]);
         }
+        uint256 targetsLength = targetNames.length();
 
         // "good" collateral is collateral with any status() other than DISABLED
         // goodWeights and totalWeights are in index-correspondence with targetNames
@@ -475,22 +477,22 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // {target/BU} total target weight of good, prime collateral with target i
         // goodWeights := {}
-        uint192[] memory goodWeights = new uint192[](targetNames.length());
+        uint192[] memory goodWeights = new uint192[](targetsLength);
 
         // {target/BU} total target weight of all prime collateral with target i
         // totalWeights := {}
-        uint192[] memory totalWeights = new uint192[](targetNames.length());
+        uint192[] memory totalWeights = new uint192[](targetsLength);
 
         // For each prime collateral token:
-        for (uint256 i = 0; i < config.erc20s.length; ++i) {
+        for (uint256 i = 0; i < basketLength; ++i) {
             IERC20 erc20 = config.erc20s[i];
 
             // Find collateral's targetName index
             uint256 targetIndex;
-            for (targetIndex = 0; targetIndex < targetNames.length(); ++targetIndex) {
+            for (targetIndex = 0; targetIndex < targetsLength; ++targetIndex) {
                 if (targetNames.at(targetIndex) == config.targetNames[erc20]) break;
             }
-            assert(targetIndex < targetNames.length());
+            assert(targetIndex < targetsLength);
             // now, targetNames[targetIndex] == config.targetNames[config.erc20s[i]]
 
             // Set basket weights for good, prime collateral,
@@ -520,7 +522,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
         // For each tgt in target names, if we still need more weight for tgt then try to add the
         // backup basket for tgt to make up that weight:
-        for (uint256 i = 0; i < targetNames.length(); ++i) {
+        for (uint256 i = 0; i < targetsLength; ++i) {
             if (totalWeights[i].lte(goodWeights[i])) continue; // Don't need any backup weight
 
             // "tgt" = targetNames[i]
@@ -530,7 +532,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             BackupConfig storage backup = config.backups[targetNames.at(i)];
 
             // Find the backup basket size: min(backup.max, # of good backup collateral)
-            for (uint256 j = 0; j < backup.erc20s.length && size < backup.max; ++j) {
+            uint256 backupLength = backup.erc20s.length;
+            for (uint256 j = 0; j < backupLength && size < backup.max; ++j) {
                 if (goodCollateral(targetNames.at(i), backup.erc20s[j])) size++;
             }
 
@@ -544,7 +547,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 needed = totalWeights[i].minus(goodWeights[i]);
 
             // Loop: for erc20 in backups(tgt)...
-            for (uint256 j = 0; j < backup.erc20s.length && assigned < size; ++j) {
+            for (uint256 j = 0; j < backupLength && assigned < size; ++j) {
                 IERC20 erc20 = backup.erc20s[j];
                 if (goodCollateral(targetNames.at(i), erc20)) {
                     // Across this .add(), targetWeight(newBasket',erc20)
@@ -563,7 +566,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         //   targetWeight(newBasket, e) = primeWt(e) + backupWt(e)
 
         // Notice if basket is actually empty
-        if (newBasket.erc20s.length == 0) disabled = true;
+        uint256 newBasketLength = newBasket.erc20s.length;
+        if (newBasketLength == 0) disabled = true;
 
         // Update the basket if it's not disabled
         if (!disabled) {
@@ -573,8 +577,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         // Keep records, emit event
-        uint192[] memory refAmts = new uint192[](basket.erc20s.length);
-        for (uint256 i = 0; i < basket.erc20s.length; ++i) {
+        uint192[] memory refAmts = new uint192[](newBasketLength);
+        for (uint256 i = 0; i < newBasketLength; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
