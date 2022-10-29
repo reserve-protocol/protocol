@@ -31,3 +31,7 @@ event RTokenCreated(
     );
 
 ```
+
+- Add `version()` getter on Deployer, Main, and all Components, via mix-in. To be updated with each subsequent release.
+
+##
