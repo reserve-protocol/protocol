@@ -63,7 +63,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   beforeEach(async () => {
     ;[owner, addr1, other] = await ethers.getSigners()
     // Deploy fixture
-    ;({ deployer, basket, config, main, backingManager, broker, gnosis, rsrTrader, rTokenTrader } =
+    ;({ basket, config, main, backingManager, broker, gnosis, rsrTrader, rTokenTrader } =
       await loadFixture(defaultFixture))
 
     // Get assets
