@@ -117,7 +117,7 @@ The first thing a collateral plugin designer needs to do is select the 3 account
 
 Choosing the collateral unit is straightforward: it's just the ERC20 token being used as collateral. This is the token that will be directly held by the protocol instance. This is usually a token that is interesting to hold because it allows the accumulation of ever-increasing amounts of some other more-fundamental unit, called the reference unit. It's also possible for collateral to be non-appreciating, in which case it may still make sense to hold the collateral either because it allows the claiming of rewards over time, or simply because the protocol strongly requires stability (usually, short-term).
 
-Note that `{tok}` is in "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`. For more about our approach for handling decimal-fixed-point, check out [docs/solidity-style.md#The-Fix-Library](docs/solidity-style.md#The-Fix-Library).
+Note that `{tok}` is in "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`. For more about our approach for handling decimal-fixed-point, check out [docs/solidity-style.md#The-Fix-Library](../docs/solidity-style.md#The-Fix-Library).
 
 #### Reference unit `{ref}`
 
@@ -187,13 +187,14 @@ Ok, that was a lot about the theory behind our accounting units. Below are some 
 
 ### Token balances cannot be rebasing
 
-Some defi protocols have chosen to provide returns in the form of an increasing token balance, called a rebase. ATokens from Aave and stETH from Lido are both rebasing tokens: over time token balances simply increase of their own accord. While people tend to like this, smart contracts certainly don't. In order to have a rebasing token be handled by the protocol, **it must be wrapped** to be turned into a token that appreciates solely via exchange rate increases.
+Some defi protocols have chosen to provide returns in the form of an increasing token balance, called a rebase. ATokens from 
+and stETH from Lido are both rebasing tokens: over time token balances simply increase of their own accord. While people tend to like this, smart contracts certainly don't. In order to have a rebasing token be handled by the protocol, **it must be wrapped** to be turned into a token that appreciates solely via exchange rate increases.
 
 In general any rebasing token can be wrapped to be turned into an appreciating exchange rate token, and vice versa. It's even possible to split the difference, if you want. But for a token to be used in the Reserve protocol as collateral, it's important that _all_ rebasing be eliminated from the token.
 
 To use a rebasing token as collateral backing, the ERC20 needs to be replaced with an ERC20 that is non-rebasing. This is _not_ a change to the collateral plugin contract itself. Instead, the collateral plugin designer needs to provide a wrapping ERC20 contract that RToken issuers/redeemers will have to deposit/withdraw into when they perform issuance/redemption. In the future this transformation should be provided as a type of zap, but at the time of this writing everything is still manual.
 
-For an example of what a token wrapper that performs this transformation looks like, check out [contracts/plugins/aave/StaticATokenLM.sol](contracts/plugins/aave/StaticATokenLM.sol). This is a standard wrapper used by many protocols to wrap Aave ATokens into StaticATokens. A thinned-down version of this contract makes a good starting point for developing other ERC20 wrappers. But if the defi protocol is well-integrated into defi, it's likely there already exists a wrapping token contract that can be vendored and used directly.
+For an example of what a token wrapper that performs this transformation looks like, check out [contracts/plugins/aave/StaticATokenLM.sol](../contracts/plugins/aave/StaticATokenLM.sol). This is a standard wrapper used by many protocols to wrap Aave ATokens into StaticATokens. A thinned-down version of this contract makes a good starting point for developing other ERC20 wrappers. But if the defi protocol is well-integrated into defi, it's likely there already exists a wrapping token contract that can be vendored and used directly.
 
 ### `refresh()` should never revert
 
@@ -228,7 +229,7 @@ If `status()` ever returns `CollateralStatus.DISABLED`, then it must always retu
 Protocol contracts that hold an asset for any significant amount of time are all able to use `rewardERC20()` and `getClaimCalldata()` to claim rewards. These are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
 - `rewardERC20()` should return the reward token's address, and
-- `getClaimCalldata()` should return a contract address and calldata `bytes` that an asset-storing contract can use to make a raw function call to claim its rewards. For more on preparing this call, check out the use of `abi.encodeWithSignature()` in [contracts/plugins/assets/CTokenFiatCollateral.sol](contracts/plugins/assets/CTokenFiatCollateral.sol).
+- `getClaimCalldata()` should return a contract address and calldata `bytes` that an asset-storing contract can use to make a raw function call to claim its rewards. For more on preparing this call, check out the use of `abi.encodeWithSignature()` in [contracts/plugins/assets/CTokenFiatCollateral.sol](../contracts/plugins/assets/CTokenFiatCollateral.sol).
 
 ### Smaller Constraints
 
