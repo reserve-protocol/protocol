@@ -149,7 +149,7 @@ In many cases, the choice of reference unit is clear.
 
 Often, the collateral token is directly redeemable for the reference unit in the token's protocol. (When this is the case, you can usually implement `refPerTok()` by looking up the redemption rate between the collateral token and its underlying token!) If you want to keep things simple, stick to "natural" collateral produced by protocols with nondecreasing exchange rates.
 
-However, the protocol never tries to handle reference-unit tokens itself, and in fact reference-unit tokens don't even need to exist. Thus, a Collateral can have a  _synthetic_ reference unit for which there exists no corresponding underlying token. For some worked-out examples, read [Synthetic Unit Examples](#Synthetic_Unit_Examples) below.
+However, the protocol never tries to handle reference-unit tokens itself, and in fact reference-unit tokens don't even need to exist. Thus, a Collateral can have a  _synthetic_ reference unit for which there exists no corresponding underlying token. For some worked-out examples, read [Synthetic Unit Examples](#Synthetic_Unit_Example) below.
 
 ### Target unit `{target}` ###
 
@@ -186,15 +186,13 @@ Wherever contract variables have these units, it's understood that even though t
 
 For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](../docs/solidity-style.md#The-Fix-Library).
 
-## Synthetic Unit Examples
+## Synthetic Unit Example
 
-[comment]: I haven't tried editing this section yet, because I'm running out of time today and I'm not all that certain that it's _right_. Needs more work...
+Some collateral positions require a synthetic reference unit. This can be tricky to reason through, so here we'll provide a few examples.
 
-Some collateral positions require a synthetic reference unit. This can be trickey to reason through, so here we'll provide a few examples.
+### Using Uniswap V2 LP Tokens
 
-### Uniswap V2 LP Tokens
-
-For instance, consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintainining a fully redeemable position in the two underlying fiatcoins.
+Consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintainining a fully redeemable position in the two underlying fiatcoins.
 
 [univ2]: https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works
 
@@ -202,22 +200,23 @@ A position's "natural" reference unit is whatever it's directly redeemable for. 
 
 To demonstrate this difficulty, imagine we choose "1 USD" for the reference unit. We presume in this design that 1 USDC and 1 USDT are continuously redeemable for 1 USD each -- the Collateral can watch that assumption on price feeds and default if it fails, this is fine -- and we implement `refPerTok()` by computing the present redemption value of an LP token in USD. _This won't work_, because the redemption value of the LP token increases any time trading moves the pool's proportion of USDC to USDT tokens briefly away from the 1:1 point, and then decreases as trading brings the pool's proportion back to the 1:1 point. The protocol requires that `refPerTok()` never decreases, so this will cause immediate defaults.
 
-Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference unit. We compute `refPerTok()` at any moment by seeing that we can redeem 1 LP token for _x_ USDC and _y_ USDT at that moment, and returning `min(x, y)`. _This also won't work_, because now `refPerTok()` will decrease any time the pool's proportion moves away from the 1:1 point, and it will increase whenever the proportion moves back.
+Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference unit. We compute `refPerTok()` at any moment by observing that we can redeem the `L` LP tokens in exisitence for `x` USDC and `y` USDT, and returning `min(x, y)/L`. _This also won't work_, because now `refPerTok()` will decrease any time the pool's proportion moves away from the 1:1 point, and it will increase whenever the proportion moves back.
 
+To make this Collateral position actually work, we have to account revenues against the AMM's invariant. Assuming that there's a supply of `L` LP tokens for a pool with `x` USDC and `y` USDT, the strange-looking reference unit `sqrt(USDC * USDT)`, with corresponding `refPerTok() = sqrt(x * y)/L`, works exactly as desired.
 
+Without walking through the algebra, we can reason our way heuristically towards this design. The exchange rate `refPerTok()` should be a value that only ever increases. In UNI V2, that means it must not change when LP tokens are deposited or withdrawn; and it must not change due to trading, except insofar as it increases due to the protocol's fees. Deposit and withdrawal change all of `x`, `y`, and `L`, but in a lawful way: `x * y / (L * L)` is invariant even when the LP supply is changed due deposits or withdrawals. If there were zero fees, the same expression would be invariant during trading; with fees, `x * y` only increases, and so `x * y / (L * L)` only increases. However, this expression has bizarre units. However, this expression cannot possibly be a rate "per LP token", it's a rate per square of the LP token. Taking the square root gives us a rate per token of `sqrt(x * y) / L`. 
 
+[^comment]: tbh it's be a _good idea_ to walk through the algebra here, I'm just ... very busy right now!
 
+After this choice after reference unit, we have two reasonable choices for target units. The simplest choice is to assert that the target unit is essentially unique to this particular instance of UNI v2 -- named by some horrible unique string like `UNIV2SQRTUSDTCUSDT` -- and that its redemption position is not for-sure tradable for any other backup position, so it cannot be backed up by a sensible basket.
 
-Fortunately, each AMM pool has _some_ invariant it preserves in order to quote prices to traders. In the case of UNIV2, this is the constant-product formula `x * y = k`, where `x` and `y` are the token balances. This means `x * y` adheres to our monotonically increasing constraint already; the product can never fall.
+This would be sensible for many UNI v2 pools, but someone holding value in a two-sided USD-fiatcoin pool probably intends to represent a USD position with those holdings, and so it'd be better for the Collateral plugin to have a target of USD. This is coherent so long as the Collateral plugin is setup to default under any of the following conditions:
 
-However, its units are wrong. We need to the square root of the product in order to get back to a (synthetic) token balance. [TODO: expand this justification]
+- According to a trusted oracle, USDC is far from \$1 for some time
+- According a trusted oracle, USDT is far from \$1 for some time
+- The UNI v2 pool is far from the 1:1 point for some time
 
-A good reference unit for a UNIV2 position is: `sqrt( USDC.balanceOf(pool) * USDT.balanceOf(pool))`
-
-In general this is extensible to any AMM curve on any number of tokens. For Curve/Balancer, one would only need to replace the inside of the expression above with the pool invariant and alter the `sqrt` to be an `n-root` where `n` is the number of tokens in the pool.
-
-In its general form this looks like: `( amm_invariant ) ^ (1/num_tokens)`
-
+And even then, it would be somewhat dangerous for an RToken designer to use this LP token as a _backup_ Collateral position -- because whenever the pool's proportion is away from 1:1 at all, it'll take more than \$1 of collateral to buy an LP position that can reliably convert to \$1 later.
 
 ## Important Properties for Collateral Plugins
 
