@@ -192,7 +192,7 @@ Some collateral positions require a synthetic reference unit. This can be tricky
 
 ### Using Uniswap V2 LP Tokens
 
-Consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintaining a fully redeemable position in the two underlying fiatcoins.
+Consider the Uniswap V2 LP token, **UNI-V2**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintaining a fully redeemable position in the two underlying fiatcoins.
 
 [univ2]: https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works
 
@@ -236,6 +236,8 @@ The Reserve Protocol cannot directly hold rebasing tokens. However, the protocol
 To use a rebasing token as collateral backing, the rebasing ERC20 needs to be replaced with an ERC20 that is non-rebasing. This is _not_ a change to the collateral plugin contract itself. Instead, the collateral plugin designer needs to provide a wrapping ERC20 contract that RToken issuers or redeemers will have to deposit into or withdraw from. We expect to automate these transformations as zaps in the future, but at the time of this writing everything is still manual.
 
 For an example of a token wrapper that performs this transformation, see [StaticATokenLM.sol](../contracts/plugins/aave/StaticATokenLM.sol). This is a standard wrapper to wrap Aave ATokens into StaticATokens. A thinned-down version of this contract makes a good starting point for developing other ERC20 wrappers -- but if the token is well-integrated in defi, a wrapping contract probably already exists.
+
+The same wrapper approach is easily used to tokenize positions in protocols that do not produce tokenized or transferrable positions.
 
 ### `refresh()` should never revert
 
