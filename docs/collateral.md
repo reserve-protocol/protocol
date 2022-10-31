@@ -11,7 +11,7 @@ The core protocol depends on two plugin types:
 2. _Trading_ (not discussed here)
    `contracts/plugins/trading`
 
-In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is IAsset`). An Asset describes how to interact with and price an ERC20 token. An instance of the Reserve Protocol can use an ERC20 token if and only if its `AssetRegistry` contains an asset modelling that token. An Asset provides the Reserve Protocol with information about the token:
+In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is IAsset`). An Asset describes how to interact with and price an ERC20 token. An instance of the Reserve Protocol can use an ERC20 token if and only if its `AssetRegistry` contains an asset modeling that token. An Asset provides the Reserve Protocol with information about the token:
 
 - How to get its price
 - A maximum volume per trade
@@ -120,7 +120,7 @@ To create a Collateral plugin, you need to select its accounting units (`{tok}`,
 Typical accounting units in this sense are things like ETH, USD, USDC -- tokens, assets, currencies; anything that can be used as a measure of value. In general, a valid accounting unit is a linear combination of any number of assets; so (1 USDC + 0.5 USDP + 0.25 TUSD) is a valid unit, as is (say) (0.5 USD + 0.5 EUR), though such units will probably only arise in particularly tricky cases. Each Collateral plugin should describe in its documentation each of its four accounting units
 
 As a quick overview:
-- The unit `{tok}` is just the concrete token being modelled.
+- The unit `{tok}` is just the concrete token being modeled.
 - The protocol measures growth as the increase of the value of `{tok}` against the value of `{ref}`, and treats that growth as revenue.
 - If two Collateral plugins have the same `{target}`, then when one defaults, the other one can serve as backup collateral.
 - The unit `{UoA}` is a common accounting unit across all collateral in an RToken.
@@ -131,11 +131,11 @@ The collateral unit `{tok}` is just 1 of the ERC20 token that the Collateral plu
 
 This is typically a token that is interesting to hold because it allows the accumulation of ever-increasing amounts of some other more-fundamental unit, called the reference unit. It's also possible for collateral to be non-appreciating, in which case it may still make sense to hold the collateral either because it allows the claiming of rewards over time, or simply because the protocol strongly requires stability (usually, short-term).
 
-Note that a value denoted `{tok}` is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working with `uint192` values with the unit `{tok}`. For context on our approach for handling decimal-fixed-point, see  [docs/solidity-style.md#The-Fix-Library](solidity-style.md#The-Fix-Library).
+Note that a value denoted `{tok}` is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working with `uint192` values with the unit `{tok}`. For context on our approach for handling decimal-fixed-point, see [The Fix Library](solidity-style.md#The-Fix-Library).
 
 ### Reference unit `{ref}` ###
 
-The _reference unit_, `{ref}`, is the measure of value that the protocol computes revneue against. When the exchange rate `refPerTok()` rises, the protocol keeps a constant amount of `{ref}` as backing, and sells the rest of the token it holds as revenue.
+The _reference unit_, `{ref}`, is the measure of value that the protocol computes revenue against. When the exchange rate `refPerTok()` rises, the protocol keeps a constant amount of `{ref}` as backing, and sells the rest of the token it holds as revenue.
 
 There's room for flexibility and creativity in the choice of a Collateral's reference unit. The chief constraints are:
 
@@ -184,7 +184,7 @@ Note, this doesn't disqualify collateral with USD as its target unit! It's fine 
 
 Wherever contract variables have these units, it's understood that even though they're handled as `uint`s, they represent fractional values with 18 decimals. In particular, a `{tok}` value is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`.
 
-For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](../docs/solidity-style.md#The-Fix-Library).
+For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](solidity-style.md#The-Fix-Library).
 
 ## Synthetic Unit Example
 
@@ -192,23 +192,23 @@ Some collateral positions require a synthetic reference unit. This can be tricky
 
 ### Using Uniswap V2 LP Tokens
 
-Consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintainining a fully redeemable position in the two underlying fiatcoins.
+Consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintaining a fully redeemable position in the two underlying fiatcoins.
 
 [univ2]: https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works
 
-A position's "natural" reference unit is whatever it's directly redeemable for. However, a Uniswap v2 LP token is not redeemable for any fixed, concrete unit. Rather, it's redeemable prorata for a share of the tokens in the liquidity pool, which can constantly change their proportion as trading occurs.
+A position's "natural" reference unit is whatever it's directly redeemable for. However, a Uniswap v2 LP token is not redeemable for any fixed, concrete unit. Rather, it's redeemable _pro rata_ for a share of the tokens in the liquidity pool, which can constantly change their proportion as trading occurs.
 
 To demonstrate this difficulty, imagine we choose "1 USD" for the reference unit. We presume in this design that 1 USDC and 1 USDT are continuously redeemable for 1 USD each -- the Collateral can watch that assumption on price feeds and default if it fails, this is fine -- and we implement `refPerTok()` by computing the present redemption value of an LP token in USD. _This won't work_, because the redemption value of the LP token increases any time trading moves the pool's proportion of USDC to USDT tokens briefly away from the 1:1 point, and then decreases as trading brings the pool's proportion back to the 1:1 point. The protocol requires that `refPerTok()` never decreases, so this will cause immediate defaults.
 
-Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference unit. We compute `refPerTok()` at any moment by observing that we can redeem the `L` LP tokens in exisitence for `x` USDC and `y` USDT, and returning `min(x, y)/L`. _This also won't work_, because now `refPerTok()` will decrease any time the pool's proportion moves away from the 1:1 point, and it will increase whenever the proportion moves back.
+Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference unit. We compute `refPerTok()` at any moment by observing that we can redeem the `L` LP tokens in existence for `x` USDC and `y` USDT, and returning `min(x, y)/L`. _This also won't work_, because now `refPerTok()` will decrease any time the pool's proportion moves away from the 1:1 point, and it will increase whenever the proportion moves back.
 
-To make this Collateral position actually work, we have to account revenues against the AMM's invariant. Assuming that there's a supply of `L` LP tokens for a pool with `x` USDC and `y` USDT, the strange-looking reference unit `sqrt(USDC * USDT)`, with corresponding `refPerTok() = sqrt(x * y)/L`, works exactly as desired.
+To make this Collateral position actually work, we have to account revenues against the pool's invariant. Assuming that there's a supply of `L` LP tokens for a pool with `x` USDC and `y` USDT, the strange-looking reference unit `sqrt(USDC * USDT)`, with corresponding `refPerTok() = sqrt(x * y)/L`, works exactly as desired.
 
 Without walking through the algebra, we can reason our way heuristically towards this design. The exchange rate `refPerTok()` should be a value that only ever increases. In UNI V2, that means it must not change when LP tokens are deposited or withdrawn; and it must not change due to trading, except insofar as it increases due to the protocol's fees. Deposit and withdrawal change all of `x`, `y`, and `L`, but in a lawful way: `x * y / (L * L)` is invariant even when the LP supply is changed due deposits or withdrawals. If there were zero fees, the same expression would be invariant during trading; with fees, `x * y` only increases, and so `x * y / (L * L)` only increases. However, this expression has bizarre units. However, this expression cannot possibly be a rate "per LP token", it's a rate per square of the LP token. Taking the square root gives us a rate per token of `sqrt(x * y) / L`. 
 
 [^comment]: tbh it's be a _good idea_ to walk through the algebra here, I'm just ... very busy right now!
 
-After this choice after reference unit, we have two reasonable choices for target units. The simplest choice is to assert that the target unit is essentially unique to this particular instance of UNI v2 -- named by some horrible unique string like `UNIV2SQRTUSDTCUSDT` -- and that its redemption position is not for-sure tradable for any other backup position, so it cannot be backed up by a sensible basket.
+After this choice after reference unit, we have two reasonable choices for target units. The simplest choice is to assert that the target unit is essentially unique to this particular instance of UNI v2 -- named by some horrible unique string like `UNIV2SQRTUSDTCUSDT` -- and that its redemption position cannot be traded, for certain, for any other backup position, so it cannot be backed up by a sensible basket.
 
 This would be sensible for many UNI v2 pools, but someone holding value in a two-sided USD-fiatcoin pool probably intends to represent a USD position with those holdings, and so it'd be better for the Collateral plugin to have a target of USD. This is coherent so long as the Collateral plugin is setup to default under any of the following conditions:
 
@@ -224,7 +224,7 @@ And even then, it would be somewhat dangerous for an RToken designer to use this
 
 Collateral plugins should be safe to reuse by many different Reserve Protocol instances. So:
 
-- Collateral plugins should neither require governance nor give specal permissions to any particular accounts.
+- Collateral plugins should neither require governance nor give special permissions to any particular accounts.
 - Collateral plugins should not pull information from an RToken instance that they expect to use them directly. (There is already an RToken Asset that uses price information from the protocol directly; but it must not be extended for use as Collateral in its own basket!)
 
 ### Token balances cannot be rebasing
@@ -302,7 +302,7 @@ try externalLibrary.call() returns (bool) {
 }
 ```
 
-See also: [Catching Empty Data](docs/solidity-style.md#Catching-Empty-Data).
+See also: [Catching Empty Data](solidity-style.md#Catching-Empty-Data).
 
 If `refresh()` changes the current CollateralStatus, it must emit a `CollateralStatusChanged` event.
 
