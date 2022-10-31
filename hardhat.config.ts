@@ -66,6 +66,7 @@ const config: any = {
       accounts: {
         mnemonic: MNEMONIC,
       },
+      // gasPrice: 10_000_000_000,
     },
   },
   solidity: {

@@ -9,6 +9,7 @@ import "./IMain.sol";
 import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
+import "./IVersioned.sol";
 
 /**
  * @title DeploymentParams
@@ -60,17 +61,19 @@ struct Implementations {
  * @title IDeployer
  * @notice Factory contract for an RToken system instance
  */
-interface IDeployer {
+interface IDeployer is IVersioned {
     /// Emitted when a new RToken and accompanying system is deployed
     /// @param main The address of `Main`
     /// @param rToken The address of the RToken ERC20
     /// @param stRSR The address of the StRSR ERC20 staking pool/token
     /// @param owner The owner of the newly deployed system
+    /// @param version The semantic versioning version string (see: https://semver.org)
     event RTokenCreated(
         IMain indexed main,
         IRToken indexed rToken,
         IStRSR stRSR,
-        address indexed owner
+        address indexed owner,
+        string version
     );
 
     //
