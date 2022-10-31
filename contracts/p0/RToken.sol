@@ -93,6 +93,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         __Component_init(main_);
         __ERC20_init(name_, symbol_);
         __ERC20Permit_init(name_);
+
         mandate = mandate_;
         setIssuanceRate(issuanceRate_);
         setScalingRedemptionRate(scalingRedemptionRate_);

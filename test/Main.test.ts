@@ -228,6 +228,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
+
+      // Should have semver version from deployer
+      expect(await main.version()).to.equal(await deployer.version())
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {

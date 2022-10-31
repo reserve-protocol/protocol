@@ -35,7 +35,7 @@ async function main() {
 
   // ******************** Deploy Facade ****************************************/
 
-  const FacadeFactory = await ethers.getContractFactory('Facade')
+  const FacadeFactory = await ethers.getContractFactory('FacadeRead')
   facadeRead = <FacadeRead>await FacadeFactory.connect(burner).deploy()
   await facadeRead.deployed()
 

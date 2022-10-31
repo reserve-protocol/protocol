@@ -7,13 +7,14 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/mixins/ComponentRegistry.sol";
 import "contracts/mixins/Auth.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * @title Main
  * @notice Collects all mixins.
  */
 // solhint-disable max-states-count
-contract MainP0 is Initializable, Auth, ComponentRegistry, IMain {
+contract MainP0 is Versioned, Initializable, Auth, ComponentRegistry, IMain {
     using FixLib for uint192;
 
     IERC20 public rsr;

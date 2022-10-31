@@ -249,6 +249,21 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(facade.address).to.not.equal(ZERO_ADDRESS)
     })
 
+    it('Should setup versioning correctly', async () => {
+      const version = await deployer.version()
+      expect(await main.version()).to.equal(version)
+      expect(await rToken.version()).to.equal(version)
+      expect(await stRSR.version()).to.equal(version)
+      expect(await rTokenTrader.version()).to.equal(version)
+      expect(await rsrTrader.version()).to.equal(version)
+      expect(await backingManager.version()).to.equal(version)
+      expect(await basketHandler.version()).to.equal(version)
+      expect(await assetRegistry.version()).to.equal(version)
+      expect(await furnace.version()).to.equal(version)
+      expect(await broker.version()).to.equal(version)
+      expect(await distributor.version()).to.equal(version)
+    })
+
     it('Should emit event', async () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)

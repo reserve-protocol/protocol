@@ -180,18 +180,33 @@ The Unit of Account `{UoA}` for a collateral plugin is simply a measure of value
 
 Note, this doesn't disqualify collateral with USD as its target unit! It's fine for the target unit to be the unit of account. This doesn't disqualify collateral with a non-USD target unit either! It's fine for the target unit to be different from the unit of account. These two concepts are totally orthogonal.
 
+### Representing Fractional Values
+
+Wherever contract variables have these units, it's understood that even though they're handled as `uint`s, they represent fractional values with 18 decimals. In particular, a `{tok}` value is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working in units of `{tok}`.
+
+For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](../docs/solidity-style.md#The-Fix-Library).
+
 ## Synthetic Unit Examples
 
 [comment]: I haven't tried editing this section yet, because I'm running out of time today and I'm not all that certain that it's _right_. Needs more work...
 
-In some cases, a synthetic reference unit will be required. Let's take the case of an **UNIV2LP** token for a like-kind stablecoin pool such as the USDC/USDT pair.
+Some collateral positions require a synthetic reference unit. This can be trickey to reason through, so here we'll provide a few examples.
 
-(Note: In UNIV2 trading fees are automatically re-invested back into the pool)
+### Uniswap V2 LP Tokens
 
-- What does the LP token _strictly appreciate_ relative to?
-  It's tempting to say the LP token strictly appreciates relative to the number of USDC + USDT in the pool, but this isn't actually true. Let's see why.
-  When the price moves away from the 1:1 point, more tokens are taken in than are given away. From the trader's perspective, this is a "bad" price, assuming both USDC and USDT have not lost their peg. As long as the trade moves the pool further away from the 1:1 point, then it's true that the sum of USDC + USDT balances in the pool increases monotonically.
-  But we can't count on this always being the case! Any trade that returns the pool closer to the 1:1 point is "good" from the trader's perspective; they buy more USD stablecoin than they sell. When the pool is imbalanced, it might be willing to sell 101 USDC for 100 USDT. In this case, using the raw total of USDC + USDT balances would result in a measure that sometimes decreases with respect to the LP token. Even though this happens rarely, this means **it would not work to use the sum of the USDC + USDT balances as the reference unit for an LP token**.
+For instance, consider the Uniswap V2 LP token, **UNIV2LP**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintainining a fully redeemable position in the two underlying fiatcoins.
+
+[univ2]: https://docs.uniswap.org/protocol/V2/concepts/protocol-overview/how-uniswap-works
+
+A position's "natural" reference unit is whatever it's directly redeemable for. However, a Uniswap v2 LP token is not redeemable for any fixed, concrete unit. Rather, it's redeemable prorata for a share of the tokens in the liquidity pool, which can constantly change their proportion as trading occurs.
+
+To demonstrate this difficulty, imagine we choose "1 USD" for the reference unit. We presume in this design that 1 USDC and 1 USDT are continuously redeemable for 1 USD each -- the Collateral can watch that assumption on price feeds and default if it fails, this is fine -- and we implement `refPerTok()` by computing the present redemption value of an LP token in USD. _This won't work_, because the redemption value of the LP token increases any time trading moves the pool's proportion of USDC to USDT tokens briefly away from the 1:1 point, and then decreases as trading brings the pool's proportion back to the 1:1 point. The protocol requires that `refPerTok()` never decreases, so this will cause immediate defaults.
+
+Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference unit. We compute `refPerTok()` at any moment by seeing that we can redeem 1 LP token for _x_ USDC and _y_ USDT at that moment, and returning `min(x, y)`. _This also won't work_, because now `refPerTok()` will decrease any time the pool's proportion moves away from the 1:1 point, and it will increase whenever the proportion moves back.
+
+
+
+
 
 Fortunately, each AMM pool has _some_ invariant it preserves in order to quote prices to traders. In the case of UNIV2, this is the constant-product formula `x * y = k`, where `x` and `y` are the token balances. This means `x * y` adheres to our monotonically increasing constraint already; the product can never fall.
 
@@ -215,7 +230,7 @@ Collateral plugins should be safe to reuse by many different Reserve Protocol in
 
 ### Token balances cannot be rebasing
 
-Some defi protocols indicate returns by increasing the token balances of users, called _rebasing_. For instance, ATokens from Aave and stETH from Lido are both rebasing tokens. While people often to like this, smart contracts certainly do not. 
+Some defi protocols yield returns by increasing the token balances of users, called _rebasing_. For instance, ATokens from Aave and stETH from Lido are both rebasing tokens. While people often like this, smart contracts certainly do not. 
 
 The Reserve Protocol cannot directly hold rebasing tokens. However, the protocol can indirectly hold a rebasing token, if it's wrapped by another token that does not itself rebase, but instead appreciates only through exchange-rate increases. Any rebasing token can be wrapped to be turned into an appreciating exchange-rate token, and vice versa.
 
@@ -256,7 +271,7 @@ If `status()` ever returns `CollateralStatus.DISABLED`, then it must always retu
 Protocol contracts that hold an asset for any significant amount of time are all able to use `rewardERC20()` and `getClaimCalldata()` to claim rewards. These are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
 - `rewardERC20()` should return the reward token's address, and
-- `getClaimCalldata()` should return a contract address and calldata `bytes` that an asset-storing contract can use to make a raw function call to claim its rewards. For more on preparing this call, check out the use of `abi.encodeWithSignature()` in [contracts/plugins/assets/CTokenFiatCollateral.sol](contracts/plugins/assets/CTokenFiatCollateral.sol).
+- `getClaimCalldata()` should return a contract address and calldata `bytes` that an asset-storing contract can use to make a raw function call to claim its rewards. For more on preparing this call, check out the use of `abi.encodeWithSignature()` in [contracts/plugins/assets/CTokenFiatCollateral.sol](../contracts/plugins/assets/CTokenFiatCollateral.sol).
 
 ### Smaller Constraints
 
@@ -393,7 +408,5 @@ For a collateral plugin that uses a novel target unit, get the targetName with `
 ## Practical Advice from Previous Work
 
 In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/AbstractCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin. 
-
-For an example of a relatively simple Collateral plugin that nonetheless requires unique accounting units, see [CTokenFiatCollateral.sol](../contracts/plugins/assets/CTokenFiatCollateral.sol). It represents any USD-pegged stablecoin placed in Compound, such as cUSDC, cUSDT, cDAI, or cUSDP.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.
