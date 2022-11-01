@@ -1758,7 +1758,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(price).to.equal(MAX_UINT192)
     })
 
-    it.only('Should return FIX_MAX as basket price in case of 2nd overflow (for individual collateral)', async () => {
+    it('Should return FIX_MAX as basket price in case of 2nd overflow (for individual collateral)', async () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
 
       // Swap out collateral plugin for one that can return a 0 price without raising FIX_MAX
