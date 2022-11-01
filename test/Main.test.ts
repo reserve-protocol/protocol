@@ -1742,8 +1742,42 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
-    it('Should return FIX_MAX as basket price in case of overflow (for individual collateral)', async () => {
+    it('Should return FIX_MAX as basket price in case of 1st overflow (for individual collateral)', async () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Set RefperTok = 0
+      await token2.setExchangeRate(fp('0'))
+      expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
+
+      // Also set price of underlying to 0 so Fallback price is used
+      await setOraclePrice(collateral2.address, bn(0))
+
+      // Check BU price
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(MAX_UINT192)
+    })
+
+    it('Should return FIX_MAX as basket price in case of 2nd overflow (for individual collateral)', async () => {
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Swap out collateral plugin for one that can return a 0 price without raising FIX_MAX
+      const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+        fp('1.01'), // fallback price just above 1
+        await collateral2.chainlinkFeed(),
+        await collateral2.erc20(),
+        aaveToken.address,
+        config.rTokenMaxTradeVolume,
+        await collateral2.oracleTimeout(),
+        ethers.utils.formatBytes32String('USD'),
+        await collateral2.defaultThreshold(),
+        await collateral2.delayUntilDefault()
+      )
+      await assetRegistry.connect(owner).swapRegistered(coll.address)
+      await basketHandler.refreshBasket()
 
       // Set RefperTok = 0
       await token2.setExchangeRate(fp('0'))
