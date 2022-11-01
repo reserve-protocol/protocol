@@ -256,10 +256,10 @@ describe('FacadeAct contract', () => {
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
-      //  Call via Facade - should not provide call to basket handler - will revert until backup basket is available
-      await expect(facadeAct.callStatic.getActCalldata(rToken.address)).to.be.revertedWith(
-        'basket not sound'
-      )
+      //  Call via Facade - should not provide call to basket handler
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(data).to.equal('0x')
     })
 
     it('Trades in Backing Manager', async () => {
