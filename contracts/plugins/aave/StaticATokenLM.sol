@@ -138,7 +138,7 @@ contract StaticATokenLM is
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external override nonReentrant {
+    ) external override {
         require(owner != address(0), StaticATokenErrors.INVALID_OWNER);
         //solium-disable-next-line
         require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
