@@ -88,9 +88,6 @@ contract StaticATokenLM is
         _symbol = staticATokenSymbol;
         _setupDecimals(IERC20Detailed(aToken).decimals());
 
-        ASSET = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
-        ASSET.safeApprove(address(pool), type(uint256).max);
-
         try IAToken(aToken).getIncentivesController() returns (
             IAaveIncentivesController incentivesController
         ) {
@@ -99,6 +96,9 @@ contract StaticATokenLM is
                 REWARD_TOKEN = IERC20(INCENTIVES_CONTROLLER.REWARD_TOKEN());
             }
         } catch {}
+
+        ASSET = IERC20(IAToken(aToken).UNDERLYING_ASSET_ADDRESS());
+        ASSET.safeApprove(address(pool), type(uint256).max);
     }
 
     ///@inheritdoc IStaticATokenLM
