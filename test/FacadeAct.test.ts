@@ -11,6 +11,8 @@ import { makeDecayFn } from './utils/rewards'
 import { advanceTime } from './utils/time'
 import {
   ATokenFiatCollateral,
+  ComptrollerMock,
+  CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
   FacadeAct,
@@ -19,6 +21,8 @@ import {
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  MockV3Aggregator,
+  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIDistributor,
@@ -50,16 +54,18 @@ describe('FacadeAct contract', () => {
   let aToken: StaticATokenMock
   let cToken: CTokenMock
   let aaveToken: ERC20Mock
+  let compToken: ERC20Mock
+  let compoundMock: ComptrollerMock
   let rsr: ERC20Mock
   let basket: Collateral[]
   let backupToken1: ERC20Mock
   let backupToken2: ERC20Mock
 
   // Assets
-  let tokenAsset: Collateral
-  let usdcAsset: Collateral
-  let aTokenAsset: Collateral
-  let cTokenAsset: Collateral
+  let tokenAsset: FiatCollateral
+  let usdcAsset: FiatCollateral
+  let aTokenAsset: ATokenFiatCollateral
+  let cTokenAsset: CTokenFiatCollateral
   let backupCollateral1: FiatCollateral
   let backupCollateral2: ATokenFiatCollateral
   let collateral: Collateral[]
@@ -81,6 +87,7 @@ describe('FacadeAct contract', () => {
   let gnosis: GnosisMock
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -97,6 +104,8 @@ describe('FacadeAct contract', () => {
       // Deploy fixture
     ;({
       aaveToken,
+      compToken,
+      compoundMock,
       assetRegistry,
       backingManager,
       basketHandler,
@@ -114,10 +123,14 @@ describe('FacadeAct contract', () => {
       rTokenTrader,
       rsrTrader,
       gnosis,
+      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
-    ;[tokenAsset, usdcAsset, aTokenAsset, cTokenAsset] = basket
+    tokenAsset = <FiatCollateral>basket[0]
+    usdcAsset = <FiatCollateral>basket[1]
+    aTokenAsset = <ATokenFiatCollateral>basket[2]
+    cTokenAsset = <CTokenFiatCollateral>basket[3]
 
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenAsset.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcAsset.erc20())
@@ -219,6 +232,36 @@ describe('FacadeAct contract', () => {
       expect(await basketHandler.fullyCollateralized()).to.equal(false)
     })
 
+    it('Basket - Should handle no valid basket after refresh', async () => {
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount)
+
+      // Set simple basket with only one collateral
+      await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
+
+      // Set backup config with the same collateral
+      await basketHandler
+        .connect(owner)
+        .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [aToken.address])
+
+      // Switch basket
+      await expect(basketHandler.connect(owner).refreshBasket())
+        .to.emit(basketHandler, 'BasketSet')
+        .withArgs(2, [aToken.address], [fp('1')], false)
+
+      // Now default the token, will not be able to find a valid basket
+      await aToken.setExchangeRate(fp('0.99'))
+      await assetRegistry.refresh()
+
+      // Check state
+      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+
+      //  Call via Facade - should not provide call to basket handler - will revert until backup basket is available
+      await expect(facadeAct.callStatic.getActCalldata(rToken.address)).to.be.revertedWith(
+        'basket not sound'
+      )
+    })
+
     it('Trades in Backing Manager', async () => {
       // Setup prime basket
       await basketHandler.connect(owner).setPrimeBasket([usdc.address], [fp('1')])
@@ -245,10 +288,6 @@ describe('FacadeAct contract', () => {
       )
         .to.emit(backingManager, 'TradeStarted')
         .withArgs(anyValue, token.address, usdc.address, sellAmt, toBNDecimals(minBuyAmt, 6))
-
-      // await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
-      //   .to.emit(backingManager, 'TradeStarted')
-      //   .withArgs(anyValue, token.address, usdc.address, sellAmt, toBNDecimals(minBuyAmt, 6))
 
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -288,6 +327,17 @@ describe('FacadeAct contract', () => {
       // AAVE Rewards
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
+      // Via Facade get next call - will claim and sweep rewards in FacadeAct
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      // Claim and sweep rewards
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
       // Collect revenue
       // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
       const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
@@ -296,11 +346,8 @@ describe('FacadeAct contract', () => {
       const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
       const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-      // Claim rewards
-      await facadeTest.claimRewards(rToken.address)
-
       // Via Facade get next call - will transfer RToken to Trader
-      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
@@ -446,6 +493,106 @@ describe('FacadeAct contract', () => {
           rewardAmountAAVE,
           rewardAmountAAVE.sub(rewardAmountAAVE.div(100))
         )
+    })
+
+    it('Revenues - Should handle asses with invalid claim logic', async () => {
+      // Redeem all RTokens
+      await rToken.connect(addr1).redeem(issueAmount)
+
+      // Setup a new aToken with invalid claim data
+      const ATokenCollateralFactory = await ethers.getContractFactory(
+        'InvalidATokenFiatCollateralMock',
+        { libraries: { OracleLib: oracleLib.address } }
+      )
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await ATokenCollateralFactory.deploy(
+          fp('1'),
+          chainlinkFeed.address,
+          aToken.address,
+          aaveToken.address,
+          config.rTokenMaxTradeVolume,
+          await aTokenAsset.oracleTimeout(),
+          ethers.utils.formatBytes32String('USD'),
+          await aTokenAsset.defaultThreshold(),
+          await aTokenAsset.delayUntilDefault()
+        )
+      )
+
+      // Perform asset swap
+      await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
+
+      // Setup new basket with the invalid AToken
+      await basketHandler.connect(owner).setPrimeBasket([aToken.address], [fp('1')])
+
+      // Switch basket
+      await basketHandler.connect(owner).refreshBasket()
+
+      const rewardAmountAAVE = bn('0.5e18')
+
+      // AAVE Rewards
+      await aToken.setRewards(backingManager.address, rewardAmountAAVE)
+
+      // Via Facade get next call - will not attempt to claim - No action taken
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(ZERO_ADDRESS)
+      expect(data).to.equal('0x')
+
+      // Check status - nothing claimed
+      expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+    })
+
+    it('Revenues - Should handle multiple assets with same reward token', async () => {
+      // Update Reward token for AToken to use same as CToken
+      const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const chainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
+      )
+
+      const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await ATokenCollateralFactory.deploy(
+          fp('1'),
+          chainlinkFeed.address,
+          aToken.address,
+          compToken.address, // Use same reward as CToken (for testing purposes)
+          config.rTokenMaxTradeVolume,
+          await aTokenAsset.oracleTimeout(),
+          ethers.utils.formatBytes32String('USD'),
+          await aTokenAsset.defaultThreshold(),
+          await aTokenAsset.delayUntilDefault()
+        )
+      )
+
+      // Perform asset swap
+      await assetRegistry.connect(owner).swapRegistered(newATokenCollateral.address)
+
+      // Refresh basket
+      await basketHandler.connect(owner).refreshBasket()
+
+      const rewardAmount = bn('0.5e18')
+
+      // COMP Rewards for both tokens
+      await aToken.setAaveToken(compToken.address) // set it internally in our mock
+      await aToken.setRewards(backingManager.address, rewardAmount)
+      await compoundMock.setRewards(backingManager.address, rewardAmount)
+
+      // Via Facade get next call - will Claim and sweep rewards
+      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(facadeAct.address)
+      expect(data).to.not.equal('0x')
+
+      await owner.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // Check status - rewards claimed for both collaterals
+      expect(await compToken.balanceOf(backingManager.address)).to.equal(rewardAmount.mul(2))
     })
 
     it('Melting', async () => {
