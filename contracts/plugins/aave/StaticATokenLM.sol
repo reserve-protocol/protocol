@@ -18,6 +18,8 @@ import { WadRayMath } from "@aave/protocol-v2/contracts/protocol/libraries/math/
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
 import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol";
 
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 /**
  * @title StaticATokenLM
  * @notice Wrapper token that allows to deposit tokens on the Aave protocol and receive
@@ -25,7 +27,11 @@ import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/
  * The token support claiming liquidity mining rewards from the Aave system.
  * @author Aave
  **/
-contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IStaticATokenLM {
+contract StaticATokenLM is
+    ReentrancyGuard,
+    ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"),
+    IStaticATokenLM
+{
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using WadRayMath for uint256;
@@ -101,7 +107,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         uint256 amount,
         uint16 referralCode,
         bool fromUnderlying
-    ) external override returns (uint256) {
+    ) external override nonReentrant returns (uint256) {
         return _deposit(msg.sender, recipient, amount, referralCode, fromUnderlying);
     }
 
@@ -110,7 +116,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         address recipient,
         uint256 amount,
         bool toUnderlying
-    ) external override returns (uint256, uint256) {
+    ) external override nonReentrant returns (uint256, uint256) {
         return _withdraw(msg.sender, recipient, amount, 0, toUnderlying);
     }
 
@@ -119,7 +125,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         address recipient,
         uint256 amount,
         bool toUnderlying
-    ) external override returns (uint256, uint256) {
+    ) external override nonReentrant returns (uint256, uint256) {
         return _withdraw(msg.sender, recipient, 0, amount, toUnderlying);
     }
 
@@ -132,7 +138,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external override {
+    ) external override nonReentrant {
         require(owner != address(0), StaticATokenErrors.INVALID_OWNER);
         //solium-disable-next-line
         require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
@@ -160,7 +166,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         bool fromUnderlying,
         uint256 deadline,
         SignatureParams calldata sigParams
-    ) external override returns (uint256) {
+    ) external override nonReentrant returns (uint256) {
         require(depositor != address(0), StaticATokenErrors.INVALID_DEPOSITOR);
         //solium-disable-next-line
         require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
@@ -200,7 +206,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         bool toUnderlying,
         uint256 deadline,
         SignatureParams calldata sigParams
-    ) external override returns (uint256, uint256) {
+    ) external override nonReentrant returns (uint256, uint256) {
         require(owner != address(0), StaticATokenErrors.INVALID_OWNER);
         //solium-disable-next-line
         require(block.timestamp <= deadline, StaticATokenErrors.INVALID_EXPIRATION);
@@ -395,7 +401,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
     }
 
     ///@inheritdoc IStaticATokenLM
-    function collectAndUpdateRewards() public override {
+    function _collectAndUpdateRewards() internal {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
@@ -427,6 +433,11 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         _lifetimeRewardsClaimed = lifetimeRewards;
     }
 
+    ///@inheritdoc IStaticATokenLM
+    function collectAndUpdateRewards() external override nonReentrant {
+        _collectAndUpdateRewards();
+    }
+
     /**
      * @notice Claim rewards on behalf of a user and send them to a receiver
      * @param onBehalfOf The address to claim on behalf of
@@ -439,7 +450,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         bool forceUpdate
     ) internal {
         if (forceUpdate) {
-            collectAndUpdateRewards();
+            _collectAndUpdateRewards();
         }
 
         uint256 balance = balanceOf(onBehalfOf);
@@ -459,7 +470,7 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         address onBehalfOf,
         address receiver,
         bool forceUpdate
-    ) external override {
+    ) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
@@ -471,14 +482,14 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         _claimRewardsOnBehalf(onBehalfOf, receiver, forceUpdate);
     }
 
-    function claimRewards(address receiver, bool forceUpdate) external override {
+    function claimRewards(address receiver, bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
         _claimRewardsOnBehalf(msg.sender, receiver, forceUpdate);
     }
 
-    function claimRewardsToSelf(bool forceUpdate) external override {
+    function claimRewardsToSelf(bool forceUpdate) external override nonReentrant {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
         }
