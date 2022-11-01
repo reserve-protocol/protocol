@@ -13,12 +13,12 @@ import { IAaveIncentivesController } from "./IAaveIncentivesController.sol";
 import { StaticATokenErrors } from "./StaticATokenErrors.sol";
 
 import { ERC20 } from "./ERC20.sol";
+import { ReentrancyGuard } from "./ReentrancyGuard.sol";
+
 import { SafeERC20 } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol";
 import { WadRayMath } from "@aave/protocol-v2/contracts/protocol/libraries/math/WadRayMath.sol";
 import { RayMathNoRounding } from "./RayMathNoRounding.sol";
 import { SafeMath } from "@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol";
-
-import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 /**
  * @title StaticATokenLM
@@ -400,7 +400,6 @@ contract StaticATokenLM is
         }
     }
 
-    ///@inheritdoc IStaticATokenLM
     function _collectAndUpdateRewards() internal {
         if (address(INCENTIVES_CONTROLLER) == address(0)) {
             return;
