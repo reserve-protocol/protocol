@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "contracts/interfaces/IBroker.sol";
@@ -12,14 +11,21 @@ import "contracts/libraries/Fixed.sol";
 import "contracts/p1/mixins/Component.sol";
 import "contracts/plugins/trading/GnosisTrade.sol";
 
+// Gnosis: uint96 ~= 7e28
+uint256 constant GNOSIS_MAX_TOKENS = 7e28;
+
 /// A simple core contract that deploys disposable trading contracts for Traders
-contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
+contract BrokerP1 is ComponentP1, IBroker {
     using EnumerableSet for EnumerableSet.AddressSet;
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using Clones for address;
 
     uint48 public constant MAX_AUCTION_LENGTH = 604800; // {s} max valid duration - 1 week
+
+    IBackingManager private backingManager;
+    IRevenueTrader private rsrTrader;
+    IRevenueTrader private rTokenTrader;
 
     // The trade contract to clone on openTrade(). Immutable after init.
     ITrade public tradeImplementation;
@@ -54,6 +60,11 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
             "invalid Trade Implementation address"
         );
         __Component_init(main_);
+
+        backingManager = main_.backingManager();
+        rsrTrader = main_.rsrTrader();
+        rTokenTrader = main_.rTokenTrader();
+
         gnosis = gnosis_;
         tradeImplementation = tradeImplementation_;
         setAuctionLength(auctionLength_);
@@ -76,9 +87,9 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
 
         address caller = _msgSender();
         require(
-            caller == address(main.backingManager()) ||
-                caller == address(main.rsrTrader()) ||
-                caller == address(main.rTokenTrader()),
+            caller == address(backingManager) ||
+                caller == address(rsrTrader) ||
+                caller == address(rTokenTrader),
             "only traders"
         );
 
@@ -89,6 +100,17 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
     // Create trade; transfer tokens to trade; launch auction.
     function _openTrade(TradeRequest memory req) internal virtual returns (ITrade) {
         GnosisTrade trade = GnosisTrade(address(tradeImplementation).clone());
+
+        // Apply Gnosis EasyAuction-specific resizing of req, if needed: Ensure that
+        // max(sellAmount, minBuyAmount) <= maxTokensAllowed, while maintaining their proportion
+        uint256 maxQty = (req.minBuyAmount > req.sellAmount) ? req.minBuyAmount : req.sellAmount;
+
+        if (maxQty > GNOSIS_MAX_TOKENS) {
+            req.sellAmount = mulDiv256(req.sellAmount, GNOSIS_MAX_TOKENS, maxQty, CEIL);
+            req.minBuyAmount = mulDiv256(req.minBuyAmount, GNOSIS_MAX_TOKENS, maxQty, FLOOR);
+        }
+
+        // == Interactions ==
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
             address(trade),
@@ -131,5 +153,5 @@ contract BrokerP1 is ReentrancyGuardUpgradeable, ComponentP1, IBroker {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[44] private __gap;
 }

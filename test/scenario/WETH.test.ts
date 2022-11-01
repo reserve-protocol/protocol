@@ -24,6 +24,8 @@ import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../f
 
 const createFixtureLoader = waffle.createFixtureLoader
 
+const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
 describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -94,12 +96,14 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
     wethCollateral = await (
       await ethers.getContractFactory('SelfReferentialCollateral')
     ).deploy(
+      fp('1'),
       chainlinkFeed.address,
       weth.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH')
+      ethers.utils.formatBytes32String('ETH'),
+      DELAY_UNTIL_DEFAULT
     )
 
     // Backup

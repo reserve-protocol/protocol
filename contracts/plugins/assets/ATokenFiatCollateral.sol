@@ -28,66 +28,69 @@ interface AToken {
 
 // ==== End External ====
 
+/**
+ * @title ATokenFiatCollateral
+ * @notice Collateral plugin for an aToken for a UoA-pegged asset, like aUSDC or a aUSDP
+ * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ */
 contract ATokenFiatCollateral is Collateral {
     using FixLib for uint192;
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
-    ) Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_) {
+    )
+        Collateral(
+            fallbackPrice_,
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_,
+            delayUntilDefault_
+        )
+    {
         require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
 
         prevReferencePrice = refPerTok();
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         return price(chainlinkFeed, oracleTimeout).mul(refPerTok());
     }
 
     /// Refresh exchange rates and update default status.
     function refresh() external virtual override {
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else {
             try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-                priceable = p > 0;
-
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
@@ -97,11 +100,12 @@ contract ATokenFiatCollateral is Collateral {
 
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
-                if (p < peg - delta || p > peg + delta) {
-                    whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                } else whenDefault = NEVER;
-            } catch {
-                priceable = false;
+                if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                else markStatus(CollateralStatus.SOUND);
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;
@@ -109,17 +113,6 @@ contract ATokenFiatCollateral is Collateral {
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
         }
     }
 

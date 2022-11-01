@@ -5,11 +5,9 @@ import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { IGovParams, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { expectInReceipt } from '../../../common/events'
-import { getRTokenConfig } from './rTokenConfig'
+import { getRTokenConfig, RTOKEN_NAME } from './rTokenConfig'
 import { getDeploymentFile, getRTokenDeploymentFilename, IRTokenDeployments } from '../common'
 import { FacadeWrite, MainP1, RTokenP1, StRSRP1 } from '../../../typechain'
-// Define the Token to use
-const RTOKEN_NAME = 'RTKN'
 
 async function main() {
   // ==== Read Configuration ====

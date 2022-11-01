@@ -54,7 +54,7 @@ const createATokenCollateral = async (
   // Create token collateral
   const collateral = await ATokenCollateralFactory.deploy(
     erc20.address,
-    config.maxTradeVolume,
+    config.rTokenMaxTradeVolume,
     defaultThreshold,
     delayUntilDefault,
     underlyingAddress,
@@ -85,7 +85,7 @@ const createCTokenCollateral = async (
   // Create token collateral
   const collateral = await CTokenCollateralFactory.deploy(
     erc20.address,
-    config.maxTradeVolume,
+    config.rTokenMaxTradeVolume,
     defaultThreshold,
     delayUntilDefault,
     underlyingAddress,

@@ -14,10 +14,11 @@ export interface IDeployments {
   rewardableLib: string
   oracleLib: string
   tradingLib: string
-  rTokenPricingLib: string
-  facade: string
+  permitLib: string
+  facadeRead: string
   facadeWriteLib: string
   facadeWrite: string
+  facadeAct: string
   deployer: string
   rsrAsset: string
   implementations: IImplementations
@@ -37,19 +38,20 @@ export interface IRTokenDeployments {
   timelock: string
 }
 
+const pathToFolder = './scripts/addresses/'
 const tempFileSuffix = '-tmp-deployments.json'
 const tempAssetCollFileSuffix = '-tmp-assets-collateral.json'
 
 export const getDeploymentFilename = (chainId: number): string => {
-  return `./${chainId}${tempFileSuffix}`
+  return `${pathToFolder}${chainId}${tempFileSuffix}`
 }
 
 export const getAssetCollDeploymentFilename = (chainId: number): string => {
-  return `./${chainId}${tempAssetCollFileSuffix}`
+  return `${pathToFolder}${chainId}${tempAssetCollFileSuffix}`
 }
 
 export const getRTokenDeploymentFilename = (chainId: number, name: string): string => {
-  return `./${chainId}-${name}${tempFileSuffix}`
+  return `${pathToFolder}${chainId}-${name}${tempFileSuffix}`
 }
 
 export const fileExists = (file: string): boolean => {

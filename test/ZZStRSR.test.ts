@@ -1,8 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { signERC2612Permit } from 'eth-permit'
-import { BigNumber, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import hre, { ethers, upgrades, waffle } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { setOraclePrice } from './utils/oracles'
 import { bn, fp, near, shortString } from '../common/numbers'
@@ -11,8 +11,9 @@ import {
   CTokenMock,
   ERC20Mock,
   ERC1271Mock,
-  Facade,
+  FacadeRead,
   IBasketHandler,
+  PermitLib,
   StRSRP0,
   StRSRP1Votes,
   StaticATokenMock,
@@ -31,14 +32,7 @@ import {
   setNextBlockTimestamp,
 } from './utils/time'
 import { whileImpersonating } from './utils/impersonation'
-import {
-  Collateral,
-  defaultFixture,
-  Implementation,
-  IMPLEMENTATION,
-  SLOW,
-  ORACLE_TIMEOUT,
-} from './fixtures'
+import { Collateral, defaultFixture, Implementation, IMPLEMENTATION, SLOW } from './fixtures'
 import { makeDecayFn, calcErr } from './utils/rewards'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { cartesianProduct } from './utils/cases'
@@ -65,7 +59,8 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let rToken: TestIRToken
-  let facade: Facade
+  let facade: FacadeRead
+  let permitLib: PermitLib
 
   // StRSR
   let stRSR: TestIStRSR
@@ -163,6 +158,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       basketHandler,
       rToken,
       facade,
+      permitLib,
     } = await loadFixture(defaultFixture))
 
     // Mint initial amounts of RSR
@@ -215,6 +211,46 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
           verifyingContract,
         })
       )
+    })
+
+    it('Should perform validations on init', async () => {
+      let StRSRFactory: ContractFactory = await ethers.getContractFactory('StRSRP0', {
+        libraries: { PermitLib: permitLib.address },
+      })
+      let newStRSR: TestIStRSR = <TestIStRSR>await StRSRFactory.deploy()
+
+      if (IMPLEMENTATION == Implementation.P1) {
+        // Create a new StRSR
+        StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
+          libraries: { PermitLib: permitLib.address },
+        })
+        newStRSR = <TestIStRSR>await StRSRFactory.deploy()
+        newStRSR = <TestIStRSR>await upgrades.deployProxy(StRSRFactory, [], {
+          kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
+        })
+      }
+
+      await expect(
+        newStRSR.init(
+          main.address,
+          '',
+          'rtknRSR',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio
+        )
+      ).to.be.revertedWith('name empty')
+      await expect(
+        newStRSR.init(
+          main.address,
+          'rtknRSR Token',
+          '',
+          config.unstakingDelay,
+          config.rewardPeriod,
+          config.rewardRatio
+        )
+      ).to.be.revertedWith('symbol empty')
     })
   })
 
@@ -691,7 +727,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
-      it('Should not complete withdrawal if basket defaulted', async () => {
+      it('Should not complete withdrawal if IFFY or DISABLED', async () => {
         // Move forward past stakingWithdrawalDelay
         await advanceTime(stkWithdrawalDelay + 1)
 
@@ -710,22 +746,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
         expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
-      })
 
-      it('Should not complete withdrawal if UNPRICED collateral', async () => {
-        await advanceTime(ORACLE_TIMEOUT.toString())
+        // Move past DELAY_UNTIL_DEFAULT
+        await advanceTime((await collateral1.delayUntilDefault()).toString())
+
+        // Still can't withdraw
         await collateral1.refresh()
-        expect(await basketHandler.status()).to.equal(CollateralStatus.UNPRICED)
+        expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await basketHandler.fullyCollateralized()).to.equal(true)
 
         // Attempt to Withdraw
         await expect(stRSR.connect(addr1).withdraw(addr1.address, 1)).to.be.revertedWith(
           'basket defaulted'
         )
-
-        // Nothing completed
-        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
-        expect(await rsr.balanceOf(addr1.address)).to.equal(initialBal.sub(amount1))
-        expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
       it('Should not withdraw before stakingWithdrawalDelay', async () => {
@@ -1041,7 +1074,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(stake)
       expect(await stRSR.balanceOf(addr2.address)).to.be.lt(stake)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.mul(2).add(amountAdded))
-      expect(await stRSR.exchangeRate()).to.be.lt(initialRate)
+      expect(await stRSR.exchangeRate()).to.be.gt(initialRate)
     })
 
     it('Rewards should not be handed out when paused but staking should still work', async () => {
@@ -1080,7 +1113,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
-      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
+      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake)
 
       // Payout rewards
       await expectEvents(stRSR.payoutRewards(), [
@@ -1097,7 +1130,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         },
       ])
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1129,12 +1162,12 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Calculate payout amount
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1)) // 1 round
-      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
+      const newRate: BigNumber = fp(stake.add(addedRSRStake)).div(stake)
 
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
       // Check new balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(stake.add(amountAdded))
@@ -1152,21 +1185,22 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await stRSR.connect(addr1).stake(stake)
 
       const decayFn = makeDecayFn(await stRSR.rewardRatio())
-      let error = bn('0')
+      let error = bn('2')
       for (let i = 0; i < 100; i++) {
         // Advance to get 1 round of rewards
         await advanceTime(Number(config.rewardPeriod) + 1)
 
         // Calculate payout amount, as if closed-form from the beginning
         const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 1 + i)) // 1+i rounds
-        const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
+        const newRate: BigNumber = fp(stake.add(addedRSRStake)).add(stake.div(2)).div(stake)
 
         // Payout rewards
         await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
 
-        error = error.add(calcErr(1)) // this is just adding 1 each time
+        // error = error.add(calcErr(1)) // this is just adding 1 each time
+        error = error.add(calcErr(2))
 
-        // Check exchange rate does not exceed max possible cumulative error
+        // Check exchange rate does not exceed more than 1 per round
         expect(near(await stRSR.exchangeRate(), newRate, error)).to.equal(true)
 
         // Check new balances and stakes
@@ -1188,13 +1222,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
       // Calculate payout amount as if it were a closed form calculation from start
       const addedRSRStake = amountAdded.sub(decayFn(amountAdded, 100))
-      const newRate: BigNumber = fp(stake).div(stake.add(addedRSRStake))
+      const newRate: BigNumber = fp(stake.add(addedRSRStake)).add(stake.div(2)).div(stake)
 
       // Payout rewards
       await expect(stRSR.payoutRewards()).to.emit(stRSR, 'ExchangeRateSet')
-      const error = calcErr(100)
+      // const error = calcErr(100)
+      const error = 100
 
-      // Check exchange rate is lower by at-most half
+      // Check exchange rate is greater by at-most half
       expect((await stRSR.exchangeRate()).sub(newRate).abs()).to.be.lte(error)
 
       // Check new balances and stakes
@@ -1277,14 +1312,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
       // new rate: new strsr supply / RSR backing that strsr supply
-      const newRate = fp(amount).div(amount.sub(amount2))
+      const newRate = fp(amount.sub(amount2)).div(amount)
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.sub(amount2))
@@ -1356,14 +1391,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
 
-      const newRate = fp(amount.mul(2)).div(amount.mul(2).sub(amount2))
+      const newRate = fp(amount.mul(2).sub(amount2)).div(amount.mul(2))
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(2).sub(amount2))
@@ -1399,14 +1434,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr3.address)).to.equal(amount)
 
-      const newRate = fp(amount.mul(3)).div(amount.mul(3).sub(amount2))
+      const newRate = fp(amount.mul(3).sub(amount2)).div(amount.mul(3))
 
       // Seize RSR
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount2)).to.emit(stRSR, 'ExchangeRateSet')
       })
       expect(await stRSR.exchangeRate()).to.be.closeTo(newRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newRate)
 
       // Check balances and stakes
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount.mul(3).sub(amount2))
@@ -1523,7 +1558,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(toSeize))
           .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('1e9'))
+          .withArgs(fp('1'), fp('1e-9'))
       })
 
       // Check balances and stakes
@@ -1534,7 +1569,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(0)
       await expectWithdrawal(addr2.address, 0, { rsrAmount: dustAmt.div(2) })
-      expect(await stRSR.exchangeRate()).to.equal(fp('1e9'))
+      expect(await stRSR.exchangeRate()).to.equal(fp('1e-9'))
     })
 
     it('Should remove RSR from Withdrawers', async () => {
@@ -1629,9 +1664,9 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await rsr.balanceOf(addr2.address)).to.equal(initialBal.sub(amount))
       expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       expect(await stRSR.balanceOf(addr2.address)).to.equal(amount)
-      const newExchangeRate = fp(double).div(double.sub(amount2))
+      const newExchangeRate = fp(double.sub(amount2)).div(double)
       expect(await stRSR.exchangeRate()).to.be.closeTo(newExchangeRate, 1)
-      expect(await stRSR.exchangeRate()).to.be.gte(newExchangeRate)
+      expect(await stRSR.exchangeRate()).to.be.lte(newExchangeRate)
     })
 
     it('Should handle small unstake after a significant RSR seizure', async () => {
@@ -1654,7 +1689,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       await whileImpersonating(backingManager.address, async (signer) => {
         await expect(stRSR.connect(signer).seizeRSR(amount.sub(one)))
           .to.emit(stRSR, 'ExchangeRateSet')
-          .withArgs(fp('1'), fp('1e9'))
+          .withArgs(fp('1'), fp('1e-9'))
       })
 
       // Check balances and stakes
@@ -1664,7 +1699,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr1.address)).to.equal(amount)
 
       // Check new rate
-      expect(await stRSR.exchangeRate()).to.equal(fp('1e9'))
+      expect(await stRSR.exchangeRate()).to.equal(fp('1e-9'))
 
       // Unstake 1 stRSR with user 1
       const availableAt = (await getLatestBlockTimestamp()) + config.unstakingDelay.toNumber() + 1
@@ -1767,6 +1802,19 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
       expect(await stRSR.balanceOf(addr2.address)).to.equal(addr2BalancePrev)
       expect(await stRSR.totalSupply()).to.equal(totalSupplyPrev)
       expect(await rsr.balanceOf(stRSR.address)).to.equal(amount)
+    })
+
+    it('Should not allow transfer/transferFrom to address(this)', async () => {
+      // transfer
+      await expect(stRSR.connect(addr1).transfer(stRSR.address, 1)).to.be.revertedWith(
+        'StRSR transfer to self'
+      )
+
+      // transferFrom
+      await stRSR.connect(addr1).approve(addr2.address, 1)
+      await expect(
+        stRSR.connect(addr2).transferFrom(addr1.address, stRSR.address, 1)
+      ).to.be.revertedWith('StRSR transfer to self')
     })
 
     it('Should transferFrom stakes between accounts', async function () {
@@ -2371,14 +2419,14 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         await whileImpersonating(backingManager.address, async (signer) => {
           await expect(stRSRVotes.connect(signer).seizeRSR(amount))
             .to.emit(stRSR, 'ExchangeRateSet')
-            .withArgs(fp('1'), fp('2'))
+            .withArgs(fp('1'), fp('0.5'))
         })
 
         // Check balances and stakes
         expect(await stRSRVotes.balanceOf(addr1.address)).to.equal(amount)
         expect(await stRSRVotes.balanceOf(addr2.address)).to.equal(amount)
         expect(await stRSRVotes.balanceOf(addr3.address)).to.equal(0)
-        expect(await stRSRVotes.exchangeRate()).to.equal(fp('2'))
+        expect(await stRSRVotes.exchangeRate()).to.equal(fp('0.5'))
 
         // Advance block
         await advanceBlocks(1)

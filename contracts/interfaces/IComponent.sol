@@ -2,6 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./IMain.sol";
+import "./IVersioned.sol";
 
 /**
  * @title IComponent
@@ -9,6 +10,6 @@ import "./IMain.sol";
  *   contain important state that must be migrated during upgrades, and they delegate
  *   their ownership to Main's owner.
  */
-interface IComponent {
+interface IComponent is IVersioned {
     function main() external view returns (IMain);
 }

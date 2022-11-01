@@ -1,6 +1,8 @@
 import { IGovParams, IRTokenConfig, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
 
+export const RTOKEN_NAME = 'RTKN'
+
 export type IRToken = { [key: string]: IRTokenConfig & IGovParams }
 
 export const rTokenConfig: { [key: string]: IRToken } = {
@@ -10,12 +12,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        rTokenTradingRange: {
-          minVal: fp('1e4'), // $10k
-          maxVal: fp('1e6'), // $1M
-          minAmt: fp('1e3'), // 1k RToken
-          maxAmt: fp('1e6'), // 1M RToken
-        }, // [$0.01, $1M, 0.01 tok, 1M tok]
+        minTradeVolume: fp('1e4'), // $10k
+        rTokenMaxTradeVolume: fp('1e6'), // $1M
         dist: {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
@@ -47,12 +45,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        rTokenTradingRange: {
-          minVal: fp('1e4'), // $10k
-          maxVal: fp('1e6'), // $1M
-          minAmt: fp('1e3'), // 1k RToken
-          maxAmt: fp('1e6'), // 1M RToken
-        }, // [$0.01, $1M, 0.01 tok, 1M tok]
+        minTradeVolume: fp('1e4'), // $10k
+        rTokenMaxTradeVolume: fp('1e6'), // $1M
         dist: {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR
@@ -83,12 +77,8 @@ export const rTokenConfig: { [key: string]: IRToken } = {
       symbol: 'RTKN',
       mandate: 'mandate',
       params: {
-        rTokenTradingRange: {
-          minVal: bn('0'), // $10k
-          maxVal: bn('0'), // $1M
-          minAmt: fp('1'), // 1k RToken
-          maxAmt: fp('1e9'), // 1M RToken
-        }, // [$0, $0, 1 tok, 1e9 tok]
+        minTradeVolume: fp('1e4'), // $10k
+        rTokenMaxTradeVolume: fp('1e6'), // $1M
         dist: {
           rTokenDist: bn(40), // 2/5 RToken
           rsrDist: bn(60), // 3/5 RSR

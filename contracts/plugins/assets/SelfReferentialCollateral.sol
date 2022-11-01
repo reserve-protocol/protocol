@@ -7,29 +7,36 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 
 /**
  * @title SelfReferentialCollateral
- * @notice Self-referential collateral is collateral where {target} == {ref} == {tok}
- * Such as:
- *   - WETH
- *   - COMP
- *   - MKR
- *   - ...
- *
- * Self-referential collateral cannot default, though it can become UNPRICED.
+ * @notice Collateral plugin for collateral that is its own target and reference unit,
+ * like COMP, MKR, etc.
+ * Expected: {tok} == {ref} == {target}, and {target} is probably not {UoA}
+ * Self-referential collateral can default if the oracle becomes stale for long enough.
  */
 contract SelfReferentialCollateral is Collateral {
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     // solhint-disable no-empty-blocks
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
-        bytes32 targetName_
+        bytes32 targetName_,
+        uint256 delayUntilDefault_
     )
-        Collateral(chainlinkFeed_, erc20_, rewardERC20_, tradingRange_, oracleTimeout_, targetName_)
+        Collateral(
+            fallbackPrice_,
+            chainlinkFeed_,
+            erc20_,
+            rewardERC20_,
+            maxTradeVolume_,
+            oracleTimeout_,
+            targetName_,
+            delayUntilDefault_
+        )
     {}
 
     // solhint-enable no-empty-blocks
@@ -38,34 +45,4 @@ contract SelfReferentialCollateral is Collateral {
     function pricePerTarget() public view virtual override returns (uint192) {
         return price(chainlinkFeed, oracleTimeout);
     }
-
-    // solhint-disable no-empty-blocks
-
-    /// @return min {tok} The minimium trade size
-    function minTradeSize() external view virtual override returns (uint192 min) {
-        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.minVal.div(p, CEIL);
-            uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
-            if (type(uint192).max < min256) revert UIntOutOfBounds();
-            min = uint192(min256);
-        } catch {}
-        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
-        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
-    }
-
-    /// @return max {tok} The maximum trade size
-    function maxTradeSize() external view virtual override returns (uint192 max) {
-        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-            // {tok} = {UoA} / {UoA/tok}
-            // return tradingRange.maxVal.div(p);
-            uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
-            if (type(uint192).max < max256) revert UIntOutOfBounds();
-            max = uint192(max256);
-        } catch {}
-        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
-        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
-    }
-
-    // solhint-enable no-empty-blocks
 }

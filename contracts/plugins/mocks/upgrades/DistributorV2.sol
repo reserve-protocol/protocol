@@ -10,7 +10,7 @@ contract DistributorP1V2 is DistributorP1 {
         newValue = newValue_;
     }
 
-    function version() external pure returns (string memory) {
-        return "V2";
+    function version() public pure override returns (string memory) {
+        return "2.0.0";
     }
 }

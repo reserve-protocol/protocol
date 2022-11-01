@@ -8,12 +8,12 @@ import { bn } from '../common/numbers'
 import {
   Asset,
   ERC20Mock,
-  Facade,
+  FacadeRead,
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  PermitLib,
   RTokenAsset,
-  RTokenPricingLib,
   TestIBackingManager,
   TestIBroker,
   TestIDeployer,
@@ -32,9 +32,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress
   let mock: SignerWithAddress
 
-  // Required library
-  let rTokenPricing: RTokenPricingLib
-
   // Deployer contract
   let deployer: TestIDeployer
 
@@ -52,7 +49,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   // Market / Facade
   let gnosis: GnosisMock
   let broker: TestIBroker
-  let facade: Facade
+  let facade: FacadeRead
 
   // Core contracts
   let rToken: TestIRToken
@@ -79,7 +76,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
   const deployNewDeployer = async (
     rsr: string,
     gnosis: string,
-    facade: string,
     rsrAsset: string,
     implementations?: IImplementations
   ): Promise<TestIDeployer> => {
@@ -87,17 +83,16 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
       const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
 
+      const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
+      const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
+
       const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
-        libraries: { TradingLibP0: tradingLib.address, RTokenPricingLib: rTokenPricing.address },
+        libraries: { TradingLibP0: tradingLib.address, PermitLib: permitLib.address },
       })
-      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset)
+      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset)
     } else if (IMPLEMENTATION == Implementation.P1) {
-      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1', {
-        libraries: { RTokenPricingLib: rTokenPricing.address },
-      })
-      return <TestIDeployer>(
-        await DeployerFactory.deploy(rsr, gnosis, facade, rsrAsset, implementations)
-      )
+      const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP1')
+      return <TestIDeployer>await DeployerFactory.deploy(rsr, gnosis, rsrAsset, implementations)
     } else {
       throw new Error('PROTO_IMPL must be set to either `0` or `1`')
     }
@@ -128,7 +123,6 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       facade,
       rsrTrader,
       rTokenTrader,
-      rTokenPricing,
     } = await loadFixture(defaultFixture))
   })
 
@@ -140,37 +134,26 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       ) => {
         implementations.components[name] = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.components[name] = mock.address
       }
 
       if (IMPLEMENTATION == Implementation.P0) {
         await expect(
-          deployNewDeployer(rsr.address, gnosis.address, facade.address, ZERO_ADDRESS)
+          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS, rsrAsset.address)
+          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(rsr.address, ZERO_ADDRESS, facade.address, rsrAsset.address)
+          deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address)
         ).to.be.revertedWith('invalid address')
 
-        await expect(
-          deployNewDeployer(ZERO_ADDRESS, gnosis.address, facade.address, rsrAsset.address)
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
-          deployNewDeployer(rsr.address, gnosis.address, facade.address, rsrAsset.address)
-        ).to.not.be.reverted
+        await expect(deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address)).to.not.be
+          .reverted
       } else if (IMPLEMENTATION == Implementation.P1) {
         const implementations: IImplementations = {
           main: mock.address,
@@ -190,69 +173,29 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         }
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            ZERO_ADDRESS,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, ZERO_ADDRESS, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            ZERO_ADDRESS,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, ZERO_ADDRESS, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            ZERO_ADDRESS,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
-        ).to.be.revertedWith('invalid address')
-
-        await expect(
-          deployNewDeployer(
-            ZERO_ADDRESS,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(ZERO_ADDRESS, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
 
         // Check implementations
         // Main
         implementations.main = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.main = mock.address
 
         // Trade
         implementations.trade = ZERO_ADDRESS
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.be.revertedWith('invalid address')
         implementations.trade = mock.address
 
@@ -268,13 +211,7 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
         await validateComponent(implementations, 'stRSR')
 
         await expect(
-          deployNewDeployer(
-            rsr.address,
-            gnosis.address,
-            facade.address,
-            rsrAsset.address,
-            implementations
-          )
+          deployNewDeployer(rsr.address, gnosis.address, rsrAsset.address, implementations)
         ).to.not.be.reverted
       }
     })
@@ -311,6 +248,21 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       expect(facade.address).to.not.equal(ZERO_ADDRESS)
     })
 
+    it('Should setup versioning correctly', async () => {
+      const version = await deployer.version()
+      expect(await main.version()).to.equal(version)
+      expect(await rToken.version()).to.equal(version)
+      expect(await stRSR.version()).to.equal(version)
+      expect(await rTokenTrader.version()).to.equal(version)
+      expect(await rsrTrader.version()).to.equal(version)
+      expect(await backingManager.version()).to.equal(version)
+      expect(await basketHandler.version()).to.equal(version)
+      expect(await assetRegistry.version()).to.equal(version)
+      expect(await furnace.version()).to.equal(version)
+      expect(await broker.version()).to.equal(version)
+      expect(await distributor.version()).to.equal(version)
+    })
+
     it('Should emit event', async () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', 'mandate', owner.address, config)
@@ -333,6 +285,16 @@ describe(`DeployerP${IMPLEMENTATION} contract #fast`, () => {
       await expect(
         deployer.deploy('RTKN RToken', 'RTKN', '', owner.address, config)
       ).to.be.revertedWith('mandate empty')
+    })
+
+    it('Should not allow invalid owner address', async () => {
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', ZERO_ADDRESS, config)
+      ).to.be.revertedWith('invalid owner')
+
+      await expect(
+        deployer.deploy('RTKN RToken', 'RTKN', 'mandate', deployer.address, config)
+      ).to.be.revertedWith('invalid owner')
     })
 
     it('Should setup Main correctly', async () => {

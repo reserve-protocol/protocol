@@ -26,6 +26,7 @@ import {
   IBasketHandler,
   MainP1,
   MainP1V2,
+  PermitLib,
   RevenueTraderP1,
   RevenueTraderP1V2,
   RTokenAsset,
@@ -41,6 +42,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
   TestIStRSR,
+  RecollateralizationLibP1,
 } from '../typechain'
 import { defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 
@@ -74,6 +76,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let distributor: TestIDistributor
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
+  let tradingLib: RecollateralizationLibP1
+  let rewardableLib: RewardableLibP1
+  let permitLib: PermitLib
 
   // Factories
   let MainFactory: ContractFactory
@@ -117,21 +122,43 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       gnosis,
       rsrTrader,
       rTokenTrader,
+      permitLib,
     } = await loadFixture(defaultFixture))
+
+    // Deploy TradingLib external library
+    const TradingLibFactory: ContractFactory = await ethers.getContractFactory(
+      'RecollateralizationLibP1'
+    )
+    tradingLib = <RecollateralizationLibP1>await TradingLibFactory.deploy()
+
+    // Deploy RewardableLib external library
+    const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
+    rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
 
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
-    RTokenFactory = await ethers.getContractFactory('RTokenP1')
+    RTokenFactory = await ethers.getContractFactory('RTokenP1', {
+      libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
+    })
     FurnaceFactory = await ethers.getContractFactory('FurnaceP1')
-    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1')
-    BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1')
+    RevenueTraderFactory = await ethers.getContractFactory('RevenueTraderP1', {
+      libraries: { RewardableLibP1: rewardableLib.address },
+    })
+    BackingManagerFactory = await ethers.getContractFactory('BackingManagerP1', {
+      libraries: {
+        RewardableLibP1: rewardableLib.address,
+        RecollateralizationLibP1: tradingLib.address,
+      },
+    })
     AssetRegistryFactory = await ethers.getContractFactory('AssetRegistryP1')
 
     BasketHandlerFactory = await ethers.getContractFactory('BasketHandlerP1')
     DistributorFactory = await ethers.getContractFactory('DistributorP1')
     BrokerFactory = await ethers.getContractFactory('BrokerP1')
     TradeFactory = await ethers.getContractFactory('GnosisTrade')
-    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes')
+    StRSRFactory = await ethers.getContractFactory('StRSRP1Votes', {
+      libraries: { PermitLib: permitLib.address },
+    })
 
     // Import deployed proxies
     await upgrades.forceImport(main.address, MainFactory)
@@ -205,7 +232,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - BackingManager', async () => {
       const newBackingMgr: BackingManagerP1 = <BackingManagerP1>await upgrades.deployProxy(
         BackingManagerFactory,
-        [main.address, config.tradingDelay, config.backingBuffer, config.maxTradeSlippage],
+        [
+          main.address,
+          config.tradingDelay,
+          config.backingBuffer,
+          config.maxTradeSlippage,
+          config.minTradeVolume,
+        ],
         {
           initializer: 'init',
           kind: 'uups',
@@ -290,7 +323,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should deploy valid implementation - RevenueTrader', async () => {
       const newRevenueTrader: RevenueTraderP1 = <RevenueTraderP1>await upgrades.deployProxy(
         RevenueTraderFactory,
-        [main.address, rsr.address, config.maxTradeSlippage],
+        [main.address, rsr.address, config.maxTradeSlippage, config.minTradeVolume],
         {
           initializer: 'init',
           kind: 'uups',
@@ -346,6 +379,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
+          unsafeAllow: ['external-library-linking'],
         }
       )
       await newStRSR.deployed()
@@ -396,7 +430,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await mainV2.rTokenTrader()).to.equal(rTokenTrader.address)
 
       // Check new version is implemented
-      expect(await mainV2.version()).to.equal('V2')
+      expect(await mainV2.version()).to.equal('2.0.0')
 
       expect(await mainV2.newValue()).to.equal(0)
       await mainV2.connect(owner).setNewValue(bn(1000))
@@ -421,7 +455,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await assetRegV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await assetRegV2.version()).to.equal('V2')
+      expect(await assetRegV2.version()).to.equal('2.0.0')
 
       expect(await assetRegV2.newValue()).to.equal(0)
       await assetRegV2.connect(owner).setNewValue(bn(1000))
@@ -431,7 +465,13 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - BackingManager', async () => {
       // Upgrading
       const BackingMgrV2Factory: ContractFactory = await ethers.getContractFactory(
-        'BackingManagerP1V2'
+        'BackingManagerP1V2',
+        {
+          libraries: {
+            RewardableLibP1: rewardableLib.address,
+            RecollateralizationLibP1: tradingLib.address,
+          },
+        }
       )
 
       const backingMgrV2: BackingManagerP1V2 = <BackingManagerP1V2>await upgrades.upgradeProxy(
@@ -452,7 +492,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await backingMgrV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await backingMgrV2.version()).to.equal('V2')
+      expect(await backingMgrV2.version()).to.equal('2.0.0')
 
       expect(await backingMgrV2.newValue()).to.equal(0)
       await backingMgrV2.connect(owner).setNewValue(bn(1000))
@@ -475,7 +515,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await bskHndlrV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await bskHndlrV2.version()).to.equal('V2')
+      expect(await bskHndlrV2.version()).to.equal('2.0.0')
 
       expect(await bskHndlrV2.newValue()).to.equal(0)
       await bskHndlrV2.connect(owner).setNewValue(bn(1000))
@@ -499,7 +539,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await brokerV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await brokerV2.version()).to.equal('V2')
+      expect(await brokerV2.version()).to.equal('2.0.0')
 
       expect(await brokerV2.newValue()).to.equal(0)
       await brokerV2.connect(owner).setNewValue(bn(1000))
@@ -525,7 +565,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await distributorV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await distributorV2.version()).to.equal('V2')
+      expect(await distributorV2.version()).to.equal('2.0.0')
 
       expect(await distributorV2.newValue()).to.equal(0)
       await distributorV2.connect(owner).setNewValue(bn(1000))
@@ -549,7 +589,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await furnaceV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await furnaceV2.version()).to.equal('V2')
+      expect(await furnaceV2.version()).to.equal('2.0.0')
 
       expect(await furnaceV2.newValue()).to.equal(0)
       await furnaceV2.connect(owner).setNewValue(bn(1000))
@@ -559,7 +599,12 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
     it('Should upgrade correctly - RevenueTrader', async () => {
       // Upgrading
       const RevTraderV2Factory: ContractFactory = await ethers.getContractFactory(
-        'RevenueTraderP1V2'
+        'RevenueTraderP1V2',
+        {
+          libraries: {
+            RewardableLibP1: rewardableLib.address,
+          },
+        }
       )
       const rsrTraderV2: RevenueTraderP1V2 = <RevenueTraderP1V2>await upgrades.upgradeProxy(
         rsrTrader.address,
@@ -591,8 +636,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await rTokenTraderV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await rsrTraderV2.version()).to.equal('V2')
-      expect(await rTokenTraderV2.version()).to.equal('V2')
+      expect(await rsrTraderV2.version()).to.equal('2.0.0')
+      expect(await rTokenTraderV2.version()).to.equal('2.0.0')
 
       expect(await rsrTraderV2.newValue()).to.equal(0)
       await rsrTraderV2.connect(owner).setNewValue(bn(1000))
@@ -605,7 +650,9 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - RToken', async () => {
       // Upgrading
-      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2')
+      const RTokenV2Factory: ContractFactory = await ethers.getContractFactory('RTokenP1V2', {
+        libraries: { RewardableLibP1: rewardableLib.address, PermitLib: permitLib.address },
+      })
       const rTokenV2: RTokenP1V2 = <RTokenP1V2>await upgrades.upgradeProxy(
         rToken.address,
         RTokenV2Factory,
@@ -626,7 +673,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await rTokenV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await rTokenV2.version()).to.equal('V2')
+      expect(await rTokenV2.version()).to.equal('2.0.0')
 
       expect(await rTokenV2.newValue()).to.equal(0)
       await rTokenV2.connect(owner).setNewValue(bn(1000))
@@ -635,9 +682,15 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     it('Should upgrade correctly - StRSR', async () => {
       // Upgrading
-      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2')
-      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>(
-        await upgrades.upgradeProxy(stRSR.address, StRSRV2Factory)
+      const StRSRV2Factory: ContractFactory = await ethers.getContractFactory('StRSRP1VotesV2', {
+        libraries: { PermitLib: permitLib.address },
+      })
+      const stRSRV2: StRSRP1VotesV2 = <StRSRP1VotesV2>await upgrades.upgradeProxy(
+        stRSR.address,
+        StRSRV2Factory,
+        {
+          unsafeAllow: ['external-library-linking'],
+        }
       )
 
       // Check address is maintained
@@ -654,7 +707,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await stRSRV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await stRSRV2.version()).to.equal('V2')
+      expect(await stRSRV2.version()).to.equal('2.0.0')
 
       expect(await stRSRV2.newValue()).to.equal(0)
       await stRSRV2.connect(owner).setNewValue(bn(1000))

@@ -14,7 +14,7 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     using FixLib for uint192;
     using SafeERC20 for IERC20Metadata;
 
-    uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
+    uint192 public constant MAX_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
 
     // All trades
@@ -24,9 +24,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
     // === Governance params ===
     uint192 public maxTradeSlippage; // {%}
 
+    uint192 public minTradeVolume; // {UoA}
+
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
+    function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
+        internal
+        onlyInitializing
+    {
         setMaxTradeSlippage(maxTradeSlippage_);
+        setMinTradeVolume(minTradeVolume_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -48,7 +54,9 @@ abstract contract TradingP0 is RewardableP0, ITrading {
         assert(address(trades[req.sell.erc20()]) == address(0));
         require(!broker.disabled(), "broker disabled");
 
-        req.sell.erc20().safeIncreaseAllowance(address(broker), req.sellAmount);
+        req.sell.erc20().safeApprove(address(broker), 0);
+        req.sell.erc20().safeApprove(address(broker), req.sellAmount);
+
         ITrade trade = broker.openTrade(req);
 
         trades[req.sell.erc20()] = trade;
@@ -66,8 +74,15 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
-        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+        require(val < MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
+    }
+
+    /// @custom:governance
+    function setMinTradeVolume(uint192 val) public governance {
+        require(val <= MAX_TRADE_VOLUME, "invalid minTradeVolume");
+        emit MinTradeVolumeSet(minTradeVolume, val);
+        minTradeVolume = val;
     }
 }

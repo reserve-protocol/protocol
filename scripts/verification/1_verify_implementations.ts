@@ -81,14 +81,14 @@ async function main() {
       name: 'rsrTrader',
       desc: 'RSR / RToken Traders',
       contract: 'contracts/p1/RevenueTrader.sol:RevenueTraderP1',
-      libraries: {
-        TradingLibP1: deployments.tradingLib,
-      },
     },
     {
       name: 'rToken',
       desc: 'RToken',
       contract: 'contracts/p1/RToken.sol:RTokenP1',
+      // libraries: {
+      //   PermitLib: deployments.permitLib,
+      // },
     },
     {
       name: 'stRSR',

@@ -16,7 +16,7 @@ uint256 constant GNOSIS_MAX_TOKENS = 7e28;
  */
 interface ITrading is IRewardable {
     event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
-    event DustAmountSet(uint192 indexed oldVal, uint192 indexed newVal);
+    event MinTradeVolumeSet(uint192 indexed oldVal, uint192 indexed newVal);
 
     /// Emitted when a trade is started
     /// @param trade The one-time-use trade contract that was just deployed
@@ -53,14 +53,19 @@ interface ITrading is IRewardable {
     /// @return {%} The maximum trade slippage acceptable
     function maxTradeSlippage() external view returns (uint192);
 
+    /// @return {UoA} The minimum trade volume in UoA, applies to all assets
+    function minTradeVolume() external view returns (uint192);
+
     /// @return The ongoing trade for a sell token, or the zero address
     function trades(IERC20 sell) external view returns (ITrade);
 }
 
 interface TestITrading is ITrading {
+    /// @custom:governance
     function setMaxTradeSlippage(uint192 val) external;
 
-    function setDustAmount(uint192 val) external;
+    /// @custom:governance
+    function setMinTradeVolume(uint192 val) external;
 
     /// @return The number of ongoing trades open
     function tradesOpen() external view returns (uint48);

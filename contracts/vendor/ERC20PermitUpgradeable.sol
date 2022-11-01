@@ -6,11 +6,10 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "contracts/libraries/Permit.sol";
 
 /**
  * @dev Implementation of the ERC20 Permit extension allowing approvals to be made via signatures, as defined in
@@ -79,26 +78,9 @@ abstract contract ERC20PermitUpgradeable is
             abi.encode(_PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline)
         );
 
-        bytes32 hash = _hashTypedDataV4(structHash);
-
         /// ==== MODIFICATIONS START ====
 
-        if (AddressUpgradeable.isContract(owner)) {
-            require(
-                IERC1271Upgradeable(owner).isValidSignature(hash, abi.encodePacked(r, s, v)) ==
-                    0x1626ba7e,
-                "ERC1271: Unauthorized"
-            );
-        } else {
-            require(
-                SignatureCheckerUpgradeable.isValidSignatureNow(
-                    owner,
-                    hash,
-                    abi.encodePacked(r, s, v)
-                ),
-                "ERC20Permit: invalid signature"
-            );
-        }
+        PermitLib.requireSignature(owner, _hashTypedDataV4(structHash), v, r, s);
 
         /// ==== MODIFICATIONS END ====
 

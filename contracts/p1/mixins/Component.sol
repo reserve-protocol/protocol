@@ -6,11 +6,18 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IComponent.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract ComponentP1 is Initializable, ContextUpgradeable, UUPSUpgradeable, IComponent {
+abstract contract ComponentP1 is
+    Versioned,
+    Initializable,
+    ContextUpgradeable,
+    UUPSUpgradeable,
+    IComponent
+{
     IMain public main;
 
     /// @custom:oz-upgrades-unsafe-allow constructor

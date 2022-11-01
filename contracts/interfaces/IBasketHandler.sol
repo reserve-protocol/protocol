@@ -22,10 +22,11 @@ interface IBasketHandler is IComponent {
     event PrimeBasketSet(IERC20[] erc20s, uint192[] targetAmts, bytes32[] targetNames);
 
     /// Emitted when the reference basket is set
+    /// @param nonce The basket nonce
     /// @param erc20s The list of collateral tokens in the reference basket
     /// @param refAmts {ref/BU} The reference amounts of the basket collateral tokens
     /// @param disabled True when the list of erc20s + refAmts may not be correct
-    event BasketSet(IERC20[] erc20s, uint192[] refAmts, bool disabled);
+    event BasketSet(uint256 indexed nonce, IERC20[] erc20s, uint192[] refAmts, bool disabled);
 
     /// Emitted when a backup config is set for a target unit
     /// @param targetName The name of the target unit as a bytes32
@@ -71,6 +72,9 @@ interface IBasketHandler is IComponent {
     function status() external view returns (CollateralStatus status);
 
     /// @return {tok/BU} The whole token quantity of token in the reference basket
+    /// Returns 0 if erc20 is not registered, disabled, or not in the basket
+    /// Returns FIX_MAX (in lieu of +infinity) if Collateral.refPerTok() is 0.
+    /// Otherwise, returns (token's basket.refAmts / token's Collateral.refPerTok())
     function quantity(IERC20 erc20) external view returns (uint192);
 
     /// @param amount {BU}
@@ -84,10 +88,14 @@ interface IBasketHandler is IComponent {
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
+    /// @param allowFallback Whether to fail over to the fallback price or not
+    /// @return isFallback If any fallback prices were used
     /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price() external view returns (uint192 p);
+    function price(bool allowFallback) external view returns (bool isFallback, uint192 p);
 
-    /// @return nonce The basket nonce, a monotonically increasing unique identifier
+    /// @return The basket nonce, a monotonically increasing unique identifier
+    function nonce() external view returns (uint48);
+
     /// @return timestamp The timestamp at which the basket was last set
-    function lastSet() external view returns (uint256 nonce, uint256 timestamp);
+    function timestamp() external view returns (uint48);
 }

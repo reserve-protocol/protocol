@@ -15,7 +15,8 @@ interface IRevenueTrader is IComponent, ITrading {
     function init(
         IMain main_,
         IERC20 tokenToBuy_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
     ) external;
 
     /// Processes a single token; unpermissioned

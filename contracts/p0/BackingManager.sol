@@ -30,10 +30,11 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         IMain main_,
         uint48 tradingDelay_,
         uint192 backingBuffer_,
-        uint192 maxTradeSlippage_
+        uint192 maxTradeSlippage_,
+        uint192 maxTradeVolume_
     ) public initializer {
         __Component_init(main_);
-        __Trading_init(maxTradeSlippage_);
+        __Trading_init(maxTradeSlippage_, maxTradeVolume_);
         setTradingDelay(tradingDelay_);
         setBackingBuffer(backingBuffer_);
     }
@@ -43,9 +44,8 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     /// @custom:interaction
     function grantRTokenAllowance(IERC20 erc20) external notPausedOrFrozen {
         require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
-
-        uint256 currAllowance = erc20.allowance(address(this), address(main.rToken()));
-        erc20.safeIncreaseAllowance(address(main.rToken()), type(uint256).max - currAllowance);
+        erc20.safeApprove(address(main.rToken()), 0);
+        erc20.safeApprove(address(main.rToken()), type(uint256).max);
     }
 
     /// Mointain the overall backing policy; handout assets otherwise
@@ -75,14 +75,14 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         // Do not trade when not SOUND
         require(main.basketHandler().status() == CollateralStatus.SOUND, "basket not sound");
 
-        (, uint256 basketTimestamp) = main.basketHandler().lastSet();
+        uint48 basketTimestamp = main.basketHandler().timestamp();
         if (block.timestamp < basketTimestamp + tradingDelay) return;
 
         if (main.basketHandler().fullyCollateralized()) {
             handoutExcessAssets(erc20s);
         } else {
             /*
-             * Recapitalization
+             * Recollateralization
              *
              * Strategy: iteratively move the system on a forgiving path towards capitalization
              * through a narrowing BU price band. The initial large spread reflects the
@@ -97,7 +97,9 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
              * rToken.basketsNeeded to the current basket holdings. Haircut time.
              */
 
-            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareTradeRecapitalize();
+            (bool doTrade, TradeRequest memory req) = TradingLibP0.prepareRecollateralizationTrade(
+                this
+            );
 
             if (doTrade) {
                 // Seize RSR if needed
@@ -134,10 +136,12 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
                 int8 decimals = int8(rToken.decimals());
                 uint192 totalSupply = shiftl_toFix(rToken.totalSupply(), -decimals); // {rTok}
 
-                // {qRTok} = ({(BU - BU) * rTok / BU}) * {qRTok/rTok}
-                uint256 rTok = held.minus(needed).mulDiv(totalSupply, needed).shiftl_toUint(
-                    decimals
-                );
+                // {BU} = {BU} - {BU}
+                uint192 extraBUs = held.minus(needed);
+
+                // {qRTok: Fix} = {BU} * {qRTok / BU} (if needed == 0, conv rate is 1 qRTok/BU)
+                uint192 rTok = (needed > 0) ? extraBUs.mulDiv(totalSupply, needed) : extraBUs;
+
                 rToken.mint(address(this), rTok);
                 rToken.setBasketsNeeded(held);
             }
@@ -156,7 +160,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
 
             if (bal.gt(req)) {
                 // delta: {qTok}
-                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20().decimals()));
+                uint256 delta = bal.minus(req).shiftl_toUint(int8(asset.erc20Decimals()));
                 uint256 tokensPerShare = delta / (totals.rTokenTotal + totals.rsrTotal);
 
                 {
@@ -172,7 +176,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
         }
     }
 
-    /// Compromise on how many baskets are needed in order to recapitalize-by-accounting
+    /// Compromise on how many baskets are needed in order to recollateralize-by-accounting
     function compromiseBasketsNeeded() private {
         assert(tradesOpen == 0 && !main.basketHandler().fullyCollateralized());
         main.rToken().setBasketsNeeded(main.basketHandler().basketsHeldBy(address(this)));

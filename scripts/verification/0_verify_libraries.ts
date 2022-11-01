@@ -25,7 +25,7 @@ async function main() {
     chainId,
     deployments.tradingLib,
     [],
-    'contracts/p1/mixins/TradingLib.sol:TradingLibP1'
+    'contracts/p1/mixins/RecollateralizationLib.sol:RecollateralizationLibP1'
   )
 
   /** ******************** Verify Rewardable Library ****************************************/
@@ -36,12 +36,12 @@ async function main() {
     'contracts/p1/mixins/RewardableLib.sol:RewardableLibP1'
   )
 
-  /** ******************** Verify RTokenPricing Library ****************************************/
+  /** ******************** Verify PermitLib Library ****************************************/
   await verifyContract(
     chainId,
-    deployments.rTokenPricingLib,
+    deployments.permitLib,
     [],
-    'contracts/plugins/assets/RTokenPricingLib.sol:RTokenPricingLib'
+    'contracts/libraries/Permit.sol:PermitLib'
   )
 
   /** ******************** Verify OracleLib Library ****************************************/
