@@ -10,7 +10,6 @@ import "contracts/p1/mixins/RecollateralizationLib.sol";
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
     using FixLib for uint192;
-    using OracleLib for AggregatorV3Interface;
 
     // Component addresses are not mutable in protocol, so it's safe to cache these
     IBasketHandler public immutable basketHandler;

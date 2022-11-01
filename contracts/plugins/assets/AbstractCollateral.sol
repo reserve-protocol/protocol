@@ -14,8 +14,6 @@ import "./OracleLib.sol";
  * @dev But no user is likely to want that, and that's why this contract is abstract
  */
 abstract contract Collateral is ICollateral, Asset {
-    using OracleLib for AggregatorV3Interface;
-
     // Default Status:
     // _whenDefault == NEVER: no risk of default (initial value)
     // _whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
