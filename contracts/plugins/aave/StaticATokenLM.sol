@@ -288,15 +288,15 @@ contract StaticATokenLM is ERC20("STATIC_ATOKEN_IMPL", "STATIC_ATOKEN_IMPL"), IS
         require(recipient != address(0), StaticATokenErrors.INVALID_RECIPIENT);
         _updateRewards();
 
-        uint256 amountToMint = _dynamicToStaticAmount(amount, rate());
-        _mint(recipient, amountToMint);
-
         if (fromUnderlying) {
             ASSET.safeTransferFrom(depositor, address(this), amount);
             LENDING_POOL.deposit(address(ASSET), amount, address(this), referralCode);
         } else {
             ATOKEN.safeTransferFrom(depositor, address(this), amount);
         }
+
+        uint256 amountToMint = _dynamicToStaticAmount(amount, rate());
+        _mint(recipient, amountToMint);
 
         return amountToMint;
     }
