@@ -20,7 +20,7 @@ import "contracts/libraries/Basket.sol";
  * @notice Handles the basket configuration, definition, and evolution over time.
  */
 contract BasketHandlerP0 is ComponentP0, IBasketHandler {
-    using BasketLibP0 for Basket;
+    using BasketLib for Basket;
     using CollateralStatusComparator for CollateralStatus;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;

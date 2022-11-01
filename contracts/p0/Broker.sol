@@ -11,9 +11,6 @@ import "contracts/interfaces/ITrade.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p0/mixins/Component.sol";
 
-// Gnosis: uint96 ~= 7e28
-uint256 constant GNOSIS_MAX_TOKENS = 7e28;
-
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP0 is ComponentP0, IBroker {
     using FixLib for uint192;

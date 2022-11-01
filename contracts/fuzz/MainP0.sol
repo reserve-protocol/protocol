@@ -201,10 +201,10 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             IERC20Metadata(address(0)),
-            params.rTokenTradingRange,
+            params.maxTradeVolume,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
-        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.rTokenTradingRange);
+        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.maxTradeVolume);
         assetRegistry.init(this, assets);
 
         // Init Distributor

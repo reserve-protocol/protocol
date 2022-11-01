@@ -51,7 +51,7 @@ contract DiffTestScenario {
         p[0] = new MainP0Fuzz();
         p[1] = new MainP1Fuzz();
 
-        TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
+        uint192 maxTradeVolume = defaultParams().maxTradeVolume;
 
         // For each main...
         for (uint256 proto = 0; proto < 2; proto++) {
@@ -77,7 +77,7 @@ contract DiffTestScenario {
                         new AssetMock(
                             IERC20Metadata(address(reward)),
                             IERC20Metadata(address(0)), // no recursive reward
-                            tradingRange,
+                            maxTradeVolume,
                             volatile
                         )
                     );
@@ -89,7 +89,7 @@ contract DiffTestScenario {
                     new CollateralMock(
                         IERC20Metadata(address(token)),
                         reward,
-                        tradingRange,
+                        maxTradeVolume,
                         0,
                         0,
                         IERC20Metadata(address(0)),
@@ -117,7 +117,7 @@ contract DiffTestScenario {
                     new CollateralMock(
                         IERC20Metadata(address(token)),
                         IERC20Metadata(address(0)), // no reward
-                        tradingRange,
+                        maxTradeVolume,
                         0,
                         0,
                         IERC20Metadata(address(0)),

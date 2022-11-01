@@ -23,7 +23,7 @@ contract AssetMock is OracleErrorMock, Asset {
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         PriceModel memory model_
     )
         Asset(
@@ -36,6 +36,7 @@ contract AssetMock is OracleErrorMock, Asset {
     {
         model = model_;
         rewardAmount = 1e18;
+        maxTradeVolume = maxTradeVolume_;
         emit SetPrice(erc20.symbol(), model.price());
     }
 

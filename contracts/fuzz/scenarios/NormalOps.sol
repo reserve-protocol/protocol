@@ -53,7 +53,7 @@ contract NormalOpsScenario {
 
         main.initFuzz(defaultParams(), new MarketMock(main));
 
-        TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
+        uint192 maxTradeVolume = defaultParams().maxTradeVolume;
 
         // Create three "standard" collateral tokens; have rewards for the first two
         for (uint256 i = 0; i < 3; i++) {
@@ -69,7 +69,7 @@ contract NormalOpsScenario {
                     new AssetMock(
                         IERC20Metadata(address(reward)),
                         IERC20Metadata(address(0)), // no recursive reward
-                        tradingRange,
+                        maxTradeVolume,
                         volatile
                     )
                 );
@@ -81,7 +81,7 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     reward,
-                    tradingRange,
+                    maxTradeVolume,
                     0,
                     0,
                     IERC20Metadata(address(0)),
@@ -105,7 +105,7 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     IERC20Metadata(address(0)), // no reward
-                    tradingRange,
+                    maxTradeVolume,
                     0,
                     0,
                     IERC20Metadata(address(0)),
