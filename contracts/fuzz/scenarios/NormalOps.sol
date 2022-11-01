@@ -53,7 +53,7 @@ contract NormalOpsScenario {
 
         main.initFuzz(defaultParams(), new MarketMock(main));
 
-        uint192 maxTradeVolume = defaultParams().maxTradeVolume;
+        uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
         // Create three "standard" collateral tokens; have rewards for the first two
         for (uint256 i = 0; i < 3; i++) {

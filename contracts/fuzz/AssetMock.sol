@@ -37,7 +37,6 @@ contract AssetMock is OracleErrorMock, Asset {
     {
         model = model_;
         rewardAmount = 1e18;
-        maxTradeVolume = maxTradeVolume_;
         emit SetPrice(erc20.symbol(), model.price());
     }
 

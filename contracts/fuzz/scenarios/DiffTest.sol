@@ -51,7 +51,7 @@ contract DiffTestScenario {
         p[0] = new MainP0Fuzz();
         p[1] = new MainP1Fuzz();
 
-        uint192 maxTradeVolume = defaultParams().maxTradeVolume;
+        uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
         // For each main...
         for (uint256 proto = 0; proto < 2; proto++) {

@@ -46,8 +46,7 @@ library TradingLibP0 {
         uint192 sellPrice,
         uint192 buyPrice
     ) public view returns (bool notDust, TradeRequest memory trade) {
-        assert(sell.price().neq(FIX_ZERO) && buy.price().neq(FIX_ZERO));
-        assert(buyPrice > 0); // checked for in RevenueTrader / prepareRecollateralizationTrade
+        assert(sellPrice.neq(FIX_ZERO) && buyPrice.neq(FIX_ZERO));
 
         trade.sell = sell;
         trade.buy = buy;
