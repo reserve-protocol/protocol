@@ -29,30 +29,31 @@ For a much more detailed explanation of the economic design, including an hour-l
 
 ## Mainnet Addresses (v1.1.0)
 
-| Contract       | Address                                    |
-| -------------- | ------------------------------------------ |
-| rewardableLib  | 0xe1C1Af81Aa2E6f978fa05532A3588e3b1E703B78 |
-| tradingLib     | 0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0 |
-| permitLib      | 0x3E40840d0282C9F9cC7d17094b5239f87fcf18e5 |
-| oracleLib      | 0x89c34D34538Fd8a19C4D2e288c766147043D2694 |
-| facadeRead     | 0x42A928f406484422ECE2653Ccd13A52CD3FE0ED9 |
-| facadeAct      | 0x348644F24FA34c40a8E3C4Cf9aF14f8a96aD63fC |
-| facadeWriteLib | 0x82dFC8C58Ed8f105eBf68F0C5639cc8c1Ca3c656 |
-| facadeWrite    | 0xEE527CC63122732532d0f1ad33Ec035D30f3050f |
-| deployer       | 0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e |
-| rsrAsset       | 0x6F6f81e5E66f503184f2202D83a79650c3285759 |
-| main           | 0xaa85216187F92a781D8F9Bcb40825E356ee2635a |
-| trade          | 0x2D1A824F6b347372ebe1AF3dAa840487e701B697 |
-| assetRegistry  | 0xD126741474B0348D9B0F4911573d8f543c01C2c4 |
-| backingManager | 0x2cE0f5bAb6a911e153A0C09d407b6EFCc336DFB4 |
-| basketHandler  | 0x073BD162BBD05Cd2CF631B90D44239B8a367276e |
-| broker         | 0x52b894A9D1cb7E5245Fd7bAdfb691de6f1f03836 |
-| distributor    | 0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D |
-| furnace        | 0xbcf5810336825380ffb4e5E680bb693007F2b1e6 |
-| rsrTrader      | 0x65D41084B9c3FF3dcf911542DD28b1ec3d6d6eb6 |
-| rTokenTrader   | 0x65D41084B9c3FF3dcf911542DD28b1ec3d6d6eb6 |
-| rToken         | 0x5e0116B2b2724B3520bEb9C9928cda84F4129715 |
-| stRSR          | 0x2B5Ca65E7e423b36F7b185B4E116A6Fd0E6C4Ce2 |
+| Implementation Contracts | Address                                                                                                               |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------- |
+| rewardableLib            | [0xe1C1Af81Aa2E6f978fa05532A3588e3b1E703B78](https://etherscan.io/address/0xe1C1Af81Aa2E6f978fa05532A3588e3b1E703B78) |
+| tradingLib               | [0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0](https://etherscan.io/address/0xB8794Fb1CCd62bFe631293163F4A3fC2d22e37e0) |
+| permitLib                | [0x3E40840d0282C9F9cC7d17094b5239f87fcf18e5](https://etherscan.io/address/0x3E40840d0282C9F9cC7d17094b5239f87fcf18e5) |
+| oracleLib                | [0x89c34D34538Fd8a19C4D2e288c766147043D2694](https://etherscan.io/address/0x89c34D34538Fd8a19C4D2e288c766147043D2694) |
+| facadeRead               | [0x42A928f406484422ECE2653Ccd13A52CD3FE0ED9](https://etherscan.io/address/0x42A928f406484422ECE2653Ccd13A52CD3FE0ED9) |
+| facadeAct                | [0x348644F24FA34c40a8E3C4Cf9aF14f8a96aD63fC](https://etherscan.io/address/0x348644F24FA34c40a8E3C4Cf9aF14f8a96aD63fC) |
+| facadeWriteLib           | [0x82dFC8C58Ed8f105eBf68F0C5639cc8c1Ca3c656](https://etherscan.io/address/0x82dFC8C58Ed8f105eBf68F0C5639cc8c1Ca3c656) |
+| facadeWrite              | [0xEE527CC63122732532d0f1ad33Ec035D30f3050f](https://etherscan.io/address/0xEE527CC63122732532d0f1ad33Ec035D30f3050f) |
+| deployer                 | [0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e](https://etherscan.io/address/0x0F345F57ee2b395e23390f8e1F1869D7E6C0F70e) |
+| rsrAsset                 | [0x6F6f81e5E66f503184f2202D83a79650c3285759](https://etherscan.io/address/0x6F6f81e5E66f503184f2202D83a79650c3285759) |
+| main                     | [0xaa85216187F92a781D8F9Bcb40825E356ee2635a](https://etherscan.io/address/0xaa85216187F92a781D8F9Bcb40825E356ee2635a) |
+| trade                    | [0x2D1A824F6b347372ebe1AF3dAa840487e701B697](https://etherscan.io/address/0x2D1A824F6b347372ebe1AF3dAa840487e701B697) |
+| assetRegistry            | [0xD126741474B0348D9B0F4911573d8f543c01C2c4](https://etherscan.io/address/0xD126741474B0348D9B0F4911573d8f543c01C2c4) |
+| backingManager           | [0x2cE0f5bAb6a911e153A0C09d407b6EFCc336DFB4](https://etherscan.io/address/0x2cE0f5bAb6a911e153A0C09d407b6EFCc336DFB4) |
+| basketHandler            | [0x073BD162BBD05Cd2CF631B90D44239B8a367276e](https://etherscan.io/address/0x073BD162BBD05Cd2CF631B90D44239B8a367276e) |
+| broker                   | [0x52b894A9D1cb7E5245Fd7bAdfb691de6f1f03836](https://etherscan.io/address/0x52b894A9D1cb7E5245Fd7bAdfb691de6f1f03836) |
+| distributor              | [0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D](https://etherscan.io/address/0x851B461a9744f4c9E996C03072cAB6f44Fa04d0D) |
+| furnace                  | [0xbcf5810336825380ffb4e5E680bb693007F2b1e6](https://etherscan.io/address/0xbcf5810336825380ffb4e5E680bb693007F2b1e6) |
+| rsrTrader/rTokenTrader   | [0x65D41084B9c3FF3dcf911542DD28b1ec3d6d6eb6](https://etherscan.io/address/0x65D41084B9c3FF3dcf911542DD28b1ec3d6d6eb6) |
+| rToken                   | [0x5e0116B2b2724B3520bEb9C9928cda84F4129715](https://etherscan.io/address/0x5e0116B2b2724B3520bEb9C9928cda84F4129715) |
+| stRSR                    | [0x2B5Ca65E7e423b36F7b185B4E116A6Fd0E6C4Ce2](https://etherscan.io/address/0x2B5Ca65E7e423b36F7b185B4E116A6Fd0E6C4Ce2) |
+
+The DeployerRegistry, which contains a link to all official releases via their Deployer contracts, can be found [here](https://etherscan.io/address/0xD85Fac03804a3e44D29c494f3761D11A2262cBBe).
 
 ## Parallel Prototypes
 
