@@ -45,7 +45,7 @@ library TradingLibP0 {
         uint192 sellAmount,
         uint192 sellPrice,
         uint192 buyPrice
-    ) public view returns (bool notDust, TradeRequest memory trade) {
+    ) internal view returns (bool notDust, TradeRequest memory trade) {
         assert(sellPrice.neq(FIX_ZERO) && buyPrice.neq(FIX_ZERO));
 
         trade.sell = sell;
@@ -86,7 +86,7 @@ library TradingLibP0 {
     //   if surplus.strictPrice() is reliable, prepareTradeToCoverDeficit(surplus, deficit, amts...)
     //   otherwise, prepareTradeSell(surplus, deficit, surplusAmt) with a 0 minBuyAmount
     function prepareRecollateralizationTrade(ITrading trader)
-        external
+        internal
         view
         returns (bool doTrade, TradeRequest memory req)
     {
