@@ -7,6 +7,7 @@ import "contracts/interfaces/IDeployerRegistry.sol";
 /**
  * @title DeployerRegistry
  * @notice A tiny contract for tracking deployments over time, from an EOA.
+ * @dev Does not allow overwriting without deregistration
  */
 contract DeployerRegistry is IDeployerRegistry, Ownable {
     string public constant ENS = "reserveprotocol.eth";
@@ -15,32 +16,35 @@ contract DeployerRegistry is IDeployerRegistry, Ownable {
 
     IDeployer public override latestDeployment;
 
+    constructor(address owner_) Ownable() {
+        _transferOwnership(owner_);
+    }
+
     /// Register a deployer address, keyed by a version.
+    /// @dev Does not allow overwriting without deregistration
     /// @param version A semver version string
-    /// @param replace True iff there is already a registered deployment at this version
     /// @param makeLatest True iff this deployment should be promoted to be the latest deployment
     function register(
         string calldata version,
         IDeployer deployer,
-        bool replace,
         bool makeLatest
     ) external onlyOwner {
-        if (replace) {
-            require(address(deployments[version]) != address(0), "not replacing");
-            emit DeploymentUnregistered(version, deployments[version]);
-        } else {
-            require(address(deployments[version]) == address(0), "need replace");
-
-            // If we aren't replacing, then a zero-address deployer is likely a mistake
-            require(address(deployer) != address(0), "deployer is zero addr");
-        }
+        require(address(deployer) != address(0), "deployer is zero addr");
+        require(address(deployments[version]) == address(0), "cannot overwrite");
 
         emit DeploymentRegistered(version, deployer);
 
         deployments[version] = deployer;
 
         if (makeLatest) {
+            emit LatestChanged(version, deployer);
             latestDeployment = deployer;
         }
+    }
+
+    /// Unregister by version
+    function unregister(string calldata version) external onlyOwner {
+        emit DeploymentUnregistered(version, deployments[version]);
+        deployments[version] = IDeployer(address(0));
     }
 }
