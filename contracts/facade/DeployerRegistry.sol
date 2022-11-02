@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "contracts/interfaces/IDeployerRegistry.sol";
 
 /**
  * @title DeployerRegistry
  * @notice A tiny contract for tracking deployments over time, from an EOA.
  */
-contract DeployerRegistry is IDeployerRegistry {
+contract DeployerRegistry is IDeployerRegistry, Ownable {
     mapping(string => IDeployer) public deployments;
 
     IDeployer public override latestDeployment;
@@ -21,7 +22,7 @@ contract DeployerRegistry is IDeployerRegistry {
         IDeployer deployer,
         bool replace,
         bool makeLatest
-    ) external {
+    ) external onlyOwner {
         if (replace) {
             require(address(deployments[version]) != address(0), "not replacing");
             emit DeploymentUnregistered(version, deployments[version]);
