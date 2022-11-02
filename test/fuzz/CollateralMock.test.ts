@@ -25,7 +25,7 @@ describe('CollateralMock', () => {
     return await f.deploy(
       token.address,
       addr(0), // null reward token
-      { minVal: fp(1e4), maxVal: fp(1e6), minAmt: fp(1000), maxAmt: fp(1e7) },
+      fp(1e6), // maxTradeVolume
       fp(0.05),
       86400,
       underToken.address,
@@ -52,21 +52,21 @@ describe('CollateralMock', () => {
 
   it('combines price models ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.price()).equal(fp(1))
+    expect(await coll.strictPrice()).equal(fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
     expect(await coll.pricePerTarget()).equal(fp(1))
 
     await coll.update(fp(0.5), fp(3), fp(7), fp(0.1))
 
-    expect(await coll.price()).equal(fp(1.05))
+    expect(await coll.strictPrice()).equal(fp(1.05))
     expect(await coll.refPerTok()).equal(fp(0.5))
     expect(await coll.targetPerRef()).equal(fp(3))
     expect(await coll.pricePerTarget()).equal(fp(7))
 
     await coll.update(fp(2), fp(3), fp(0.5), fp(0.7))
 
-    expect(await coll.price()).equal(fp(2.1))
+    expect(await coll.strictPrice()).equal(fp(2.1))
     expect(await coll.refPerTok()).equal(fp(2))
     expect(await coll.targetPerRef()).equal(fp(3))
     expect(await coll.pricePerTarget()).equal(fp(0.5))

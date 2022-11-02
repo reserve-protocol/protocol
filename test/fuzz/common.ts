@@ -46,7 +46,8 @@ export function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel 
 
 export const CONFIG: IConfig = {
   dist: { rTokenDist: bn(40), rsrDist: bn(60) },
-  maxTradeVolume: fp(1e6),
+  minTradeVolume: fp(1e4),
+  rTokenMaxTradeVolume: fp(1e6),
   rewardPeriod: bn('604800'), // 1 week
   rewardRatio: fp('0.02284'), // approx. half life of 30 pay periods
   unstakingDelay: bn('1209600'), // 2 weeks

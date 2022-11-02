@@ -501,10 +501,10 @@ describe('The Normal Operations scenario', () => {
 
         // update the price twice, saving the price
         await scenario.updatePrice(i, 0, 0, 0, 0)
-        const p0 = await asset.price()
+        const p0 = await asset.strictPrice()
 
         await scenario.updatePrice(i, exa, exa, exa, exa)
-        const p1 = await asset.price()
+        const p1 = await asset.strictPrice()
 
         // if not all price models are constant, then prices p0 and p1 should be different
         if (await asset.isCollateral()) {
