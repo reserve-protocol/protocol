@@ -101,7 +101,6 @@ contract CTokenNonFiatCollateral is Collateral {
             try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 // We don't need the return value from this next feed, but it should still function
                 try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
-
                     // {target/ref}
                     uint192 peg = targetPerRef();
 

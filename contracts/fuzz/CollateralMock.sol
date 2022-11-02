@@ -40,10 +40,9 @@ contract CollateralMock is OracleErrorMock, Collateral {
         // deviationModel is the deviation of price() from the combination of the above.
         // that is: price() = deviation * uoaPerTarget * targetPerRef * refPerTok
         Collateral(
-            refPerTokModel_.curr.
-                mul(targetPerRefModel_.curr).
-                mul(uoaPerTargetModel_.curr).
-                mul(deviationModel_.curr),
+            refPerTokModel_.curr.mul(targetPerRefModel_.curr).mul(uoaPerTargetModel_.curr).mul(
+                deviationModel_.curr
+            ),
             AggregatorV3Interface(address(1)), // Stub out expected Chainlink feed
             erc20_,
             rewardERC20_, // no reward token

@@ -195,7 +195,12 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
         basketHandler.init(this);
         rsrTrader.init(this, rsr, params.maxTradeSlippage, params.minTradeVolume);
-        rTokenTrader.init(this, IERC20(address(rToken)), params.maxTradeSlippage, params.minTradeVolume);
+        rTokenTrader.init(
+            this,
+            IERC20(address(rToken)),
+            params.maxTradeSlippage,
+            params.minTradeVolume
+        );
 
         // Init Asset Registry, with default assets for all tokens
         IAsset[] memory assets = new IAsset[](2);
