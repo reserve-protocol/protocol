@@ -9,6 +9,8 @@ import "contracts/interfaces/IDeployerRegistry.sol";
  * @notice A tiny contract for tracking deployments over time, from an EOA.
  */
 contract DeployerRegistry is IDeployerRegistry, Ownable {
+    string public constant ENS = "reserveprotocol.eth";
+
     mapping(string => IDeployer) public deployments;
 
     IDeployer public override latestDeployment;
