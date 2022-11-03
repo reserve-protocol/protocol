@@ -17,7 +17,7 @@ In our inheritance tree, Collateral is a subtype of Asset (i.e. `ICollateral is 
 - A maximum volume per trade
 - How to claim token rewards, if the token offers them
 
-A Collateral contract is a subtype of Asset (i.e. `ICollateral is IAsset`), so it does everything as Asset does. Beyond that, a Collateral plugin provides the Reserve Protocol with the information it needs to use its token as collateral -- as backing, held in the RToken's basket. 
+A Collateral contract is a subtype of Asset (i.e. `ICollateral is IAsset`), so it does everything as Asset does. Beyond that, a Collateral plugin provides the Reserve Protocol with the information it needs to use its token as collateral -- as backing, held in the RToken's basket.
 
 - Its ERC20 token can be used to back an RToken, not just be bought and sold
 - A Collateral has a `refresh()` method that is called at the start of any significant system interaction (i.e. `@custom:interaction`).
@@ -34,53 +34,53 @@ The IAsset and ICollateral interfaces, from `IAsset.sol`, are as follows:
  * is eligible to be an asset.
  */
 interface IAsset {
-    /// Can return 0, can revert
-    /// Shortcut for price(false)
-    /// @return {UoA/tok} The current price(), without considering fallback prices
-    function strictPrice() external view returns (uint192);
+  /// Can return 0, can revert
+  /// Shortcut for price(false)
+  /// @return {UoA/tok} The current price(), without considering fallback prices
+  function strictPrice() external view returns (uint192);
 
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) external view returns (bool isFallback, uint192);
+  /// Can return 0
+  /// Should not revert if `allowFallback` is true. Can revert if false.
+  /// @param allowFallback Whether to try the fallback price in case precise price reverts
+  /// @return isFallback If the price is a failover price
+  /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
+  function price(bool allowFallback) external view returns (bool isFallback, uint192);
 
-    /// @return {tok} The balance of the ERC20 in whole tokens
-    function bal(address account) external view returns (uint192);
+  /// @return {tok} The balance of the ERC20 in whole tokens
+  function bal(address account) external view returns (uint192);
 
-    /// @return The ERC20 contract of the token with decimals() available
-    function erc20() external view returns (IERC20Metadata);
+  /// @return The ERC20 contract of the token with decimals() available
+  function erc20() external view returns (IERC20Metadata);
 
-    /// @return The number of decimals in the ERC20; just for gas optimization
-    function erc20Decimals() external view returns (uint8);
+  /// @return The number of decimals in the ERC20; just for gas optimization
+  function erc20Decimals() external view returns (uint8);
 
-    /// @return If the asset is an instance of ICollateral or not
-    function isCollateral() external view returns (bool);
+  /// @return If the asset is an instance of ICollateral or not
+  function isCollateral() external view returns (bool);
 
-    /// @param {UoA} The max trade volume, in UoA
-    function maxTradeVolume() external view returns (uint192);
+  /// @param {UoA} The max trade volume, in UoA
+  function maxTradeVolume() external view returns (uint192);
 
-    // ==== Rewards ====
+  // ==== Rewards ====
 
-    /// Get the message needed to call in order to claim rewards for holding this asset.
-    /// Returns zero values if there is no reward function to call.
-    /// @return _to The address to send the call to
-    /// @return _calldata The calldata to send
-    function getClaimCalldata() external view returns (address _to, bytes memory _calldata);
+  /// Get the message needed to call in order to claim rewards for holding this asset.
+  /// Returns zero values if there is no reward function to call.
+  /// @return _to The address to send the call to
+  /// @return _calldata The calldata to send
+  function getClaimCalldata() external view returns (address _to, bytes memory _calldata);
 
-    /// The ERC20 token address that this Asset's rewards are paid in.
-    /// If there are no rewards, will return a zero value.
-    function rewardERC20() external view returns (IERC20 reward);
+  /// The ERC20 token address that this Asset's rewards are paid in.
+  /// If there are no rewards, will return a zero value.
+  function rewardERC20() external view returns (IERC20 reward);
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
 /// - being DISABLED is worse than being IFFY, or SOUND
 /// - being IFFY is worse than being SOUND.
 enum CollateralStatus {
-    SOUND,
-    IFFY, // When a peg is not holding or a chainlink feed is stale
-    DISABLED // When the collateral has completely defaulted
+  SOUND,
+  IFFY, // When a peg is not holding or a chainlink feed is stale
+  DISABLED // When the collateral has completely defaulted
 }
 
 /**
@@ -88,27 +88,27 @@ enum CollateralStatus {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
-    /// Refresh exchange rates and update default status.
-    /// The Reserve protocol calls this at least once per transaction, before relying on
-    /// this collateral's prices or default status.
-    function refresh() external;
+  /// Refresh exchange rates and update default status.
+  /// The Reserve protocol calls this at least once per transaction, before relying on
+  /// this collateral's prices or default status.
+  function refresh() external;
 
-    /// @return The canonical name of this collateral's target unit.
-    function targetName() external view returns (bytes32);
+  /// @return The canonical name of this collateral's target unit.
+  function targetName() external view returns (bytes32);
 
-    /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
-    function status() external view returns (CollateralStatus);
+  /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
+  function status() external view returns (CollateralStatus);
 
-    // ==== Exchange Rates ====
+  // ==== Exchange Rates ====
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() external view returns (uint192);
+  /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+  function refPerTok() external view returns (uint192);
 
-    /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
-    function targetPerRef() external view returns (uint192);
+  /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
+  function targetPerRef() external view returns (uint192);
 
-    /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
-    function pricePerTarget() external view returns (uint192);
+  /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
+  function pricePerTarget() external view returns (uint192);
 }
 
 ```
@@ -120,6 +120,7 @@ To create a Collateral plugin, you need to select its accounting units (`{tok}`,
 Typical accounting units in this sense are things like ETH, USD, USDC -- tokens, assets, currencies; anything that can be used as a measure of value. In general, a valid accounting unit is a linear combination of any number of assets; so (1 USDC + 0.5 USDP + 0.25 TUSD) is a valid unit, as is (say) (0.5 USD + 0.5 EUR), though such units will probably only arise in particularly tricky cases. Each Collateral plugin should describe in its documentation each of its four accounting units
 
 As a quick overview:
+
 - The unit `{tok}` is just the concrete token being modeled.
 - The protocol measures growth as the increase of the value of `{tok}` against the value of `{ref}`, and treats that growth as revenue.
 - If two Collateral plugins have the same `{target}`, then when one defaults, the other one can serve as backup collateral.
@@ -133,7 +134,7 @@ This is typically a token that is interesting to hold because it allows the accu
 
 Note that a value denoted `{tok}` is a number of "whole tokens" with 18 decimals. So even though DAI has 18 decimals and USDC has 6 decimals, $1 in either token would be 1e18 when working with `uint192` values with the unit `{tok}`. For context on our approach for handling decimal-fixed-point, see [The Fix Library](solidity-style.md#The-Fix-Library).
 
-### Reference unit `{ref}` ###
+### Reference unit `{ref}`
 
 The _reference unit_, `{ref}`, is the measure of value that the protocol computes revenue against. When the exchange rate `refPerTok()` rises, the protocol keeps a constant amount of `{ref}` as backing, and sells the rest of the token it holds as revenue.
 
@@ -142,16 +143,16 @@ There's room for flexibility and creativity in the choice of a Collateral's refe
 - `refPerTok() {ref}` should always be a good market rate for 1 `{tok}`
 - `refPerTok()` must be nondecreasing over time, at least on some sensible model of the collateral token's economics. If that model is violated, the Collateral plugin should immediately default. (i.e, permanently set `status()` to `DISABLED`)
 
-In many cases, the choice of reference unit is clear. 
+In many cases, the choice of reference unit is clear.
 
 - The collateral token cUSDC (compound USDC) has a natural reference unit of USDC. cUSDC is permissionlessly redeemable in the Compound protocol for an ever-increasing amount of USDC.
 - The collateral token USDT is its own natural reference unit. It's not natively redeemable for anything else on-chain, and we think of it as non-appreciating collateral. (Consider: what would it mean for USDT to "appreciate"?)
 
 Often, the collateral token is directly redeemable for the reference unit in the token's protocol. (When this is the case, you can usually implement `refPerTok()` by looking up the redemption rate between the collateral token and its underlying token!) If you want to keep things simple, stick to "natural" collateral produced by protocols with nondecreasing exchange rates.
 
-However, the protocol never tries to handle reference-unit tokens itself, and in fact reference-unit tokens don't even need to exist. Thus, a Collateral can have a  _synthetic_ reference unit for which there exists no corresponding underlying token. For some worked-out examples, read [Synthetic Unit Examples](#Synthetic_Unit_Example) below.
+However, the protocol never tries to handle reference-unit tokens itself, and in fact reference-unit tokens don't even need to exist. Thus, a Collateral can have a _synthetic_ reference unit for which there exists no corresponding underlying token. For some worked-out examples, read [Synthetic Unit Examples](#Synthetic_Unit_Example) below.
 
-### Target unit `{target}` ###
+### Target unit `{target}`
 
 The _target unit_, `{target}`, is the type of value that the Collateral is expected by users to represent over time. For instance, an RToken intended to be a USD stablecoin probably has a basket made of Collateral for which `{target} = USD`. When the protocol must reconfigure the basket, it will replace defaulting "prime" Collateral with other "backup" Collateral if and only if they have the same target unit.
 
@@ -161,7 +162,7 @@ The target unit has to do with a concept called the Target Basket, and ultimatel
 - 0.5 USD + 0.55 EURO
 - 0.5 USD + 0.35 EURO + 0.00001 BTC
 
-These Target Baskets have been selected to start with a market price of about \$1, assuming a slightly weak EURO and \$20k BTC. Over time, these RTokens would each have very different overall price trajectories. 
+These Target Baskets have been selected to start with a market price of about \$1, assuming a slightly weak EURO and \$20k BTC. Over time, these RTokens would each have very different overall price trajectories.
 
 (Note: the Target Basket never manifests in the code directly. In the code, we have a slightly more specific concept called the Prime Basket. But the Target Basket is a coherent concept for someone thinking about the UX of an RToken. You can think of it like a simplified view of the Prime Basket.)
 
@@ -174,7 +175,7 @@ Moreover, `{target}` should be the simplest and most common unit that can satisf
 
 Given those desired properties, after you've selected a collateral unit and reference unit, it's typically simple to choose a sensible target unit. For USDC the target unit would be USD; for EURT it would be the EURO; for WBTC it would be BTC.
 
-### Unit of Account `{UoA}` ###
+### Unit of Account `{UoA}`
 
 The Unit of Account `{UoA}` for a collateral plugin is simply a measure of value in which asset prices can be commonly denominated and compared. In principle, it's totally arbitrary, but all collateral plugins registered with an RToken must have the same unit of account. As of the current writing (October 2022), given the price information currently available on-chain, just use `USD` for the Unit of Account.
 
@@ -204,7 +205,7 @@ Instead, you might imagine that we choose "1 USDC + 1 USDT" as the reference uni
 
 To make this Collateral position actually work, we have to account revenues against the pool's invariant. Assuming that there's a supply of `L` LP tokens for a pool with `x` USDC and `y` USDT, the strange-looking reference unit `sqrt(USDC * USDT)`, with corresponding `refPerTok() = sqrt(x * y)/L`, works exactly as desired.
 
-Without walking through the algebra, we can reason our way heuristically towards this design. The exchange rate `refPerTok()` should be a value that only ever increases. In UNI V2, that means it must not change when LP tokens are deposited or withdrawn; and it must not change due to trading, except insofar as it increases due to the protocol's fees. Deposit and withdrawal change all of `x`, `y`, and `L`, but in a lawful way: `x * y / (L * L)` is invariant even when the LP supply is changed due deposits or withdrawals. If there were zero fees, the same expression would be invariant during trading; with fees, `x * y` only increases, and so `x * y / (L * L)` only increases. However, this expression has bizarre units. However, this expression cannot possibly be a rate "per LP token", it's a rate per square of the LP token. Taking the square root gives us a rate per token of `sqrt(x * y) / L`. 
+Without walking through the algebra, we can reason our way heuristically towards this design. The exchange rate `refPerTok()` should be a value that only ever increases. In UNI V2, that means it must not change when LP tokens are deposited or withdrawn; and it must not change due to trading, except insofar as it increases due to the protocol's fees. Deposit and withdrawal change all of `x`, `y`, and `L`, but in a lawful way: `x * y / (L * L)` is invariant even when the LP supply is changed due deposits or withdrawals. If there were zero fees, the same expression would be invariant during trading; with fees, `x * y` only increases, and so `x * y / (L * L)` only increases. However, this expression has bizarre units. However, this expression cannot possibly be a rate "per LP token", it's a rate per square of the LP token. Taking the square root gives us a rate per token of `sqrt(x * y) / L`.
 
 [^comment]: tbh it's be a _good idea_ to walk through the algebra here, I'm just ... very busy right now!
 
@@ -220,16 +221,24 @@ And even then, it would be somewhat dangerous for an RToken designer to use this
 
 ## Important Properties for Collateral Plugins
 
-### Reuse of Collateral Plugins 
+### Reuse of Collateral Plugins
 
 Collateral plugins should be safe to reuse by many different Reserve Protocol instances. So:
 
 - Collateral plugins should neither require governance nor give special permissions to any particular accounts.
 - Collateral plugins should not pull information from an RToken instance that they expect to use them directly. (There is already an RToken Asset that uses price information from the protocol directly; but it must not be extended for use as Collateral in its own basket!)
 
+### Token balances must be transferrable
+
+Collateral tokens must be tokens in the formal sense. That is: they must provide balances to holders, and these balances must be transferrable.
+
+Some tokens may not be transferrable. Worse still, some positions in defi are not tokenized to begin with: take for example DSR-locked DAI or Convex's boosted staking positions. In these cases tokenization can be achieved by wrapping the position. In this kind of setup the wrapping contract issues tokens that correspond to pro-rata shares of the overall defi position, which it maintains under the hood in relation with the defi protocol.
+
+Here are some examples of what this looks like in Convex's case [here](https://github.com/convex-eth/platform/tree/main/contracts/contracts/wrappers).
+
 ### Token balances cannot be rebasing
 
-Some defi protocols yield returns by increasing the token balances of users, called _rebasing_. For instance, ATokens from Aave and stETH from Lido are both rebasing tokens. While people often like this, smart contracts certainly do not. 
+Some defi protocols yield returns by increasing the token balances of users, called _rebasing_. For instance, ATokens from Aave and stETH from Lido are both rebasing tokens. While people often like this, smart contracts certainly do not.
 
 The Reserve Protocol cannot directly hold rebasing tokens. However, the protocol can indirectly hold a rebasing token, if it's wrapped by another token that does not itself rebase, but instead appreciates only through exchange-rate increases. Any rebasing token can be wrapped to be turned into an appreciating exchange-rate token, and vice versa.
 
@@ -351,7 +360,7 @@ The collateral should also be immediately set to `DISABLED` if `refPerTok()` has
 
 A Collateral plugin may become `DISABLED` for other reasons as well. For instance, if an ERC20 represents a bridged asset, the Collateral should monitor the exchange rate to the canonical asset for deviations. A sustained period of deviation, or simply stale oracle data, should result in the collateral becoming `DISABLED`.
 
-As long as it observes such a price irregularity, the Collateral's `status()`  should return `IFFY`. It is up to the collateral how long the `IFFY` period lasts before the collateral becomes `DISABLED`, but it is critical that this period is finite and relatively short; this duration should probably be an argument in the plugin's constructor.
+As long as it observes such a price irregularity, the Collateral's `status()` should return `IFFY`. It is up to the collateral how long the `IFFY` period lasts before the collateral becomes `DISABLED`, but it is critical that this period is finite and relatively short; this duration should probably be an argument in the plugin's constructor.
 
 Lastly, once a collateral becomes `DISABLED`, it must remain `DISABLED`.
 
@@ -408,6 +417,6 @@ For a collateral plugin that uses a novel target unit, get the targetName with `
 
 ## Practical Advice from Previous Work
 
-In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/AbstractCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin. 
+In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/AbstractCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.
