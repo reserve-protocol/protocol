@@ -79,81 +79,80 @@ contract FacadeAct is IFacadeAct {
                         );
                     }
                 }
-            } else if (cache.bh.status() != CollateralStatus.DISABLED) {
-                // Only trade if basket is sound
-                if (!cache.bh.fullyCollateralized()) {
-                    // backingManager.manageTokens([]);
-                    return (
-                        address(cache.bm),
-                        abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
-                    );
-                } else {
-                    // collateralized
+            } else if (
+                cache.bh.status() != CollateralStatus.DISABLED && !cache.bh.fullyCollateralized()
+            ) {
+                // backingManager.manageTokens([]);
+                return (
+                    address(cache.bm),
+                    abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
+                );
+            } else {
+                // collateralized
 
-                    RevenueTotals memory revTotals = main.distributor().totals();
+                RevenueTotals memory revTotals = main.distributor().totals();
 
-                    // check revenue traders
-                    for (uint256 i = 0; i < erc20s.length; i++) {
-                        // rTokenTrader: if there's a trade to settle
-                        ITrade trade = cache.rTokenTrader.trades(erc20s[i]);
-                        if (address(trade) != address(0) && trade.canSettle()) {
-                            // cache.rTokenTrader.settleTrade(...)
+                // check revenue traders
+                for (uint256 i = 0; i < erc20s.length; i++) {
+                    // rTokenTrader: if there's a trade to settle
+                    ITrade trade = cache.rTokenTrader.trades(erc20s[i]);
+                    if (address(trade) != address(0) && trade.canSettle()) {
+                        // cache.rTokenTrader.settleTrade(...)
+                        return (
+                            address(cache.rTokenTrader),
+                            abi.encodeWithSelector(
+                                cache.rTokenTrader.settleTrade.selector,
+                                erc20s[i]
+                            )
+                        );
+                    }
+
+                    // rsrTrader: if there's a trade to settle
+                    trade = cache.rsrTrader.trades(erc20s[i]);
+                    if (address(trade) != address(0) && trade.canSettle()) {
+                        // cache.rsrTrader.settleTrade(...)
+                        return (
+                            address(cache.rsrTrader),
+                            abi.encodeWithSelector(cache.rsrTrader.settleTrade.selector, erc20s[i])
+                        );
+                    }
+
+                    // rTokenTrader: check if we can start any trades
+                    if (revTotals.rTokenTotal > 0) {
+                        uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
+                        cache.rTokenTrader.manageToken(erc20s[i]);
+                        if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                            // A trade started; do cache.rTokenTrader.manageToken
                             return (
                                 address(cache.rTokenTrader),
                                 abi.encodeWithSelector(
-                                    cache.rTokenTrader.settleTrade.selector,
+                                    cache.rTokenTrader.manageToken.selector,
                                     erc20s[i]
                                 )
                             );
-                        }
-
-                        // rsrTrader: if there's a trade to settle
-                        trade = cache.rsrTrader.trades(erc20s[i]);
-                        if (address(trade) != address(0) && trade.canSettle()) {
-                            // cache.rsrTrader.settleTrade(...)
-                            return (
-                                address(cache.rsrTrader),
-                                abi.encodeWithSelector(
-                                    cache.rsrTrader.settleTrade.selector,
-                                    erc20s[i]
-                                )
-                            );
-                        }
-
-                        // rTokenTrader: check if we can start any trades
-                        if (revTotals.rTokenTotal > 0) {
-                            uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                            cache.rTokenTrader.manageToken(erc20s[i]);
-                            if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
-                                // A trade started; do cache.rTokenTrader.manageToken
-                                return (
-                                    address(cache.rTokenTrader),
-                                    abi.encodeWithSelector(
-                                        cache.rTokenTrader.manageToken.selector,
-                                        erc20s[i]
-                                    )
-                                );
-                            }
-                        }
-
-                        if (revTotals.rsrTotal > 0) {
-                            // rsrTrader: check if we can start any trades
-                            uint48 tradesOpen = cache.rsrTrader.tradesOpen();
-                            cache.rsrTrader.manageToken(erc20s[i]);
-                            if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
-                                // A trade started; do cache.rsrTrader.manageToken
-                                return (
-                                    address(cache.rsrTrader),
-                                    abi.encodeWithSelector(
-                                        cache.rsrTrader.manageToken.selector,
-                                        erc20s[i]
-                                    )
-                                );
-                            }
                         }
                     }
 
-                    // maybe revenue needs to be forwarded from backingManager
+                    if (revTotals.rsrTotal > 0) {
+                        // rsrTrader: check if we can start any trades
+                        uint48 tradesOpen = cache.rsrTrader.tradesOpen();
+                        cache.rsrTrader.manageToken(erc20s[i]);
+                        if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
+                            // A trade started; do cache.rsrTrader.manageToken
+                            return (
+                                address(cache.rsrTrader),
+                                abi.encodeWithSelector(
+                                    cache.rsrTrader.manageToken.selector,
+                                    erc20s[i]
+                                )
+                            );
+                        }
+                    }
+                }
+
+                // maybe revenue needs to be forwarded from backingManager
+                // only perform if basket is not disabled
+                if (cache.bh.status() != CollateralStatus.DISABLED) {
                     cache.bm.manageTokens(erc20s);
 
                     // if this unblocked an auction in either revenue trader,
