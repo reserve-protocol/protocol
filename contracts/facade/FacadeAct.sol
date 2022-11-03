@@ -39,6 +39,8 @@ contract FacadeAct is IFacadeAct {
     /// @dev This function begins reverting due to blocksize constraints at ~400 registered assets
     /// @custom:static-call
     function getActCalldata(RTokenP1 rToken) external returns (address, bytes memory) {
+        // solhint-disable no-empty-blocks
+
         IMain main = rToken.main();
         Cache memory cache = Cache({
             reg: main.assetRegistry(),
@@ -52,9 +54,11 @@ contract FacadeAct is IFacadeAct {
         });
         IERC20[] memory erc20s = cache.reg.erc20s();
 
+        // Refresh assets
+        cache.reg.refresh();
+
         // tend to the basket and auctions
         {
-            address[] memory empty = new address[](0);
             // first priority: keep the basket fresh
             if (cache.bh.status() == CollateralStatus.DISABLED) {
                 cache.bh.refreshBasket();
@@ -62,7 +66,7 @@ contract FacadeAct is IFacadeAct {
                     // cache.bh.refreshBasket();
                     return (
                         address(cache.bh),
-                        abi.encodeWithSelector(cache.bh.refreshBasket.selector, empty)
+                        abi.encodeWithSelector(cache.bh.refreshBasket.selector)
                     );
                 }
             }
@@ -72,55 +76,69 @@ contract FacadeAct is IFacadeAct {
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     ITrade trade = cache.bm.trades(erc20s[i]);
                     if (address(trade) != address(0) && trade.canSettle()) {
-                        // cache.bm.settleTrade(...)
-                        return (
-                            address(cache.bm),
-                            abi.encodeWithSelector(cache.bm.settleTrade.selector, erc20s[i])
-                        );
+                        // try: cache.rTokenTrader.settleTrade(erc20s[i])
+
+                        try cache.bm.settleTrade(erc20s[i]) {
+                            // if succeeded
+                            return (
+                                address(cache.bm),
+                                abi.encodeWithSelector(cache.bm.settleTrade.selector, erc20s[i])
+                            );
+                        } catch {}
                     }
                 }
             } else if (
-                cache.bh.status() != CollateralStatus.DISABLED && !cache.bh.fullyCollateralized()
+                cache.bh.status() == CollateralStatus.SOUND && !cache.bh.fullyCollateralized()
             ) {
-                // backingManager.manageTokens([]);
-                return (
-                    address(cache.bm),
-                    abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
-                );
-            } else {
-                // collateralized
+                // try: backingManager.manageTokens([])
 
-                RevenueTotals memory revTotals = main.distributor().totals();
+                IERC20[] memory empty = new IERC20[](0);
+                try cache.bm.manageTokens(empty) {
+                    return (
+                        address(cache.bm),
+                        abi.encodeWithSelector(cache.bm.manageTokens.selector, empty)
+                    );
+                } catch {}
+            } else {
+                // status() != SOUND || basketHandler.fullyCollateralized
 
                 // check revenue traders
                 for (uint256 i = 0; i < erc20s.length; i++) {
                     // rTokenTrader: if there's a trade to settle
                     ITrade trade = cache.rTokenTrader.trades(erc20s[i]);
                     if (address(trade) != address(0) && trade.canSettle()) {
-                        // cache.rTokenTrader.settleTrade(...)
-                        return (
-                            address(cache.rTokenTrader),
-                            abi.encodeWithSelector(
-                                cache.rTokenTrader.settleTrade.selector,
-                                erc20s[i]
-                            )
-                        );
+                        // try: cache.rTokenTrader.settleTrade(erc20s[i])
+
+                        try cache.rTokenTrader.settleTrade(erc20s[i]) {
+                            return (
+                                address(cache.rTokenTrader),
+                                abi.encodeWithSelector(
+                                    cache.rTokenTrader.settleTrade.selector,
+                                    erc20s[i]
+                                )
+                            );
+                        } catch {}
                     }
 
                     // rsrTrader: if there's a trade to settle
                     trade = cache.rsrTrader.trades(erc20s[i]);
                     if (address(trade) != address(0) && trade.canSettle()) {
-                        // cache.rsrTrader.settleTrade(...)
-                        return (
-                            address(cache.rsrTrader),
-                            abi.encodeWithSelector(cache.rsrTrader.settleTrade.selector, erc20s[i])
-                        );
+                        // try: cache.rTokenTrader.settleTrade(erc20s[i])
+
+                        try cache.rsrTrader.settleTrade(erc20s[i]) {
+                            return (
+                                address(cache.rsrTrader),
+                                abi.encodeWithSelector(
+                                    cache.rsrTrader.settleTrade.selector,
+                                    erc20s[i]
+                                )
+                            );
+                        } catch {}
                     }
 
                     // rTokenTrader: check if we can start any trades
-                    if (revTotals.rTokenTotal > 0) {
-                        uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                        cache.rTokenTrader.manageToken(erc20s[i]);
+                    uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
+                    try cache.rTokenTrader.manageToken(erc20s[i]) {
                         if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rTokenTrader.manageToken
                             return (
@@ -131,12 +149,11 @@ contract FacadeAct is IFacadeAct {
                                 )
                             );
                         }
-                    }
+                    } catch {}
 
-                    if (revTotals.rsrTotal > 0) {
-                        // rsrTrader: check if we can start any trades
-                        uint48 tradesOpen = cache.rsrTrader.tradesOpen();
-                        cache.rsrTrader.manageToken(erc20s[i]);
+                    // rsrTrader: check if we can start any trades
+                    tradesOpen = cache.rsrTrader.tradesOpen();
+                    try cache.rsrTrader.manageToken(erc20s[i]) {
                         if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
                             // A trade started; do cache.rsrTrader.manageToken
                             return (
@@ -147,61 +164,111 @@ contract FacadeAct is IFacadeAct {
                                 )
                             );
                         }
-                    }
+                    } catch {}
                 }
 
                 // maybe revenue needs to be forwarded from backingManager
-                // only perform if basket is not disabled
-                if (cache.bh.status() != CollateralStatus.DISABLED) {
-                    cache.bm.manageTokens(erc20s);
+                // only perform if basket is SOUND
+                if (cache.bh.status() == CollateralStatus.SOUND) {
+                    try cache.bm.manageTokens(erc20s) {
+                        // if this unblocked an auction in either revenue trader,
+                        // then prepare backingManager.manageTokens
+                        for (uint256 i = 0; i < erc20s.length; i++) {
+                            address[] memory twoERC20s = new address[](2);
 
-                    // if this unblocked an auction in either revenue trader,
-                    // then prepare backingManager.manageTokens
-                    for (uint256 i = 0; i < erc20s.length; i++) {
-                        address[] memory twoERC20s = new address[](2);
+                            // rTokenTrader
+                            {
+                                if (address(erc20s[i]) != address(rToken)) {
+                                    // rTokenTrader: check if we can start any trades
+                                    uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
+                                    try cache.rTokenTrader.manageToken(erc20s[i]) {
+                                        if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
+                                            // always forward RToken + the ERC20
+                                            twoERC20s[0] = address(rToken);
+                                            twoERC20s[1] = address(erc20s[i]);
+                                            // backingManager.manageTokens([rToken, erc20s[i])
+                                            // forward revenue onward to the revenue traders
+                                            return (
+                                                address(cache.bm),
+                                                abi.encodeWithSelector(
+                                                    cache.bm.manageTokens.selector,
+                                                    twoERC20s
+                                                )
+                                            );
+                                        }
+                                    } catch {}
+                                }
+                            }
 
-                        // rTokenTrader
-                        if (revTotals.rTokenTotal > 0 && address(erc20s[i]) != address(rToken)) {
-                            // rTokenTrader: check if we can start any trades
-                            uint48 tradesOpen = cache.rTokenTrader.tradesOpen();
-                            cache.rTokenTrader.manageToken(erc20s[i]);
-                            if (cache.rTokenTrader.tradesOpen() - tradesOpen > 0) {
-                                // always manage RToken + one other ERC20
-                                twoERC20s[0] = address(rToken);
-                                twoERC20s[1] = address(erc20s[i]);
-                                // backingManager.manageTokens([rToken, erc20s[i])
-                                // forward revenue onward to the revenue traders
-                                return (
-                                    address(cache.bm),
-                                    abi.encodeWithSelector(
-                                        cache.bm.manageTokens.selector,
-                                        twoERC20s
-                                    )
-                                );
+                            // rsrTrader
+                            {
+                                if (erc20s[i] != cache.rsr) {
+                                    // rsrTrader: check if we can start any trades
+                                    uint48 tradesOpen = cache.rsrTrader.tradesOpen();
+                                    try cache.rsrTrader.manageToken(erc20s[i]) {
+                                        if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
+                                            // always forward RSR + the ERC20
+                                            twoERC20s[0] = address(cache.rsr);
+                                            twoERC20s[1] = address(erc20s[i]);
+                                            // backingManager.manageTokens(rsr, erc20s[i])
+                                            // forward revenue onward to the revenue traders
+                                            return (
+                                                address(cache.bm),
+                                                abi.encodeWithSelector(
+                                                    cache.bm.manageTokens.selector,
+                                                    twoERC20s
+                                                )
+                                            );
+                                        }
+                                    } catch {}
+                                }
                             }
                         }
 
-                        // rsrTrader
-                        if (revTotals.rsrTotal > 0 && erc20s[i] != cache.rsr) {
-                            // rsrTrader: check if we can start any trades
-                            uint48 tradesOpen = cache.rsrTrader.tradesOpen();
-                            cache.rsrTrader.manageToken(erc20s[i]);
-                            if (cache.rsrTrader.tradesOpen() - tradesOpen > 0) {
-                                // always manage RSR + one other ERC20
-                                twoERC20s[0] = address(cache.rsr);
-                                twoERC20s[1] = address(erc20s[i]);
-                                // backingManager.manageTokens(rsr, erc20s[i])
-                                // forward revenue onward to the revenue traders
-                                return (
-                                    address(cache.bm),
-                                    abi.encodeWithSelector(
-                                        cache.bm.manageTokens.selector,
-                                        twoERC20s
-                                    )
-                                );
+                        // forward RToken in isolation only, if it's large enough
+                        {
+                            IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
+                            (, uint192 p) = rTokenAsset.price(true);
+                            if (
+                                rTokenAsset.bal(address(cache.rTokenTrader)) >
+                                minTradeSize(cache.rTokenTrader.minTradeVolume(), p)
+                            ) {
+                                try cache.rTokenTrader.manageToken(IERC20(address(rToken))) {
+                                    address[] memory oneERC20 = new address[](1);
+                                    oneERC20[0] = address(rToken);
+                                    return (
+                                        address(cache.bm),
+                                        abi.encodeWithSelector(
+                                            cache.bm.manageTokens.selector,
+                                            oneERC20
+                                        )
+                                    );
+                                } catch {}
                             }
                         }
-                    }
+
+                        // forward RSR in isolation only, if it's large enough
+                        {
+                            IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
+                            (, uint192 p) = rsrAsset.price(true);
+                            if (
+                                rsrAsset.bal(address(cache.rsrTrader)) >
+                                minTradeSize(cache.rsrTrader.minTradeVolume(), p)
+                            ) {
+                                try cache.rsrTrader.manageToken(IERC20(address(cache.rsr))) {
+                                    address[] memory oneERC20 = new address[](1);
+                                    oneERC20[0] = address(cache.rsr);
+                                    return (
+                                        address(cache.bm),
+                                        abi.encodeWithSelector(
+                                            cache.bm.manageTokens.selector,
+                                            oneERC20
+                                        )
+                                    );
+                                } catch {}
+                            }
+                        }
+                    } catch {}
                 }
             }
         }
@@ -210,24 +277,26 @@ contract FacadeAct is IFacadeAct {
         {
             FurnaceP1 furnace = FurnaceP1(address(main.furnace()));
             uint48 lastPayout = furnace.lastPayout();
-            furnace.melt();
-            if (furnace.lastPayout() != lastPayout) {
-                // melt
-                return (address(furnace), abi.encodeWithSelector(furnace.melt.selector));
-            }
+            try furnace.melt() {
+                if (furnace.lastPayout() != lastPayout) {
+                    // melt
+                    return (address(furnace), abi.encodeWithSelector(furnace.melt.selector));
+                }
+            } catch {}
         }
 
         // check for a reward payout opportunity
         {
             uint48 payoutLastPaid = cache.stRSR.payoutLastPaid();
-            cache.stRSR.payoutRewards();
-            if (cache.stRSR.payoutLastPaid() != payoutLastPaid) {
-                // payoutRewards
-                return (
-                    address(cache.stRSR),
-                    abi.encodeWithSelector(cache.stRSR.payoutRewards.selector)
-                );
-            }
+            try cache.stRSR.payoutRewards() {
+                if (cache.stRSR.payoutLastPaid() != payoutLastPaid) {
+                    // payoutRewards
+                    return (
+                        address(cache.stRSR),
+                        abi.encodeWithSelector(cache.stRSR.payoutRewards.selector)
+                    );
+                }
+            } catch {}
         }
 
         // check if there are reward tokens to claim
@@ -260,29 +329,22 @@ contract FacadeAct is IFacadeAct {
                 initialBals[i] = rewardTokens[i].balanceOf(address(cache.bm));
             }
 
-            claimAndSweepRewards(rToken);
-
-            // See if reward token bals grew sufficiently
-            for (uint256 i = 0; i < numRewardTokens; ++i) {
+            try this.claimAndSweepRewards(rToken) {
+                // See if reward token bals grew sufficiently
                 uint192 minTradeVolume = cache.bm.minTradeVolume(); // {UoA}
-
-                // {tok}
-                uint192 price_ = cache.reg.toAsset(rewardTokens[i]).strictPrice();
-                uint256 minTradeSize = type(uint256).max;
-                if (price_ > 0)
-                    minTradeSize = minTradeVolume.div(price_, ROUND).shiftl_toUint(
-                        int8(IERC20Metadata(address(rewardTokens[i])).decimals())
-                    );
-
-                uint256 bal = rewardTokens[i].balanceOf(address(cache.bm));
-                if (bal - initialBals[i] > minTradeSize) {
-                    // It's large enough to trade! Return claimAndSweepRewards as next step.
-                    return (
-                        address(this),
-                        abi.encodeWithSelector(this.claimAndSweepRewards.selector, rToken)
-                    );
+                for (uint256 i = 0; i < numRewardTokens; ++i) {
+                    // {tok}
+                    (, uint192 p) = cache.reg.toAsset(rewardTokens[i]).price(true);
+                    uint256 bal = rewardTokens[i].balanceOf(address(cache.bm));
+                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
+                        // It's large enough to trade! Return claimAndSweepRewards as next step.
+                        return (
+                            address(this),
+                            abi.encodeWithSelector(this.claimAndSweepRewards.selector, rToken)
+                        );
+                    }
                 }
-            }
+            } catch {}
         }
 
         return (address(0), new bytes(0));
@@ -294,5 +356,14 @@ contract FacadeAct is IFacadeAct {
         main.backingManager().claimAndSweepRewards();
         main.rTokenTrader().claimAndSweepRewards();
         main.rsrTrader().claimAndSweepRewards();
+    }
+
+    /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price
+    /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
+    /// @return {tok} The min trade size for the asset in whole tokens
+    function minTradeSize(uint192 minTradeVolume, uint192 price) private pure returns (uint192) {
+        // {tok} = {UoA} / {UoA/tok}
+        uint192 size = price == 0 ? FIX_MAX : minTradeVolume.div(price, ROUND);
+        return size > 0 ? size : 1;
     }
 }
