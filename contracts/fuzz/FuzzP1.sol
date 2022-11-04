@@ -201,9 +201,7 @@ contract DistributorP1Fuzz is DistributorP1 {
         for (uint256 i = 0; i < n; ++i) {
             RevenueShare storage share = distribution[destinations.at(i)];
             if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
-
-            // TODO: Uncomment once IFF is implemented for if distribution[dest] != (0,0) then dest in destinations
-            // if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
+            if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
         }
         return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp;
     }
