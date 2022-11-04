@@ -89,15 +89,9 @@ contract DiffTestScenario {
                     new CollateralMock(
                         IERC20Metadata(address(token)),
                         reward,
-<<<<<<< HEAD
                         tradingRange,
                         5e16, // defaultThreshold
                         86400, // delayUntilDefault
-=======
-                        maxTradeVolume,
-                        0,
-                        0,
->>>>>>> fuzz
                         IERC20Metadata(address(0)),
                         bytes32("USD"),
                         growing,
