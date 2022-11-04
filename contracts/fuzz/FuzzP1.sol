@@ -289,7 +289,7 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
         IssueQueue storage queue = issueQueues[issuer];
         if (queue.left < queue.right) {
             assert(queue.basketNonce == bh.nonce());
-            (address[] memory erc20s, ) = bh.quote(1e18, RoundingMode.CEIL); // simply interested in tokens
+            (address[] memory erc20s, ) = bh.quote(1e18, RoundingMode.CEIL); // interested in tokens
             assert(erc20s.length == queue.tokens.length);
             for (uint256 i = 0; i < erc20s.length; i++) {
                 assert(erc20s[i] == queue.tokens[i]);
