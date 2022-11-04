@@ -24,7 +24,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
     uint256 public rewardAmount;
 
     uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
@@ -36,7 +35,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         // Collateral base-class arguments
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         IERC20Metadata, //referenceERC20_,
@@ -59,7 +58,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
             maxTradeVolume_,
             1, // stub out oracleTimeout
             targetName_,
-            24 * 60 * 60 // delayUntilDefault: 24 hours
+            delayUntilDefault_
         )
     {
         rewardAmount = 1e18;
@@ -69,7 +68,7 @@ contract CollateralMock is OracleErrorMock, Collateral {
         deviationModel = deviationModel_;
 
         defaultThreshold = defaultThreshold_;
-      
+
         prevReferencePrice = refPerTok();
 
         // Store peg value
@@ -115,41 +114,34 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
     function refresh() public override {
         // == Refresh ==
-        if (whenDefault <= block.timestamp) return;
-
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
 
+        // Check for hard default
         if (referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else {
             uint192 p = targetPerRef();
 
-            priceable = p > 0;
-
-            // Check for soft default. If not pegged, default eventually
-            uint192 delta = (initialPeg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
-            if (p < initialPeg - delta || p > initialPeg + delta) {
-                whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-            } else whenDefault = NEVER;
+            // Check if priceable
+            if (p > 0) {
+                // Check for soft default. If not pegged, default eventually
+                uint192 delta = (initialPeg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+                if (p < initialPeg - delta || p > initialPeg + delta) {
+                    markStatus(CollateralStatus.IFFY);
+                } else markStatus(CollateralStatus.SOUND);
+            } else {
+                markStatus(CollateralStatus.IFFY);
+            }
         }
         prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
-    function status() public view override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
         }
     }
 

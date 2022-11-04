@@ -83,7 +83,7 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         AssetRegistryP1Fuzz reg = AssetRegistryP1Fuzz(address(main.assetRegistry()));
 
         // if basket.erc20s is empty then disabled == true
-        bool disabledIfEmptyProp = basket.erc20s.length > 0 || basket.disabled;
+        bool disabledIfEmptyProp = basket.erc20s.length > 0 || disabled;
 
         // Basket Config
         bool validConfigBasket = true;

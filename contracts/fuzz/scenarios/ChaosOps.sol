@@ -66,7 +66,7 @@ contract ChaosOpsScenario {
 
         main.initFuzz(defaultParams(), new MarketMock(main, SettlingMode.Random));
 
-        TradingRange memory tradingRange = defaultParams().rTokenTradingRange;
+        uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
         // Process each target name - Create collaterals and reward assets
         for (uint256 i = 0; i < 3; i++) {
@@ -90,7 +90,7 @@ contract ChaosOpsScenario {
                 new AssetMock(
                     IERC20Metadata(address(reward)),
                     IERC20Metadata(address(0)), // no recursive reward
-                    tradingRange,
+                    maxTradeVolume,
                     volatile
                 )
             );
@@ -100,7 +100,7 @@ contract ChaosOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     reward,
-                    tradingRange,
+                    maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
@@ -131,7 +131,7 @@ contract ChaosOpsScenario {
                 new AssetMock(
                     IERC20Metadata(address(reward)),
                     IERC20Metadata(address(0)), // no recursive reward
-                    tradingRange,
+                    maxTradeVolume,
                     volatile
                 )
             );
@@ -141,7 +141,7 @@ contract ChaosOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     reward,
-                    tradingRange,
+                    maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
@@ -166,7 +166,7 @@ contract ChaosOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     IERC20Metadata(address(0)),
-                    tradingRange,
+                    maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
@@ -192,7 +192,7 @@ contract ChaosOpsScenario {
                     new CollateralMock(
                         IERC20Metadata(address(token)),
                         IERC20Metadata(address(0)), // no reward
-                        tradingRange,
+                        maxTradeVolume,
                         5e16, // defaultThreshold
                         86400, // delayUntilDefault
                         IERC20Metadata(address(0)),
@@ -373,7 +373,7 @@ contract ChaosOpsScenario {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
                 IERC20Metadata(address(0)), // no recursive reward
-                defaultParams().rTokenTradingRange,
+                defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             );
             reg.register(newAsset);
@@ -421,7 +421,7 @@ contract ChaosOpsScenario {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
                 IERC20Metadata(address(0)), // no recursive reward
-                defaultParams().rTokenTradingRange,
+                defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             );
             reg.swapRegistered(newAsset);
@@ -962,7 +962,7 @@ contract ChaosOpsScenario {
             new AssetMock(
                 IERC20Metadata(address(reward)),
                 IERC20Metadata(address(0)), // no recursive reward
-                defaultParams().rTokenTradingRange,
+                defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             )
         );
@@ -979,7 +979,7 @@ contract ChaosOpsScenario {
         CollateralMock newColl = new CollateralMock(
             IERC20Metadata(address(erc20)),
             IERC20Metadata(address(reward)),
-            defaultParams().rTokenTradingRange,
+            defaultParams().rTokenMaxTradeVolume,
             uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
             between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
             IERC20Metadata(address(0)),
@@ -1003,7 +1003,7 @@ contract ChaosOpsScenario {
         CollateralMock newColl = new CollateralMock(
             IERC20Metadata(address(erc20)),
             IERC20Metadata(address(reward)),
-            defaultParams().rTokenTradingRange,
+            defaultParams().rTokenMaxTradeVolume,
             uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
             between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
             IERC20Metadata(address(0)),

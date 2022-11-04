@@ -81,7 +81,7 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     reward,
-                    tradingRange,
+                    maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
@@ -105,7 +105,7 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     IERC20Metadata(address(0)), // no reward
-                    tradingRange,
+                    maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
