@@ -154,7 +154,7 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         constAddrs.push(address(1));
         constAddrs.push(address(2));
 
-        deployedAt = uint24(block.timestamp);
+        deployedAt = uint48(block.timestamp);
     }
 
     // Initialize self and components
