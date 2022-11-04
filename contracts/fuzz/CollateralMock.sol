@@ -1,9 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
-
 import "contracts/interfaces/IAsset.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/fuzz/Utils.sol";
