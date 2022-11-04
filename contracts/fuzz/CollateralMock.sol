@@ -28,8 +28,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
-
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     uint192 public initialPeg; // peg value (for default detection)
