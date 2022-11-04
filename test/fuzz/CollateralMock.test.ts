@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { fp } from '../../common/numbers'
-import { CollateralStatus } from '../../common/constants'
+import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 import { PriceModelKind, PriceModel, addr } from './common'
 import * as sc from '../../typechain' // All smart contract types
@@ -76,7 +76,7 @@ describe('CollateralMock', () => {
 
   it('should default collateral - hard default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.price()).equal(fp(1))
+    expect(await coll.strictPrice()).equal(fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
     expect(await coll.pricePerTarget()).equal(fp(1))
@@ -89,7 +89,7 @@ describe('CollateralMock', () => {
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
 
-    expect(await coll.price()).equal(fp(0.5))
+    expect(await coll.strictPrice()).equal(fp(0.5))
     expect(await coll.refPerTok()).equal(fp(0.5))
     expect(await coll.targetPerRef()).equal(fp(1))
     expect(await coll.pricePerTarget()).equal(fp(1))
@@ -97,7 +97,7 @@ describe('CollateralMock', () => {
 
   it('should default collateral - soft default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.price()).equal(fp(1))
+    expect(await coll.strictPrice()).equal(fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
     expect(await coll.pricePerTarget()).equal(fp(1))
@@ -115,7 +115,7 @@ describe('CollateralMock', () => {
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.IFFY)
 
-    expect(await coll.price()).equal(fp(0.8))
+    expect(await coll.strictPrice()).equal(fp(0.8))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(0.8))
     expect(await coll.pricePerTarget()).equal(fp(1))
@@ -125,7 +125,7 @@ describe('CollateralMock', () => {
     expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
 
     // Check final values
-    expect(await coll.price()).equal(fp(0.8))
+    expect(await coll.strictPrice()).equal(fp(0.8))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(0.8))
     expect(await coll.pricePerTarget()).equal(fp(1))

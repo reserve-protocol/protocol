@@ -540,10 +540,10 @@ describe('The Chaos Operations scenario', () => {
 
         // update the price twice, saving the price
         await scenario.updatePrice(i, 0, 0, 0, 0)
-        const p0 = await asset.price()
+        const p0 = await asset.strictPrice()
 
         await scenario.updatePrice(i, exa, exa, exa, exa)
-        const p1 = await asset.price()
+        const p1 = await asset.strictPrice()
 
         // if not all price models are constant, then prices p0 and p1 should be different
         if (await asset.isCollateral()) {
@@ -891,7 +891,7 @@ describe('The Chaos Operations scenario', () => {
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA2'))
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
-      expect(await newColl.price()).equal(fp(1))
+      expect(await newColl.strictPrice()).equal(fp(1))
       expect(await newColl.refPerTok()).equal(fp(1))
       expect(await newColl.targetPerRef()).equal(fp(1))
       expect(await newColl.pricePerTarget()).equal(fp(1))
@@ -904,7 +904,7 @@ describe('The Chaos Operations scenario', () => {
       )
       expect(await rewardToken.name()).to.equal('RewardA 3')
       expect(await rewardToken.symbol()).to.equal('RA3')
-      expect(await rewardAsset.price()).to.equal(fp('1'))
+      expect(await rewardAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('can create random collateral with new token and reward', async () => {
@@ -933,7 +933,7 @@ describe('The Chaos Operations scenario', () => {
         await comp.assetRegistry.toColl(newToken.address)
       )
 
-      expect(await newRandomColl.price()).to.equal(fp(2))
+      expect(await newRandomColl.strictPrice()).to.equal(fp(2))
       expect(await newRandomColl.refPerTok()).to.equal(fp(1))
       expect(await newRandomColl.targetPerRef()).to.equal(fp(2))
       expect(await newRandomColl.pricePerTarget()).to.equal(fp(1))
@@ -946,7 +946,7 @@ describe('The Chaos Operations scenario', () => {
       )
       expect(await rewardToken.name()).to.equal('RewardA 4')
       expect(await rewardToken.symbol()).to.equal('RA4')
-      expect(await rewardAsset.price()).to.equal(fp('5'))
+      expect(await rewardAsset.strictPrice()).to.equal(fp('5'))
     })
 
     it('can set prime basket and refresh', async () => {
