@@ -11,7 +11,7 @@ import {
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
-  Facade,
+  FacadeRead,
   FacadeTest,
   FiatCollateral,
   IAssetRegistry,
@@ -57,7 +57,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let stRSR: TestIStRSR
   let assetRegistry: IAssetRegistry
   let basketHandler: IBasketHandler
-  let facade: Facade
+  let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
 
@@ -125,10 +125,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: FiatCollateral = <FiatCollateral>(
       await CollateralFactory.deploy(
+        fp('1'),
         chainlinkFeed.address,
         erc20.address,
         ZERO_ADDRESS,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -164,10 +165,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
       await ATokenCollateralFactory.deploy(
+        fp('1'),
         chainlinkFeed.address,
         atoken.address,
         aaveToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -199,10 +201,11 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
+        fp('1').div(50),
         chainlinkFeed.address,
         ctoken.address,
         compToken.address,
-        config.rTokenTradingRange,
+        config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         DEFAULT_THRESHOLD,
@@ -274,10 +277,13 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(backing.length).to.equal(maxBasketSize)
 
       // Check other values
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -361,7 +367,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-      // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+      // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
       const firstDefaultedToken = await ethers.getContractAt('ERC20Mock', backing[1])
 
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
@@ -402,10 +408,13 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(backing.length).to.equal(maxBasketSize)
 
       // Check other values
-      expect((await basketHandler.lastSet())[0]).to.be.gt(bn(0))
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.price()).to.equal(fp('1'))
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.equal(fp('1'))
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -476,7 +485,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(newBacking.length).to.equal(maxBasketSize - tokensToDefault)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
-      // Running auctions will trigger recapitalization - All balance of invalid tokens will be redeemed
+      // Running auctions will trigger recollateralization - All balance of invalid tokens will be redeemed
       const firstDefaultedToken = await ethers.getContractAt(
         'ERC20Mock',
         backing[maxBasketSize - tokensToDefault]

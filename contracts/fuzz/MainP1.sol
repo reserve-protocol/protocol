@@ -202,22 +202,28 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
             this,
             params.tradingDelay,
             params.backingBuffer,
-            params.maxTradeSlippage
+            params.maxTradeSlippage,
+            params.minTradeVolume
         );
 
         basketHandler.init(this);
-        rsrTrader.init(this, rsr, params.maxTradeSlippage);
-        rTokenTrader.init(this, IERC20(address(rToken)), params.maxTradeSlippage);
+        rsrTrader.init(this, rsr, params.maxTradeSlippage, params.minTradeVolume);
+        rTokenTrader.init(
+            this,
+            IERC20(address(rToken)),
+            params.maxTradeSlippage,
+            params.minTradeVolume
+        );
 
         // Init Asset Registry, with default assets for all tokens
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             IERC20Metadata(address(0)),
-            params.rTokenTradingRange,
+            params.minTradeVolume,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
-        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.rTokenTradingRange);
+        assets[1] = new RTokenAsset(IRToken(address(rToken)), params.minTradeVolume);
         assetRegistry.init(this, assets);
 
         // Init Distributor

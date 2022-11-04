@@ -45,27 +45,39 @@ const networkConfig = {
 
 ## Deployment Overview
 
-The deployment process consists of two steps:
+The deployment process consists of three high-level commands:
 
 1. Deploy everything:
 
 ```
-hardhat run scripts/deploy_all.ts --network {NETWORK}
+hardhat run scripts/deploy.ts --network {NETWORK}
+OR
+yarn deploy --network {NETWORK}
 ```
 
-If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy_all.ts` in order to pick up execution at another point.
+If anything _does_ go wrong, the easiest thing to do is comment out the sub-scripts in `deploy.ts` in order to pick up execution at another point.
 
-2. Verify everything:
+2. Confirm the deployment:
 
 ```
-hardhat run scripts/verify_all.ts --network {NETWORK}
+hardhat run scripts/confirm.ts --network {NETWORK}
+OR
+yarn confirm --network {NETWORK}
+```
+
+3. Verify everything on Etherscan:
+
+```
+hardhat run scripts/verify_etherscan.ts --network {NETWORK}
+OR
+yarn verify_etherscan --network {NETWORK}
 ```
 
 The verification scripts are smart enough to only verify those that are unverified.
 
 ### Deploy Phases
 
-Within the _deployment_ step, there are 3 phases:
+Within the _deployment_ step (step 1 from above), there are 3 phases:
 
 - **Phase 1 - Common:** Required to deploy the core components of the Reserve Protocol. This includes required Solidity libraries, the implementation contracts of each system component, and some auxiliary components as the `Facade`, `Deployer`, and `FacadeWrite` contracts. This deployment phase has to be executed only **once** for all RTokens. Scripts are located in `/scripts/deployment/phase1-common`.
 
@@ -83,7 +95,7 @@ A specific set of files will be created for that specific network after each pha
 
 ### With Mainnet forking
 
-- Before running the `deploy_all` script (or any particular script), run in a separate terminal a local forking node:
+- Before running the `deploy` script (or any particular script), run in a separate terminal a local forking node:
 
 ```bash
 FORK=true npx hardhat node
@@ -96,7 +108,6 @@ Gas costs from Goerli; excludes collateral deployments:
 - RSRAsset: 893,122
 - RewardableLib: 918,407
 - TradingLib: 2,623,625
-- RTokenPricingLib: 842,435
 - OracleLib: 448,042
 - Facade: 3,715,055
 - FacadeWriteLib: 4,235,169
@@ -119,6 +130,8 @@ Gas costs from Goerli; excludes collateral deployments:
 Total: ~66M gas
 
 ## Mainnet Deployment Instructions
+
+First, clear any stale `*-tmp-*.json` deployment files if it's important for the entire script to run in one go, such as on a Mainnet deployment.
 
 4 phases
 
@@ -165,7 +178,7 @@ To complete the environment configuration:
 Finally, run the `check_env` script in order to confirm the 3 environment variables are configured correctly.
 
 ```
-npx hardhat run scripts/check_env.ts --network mainnet
+yarn check_env --network mainnet
 ```
 
 If this passes successfully it will print the deployer address and the current ETH balance. Next:
@@ -179,13 +192,11 @@ End state: Your `.env` file is known to be good. You did all of this without scr
 
 [Screensharing ok]
 
-Open a new terminal session and from the project root run the deploy_all script:
+Open a new terminal session and from the project root run the deploy script:
 
 ```
-hardhat run scripts/deploy_all.ts --network mainnet
+yarn deploy --network mainnet
 ```
-
-It should manage itself fairly well. On Goerli the overall process fell over multiple times, but I expect this is due to Goerli having generally weaker assurances and being less well-resourced overall. If mainnet also presents issues, we can easily pick up execution at the same part in the script by commenting out the relevant lines in `scripts/deploy_all.ts`. Avoid executing the same underlying deployment script multiple times in order to save on gas.
 
 Three files should be produced as a result of this process.
 
@@ -195,25 +206,39 @@ Three files should be produced as a result of this process.
 
 End state: All three files contain populated JSON objects. There should not be any empty string entries in any of the files. All 3 files should exist.
 
-### Verify
+### Confirm
 
 [Screensharing ok]
 
 Next, run:
 
 ```
-hardhat run scripts/verify_all.ts --network mainnet
+yarn confirm --network mainnet
 ```
 
-`verify_all.ts` works a bit differently than `deploy_all.ts`; inner scripts do not need to be commented out at all because verification is smart enough to skip over contracts that have already been verified.
+This checks that:
 
-It may be that `verify_all.ts` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
+- For each asset, confirm `fallbackPrice()` and `price()` are close.
+- `main.paused()` is true
+- `timelockController.minDelay()` is > 1e12
+
+End state: All addresses are verified, the contracts are in the correct state, and it's time to verify the contracts on Etherscan.
+
+### Verify on Etherscan
+
+[Screensharing ok]
+
+Next, run:
+
+```
+yarn verify_etherscan --network mainnet
+```
+
+`verify_etherscan.ts` works a bit differently than `deploy.ts`; verification is smart enough to skip over contracts that have already been verified.
+
+It may be that `verify_etherscan` needs to be run multiple times in order to get 100% of the verifications. If an underlying script is presenting issues consistently, I found on Goerli that running it directly sometimes changed the outcome.
 
 Manual verification steps:
 
 - For each address in the output files, make sure it is verified on Etherscan.
 - Make sure the staticATokens are verified too. These are not directly in the output file. To do this you'll need to look at the ATokenCollateral plugins and read out their erc20 addresses, which will be the staticATokens.
-- Confirm `main.paused()` is true
-- Confirm `timelockController.minDelay()` is > 1e12
-
-End state: All addresses are verified, the contracts are in the correct state, and it's time to connect the Register to the new mainnet addresses!

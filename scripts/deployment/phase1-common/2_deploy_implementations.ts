@@ -111,7 +111,10 @@ async function main() {
 
   // 2. ******* Backing Manager ***********/
   const BackingMgrImplFactory = await ethers.getContractFactory('BackingManagerP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, TradingLibP1: deployments.tradingLib },
+    libraries: {
+      RewardableLibP1: deployments.rewardableLib,
+      RecollateralizationLibP1: deployments.tradingLib,
+    },
   })
   backingMgrImpl = <BackingManagerP1>await BackingMgrImplFactory.connect(burner).deploy()
   await backingMgrImpl.deployed()
@@ -173,7 +176,7 @@ async function main() {
   // 7. *********** RevenueTrader *************/
 
   const RevTraderImplFactory = await ethers.getContractFactory('RevenueTraderP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib, TradingLibP1: deployments.tradingLib },
+    libraries: { RewardableLibP1: deployments.rewardableLib },
   })
   revTraderImpl = <RevenueTraderP1>await RevTraderImplFactory.connect(burner).deploy()
   await revTraderImpl.deployed()
@@ -195,7 +198,7 @@ async function main() {
 
   // 8. *********** RToken *************/
   const RTokenImplFactory = await ethers.getContractFactory('RTokenP1', {
-    libraries: { RewardableLibP1: deployments.rewardableLib },
+    libraries: { RewardableLibP1: deployments.rewardableLib, PermitLib: deployments.permitLib },
   })
   rTokenImpl = <RTokenP1>await RTokenImplFactory.connect(burner).deploy()
   await rTokenImpl.deployed()
@@ -204,7 +207,9 @@ async function main() {
 
   // 9. *********** StRSR *************/
 
-  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes')
+  const StRSRImplFactory = await ethers.getContractFactory('StRSRP1Votes', {
+    libraries: { PermitLib: deployments.permitLib },
+  })
   stRSRImpl = <StRSRP1Votes>await StRSRImplFactory.connect(burner).deploy()
   await stRSRImpl.deployed()
 

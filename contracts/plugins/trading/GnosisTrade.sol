@@ -28,7 +28,6 @@ contract GnosisTrade is ITrade {
 
     // Upper bound for the max number of orders we're happy to have the auction clear in;
     // When we have good price information, this determines the minimum buy amount per order.
-    // TODO: choose value: https://app.asana.com/0/1202557536393044/1203043664234019/f
     uint96 public constant MAX_ORDERS = 1e5;
 
     // raw "/" for compile-time const
@@ -84,7 +83,7 @@ contract GnosisTrade is ITrade {
         address origin_,
         IGnosis gnosis_,
         uint48 auctionLength,
-        TradeRequest memory req
+        TradeRequest calldata req
     ) external stateTransition(TradeStatus.NOT_STARTED, TradeStatus.OPEN) {
         require(req.sellAmount <= type(uint96).max, "sellAmount too large");
         require(req.minBuyAmount <= type(uint96).max, "minBuyAmount too large");
@@ -111,8 +110,14 @@ contract GnosisTrade is ITrade {
         // Downsize our sell amount to adjust for fee
         // {qTok} = {qTok} * {1} / {1}
         uint96 sellAmount = uint96(
-            mulDiv256(req.sellAmount, FEE_DENOMINATOR, FEE_DENOMINATOR + gnosis.feeNumerator())
-        ); // Safe downcast; require'd < uint96.max
+            _divrnd(
+                req.sellAmount * FEE_DENOMINATOR,
+                FEE_DENOMINATOR + gnosis.feeNumerator(),
+                FLOOR
+            )
+        );
+
+        // Don't decrease minBuyAmount even if fees are in effect. The fee is part of the slippage
         uint96 minBuyAmount = uint96(Math.max(1, req.minBuyAmount)); // Safe downcast; require'd
 
         uint256 minBuyAmtPerOrder = Math.max(
@@ -125,7 +130,9 @@ contract GnosisTrade is ITrade {
 
         // == Interactions ==
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(address(gnosis), sellAmount);
+        // Set allowance (two safeApprove calls to support USDT)
+        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), 0);
+        IERC20Upgradeable(address(sell)).safeApprove(address(gnosis), initBal);
 
         auctionId = gnosis.initiateAuction(
             sell,
@@ -147,7 +154,7 @@ contract GnosisTrade is ITrade {
     // checks:
     //   state is OPEN
     //   caller is `origin`
-    //   now >= endTime (TODO: https://app.asana.com/0/1202557536393044/1202973813430872/f )
+    //   now >= endTime
     // actions:
     //   (if not already called) call gnosis.settleAuction(auctionID), which:
     //     settles the Gnosis Auction
@@ -165,11 +172,15 @@ contract GnosisTrade is ITrade {
         require(msg.sender == origin, "only origin can settle");
 
         // Optionally process settlement of the auction in Gnosis
-        if (atStageSolutionSubmission()) {
+        if (!isAuctionCleared()) {
+            // By design, we don't rely on this return value at all, just the
+            // "cleared" state of the auction, and the token balances this contract owns.
+            // slither-disable-next-line unused-return
             gnosis.settleAuction(auctionId);
+            assert(isAuctionCleared());
         }
 
-        assert(atStageFinished());
+        // At this point we know the auction has cleared
 
         // Transfer balances to origin
         uint256 sellBal = sell.balanceOf(address(this));
@@ -212,12 +223,7 @@ contract GnosisTrade is ITrade {
 
     // === Private ===
 
-    function atStageSolutionSubmission() private view returns (bool) {
-        GnosisAuctionData memory data = gnosis.auctionData(auctionId);
-        return data.auctionEndDate != 0 && data.clearingPriceOrder == bytes32(0);
-    }
-
-    function atStageFinished() private view returns (bool) {
+    function isAuctionCleared() private view returns (bool) {
         GnosisAuctionData memory data = gnosis.auctionData(auctionId);
         return data.clearingPriceOrder != bytes32(0);
     }

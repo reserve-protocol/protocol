@@ -111,11 +111,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     wBTCCollateral = await (
       await ethers.getContractFactory('NonFiatCollateral')
     ).deploy(
+      fp('20000'),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
       ZERO_ADDRESS,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,
@@ -129,11 +130,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
+      fp('20000').div(50),
       referenceUnitOracle.address,
       targetUnitOracle.address,
       cWBTC.address,
       compToken.address,
-      config.rTokenTradingRange,
+      config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
       DEFAULT_THRESHOLD,
@@ -250,7 +252,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
-      expect(await cWBTCCollateral.price()).to.equal(fp('95000').mul(3).div(2).div(50))
+      expect(await cWBTCCollateral.strictPrice()).to.equal(fp('95000').mul(3).div(2).div(50))
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {

@@ -122,7 +122,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
 
       // Take backing
       await token0.connect(owner).burn(backingManager.address, issueAmount)
@@ -420,8 +420,12 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // $0.007 RSR at $4k ETH
       const rsrPrice = bn('0.007e8')
       await setOraclePrice(await assetRegistry.toAsset(rsr.address), rsrPrice)
-      sellAmt = BigNumber.from(config.rTokenTradingRange.maxAmt) // maxes out sell size for RSR
-      buyAmt = sellAmt.mul(rsrPrice).div(bn('1e8')).mul(99).div(100)
+      // sellAmt = BigNumber.from(config.rTokenMaxTradeVolume)
+
+      // Fix backing in a single auction, since it all fits inside the $1M maxTradeVolume
+      const rsrPriceFix = rsrPrice.mul(bn('1e10'))
+      buyAmt = issueAmount.add(1)
+      sellAmt = issueAmount.mul(fp('1')).div(rsrPriceFix).mul(100).div(99).add(2)
 
       // Start next auction
       await expectEvents(backingManager.manageTokens([]), [
@@ -458,9 +462,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         },
       ])
 
-      // Check state - Should be undercapitalized
+      // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      expect(await basketHandler.fullyCollateralized()).to.equal(false)
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
       expect(await token0.balanceOf(backingManager.address)).to.equal(bidAmt)
       expect(await token0.balanceOf(easyAuction.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
@@ -535,7 +539,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
@@ -614,6 +618,89 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
           emitted: true,
         },
       ])
+    })
+
+    it('should handle fees in EasyAuction correctly', async () => {
+      const chainId = await getChainId(hre)
+      const easyAuctionOwner = networkConfig[chainId].EASY_AUCTION_OWNER || ''
+
+      // No fees yet transferred to Easy auction owner
+      expect(await token0.balanceOf(easyAuctionOwner)).to.equal(0)
+
+      // Set fees in easy auction to 1%
+      await whileImpersonating(easyAuctionOwner, async (auctionOwner) => {
+        await easyAuction.connect(auctionOwner).setFeeParameters(10, easyAuctionOwner)
+      })
+
+      // Calculate values
+      const feeDenominator = await easyAuction.FEE_DENOMINATOR()
+      const feeNumerator = await easyAuction.feeNumerator()
+      const actualSellAmount = issueAmount.mul(feeDenominator).div(feeDenominator.add(feeNumerator))
+      const feeAmt = issueAmount.sub(actualSellAmount)
+
+      // Default collateral0
+      await setOraclePrice(collateral0.address, bn('0.5e8')) // depeg
+      await collateral0.refresh()
+      await advanceTime((await collateral0.delayUntilDefault()).toString())
+      await basketHandler.refreshBasket()
+
+      // Should launch auction for token1
+      await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')
+
+      const auctionTimestamp: number = await getLatestBlockTimestamp()
+      const auctionId = await getAuctionId(backingManager, token0.address)
+
+      // Check auction opened even at minBuyAmount = 0
+      await expectTrade(backingManager, {
+        sell: token0.address,
+        buy: token1.address,
+        endTime: auctionTimestamp + Number(config.auctionLength),
+        externalId: auctionId,
+      })
+      const trade = await getTrade(backingManager, token0.address)
+      expect(await trade.status()).to.equal(1) // TradeStatus.OPEN
+
+      // Check state
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await basketHandler.fullyCollateralized()).to.equal(false)
+      expect(await token0.balanceOf(backingManager.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(issueAmount)
+
+      // Check Gnosis
+      expect(await token0.balanceOf(easyAuction.address)).to.be.closeTo(issueAmount, 1)
+      await expect(backingManager.manageTokens([])).to.not.emit(backingManager, 'TradeStarted')
+
+      // Auction should not be able to be settled
+      await expect(easyAuction.settleAuction(auctionId)).to.be.reverted
+
+      await token1.connect(addr1).approve(easyAuction.address, issueAmount)
+
+      // Bid order
+      const bidAmt = issueAmount
+      await easyAuction
+        .connect(addr1)
+        .placeSellOrders(
+          auctionId,
+          [issueAmount],
+          [bidAmt],
+          [QUEUE_START],
+          ethers.constants.HashZero
+        )
+
+      // Advance time till auction ended
+      await advanceTime(config.auctionLength.add(100).toString())
+
+      // End current auction
+      await expectEvents(backingManager.settleTrade(token0.address), [
+        {
+          contract: backingManager,
+          name: 'TradeSettled',
+          args: [anyValue, token0.address, token1.address, issueAmount.sub(1), actualSellAmount], // Account for rounding
+          emitted: true,
+        },
+      ])
+
+      expect(await token0.balanceOf(easyAuctionOwner)).to.be.closeTo(feeAmt, 1) // account for rounding
     })
   })
 })

@@ -3,25 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
+import "contracts/plugins/assets/ICToken.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-// ==== External Interfaces ====
-// See: https://github.com/compound-finance/compound-protocol/blob/master/contracts/CToken.sol
-interface ICToken {
-    /// @dev From Compound Docs:
-    /// The current (up to date) exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    function exchangeRateCurrent() external returns (uint256);
-
-    /// @dev From Compound Docs: The stored exchange rate, with 18 - 8 + UnderlyingAsset.Decimals.
-    function exchangeRateStored() external view returns (uint256);
-}
-
 /**
  * @title CTokenNonFiatCollateral
- * @notice Collateral plugin for a cToken of a nonfiat collateral that requires default checks
- * For example:
- *   - cWBTC
+ * @notice Collateral plugin for a cToken of nonfiat collateral that requires default checks,
+ * like cWBTC. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract CTokenNonFiatCollateral is Collateral {
     using FixLib for uint192;
@@ -30,17 +19,7 @@ contract CTokenNonFiatCollateral is Collateral {
 
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
 
-    // Default Status:
-    // whenDefault == NEVER: no risk of default (initial value)
-    // whenDefault > block.timestamp: delayed default may occur as soon as block.timestamp.
-    //                In this case, the asset may recover, reachiving whenDefault == NEVER.
-    // whenDefault <= block.timestamp: default has already happened (permanently)
-    uint256 internal constant NEVER = type(uint256).max;
-    uint256 public whenDefault = NEVER;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
@@ -49,16 +28,17 @@ contract CTokenNonFiatCollateral is Collateral {
 
     /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
     /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
-    /// @param tradingRange_ {tok} The min and max of the trading range for this asset
+    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
+        uint192 fallbackPrice_,
         AggregatorV3Interface refUnitChainlinkFeed_,
         AggregatorV3Interface targetUnitUSDChainlinkFeed_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
@@ -67,16 +47,17 @@ contract CTokenNonFiatCollateral is Collateral {
         address comptrollerAddr_
     )
         Collateral(
+            fallbackPrice_,
             refUnitChainlinkFeed_,
             erc20_,
             rewardERC20_,
-            tradingRange_,
+            maxTradeVolume_,
             oracleTimeout_,
-            targetName_
+            targetName_,
+            delayUntilDefault_
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(
             address(targetUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
@@ -85,7 +66,6 @@ contract CTokenNonFiatCollateral is Collateral {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
-        delayUntilDefault = delayUntilDefault_;
         targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
@@ -93,7 +73,7 @@ contract CTokenNonFiatCollateral is Collateral {
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price() public view virtual override returns (uint192) {
+    function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return
             price(targetUnitChainlinkFeed, oracleTimeout)
@@ -108,21 +88,19 @@ contract CTokenNonFiatCollateral is Collateral {
         // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
 
-        if (whenDefault <= block.timestamp) return;
+        if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
-            whenDefault = block.timestamp;
+            markStatus(CollateralStatus.DISABLED);
         } else {
             // p {target/ref}
             try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
                 // We don't need the return value from this next feed, but it should still function
                 try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
-                    priceable = p > 0 && p2 > 0;
-
                     // {target/ref}
                     uint192 peg = targetPerRef();
 
@@ -131,14 +109,16 @@ contract CTokenNonFiatCollateral is Collateral {
 
                     // If the price is below the default-threshold price, default eventually
                     // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) {
-                        whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-                    } else whenDefault = NEVER;
-                } catch {
-                    priceable = false;
+                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                    else markStatus(CollateralStatus.SOUND);
+                } catch (bytes memory errData) {
+                    // see: docs/solidity-style.md#Catching-Empty-Data
+                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                    markStatus(CollateralStatus.IFFY);
                 }
-            } catch {
-                priceable = false;
+            } catch (bytes memory errData) {
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;
@@ -149,17 +129,6 @@ contract CTokenNonFiatCollateral is Collateral {
         }
 
         // No interactions beyond the initial refresher
-    }
-
-    /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
-        if (whenDefault == NEVER) {
-            return priceable ? CollateralStatus.SOUND : CollateralStatus.UNPRICED;
-        } else if (whenDefault > block.timestamp) {
-            return priceable ? CollateralStatus.IFFY : CollateralStatus.UNPRICED;
-        } else {
-            return CollateralStatus.DISABLED;
-        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
@@ -173,46 +142,6 @@ contract CTokenNonFiatCollateral is Collateral {
     function pricePerTarget() public view override returns (uint192) {
         return price(targetUnitChainlinkFeed, oracleTimeout);
     }
-
-    // solhint-disable no-empty-blocks
-
-    /// @return min {tok} The minimium trade size
-    function minTradeSize() external view override returns (uint192 min) {
-        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-            try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
-                // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
-                p = p.mul(p2).mul(refPerTok());
-
-                // {tok} = {UoA} / {UoA/tok}
-                // return tradingRange.minVal.div(p, CEIL);
-                uint256 min256 = (FIX_ONE_256 * tradingRange.minVal + p - 1) / p;
-                if (type(uint192).max < min256) revert UIntOutOfBounds();
-                min = uint192(min256);
-            } catch {}
-        } catch {}
-        if (min < tradingRange.minAmt) min = tradingRange.minAmt;
-        if (min > tradingRange.maxAmt) min = tradingRange.maxAmt;
-    }
-
-    /// @return max {tok} The maximum trade size
-    function maxTradeSize() external view override returns (uint192 max) {
-        try this.price_(chainlinkFeed, oracleTimeout) returns (uint192 p) {
-            try this.price_(targetUnitChainlinkFeed, oracleTimeout) returns (uint192 p2) {
-                // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
-                p = p.mul(p2).mul(refPerTok());
-
-                // {tok} = {UoA} / {UoA/tok}
-                // return tradingRange.maxVal.div(p);
-                uint256 max256 = (FIX_ONE_256 * tradingRange.maxVal) / p;
-                if (type(uint192).max < max256) revert UIntOutOfBounds();
-                max = uint192(max256);
-            } catch {}
-        } catch {}
-        if (max == 0 || max > tradingRange.maxAmt) max = tradingRange.maxAmt;
-        if (max < tradingRange.minAmt) max = tradingRange.minAmt;
-    }
-
-    // solhint-enable no-empty-blocks
 
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to

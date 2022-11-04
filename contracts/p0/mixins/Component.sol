@@ -4,11 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "contracts/interfaces/IMain.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main
  */
-abstract contract ComponentP0 is Initializable, ContextUpgradeable, IComponent {
+abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, IComponent {
     IMain public main;
 
     // Sets main for the component - Can only be called during initialization

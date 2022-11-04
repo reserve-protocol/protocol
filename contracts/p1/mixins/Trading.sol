@@ -23,8 +23,11 @@ abstract contract TradingP1 is
     using FixLib for uint192;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
-    uint192 public constant MAX_DUST_AMOUNT = 1e29; // {UoA}
+    uint192 public constant MIN_TRADE_VOLUME = 1e29; // {UoA}
     uint192 public constant MAX_TRADE_SLIPPAGE = 1e18; // {%}
+
+    // Peer contracts, immutable after init()
+    IBroker private broker;
 
     // All open trades
     mapping(IERC20 => ITrade) public trades;
@@ -33,13 +36,21 @@ abstract contract TradingP1 is
     // === Governance param ===
     uint192 public maxTradeSlippage; // {%}
 
+    uint192 public minTradeVolume; // {UoA}
+
     // ==== Invariants ====
     // tradesOpen = len(values(trades))
     // trades[sell] != 0 iff trade[sell] has been opened and not yet settled
 
     // solhint-disable-next-line func-name-mixedcase
-    function __Trading_init(uint192 maxTradeSlippage_) internal onlyInitializing {
+    function __Trading_init(
+        IMain main_,
+        uint192 maxTradeSlippage_,
+        uint192 minTradeVolume_
+    ) internal onlyInitializing {
+        broker = main_.broker();
         setMaxTradeSlippage(maxTradeSlippage_);
+        setMinTradeVolume(minTradeVolume_);
     }
 
     /// Settle a single trade, expected to be used with multicall for efficient mass settlement
@@ -79,21 +90,23 @@ abstract contract TradingP1 is
     //   (not external, so we don't need auth or pause checks)
     //   trades[req.sell] == 0
     // actions:
-    //   req.sell.increaseAllowance(broker, req.sellAmount)
+    //   req.sell.increaseAllowance(broker, req.sellAmount) - two safeApprove calls to support USDT
     //   tradeID = broker.openTrade(req)
     // effects:
     //   trades' = trades.set(req.sell, tradeID)
     //   tradesOpen' = tradesOpen + 1
+    //
+    // This is reentrancy-safe because we're using the `nonReentrant` modifier on every method of
+    // this contract that changes state this function refers to.
+    // slither-disable-next-line reentrancy-vulnerabilities-1
     function tryTrade(TradeRequest memory req) internal nonReentrant {
         /*  */
         IERC20 sell = req.sell.erc20();
         assert(address(trades[sell]) == address(0));
 
-        IERC20Upgradeable(address(sell)).safeIncreaseAllowance(
-            address(main.broker()),
-            req.sellAmount
-        );
-        ITrade trade = main.broker().openTrade(req);
+        IERC20Upgradeable(address(sell)).safeApprove(address(broker), 0);
+        IERC20Upgradeable(address(sell)).safeApprove(address(broker), req.sellAmount);
+        ITrade trade = broker.openTrade(req);
 
         trades[sell] = trade;
         tradesOpen++;
@@ -104,9 +117,16 @@ abstract contract TradingP1 is
 
     /// @custom:governance
     function setMaxTradeSlippage(uint192 val) public governance {
-        require(val <= MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
+        require(val < MAX_TRADE_SLIPPAGE, "invalid maxTradeSlippage");
         emit MaxTradeSlippageSet(maxTradeSlippage, val);
         maxTradeSlippage = val;
+    }
+
+    /// @custom:governance
+    function setMinTradeVolume(uint192 val) public governance {
+        require(val <= MIN_TRADE_VOLUME, "invalid minTradeVolume");
+        emit MinTradeVolumeSet(minTradeVolume, val);
+        minTradeVolume = val;
     }
 
     /**
@@ -114,5 +134,5 @@ abstract contract TradingP1 is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[47] private __gap;
+    uint256[46] private __gap;
 }

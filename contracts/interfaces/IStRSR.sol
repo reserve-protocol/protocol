@@ -115,7 +115,7 @@ interface IStRSR is IERC20MetadataUpgradeable, IERC20PermitUpgradeable, ICompone
     /// Return the maximum valid value of endId such that withdraw(endId) should immediately work
     function endIdForWithdraw(address account) external view returns (uint256 endId);
 
-    /// @return {qStRSR/qRSR} The exchange rate between StRSR and RSR
+    /// @return {qRSR/qStRSR} The exchange rate between RSR and StRSR
     function exchangeRate() external view returns (uint192);
 }
 

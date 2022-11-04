@@ -30,7 +30,7 @@ async function main() {
 
   console.log(`Starting full verification on network ${hre.network.name} (${chainId})`)
 
-  // Part 2/2 of the *overall* deployment process: Verification
+  // Part 3/3 of the *overall* deployment process: Verification
 
   // This process is intelligent enough that it can be run on all verify scripts,
   // even if some portions have already been verified

@@ -29,21 +29,18 @@ async function main() {
   await validateImplementations(deployments)
 
   // Check previous step executed
-  if (!deployments.facade) {
+  if (!deployments.facadeRead) {
     throw new Error(`Missing deployed contracts in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, deployments.facade))) {
+  } else if (!(await isValidContract(hre, deployments.facadeRead))) {
     throw new Error(`Facade contract not found in network ${hre.network.name}`)
   }
 
   // ******************** Deploy Deployer ****************************************/
-  const DeployerFactory = await ethers.getContractFactory('DeployerP1', {
-    libraries: { RTokenPricingLib: deployments.rTokenPricingLib },
-  })
+  const DeployerFactory = await ethers.getContractFactory('DeployerP1')
   deployer = <DeployerP1>(
     await DeployerFactory.connect(burner).deploy(
       deployments.prerequisites.RSR,
       deployments.prerequisites.GNOSIS_EASY_AUCTION,
-      deployments.facade,
       deployments.rsrAsset,
       deployments.implementations
     )

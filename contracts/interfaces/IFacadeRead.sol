@@ -12,13 +12,33 @@ import "./IStRSR.sol";
  * - @custom:static-call - Use ethers callStatic() in order to get result after update
  * - @custom:view - Regular view
 v */
-interface IFacade {
-    /// Returns the next call a keeper of MEV searcher should make in order to progress the system
-    /// Returns zero bytes to indicate no action should be made
-    /// @custom:static-call
-    function getActCalldata(RTokenP1 rToken) external returns (address to, bytes memory calldata_);
+interface IFacadeRead {
+    // === Static Calls ===
 
-    // ============
+    /// @return How many RToken `account` can issue given current holdings
+    /// @custom:static-call
+    function maxIssuable(IRToken rToken, address account) external returns (uint256);
+
+    /// @return tokens The erc20 needed for the issuance
+    /// @return deposits The deposits necessary to issue `amount` RToken
+    /// @custom:static-call
+    function issue(IRToken rToken, uint256 amount)
+        external
+        returns (address[] memory tokens, uint256[] memory deposits);
+
+    /// @return erc20s The ERC20 addresses in the current basket
+    /// @return uoaShares The proportion of the basket associated with each ERC20
+    /// @return targets The bytes32 representations of the target unit associated with each ERC20
+    /// @custom:static-call
+    function basketBreakdown(RTokenP1 rToken)
+        external
+        returns (
+            address[] memory erc20s,
+            uint192[] memory uoaShares,
+            bytes32[] memory targets
+        );
+
+    // === Views ===
 
     struct Pending {
         uint256 index;
@@ -45,29 +65,6 @@ interface IFacade {
     /// Return the highest index that could be completed by a vestIssuances call.
     /// @dev Use with `vest`
     function endIdForVest(RTokenP1 rToken, address account) external view returns (uint256);
-
-    /// @return How many RToken `account` can issue given current holdings
-    /// @custom:static-call
-    function maxIssuable(IRToken rToken, address account) external returns (uint256);
-
-    /// @return tokens The erc20 needed for the issuance
-    /// @return deposits The deposits necessary to issue `amount` RToken
-    /// @custom:static-call
-    function issue(IRToken rToken, uint256 amount)
-        external
-        returns (address[] memory tokens, uint256[] memory deposits);
-
-    /// @return erc20s The ERC20 addresses in the current basket
-    /// @return uoaShares The proportion of the basket associated with each ERC20
-    /// @return targets The bytes32 representations of the target unit associated with each ERC20
-    /// @custom:static-call
-    function basketBreakdown(RTokenP1 rToken)
-        external
-        returns (
-            address[] memory erc20s,
-            uint192[] memory uoaShares,
-            bytes32[] memory targets
-        );
 
     /// @return tokens The addresses of the ERC20s backing the RToken
     /// @custom:view

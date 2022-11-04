@@ -10,12 +10,7 @@ describe(`PriceModels in AssetMock`, () => {
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
     const f: sc.AssetMock__factory = await ethers.getContractFactory('AssetMock')
-    return await f.deploy(
-      token.address,
-      addr(0),
-      { minVal: fp(1e4), maxVal: fp(1e6), minAmt: fp(1000), maxAmt: fp(1e7) },
-      priceModel
-    )
+    return await f.deploy(token.address, addr(0), fp(1e6), priceModel)
   }
 
   beforeEach(async () => {
@@ -32,20 +27,20 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.price()).to.equal(fp(1.02))
+    expect(await asset.strictPrice()).to.equal(fp(1.02))
     await asset.update(fp(0.99))
-    expect(await asset.price()).to.equal(fp(1.02))
+    expect(await asset.strictPrice()).to.equal(fp(1.02))
     await asset.update(0)
-    expect(await asset.price()).to.equal(fp(1.02))
+    expect(await asset.strictPrice()).to.equal(fp(1.02))
   })
 
   it('returns price 1 from p.m. onePM', async () => {
     const asset: sc.AssetMock = await newAsset(onePM)
-    expect(await asset.price()).to.equal(fp(1))
+    expect(await asset.strictPrice()).to.equal(fp(1))
     await asset.update(123)
-    expect(await asset.price()).to.equal(fp(1))
+    expect(await asset.strictPrice()).to.equal(fp(1))
     await asset.update(96523976243)
-    expect(await asset.price()).to.equal(fp(1))
+    expect(await asset.strictPrice()).to.equal(fp(1))
   })
 
   it('sets prices as expected in MANUAL mode', async () => {
@@ -55,17 +50,17 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.price()).to.equal(fp(1.02))
+    expect(await asset.strictPrice()).to.equal(fp(1.02))
     await asset.update(fp(0.99))
-    expect(await asset.price()).to.equal(fp(0.99))
+    expect(await asset.strictPrice()).to.equal(fp(0.99))
     await asset.update(fp(1.3))
-    expect(await asset.price()).to.equal(fp(1.3))
+    expect(await asset.strictPrice()).to.equal(fp(1.3))
     await asset.update(0)
-    expect(await asset.price()).to.equal(0)
+    expect(await asset.strictPrice()).to.equal(0)
 
     const big: BigNumber = BigNumber.from(2n ** 192n - 1n) // max uint192
     await asset.update(big)
-    expect(await asset.price()).to.equal(big)
+    expect(await asset.strictPrice()).to.equal(big)
   })
 
   it('sets arbitrary in-band prices in BAND mode', async () => {
@@ -75,16 +70,16 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.price()).to.equal(fp(1.02))
+    expect(await asset.strictPrice()).to.equal(fp(1.02))
 
     await asset.update(0) // hit low; implementation-sensitive
-    expect(await asset.price()).to.equal(fp(0.9))
+    expect(await asset.strictPrice()).to.equal(fp(0.9))
 
     await asset.update(fp(0.2)) // hit high; implementation-sensitive
-    expect(await asset.price()).to.equal(fp(1.1))
+    expect(await asset.strictPrice()).to.equal(fp(1.1))
 
     await asset.update(fp(98643.8623))
-    const p = await asset.price()
+    const p = await asset.strictPrice()
     expect(p.gte(fp(0.9))).to.be.true
     expect(p.lte(fp(1.1))).to.be.true
   })
@@ -96,17 +91,17 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.5),
       high: fp(2),
     })
-    expect(await asset.price()).to.equal(fp(1))
+    expect(await asset.strictPrice()).to.equal(fp(1))
 
     await asset.update(0) // hit low; implementation-sensitive
-    expect(await asset.price()).to.equal(fp(0.5))
+    expect(await asset.strictPrice()).to.equal(fp(0.5))
 
     await asset.update(fp(1.5)) // hit high; implementation-sensitive
     await asset.update(fp(1.5)) // hit high; implementation-sensitive
-    expect(await asset.price()).to.equal(fp(2))
+    expect(await asset.strictPrice()).to.equal(fp(2))
 
     await asset.update(fp(98643.8623))
-    const p = await asset.price()
+    const p = await asset.strictPrice()
     expect(p.gte(fp(1))).to.be.true
     expect(p.lte(fp(4))).to.be.true
   })

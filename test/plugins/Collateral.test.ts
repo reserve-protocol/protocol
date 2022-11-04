@@ -2,14 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig, TradingRange } from '../../common/configuration'
-import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  MAX_UINT192,
-  MAX_UINT256,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { IConfig } from '../../common/configuration'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -22,6 +16,7 @@ import {
   EURFiatCollateral,
   FacadeTest,
   FiatCollateral,
+  InvalidMockV3Aggregator,
   MockV3Aggregator,
   NonFiatCollateral,
   OracleLib,
@@ -81,6 +76,7 @@ describe('Collateral contracts', () => {
   let FiatCollateralFactory: ContractFactory
   let ATokenFiatCollateralFactory: ContractFactory
   let CTokenFiatCollateralFactory: ContractFactory
+  let InvalidMockV3AggregatorFactory: ContractFactory
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -147,6 +143,8 @@ describe('Collateral contracts', () => {
     CTokenFiatCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
+
+    InvalidMockV3AggregatorFactory = await ethers.getContractFactory('InvalidMockV3Aggregator')
   })
 
   describe('Deployment', () => {
@@ -160,14 +158,13 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await tokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await tokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await tokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await tokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
-      expect(await tokenCollateral.price()).to.equal(fp('1'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
       expect(await tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -180,14 +177,13 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await usdcCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await usdcCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await usdcCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await usdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await usdcCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await usdcCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
       expect(await usdcCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await usdcCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
@@ -200,8 +196,7 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await aTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await aTokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await aTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await aTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -210,7 +205,7 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.prevReferencePrice()).to.equal(
         await aTokenCollateral.refPerTok()
       )
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
       let calldata = aToken.interface.encodeFunctionData('claimRewardsToSelf', [true])
       expect(await aTokenCollateral.getClaimCalldata()).to.eql([aToken.address, calldata])
       expect(await aTokenCollateral.rewardERC20()).to.equal(aaveToken.address)
@@ -225,12 +220,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await cTokenCollateral.minTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.minAmt)
-      )
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.maxAmt)
-      )
+      expect(await cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await cTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4).mul(50))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -239,7 +229,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.prevReferencePrice()).to.equal(
         await cTokenCollateral.refPerTok()
       )
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
       calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -253,10 +243,11 @@ describe('Collateral contracts', () => {
     it('Should validate targetName correctly', async () => {
       await expect(
         FiatCollateralFactory.deploy(
+          1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.constants.HashZero,
           DEFAULT_THRESHOLD,
@@ -269,10 +260,11 @@ describe('Collateral contracts', () => {
       // FiatCollateral
       await expect(
         FiatCollateralFactory.deploy(
+          1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           bn(0),
@@ -283,10 +275,11 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy(
+          1,
           await aTokenCollateral.chainlinkFeed(),
           aToken.address,
           aaveToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           bn(0),
@@ -297,10 +290,11 @@ describe('Collateral contracts', () => {
       // CTokenFiatCollateral
       await expect(
         CTokenFiatCollateralFactory.deploy(
+          1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           bn(0),
@@ -314,10 +308,11 @@ describe('Collateral contracts', () => {
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         FiatCollateralFactory.deploy(
+          1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -328,10 +323,11 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy(
+          1,
           await aTokenCollateral.chainlinkFeed(),
           aToken.address,
           aaveToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -342,10 +338,11 @@ describe('Collateral contracts', () => {
       // CTokenFiatCollateral
       await expect(
         CTokenFiatCollateralFactory.deploy(
+          1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -360,10 +357,11 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy(
+          1,
           await aTokenCollateral.chainlinkFeed(),
           aToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -373,10 +371,11 @@ describe('Collateral contracts', () => {
 
       await expect(
         CTokenFiatCollateralFactory.deploy(
+          1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -391,10 +390,11 @@ describe('Collateral contracts', () => {
       // CTokenFiatCollateral
       await expect(
         CTokenFiatCollateralFactory.deploy(
+          1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -409,10 +409,11 @@ describe('Collateral contracts', () => {
       // CTokenFiatCollateral
       await expect(
         CTokenFiatCollateralFactory.deploy(
+          1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           DEFAULT_THRESHOLD,
@@ -427,10 +428,10 @@ describe('Collateral contracts', () => {
   describe('Prices #fast', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
-      expect(await tokenCollateral.price()).to.equal(fp('1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1'))
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -443,10 +444,10 @@ describe('Collateral contracts', () => {
       await setOraclePrice(usdcCollateral.address, bn('1.1e8')) // 10%
 
       // Check new prices
-      expect(await tokenCollateral.price()).to.equal(fp('1.1'))
-      expect(await usdcCollateral.price()).to.equal(fp('1.1'))
-      expect(await aTokenCollateral.price()).to.equal(fp('1.1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.022'))
+      expect(await tokenCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await usdcCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1.1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.022'))
 
       // Check refPerTok remains the same
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -455,13 +456,13 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
 
       // Check RToken price
-      expect(await rTokenAsset.price()).to.equal(fp('1.1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1.1'))
     })
 
     it('Should calculate price correctly when ATokens and CTokens appreciate', async () => {
       // Check initial prices
-      expect(await aTokenCollateral.price()).to.equal(fp('1'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.02'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
@@ -472,15 +473,15 @@ describe('Collateral contracts', () => {
       await cToken.setExchangeRate(fp(2))
 
       // Check prices doubled
-      expect(await aTokenCollateral.price()).to.equal(fp('2'))
-      expect(await cTokenCollateral.price()).to.equal(fp('0.04'))
+      expect(await aTokenCollateral.strictPrice()).to.equal(fp('2'))
+      expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.04'))
 
       // RefPerTok also doubles in this case
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('2'))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.04'))
 
       // Check RToken price - Remains the same until Revenues are processed
-      expect(await rTokenAsset.price()).to.equal(fp('1'))
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('Should revert if price is zero', async () => {
@@ -488,242 +489,27 @@ describe('Collateral contracts', () => {
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
+
+      // Fallback price is returned
+      const [isFallback, price] = await tokenCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should revert in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(tokenCollateral.address)
 
       // Check price of token
-      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-    })
-
-    it('Should calculate trade min/max correctly - Fiatcoin', async () => {
-      // Check initial values
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Update values in Oracles to 0
-      await setOraclePrice(tokenCollateral.address, bn('0'))
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      //  Reduce price in half - doubles min size, maintains max size
-      await setOraclePrice(tokenCollateral.address, bn('0.5e8')) // half
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt.mul(2))
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Double price - still maintains min size, max size reduces in half
-      await setOraclePrice(tokenCollateral.address, bn('2e8')) // double
-      expect(await tokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await tokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt.div(2))
-
-      // Handle overflow if minVal is too large
-      await setOraclePrice(tokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newFiatCollateral = <FiatCollateral>(
-        await FiatCollateralFactory.deploy(
-          await tokenCollateral.chainlinkFeed(),
-          token.address,
-          ZERO_ADDRESS,
-          invalidTradingRange,
-          await tokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-
-      await expect(newFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newFiatCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newFiatCollateral = <FiatCollateral>(
-        await FiatCollateralFactory.deploy(
-          await tokenCollateral.chainlinkFeed(),
-          token.address,
-          ZERO_ADDRESS,
-          reducedTradingRange,
-          await tokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-
-      // Reduce to half original price, maintains range
-      await setOraclePrice(newFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-
-      // Double original price, maintains range
-      await setOraclePrice(newFiatCollateral.address, bn('2e8')) // double
-      expect(await newFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-    })
-
-    it('Should calculate trade min/max correctly - AToken', async () => {
-      // Check initial values
-      expect(await aTokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Update values in Oracles to 0
-      await setOraclePrice(aTokenCollateral.address, bn('0'))
-      expect(await aTokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      //  Reduce price in half - doubles min size, maintains max size
-      await setOraclePrice(aTokenCollateral.address, bn('0.5e8')) // half
-      expect(await aTokenCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Double price - still maintains min size, max size reduces in half
-      await setOraclePrice(aTokenCollateral.address, bn('2e8')) // double
-      expect(await aTokenCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await aTokenCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt.div(2)
-      )
-
-      // Handle overflow if minVal is too large
-      await setOraclePrice(aTokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenFiatCollateralFactory.deploy(
-          await aTokenCollateral.chainlinkFeed(),
-          aToken.address,
-          aaveToken.address,
-          invalidTradingRange,
-          await aTokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-
-      await expect(newATokenFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newATokenFiatCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenFiatCollateralFactory.deploy(
-          await aTokenCollateral.chainlinkFeed(),
-          aToken.address,
-          aaveToken.address,
-          reducedTradingRange,
-          await aTokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-
-      // Reduce to half original price, maintains range
-      await setOraclePrice(newATokenFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newATokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newATokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-
-      // Double original price, maintains range
-      await setOraclePrice(newATokenFiatCollateral.address, bn('2e8')) // double
-      expect(await newATokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newATokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-    })
-
-    it('Should calculate trade min/max correctly - CToken', async () => {
-      // Set initial values used in deployment
-      const cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
-      cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
-
-      // Check initial values
-      expect(await cTokenCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      // Update values in Oracles to 0
-      await setOraclePrice(cTokenCollateral.address, bn('0'))
-      expect(await cTokenCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      //  Reduce price in half - doubles min size, maintains max size
-      await setOraclePrice(cTokenCollateral.address, bn('0.5e8')) // half
-      expect(await cTokenCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt.mul(2))
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      // Double price - still maintains min size, max size reduces in half
-      await setOraclePrice(cTokenCollateral.address, bn('2e8')) // double
-      expect(await cTokenCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt.div(2))
-
-      // Handle overflow if minVal is too large
-      await setOraclePrice(cTokenCollateral.address, bn('0.5e8')) // half
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newCTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenFiatCollateralFactory.deploy(
-          await cTokenCollateral.chainlinkFeed(),
-          cToken.address,
-          compToken.address,
-          invalidTradingRange,
-          await cTokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT,
-          18,
-          compoundMock.address
-        )
-      )
-
-      await expect(newCTokenFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newCTokenFiatCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newCTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenFiatCollateralFactory.deploy(
-          await cTokenCollateral.chainlinkFeed(),
-          cToken.address,
-          compToken.address,
-          reducedTradingRange,
-          await cTokenCollateral.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT,
-          18,
-          compoundMock.address
-        )
-      )
-
-      // Reduce to half original price, maintains range
-      await setOraclePrice(newCTokenFiatCollateral.address, bn('0.5e8')) // half
-      expect(await newCTokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-
-      // Double original price, maintains range
-      await setOraclePrice(newCTokenFiatCollateral.address, bn('2e8')) // double
-      expect(await newCTokenFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -863,22 +649,114 @@ describe('Collateral contracts', () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Check new prices
-      await expect(usdcCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(tokenCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(cTokenCollateral.price()).to.be.revertedWith('StalePrice()')
-      await expect(aTokenCollateral.price()).to.be.revertedWith('StalePrice()')
+      await expect(usdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(tokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(cTokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(aTokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
     })
 
-    it('Enters UNPRICED state when price becomes stale', async () => {
+    it('Enters IFFY state when price becomes stale', async () => {
       await advanceTime(ORACLE_TIMEOUT.toString())
       await usdcCollateral.refresh()
       await tokenCollateral.refresh()
       await cTokenCollateral.refresh()
       await aTokenCollateral.refresh()
-      expect(await usdcCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await tokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
-      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await usdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await cTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await aTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - Fiat', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidTokenCollateral: FiatCollateral = <FiatCollateral>(
+        await FiatCollateralFactory.deploy(
+          1,
+          invalidChainlinkFeed.address,
+          await tokenCollateral.erc20(),
+          ZERO_ADDRESS,
+          await tokenCollateral.maxTradeVolume(),
+          await tokenCollateral.oracleTimeout(),
+          await tokenCollateral.targetName(),
+          await tokenCollateral.defaultThreshold(),
+          await tokenCollateral.delayUntilDefault()
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - ATokens Fiat', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
+        await ATokenFiatCollateralFactory.deploy(
+          1,
+          invalidChainlinkFeed.address,
+          await aTokenCollateral.erc20(),
+          await aTokenCollateral.rewardERC20(),
+          await aTokenCollateral.maxTradeVolume(),
+          await aTokenCollateral.oracleTimeout(),
+          await aTokenCollateral.targetName(),
+          await aTokenCollateral.defaultThreshold(),
+          await aTokenCollateral.delayUntilDefault()
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidATokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidATokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidATokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidATokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status - CTokens Fiat', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
+        await CTokenFiatCollateralFactory.deploy(
+          1,
+          invalidChainlinkFeed.address,
+          await cTokenCollateral.erc20(),
+          await cTokenCollateral.rewardERC20(),
+          await cTokenCollateral.maxTradeVolume(),
+          await cTokenCollateral.oracleTimeout(),
+          await cTokenCollateral.targetName(),
+          await cTokenCollateral.defaultThreshold(),
+          await cTokenCollateral.delayUntilDefault(),
+          18,
+          compoundMock.address
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 
@@ -940,18 +818,24 @@ describe('Collateral contracts', () => {
       referenceUnitOracle = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
       )
-      nonFiatCollateral = await (
-        await ethers.getContractFactory('NonFiatCollateral')
-      ).deploy(
-        referenceUnitOracle.address,
-        targetUnitOracle.address,
-        nonFiatToken.address,
-        ZERO_ADDRESS,
-        config.rTokenTradingRange,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('BTC'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT
+
+      NonFiatCollFactory = await ethers.getContractFactory('NonFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+
+      nonFiatCollateral = <NonFiatCollateral>(
+        await NonFiatCollFactory.deploy(
+          fp('20000'),
+          referenceUnitOracle.address,
+          targetUnitOracle.address,
+          nonFiatToken.address,
+          ZERO_ADDRESS,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('BTC'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
       )
 
       // Mint some tokens
@@ -961,11 +845,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing defaultThreshold', async () => {
       await expect(
         NonFiatCollFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           nonFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           bn(0),
@@ -977,11 +862,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         NonFiatCollFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           nonFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -993,11 +879,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing uoaPerTargetFeed', async () => {
       await expect(
         NonFiatCollFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           nonFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1009,11 +896,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing targetPerRefFeed', async () => {
       await expect(
         NonFiatCollFactory.deploy(
+          fp('20000'),
           ZERO_ADDRESS,
           targetUnitOracle.address,
           nonFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1036,37 +924,34 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await nonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await nonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt.div(20000)
-      )
+      expect(await nonFiatCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await nonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await nonFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await nonFiatCollateral.refPerTok()).to.equal(fp('1'))
       expect(await nonFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await nonFiatCollateral.pricePerTarget()).to.equal(fp('20000'))
-      expect(await nonFiatCollateral.price()).to.equal(fp('20000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('20000'))
       expect(await nonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await nonFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await nonFiatCollateral.price()).to.equal(fp('20000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('20000'))
 
       // Update values in Oracle increase by 10%
       await targetUnitOracle.updateAnswer(bn('22000e8')) // $22k
 
       // Check new prices
-      expect(await nonFiatCollateral.price()).to.equal(fp('22000'))
+      expect(await nonFiatCollateral.strictPrice()).to.equal(fp('22000'))
 
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(nonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Restore price
       await targetUnitOracle.updateAnswer(bn('20000e8'))
@@ -1075,81 +960,26 @@ describe('Collateral contracts', () => {
 
       // Check the other oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(nonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(nonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await nonFiatCollateral.refresh()
-      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await nonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
-      // Check initial values
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt) // minVal for 20K is below minAmt
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxVal.mul(BN_SCALE_FACTOR).div(fp('20000'))
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      //  Update values in Oracles to 0
-      await referenceUnitOracle.updateAnswer(bn('0'))
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-      await referenceUnitOracle.updateAnswer(bn('1e8'))
-
-      await targetUnitOracle.updateAnswer(bn('0'))
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Reduce price significantly for calculations
-      await targetUnitOracle.updateAnswer(bn('1e8'))
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Reduce previous price in half - still keeping it low for calculations
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      //  Double price - still keeping it low to check validations
-      await targetUnitOracle.updateAnswer(bn('2e8'))
-      expect(await nonFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await nonFiatCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt.div(2)
-      )
-
-      // Handle overflow if minVal is too large
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newNonFiatCollateral = <NonFiatCollateral>(
+      let invalidNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>(
         await NonFiatCollFactory.deploy(
-          referenceUnitOracle.address,
+          fp('20000'),
+          invalidChainlinkFeed.address,
           targetUnitOracle.address,
           nonFiatToken.address,
           ZERO_ADDRESS,
-          invalidTradingRange,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('BTC'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-      await expect(newNonFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newNonFiatCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newNonFiatCollateral = <NonFiatCollateral>(
-        await NonFiatCollFactory.deploy(
-          referenceUnitOracle.address,
-          targetUnitOracle.address,
-          nonFiatToken.address,
-          ZERO_ADDRESS,
-          reducedTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1157,15 +987,41 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price for calculations
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Double price, maintains range
-      await targetUnitOracle.updateAnswer(bn('2e8'))
-      expect(await newNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check with the other feed
+      invalidNonFiatCollateral = <NonFiatCollateral>(
+        await NonFiatCollFactory.deploy(
+          fp('20000'),
+          referenceUnitOracle.address,
+          invalidChainlinkFeed.address,
+          nonFiatToken.address,
+          ZERO_ADDRESS,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('BTC'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 
@@ -1177,7 +1033,6 @@ describe('Collateral contracts', () => {
     let cNonFiatToken: CTokenMock
     let targetUnitOracle: MockV3Aggregator
     let referenceUnitOracle: MockV3Aggregator
-    let cTokenTradingRange: TradingRange
 
     beforeEach(async () => {
       nonFiatToken = await (
@@ -1195,21 +1050,18 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cWBTC Token', 'cWBTC', nonFiatToken.address)
 
-      cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
-      cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
-
       CTokenNonFiatFactory = await ethers.getContractFactory('CTokenNonFiatCollateral', {
         libraries: { OracleLib: oracleLib.address },
       })
 
       cTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
         await CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          cTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1226,11 +1078,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing defaultThreshold', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           bn(0),
@@ -1244,11 +1097,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1262,11 +1116,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing refUnitChainlinkFeed', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           ZERO_ADDRESS,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1280,11 +1135,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing targetUnitChainlinkFeed', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1298,11 +1154,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing rewardERC20', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1316,11 +1173,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing referenceERC20Decimals', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1334,12 +1192,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing comptrollerAddr', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
-
           cNonFiatToken.address,
           compToken.address,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
@@ -1371,12 +1229,7 @@ describe('Collateral contracts', () => {
       expect(await cTokenNonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await cTokenNonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await cTokenNonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.minAmt)
-      )
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.maxVal).div(20000)
-      )
+      expect(await cTokenNonFiatCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await cTokenNonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenNonFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -1386,7 +1239,7 @@ describe('Collateral contracts', () => {
         await cTokenNonFiatCollateral.refPerTok()
       )
 
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('400')) // 0.02 of 20K
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('400')) // 0.02 of 20K
       const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenNonFiatCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -1396,7 +1249,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('400'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('400'))
 
       // Check refPerTok initial values
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -1405,7 +1258,7 @@ describe('Collateral contracts', () => {
       await cNonFiatToken.setExchangeRate(fp(2))
 
       // Check price doubled
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('800'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('800'))
 
       // RefPerTok also doubles in this case
       expect(await cTokenNonFiatCollateral.refPerTok()).to.equal(fp('0.04'))
@@ -1414,15 +1267,15 @@ describe('Collateral contracts', () => {
       await targetUnitOracle.updateAnswer(bn('22000e8')) // $22k
 
       // Check new price
-      expect(await cTokenNonFiatCollateral.price()).to.equal(fp('880'))
+      expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('880'))
 
       // Revert if price is zero - Update Oracles and check prices
       await targetUnitOracle.updateAnswer(bn('0'))
-      await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(cTokenNonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await cTokenNonFiatCollateral.refresh()
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
       // Restore
       await targetUnitOracle.updateAnswer(bn('22000e8'))
       await cTokenNonFiatCollateral.refresh()
@@ -1430,101 +1283,72 @@ describe('Collateral contracts', () => {
 
       // Revert if price is zero - Update the other Oracle
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(cTokenNonFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(cTokenNonFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await cTokenNonFiatCollateral.refresh()
-      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenNonFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
-      // Check initial values
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt.mul(BN_SCALE_FACTOR).div(fp('20000'))
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      //  Update values in Oracles to 0
-      await referenceUnitOracle.updateAnswer(bn('0'))
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-      await referenceUnitOracle.updateAnswer(bn('1e8'))
-
-      await targetUnitOracle.updateAnswer(bn('0'))
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      // Reduce price significantly for calculations
-      await targetUnitOracle.updateAnswer(bn('1e8'))
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      // Reduce price in half - still keeping it low for calculations
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(cTokenTradingRange.maxAmt)
-
-      //  Double price - still keeping it low to check validations
-      await targetUnitOracle.updateAnswer(bn('2e8'))
-      expect(await cTokenNonFiatCollateral.minTradeSize()).to.equal(cTokenTradingRange.minAmt)
-      expect(await cTokenNonFiatCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt.div(2)
-      )
-
-      // Handle overflow if minVal is too large
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
+      let invalidCTokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
         await CTokenNonFiatFactory.deploy(
-          referenceUnitOracle.address,
+          fp('20000'),
+          invalidChainlinkFeed.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
           compToken.address,
-          invalidTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
           DELAY_UNTIL_DEFAULT,
-          await nonFiatToken.decimals(),
+          18,
           compoundMock.address
         )
       )
-      await expect(newCTokenNonFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newCTokenNonFiatCollateral.maxTradeSize()).to.be.reverted
 
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // With the second oracle
+      invalidCTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
         await CTokenNonFiatFactory.deploy(
+          fp('20000'),
           referenceUnitOracle.address,
-          targetUnitOracle.address,
+          invalidChainlinkFeed.address,
           cNonFiatToken.address,
           compToken.address,
-          reducedTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
           DEFAULT_THRESHOLD,
           DELAY_UNTIL_DEFAULT,
-          await nonFiatToken.decimals(),
+          18,
           compoundMock.address
         )
       )
 
-      // Adapt price for calculations
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newCTokenNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Double price, maintains range
-      await targetUnitOracle.updateAnswer(bn('2e8'))
-      expect(await newCTokenNonFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenNonFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCTokenNonFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenNonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 
@@ -1540,18 +1364,18 @@ describe('Collateral contracts', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
       selfReferentialCollateral = <SelfReferentialCollateral>(
         await SelfRefCollateralFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           selfRefToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH')
+          ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT
         )
       )
     })
@@ -1568,119 +1392,77 @@ describe('Collateral contracts', () => {
       // Get priceable info
       await selfReferentialCollateral.refresh()
       expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt
-      )
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt
-      )
+      expect(await selfReferentialCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await selfReferentialCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await selfReferentialCollateral.bal(owner.address)).to.equal(0)
       expect(await selfReferentialCollateral.refPerTok()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await selfReferentialCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracle increase by 10%
       await setOraclePrice(selfReferentialCollateral.address, bn('1.1e8'))
 
       // Check new prices
-      expect(await selfReferentialCollateral.price()).to.equal(fp('1.1'))
+      expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1.1'))
 
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(selfReferentialCollateral.address, bn(0))
-      await expect(selfReferentialCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(selfReferentialCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // When refreshed, sets status to Unpriced
       await selfReferentialCollateral.refresh()
-      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Advance time
+      const delayUntilDefault: BigNumber = await selfReferentialCollateral.delayUntilDefault()
+      await advanceTime(Number(delayUntilDefault) + 1)
+
+      // Refresh
+      await selfReferentialCollateral.refresh()
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Another call would not change the state
+      await selfReferentialCollateral.refresh()
+      expect(await selfReferentialCollateral.status()).to.equal(CollateralStatus.DISABLED)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
-      // Check initial values
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt
-      )
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      //  Update values in Oracle to 0
-      await setOraclePrice(selfReferentialCollateral.address, bn('0'))
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt
-      )
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt
-      )
-
-      // Reduce previous price in half
-      await setOraclePrice(selfReferentialCollateral.address, bn('0.5e8'))
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt
-      )
-
-      //  Double price
-      await setOraclePrice(selfReferentialCollateral.address, bn('2e8'))
-      expect(await selfReferentialCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt
-      )
-      expect(await selfReferentialCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt.div(2)
-      )
-
-      // Handle overflow if minVal is too large
-      await setOraclePrice(selfReferentialCollateral.address, bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newSelfRefCollateral = <SelfReferentialCollateral>(
+      const invalidSelfRefCollateral: SelfReferentialCollateral = <SelfReferentialCollateral>(
         await SelfRefCollateralFactory.deploy(
-          chainlinkFeed.address,
+          fp('1'),
+          invalidChainlinkFeed.address,
           selfRefToken.address,
           ZERO_ADDRESS,
-          invalidTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH')
-        )
-      )
-      await expect(newSelfRefCollateral.minTradeSize()).to.be.reverted
-      await expect(newSelfRefCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newSelfRefCollateral = <SelfReferentialCollateral>(
-        await SelfRefCollateralFactory.deploy(
-          chainlinkFeed.address,
-          selfRefToken.address,
-          ZERO_ADDRESS,
-          reducedTradingRange,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH')
+          ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT
         )
       )
 
-      // Set price for calculations
-      await setOraclePrice(newSelfRefCollateral.address, bn('0.5e8'))
-      expect(await newSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidSelfRefCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Double price, maintains range
-      await setOraclePrice(newSelfRefCollateral.address, bn('2e8'))
-      expect(await newSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidSelfRefCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 
@@ -1691,17 +1473,12 @@ describe('Collateral contracts', () => {
     let selfRefToken: WETH9
     let cSelfRefToken: CTokenMock
     let chainlinkFeed: MockV3Aggregator
-    let cTokenTradingRange: TradingRange
 
     beforeEach(async () => {
       selfRefToken = await (await ethers.getContractFactory('WETH9')).deploy()
       chainlinkFeed = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
-
-      cTokenTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      cTokenTradingRange.minAmt = bn(50).mul(cTokenTradingRange.minAmt)
-      cTokenTradingRange.maxAmt = bn(50).mul(cTokenTradingRange.maxAmt)
 
       // cToken Self Ref
       cSelfRefToken = await (
@@ -1717,12 +1494,14 @@ describe('Collateral contracts', () => {
 
       cTokenSelfReferentialCollateral = <CTokenSelfReferentialCollateral>(
         await CTokenSelfReferentialFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
           compToken.address,
-          cTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           await selfRefToken.decimals(),
           compoundMock.address
         )
@@ -1735,12 +1514,14 @@ describe('Collateral contracts', () => {
     it('Should not allow missing rewardERC20', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
           ZERO_ADDRESS,
-          cTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           await selfRefToken.decimals(),
           compoundMock.address
         )
@@ -1750,12 +1531,14 @@ describe('Collateral contracts', () => {
     it('Should not allow missing referenceERC20Decimals', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
           compToken.address,
-          cTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           0,
           compoundMock.address
         )
@@ -1765,12 +1548,14 @@ describe('Collateral contracts', () => {
     it('Should not allow missing comptrollerAddr', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
+          fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
           compToken.address,
-          cTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
+          DELAY_UNTIL_DEFAULT,
           18,
           ZERO_ADDRESS
         )
@@ -1791,11 +1576,8 @@ describe('Collateral contracts', () => {
       await cTokenSelfReferentialCollateral.refresh()
       expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cTokenSelfReferentialCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.minAmt)
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        bn(50).mul(config.rTokenTradingRange.maxAmt)
+      expect(await cTokenSelfReferentialCollateral.maxTradeVolume()).to.equal(
+        config.rTokenMaxTradeVolume
       )
       expect(await cTokenSelfReferentialCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cTokenSelfReferentialCollateral.bal(owner.address)).to.equal(amt)
@@ -1806,7 +1588,7 @@ describe('Collateral contracts', () => {
         await cTokenSelfReferentialCollateral.refPerTok()
       )
 
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.02'))
       const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
       expect(await cTokenSelfReferentialCollateral.connect(owner).getClaimCalldata()).to.eql([
         compoundMock.address,
@@ -1816,7 +1598,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should calculate prices correctly', async function () {
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.02'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.02'))
 
       // Check refPerTok initial values
       expect(await cTokenSelfReferentialCollateral.refPerTok()).to.equal(fp('0.02'))
@@ -1825,7 +1607,7 @@ describe('Collateral contracts', () => {
       await cSelfRefToken.setExchangeRate(fp(2))
 
       // Check price doubled
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.04'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.04'))
 
       // RefPerTok also doubles in this case
       expect(await cTokenSelfReferentialCollateral.refPerTok()).to.equal(fp('0.04'))
@@ -1834,110 +1616,48 @@ describe('Collateral contracts', () => {
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('1.1e8'))
 
       // Check new prices
-      expect(await cTokenSelfReferentialCollateral.price()).to.equal(fp('0.044'))
+      expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.044'))
 
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(cTokenSelfReferentialCollateral.address, bn(0))
-      await expect(cTokenSelfReferentialCollateral.price()).to.be.revertedWith(
+      await expect(cTokenSelfReferentialCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // When refreshed, sets status to Unpriced
       await cTokenSelfReferentialCollateral.refresh()
-      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await cTokenSelfReferentialCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
-      // Check initial values
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      // Update values in Oracles to 0
-      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('0'))
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt
-      )
-
-      // Set price
-      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('1e8'))
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt
+      const invalidCTokenSelfRefCollateral: CTokenSelfReferentialCollateral = <
+        CTokenSelfReferentialCollateral
+      >await CTokenSelfReferentialFactory.deploy(
+        fp('1'),
+        invalidChainlinkFeed.address,
+        cSelfRefToken.address,
+        compToken.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT,
+        18,
+        compoundMock.address
       )
 
-      // Reduce price in half
-      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('0.5e8'))
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt
-      )
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      //  Double price
-      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('2e8'))
-      expect(await cTokenSelfReferentialCollateral.minTradeSize()).to.equal(
-        cTokenTradingRange.minAmt
-      )
-      expect(await cTokenSelfReferentialCollateral.maxTradeSize()).to.equal(
-        cTokenTradingRange.maxAmt.div(2)
-      )
-
-      // Handle overflow if minVal is too large
-      await setOraclePrice(cTokenSelfReferentialCollateral.address, bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newCTokenSelfRefCollateral = <CTokenSelfReferentialCollateral>(
-        await CTokenSelfReferentialFactory.deploy(
-          chainlinkFeed.address,
-          cSelfRefToken.address,
-          compToken.address,
-          invalidTradingRange,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          await selfRefToken.decimals(),
-          compoundMock.address
-        )
-      )
-      await expect(newCTokenSelfRefCollateral.minTradeSize()).to.be.reverted
-      await expect(newCTokenSelfRefCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(cTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newCTokenSelfRefCollateral = <CTokenSelfReferentialCollateral>(
-        await CTokenSelfReferentialFactory.deploy(
-          chainlinkFeed.address,
-          cSelfRefToken.address,
-          compToken.address,
-          reducedTradingRange,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          await selfRefToken.decimals(),
-          compoundMock.address
-        )
-      )
-
-      // Adapt price for calculations
-      await setOraclePrice(newCTokenSelfRefCollateral.address, bn('0.5e8'))
-      expect(await newCTokenSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
-
-      // Double price, maintains range
-      await setOraclePrice(newCTokenSelfRefCollateral.address, bn('2e8'))
-      expect(await newCTokenSelfRefCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newCTokenSelfRefCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCTokenSelfRefCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenSelfRefCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 
@@ -1966,11 +1686,12 @@ describe('Collateral contracts', () => {
 
       eurFiatCollateral = <EURFiatCollateral>(
         await EURFiatCollateralFactory.deploy(
+          1,
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           DEFAULT_THRESHOLD,
@@ -1985,11 +1706,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing defaultThreshold', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
+          1,
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           bn(0),
@@ -2001,11 +1723,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
+          1,
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           DEFAULT_THRESHOLD,
@@ -2017,11 +1740,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing uoaPerTarget feed', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
+          1,
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           DEFAULT_THRESHOLD,
@@ -2033,11 +1757,12 @@ describe('Collateral contracts', () => {
     it('Should not allow missing uoaPerRef feed', async () => {
       await expect(
         EURFiatCollateralFactory.deploy(
+          1,
           ZERO_ADDRESS,
           targetUnitOracle.address,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          config.rTokenTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           DEFAULT_THRESHOLD,
@@ -2051,7 +1776,7 @@ describe('Collateral contracts', () => {
       const targetFeed = await ethers.getContractAt('MockV3Aggregator', targetFeedAddr)
       await targetFeed.updateAnswer(0)
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
     it('Should setup collateral correctly', async function () {
@@ -2068,36 +1793,35 @@ describe('Collateral contracts', () => {
       expect(await eurFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
       expect(await eurFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
       expect(await eurFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
+      expect(await eurFiatCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await eurFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await eurFiatCollateral.bal(owner.address)).to.equal(amt)
       expect(await eurFiatCollateral.refPerTok()).to.equal(fp('1'))
       expect(await eurFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await eurFiatCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('1'))
       expect(await eurFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await eurFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
     })
 
     it('Should calculate prices correctly', async function () {
       // Check initial prices
-      expect(await eurFiatCollateral.price()).to.equal(fp('1'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracle = double price
       await referenceUnitOracle.updateAnswer(bn('2e8'))
       await targetUnitOracle.updateAnswer(bn('2e8'))
 
       // Check new prices
-      expect(await eurFiatCollateral.price()).to.equal(fp('2'))
+      expect(await eurFiatCollateral.strictPrice()).to.equal(fp('2'))
 
       // Revert if price is zero - Update Oracles and check prices
       await referenceUnitOracle.updateAnswer(bn('0'))
-      await expect(eurFiatCollateral.price()).to.be.revertedWith('PriceOutsideRange()')
+      await expect(eurFiatCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Restore
       await referenceUnitOracle.updateAnswer(bn('2e8'))
@@ -2107,73 +1831,22 @@ describe('Collateral contracts', () => {
       // Check the other oracle - When refreshed, sets status to Unpriced
       await targetUnitOracle.updateAnswer(bn('0'))
       await eurFiatCollateral.refresh()
-      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.UNPRICED)
+      expect(await eurFiatCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should calculate trade min/max correctly', async () => {
-      // Check initial values
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      //  Update values in Oracles to 0
-      await referenceUnitOracle.updateAnswer(bn('0'))
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-      await referenceUnitOracle.updateAnswer(bn('1e8'))
-
-      await targetUnitOracle.updateAnswer(bn('0'))
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      // Reduce previous price in half
-      await referenceUnitOracle.updateAnswer(bn('0.5e8'))
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(
-        config.rTokenTradingRange.minAmt.mul(2)
-      )
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(config.rTokenTradingRange.maxAmt)
-
-      //  Double price
-      await referenceUnitOracle.updateAnswer(bn('2e8'))
-      await targetUnitOracle.updateAnswer(bn('2e8'))
-      expect(await eurFiatCollateral.minTradeSize()).to.equal(config.rTokenTradingRange.minAmt)
-      expect(await eurFiatCollateral.maxTradeSize()).to.equal(
-        config.rTokenTradingRange.maxAmt.div(2)
+    it('Reverts if Chainlink feed reverts or runs out of gas, maintains status', async () => {
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      // Handle overflow if minVal is too large
-      await referenceUnitOracle.updateAnswer(bn('0.5e8'))
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      const invalidTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      invalidTradingRange.minVal = MAX_UINT192
-      invalidTradingRange.maxVal = MAX_UINT192
-      let newEURFiatCollateral = <EURFiatCollateral>(
+      let invalidEURFiatCollateral: EURFiatCollateral = <EURFiatCollateral>(
         await EURFiatCollateralFactory.deploy(
-          referenceUnitOracle.address,
+          1,
+          invalidChainlinkFeed.address,
           targetUnitOracle.address,
           eurFiatToken.address,
           ZERO_ADDRESS,
-          invalidTradingRange,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('EUR'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      )
-      await expect(newEURFiatCollateral.minTradeSize()).to.be.reverted
-      await expect(newEURFiatCollateral.maxTradeSize()).to.be.reverted
-
-      // Check with reduced range
-      const reducedTradingRange = JSON.parse(JSON.stringify(config.rTokenTradingRange))
-      reducedTradingRange.maxAmt = reducedTradingRange.minAmt
-      reducedTradingRange.maxVal = reducedTradingRange.minVal
-      newEURFiatCollateral = <EURFiatCollateral>(
-        await EURFiatCollateralFactory.deploy(
-          referenceUnitOracle.address,
-          targetUnitOracle.address,
-          eurFiatToken.address,
-          ZERO_ADDRESS,
-          reducedTradingRange,
+          config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
           DEFAULT_THRESHOLD,
@@ -2181,18 +1854,41 @@ describe('Collateral contracts', () => {
         )
       )
 
-      // Adapt price significantly to force calculations
-      await referenceUnitOracle.updateAnswer(bn('0.5e8'))
-      await targetUnitOracle.updateAnswer(bn('0.5e8'))
-      expect(await newEURFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newEURFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Double price, maintains range
-      await referenceUnitOracle.updateAnswer(bn('2e8'))
-      await targetUnitOracle.updateAnswer(bn('2e8'))
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      expect(await newEURFiatCollateral.minTradeSize()).to.equal(reducedTradingRange.minAmt)
-      expect(await newEURFiatCollateral.maxTradeSize()).to.equal(reducedTradingRange.maxAmt)
+      // With the second oracle
+      invalidEURFiatCollateral = <EURFiatCollateral>(
+        await EURFiatCollateralFactory.deploy(
+          1,
+          referenceUnitOracle.address,
+          invalidChainlinkFeed.address,
+          eurFiatToken.address,
+          ZERO_ADDRESS,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('EUR'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 

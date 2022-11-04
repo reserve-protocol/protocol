@@ -14,6 +14,7 @@ import "./IRToken.sol";
 import "./IRevenueTrader.sol";
 import "./IStRSR.sol";
 import "./ITrading.sol";
+import "./IVersioned.sol";
 
 // === Auth roles ===
 
@@ -145,7 +146,7 @@ interface IComponentRegistry {
  * @title IMain
  * @notice The central hub for the entire system. Maintains components and an owner singleton role
  */
-interface IMain is IAuth, IComponentRegistry {
+interface IMain is IVersioned, IAuth, IComponentRegistry {
     function poke() external; // not used in p1
 
     // === Initialization ===

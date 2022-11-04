@@ -23,14 +23,15 @@ contract AssetMock is OracleErrorMock, Asset {
     constructor(
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
-        TradingRange memory tradingRange_,
+        uint192 maxTradeVolume_,
         PriceModel memory model_
     )
         Asset(
+            model_.curr,
             AggregatorV3Interface(address(1)), // stub out the expected chainlink oracle
             erc20_,
             rewardERC20_, // no reward token
-            tradingRange_,
+            maxTradeVolume_,
             1 // stub out oracleTimeout
         )
     {
