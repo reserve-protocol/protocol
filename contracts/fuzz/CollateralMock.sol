@@ -23,8 +23,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
     uint256 public rewardAmount;
 
-    uint256 internal constant NEVER = type(uint256).max;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
