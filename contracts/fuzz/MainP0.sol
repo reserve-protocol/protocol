@@ -37,6 +37,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
+    uint48 public deployedAt;
+
     // ==== Scenario handles ====
     // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
     // allowing the spoof() and unspoof() functions to work.
@@ -81,12 +83,13 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
     }
 
     function someToken(uint256 seed) public view returns (IERC20) {
-        uint256 id = seed % (tokens.length + 2);
+        uint256 id = seed % (tokens.length + 3);
         if (id < tokens.length) return tokens[id];
         else id -= tokens.length;
 
         if (id == 0) return IERC20(address(rsr));
         if (id == 1) return IERC20(address(rToken));
+        if (id == 2) return IERC20(address(stRSR));
         revert("invalid id in someToken");
     }
 
@@ -100,6 +103,10 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
 
     function someUser(uint256 seed) public view returns (address) {
         return users[seed % users.length];
+    }
+
+    function numConstAddrs() public view returns (uint256) {
+        return constAddrs.length;
     }
 
     function someAddr(uint256 seed) public view returns (address) {
@@ -146,6 +153,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         constAddrs.push(address(0));
         constAddrs.push(address(1));
         constAddrs.push(address(2));
+
+        deployedAt = uint48(block.timestamp);
     }
 
     // Initialize self and components

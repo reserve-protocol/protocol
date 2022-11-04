@@ -29,8 +29,31 @@ import "contracts/plugins/assets/RTokenAsset.sol";
 // Every component must override _msgSender() in this one, common way!
 
 contract AssetRegistryP1Fuzz is AssetRegistryP1 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function isValidToken(address tokenAddr) public view returns (bool) {
+        return IERC20(tokenAddr).totalSupply() >= 0;
+    }
+
+    function isRegisteredCollateral(IERC20 token) external view returns (bool) {
+        return isValidToken(address(token)) && IAsset(assets[token]).isCollateral();
+    }
+
+    function invariantsHold() external view returns (bool) {
+        //     invariant: _erc20s == keys(assets)
+        //    invariant: addr == assets[addr].erc20() where: addr in assets
+        bool erc20sInAssetsProp = true;
+        uint256 n = _erc20s.length();
+        for (uint256 i = 0; i < n; ++i) {
+            IERC20 erc20 = IERC20(_erc20s.at(i));
+            IAsset asset = assets[erc20];
+            if (address(asset.erc20()) != address(erc20)) erc20sInAssetsProp = false;
+        }
+        return erc20sInAssetsProp;
     }
 }
 
@@ -55,11 +78,52 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
         }
         return true;
     }
+
+    function invariantsHold() external view returns (bool) {
+        AssetRegistryP1Fuzz reg = AssetRegistryP1Fuzz(address(main.assetRegistry()));
+
+        // if basket.erc20s is empty then disabled == true
+        bool disabledIfEmptyProp = basket.erc20s.length > 0 || disabled;
+
+        // Basket Config
+        bool validConfigBasket = true;
+        uint256 n = config.erc20s.length;
+        for (uint256 i = 0; i < n; i++) {
+            IERC20 erc20 = config.erc20s[i];
+            if (!reg.isValidToken(address(erc20))) validConfigBasket = false;
+        }
+
+        return disabledIfEmptyProp && validConfigBasket;
+    }
+
+    function isValidBasketAfterRefresh() external view returns (bool) {
+        // basket is a valid Basket:
+        // basket.erc20s is a valid collateral array and basket.erc20s == keys(basket.refAmts)
+        AssetRegistryP1Fuzz reg = AssetRegistryP1Fuzz(address(main.assetRegistry()));
+        bool validBasketProp = true;
+        if (!disabled) {
+            uint256 n = basket.erc20s.length;
+            for (uint256 i = 0; i < n; i++) {
+                IERC20 erc20 = basket.erc20s[i];
+                if (!reg.isRegisteredCollateral(erc20) || basket.refAmts[erc20] == 0)
+                    validBasketProp = false;
+            }
+        }
+        return validBasketProp;
+    }
 }
 
 contract BackingManagerP1Fuzz is BackingManagerP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        bool tradingDelayProp = tradingDelay <= MAX_TRADING_DELAY;
+        bool backingBufferProp = backingBuffer <= MAX_BACKING_BUFFER;
+        bool maxTradeSlippageProp = maxTradeSlippage <= MAX_TRADE_SLIPPAGE;
+
+        return tradingDelayProp && backingBufferProp && maxTradeSlippageProp;
     }
 }
 
@@ -72,7 +136,6 @@ contract BrokerP1Fuzz is BrokerP1 {
 
     function _openTrade(TradeRequest memory req) internal virtual override returns (ITrade) {
         TradeMock trade = new TradeMock();
-
         IERC20Upgradeable(address(req.sell.erc20())).safeTransferFrom(
             _msgSender(),
             address(trade),
@@ -101,11 +164,46 @@ contract BrokerP1Fuzz is BrokerP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
+
+    function invariantsHold() external view returns (bool) {
+        // (trades[addr] == true) iff this contract has created an ITrade clone at addr
+        bool tradesProp = true;
+        for (uint256 i = 0; i < tradeSet.length(); i++) {
+            if (!trades[tradeSet.at(i)]) tradesProp = false;
+        }
+
+        bool auctionLengthProp = auctionLength > 0 && auctionLength <= MAX_AUCTION_LENGTH;
+        return tradesProp && auctionLengthProp;
+    }
 }
 
 contract DistributorP1Fuzz is DistributorP1 {
+    using EnumerableSet for EnumerableSet.AddressSet;
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        // ==== Invariants ====
+        // distribution is nonzero
+        RevenueTotals memory revTotals = totals();
+        bool distNotEmptyProp = !(revTotals.rTokenTotal == 0 && revTotals.rsrTotal == 0);
+
+        // No invalid distributions to FURNACE and STRSR
+        bool noInvalidDistProp = distribution[FURNACE].rsrDist == 0 &&
+            distribution[ST_RSR].rTokenDist == 0;
+
+        // Valid share values for destinations
+        bool validShareAmtsProp = true;
+        bool destinationsProp = true;
+        uint256 n = destinations.length();
+        for (uint256 i = 0; i < n; ++i) {
+            RevenueShare storage share = distribution[destinations.at(i)];
+            if (share.rTokenDist > 10000 || share.rsrDist > 10000) validShareAmtsProp = false;
+            if (share.rTokenDist == 0 && share.rsrDist == 0) destinationsProp = false;
+        }
+        return distNotEmptyProp && noInvalidDistProp && validShareAmtsProp && destinationsProp;
     }
 }
 
@@ -113,11 +211,34 @@ contract FurnaceP1Fuzz is FurnaceP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
+
+    function invariantsHold() external view returns (bool) {
+        bool periodProp = period > 0 && period <= MAX_PERIOD;
+        bool ratioProp = ratio <= MAX_RATIO;
+
+        return periodProp && ratioProp;
+    }
+
+    function assertPayouts() external view {
+        // lastPayout was the timestamp of the end of the last period we paid out
+        //   (or, if no periods have been paid out, the timestamp init() was called)
+        // lastPayoutBal was rtoken.balanceOf(this) after the last period we paid out
+        //   (or, if no periods have been paid out, that balance when init() was called)
+        assert(
+            lastPayout == block.timestamp || lastPayout == IMainFuzz(address(main)).deployedAt()
+        );
+        assert(lastPayoutBal == main.rToken().balanceOf(address(this)) || lastPayoutBal == 0);
+    }
 }
 
 contract RevenueTraderP1Fuzz is RevenueTraderP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
+    }
+
+    function invariantsHold() external view returns (bool) {
+        bool maxTradeSlippageProp = maxTradeSlippage <= MAX_TRADE_SLIPPAGE;
+        return maxTradeSlippageProp;
     }
 }
 
@@ -162,20 +283,98 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
+
+    function assertIssuances(address issuer) external view {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        IssueQueue storage queue = issueQueues[issuer];
+        if (queue.left < queue.right) {
+            assert(queue.basketNonce == bh.nonce());
+            (address[] memory erc20s, ) = bh.quote(1e18, RoundingMode.CEIL); // interested in tokens
+            assert(erc20s.length == queue.tokens.length);
+            for (uint256 i = 0; i < erc20s.length; i++) {
+                assert(erc20s[i] == queue.tokens[i]);
+            }
+        }
+    }
+
+    function invariantsHold() external view returns (bool) {
+        // For any queue in value(issueQueues):
+        //   if 0 <= i < j <= queue.right, then item[i] < item[j]
+        //   queue.items[queue.right] <= allVestAt
+        //   for each item in queue.items: queue.tokens.length == item.deposits.length
+        bool allVestProp = true;
+        bool queueItemsProp = true;
+        bool queueTokensProp = true;
+        for (uint256 i = 0; i < IMainFuzz(address(main)).numUsers(); i++) {
+            address addr = IMainFuzz(address(main)).someAddr(i);
+            IssueQueue storage queue = issueQueues[addr];
+            if (queue.items.length > 0) {
+                for (uint256 j = 0; j < queue.right; j++) {
+                    if (j > 0 && queue.items[j].amtRToken <= queue.items[j - 1].amtRToken)
+                        queueItemsProp = false;
+
+                    if (queue.tokens.length != queue.items[j].deposits.length)
+                        queueTokensProp = false;
+                }
+                if (queue.items[queue.right - 1].when > allVestAt) allVestProp = false;
+            }
+        }
+
+        return allVestProp && queueItemsProp && queueTokensProp;
+    }
 }
 
 contract StRSRP1Fuzz is StRSRP1 {
     // A range of plausibly-valid IDs for withdraw()
-    function idRange(address user) external view returns (uint256 left, uint256 right) {
+    function idRange(address user) public view returns (uint256 left, uint256 right) {
         left = firstRemainingDraft[draftEra][user];
         right = draftQueues[draftEra][user].length;
+    }
+
+    function draftSum(address user) public view returns (uint256) {
+        CumulativeDraft[] storage queue = draftQueues[draftEra][user];
+        (uint256 left, uint256 right) = idRange(user);
+        if (right == 0) return 0;
+        if (right - left > 1) {
+            return uint256(queue[right - 1].drafts - queue[left].drafts);
+        } else {
+            return queue[left].drafts;
+        }
     }
 
     function invariantsHold() external view returns (bool) {
         bool stakesProp = totalStakes == 0 ? stakeRSR == 0 && stakeRate == FIX_ONE : stakeRSR > 0;
         bool draftsProp = totalDrafts == 0 ? draftRSR == 0 && draftRate == FIX_ONE : draftRSR > 0;
+        bool maxStakeProp = stakeRate > 0 && stakeRate <= MAX_STAKE_RATE;
+        bool maxDraftProp = draftRate > 0 && draftRate <= MAX_DRAFT_RATE;
+        bool totalStakesCovered = stakeRSR * stakeRate >= totalStakes * 1e18;
+        bool totalDraftsCovered = draftRSR * draftRate >= totalDrafts * 1e18;
 
-        return stakesProp && draftsProp;
+        // [total-stakes]: totalStakes == sum(bal[acct] for acct in bal)
+        // [total-drafts]: totalDrafts == sum(draftSum(draft[acct]) for acct in draft)
+        uint256 numTotalAddrs = IMainFuzz(address(main)).numUsers() +
+            IMainFuzz(address(main)).numConstAddrs() +
+            1;
+        uint256 totalStakesBal;
+        uint256 totalDraftsBal;
+        for (uint256 i = 0; i < numTotalAddrs; i++) {
+            address addr = IMainFuzz(address(main)).someAddr(i);
+            totalStakesBal += balanceOf(addr);
+            totalDraftsBal += draftSum(addr);
+        }
+
+        bool totalStakesBalProp = totalStakes == totalStakesBal;
+        bool totalDraftsBalProp = totalDrafts == totalDraftsBal;
+
+        return
+            stakesProp &&
+            draftsProp &&
+            maxStakeProp &&
+            maxDraftProp &&
+            totalStakesCovered &&
+            totalDraftsCovered &&
+            totalStakesBalProp &&
+            totalDraftsBalProp;
     }
 
     function _msgSender() internal view virtual override returns (address) {

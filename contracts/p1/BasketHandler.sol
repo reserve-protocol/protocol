@@ -35,7 +35,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // config is the basket configuration, from which basket will be computed in a basket-switch
     // event. config is only modified by governance through setPrimeBakset and setBackupConfig
-    BasketConfig private config;
+    BasketConfig internal config;
     // basket, disabled, nonce, and timestamp are only ever set by `_switchBasket()`
     // basket is the current basket.
     Basket internal basket;
@@ -45,7 +45,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     // If disabled is true, status() is DISABLED, the basket is invalid, and the whole system should
     // be paused.
-    bool private disabled;
+    bool internal disabled;
 
     // ==== Invariants ====
     // basket is a valid Basket:

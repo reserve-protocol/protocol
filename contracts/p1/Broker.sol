@@ -38,7 +38,7 @@ contract BrokerP1 is ComponentP1, IBroker {
     bool public disabled;
 
     // The set of ITrade (clone) addresses this contract has created
-    mapping(address => bool) private trades;
+    mapping(address => bool) internal trades;
 
     // ==== Invariant ====
     // (trades[addr] == true) iff this contract has created an ITrade clone at addr

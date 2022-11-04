@@ -51,7 +51,7 @@ contract NormalOpsScenario {
     constructor() {
         main = new MainP1Fuzz();
 
-        main.initFuzz(defaultParams(), new MarketMock(main));
+        main.initFuzz(defaultParams(), new MarketMock(main, SettlingMode.Acceptable));
 
         uint192 maxTradeVolume = defaultParams().rTokenMaxTradeVolume;
 
@@ -82,8 +82,8 @@ contract NormalOpsScenario {
                     IERC20Metadata(address(token)),
                     reward,
                     maxTradeVolume,
-                    0,
-                    0,
+                    5e16, // defaultThreshold
+                    86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
                     bytes32("USD"),
                     growing,
@@ -106,8 +106,8 @@ contract NormalOpsScenario {
                     IERC20Metadata(address(token)),
                     IERC20Metadata(address(0)), // no reward
                     maxTradeVolume,
-                    0,
-                    0,
+                    5e16, // defaultThreshold
+                    86400, // delayUntilDefault
                     IERC20Metadata(address(0)),
                     bytes32("USD"),
                     justOne,
@@ -196,7 +196,10 @@ contract NormalOpsScenario {
         uint256 amount
     ) public {
         IERC20Metadata token = IERC20Metadata(address(main.someToken(tokenID)));
-        require(address(token) != address(main.rToken()), "Do not just mint RTokens");
+        require(
+            address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+            "Do not just mint RTokens/StRSR"
+        );
         ERC20Fuzz(address(token)).mint(main.someUser(userID), amount);
         require(token.totalSupply() <= 1e57, "Do not mint 'unreasonably' many tokens");
     }
@@ -207,7 +210,10 @@ contract NormalOpsScenario {
         uint256 amount
     ) public {
         IERC20 token = main.someToken(tokenID);
-        require(address(token) != address(main.rToken()), "Do not just burn RTokens");
+        require(
+            address(token) != address(main.rToken()) && address(token) != address(main.stRSR()),
+            "Do not just burn RTokens/StRSR"
+        );
         ERC20Fuzz(address(token)).burn(main.someUser(userID), amount);
     }
 
@@ -388,6 +394,14 @@ contract NormalOpsScenario {
         else if (which == 3) main.rToken().claimAndSweepRewards();
     }
 
+    function pushSeedForTrades(uint256 seed) public {
+        IMarketMock(address(main.marketMock())).pushSeed(seed);
+    }
+
+    function popSeedForTrades() public {
+        IMarketMock(address(main.marketMock())).popSeed();
+    }
+
     function settleTrades() public {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
     }
@@ -406,8 +420,49 @@ contract NormalOpsScenario {
         main.backingManager().manageTokens(backingToManage);
     }
 
+    function manageTokenInRSRTrader(uint256 tokenID) public {
+        IERC20 token = main.someToken(tokenID);
+        main.rsrTrader().manageToken(token);
+    }
+
+    function manageTokenInRTokenTrader(uint256 tokenID) public {
+        IERC20 token = main.someToken(tokenID);
+        main.rTokenTrader().manageToken(token);
+    }
+
     function grantAllowances(uint256 tokenID) public {
         main.backingManager().grantRTokenAllowance(main.someToken(tokenID));
+    }
+
+    // do revenue distribution without doing allowances first
+    function justDistributeRevenue(
+        uint256 tokenID,
+        uint8 fromID,
+        uint256 amount
+    ) public asSender {
+        IERC20 token = main.someToken(tokenID);
+        main.distributor().distribute(token, main.someAddr(fromID), amount);
+    }
+
+    // do revenue distribution granting allowance first - only RSR or RToken
+    function distributeRevenue(
+        uint8 which,
+        uint8 fromID,
+        uint256 amount
+    ) public {
+        IERC20 token;
+
+        which %= 2;
+        if (which == 0) token = IERC20(address(main.rsr()));
+        else token = IERC20(address(main.rToken()));
+
+        // Grant allowances from fromID
+        address fromUser = main.someAddr(fromID);
+        main.spoof(address(this), fromUser);
+        token.approve(address(main.distributor()), amount);
+        main.unspoof(address(this));
+
+        main.distributor().distribute(token, fromUser, amount);
     }
 
     function payRSRProfits() public {
@@ -430,67 +485,76 @@ contract NormalOpsScenario {
 
     function setBackingBuffer(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setBackingBuffer(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         ); // 1e18 == MAX_BACKING_BUFFER
     }
 
     function setBackingManagerTradingDelay(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setTradingDelay(
-            uint48(between(seed, 0, 31536000))
+            uint48(between(0, 31536000, seed))
         ); // 31536000 is BackingManager.MAX_TRADING_DELAY
     }
 
     function setAuctionLength(uint256 seed) public {
-        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(seed, 1, 604800)));
+        BrokerP1(address(main.broker())).setAuctionLength(uint48(between(1, 604800, seed)));
         // 604800 is Broker.MAX_AUCTION_LENGTH
     }
 
     function setFurnacePeriod(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(seed, 1, 31536000)));
+        FurnaceP1(address(main.furnace())).setPeriod(uint48(between(1, 31536000, seed)));
         // 31536000 is Furnace.MAX_PERIOD
     }
 
     function setFurnaceRatio(uint256 seed) public {
-        FurnaceP1(address(main.furnace())).setRatio(uint192(between(seed, 0, 1e18)));
+        FurnaceP1(address(main.furnace())).setRatio(uint192(between(0, 1e18, seed)));
         // 1e18 is Furnace.MAX_RATIO
     }
 
     function setIssuanceRate(uint256 seed) public {
-        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(seed, 0, 1e18)));
+        RTokenP1(address(main.rToken())).setIssuanceRate(uint192(between(0, 1e18, seed)));
         // 1e18 is RToken.MAX_ISSUANCE_RATE
+    }
+
+    function setScalingRedemptionRate(uint256 seed) public {
+        RTokenP1(address(main.rToken())).setScalingRedemptionRate(uint192(between(0, 1e18, seed)));
+        // 1e18 is RToken.MAX_REDEMPTION
+    }
+
+    function setRedemptionRateFloor(uint256 value) public {
+        RTokenP1(address(main.rToken())).setRedemptionRateFloor(value);
     }
 
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rsrTrader())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
         RevenueTraderP1(address(main.rTokenTrader())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setBackingManagerMaxTradeSlippage(uint256 seed) public {
         BackingManagerP1(address(main.backingManager())).setMaxTradeSlippage(
-            uint192(between(seed, 0, 1e18))
+            uint192(between(0, 1e18, seed))
         );
         // 1e18 is Trading.MAX_TRADE_SLIPPAGE
     }
 
     function setStakeRewardPeriod(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setRewardPeriod(uint48(between(1, 31536000, seed)));
     }
 
     function setStakeRewardRatio(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(seed, 1, 1e18)));
+        StRSRP1(address(main.stRSR())).setRewardRatio(uint192(between(1, 1e18, seed)));
     }
 
     function setUnstakingDelay(uint256 seed) public {
-        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(seed, 1, 31536000)));
+        StRSRP1(address(main.stRSR())).setUnstakingDelay(uint48(between(1, 31536000, seed)));
     }
 
     // ================ System Properties ================

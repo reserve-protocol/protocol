@@ -36,6 +36,12 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     address[] public users; // "registered" user addresses
     address[] public constAddrs; // constant addresses, for "addrById"
 
+    uint48 public deployedAt;
+
+    function _msgSender() internal view virtual override returns (address) {
+        return translateAddr(msg.sender);
+    }
+
     // ==== Scenario handles ====
     // Components and mocks that rely on _msgSender use this to implement msg.sender-with-aliases,
     // allowing the spoof() and unspoof() functions to work.
@@ -80,12 +86,13 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
     }
 
     function someToken(uint256 seed) public view returns (IERC20) {
-        uint256 id = seed % (tokens.length + 2);
+        uint256 id = seed % (tokens.length + 3);
         if (id < tokens.length) return tokens[id];
         else id -= tokens.length;
 
         if (id == 0) return IERC20(address(rsr));
         if (id == 1) return IERC20(address(rToken));
+        if (id == 2) return IERC20(address(stRSR));
         revert("invalid id in someToken");
     }
 
@@ -99,6 +106,10 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
 
     function someUser(uint256 seed) public view returns (address) {
         return users[seed % users.length];
+    }
+
+    function numConstAddrs() public view returns (uint256) {
+        return constAddrs.length;
     }
 
     function someAddr(uint256 seed) public view returns (address) {
@@ -145,6 +156,8 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         constAddrs.push(address(0));
         constAddrs.push(address(1));
         constAddrs.push(address(2));
+
+        deployedAt = uint48(block.timestamp);
     }
 
     // Initialize self and components
@@ -224,5 +237,23 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         broker.init(this, IGnosis(address(1)), ITrade(address(1)), params.auctionLength);
 
         this.unspoof(address(this));
+    }
+
+    function invariantsHold() external view returns (bool) {
+        // Long freezes
+        bool maxLongFreezesProp = true;
+        bool longFreezeRoleProp = true;
+        for (uint256 i = 0; i < users.length + constAddrs.length; i++) {
+            address addr;
+            if (i < users.length) {
+                addr = users[i];
+            } else {
+                addr = constAddrs[i - users.length];
+            }
+
+            if (longFreezes[addr] > LONG_FREEZE_CHARGES) maxLongFreezesProp = false;
+            if (hasRole(LONG_FREEZER, addr) && longFreezes[addr] == 0) longFreezeRoleProp = false;
+        }
+        return maxLongFreezesProp && longFreezeRoleProp;
     }
 }

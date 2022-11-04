@@ -61,7 +61,7 @@ contract DiffTestScenario {
 
             IMainFuzz main = p[proto];
 
-            main.initFuzz(defaultParams(), new MarketMock(main));
+            main.initFuzz(defaultParams(), new MarketMock(main, SettlingMode.Acceptable));
 
             // Create three "standard" collateral tokens; have rewards for the first two
             for (uint256 i = 0; i < 3; i++) {
@@ -90,8 +90,8 @@ contract DiffTestScenario {
                         IERC20Metadata(address(token)),
                         reward,
                         maxTradeVolume,
-                        0,
-                        0,
+                        5e16, // defaultThreshold
+                        86400, // delayUntilDefault
                         IERC20Metadata(address(0)),
                         bytes32("USD"),
                         growing,
@@ -118,8 +118,8 @@ contract DiffTestScenario {
                         IERC20Metadata(address(token)),
                         IERC20Metadata(address(0)), // no reward
                         maxTradeVolume,
-                        0,
-                        0,
+                        5e16, // defaultThreshold
+                        86400, // delayUntilDefault
                         IERC20Metadata(address(0)),
                         bytes32("USD"),
                         justOne,
@@ -217,7 +217,10 @@ contract DiffTestScenario {
     ) public {
         for (uint256 N = 0; N < 2; N++) {
             IERC20Metadata token = IERC20Metadata(address(p[N].someToken(tokenID)));
-            require(address(token) != address(p[N].rToken()), "Do not just mint RTokens");
+            require(
+                address(token) != address(p[N].rToken()) && address(token) != address(p[N].stRSR()),
+                "Do not just mint RTokens/StRSR"
+            );
             ERC20Fuzz(address(token)).mint(p[N].someUser(userID), amount);
             require(token.totalSupply() <= 1e57, "Do not mint 'unreasonably' many tokens");
         }
@@ -230,7 +233,10 @@ contract DiffTestScenario {
     ) public {
         for (uint256 N = 0; N < 2; N++) {
             IERC20 token = p[N].someToken(tokenID);
-            require(address(token) != address(p[N].rToken()), "Do not just burn RTokens");
+            require(
+                address(token) != address(p[N].rToken()) && address(token) != address(p[N].stRSR()),
+                "Do not just burn RTokens/StRSR"
+            );
             ERC20Fuzz(address(token)).burn(p[N].someUser(userID), amount);
         }
     }
@@ -375,6 +381,18 @@ contract DiffTestScenario {
         }
     }
 
+    function pushSeedForTrades(uint256 seed) public {
+        for (uint256 N = 0; N < 2; N++) {
+            IMarketMock(address(p[N].marketMock())).pushSeed(seed);
+        }
+    }
+
+    function popSeedForTrades() public {
+        for (uint256 N = 0; N < 2; N++) {
+            IMarketMock(address(p[N].marketMock())).popSeed();
+        }
+    }
+
     function settleTrades() public {
         BrokerP0Fuzz(address(p[0].broker())).settleTrades();
         BrokerP1Fuzz(address(p[1].broker())).settleTrades();
@@ -433,7 +451,7 @@ contract DiffTestScenario {
     function setBackingBuffer(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestIBackingManager(address(p[N].backingManager())).setBackingBuffer(
-                uint192(between(seed, 0, 1e18))
+                uint192(between(0, 1e18, seed))
             ); // 1e18 == MAX_BACKING_BUFFER
         }
     }
@@ -441,35 +459,35 @@ contract DiffTestScenario {
     function setBackingManagerTradingDelay(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestIBackingManager(address(p[N].backingManager())).setTradingDelay(
-                uint48(between(seed, 0, 31536000))
+                uint48(between(0, 31536000, seed))
             ); // 31536000 is BackingManager.MAX_TRADING_DELAY
         }
     }
 
     function setAuctionLength(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            TestIBroker(address(p[N].broker())).setAuctionLength(uint48(between(seed, 1, 604800)));
+            TestIBroker(address(p[N].broker())).setAuctionLength(uint48(between(1, 604800, seed)));
             // 604800 is Broker.MAX_AUCTION_LENGTH
         }
     }
 
     function setFurnacePeriod(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].furnace().setPeriod(uint48(between(seed, 1, 31536000)));
+            p[N].furnace().setPeriod(uint48(between(1, 31536000, seed)));
             // 31536000 is Furnace.MAX_PERIOD
         }
     }
 
     function setFurnaceRatio(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].furnace().setRatio(uint192(between(seed, 0, 1e18)));
+            p[N].furnace().setRatio(uint192(between(0, 1e18, seed)));
             // 1e18 is Furnace.MAX_RATIO
         }
     }
 
     function setIssuanceRate(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            TestIRToken(address(p[N].rToken())).setIssuanceRate(uint192(between(seed, 0, 1e18)));
+            TestIRToken(address(p[N].rToken())).setIssuanceRate(uint192(between(0, 1e18, seed)));
             // 1e18 is RToken.MAX_ISSUANCE_RATE
         }
     }
@@ -477,7 +495,7 @@ contract DiffTestScenario {
     function setRSRTraderMaxTradeSlippage(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].rsrTrader())).setMaxTradeSlippage(
-                uint192(between(seed, 0, 1e18))
+                uint192(between(0, 1e18, seed))
             );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
@@ -486,7 +504,7 @@ contract DiffTestScenario {
     function setRTokenTraderMaxTradeSlippage(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].rTokenTrader())).setMaxTradeSlippage(
-                uint192(between(seed, 0, 1e18))
+                uint192(between(0, 1e18, seed))
             );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
@@ -495,7 +513,7 @@ contract DiffTestScenario {
     function setBackingManagerMaxTradeSlippage(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestITrading(address(p[N].backingManager())).setMaxTradeSlippage(
-                uint192(between(seed, 0, 1e18))
+                uint192(between(0, 1e18, seed))
             );
             // 1e18 is Trading.MAX_TRADE_SLIPPAGE
         }
@@ -503,19 +521,19 @@ contract DiffTestScenario {
 
     function setStakeRewardPeriod(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            TestIStRSR(address(p[N].stRSR())).setRewardPeriod(uint48(between(seed, 1, 31536000)));
+            TestIStRSR(address(p[N].stRSR())).setRewardPeriod(uint48(between(1, 31536000, seed)));
         }
     }
 
     function setStakeRewardRatio(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            TestIStRSR(address(p[N].stRSR())).setRewardRatio(uint192(between(seed, 1, 1e18)));
+            TestIStRSR(address(p[N].stRSR())).setRewardRatio(uint192(between(1, 1e18, seed)));
         }
     }
 
     function setUnstakingDelay(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
-            TestIStRSR(address(p[N].stRSR())).setUnstakingDelay(uint48(between(seed, 1, 31536000)));
+            TestIStRSR(address(p[N].stRSR())).setUnstakingDelay(uint48(between(1, 31536000, seed)));
         }
     }
 

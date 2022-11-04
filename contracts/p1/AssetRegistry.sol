@@ -16,10 +16,10 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     IBasketHandler private basketHandler;
 
     // Registered ERC20s
-    EnumerableSet.AddressSet private _erc20s;
+    EnumerableSet.AddressSet internal _erc20s;
 
     // Registered Assets
-    mapping(IERC20 => IAsset) private assets;
+    mapping(IERC20 => IAsset) internal assets;
 
     /* ==== Contract Invariants ====
        The contract state is just the mapping assets; _erc20s is ignored in properties.

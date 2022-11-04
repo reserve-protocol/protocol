@@ -41,3 +41,25 @@ function between(
 function concat(string memory a, string memory b) pure returns (string memory) {
     return string(abi.encodePacked(a, b));
 }
+
+function getFirstChar(string memory originString) pure returns (string memory firstChar) {
+    bytes memory firstCharByte = new bytes(1);
+    firstCharByte[0] = bytes(originString)[0];
+    return string(firstCharByte);
+}
+
+function strEqual(string memory stringA, string memory stringB) pure returns (bool) {
+    return keccak256(bytes(stringA)) == keccak256(bytes(stringB));
+}
+
+function bytes32ToString(bytes32 _bytes32) pure returns (string memory) {
+    uint8 i = 0;
+    while (i < 32 && _bytes32[i] != 0) {
+        i++;
+    }
+    bytes memory bytesArray = new bytes(i);
+    for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
+        bytesArray[i] = _bytes32[i];
+    }
+    return string(bytesArray);
+}
