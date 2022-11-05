@@ -910,7 +910,7 @@ contract ChaosOpsScenario {
     }
 
     function setLongFreeze(uint48 freeze) public {
-        main.setShortFreeze(freeze);
+        main.setLongFreeze(freeze);
     }
 
     // Grant/Revoke Roles
@@ -1018,18 +1018,10 @@ contract ChaosOpsScenario {
     }
 
     function getNextPriceModel() internal returns (PriceModel memory) {
-        PriceModel memory _priceModel;
-        if (priceModels.length > 0) {
-            if (priceModelIndex >= priceModels.length) {
-                priceModelIndex = 0;
-            }
-            _priceModel = priceModels[priceModelIndex];
-            priceModelIndex++;
-        } else {
-            // Return stable as default
-            _priceModel = stable;
-        }
-        return _priceModel;
+        if (priceModels.length == 0) return stable;
+        uint currID = priceModelIndex;
+        priceModelIndex = (priceModelIndex + 1) % priceModels.length; // next ID
+        return priceModels[currID];
     }
 
     // ================ System Properties ================
