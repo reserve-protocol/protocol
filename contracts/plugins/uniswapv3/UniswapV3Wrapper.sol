@@ -14,14 +14,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
     constructor(
-        //INonfungiblePositionManager.MintParams memory params,
+        INonfungiblePositionManager.MintParams memory params,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
-        // params.recipient = address(this);
-        // params.deadline = block.timestamp;
-        // (positionTokenId, positionLiquidity, , ) = nonfungilePositionManager.mint(params);
-        // _mint(msg.sender, positionLiquidity);
+        params.recipient = address(this);
+        params.deadline = block.timestamp;
+        (positionTokenId, positionLiquidity, , ) = nonfungilePositionManager.mint(params);
+        _mint(msg.sender, positionLiquidity);
     }
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
@@ -62,15 +62,10 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         _burn(msg.sender, liquidity);
     }
 
-    function positions()
-        external
-        view
-        returns (
-            uint128 tokensOwed0,
-            uint128 tokensOwed1
-        )
-    {
-        (,,,,,,,,,,tokensOwed0, tokensOwed1) = nonfungilePositionManager.positions(positionTokenId);
+    function positions() external view returns (uint128 tokensOwed0, uint128 tokensOwed1) {
+        (, , , , , , , , , , tokensOwed0, tokensOwed1) = nonfungilePositionManager.positions(
+            positionTokenId
+        );
     }
 
     function collect(uint128 amount0Max, uint128 amount1Max)

@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, BigNumberish, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
@@ -71,6 +71,8 @@ const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 const point1Pct = (value: BigNumber): BigNumber => {
   return value.div(1000)
 }
+
+
 
 describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
@@ -367,13 +369,26 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       // USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       // USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',  
 
+      type TMintParams = {
+        token0: string;
+        token1: string;
+        fee: BigNumberish;
+        tickLower: BigNumberish;
+        tickUpper: BigNumberish;
+        amount0Desired: BigNumberish;
+        amount1Desired: BigNumberish;
+        amount0Min: BigNumberish;
+        amount1Min: BigNumberish;
+        recipient: string;
+        deadline: BigNumberish;
+      }
 
-      let params = {
+      let mintParams: TMintParams = {
         token0: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-        tokent1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+        token1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
         fee: 500,
         tickLower: 2,
-        tickUpper: 30000000,
+        tickUpper: 300,
         amount0Desired: 200,
         amount1Desired: 100,
         amount0Min: 0,
@@ -386,7 +401,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await (
           await ethers.getContractFactory('UniswapV3Wrapper')
         ).deploy(
-          //params,
+          mintParams,
           "Huy",
           "HUY"
         )
