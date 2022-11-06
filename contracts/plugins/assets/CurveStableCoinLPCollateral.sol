@@ -39,7 +39,6 @@ contract CurveStableCoinLPCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        AggregatorV3Interface[] memory stableCoinChainLinkFeeds_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
@@ -47,7 +46,6 @@ contract CurveStableCoinLPCollateral is Collateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint192 defaultThreshold_,
-        uint192[] memory stableCoinThresholds_,
         address curveStablePool_,
         int8 referenceERC20Decimals_,
         address convexWrappingContract_
@@ -66,19 +64,20 @@ contract CurveStableCoinLPCollateral is Collateral {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        {
-            defaultThreshold = defaultThreshold_;
-            referenceERC20Decimals = referenceERC20Decimals_;
-            curveStablePool = curveStablePool_;
-        }
-        {
-            prevReferencePrice = refPerTok();
-        }
-        {
-            convexWrappingContract = convexWrappingContract_;
-            stableCoinChainLinkFeeds = stableCoinChainLinkFeeds_;
-            stableCoinThresholds = stableCoinThresholds_;
-        }
+        defaultThreshold = defaultThreshold_;
+        referenceERC20Decimals = referenceERC20Decimals_;
+        curveStablePool = curveStablePool_;
+        prevReferencePrice = refPerTok();
+        convexWrappingContract = convexWrappingContract_;
+    }
+
+    /// Setting the chainlink pricefeeds for stable coins backing the LP token
+    function setChainlinkPriceFeedsForStableCoins(
+        AggregatorV3Interface[] memory stableCoinChainLinkFeeds_,
+        uint192[] memory stableCoinThresholds_
+    ) external {
+        stableCoinChainLinkFeeds = stableCoinChainLinkFeeds_;
+        stableCoinThresholds = stableCoinThresholds_;
     }
 
     /// Refresh exchange rates and update default status.
@@ -115,7 +114,6 @@ contract CurveStableCoinLPCollateral is Collateral {
                     markStatus(CollateralStatus.IFFY);
                 }
             }
-             
         }
         prevReferencePrice = referencePrice;
         CollateralStatus newStatus = status();
