@@ -323,7 +323,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                 // but return FIX_MAX instead of throwing overflow errors.
                 unchecked {
                     // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
-                    uint256 rawDelta = price_ * qty; // {D36} = {D18} * {D18}
+                    uint256 rawDelta = uint256(price_) * qty; // {D36} = {D18} * {D18}
                     // if we overflowed *, then return FIX_MAX
                     if (rawDelta / price_ != qty) return (true, FIX_MAX);
                     uint256 delta = rawDelta / FIX_ONE; // {D18} = {D36} / {D18}
