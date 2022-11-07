@@ -390,17 +390,23 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       let mintParams: TMintParams = {
         token0: networkConfig[chainId].tokens.DAI!,
-        token1: networkConfig[chainId].tokens.USDT!,
-        fee: 500,
+        token1: networkConfig[chainId].tokens.USDC!,
+        fee: 3000,
         tickLower: MIN_TICK,
         tickUpper: MAX_TICK,
-        amount0Desired: 1,
-        amount1Desired: 1,
+        amount0Desired:  1000, //bn('1e18'),
+        amount1Desired: 1000, //toBNDecimals(bn('1e18'), 6),
         amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
-        recipient: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // rewrite in constructor
+        recipient: '0x0000000000000000000000000000000000000000', // rewrite in constructor
         deadline: 0 //rewrite in constructor
       }
+
+      console.log('balance', await addr1.getBalance());
+      console.log('usdt', await usdt.balanceOf(await addr1.getAddress()));
+      console.log('usdc', await usdc.balanceOf(await addr1.getAddress()));
+      console.log('dai', await dai.balanceOf(await addr1.getAddress()));
+
 
       const nonpriceAsset: UniswapV3Wrapper = <UniswapV3Wrapper>(
         await (

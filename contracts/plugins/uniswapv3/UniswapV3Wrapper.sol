@@ -12,7 +12,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     uint256 positionTokenId;
     uint128 positionLiquidity;
 
-    INonfungiblePositionManager nonfungiblePositionManager =
+    INonfungiblePositionManager immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
     constructor(
@@ -23,8 +23,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         params.recipient = address(this);
         params.deadline = block.timestamp;
 
-        TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
-        TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
+        // TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
+        // TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
 
         TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager),
          params.amount0Desired);
@@ -32,7 +32,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
          params.amount1Desired);
 
         nonfungiblePositionManager.positions(1);
-        //(positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
+        (positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
         //_mint(msg.sender, positionLiquidity)
     }
 
