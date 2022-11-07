@@ -13,6 +13,7 @@ module.exports = {
     'p2/mocks',
     'plugins/mocks',
     'plugins/aave',
+    'plugins/convex',
     'fuzz',
   ],
   configureYulOptimizer: true,

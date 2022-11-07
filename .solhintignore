@@ -9,6 +9,7 @@ fuzz/
 # Ignore the style of external contracts
 
 aave/
+convex/
 
 # The Fixed library defines a custom type and crashes the solhint parser
 
