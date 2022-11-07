@@ -33,13 +33,10 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager),
          params.amount0Desired);
         TransferHelper.safeApprove(params.token1, address(nonfungiblePositionManager),
-         params.amount1Desired);
+         params.amount1Desired); 
 
-        nonfungiblePositionManager.positions(1);
-        //(positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
-        _mint(msg.sender, 2 
-        //positionLiquidity
-        );
+        nonfungiblePositionManager.mint(params);
+        _mint(msg.sender, positionLiquidity);
     }
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)

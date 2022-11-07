@@ -93,11 +93,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       let mintParams: TMintParams = {
         token0: networkConfig[chainId].tokens.DAI!,
         token1: networkConfig[chainId].tokens.USDC!,
-        fee: 3000,
+        fee: 100,
         tickLower: MIN_TICK,
         tickUpper: MAX_TICK,
-        amount0Desired: 1000, //bn('1e18'),
-        amount1Desired: 1000, //toBNDecimals(bn('1e18'), 6),
+        amount0Desired: bn('1e18'),
+        amount1Desired: toBNDecimals(bn('1e18'), 6),
         amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
         recipient: '0x0000000000000000000000000000000000000000', // rewrite in constructor
