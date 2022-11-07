@@ -121,8 +121,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
           defaultTxParams
         )
       )
-      await waitForTx(await dai.approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams))
-      await waitForTx(await usdc.approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
+      await waitForTx(await dai.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
+      await waitForTx(await usdc.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
       await uniswapV3Wrapper.mint(mintParams);
     })
   })
