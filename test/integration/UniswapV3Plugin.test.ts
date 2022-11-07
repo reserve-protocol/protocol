@@ -383,15 +383,20 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         deadline: BigNumberish;
       }
 
+    /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
+    const MIN_TICK = -887272;
+    /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
+    const MAX_TICK = -MIN_TICK;
+
       let mintParams: TMintParams = {
-        token0: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-        token1: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+        token0: networkConfig[chainId].tokens.DAI!,
+        token1: networkConfig[chainId].tokens.USDT!,
         fee: 500,
-        tickLower: 2,
-        tickUpper: 300,
-        amount0Desired: 200,
-        amount1Desired: 100,
-        amount0Min: 0,
+        tickLower: MIN_TICK,
+        tickUpper: MAX_TICK,
+        amount0Desired: 1,
+        amount1Desired: 1,
+        amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
         recipient: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', // rewrite in constructor
         deadline: 0 //rewrite in constructor
@@ -399,11 +404,14 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       const nonpriceAsset: UniswapV3Wrapper = <UniswapV3Wrapper>(
         await (
-          await ethers.getContractFactory('UniswapV3Wrapper')
+          await (await ethers.getContractFactory('UniswapV3Wrapper')).connect(addr1)
         ).deploy(
           mintParams,
           "Huy",
-          "HUY"
+          "HUY",
+          {
+            gasLimit: 2000000,
+          }
         )
       )
     })

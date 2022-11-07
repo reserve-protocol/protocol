@@ -6,11 +6,13 @@ import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
+
 contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     uint256 positionTokenId;
     uint128 positionLiquidity;
 
-    INonfungiblePositionManager nonfungilePositionManager =
+    INonfungiblePositionManager nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
     constructor(
@@ -20,8 +22,18 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     ) ERC20(name_, symbol_) {
         params.recipient = address(this);
         params.deadline = block.timestamp;
-        (positionTokenId, positionLiquidity, , ) = nonfungilePositionManager.mint(params);
-        _mint(msg.sender, positionLiquidity);
+
+        TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
+        TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
+
+        TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager),
+         params.amount0Desired);
+        TransferHelper.safeApprove(params.token1, address(nonfungiblePositionManager),
+         params.amount1Desired);
+
+        nonfungiblePositionManager.positions(1);
+        //(positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
+        //_mint(msg.sender, positionLiquidity)
     }
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
@@ -40,7 +52,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         increaseLiquidityParams.amount0Min = 0;
         increaseLiquidityParams.amount1Min = 0;
         increaseLiquidityParams.deadline = block.timestamp;
-        (liquidity, amount0, amount1) = nonfungilePositionManager.increaseLiquidity(
+        (liquidity, amount0, amount1) = nonfungiblePositionManager.increaseLiquidity(
             increaseLiquidityParams
         );
         positionLiquidity = liquidity;
@@ -57,13 +69,13 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         decreaseLiquidityParams.amount0Min = 0;
         decreaseLiquidityParams.amount1Min = 0;
         decreaseLiquidityParams.deadline = block.timestamp;
-        (amount0, amount1) = nonfungilePositionManager.decreaseLiquidity(decreaseLiquidityParams);
+        (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
         positionLiquidity -= liquidity;
         _burn(msg.sender, liquidity);
     }
 
     function positions() external view returns (uint128 tokensOwed0, uint128 tokensOwed1) {
-        (, , , , , , , , , , tokensOwed0, tokensOwed1) = nonfungilePositionManager.positions(
+        (, , , , , , , , , , tokensOwed0, tokensOwed1) = nonfungiblePositionManager.positions(
             positionTokenId
         );
     }
@@ -77,7 +89,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         collectParams.recipient = msg.sender;
         collectParams.amount0Max = amount0Max;
         collectParams.amount1Max = amount1Max;
-        (amount0, amount1) = nonfungilePositionManager.collect(collectParams);
+        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
     }
 
     function positionId() external view returns (uint256) {
