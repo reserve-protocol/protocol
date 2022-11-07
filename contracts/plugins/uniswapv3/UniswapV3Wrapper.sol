@@ -5,6 +5,7 @@ import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 import '@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol';
 
@@ -16,15 +17,18 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
     constructor(
-        INonfungiblePositionManager.MintParams memory params,
         string memory name_,
         string memory symbol_
     ) ERC20(name_, symbol_) {
+        
+    }
+
+    function mint(INonfungiblePositionManager.MintParams memory params) external {
         params.recipient = address(this);
         params.deadline = block.timestamp;
 
-        // TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
-        // TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
+        TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
+        TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
 
         TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager),
          params.amount0Desired);
@@ -32,8 +36,10 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
          params.amount1Desired);
 
         nonfungiblePositionManager.positions(1);
-        (positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
-        //_mint(msg.sender, positionLiquidity)
+        //(positionTokenId, positionLiquidity, , ) = nonfungiblePositionManager.mint(params);
+        _mint(msg.sender, 2 
+        //positionLiquidity
+        );
     }
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
