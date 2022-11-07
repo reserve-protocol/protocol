@@ -6,11 +6,11 @@ import "./interfaces/IRewardStaking.sol";
 import "./interfaces/IConvexDeposits.sol";
 import "./interfaces/CvxMining.sol";
 import "./interfaces/IBooster.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
-import '@openzeppelin/contracts/token/ERC20/ERC20.sol';
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import '@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeMath.sol';
+import '@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/IERC20.sol';
+import '@aave/protocol-v2/contracts/dependencies/openzeppelin/contracts/SafeERC20.sol';
+import { ERC20 } from "./dependencies/ERC20.sol";
+import "./dependencies/ReentrancyGaurd.sol";
 // import "@openzeppelin/contracts/access/Ownable.sol";
 
 
@@ -19,10 +19,8 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 //Based on Curve.fi's gauge wrapper implementations at https://github.com/curvefi/curve-dao-contracts/tree/master/contracts/gauges/wrappers
 contract ConvexStakingWrapper is ERC20, ReentrancyGuard {
-    using SafeERC20
-    for IERC20;
-    using SafeMath
-    for uint256;
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
 
     struct EarnedData {
         address token;
