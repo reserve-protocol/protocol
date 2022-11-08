@@ -7,12 +7,14 @@ import { networkConfig } from '../../common/configuration'
 import { bn, toBNDecimals } from '../../common/numbers'
 import {
   ERC20Mock,
+  INonfungiblePositionManager,
   UniswapV3Wrapper,
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { waitForTx } from './utils'
-import { MAX_UINT192, MAX_UINT256 } from '../../common/constants'
+import { assert } from 'console'
+import { expect } from 'chai'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -26,6 +28,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
   const initialBal: BigNumber = bn('20000e18')
   let addr1: SignerWithAddress
+  let addr2: SignerWithAddress
 
   // Tokens and Assets
   let dai: ERC20Mock
@@ -49,7 +52,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     })
 
     beforeEach(async () => {
-      ;[, , , addr1] = await ethers.getSigners()
+      ;[, , addr1, addr2] = await ethers.getSigners()
       await loadFixture(defaultFixture)
       dai = <ERC20Mock>(
         await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI!)
@@ -72,7 +75,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     })
 
     it('Constructed', async () => {
-      type TMintParams = {
+        type TMintParams = {
         token0: string;
         token1: string;
         fee: BigNumberish;
@@ -92,7 +95,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       const MAX_TICK = -MIN_TICK;
 
       const asset0 = dai;
-      const asset1 = usdc;  
+      const asset1 = usdc;
 
       let mintParams: TMintParams = {
         token0: asset0.address,
@@ -115,7 +118,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       const DEFAULT_GAS_LIMIT = 10000000
       const DEFAULT_GAS_PRICE = utils.parseUnits('100', 'gwei')
       const defaultTxParams = { gasLimit: DEFAULT_GAS_LIMIT, gasPrice: DEFAULT_GAS_PRICE }
-      
+
       const UniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
       const uniswapV3Wrapper: UniswapV3Wrapper = <UniswapV3Wrapper>(
         await UniswapV3WrapperContractFactory.connect(addr1).deploy(
@@ -150,6 +153,133 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       console.log('addr1.getBalance()', await addr1.getBalance());
       console.log(asset0.name(), await asset0.balanceOf(await addr1.getAddress()));
       console.log(asset1.name(), await asset1.balanceOf(await addr1.getAddress()));
+
+
+      console.log(await uniswapV3Wrapper.positions());
+    })
+
+
+    it('Holders can remove liquidity permissionlessly', async () => {
+      type TMintParams = {
+        token0: string;
+        token1: string;
+        fee: BigNumberish;
+        tickLower: BigNumberish;
+        tickUpper: BigNumberish;
+        amount0Desired: BigNumberish;
+        amount1Desired: BigNumberish;
+        amount0Min: BigNumberish;
+        amount1Min: BigNumberish;
+        recipient: string;
+        deadline: BigNumberish;
+      }
+
+      /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
+      const MIN_TICK = -887272;
+      /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
+      const MAX_TICK = -MIN_TICK;
+
+      const asset0 = dai;
+      const asset1 = usdc;
+
+      let mintParams: TMintParams = {
+        token0: asset0.address,
+        token1: asset1.address,
+        fee: 100,
+        tickLower: MIN_TICK,
+        tickUpper: MAX_TICK,
+        amount0Desired: toBNDecimals(bn('100e18'), await asset0.decimals()),
+        amount1Desired: toBNDecimals(bn('100e18'), await asset1.decimals()),
+        amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
+        amount1Min: 0,
+        recipient: '0x0000000000000000000000000000000000000000', // rewrite in constructor
+        deadline: 0 //rewrite in constructor
+      }
+
+      const DEFAULT_GAS_LIMIT = 10000000
+      const DEFAULT_GAS_PRICE = utils.parseUnits('100', 'gwei')
+      const defaultTxParams = { gasLimit: DEFAULT_GAS_LIMIT, gasPrice: DEFAULT_GAS_PRICE }
+      
+      const UniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
+      const uniswapV3Wrapper: UniswapV3Wrapper = <UniswapV3Wrapper>(
+        await UniswapV3WrapperContractFactory.connect(addr1).deploy(
+          "UniswapV3WrapperToken",
+          "U3W",
+          defaultTxParams
+        )
+      )
+
+      expect(await dai.balanceOf(addr1.address)).to.be.eq(
+        bn('20000e18')
+      )
+      expect(await dai.balanceOf(addr2.address)).to.be.eq(
+        bn('0')
+      )
+      expect(await usdc.balanceOf(addr1.address)).to.be.eq(
+        bn('20000e6')
+      )
+      expect(await usdc.balanceOf(addr2.address)).to.be.eq(
+        bn('0')
+      )
+
+
+      await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
+      await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
+      await waitForTx(await uniswapV3Wrapper.mint(mintParams));
+
+
+      expect(await dai.balanceOf(addr1.address)).to.be.closeTo(
+        bn('19900e18'), 10 ** 6
+      )
+      expect(await dai.balanceOf(addr2.address)).to.be.eq(
+        bn('0')
+      )
+      expect(await usdc.balanceOf(addr1.address)).to.be.closeTo(
+        bn('19900e6'), 1000
+      )
+      expect(await usdc.balanceOf(addr2.address)).to.be.eq(
+        bn('0')
+      )
+
+      let positions = await uniswapV3Wrapper.positions();
+      console.log(positions);
+      const liquidityToTransfer = positions.liquidity.div(2)
+      console.log("liquidityToTransfer", liquidityToTransfer);
+
+      await waitForTx(await uniswapV3Wrapper.connect(addr1)
+        .transfer(addr2.address, liquidityToTransfer)
+      )
+
+      let balance1 = await uniswapV3Wrapper.balanceOf(addr1.address);
+      expect(balance1).to.be.eq(
+        positions.liquidity.sub(liquidityToTransfer)
+      )
+
+      expect(await uniswapV3Wrapper.balanceOf(addr2.address)).to.be.eq(
+        liquidityToTransfer
+      )
+
+      await waitForTx(await uniswapV3Wrapper.connect(addr1)
+        .decreaseLiquidity(liquidityToTransfer)
+      )
+
+      await waitForTx(await uniswapV3Wrapper.connect(addr2)
+        .decreaseLiquidity(liquidityToTransfer)
+      )
+
+      const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
+      await waitForTx(await uniswapV3Wrapper.connect(addr2).collect(MAX_UINT128, MAX_UINT128));
+
+      expect(await uniswapV3Wrapper.balanceOf(addr2.address)).to.be.eq(
+        bn('0')
+      )
+
+      expect(await dai.balanceOf(addr2.address)).to.be.closeTo(
+        bn('50e18'), 10 ** 6
+      )
+      expect(await usdc.balanceOf(addr2.address)).to.be.closeTo(
+        bn('50e6'), 1000
+      )
 
     })
   })

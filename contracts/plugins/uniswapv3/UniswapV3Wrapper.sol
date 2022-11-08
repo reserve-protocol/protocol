@@ -12,9 +12,7 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     struct Deposit {
         uint256 tokenId;
-        uint128 liquidity;
-        //todo need we owner or msg.sender is enough
-        address owner;
+        uint128 liquidity; //TODO replace with this.totalSupply();
         address token0;
         address token1;
     }
@@ -36,7 +34,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             uint256 amount1
         )
     {
-        require(!isInitialized, "Contract is already initialized!");
+        require(!isInitialized, "Contract is already initialized here!");
         isInitialized = true;
 
         params.recipient = address(this);
@@ -84,7 +82,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         deposit.liquidity = liquidity;
         deposit.token0 = params.token0;
         deposit.token1 = params.token1;
-        deposit.owner = msg.sender;
         deposit.tokenId = tokenId;
     }
 
@@ -142,6 +139,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         decreaseLiquidityParams.deadline = block.timestamp;
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
         deposit.liquidity -= liquidity;
+
         _burn(msg.sender, liquidity);
     }
 
@@ -164,10 +162,10 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        return nonfungiblePositionManager
-            .positions(deposit.tokenId);
+        return nonfungiblePositionManager.positions(deposit.tokenId);
     }
 
+    //TODO check who calls collect, should it be permissioned
     function collect(uint128 amount0Max, uint128 amount1Max)
         external
         returns (uint256 amount0, uint256 amount1)
