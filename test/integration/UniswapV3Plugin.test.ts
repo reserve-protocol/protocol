@@ -12,6 +12,7 @@ import {
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { waitForTx } from './utils'
+import { MAX_UINT192, MAX_UINT256 } from '../../common/constants'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -126,9 +127,30 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
       await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
       
-      await waitForTx(await uniswapV3Wrapper.mint(mintParams));
+      await waitForTx(await uniswapV3Wrapper.connect(addr1).mint(mintParams));
 
-      console.log(await uniswapV3Wrapper.positions()); 
+
+      const positions = await uniswapV3Wrapper.connect(addr1).positions();
+
+      console.log(positions); 
+
+      await waitForTx(await uniswapV3Wrapper.connect(addr1).decreaseLiquidity(positions.liquidity.div(2)));
+
+      console.log('addr1.getBalance()', await addr1.getBalance());
+      console.log(asset0.name(), await asset0.balanceOf(await addr1.getAddress()));
+      console.log(asset1.name(), await asset1.balanceOf(await addr1.getAddress()));
+
+
+      const positions2 = await uniswapV3Wrapper.connect(addr1).positions();
+      console.log(positions2);
+
+      const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
+      await waitForTx(await uniswapV3Wrapper.connect(addr1).collect(MAX_UINT128, MAX_UINT128));
+
+      console.log('addr1.getBalance()', await addr1.getBalance());
+      console.log(asset0.name(), await asset0.balanceOf(await addr1.getAddress()));
+      console.log(asset1.name(), await asset1.balanceOf(await addr1.getAddress()));
+
     })
   })
 })

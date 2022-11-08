@@ -136,40 +136,35 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = deposit.tokenId;
+        decreaseLiquidityParams.liquidity = liquidity;
         decreaseLiquidityParams.amount0Min = 0;
         decreaseLiquidityParams.amount1Min = 0;
         decreaseLiquidityParams.deadline = block.timestamp;
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
         deposit.liquidity -= liquidity;
         _burn(msg.sender, liquidity);
-
-        //TODO
-        _sendToOwner(amount0, amount1);
-    }
-
-    /// @notice Transfers funds to owner of NFT
-    /// @param amount0 The amount of token0
-    /// @param amount1 The amount of token1
-    function _sendToOwner(uint256 amount0, uint256 amount1) internal {
-        TransferHelper.safeTransfer(deposit.token0, deposit.owner, amount0);
-        TransferHelper.safeTransfer(deposit.token1, deposit.owner, amount1);
     }
 
     function positions()
         external
         view
         returns (
-            uint256 tokenId,
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
             uint128 liquidity,
+            uint256 feeGrowthInside0LastX128,
+            uint256 feeGrowthInside1LastX128,
             uint128 tokensOwed0,
             uint128 tokensOwed1
         )
     {
         require(isInitialized, "Contract is not initialized!");
-
-        tokenId = deposit.tokenId;
-
-        (, , , , , , , liquidity, , , tokensOwed0, tokensOwed1) = nonfungiblePositionManager
+        return nonfungiblePositionManager
             .positions(deposit.tokenId);
     }
 
@@ -185,9 +180,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         collectParams.amount0Max = amount0Max;
         collectParams.amount1Max = amount1Max;
         (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
-
-        //TODO
-        _sendToOwner(amount0, amount1);
     }
 
     function positionId() external view returns (uint256) {
