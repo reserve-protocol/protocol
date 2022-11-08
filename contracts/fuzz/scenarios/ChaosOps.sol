@@ -1019,7 +1019,7 @@ contract ChaosOpsScenario {
 
     function getNextPriceModel() internal returns (PriceModel memory) {
         if (priceModels.length == 0) return stable;
-        uint currID = priceModelIndex;
+        uint256 currID = priceModelIndex;
         priceModelIndex = (priceModelIndex + 1) % priceModels.length; // next ID
         return priceModels[currID];
     }

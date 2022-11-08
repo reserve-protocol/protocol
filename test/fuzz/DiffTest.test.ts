@@ -8,6 +8,7 @@ import { fp } from '../../common/numbers'
 import * as sc from '../../typechain' // All smart contract types
 
 import { addr } from './common'
+import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../../common/constants'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
@@ -62,7 +63,7 @@ describe('The Differential Testing scenario', () => {
   let _carol: Signer
 
   let aliceAddr: string
-  let _bobAddr: string
+  let bobAddr: string
   let _carolAddr: string
 
   before('deploy and setup', async () => {
@@ -76,21 +77,21 @@ describe('The Differential Testing scenario', () => {
     comp1 = await componentsOfP1(p1)
 
     aliceAddr = user(0)
-    _bobAddr = user(1)
+    bobAddr = user(1)
     _carolAddr = user(2)
 
     alice = await ethers.getSigner(aliceAddr)
-    _bob = await ethers.getSigner(_bobAddr)
+    _bob = await ethers.getSigner(bobAddr)
     _carol = await ethers.getSigner(_carolAddr)
 
     await helpers.setBalance(aliceAddr, exa * exa)
-    await helpers.setBalance(_bobAddr, exa * exa)
+    await helpers.setBalance(bobAddr, exa * exa)
     await helpers.setBalance(_carolAddr, exa * exa)
     await helpers.setBalance(p0.address, exa * exa)
     await helpers.setBalance(p1.address, exa * exa)
 
     await helpers.impersonateAccount(aliceAddr)
-    await helpers.impersonateAccount(_bobAddr)
+    await helpers.impersonateAccount(bobAddr)
     await helpers.impersonateAccount(_carolAddr)
     await helpers.impersonateAccount(p0.address)
     await helpers.impersonateAccount(p1.address)
@@ -100,7 +101,7 @@ describe('The Differential Testing scenario', () => {
 
   after('stop impersonations', async () => {
     await helpers.stopImpersonatingAccount(aliceAddr)
-    await helpers.stopImpersonatingAccount(_bobAddr)
+    await helpers.stopImpersonatingAccount(bobAddr)
     await helpers.stopImpersonatingAccount(_carolAddr)
     await helpers.stopImpersonatingAccount(p0.address)
     await helpers.stopImpersonatingAccount(p1.address)
@@ -147,6 +148,131 @@ describe('The Differential Testing scenario', () => {
       expect(await comp1.rToken.balanceOf(aliceAddr)).to.equal(3n * exa)
 
       await expect(scenario.connect(alice).redeem(6n * exa)).to.be.reverted
+    })
+
+    it('grantRole and revokeRole work as expected', async () => {
+      expect(await p0.hasRole(SHORT_FREEZER, bobAddr)).to.equal(false)
+      expect(await p1.hasRole(SHORT_FREEZER, bobAddr)).to.equal(false)
+
+      await scenario.grantRole(1, 1)
+      expect(await p0.hasRole(SHORT_FREEZER, bobAddr)).to.equal(true)
+      expect(await p1.hasRole(SHORT_FREEZER, bobAddr)).to.equal(true)
+
+      await scenario.revokeRole(1, 1)
+      expect(await p0.hasRole(SHORT_FREEZER, bobAddr)).to.equal(false)
+      expect(await p1.hasRole(SHORT_FREEZER, bobAddr)).to.equal(false)
+    })
+
+    it('push/pop BackingForPrimeBasket works as expected', async () => {
+      await expect(scenario.backingForPrimeBasket(0)).to.be.reverted
+      await expect(scenario.targetAmtsForPrimeBasket(0)).to.be.reverted
+
+      await scenario.pushBackingForPrimeBasket(1, exa - 1n)
+      expect(await scenario.backingForPrimeBasket(0)).to.equal(1)
+      expect(await scenario.targetAmtsForPrimeBasket(0)).to.equal(exa)
+
+      await scenario.popBackingForPrimeBasket()
+      await expect(scenario.backingForPrimeBasket(0)).to.be.reverted
+      await expect(scenario.targetAmtsForPrimeBasket(0)).to.be.reverted
+    })
+    it('push/pop BackingForBackup works as expected', async () => {
+      await expect(scenario.backingForBackup(0)).to.be.reverted
+
+      await scenario.pushBackingForBackup(1)
+      expect(await scenario.backingForBackup(0)).to.equal(1)
+
+      await scenario.popBackingForBackup(0)
+      await expect(scenario.backingForBackup(0)).to.be.reverted
+    })
+
+    it('{push,pop}PriceModel work as expected', async () => {
+      // starts empty
+      await expect(scenario.priceModels(0)).to.be.reverted
+      expect(await scenario.priceModelIndex()).to.equal(0)
+
+      // push a few
+      await scenario.pushPriceModel(0, exa, exa, exa)
+      await scenario.pushPriceModel(1, exa, exa, exa)
+      await scenario.pushPriceModel(2, exa, exa, exa)
+
+      expect((await scenario.priceModels(0)).kind).to.equal(0)
+      expect((await scenario.priceModels(1)).kind).to.equal(1)
+      expect((await scenario.priceModels(2)).kind).to.equal(2)
+      await expect(scenario.priceModels(3)).to.be.reverted
+
+      // pop all
+      await scenario.popPriceModel()
+      await scenario.popPriceModel()
+      await scenario.popPriceModel()
+
+      // is empty
+      await expect(scenario.priceModels(0)).to.be.reverted
+    })
+    it('createToken, createColl, and createRewardAsset work as expected', async () => {
+      const targetName = ethers.utils.formatBytes32String('Tgt')
+      const gloTokID = await p0.numTokens()
+      expect(await p0.numTokens()).to.equal(await p1.numTokens())
+
+      // token = createToken
+      await scenario.createToken(targetName, 'Glob', 'GLO')
+      expect(await p0.numTokens()).to.equal(gloTokID.add(1))
+      expect(await p0.numTokens()).to.equal(await p1.numTokens())
+
+      const p0Token = await ConAt('IERC20Metadata', await p0.tokens(gloTokID))
+      const p1Token = await ConAt('IERC20Metadata', await p1.tokens(gloTokID))
+
+      expect(await p0Token.name()).to.equal('GlobTgt ' + gloTokID.toString())
+      expect(await p1Token.name()).to.equal('GlobTgt ' + gloTokID.toString())
+      expect(await p0Token.symbol()).to.equal('GLOTgt' + gloTokID.toString())
+      expect(await p1Token.symbol()).to.equal('GLOTgt' + gloTokID.toString())
+
+      // reward = createRewardAsset
+      const rewardTokID = await p0.numTokens()
+      await scenario.createRewardAsset(targetName)
+      const p0RewardToken = await ConAt('IERC20Metadata', await p0.tokens(rewardTokID))
+      expect(await p0RewardToken.name()).to.equal('RewardTgt ' + rewardTokID.toString())
+      expect(await p0RewardToken.symbol()).to.equal('RTgt' + rewardTokID.toString())
+      const p0RewardAsset = await ConAt(
+        'AssetMock',
+        await comp0.assetRegistry.toAsset(p0RewardToken.address)
+      )
+      expect(await p0RewardAsset.erc20()).to.equal(p0RewardToken.address)
+      expect(await p0RewardAsset.isCollateral()).to.equal(false)
+
+      const p1RewardToken = await ConAt('IERC20Metadata', await p1.tokens(rewardTokID))
+      expect(await p1RewardToken.name()).to.equal('RewardTgt ' + rewardTokID.toString())
+      expect(await p1RewardToken.symbol()).to.equal('RTgt' + rewardTokID.toString())
+      const p1RewardAsset = await ConAt(
+        'AssetMock',
+        await comp1.assetRegistry.toAsset(p1RewardToken.address)
+      )
+      expect(await p1RewardAsset.erc20()).to.equal(p1RewardToken.address)
+      expect(await p1RewardAsset.isCollateral()).to.equal(false)
+
+      // coll = createColl(token, reward)
+      await scenario.createColl(p0Token.address, p0RewardToken.address, true, exa, exa, targetName)
+      const newColl = await ConAt('CollateralMock', await scenario.lastCreatedColl())
+      expect(await newColl.isCollateral()).to.equal(true)
+    })
+
+    it('registerAsset works as expected', async () => {
+      // OK, the "choice Seed" thing is obviously insance, but getting random configuration in
+      // through fuzzing would be even worse. Digit by digit, 310000 means:
+      // 3: use reward token with token index 3
+      // 1: use target name with index 1: "A"
+      // 0: do set a reward
+      // 0: do configure as Collateral, not Asset
+      // 0: do configure the Collateral as a stable+ token
+      // 0: create a new token, don't actually use the token given at input.
+      scenario.registerAsset(0, exa, exa, 310000n)
+    })
+    it('swapRegisteredAsset works as expected', async () => {
+      // 3: use reward token with token index 3
+      // 1: use target name with index 1: "a"
+      // 0: do set a reward
+      // 0: do configure as Collateral, not Asset
+      // 0: do configure the Collateral as a stable+ token
+      scenario.swapRegisteredAsset(0, exa, exa, 31000n)
     })
   })
 })

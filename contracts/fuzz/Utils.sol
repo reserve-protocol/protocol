@@ -41,12 +41,24 @@ function between(
 function concat(string memory a, string memory b) pure returns (string memory) {
     return string(abi.encodePacked(a, b));
 }
-function concat(string memory a, string memory b, string memory c) pure returns (string memory) {
+
+function concat(
+    string memory a,
+    string memory b,
+    string memory c
+) pure returns (string memory) {
     return string(abi.encodePacked(a, b, c));
 }
-function concat(string memory a, string memory b, string memory c, string memory d) pure returns (string memory) {
+
+function concat(
+    string memory a,
+    string memory b,
+    string memory c,
+    string memory d
+) pure returns (string memory) {
     return string(abi.encodePacked(a, b, c, d));
 }
+
 function getFirstChar(string memory originString) pure returns (string memory firstChar) {
     bytes memory firstCharByte = new bytes(1);
     firstCharByte[0] = bytes(originString)[0];

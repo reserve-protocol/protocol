@@ -37,14 +37,14 @@ contract DiffTestScenario {
         PriceModel({ kind: Kind.Walk, curr: 1e18, low: 1e18, high: 1.1e18 });
     PriceModel internal justOne = PriceModel({ kind: Kind.Constant, curr: 1e18, low: 0, high: 0 });
 
-    bytes32[] public targetNames = [bytes32("A"), bytes32("B"), bytes32("C"), bytes32("USD")];
+    bytes32[] public targetNames = [bytes32("USD"), bytes32("A"), bytes32("B"), bytes32("C")];
 
     // The Main instances! p[0] is P0, p[1] is P1.
     IMainFuzz[2] public p;
 
     // Register and track priceModels that can be used in new assets/collateral
     PriceModel[] public priceModels;
-    uint256 internal priceModelIndex;
+    uint256 public priceModelIndex;
 
     // Once constructed, everything is set up for random echidna runs to happen:
     // - p[0] and p[1] (Each system's Main) and their components are up
@@ -254,58 +254,84 @@ contract DiffTestScenario {
         for (uint256 N = 0; N < 2; N++) p[N].assetRegistry().refresh();
     }
 
+    struct RegisterAssetConfig {
+        // struct just to avoid stack-too-deep. x_x
+        bool createNewToken;
+        bool stable;
+        bool coll;
+        bool setReward;
+        uint8 targetNameID;
+        uint256 rewardIndex;
+    }
+
     function registerAsset(
         uint8 tokenID,
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         uint256 choiceSeed
     ) public {
-        //
-        // choiceSeed always gets /= 10^k, so these values are easier to infer from debugging info.
-        bool willBeStable = choiceSeed % 2 == 0; choiceSeed /= 10;
-        bool willCreateNewToken = choiceSeed % 10 == 0; choiceSeed /= 10;
-        bool willCreateColl = choiceSeed % 2 == 0; choiceSeed /= 10;
-        bool wellSetReward = choiceSeed % 2 == 0; choiceSeed /= 10;
-        uint rewardIndex = choiceSeed % 100; choiceSeed /= 100;
-        uint8 targetNameID = choiceSeed % 10 ; choiceSeed /= 10;
+        RegisterAssetConfig memory conf;
+        // choiceSeed always gets /= 10^k, so these values are easier to infer
+        // from debugging info.
+        conf.createNewToken = choiceSeed % 10 == 0;
+        choiceSeed /= 10;
+        conf.stable = choiceSeed % 2 == 0;
+        choiceSeed /= 10;
+        conf.coll = choiceSeed % 2 == 0;
+        choiceSeed /= 10;
+        conf.setReward = choiceSeed % 2 == 0;
+        choiceSeed /= 10;
+        conf.targetNameID = uint8(choiceSeed % 10);
+        choiceSeed /= 10;
+        conf.rewardIndex = choiceSeed % 100;
+        choiceSeed /= 100;
 
-        if (willCreateNewToken) tokenID = createToken(someTargetName(targetNameID), "Coll", "C");
+        if (conf.createNewToken) {
+            tokenID = uint8(createToken(someTargetName(conf.targetNameID), "Coll", "C"));
+        }
 
-        uint initPMID;
+        uint256 initPMID;
 
         for (uint256 N = 0; N < 2; N++) {
-            IMainFuzz main = p[N];
-            bytes32 targetName = someTargetName(targetNameID);
-            IAssetRegistry reg = main.assetRegistry();
+            IERC20Metadata erc20 = IERC20Metadata(address(p[N].someToken(tokenID)));
 
-            IERC20Metadata erc20;
-
-            erc20 = IERC20Metadata(address(main.someToken(tokenID)));
-
-            IERC20Metadata rewardERC20 = willSetReward
-                ? IERC20Metadata(address(main.tokens(rewardIndex % main.numTokens())))
+            IERC20Metadata rewardERC20 = conf.setReward
+                ? IERC20Metadata(address(p[N].tokens(conf.rewardIndex % p[N].numTokens())))
                 : IERC20Metadata(address(0));
 
-            if (willCreateColl) {
-                if (N == 0) initPMID == priceModelIndex;
+            if (conf.coll) {
+                if (N == 0) initPMID = priceModelIndex;
                 else priceModelIndex = initPMID;
 
-                reg.register(createColl(
-                                 erc20,
-                                 rewardERC20,
-                                 willBeStable,
-                                 defaultThresholdSeed,
-                                 delayUntilDefaultSeed,
-                                 targetName));
+                p[N].assetRegistry().register(
+                    createColl(
+                        erc20,
+                        rewardERC20,
+                        conf.stable,
+                        defaultThresholdSeed,
+                        delayUntilDefaultSeed,
+                        someTargetName(conf.targetNameID)
+                    )
+                );
             } else {
-                reg.register(new AssetMock(
-                                 IERC20Metadata(address(erc20)),
-                                 rewardERC20,
-                                 defaultParams().rTokenMaxTradeVolume,
-                                 getNextPriceModel()
-                                 ));
+                p[N].assetRegistry().register(
+                    new AssetMock(
+                        erc20,
+                        rewardERC20,
+                        defaultParams().rTokenMaxTradeVolume,
+                        getNextPriceModel()
+                    )
+                );
             }
         }
+    }
+
+    struct SwapRegistryConfig {
+        bool stable;
+        bool coll;
+        uint8 targetNameID;
+        bool setReward;
+        uint256 rewardIndex;
     }
 
     function swapRegisteredAsset(
@@ -313,49 +339,65 @@ contract DiffTestScenario {
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         uint256 choiceSeed
-        ) public {
+    ) public {
+        SwapRegistryConfig memory conf;
 
-        bool willBeStable = choiceSeed % 2 == 0; choiceSeed /= 10;
-        bool willBeColl = (choiceSeed % 2 == 0); choiceSeed /= 10;
-        uint8 targetNameID = choiceSeed % 10; choiceSeed /= 10;
-        bool wellSetReward = choiceSeed % 2 == 0; choiceSeed /= 10;
-        uint rewardIndex = choiceSeed % 100; choiceSeed /= 100;
+        conf.stable = choiceSeed % 2 == 0;
+        choiceSeed /= 10;
+        conf.coll = (choiceSeed % 2 == 0);
+        choiceSeed /= 10;
+        conf.setReward = choiceSeed % 2 == 0;
+        choiceSeed /= 10;
+        conf.targetNameID = uint8(choiceSeed % 10);
+        choiceSeed /= 10;
+        conf.rewardIndex = choiceSeed % 100;
+        choiceSeed /= 100;
 
-        uint initPMID;
+        uint256 initPMID;
 
         for (uint256 N = 0; N < 2; N++) {
-            IMainFuzz main = p[N];
-            IERC20 erc20 = main.someToken(tokenID);
-            IAssetRegistry reg = main.assetRegistry();
-            require(reg.isRegistered(erc20), "no asset registered for selected tokenID");
+            IAssetRegistry reg = p[N].assetRegistry();
+            IERC20Metadata erc20 = IERC20Metadata(address(p[N].tokens(tokenID)));
+            require(
+                reg.isRegistered(erc20),
+                "no asset registered for selected tokenID"
+            );
 
-            IAsset asset = reg.toAsset(erc20);
-            string targetName;
-            if (asset.isCollateral()) targetName = ICollateral(address(asset)).targetName();
-            else targetName = someTargetName(targetNameID);
+            bytes32 targetName;
+            if (reg.toAsset(erc20).isCollateral()) {
+                targetName = reg.toColl(erc20).targetName();
+            }
+            else targetName = someTargetName(conf.targetNameID);
 
-            IERC20Metadata rewardERC20 = willSetReward
-                ? IERC20Metadata(address(main.tokens(rewardIndex % main.numTokens())))
+            IERC20Metadata rewardERC20 = conf.setReward
+                ? IERC20Metadata(address(p[N].tokens(conf.rewardIndex % p[N].numTokens())))
                 : IERC20Metadata(address(0));
 
-            if (willBeColl) {
-                // This is gnarly, but it should work to ensure that both collateral we make here
-                // are initially configured identically.
-                if (N == 0) initPMID == priceModelIndex;
+            if (conf.coll) {
+                // This is gnarly, but it should work to ensure that both collateral we make
+                // here initially configured identically.
+                if (N == 0) initPMID = priceModelIndex;
                 else priceModelIndex = initPMID;
 
-                reg.swapRegistered(createColl(erc20,
-                                              rewardERC20,
-                                              willBeStable,
-                                              defaultThresholdSeed,
-                                              delayUntilDefaultSeed,
-                                              targetName));
+                reg.swapRegistered(
+                    createColl(
+                        erc20,
+                        rewardERC20,
+                        conf.stable,
+                        defaultThresholdSeed,
+                        delayUntilDefaultSeed,
+                        targetName
+                    )
+                );
             } else {
-                reg.swapRegistered( new AssetMock(
-                                        IERC20Metadata(address(erc20)),
-                                        IERC20Metadata(address(0)), // no recursive reward
-                                        defaultParams().rTokenMaxTradeVolume,
-                                        getNextPriceModel()));
+                reg.swapRegistered(
+                    new AssetMock(
+                        IERC20Metadata(address(erc20)),
+                        IERC20Metadata(address(0)), // no recursive reward
+                        defaultParams().rTokenMaxTradeVolume,
+                        getNextPriceModel()
+                    )
+                );
             }
         }
     }
@@ -551,9 +593,17 @@ contract DiffTestScenario {
         }
     }
 
-    function manageTokenInRSRTrader(uint256 tokenID) public;
+    function manageTokenInRSRTrader(uint256 tokenID) public {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rsrTrader().manageToken(p[N].someToken(tokenID));
+        }
+    }
 
-    function manageTokenInRTokenTrader(uint256 tokenID) public;
+    function manageTokenInRTokenTrader(uint256 tokenID) public {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rTokenTrader().manageToken(p[N].someToken(tokenID));
+        }
+    }
 
     function grantAllowances(uint256 tokenID) public {
         for (uint256 N = 0; N < 2; N++) {
@@ -565,14 +615,22 @@ contract DiffTestScenario {
         uint256 tokenID,
         uint8 fromID,
         uint256 amount
-    ) public asSender;
+    ) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            IMainFuzz main = p[N];
+            IERC20 token = main.someToken(tokenID);
+            address dest = main.someAddr(fromID);
+            main.distributor().distribute(token, dest, amount);
+        }
+    }
 
     // do revenue distribution granting allowance first - only RSR or RToken
-    function distributeRevenue(
-        uint8 which,
-        uint8 fromID,
-        uint256 amount
-    ) public;
+    // TODO
+    /* function distributeRevenue( */
+    /*     uint8 which, */
+    /*     uint8 fromID, */
+    /*     uint256 amount */
+    /* ) public; */
 
     function payRSRProfits() public {
         for (uint256 N = 0; N < 2; N++) {
@@ -586,15 +644,15 @@ contract DiffTestScenario {
         }
     }
 
-    // Basket handler
-    function refreshBasket() public;
+    // Basket handler TODO
+    // function refreshBasket() public;
 
     // ==== Configure Basket ====
-    IERC20[] internal backingForPrimeBasket;
-    uint192[] internal targetAmtsForPrimeBasket;
+    uint256[] public backingForPrimeBasket;
+    uint192[] public targetAmtsForPrimeBasket;
 
     function pushBackingForPrimeBasket(uint256 tokenID, uint256 seed) public {
-        backingForPrimeBasket.push(main.someToken(tokenID));
+        backingForPrimeBasket.push(tokenID);
         targetAmtsForPrimeBasket.push(uint192(between(1, 1000e18, seed)));
         // 1000e18 is BH.MAX_TARGET_AMT
     }
@@ -606,28 +664,21 @@ contract DiffTestScenario {
         }
     }
 
-    function setPrimeBasket() public;
-
-    mapping(bytes32 => IERC20[]) internal backingForBackup;
+    // function setPrimeBasket() public; TODO
+    uint256[] public backingForBackup;
 
     function pushBackingForBackup(uint256 tokenID) public {
-        IERC20 token = main.someToken(tokenID);
-        IAssetRegistry reg = main.assetRegistry();
-        if (!reg.isRegistered(token)) return;
-
-        IAsset asset = reg.toAsset(token);
-        if (asset.isCollateral()) {
-            bytes32 targetName = CollateralMock(address(asset)).targetName();
-            backingForBackup[targetName].push(token);
-        }
+        backingForBackup.push(tokenID);
     }
 
     function popBackingForBackup(uint8 targetNameID) public {
-        bytes32 targetName = someTargetName(targetNameID);
-        if (backingForBackup[targetName].length > 0) backingForBackup[targetName].pop();
+        if (backingForBackup.length > 0)
+            backingForBackup.pop();
     }
 
-    function setBackupConfig(uint8 targetNameID) public;
+    // function setBackupConfig() public; TODO
+    // just use backup tokens that have the same targetName as the
+    // first element in backingForBackup
 
     function poke() public {
         for (uint256 N = 0; N < 2; N++) p[N].poke();
@@ -722,7 +773,7 @@ contract DiffTestScenario {
         }
     }
 
-    function setRedemptionRateFloor(uint256 value) public {
+    function setRedemptionRateFloor(uint256 seed) public {
         for (uint256 N = 0; N < 2; N++) {
             TestIRToken token = TestIRToken(address(p[N].rToken()));
             token.setRedemptionRateFloor(uint192(between(0, 1e18, seed)));
@@ -783,13 +834,13 @@ contract DiffTestScenario {
 
     function setShortFreeze(uint48 freeze) public {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].setShortFreeze(freeze);
+            TestIMain(address(p[N])).setShortFreeze(freeze);
         }
     }
 
     function setLongFreeze(uint48 freeze) public {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].setLongFreeze(freeze);
+            TestIMain(address(p[N])).setLongFreeze(freeze);
         }
     }
 
@@ -832,7 +883,7 @@ contract DiffTestScenario {
         uint256 highSeed
     ) public {
         // Set Kind
-        Kind _kind = Kind(which % (type(Kind).max + 1));
+        Kind _kind = Kind(which % (uint8(type(Kind).max) + 1));
 
         PriceModel memory _priceModel = PriceModel({
             kind: _kind,
@@ -843,38 +894,44 @@ contract DiffTestScenario {
         priceModels.push(_priceModel);
     }
 
-    function getNextPriceModel() internal returns (PriceModel memory) {
+    function popPriceModel() public {
+        if(priceModels.length > 0) priceModels.pop();
+    }
+
+    function getNextPriceModel() public returns (PriceModel memory) {
         if (priceModels.length == 0) return stable;
-        uint currID = priceModelIndex;
+        uint256 currID = priceModelIndex % priceModels.length;
         priceModelIndex = (priceModelIndex + 1) % priceModels.length; // next ID
         return priceModels[currID];
     }
 
-
     // Construct a new ERC20Fuzz token in each Main
-    // @returns The (shared) token ID of the newly added tokens
-    function createToken(bytes32 targetName, string memory namePrefix, string memory symbolPrefix)
-        internal returns (uint256) {
+    // @return The (shared) token ID of the newly added tokens
+    function createToken(
+        bytes32 targetName,
+        string memory namePrefix,
+        string memory symbolPrefix
+    ) public returns (uint256) {
         string memory targetStr = bytes32ToString(targetName);
 
         uint256 tokenID = p[0].numTokens();
-        assert(p[0].numTokens == p[1].numTokens);
-        string memory idStr = Strings.toString(tokenId++);
+        assert(p[0].numTokens() == p[1].numTokens());
+        string memory idStr = Strings.toString(tokenID);
 
         for (uint256 N = 0; N < 2; N++) {
             ERC20Fuzz token = new ERC20Fuzz(
                 concat(namePrefix, targetStr, " ", idStr),
                 concat(symbolPrefix, targetStr, idStr),
                 p[N]
-                );
+            );
             p[N].addToken(token);
         }
         return tokenID;
     }
 
     // Construct a new token, and wrap it in a new Reward asset
-    // @returns The (shared) token ID of the newly added tokens
-    function createRewardAsset(bytes32 targetName) internal returns (uint256) {
+    // @return The (shared) token ID of the newly added tokens
+    function createRewardAsset(bytes32 targetName) public returns (uint256) {
         uint256 tokenID = createToken(targetName, "Reward", "R");
 
         for (uint256 N = 0; N < 2; N++) {
@@ -884,35 +941,44 @@ contract DiffTestScenario {
                     tok,
                     IERC20Metadata(address(0)),
                     defaultParams().rTokenMaxTradeVolume,
-                    getNextPriceModel()));
+                    getNextPriceModel()
+                )
+            );
         }
 
         return tokenID;
     }
 
+    /// save the last-created collateral mock from createColl
+    /// this is _just_ for ease of testing these tests.
+    CollateralMock public lastCreatedColl;
+
     /// Create and return one new CollateralMock contract.
-    /// @returns The created Collateral address
+    /// @return The created Collateral address
+
     function createColl(
         IERC20 erc20,
         IERC20 rewardERC20,
-        bool stable,
+        bool isStable,
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
-        ) internal returns (CollateraMock) {
-        return CollateraMock(
-            IERC20Metadata(address(erc20)),
-            IERC20Metadata(address(rewardERC20)),
-            defaultParams().rTokenMaxTradeVolume,
-            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
-            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
-            IERC20Metadata(address(0)),
-            targetName,
-            stable ? growing : getNextPriceModel(),
-            stable ? justOne : getNextPriceModel(),
-            stable ? justOne : getNextPriceModel(),
-            stable ? stable : getNextPriceModel()
+    ) public returns (CollateralMock) {
+        lastCreatedColl =
+            new CollateralMock(
+                IERC20Metadata(address(erc20)),
+                IERC20Metadata(address(rewardERC20)),
+                defaultParams().rTokenMaxTradeVolume,
+                uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
+                between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
+                IERC20Metadata(address(0)),
+                targetName,
+                isStable ? growing : getNextPriceModel(),
+                isStable ? justOne : getNextPriceModel(),
+                isStable ? justOne : getNextPriceModel(),
+                isStable ? stable : getNextPriceModel()
             );
+        return lastCreatedColl;
     }
 
     // ================ Equivalence Properties ================
