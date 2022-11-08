@@ -10,7 +10,7 @@ Below we provide a detailed list of these checks to serve as a reference when ru
 
 ### contracts/facade/FacadeAct.sol
 
--- `getActCallData()`: The check `if (price_ > 0)` when claiming and sweeping rewards will always be *true* with our current setup as the call to `strictPrice()` with our current oracle library would revert if the price is 0. We will leave the check anyway for safety.
+-- `getActCallData()`: The check `if (price_ > 0)` when claiming and sweeping rewards will always be *true* with our current setup as the call to `strictPrice()` with our current oracle library would revert if the price is 0. We will leave the check anyway for safety. Also many of the empty `catch()` statements are not covered.
 
 ### contracts/p1/BasketHandler.sol:BasketHandlerP1
 -- `goodCollateral()`: The validations against the `zero` address, `rsr`, `stRSR`, and `rToken` will never be true, because tokens in both the *basket* and *backup* configs are previously validated in `setPrimeBasket()` and `setBackupConfig()` respectively, by calling the `requireValidCollArray()` function on the input array.
