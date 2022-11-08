@@ -147,6 +147,6 @@ contract CurveStableCoinLPCollateral is Collateral {
     /// @return _cd The calldata to send
     function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
         _to = convexWrappingContract;
-        _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
+        _cd = abi.encodeWithSignature("getReward(address)", msg.sender);
     }
 }
