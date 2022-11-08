@@ -19,7 +19,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         address token1;
     }
 
-
     bool isInitialized = false;
     Deposit deposit;
 
@@ -37,7 +36,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             uint256 amount1
         )
     {
-        require(!isInitialized, 'Contract is already initialized!');
+        require(!isInitialized, "Contract is already initialized!");
         isInitialized = true;
 
         params.recipient = address(this);
@@ -98,14 +97,22 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             uint256 amount1
         )
     {
-        require(isInitialized, 'Contract is not initialized!');
+        require(isInitialized, "Contract is not initialized!");
 
         TransferHelper.safeTransferFrom(deposit.token0, msg.sender, address(this), amount0Desired);
         TransferHelper.safeTransferFrom(deposit.token1, msg.sender, address(this), amount1Desired);
 
-        TransferHelper.safeApprove(deposit.token0, address(nonfungiblePositionManager), amount0Desired);
-        TransferHelper.safeApprove(deposit.token1, address(nonfungiblePositionManager), amount1Desired);
-    
+        TransferHelper.safeApprove(
+            deposit.token0,
+            address(nonfungiblePositionManager),
+            amount0Desired
+        );
+        TransferHelper.safeApprove(
+            deposit.token1,
+            address(nonfungiblePositionManager),
+            amount1Desired
+        );
+
         INonfungiblePositionManager.IncreaseLiquidityParams memory increaseLiquidityParams;
         increaseLiquidityParams.tokenId = deposit.tokenId;
         increaseLiquidityParams.amount0Desired = amount0Desired;
@@ -125,7 +132,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         nonReentrant
         returns (uint256 amount0, uint256 amount1)
     {
-        require(isInitialized, 'Contract is not initialized!');
+        require(isInitialized, "Contract is not initialized!");
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = deposit.tokenId;
@@ -148,19 +155,29 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         TransferHelper.safeTransfer(deposit.token1, deposit.owner, amount1);
     }
 
-    function positions() external view returns (uint128 tokensOwed0, uint128 tokensOwed1) {
-        require(isInitialized, 'Contract is not initialized!');
+    function positions()
+        external
+        view
+        returns (
+            uint256 tokenId,
+            uint128 liquidity,
+            uint128 tokensOwed0,
+            uint128 tokensOwed1
+        )
+    {
+        require(isInitialized, "Contract is not initialized!");
 
-        (, , , , , , , , , , tokensOwed0, tokensOwed1) = nonfungiblePositionManager.positions(
-            deposit.tokenId
-        );
+        tokenId = deposit.tokenId;
+
+        (, , , , , , , liquidity, , , tokensOwed0, tokensOwed1) = nonfungiblePositionManager
+            .positions(deposit.tokenId);
     }
 
     function collect(uint128 amount0Max, uint128 amount1Max)
         external
         returns (uint256 amount0, uint256 amount1)
     {
-        require(isInitialized, 'Contract is not initialized!');
+        require(isInitialized, "Contract is not initialized!");
 
         INonfungiblePositionManager.CollectParams memory collectParams;
         collectParams.tokenId = deposit.tokenId;

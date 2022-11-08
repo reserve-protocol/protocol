@@ -90,24 +90,26 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
       const MAX_TICK = -MIN_TICK;
 
+      const asset0 = dai;
+      const asset1 = usdc;  
+
       let mintParams: TMintParams = {
-        token0: networkConfig[chainId].tokens.DAI!,
-        token1: networkConfig[chainId].tokens.USDC!,
+        token0: asset0.address,
+        token1: asset1.address,
         fee: 100,
         tickLower: MIN_TICK,
         tickUpper: MAX_TICK,
-        amount0Desired: bn('1e18'),
-        amount1Desired: toBNDecimals(bn('1e18'), 6),
+        amount0Desired: toBNDecimals(bn('100e18'), await asset0.decimals()),
+        amount1Desired: toBNDecimals(bn('100e18'), await asset1.decimals()),
         amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
         recipient: '0x0000000000000000000000000000000000000000', // rewrite in constructor
         deadline: 0 //rewrite in constructor
       }
 
-      console.log('balance', await addr1.getBalance());
-      console.log('usdt', await usdt.balanceOf(await addr1.getAddress()));
-      console.log('usdc', await usdc.balanceOf(await addr1.getAddress()));
-      console.log('dai', await dai.balanceOf(await addr1.getAddress()));
+      console.log('addr1.getBalance()', await addr1.getBalance());
+      console.log(asset0.name(), await asset0.balanceOf(await addr1.getAddress()));
+      console.log(asset1.name(), await asset1.balanceOf(await addr1.getAddress()));
 
       const DEFAULT_GAS_LIMIT = 10000000
       const DEFAULT_GAS_PRICE = utils.parseUnits('100', 'gwei')
@@ -121,9 +123,12 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
           defaultTxParams
         )
       )
-      await waitForTx(await dai.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
-      await waitForTx(await usdc.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
-      await uniswapV3Wrapper.mint(mintParams);
+      await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
+      await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
+      
+      await waitForTx(await uniswapV3Wrapper.mint(mintParams));
+
+      console.log(await uniswapV3Wrapper.positions()); 
     })
   })
 })
