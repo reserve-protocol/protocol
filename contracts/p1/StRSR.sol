@@ -8,11 +8,11 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgra
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import "contracts/interfaces/IStRSR.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/Permit.sol";
-import "contracts/p1/mixins/Component.sol";
+import "../interfaces/IStRSR.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/Permit.sol";
+import "./mixins/Component.sol";
 
 /*
  * @title StRSRP1

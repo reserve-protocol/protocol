@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/interfaces/IFacadeWrite.sol";
-import "contracts/facade/lib/FacadeWriteLib.sol";
+import "../interfaces/IFacadeWrite.sol";
+import "./lib/FacadeWriteLib.sol";
 
 /**
  * @title FacadeWrite
