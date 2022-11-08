@@ -733,9 +733,28 @@ describe('FacadeAct contract', () => {
       const hndAmt: BigNumber = bn('10e18')
       await rToken.connect(addr1).transfer(rTokenTrader.address, hndAmt)
 
-      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
+
+      // RSR can be distributed with no issues
+      await rsr.connect(addr1).transfer(backingManager.address, hndAmt)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(backingManager.address)
+      expect(data).to.not.equal('0x')
+
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(hndAmt)
+      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(0)
+
+      // Execute managetokens in Backing Manager
+      await addr1.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // RSR forwarded
+      expect(await rsr.balanceOf(backingManager.address)).to.equal(0)
+      expect(await rsr.balanceOf(rsrTrader.address)).to.equal(hndAmt)
     })
 
     it('Should not revert if f=0', async () => {
@@ -744,9 +763,28 @@ describe('FacadeAct contract', () => {
       const hndAmt: BigNumber = bn('10e18')
       await rsr.connect(addr1).transfer(rsrTrader.address, hndAmt)
 
-      const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
       expect(addr).to.equal(ZERO_ADDRESS)
       expect(data).to.equal('0x')
+
+      // RToken can be distributed with no issues
+      await rToken.connect(addr1).transfer(backingManager.address, hndAmt)
+      ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
+      expect(addr).to.equal(backingManager.address)
+      expect(data).to.not.equal('0x')
+
+      expect(await rToken.balanceOf(backingManager.address)).to.equal(hndAmt)
+      expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(0)
+
+      // Execute managetokens in Backing Manager
+      await addr1.sendTransaction({
+        to: addr,
+        data,
+      })
+
+      // RToken forwarded
+      expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
+      expect(await rToken.balanceOf(rTokenTrader.address)).to.equal(hndAmt)
     })
   })
 
