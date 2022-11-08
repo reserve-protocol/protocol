@@ -12,9 +12,7 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     struct Deposit {
         uint256 tokenId;
-        uint128 liquidity;
-        //todo need we owner or msg.sender is enough
-        address owner;
+        uint128 liquidity; //TODO replace with this.totalSupply();
         address token0;
         address token1;
     }
@@ -84,7 +82,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         deposit.liquidity = liquidity;
         deposit.token0 = params.token0;
         deposit.token1 = params.token1;
-        deposit.owner = msg.sender;
         deposit.tokenId = tokenId;
     }
 
@@ -130,29 +127,44 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     function decreaseLiquidity(uint128 liquidity)
         external
         nonReentrant
-        returns (uint256 amount0, uint256 amount1)
+        returns (uint256 owed0, uint256 owed1)
     {
         require(isInitialized, "Contract is not initialized!");
 
-        INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
-        decreaseLiquidityParams.tokenId = deposit.tokenId;
-        decreaseLiquidityParams.amount0Min = 0;
-        decreaseLiquidityParams.amount1Min = 0;
-        decreaseLiquidityParams.deadline = block.timestamp;
-        (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
+        INonfungiblePositionManager.DecreaseLiquidityParams
+            memory decreaseLiquidityParams = INonfungiblePositionManager.DecreaseLiquidityParams(
+                deposit.tokenId,
+                liquidity,
+                10 ** 19,
+                10 ** 7,
+                block.timestamp
+            );
+        (owed0, owed1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
+
+        // uint256 balance0 = IERC20(deposit.token0).balanceOf(address(this));
+        // uint256 balance1 = IERC20(deposit.token1).balanceOf(address(this));
+        console.logString("liquidity amount to remove");
+        console.logUint(liquidity);
+        console.logString("token0 balance and returned liquidity");
+        console.logUint(owed0);
+        console.logString("token1 balance and returned liquidity");
+        console.logUint(owed1);
+        console.logString("--------------------");
+
         deposit.liquidity -= liquidity;
+
         _burn(msg.sender, liquidity);
 
         //TODO
-        _sendToOwner(amount0, amount1);
+        _sendToMsgSender(owed0, owed1);
     }
 
     /// @notice Transfers funds to owner of NFT
     /// @param amount0 The amount of token0
     /// @param amount1 The amount of token1
-    function _sendToOwner(uint256 amount0, uint256 amount1) internal {
-        TransferHelper.safeTransfer(deposit.token0, deposit.owner, amount0);
-        TransferHelper.safeTransfer(deposit.token1, deposit.owner, amount1);
+    function _sendToMsgSender(uint256 amount0, uint256 amount1) internal {
+        TransferHelper.safeTransferFrom(deposit.token0, address(nonfungiblePositionManager), msg.sender, amount0);
+        TransferHelper.safeTransferFrom(deposit.token1, address(nonfungiblePositionManager), msg.sender, amount1);
     }
 
     function positions()
@@ -173,6 +185,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             .positions(deposit.tokenId);
     }
 
+    //TODO check who calls collect, should it be permissioned
     function collect(uint128 amount0Max, uint128 amount1Max)
         external
         returns (uint256 amount0, uint256 amount1)
@@ -187,7 +200,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
 
         //TODO
-        _sendToOwner(amount0, amount1);
+        _sendToMsgSender(amount0, amount1);
     }
 
     function positionId() external view returns (uint256) {
