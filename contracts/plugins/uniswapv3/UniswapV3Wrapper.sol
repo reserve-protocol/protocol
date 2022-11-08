@@ -99,6 +99,12 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, 'Contract is not initialized!');
+
+        TransferHelper.safeTransferFrom(deposit.token0, msg.sender, address(this), amount0Desired);
+        TransferHelper.safeTransferFrom(deposit.token1, msg.sender, address(this), amount1Desired);
+
+        TransferHelper.safeApprove(deposit.token0, address(nonfungiblePositionManager), amount0Desired);
+        TransferHelper.safeApprove(deposit.token1, address(nonfungiblePositionManager), amount1Desired);
     
         INonfungiblePositionManager.IncreaseLiquidityParams memory increaseLiquidityParams;
         increaseLiquidityParams.tokenId = deposit.tokenId;
