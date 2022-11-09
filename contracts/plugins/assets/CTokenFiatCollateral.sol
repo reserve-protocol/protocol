@@ -8,7 +8,7 @@ import "contracts/plugins/assets/ICToken.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title CTokenNonFiatCollateral
+ * @title CTokenFiatCollateral
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
