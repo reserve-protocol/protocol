@@ -318,14 +318,13 @@ describe('The Differential Testing scenario', () => {
       }
     })
     it('basketHandler equality does not fail immediately', async () => {
-      expect(await scenario.echidna_bhEqualThunks()).to.be.true
-      expect(await scenario.echidna_bhEqualPrices()).to.be.true
-      expect(await scenario.echidna_bhEqualQty()).to.be.true
-      expect(await scenario.echidna_bhEqualBasketsHeld()).to.be.true
-      expect(await scenario.echidna_bhEqualQuotes()).to.be.true
-      expect(await scenario.echidna_distributorEqual()).to.be.true
-      expect(await scenario.echidna_furnaceEqual()).to.be.true
-      expect(await scenario.echidna_brokerDisabledEqual()).to.be.true
+      expect(await scenario.callStatic.echidna_bhEqualThunks()).to.be.true
+      expect(await scenario.callStatic.echidna_bhEqualPrices()).to.be.true
+      expect(await scenario.callStatic.echidna_bhEqualQty()).to.be.true
+      expect(await scenario.callStatic.echidna_bhEqualBasketsHeld()).to.be.true
+      expect(await scenario.callStatic.echidna_bhEqualQuotes()).to.be.true
+      expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
+      expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
   })
 })

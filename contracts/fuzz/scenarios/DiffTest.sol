@@ -1065,7 +1065,10 @@ contract DiffTestScenario {
     }
 
     // ================ Equivalence tests ================
-    function echidna_allTokensEqual() public view returns (bool) {
+    function echidna_allTokensEqual() public returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         if (p[0].numUsers() != p[1].numUsers()) return false;
         if (p[0].numTokens() != p[1].numTokens()) return false;
 
@@ -1083,21 +1086,33 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_equalPaused() external view returns (bool) {
+    function echidna_equalPaused() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         return TestIMain(address(p[0])).paused() == TestIMain(address(p[1])).paused();
     }
 
     // RToken
-    function echidna_rTokenRedemptionLimitsEqual() external view returns (bool) {
+    function echidna_rTokenRedemptionLimitsEqual() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         return p[0].rToken().redemptionLimit() == p[1].rToken().redemptionLimit();
     }
 
-    function echidna_basketsNeededEqual() external view returns (bool) {
+    function echidna_basketsNeededEqual() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         return p[0].rToken().basketsNeeded() == p[1].rToken().basketsNeeded();
     }
 
     // StRSR: endIdForWithdraw(user), exchangeRate
-    function echidna_StRSREndIdsEqual() external view returns (bool) {
+    function echidna_StRSREndIdsEqual() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         uint256 N = p[0].numUsers();
         for (uint256 u = 0; u < N; u++) {
             if (
@@ -1108,12 +1123,18 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_stRSRExchangeRateEqual() external view returns (bool) {
+    function echidna_stRSRExchangeRateEqual() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         return p[0].stRSR().exchangeRate() == p[1].stRSR().exchangeRate();
     }
 
     // AssetRegistry: isRegsietered(token), <isAsset(token)>, <isCollateral(token)>
-    function assetsEqualPrices(IAsset a, IAsset b) internal view returns (bool) {
+    function assetsEqualPrices(IAsset a, IAsset b) internal returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         bool aFail;
         bool bFail;
         uint192 aPrice;
@@ -1147,7 +1168,10 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_assetsEquivalent() external view returns (bool) {
+    function echidna_assetsEquivalent() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         uint256 N = p[0].numTokens() + 3;
         for (uint256 i = 0; i < N; i++) {
             IERC20 t0 = p[0].someToken(i);
@@ -1177,9 +1201,12 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_bhEqualThunks() external view returns (bool) {
+    function echidna_bhEqualThunks() external returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
+
+        p[0].poke();
+        p[1].poke();
 
         if (a.fullyCollateralized() != b.fullyCollateralized()) return false;
         if (a.status() != b.status()) return false;
@@ -1188,9 +1215,12 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_bhEqualPrices() external view returns (bool) {
+    function echidna_bhEqualPrices() external returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
+
+        p[0].poke();
+        p[1].poke();
 
         (bool aFail, uint192 aPrice) = a.price(true);
         (bool bFail, uint192 bPrice) = b.price(true);
@@ -1212,9 +1242,12 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_bhEqualQty() external view returns (bool) {
+    function echidna_bhEqualQty() external returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
+
+        p[0].poke();
+        p[1].poke();
 
         // quantity(token)
         uint256 numTokens = p[0].numTokens() + 3;
@@ -1224,9 +1257,12 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_bhEqualBasketsHeld() external view returns (bool) {
+    function echidna_bhEqualBasketsHeld() external returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
+
+        p[0].poke();
+        p[1].poke();
 
         // basketsHeldBy(user)
         uint256 numAddrs = p[0].numConstAddrs() + p[0].numUsers() + 1;
@@ -1237,9 +1273,12 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_bhEqualQuotes() external view returns (bool) {
+    function echidna_bhEqualQuotes() external returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
+
+        p[0].poke();
+        p[1].poke();
 
         // quote()
         for (uint256 modeID = 0; modeID < 3; modeID++) {
@@ -1261,18 +1300,11 @@ contract DiffTestScenario {
         return t0.rTokenTotal == t1.rTokenTotal && t0.rsrTotal == t1.rsrTotal;
     }
 
-    // Furnace
-    function echidna_furnaceEqual() external view returns (bool) {
-        uint256 payout0 = TestIFurnace(address(p[0].furnace())).lastPayout();
-        uint256 payoutBal0 = TestIFurnace(address(p[0].furnace())).lastPayoutBal();
-        uint256 payout1 = TestIFurnace(address(p[1].furnace())).lastPayout();
-        uint256 payoutBal1 = TestIFurnace(address(p[1].furnace())).lastPayoutBal();
-
-        return payout0 == payout1 && payoutBal0 == payoutBal1;
-    }
-
     // Broker
-    function echidna_brokerDisabledEqual() external view returns (bool) {
+    function echidna_brokerDisabledEqual() external returns (bool) {
+        p[0].poke();
+        p[1].poke();
+
         return p[0].broker().disabled() == p[1].broker().disabled();
     }
 }
