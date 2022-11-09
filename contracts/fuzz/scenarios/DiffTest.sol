@@ -1177,7 +1177,7 @@ contract DiffTestScenario {
         return true;
     }
 
-    function echidna_basketHandlersEqual() external view returns (bool) {
+    function echidna_bhEqualThunks() external view returns (bool) {
         IBasketHandler a = p[0].basketHandler();
         IBasketHandler b = p[1].basketHandler();
 
@@ -1185,6 +1185,12 @@ contract DiffTestScenario {
         if (a.status() != b.status()) return false;
         if (a.nonce() != b.nonce()) return false;
         if (a.timestamp() != b.timestamp()) return false;
+        return true;
+    }
+
+    function echidna_bhEqualPrices() external view returns (bool) {
+        IBasketHandler a = p[0].basketHandler();
+        IBasketHandler b = p[1].basketHandler();
 
         (bool aFail, uint192 aPrice) = a.price(true);
         (bool bFail, uint192 bPrice) = b.price(true);
@@ -1203,12 +1209,24 @@ contract DiffTestScenario {
         }
         if (aFail != bFail) return false;
         if (aPrice != bPrice) return false;
+        return true;
+    }
+
+    function echidna_bhEqualQty() external view returns (bool) {
+        IBasketHandler a = p[0].basketHandler();
+        IBasketHandler b = p[1].basketHandler();
 
         // quantity(token)
         uint256 numTokens = p[0].numTokens() + 3;
         for (uint256 t = 0; t < numTokens; t++) {
             if (a.quantity(p[0].someToken(t)) != b.quantity(p[1].someToken(t))) return false;
         }
+        return true;
+    }
+
+    function echidna_bhEqualBasketsHeld() external view returns (bool) {
+        IBasketHandler a = p[0].basketHandler();
+        IBasketHandler b = p[1].basketHandler();
 
         // basketsHeldBy(user)
         uint256 numAddrs = p[0].numConstAddrs() + p[0].numUsers() + 1;
@@ -1216,6 +1234,12 @@ contract DiffTestScenario {
             if (a.basketsHeldBy(p[0].someAddr(i)) != b.basketsHeldBy(p[1].someAddr(i)))
                 return false;
         }
+        return true;
+    }
+
+    function echidna_bhEqualQuotes() external view returns (bool) {
+        IBasketHandler a = p[0].basketHandler();
+        IBasketHandler b = p[1].basketHandler();
 
         // quote()
         for (uint256 modeID = 0; modeID < 3; modeID++) {
@@ -1227,7 +1251,7 @@ contract DiffTestScenario {
                 if (aQtys[i] != bQtys[i]) return false;
             }
         }
-        return false;
+        return true;
     }
 
     // Distributor

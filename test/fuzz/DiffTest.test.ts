@@ -181,7 +181,7 @@ describe('The Differential Testing scenario', () => {
       await scenario.pushBackingForBackup(1)
       expect(await scenario.backingForBackup(0)).to.equal(1)
 
-      await scenario.popBackingForBackup(0)
+      await scenario.popBackingForBackup()
       await expect(scenario.backingForBackup(0)).to.be.reverted
     })
 
@@ -316,6 +316,16 @@ describe('The Differential Testing scenario', () => {
         expect(await coll.rewardERC20()).to.equal(rewardTok)
         expect(await coll.targetName()).to.equal(await scenario.someTargetName(1))
       }
+    })
+    it('basketHandler equality does not fail immediately', async () => {
+      expect(await scenario.echidna_bhEqualThunks()).to.be.true
+      expect(await scenario.echidna_bhEqualPrices()).to.be.true
+      expect(await scenario.echidna_bhEqualQty()).to.be.true
+      expect(await scenario.echidna_bhEqualBasketsHeld()).to.be.true
+      expect(await scenario.echidna_bhEqualQuotes()).to.be.true
+      expect(await scenario.echidna_distributorEqual()).to.be.true
+      expect(await scenario.echidna_furnaceEqual()).to.be.true
+      expect(await scenario.echidna_brokerDisabledEqual()).to.be.true
     })
   })
 })
