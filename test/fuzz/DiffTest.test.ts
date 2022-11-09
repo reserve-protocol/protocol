@@ -8,7 +8,7 @@ import { fp } from '../../common/numbers'
 import * as sc from '../../typechain' // All smart contract types
 
 import { addr } from './common'
-import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../../common/constants'
+import { SHORT_FREEZER } from '../../common/constants'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
@@ -268,7 +268,7 @@ describe('The Differential Testing scenario', () => {
       const initNumTokens1 = await p1.numTokens()
       expect(initNumTokens0).to.equal(initNumTokens1)
 
-      scenario.registerAsset(0, exa, exa, 310000n)
+      await scenario.registerAsset(0, exa, exa, 310000n)
 
       expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
       expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
@@ -300,7 +300,7 @@ describe('The Differential Testing scenario', () => {
 
       // swap out registeredAsset 7 so that it's an Asset, rather than a Collateral,
       // so we can check that things (targetName + isCollateral) have changed
-      scenario.swapRegisteredAsset(7, exa, exa, 31000n)
+      await scenario.swapRegisteredAsset(7, exa, exa, 31000n)
       expect(await p0.numTokens()).to.equal(initNumTokens0)
       expect(await p1.numTokens()).to.equal(initNumTokens1)
 

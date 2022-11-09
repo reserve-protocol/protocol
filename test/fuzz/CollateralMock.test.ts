@@ -1,7 +1,7 @@
 import { expect } from 'chai'
 import { ethers } from 'hardhat'
 import { fp } from '../../common/numbers'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 import { PriceModelKind, PriceModel, addr } from './common'
 import * as sc from '../../typechain' // All smart contract types

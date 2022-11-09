@@ -20,6 +20,8 @@ import "contracts/fuzz/FuzzP1.sol";
 
 import "contracts/fuzz/MainP1.sol";
 
+// solhint-disable max-states-count
+
 // The "chaos operations" fuzzing scenario, in which:
 // - Tokens may default
 // - The basket may change after initialization
