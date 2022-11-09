@@ -105,8 +105,6 @@ Ranges here are formatted like "[min, max, granularity]" For instance, the range
 - weights in the prime basket: [0, 1e3, 1e-6] `{target/BU}`
 - the StRSR exchange rate: [1e-9, 1e9, 1e-9] `{stRSR/rsr}`
 - the RToken exchange rate: [1e-9, 1e9, 1e-9] `{BU/rTok}`
-- a result of `Collateral.pricePerTarget()`: [1e-9, 1e9, 1e-9] `{UoA/target}`
-  - e.g UoA per USD
 - a result of `Collateral.targetPerRef()`: [1e-9, 1e9, 1e-9] `{target/ref}`
   - e.g USD per USDC
 - a result of `Collateral.refPerTok()`: [1e-9, 1e9, 1e-9] `{ref/tok}`
@@ -257,7 +255,7 @@ Necessarily, we leave it to the deployers of any further Collateral plugins to e
 
 In our Collateral contracts, we aim to catch general errors coming from price feeds, and update the Collateral state to IFFY. For instance:
 
-``` solidity
+```solidity
 try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
     // [...]
     // If the price is below the default-threshold price, default eventually
