@@ -75,7 +75,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     })
 
     it('Constructed', async () => {
-        type TMintParams = {
+      type TMintParams = {
         token0: string;
         token1: string;
         fee: BigNumberish;
@@ -129,13 +129,13 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       )
       await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired, defaultTxParams));
       await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
-      
+
       await waitForTx(await uniswapV3Wrapper.connect(addr1).mint(mintParams));
 
 
       const positions = await uniswapV3Wrapper.connect(addr1).positions();
 
-      console.log(positions); 
+      console.log(positions);
 
       await waitForTx(await uniswapV3Wrapper.connect(addr1).decreaseLiquidity(positions.liquidity.div(2)));
 
@@ -147,13 +147,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       const positions2 = await uniswapV3Wrapper.connect(addr1).positions();
       console.log(positions2);
 
-      const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
-      await waitForTx(await uniswapV3Wrapper.connect(addr1).collect(MAX_UINT128, MAX_UINT128));
-
       console.log('addr1.getBalance()', await addr1.getBalance());
       console.log(asset0.name(), await asset0.balanceOf(await addr1.getAddress()));
       console.log(asset1.name(), await asset1.balanceOf(await addr1.getAddress()));
-
 
       console.log(await uniswapV3Wrapper.positions());
     })
@@ -199,8 +195,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       const DEFAULT_GAS_LIMIT = 10000000
       const DEFAULT_GAS_PRICE = utils.parseUnits('100', 'gwei')
       const defaultTxParams = { gasLimit: DEFAULT_GAS_LIMIT, gasPrice: DEFAULT_GAS_PRICE }
-      
+
       const UniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
+
       const uniswapV3Wrapper: UniswapV3Wrapper = <UniswapV3Wrapper>(
         await UniswapV3WrapperContractFactory.connect(addr1).deploy(
           "UniswapV3WrapperToken",
@@ -208,6 +205,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
           defaultTxParams
         )
       )
+      await logBalances("Balances before UniswapV3Wrapper mint:",
+        [addr1], [dai, usdc, uniswapV3Wrapper]);
 
       expect(await dai.balanceOf(addr1.address)).to.be.eq(
         bn('20000e18')
@@ -227,6 +226,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired, defaultTxParams))
       await waitForTx(await uniswapV3Wrapper.mint(mintParams));
 
+      await logBalances("Balances after UniswapV3Wrapper mint:",
+        [addr1], [dai, usdc, uniswapV3Wrapper]);
+
 
       expect(await dai.balanceOf(addr1.address)).to.be.closeTo(
         bn('19900e18'), 10 ** 6
@@ -242,13 +244,13 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       )
 
       let positions = await uniswapV3Wrapper.positions();
-      console.log(positions);
-      const liquidityToTransfer = positions.liquidity.div(2)
-      console.log("liquidityToTransfer", liquidityToTransfer);
+      const liquidityToTransfer = positions.liquidity.div(4)
 
       await waitForTx(await uniswapV3Wrapper.connect(addr1)
         .transfer(addr2.address, liquidityToTransfer)
       )
+      await logBalances("Balances after liquidity transfer:",
+        [addr1, addr2], [dai, usdc, uniswapV3Wrapper]);
 
       let balance1 = await uniswapV3Wrapper.balanceOf(addr1.address);
       expect(balance1).to.be.eq(
@@ -262,25 +264,55 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       await waitForTx(await uniswapV3Wrapper.connect(addr1)
         .decreaseLiquidity(liquidityToTransfer)
       )
+      await logBalances("add1 decreased liquidity:",
+        [addr1, addr2], [dai, usdc, uniswapV3Wrapper]);
+
+      expect(await uniswapV3Wrapper.balanceOf(addr1.address)).to.be.closeTo(
+        positions.liquidity.div(2), 10 ** 6
+      )
+
+      expect(await dai.balanceOf(addr1.address)).to.be.closeTo(
+        bn('19925e18'), 10 ** 6
+      )
+      expect(await usdc.balanceOf(addr1.address)).to.be.closeTo(
+        bn('19925e6'), 1000
+      )
 
       await waitForTx(await uniswapV3Wrapper.connect(addr2)
         .decreaseLiquidity(liquidityToTransfer)
       )
 
-      const MAX_UINT128 = BigNumber.from(2).pow(128).sub(1)
-      await waitForTx(await uniswapV3Wrapper.connect(addr2).collect(MAX_UINT128, MAX_UINT128));
+      await logBalances("add2 decreased liquidity:",
+        [addr1, addr2], [dai, usdc, uniswapV3Wrapper]);
 
       expect(await uniswapV3Wrapper.balanceOf(addr2.address)).to.be.eq(
         bn('0')
       )
 
       expect(await dai.balanceOf(addr2.address)).to.be.closeTo(
-        bn('50e18'), 10 ** 6
+        bn('25e18'), 10 ** 6
       )
       expect(await usdc.balanceOf(addr2.address)).to.be.closeTo(
-        bn('50e6'), 1000
+        bn('25e6'), 1000
       )
 
     })
   })
 })
+
+//TODO check that fees earned remain intact after decreaseLiquidity calls
+
+async function logBalances(prefix: string, accounts: SignerWithAddress[], assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]) {
+  console.log(prefix);
+  const table = [];
+  for (let acc of accounts) {
+    for (let token of assets) {
+      const addr = acc.address;
+      const assetName = await token.name();
+      const balance = (await token.balanceOf(addr)).toString();
+      const line = { addr, assetName, balance }
+      table.push(line);
+    }
+  }
+  console.table(table);
+}

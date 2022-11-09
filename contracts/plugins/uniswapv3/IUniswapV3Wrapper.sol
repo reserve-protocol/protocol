@@ -42,9 +42,5 @@ interface IUniswapV3Wrapper is IERC20 {
 
     function decreaseLiquidity(uint128 liquidity) external returns (uint256 amount0, uint256 amount1);
 
-    function collect(uint128 amount0Max, uint128 amount1Max)
-        external
-        returns (uint256 amount0, uint256 amount1);
-
     function positionId() external view returns (uint256);
 }

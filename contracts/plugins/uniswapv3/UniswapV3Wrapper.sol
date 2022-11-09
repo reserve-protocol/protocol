@@ -5,7 +5,7 @@ import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
 import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol";
+import "hardhat/console.sol"; //TODO remove console.log
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
@@ -140,6 +140,9 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
         deposit.liquidity -= liquidity;
 
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
+            .CollectParams(deposit.tokenId, msg.sender, uint128(amount0), uint128(amount1));
+        nonfungiblePositionManager.collect(collectParams);
         _burn(msg.sender, liquidity);
     }
 
@@ -163,21 +166,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(isInitialized, "Contract is not initialized!");
         return nonfungiblePositionManager.positions(deposit.tokenId);
-    }
-
-    //TODO check who calls collect, should it be permissioned
-    function collect(uint128 amount0Max, uint128 amount1Max)
-        external
-        returns (uint256 amount0, uint256 amount1)
-    {
-        require(isInitialized, "Contract is not initialized!");
-
-        INonfungiblePositionManager.CollectParams memory collectParams;
-        collectParams.tokenId = deposit.tokenId;
-        collectParams.recipient = msg.sender;
-        collectParams.amount0Max = amount0Max;
-        collectParams.amount1Max = amount1Max;
-        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
     }
 
     function positionId() external view returns (uint256) {
