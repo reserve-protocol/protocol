@@ -1,22 +1,23 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumber, BigNumberish, utils, Wallet } from 'ethers'
+import { Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, defaultFixture, IMPLEMENTATION } from '../fixtures'
+import { defaultFixture, IMPLEMENTATION } from '../fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { networkConfig } from '../../common/configuration'
-import { bn, toBNDecimals } from '../../common/numbers'
+import { bn, fp } from '../../common/numbers'
 import {
   ERC20Mock,
-  INonfungiblePositionManager,
+  MockV3Aggregator,
   UniswapV3Wrapper,
   USDCMock,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 import { waitForTx } from './utils'
-import { assert } from 'console'
 import { expect } from 'chai'
 import { adjustedAmout, deployUniswapV3Wrapper, logBalances, MAX_TICK, MIN_TICK, TMintParams } from './common'
-import { Address } from 'cluster'
+import { ZERO_ADDRESS } from '../../common/constants'
+import { UniswapV3Collateral__factory } from '@typechain/factories/UniswapV3Collateral__factory'
+import { UniswapV3Collateral } from '@typechain/UniswapV3Collateral'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -93,7 +94,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         amount1Desired: await adjustedAmout(asset1, 100),
         amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
-        recipient: '0x0000000000000000000000000000000000000000',
+        recipient: ZERO_ADDRESS,
         deadline: 0 //rewrite in constructor
       }
 
@@ -118,7 +119,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         amount1Desired: await adjustedAmout(asset1, 100),
         amount0Min: 0,
         amount1Min: 0,
-        recipient: '0x0000000000000000000000000000000000000000',
+        recipient: ZERO_ADDRESS,
         deadline: 0
       }
 
@@ -140,7 +141,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         [addr1], [asset0, asset1, uniswapV3Wrapper]);
 
       expect(await asset0.balanceOf(addr1.address)).to.be.closeTo(
-        await adjustedAmout(asset0, 19900), 
+        await adjustedAmout(asset0, 19900),
         await adjustedAmout(asset0, 1)
       )
       expect(await asset0.balanceOf(addr2.address)).to.be.eq(
@@ -154,7 +155,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       expect(await asset1.balanceOf(addr2.address)).to.be.eq(
         bn('0')
       )
-    
+
       let positions = await uniswapV3Wrapper.positions();
       const liquidityToTransfer = positions.liquidity.div(4)
 
@@ -210,6 +211,48 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       expect(await usdc.balanceOf(addr2.address)).to.be.closeTo(
         bn('25e6'), 1000
       )
+
+    })
+
+
+    // export type TUniswapV3CollateralParams = {
+    //   fallbackPrice_: BigNumberish,
+    //   chainlinkFeed_: string,
+    //   erc20_: string,
+    //   rewardERC20_: string,
+    //   maxTradeVolume_: BigNumberish,
+    //   oracleTimeout_: BigNumberish,
+    //   targetName_: BytesLike,
+    //   delayUntilDefault_: BigNumberish,
+    // }
+
+    it('can deploy collateral', async () => {
+      async function deployUniswapV3Collateral(address: SignerWithAddress): Promise<UniswapV3Collateral> {
+        const delayUntilDefault = bn('86400') // 24h
+        const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
+
+        const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3Wrapper(addr1)
+        const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
+        const mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.connect(addr1).deploy(8, bn('1e8'))
+
+        const uniswapV3CollateralContractFactory: UniswapV3Collateral__factory = await ethers.getContractFactory('UniswapV3Collateral')
+
+        const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
+          await uniswapV3CollateralContractFactory.connect(address).deploy(
+            fp('1'),  //fallbackPrice_: BigNumberish,
+            mockChainlinkFeed.address,
+            uniswapV3Wrapper.address,
+            ZERO_ADDRESS, //for rewards
+            fp('1e6'),
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault
+          )
+        )
+        return uniswapV3Collateral;
+      }
+
+      const uniswapV3Collateral = await deployUniswapV3Collateral(addr1);
 
     })
   })
