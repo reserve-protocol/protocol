@@ -22,6 +22,11 @@ import "contracts/fuzz/MainP1.sol";
 import "contracts/fuzz/FuzzP0.sol";
 import "contracts/fuzz/MainP0.sol";
 
+interface HasInv {
+    // Returns true iff this contract's invariants hold.
+    function invariantsHold() external view returns (bool);
+}
+
 // The diff-test fuzz scenario. Asserts that P0 and P1 have identical behavior
 contract DiffTestScenario {
     using FixLib for uint192;
@@ -356,10 +361,7 @@ contract DiffTestScenario {
         for (uint256 N = 0; N < 2; N++) {
             IAssetRegistry reg = p[N].assetRegistry();
             IERC20Metadata erc20 = IERC20Metadata(address(p[N].tokens(tokenID)));
-            require(
-                reg.isRegistered(erc20),
-                "no asset registered for selected tokenID"
-            );
+            require(reg.isRegistered(erc20), "no asset registered for selected tokenID");
 
             bytes32 targetName;
             targetName = someTargetName(conf.targetNameID);
@@ -475,7 +477,6 @@ contract DiffTestScenario {
         }
     }
 
-
     // ==== user functions: strsr ====
     function justStake(uint256 amount) public asSender {
         for (uint256 N = 0; N < 2; N++) {
@@ -519,9 +520,9 @@ contract DiffTestScenario {
             IERC20 erc20 = p[N].someToken(tokenID);
             IAssetRegistry reg = p[N].assetRegistry();
 
-            try reg.toColl(erc20) returns (CollateralMock coll) {
+            try reg.toColl(erc20) returns (ICollateral coll) {
                 coll.refresh();
-            }
+            } catch {}
         }
     }
 
@@ -602,8 +603,8 @@ contract DiffTestScenario {
 
     function manageBackingTokens() public {
         for (uint256 N = 0; N < 2; N++) {
-            IERC20[] memory tokensToManage = new IERC20(backingToManage.length);
-            for (uint i = 0; i < backingToManage.length; i++) {
+            IERC20[] memory tokensToManage = new IERC20[](backingToManage.length);
+            for (uint256 i = 0; i < backingToManage.length; i++) {
                 tokensToManage[i] = p[N].someToken(backingToManage[i]);
             }
             p[N].backingManager().manageTokens(tokensToManage);
@@ -642,7 +643,11 @@ contract DiffTestScenario {
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
-    function distributeRevenue(bool doRSR, uint8 fromID, uint256 amount) public {
+    function distributeRevenue(
+        bool doRSR,
+        uint8 fromID,
+        uint256 amount
+    ) public {
         for (uint256 N = 0; N < 2; N++) {
             IERC20 token = IERC20(doRSR ? address(p[N].rsr()) : address(p[N].rToken()));
             address fromUser = p[N].someAddr(fromID);
@@ -706,14 +711,13 @@ contract DiffTestScenario {
     }
 
     function popBackingForBackup() public {
-        if (backingForBackup.length > 0)
-            backingForBackup.pop();
+        if (backingForBackup.length > 0) backingForBackup.pop();
     }
 
     function setBackupConfig(uint8 targetNameID, uint256 max) public {
         for (uint256 N = 0; N < 2; N++) {
             IERC20[] memory backupConf = new IERC20[](backingForBackup.length);
-            for(uint256 i = 0; i < backingForBackup.length; i++) {
+            for (uint256 i = 0; i < backingForBackup.length; i++) {
                 backupConf[i] = p[N].someToken(backingForBackup[i]);
             }
             p[N].basketHandler().setBackupConfig(someTargetName(targetNameID), max, backupConf);
@@ -934,7 +938,7 @@ contract DiffTestScenario {
     }
 
     function popPriceModel() public {
-        if(priceModels.length > 0) priceModels.pop();
+        if (priceModels.length > 0) priceModels.pop();
     }
 
     function getNextPriceModel() public returns (PriceModel memory) {
@@ -1003,24 +1007,64 @@ contract DiffTestScenario {
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
     ) public returns (CollateralMock) {
-        lastCreatedColl =
-            new CollateralMock(
-                IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(rewardERC20)),
-                defaultParams().rTokenMaxTradeVolume,
-                uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
-                between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
-                IERC20Metadata(address(0)),
-                targetName,
-                isStable ? growing : getNextPriceModel(),
-                isStable ? justOne : getNextPriceModel(),
-                isStable ? justOne : getNextPriceModel(),
-                isStable ? stable : getNextPriceModel()
-            );
+        lastCreatedColl = new CollateralMock(
+            IERC20Metadata(address(erc20)),
+            IERC20Metadata(address(rewardERC20)),
+            defaultParams().rTokenMaxTradeVolume,
+            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
+            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
+            IERC20Metadata(address(0)),
+            targetName,
+            isStable ? growing : getNextPriceModel(),
+            isStable ? justOne : getNextPriceModel(),
+            isStable ? justOne : getNextPriceModel(),
+            isStable ? stable : getNextPriceModel()
+        );
         return lastCreatedColl;
     }
 
     // ================ Equivalence Properties ================
+    function echidna_assetRegistryInvariants() external view returns (bool) {
+        return HasInv(address(p[1].assetRegistry())).invariantsHold();
+    }
+
+    function echidna_backingManagerInvariants() external view returns (bool) {
+        return HasInv(address(p[1].backingManager())).invariantsHold();
+    }
+
+    function echidna_basketInvariants() external view returns (bool) {
+        return HasInv(address(p[1].basketHandler())).invariantsHold();
+    }
+
+    function echidna_brokerInvariants() external view returns (bool) {
+        return HasInv(address(p[1].broker())).invariantsHold();
+    }
+
+    function echidna_distributorInvariants() external view returns (bool) {
+        return HasInv(address(p[1].distributor())).invariantsHold();
+    }
+
+    function echidna_furnaceInvariants() external view returns (bool) {
+        return HasInv(address(p[1].furnace())).invariantsHold();
+    }
+
+    function echidna_rsrTraderInvariants() external view returns (bool) {
+        return HasInv(address(p[1].rsrTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenTraderInvariants() external view returns (bool) {
+        return HasInv(address(p[1].rTokenTrader())).invariantsHold();
+    }
+
+    function echidna_rTokenInvariants() external view returns (bool) {
+        return HasInv(address(p[1].rToken())).invariantsHold();
+    }
+
+    function echidna_stRSRInvariants() external view returns (bool) {
+        return HasInv(address(p[1].stRSR())).invariantsHold();
+    }
+
+    // ================ Equivalence tests ================
     function echidna_allTokensEqual() public view returns (bool) {
         if (p[0].numUsers() != p[1].numUsers()) return false;
         if (p[0].numTokens() != p[1].numTokens()) return false;
@@ -1037,5 +1081,174 @@ contract DiffTestScenario {
             }
         }
         return true;
+    }
+
+    function echidna_equalPaused() external view returns (bool) {
+        return TestIMain(address(p[0])).paused() == TestIMain(address(p[1])).paused();
+    }
+
+    // RToken
+    function echidna_rTokenRedemptionLimitsEqual() external view returns (bool) {
+        return p[0].rToken().redemptionLimit() == p[1].rToken().redemptionLimit();
+    }
+
+    function echidna_basketsNeededEqual() external view returns (bool) {
+        return p[0].rToken().basketsNeeded() == p[1].rToken().basketsNeeded();
+    }
+
+    // StRSR: endIdForWithdraw(user), exchangeRate
+    function echidna_StRSREndIdsEqual() external view returns (bool) {
+        uint256 N = p[0].numUsers();
+        for (uint256 u = 0; u < N; u++) {
+            if (
+                !(p[0].stRSR().endIdForWithdraw(p[0].users(u)) ==
+                    p[1].stRSR().endIdForWithdraw(p[1].users(u)))
+            ) return false;
+        }
+        return true;
+    }
+
+    function echidna_stRSRExchangeRateEqual() external view returns (bool) {
+        return p[0].stRSR().exchangeRate() == p[1].stRSR().exchangeRate();
+    }
+
+    // AssetRegistry: isRegsietered(token), <isAsset(token)>, <isCollateral(token)>
+    function assetsEqualPrices(IAsset a, IAsset b) internal view returns (bool) {
+        bool aFail;
+        bool bFail;
+        uint192 aPrice;
+        uint192 bPrice;
+
+        // equivalent price(false)
+        try a.price(false) returns (bool, uint192 price) {
+            (aFail, aPrice) = (false, price);
+            assert(aPrice == a.strictPrice());
+        } catch {
+            aFail = true;
+        }
+        try b.price(false) returns (bool, uint192 price) {
+            (bFail, bPrice) = (false, price);
+            assert(bPrice == b.strictPrice());
+        } catch {
+            bFail = true;
+        }
+        if (aFail != bFail) return false;
+        if (aPrice != bPrice) return false;
+
+        // equivalent price(true)
+
+        (bool aFail2, uint192 aPrice2) = a.price(true);
+        (bool bFail2, uint192 bPrice2) = b.price(true);
+        assert(aPrice == aPrice2);
+        assert(aFail == aFail2);
+        assert(bPrice == bPrice2);
+        assert(bFail == bFail2);
+
+        return true;
+    }
+
+    function echidna_assetsEquivalent() external view returns (bool) {
+        uint256 N = p[0].numTokens() + 3;
+        for (uint256 i = 0; i < N; i++) {
+            IERC20 t0 = p[0].someToken(i);
+            IERC20 t1 = p[1].someToken(i);
+            bool isReg = p[0].assetRegistry().isRegistered(t0);
+            if (isReg != p[1].assetRegistry().isRegistered(t1)) return false;
+
+            // ==== asset equivalences
+            if (!isReg) continue;
+            IAsset asset0 = p[0].assetRegistry().toAsset(t0);
+            IAsset asset1 = p[1].assetRegistry().toAsset(t1);
+            if (!assetsEqualPrices(asset0, asset1)) return false;
+
+            bool isColl = asset0.isCollateral();
+            if (isColl != asset1.isCollateral()) return false;
+
+            // ==== collateral equivalences
+            if (!isColl) continue;
+            ICollateral coll0 = ICollateral(address(asset0));
+            ICollateral coll1 = ICollateral(address(asset1));
+            if (coll0.targetName() != coll1.targetName()) return false;
+            if (coll0.status() != coll1.status()) return false;
+            if (coll0.refPerTok() != coll1.refPerTok()) return false;
+            if (coll0.targetPerRef() != coll1.targetPerRef()) return false;
+            if (coll0.pricePerTarget() != coll1.pricePerTarget()) return false;
+        }
+        return true;
+    }
+
+    function echidna_basketHandlersEqual() external view returns (bool) {
+        IBasketHandler a = p[0].basketHandler();
+        IBasketHandler b = p[1].basketHandler();
+
+        if (a.fullyCollateralized() != b.fullyCollateralized()) return false;
+        if (a.status() != b.status()) return false;
+        if (a.nonce() != b.nonce()) return false;
+        if (a.timestamp() != b.timestamp()) return false;
+
+        (bool aFail, uint192 aPrice) = a.price(true);
+        (bool bFail, uint192 bPrice) = b.price(true);
+        if (aFail != bFail) return false;
+        if (aPrice != bPrice) return false;
+
+        try a.price(false) returns (bool, uint192 price) {
+            (aFail, aPrice) = (false, price);
+        } catch {
+            aFail = true;
+        }
+        try b.price(false) returns (bool, uint192 price) {
+            (bFail, bPrice) = (false, price);
+        } catch {
+            bFail = true;
+        }
+        if (aFail != bFail) return false;
+        if (aPrice != bPrice) return false;
+
+        // quantity(token)
+        uint256 numTokens = p[0].numTokens() + 3;
+        for (uint256 t = 0; t < numTokens; t++) {
+            if (a.quantity(p[0].someToken(t)) != b.quantity(p[1].someToken(t))) return false;
+        }
+
+        // basketsHeldBy(user)
+        uint256 numAddrs = p[0].numConstAddrs() + p[0].numUsers() + 1;
+        for (uint256 i = 0; i < numAddrs; i++) {
+            if (a.basketsHeldBy(p[0].someAddr(i)) != b.basketsHeldBy(p[1].someAddr(i)))
+                return false;
+        }
+
+        // quote()
+        for (uint256 modeID = 0; modeID < 3; modeID++) {
+            RoundingMode mode = RoundingMode(modeID);
+            (, uint256[] memory aQtys) = a.quote(1e24, mode);
+            (, uint256[] memory bQtys) = b.quote(1e24, mode);
+            if (aQtys.length != bQtys.length) return false;
+            for (uint256 i = 0; i < aQtys.length; i++) {
+                if (aQtys[i] != bQtys[i]) return false;
+            }
+        }
+        return false;
+    }
+
+    // Distributor
+    function echidna_distributorEqual() external view returns (bool) {
+        RevenueTotals memory t0 = p[0].distributor().totals();
+        RevenueTotals memory t1 = p[1].distributor().totals();
+        return t0.rTokenTotal == t1.rTokenTotal && t0.rsrTotal == t1.rsrTotal;
+    }
+
+    // Furnace
+    function echidna_furnaceEqual() external view returns (bool) {
+        uint256 payout0 = TestIFurnace(address(p[0].furnace())).lastPayout();
+        uint256 payoutBal0 = TestIFurnace(address(p[0].furnace())).lastPayoutBal();
+        uint256 payout1 = TestIFurnace(address(p[1].furnace())).lastPayout();
+        uint256 payoutBal1 = TestIFurnace(address(p[1].furnace())).lastPayoutBal();
+
+        return payout0 == payout1 && payoutBal0 == payoutBal1;
+    }
+
+    // Broker
+    function echidna_brokerDisabledEqual() external view returns (bool) {
+        return p[0].broker().disabled() == p[1].broker().disabled();
     }
 }
