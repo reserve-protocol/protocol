@@ -180,8 +180,6 @@ contract DiffTestScenario {
 
     // ================ mutators ================
 
-    // TODO: add mutators that introduce defaults and basket-breaking governance actions
-
     // ==== user functions: token ops ====
     function transfer(
         uint8 userID,
@@ -364,10 +362,7 @@ contract DiffTestScenario {
             );
 
             bytes32 targetName;
-            if (reg.toAsset(erc20).isCollateral()) {
-                targetName = reg.toColl(erc20).targetName();
-            }
-            else targetName = someTargetName(conf.targetNameID);
+            targetName = someTargetName(conf.targetNameID);
 
             IERC20Metadata rewardERC20 = conf.setReward
                 ? IERC20Metadata(address(p[N].tokens(conf.rewardIndex % p[N].numTokens())))
@@ -474,6 +469,13 @@ contract DiffTestScenario {
         }
     }
 
+    function melt(uint256 amount) public asSender {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rToken().melt(amount);
+        }
+    }
+
+
     // ==== user functions: strsr ====
     function justStake(uint256 amount) public asSender {
         for (uint256 N = 0; N < 2; N++) {
@@ -512,6 +514,17 @@ contract DiffTestScenario {
     }
 
     // ==== keeper functions ====
+    function refreshOneColl(uint256 tokenID) public {
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20 erc20 = p[N].someToken(tokenID);
+            IAssetRegistry reg = p[N].assetRegistry();
+
+            try reg.toColl(erc20) returns (CollateralMock coll) {
+                coll.refresh();
+            }
+        }
+    }
+
     function updatePrice(
         uint256 seedID,
         uint192 a,
@@ -573,11 +586,11 @@ contract DiffTestScenario {
         BrokerP1Fuzz(address(p[1].broker())).settleTrades();
     }
 
-    IERC20[] internal backingToManage;
+    uint256[] internal backingToManage;
 
     function pushBackingToManage(uint256 tokenID) public {
         for (uint256 N = 0; N < 2; N++) {
-            backingToManage.push(p[N].someToken(tokenID));
+            backingToManage.push(tokenID);
         }
     }
 
@@ -589,7 +602,11 @@ contract DiffTestScenario {
 
     function manageBackingTokens() public {
         for (uint256 N = 0; N < 2; N++) {
-            p[N].backingManager().manageTokens(backingToManage);
+            IERC20[] memory tokensToManage = new IERC20(backingToManage.length);
+            for (uint i = 0; i < backingToManage.length; i++) {
+                tokensToManage[i] = p[N].someToken(backingToManage[i]);
+            }
+            p[N].backingManager().manageTokens(tokensToManage);
         }
     }
 
@@ -625,12 +642,19 @@ contract DiffTestScenario {
     }
 
     // do revenue distribution granting allowance first - only RSR or RToken
-    // TODO
-    /* function distributeRevenue( */
-    /*     uint8 which, */
-    /*     uint8 fromID, */
-    /*     uint256 amount */
-    /* ) public; */
+    function distributeRevenue(bool doRSR, uint8 fromID, uint256 amount) public {
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20 token = IERC20(doRSR ? address(p[N].rsr()) : address(p[N].rToken()));
+            address fromUser = p[N].someAddr(fromID);
+
+            // Grant allowances from fromID
+            p[N].spoof(address(this), fromUser);
+            token.approve(address(p[N].distributor()), amount);
+            p[N].unspoof(address(this));
+
+            p[N].distributor().distribute(token, fromUser, amount);
+        }
+    }
 
     function payRSRProfits() public {
         for (uint256 N = 0; N < 2; N++) {
@@ -644,10 +668,11 @@ contract DiffTestScenario {
         }
     }
 
-    // Basket handler TODO
-    // function refreshBasket() public;
+    // ==== Basket Handler ====
+    function refreshBasket() public {
+        for (uint256 N = 0; N < 2; N++) p[N].basketHandler().refreshBasket();
+    }
 
-    // ==== Configure Basket ====
     uint256[] public backingForPrimeBasket;
     uint192[] public targetAmtsForPrimeBasket;
 
@@ -664,21 +689,36 @@ contract DiffTestScenario {
         }
     }
 
-    // function setPrimeBasket() public; TODO
+    function setPrimeBasket() public {
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20[] memory primeTokens = new IERC20[](backingForPrimeBasket.length);
+            for (uint256 i = 0; i < backingForPrimeBasket.length; i++) {
+                primeTokens[i] = p[N].someToken(backingForPrimeBasket[i]);
+            }
+            p[N].basketHandler().setPrimeBasket(primeTokens, targetAmtsForPrimeBasket);
+        }
+    }
+
     uint256[] public backingForBackup;
 
     function pushBackingForBackup(uint256 tokenID) public {
         backingForBackup.push(tokenID);
     }
 
-    function popBackingForBackup(uint8 targetNameID) public {
+    function popBackingForBackup() public {
         if (backingForBackup.length > 0)
             backingForBackup.pop();
     }
 
-    // function setBackupConfig() public; TODO
-    // just use backup tokens that have the same targetName as the
-    // first element in backingForBackup
+    function setBackupConfig(uint8 targetNameID, uint256 max) public {
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20[] memory backupConf = new IERC20[](backingForBackup.length);
+            for(uint256 i = 0; i < backingForBackup.length; i++) {
+                backupConf[i] = p[N].someToken(backingForBackup[i]);
+            }
+            p[N].basketHandler().setBackupConfig(someTargetName(targetNameID), max, backupConf);
+        }
+    }
 
     function poke() public {
         for (uint256 N = 0; N < 2; N++) p[N].poke();
@@ -870,7 +910,6 @@ contract DiffTestScenario {
     }
 
     // ==== Helpers ====
-
     function someTargetName(uint256 seed) public view returns (bytes32) {
         uint256 id = seed % targetNames.length;
         return targetNames[id];

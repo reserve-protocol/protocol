@@ -259,20 +259,63 @@ describe('The Differential Testing scenario', () => {
       // OK, the "choice Seed" thing is obviously insance, but getting random configuration in
       // through fuzzing would be even worse. Digit by digit, 310000 means:
       // 3: use reward token with token index 3
-      // 1: use target name with index 1: "A"
+      // 1: use target name with index 1
       // 0: do set a reward
       // 0: do configure as Collateral, not Asset
       // 0: do configure the Collateral as a stable+ token
       // 0: create a new token, don't actually use the token given at input.
+      const initNumTokens0 = await p0.numTokens()
+      const initNumTokens1 = await p1.numTokens()
+      expect(initNumTokens0).to.equal(initNumTokens1)
+
       scenario.registerAsset(0, exa, exa, 310000n)
+
+      expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
+      expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
+
+      for (const main of [p0, p1]) {
+        const tokID = (await main.numTokens()).sub(1)
+        const tok = await main.tokens(tokID)
+        const rewardTok = await main.tokens(3)
+
+        const comp = main == p0 ? comp0 : comp1
+        const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(tok))
+
+        expect(await coll.isCollateral()).to.be.true
+        expect(await coll.erc20()).to.equal(tok)
+        expect(await coll.rewardERC20()).to.equal(rewardTok)
+        expect(await coll.targetName()).to.equal(await scenario.targetNames(1))
+      }
     })
     it('swapRegisteredAsset works as expected', async () => {
+      // pretty much the same as above...
       // 3: use reward token with token index 3
-      // 1: use target name with index 1: "a"
+      // 1: use target name with index 1
       // 0: do set a reward
       // 0: do configure as Collateral, not Asset
       // 0: do configure the Collateral as a stable+ token
-      scenario.swapRegisteredAsset(0, exa, exa, 31000n)
+      const initNumTokens0 = await p0.numTokens()
+      const initNumTokens1 = await p1.numTokens()
+      expect(initNumTokens0).to.equal(initNumTokens1)
+
+      // swap out registeredAsset 7 so that it's an Asset, rather than a Collateral,
+      // so we can check that things (targetName + isCollateral) have changed
+      scenario.swapRegisteredAsset(7, exa, exa, 31000n)
+      expect(await p0.numTokens()).to.equal(initNumTokens0)
+      expect(await p1.numTokens()).to.equal(initNumTokens1)
+
+      for (const main of [p0, p1]) {
+        const tok = await main.tokens(7) // from first parameter to swapRegisteredAsset
+        const rewardTok = await main.tokens(3)
+
+        const comp = main == p0 ? comp0 : comp1
+        const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(tok))
+
+        expect(await coll.isCollateral()).to.be.true
+        expect(await coll.erc20()).to.equal(tok)
+        expect(await coll.rewardERC20()).to.equal(rewardTok)
+        expect(await coll.targetName()).to.equal(await scenario.someTargetName(1))
+      }
     })
   })
 })
