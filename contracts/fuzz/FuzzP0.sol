@@ -171,10 +171,10 @@ contract StRSRP0Fuzz is StRSRP0 {
         right = withdrawals[user].length;
     }
 
-    function invariantsHold() external view returns (bool) {
-        // No similar failure mode to P1 StRSR to be tested here.
-        return true;
-    }
+    /* function invariantsHold() external pure returns (bool) { */
+    /*     // No similar failure mode to P1 StRSR to be tested here. */
+    /*     return true; */
+    /* } */
 
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
