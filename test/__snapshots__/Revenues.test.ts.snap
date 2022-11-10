@@ -1,24 +1,24 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `205526`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 1`] = `204508`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `205490`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 2`] = `204450`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `205490`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 3`] = `204450`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `205630`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 4`] = `203135`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `145055`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 5`] = `145067`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `286975`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 6`] = `285957`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `252739`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 7`] = `251699`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `252739`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 8`] = `251699`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 9`] = `252879`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 9`] = `250384`;
 
-exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 10`] = `160517`;
+exports[`Revenues - P1 Gas Reporting Claim and Sweep Rewards 10`] = `163336`;
 
 exports[`Revenues - P1 Gas Reporting Settle Trades / Manage Funds 1`] = `710315`;
 
