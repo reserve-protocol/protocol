@@ -18,12 +18,7 @@ import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { setOraclePrice } from '../../utils/oracles'
-import {
-  advanceBlocks,
-  advanceTime,
-  getLatestBlockTimestamp,
-  setNextBlockTimestamp,
-} from '../../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
   ComptrollerMock,
@@ -683,7 +678,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      let expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
       expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
@@ -746,7 +741,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      let expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
       expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 

@@ -72,7 +72,7 @@ interface DefaultFixture extends RSRAndModuleFixture {
 }
 
 export const defaultFixture: Fixture<DefaultFixture> = async function ([
-  owner,
+  ,
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { gnosis } = await gnosisFixture()
@@ -220,15 +220,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     },
   })
   const facadeWrite = <FacadeWrite>await FacadeWriteFactory.deploy(deployer.address)
-   
+
   // Set default governance params - not used in tests
-    const govParams: IGovParams = {
-      votingDelay: bn(5), // 5 blocks
-      votingPeriod: bn(100), // 100 blocks
-      proposalThresholdAsMicroPercent: bn(1e6), // 1%
-      quorumPercent: bn(4), // 4%
-      timelockDelay: bn(60 * 60 * 24), // 1 day
-    }
+  const govParams: IGovParams = {
+    votingDelay: bn(5), // 5 blocks
+    votingPeriod: bn(100), // 100 blocks
+    proposalThresholdAsMicroPercent: bn(1e6), // 1%
+    quorumPercent: bn(4), // 4%
+    timelockDelay: bn(60 * 60 * 24), // 1 day
+  }
 
   return {
     rsr,
@@ -240,6 +240,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facadeTest,
     facadeWrite,
     oracleLib,
-    govParams
+    govParams,
   }
 }
