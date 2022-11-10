@@ -66,6 +66,11 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
     RedemptionBatteryLib.Battery private battery;
 
+    // === Liability Tracking ===
+
+    // {ERC20: {qTok} owed to Issuers}
+    mapping(IERC20 => uint256) private liabilities;
+
     // === For P1 compatibility in testing ===
 
     // IssueItem: One edge of an issuance
@@ -151,6 +156,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         (address[] memory erc20s, uint256[] memory deposits) = basketHandler.quote(baskets, CEIL);
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
+            liabilities[IERC20(erc20s[i])] += deposits[i];
             IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
 
@@ -225,6 +231,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             SlowIssuance storage iss = queue[n];
             if (!iss.processed) {
                 for (uint256 i = 0; i < iss.erc20s.length; i++) {
+                    liabilities[IERC20(iss.erc20s[i])] -= iss.deposits[i];
                     IERC20(iss.erc20s[i]).safeTransfer(iss.issuer, iss.deposits[i]);
                 }
                 amtRToken += iss.amount;
@@ -348,6 +355,19 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         if (allZero) revert("Empty redemption");
     }
 
+    /// Sweep all reward tokens in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewards() external notPausedOrFrozen {
+        IERC20[] memory erc20s = main.assetRegistry().erc20s();
+        IBackingManager bm = main.backingManager();
+
+        // Sweep deltas
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            uint256 delta = erc20s[i].balanceOf(address(this)) - liabilities[erc20s[i]]; // {qTok}
+            IERC20(address(erc20s[i])).safeTransfer(address(bm), delta);
+        }
+    }
+
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted
@@ -395,6 +415,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
 
         if (!iss.processed) {
             for (uint256 i = 0; i < iss.erc20s.length; i++) {
+                liabilities[IERC20(iss.erc20s[i])] -= iss.deposits[i];
                 IERC20(iss.erc20s[i]).safeTransfer(address(main.backingManager()), iss.deposits[i]);
             }
             _mint(iss.issuer, iss.amount);

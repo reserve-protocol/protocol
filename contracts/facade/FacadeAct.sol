@@ -352,10 +352,12 @@ contract FacadeAct is IFacadeAct {
 
     function claimAndSweepRewards(RTokenP1 rToken) public {
         IMain main = rToken.main();
-        rToken.claimAndSweepRewards();
-        main.backingManager().claimAndSweepRewards();
-        main.rTokenTrader().claimAndSweepRewards();
-        main.rsrTrader().claimAndSweepRewards();
+        rToken.claimRewards();
+        main.backingManager().claimRewards();
+        main.rTokenTrader().claimRewards();
+        main.rsrTrader().claimRewards();
+
+        rToken.sweepRewards();
     }
 
     /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price

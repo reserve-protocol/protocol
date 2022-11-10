@@ -70,12 +70,12 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         emit TradeSettled(trade, trade.sell(), trade.buy(), soldAmt, boughtAmt);
     }
 
-    /// Claim all rewards and sweep to BackingManager
+    /// Claim all rewards
     /// Collective Action
     /// @custom:interaction CEI
-    function claimAndSweepRewards() external notPausedOrFrozen {
+    function claimRewards() external notPausedOrFrozen {
         // == Interaction ==
-        RewardableLibP1.claimAndSweepRewards();
+        RewardableLibP1.claimRewards();
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
