@@ -301,43 +301,21 @@ contract FacadeAct is IFacadeAct {
 
         // check if there are reward tokens to claim
         {
-            uint256 numRewardTokens;
-            IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
+            // save initial balances
             uint256[] memory initialBals = new uint256[](erc20s.length);
             for (uint256 i = 0; i < erc20s.length; ++i) {
-                // Does erc20s[i] _have_ a reward function and reward token?
-                IAsset asset = cache.reg.toAsset(erc20s[i]);
-
-                IERC20 rewardToken = asset.rewardERC20();
-                if (address(rewardToken) == address(0) || !cache.reg.isRegistered(rewardToken)) {
-                    continue;
-                }
-
-                (address _to, ) = asset.getClaimCalldata();
-                if (_to == address(0)) continue;
-
-                // Save rewardToken address, if new
-                uint256 rtIndex = 0;
-                while (rtIndex < numRewardTokens && rewardToken != rewardTokens[rtIndex]) rtIndex++;
-                if (rtIndex >= numRewardTokens) {
-                    rewardTokens[rtIndex] = rewardToken;
-                    numRewardTokens++;
-                }
-            }
-
-            for (uint256 i = 0; i < numRewardTokens; ++i) {
-                initialBals[i] = rewardTokens[i].balanceOf(address(cache.bm));
+                initialBals[i] = erc20s[i].balanceOf(address(cache.bm));
             }
 
             uint192 minTradeVolume = cache.bm.minTradeVolume(); // {UoA}
 
             // prefer restricting to backingManager.claimRewards when possible to save gas
             try cache.bm.claimRewards() {
-                // See if reward token bals grew sufficiently
-                for (uint256 i = 0; i < numRewardTokens; ++i) {
+                // See if any token bals grew sufficiently
+                for (uint256 i = 0; i < erc20s.length; ++i) {
                     // {tok}
-                    (, uint192 p) = cache.reg.toAsset(rewardTokens[i]).price(true);
-                    uint256 bal = rewardTokens[i].balanceOf(address(cache.bm));
+                    (, uint192 p) = cache.reg.toAsset(erc20s[i]).price(true);
+                    uint256 bal = erc20s[i].balanceOf(address(cache.bm));
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
                         // It's large enough to trade! Return bm.claimRewards as next step.
                         return (
@@ -350,11 +328,11 @@ contract FacadeAct is IFacadeAct {
 
             // look at rewards from all sources + the RToken sweep
             try this.claimAndSweepRewards(rToken) {
-                // See if reward token bals grew sufficiently
-                for (uint256 i = 0; i < numRewardTokens; ++i) {
+                // See if any token bals grew sufficiently
+                for (uint256 i = 0; i < erc20s.length; ++i) {
                     // {tok}
-                    (, uint192 p) = cache.reg.toAsset(rewardTokens[i]).price(true);
-                    uint256 bal = rewardTokens[i].balanceOf(address(cache.bm));
+                    (, uint192 p) = cache.reg.toAsset(erc20s[i]).price(true);
+                    uint256 bal = erc20s[i].balanceOf(address(cache.bm));
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
                         // It's large enough to trade! Return claimAndSweepRewards as next step.
                         return (
