@@ -327,9 +327,9 @@ describe('FacadeAct contract', () => {
       // AAVE Rewards
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
-      // Via Facade get next call - will claim and sweep rewards in FacadeAct
+      // Via Facade get next call - will claim rewards from backingManager
       let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
-      expect(addr).to.equal(facadeAct.address)
+      expect(addr).to.equal(backingManager.address)
       expect(data).to.not.equal('0x')
 
       // Claim and sweep rewards
@@ -460,7 +460,7 @@ describe('FacadeAct contract', () => {
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
       // Claim new rewards
-      await facadeTest.claimAndSweepRewards(rToken.address)
+      await backingManager.claimRewards()
 
       // Via Facade get next call - will transfer RSR to Trader
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
@@ -576,10 +576,10 @@ describe('FacadeAct contract', () => {
 
       const rewardAmount = bn('0.5e18')
 
-      // COMP Rewards for both tokens
+      // COMP Rewards for both tokens, in the RToken
       await aToken.setAaveToken(compToken.address) // set it internally in our mock
-      await aToken.setRewards(backingManager.address, rewardAmount)
-      await compoundMock.setRewards(backingManager.address, rewardAmount)
+      await aToken.setRewards(rToken.address, rewardAmount)
+      await compoundMock.setRewards(rToken.address, rewardAmount)
 
       // Via Facade get next call - will Claim and sweep rewards
       const [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
