@@ -4,7 +4,6 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { ZERO_ADDRESS } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
 import {
   BadERC20,
@@ -104,7 +103,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       fp('1'),
       chainlinkFeed.address,
       token0.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),

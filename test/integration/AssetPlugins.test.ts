@@ -6,7 +6,7 @@ import { Collateral, IMPLEMENTATION } from '../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS, BN_SCALE_FACTOR } from '../../common/constants'
+import { CollateralStatus, BN_SCALE_FACTOR } from '../../common/constants'
 import { expectEvents } from '../../common/events'
 import { bn, fp, toBNDecimals } from '../../common/numbers'
 import { advanceBlocks, advanceTime } from '../utils/time'
@@ -368,8 +368,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
-      expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // stkAAVE Token
@@ -378,8 +377,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await aaveAsset.erc20()).to.equal(networkConfig[chainId].tokens.stkAAVE)
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.strictPrice()).to.be.closeTo(fp('104.8'), fp('0.5')) // Close to $104.8 USD - July 2022 - Uses AAVE price
-      expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(aaveAsset.claimRewards()).to.not.emit(aaveAsset, 'RewardsClaimed')
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // RSR Token
@@ -389,8 +387,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(rsr.address).to.equal(networkConfig[chainId].tokens.RSR)
       expect(await rsr.decimals()).to.equal(18)
       expect(await rsrAsset.strictPrice()).to.be.closeTo(fp('0.00699'), fp('0.00005')) // Close to $0.00699
-      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(rsrAsset.claimRewards()).to.not.emit(rsrAsset, 'RewardsClaimed')
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
@@ -457,8 +454,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.tokenCollateral.pricePerTarget()).to.equal(fp('1'))
         expect(await tkInf.tokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.05')) // Should always be close to $1
 
-        expect(await tkInf.tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-        expect(await tkInf.tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+        await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(tkInf, 'RewardsClaimed')
         expect(await tkInf.tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
@@ -536,12 +532,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.001')
         ) // close to $0.022 cents
 
-        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-        expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
-          compoundMock.address,
-          calldata,
-        ])
-        expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+        await expect(ctkInf.cTokenCollateral.claimRewards())
+          .to.emit(ctkInf, 'RewardsClaimed')
+          .withArgs(compToken.address, 0)
 
         expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
@@ -621,14 +614,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
         expect(await atkInf.aTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.095'))
 
-        const calldata = atkInf.stataToken.interface.encodeFunctionData('claimRewardsToSelf', [
-          true,
-        ])
-        expect(await atkInf.aTokenCollateral.getClaimCalldata()).to.eql([
-          atkInf.stataToken.address,
-          calldata,
-        ])
-        expect(await atkInf.aTokenCollateral.rewardERC20()).to.equal(aaveToken.address)
+        await expect(atkInf.aTokenCollateral.claimRewards())
+          .to.emit(atkInf, 'RewardsClaimed')
+          .withArgs(atkInf.stataToken.address, 0)
 
         // Check StaticAToken
         expect(await atkInf.stataToken.name()).to.equal(
@@ -699,8 +687,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.targetPrice.mul(tkInf.refPrice).div(BN_SCALE_FACTOR),
           fp('0.5')
         ) // ref price approx 1.00062
-        expect(await tkInf.nonFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-        expect(await tkInf.nonFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        await expect(tkInf.nonFiatTokenCollateral.claimRewards()).to.not.emit(
+          tkInf.nonFiatTokenCollateral,
+          'RewardsClaimed'
+        )
 
         expect(await tkInf.nonFiatTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
@@ -767,12 +758,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.5')
         ) // close to $633 usd
 
-        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-        expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
-          compoundMock.address,
-          calldata,
-        ])
-        expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+        await expect(ctkInf.cTokenCollateral.claimRewards())
+          .to.emit(ctkInf.cTokenCollateral, 'RewardsClaimed')
+          .withArgs(compToken.address, 0)
 
         expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
@@ -822,9 +810,11 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.price,
           fp('0.5')
         )
-        expect(await tkInf.selfRefTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-        expect(await tkInf.selfRefTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
 
+        await expect(tkInf.selfRefTokenCollateral.claimRewards()).to.not.emit(
+          tkInf.selfRefTokenCollateral,
+          'RewardsClaimed'
+        )
         expect(await tkInf.selfRefTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
         )
@@ -888,12 +878,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.5')
         )
 
-        const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-        expect(await ctkInf.cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
-          compoundMock.address,
-          calldata,
-        ])
-        expect(await ctkInf.cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+        await expect(ctkInf.cTokenCollateral.claimRewards())
+          .to.emit(ctkInf.cTokenCollateral, 'RewardsClaimed')
+          .withArgs(compToken.address, 0)
 
         expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
@@ -946,8 +933,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           tkInf.refPrice,
           fp('0.01')
         ) // ref price approx 1.07
-        expect(await tkInf.eurFiatTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-        expect(await tkInf.eurFiatTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+
+        await expect(tkInf.eurFiatTokenCollateral.claimRewards())
+          .to.not.emit(tkInf.eurFiatTokenCollateral, 'RewardsClaimed')
+          .withArgs(compToken.address, 0)
 
         expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
@@ -970,7 +959,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('1'),
           NO_PRICE_DATA_FEED,
           networkConfig[chainId].tokens.stkAAVE || '',
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           MAX_ORACLE_TIMEOUT
         )
@@ -987,7 +975,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('1'),
           mockChainlinkFeed.address,
           networkConfig[chainId].tokens.stkAAVE || '',
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           MAX_ORACLE_TIMEOUT
         )
@@ -1036,7 +1023,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         NO_PRICE_DATA_FEED,
         dai.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1060,7 +1046,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         mockChainlinkFeed.address,
         dai.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1107,7 +1092,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         NO_PRICE_DATA_FEED,
         cDai.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1133,7 +1117,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         mockChainlinkFeed.address,
         cDai.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1187,7 +1170,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         NO_PRICE_DATA_FEED,
         stataDai.address,
-        aaveToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1211,7 +1193,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         mockChainlinkFeed.address,
         stataDai.address,
-        aaveToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -1254,7 +1235,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         NO_PRICE_DATA_FEED,
         NO_PRICE_DATA_FEED,
         wbtc.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
@@ -1279,7 +1259,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         wbtc.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
@@ -1327,7 +1306,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           NO_PRICE_DATA_FEED,
           NO_PRICE_DATA_FEED,
           cWBTC.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           MAX_ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1357,7 +1335,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         cWBTC.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('BTC'),
@@ -1401,7 +1378,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         NO_PRICE_DATA_FEED,
         weth.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
@@ -1424,7 +1400,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         mockChainlinkFeed.address,
         weth.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
@@ -1466,7 +1441,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         NO_PRICE_DATA_FEED,
         cETH.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
@@ -1495,7 +1469,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1'),
         mockChainlinkFeed.address,
         cETH.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
@@ -1541,7 +1514,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         NO_PRICE_DATA_FEED,
         NO_PRICE_DATA_FEED,
         eurt.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('EUR'),
@@ -1566,7 +1538,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
         eurt.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('EUR'),

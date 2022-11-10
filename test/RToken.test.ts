@@ -2493,7 +2493,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           oracle.address,
           erc20.address,
-          ZERO_ADDRESS,
           fp('1e36'),
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
