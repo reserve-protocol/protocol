@@ -2111,7 +2111,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         // Try to claim rewards at this point - Nothing for Backing Manager
         expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -2137,10 +2137,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await advanceTime(8000)
 
         // Claim rewards
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
+        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
         // Check rewards both in COMP
         const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
@@ -2150,10 +2147,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await advanceTime(3600)
 
         // Get additional rewards
-        await expect(backingManager.claimAndSweepRewards()).to.emit(
-          backingManager,
-          'RewardsClaimed'
-        )
+        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
         const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
         expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
@@ -2361,7 +2355,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
 
-      await expectEvents(backingManager.claimAndSweepRewards(), [
+      await expectEvents(backingManager.claimRewards(), [
         {
           contract: backingManager,
           name: 'RewardsClaimed',
@@ -2400,7 +2394,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       // Claim rewards
       expect(await stataDai.getTotalClaimableRewards()).to.be.gt(0)
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards both in COMP and stkAAVE
       const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
@@ -2413,7 +2407,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await advanceTime(3600)
 
       // Get additional rewards
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
       const rewardsAAVE2: BigNumber = await aaveToken.balanceOf(backingManager.address)

@@ -329,9 +329,28 @@ contract FacadeAct is IFacadeAct {
                 initialBals[i] = rewardTokens[i].balanceOf(address(cache.bm));
             }
 
+            uint192 minTradeVolume = cache.bm.minTradeVolume(); // {UoA}
+
+            // prefer restricting to backingManager.claimRewards when possible to save gas
+            try cache.bm.claimRewards() {
+                // See if reward token bals grew sufficiently
+                for (uint256 i = 0; i < numRewardTokens; ++i) {
+                    // {tok}
+                    (, uint192 p) = cache.reg.toAsset(rewardTokens[i]).price(true);
+                    uint256 bal = rewardTokens[i].balanceOf(address(cache.bm));
+                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
+                        // It's large enough to trade! Return bm.claimRewards as next step.
+                        return (
+                            address(cache.bm),
+                            abi.encodeWithSelector(cache.bm.claimRewards.selector, rToken)
+                        );
+                    }
+                }
+            } catch {}
+
+            // look at rewards from all sources + the RToken sweep
             try this.claimAndSweepRewards(rToken) {
                 // See if reward token bals grew sufficiently
-                uint192 minTradeVolume = cache.bm.minTradeVolume(); // {UoA}
                 for (uint256 i = 0; i < numRewardTokens; ++i) {
                     // {tok}
                     (, uint192 p) = cache.reg.toAsset(rewardTokens[i]).price(true);
@@ -352,10 +371,12 @@ contract FacadeAct is IFacadeAct {
 
     function claimAndSweepRewards(RTokenP1 rToken) public {
         IMain main = rToken.main();
-        rToken.claimAndSweepRewards();
-        main.backingManager().claimAndSweepRewards();
-        main.rTokenTrader().claimAndSweepRewards();
-        main.rsrTrader().claimAndSweepRewards();
+        rToken.claimRewards();
+        main.backingManager().claimRewards();
+        main.rTokenTrader().claimRewards();
+        main.rsrTrader().claimRewards();
+
+        rToken.sweepRewards();
     }
 
     /// Calculates the minTradeSize for an asset based on the given minTradeVolume and price

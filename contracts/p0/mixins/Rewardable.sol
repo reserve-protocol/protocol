@@ -16,9 +16,9 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
     using Address for address;
     using SafeERC20 for IERC20;
 
-    /// Claim all rewards and sweep to BackingManager
+    /// Claim all rewards
     /// Collective Action
-    function claimAndSweepRewards() external notPausedOrFrozen {
+    function claimRewards() external notPausedOrFrozen {
         main.poke();
 
         IAssetRegistry reg = main.assetRegistry();
@@ -52,16 +52,6 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
             uint256 bal = rewardToken.balanceOf(address(this));
 
             emit RewardsClaimed(address(rewardToken), bal - oldBal);
-        }
-
-        // Sweep reward tokens to the backingManager
-        if (address(this) != address(main.backingManager())) {
-            for (uint256 i = 0; i < numRewardTokens; i++) {
-                uint256 bal = rewardTokens[i].balanceOf(address(this));
-                if (bal > 0) {
-                    rewardTokens[i].safeTransfer(address(main.backingManager()), bal);
-                }
-            }
         }
     }
 }

@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
 import "contracts/interfaces/IRewardable.sol";
+import "contracts/interfaces/IRToken.sol";
 
 /**
  * @title RewardableLibP1
@@ -17,6 +18,8 @@ library RewardableLibP1 {
     using AddressUpgradeable for address;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
+    // === Used by Traders + RToken ===
+
     /// Redefines event for when rewards are claimed, to be able to emit from library
     event RewardsClaimed(address indexed erc20, uint256 indexed amount);
 
@@ -26,7 +29,7 @@ library RewardableLibP1 {
         bytes _calldata;
     }
 
-    /// Claim all rewards and sweep to BackingManager
+    /// Claim all rewards
     /// Collective Action
     /// @custom:interaction mostly CEI but see comments
     // where:
@@ -37,13 +40,8 @@ library RewardableLibP1 {
     //     if to != 0 and rewardToken in assetRegistry}
     //   rewards = {claim.rewardToken for claim in claims}
     // actions:
-    //   first, do to.functionCall(calldata) for claim in claims
-    //   then, if this is not backingManager
-    //     then do
-    //       reward.transfer(bal, backingManager) for claim in claims if bal > 0
-    //       where reward = claim.reward and bal = reward.balanceOf(this)
-    function claimAndSweepRewards() external {
-        IAssetRegistry reg = assetRegistry();
+    //   do to.functionCall(calldata) for claim in claims
+    function claimRewards(IAssetRegistry reg) external {
         IERC20[] memory erc20s = reg.erc20s();
 
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
@@ -88,31 +86,41 @@ library RewardableLibP1 {
 
             emit RewardsClaimed(address(claims[i].reward), newBal - oldBal);
         }
+    }
 
-        // Sweep reward tokens to the backingManager
-        if (address(this) != address(backingManager())) {
-            for (uint256 i = 0; i < numRewardTokens; ++i) {
-                // Safe violation of strict CEI: we're reading balanceOf() here, too, but it's
-                // actually our intention to sweep all of rewardTokens[i] at this point, regardless
-                // of whatever else we may have computed in the function above.
-                uint256 bal = rewardTokens[i].balanceOf(address(this));
-                if (bal > 0) {
-                    IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
-                        address(backingManager()),
-                        bal
-                    );
-                }
+    // ==== Used only by RToken ===
+
+    /// Sweep all tokens in excess of liabilities to the BackingManager
+    /// Caller must be the RToken
+    /// @custom:interaction
+    /// @param liabilities The storage mapping of liabilities by token
+    /// @param reg The AssetRegistry
+    /// @param bm The BackingManager
+    function sweepRewards(
+        mapping(IERC20 => uint256) storage liabilities,
+        IAssetRegistry reg,
+        IBackingManager bm
+    ) external {
+        IERC20[] memory erc20s = reg.erc20s();
+        uint256 erc20sLen = erc20s.length;
+        uint256[] memory deltas = new uint256[](erc20sLen); // {qTok}
+
+        // Calculate deltas
+        for (uint256 i = 0; i < erc20sLen; ++i) {
+            deltas[i] = erc20s[i].balanceOf(address(this)) - liabilities[erc20s[i]]; // {qTok}
+        }
+
+        // == Interactions ==
+        // Sweep deltas
+        for (uint256 i = 0; i < erc20sLen; ++i) {
+            if (deltas[i] > 0) {
+                IERC20Upgradeable(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
+                require(
+                    IERC20Upgradeable(address(erc20s[i])).balanceOf(address(this)) >=
+                        liabilities[erc20s[i]],
+                    "missing liabilities"
+                );
             }
         }
-    }
-
-    /// @return The AssetRegistry
-    function assetRegistry() private view returns (IAssetRegistry) {
-        return IRewardable(address(this)).main().assetRegistry();
-    }
-
-    /// @return The BackingManager
-    function backingManager() private view returns (IBackingManager) {
-        return IRewardable(address(this)).main().backingManager();
     }
 }

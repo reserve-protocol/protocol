@@ -158,11 +158,12 @@ For each `external` or `public` function, one of these tags MUST be in the corre
 - rToken.vest()
 - rToken.cancel()
 - rToken.redeem()
+- rToken.sweepRewards()
+- {rsrTrader,rTokenTrader,backingManager,rToken}.claimRewards()
 - {rsrTrader,rTokenTrader,backingManager}.settleTrade()
 - backingManager.grantRTokenAllowances()
 - backingManager.manageTokens\*()
 - {rsrTrader,rTokenTrader}.manageToken()
-- \*.claimAndSweepRewards()
 
 ### `@custom:governance`
 
