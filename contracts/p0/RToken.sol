@@ -364,7 +364,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         // Sweep deltas
         for (uint256 i = 0; i < erc20s.length; ++i) {
             uint256 delta = erc20s[i].balanceOf(address(this)) - liabilities[erc20s[i]]; // {qTok}
-            IERC20(address(erc20s[i])).safeTransfer(address(bm), delta);
+            if (delta > 0) IERC20(address(erc20s[i])).safeTransfer(address(bm), delta);
         }
     }
 
