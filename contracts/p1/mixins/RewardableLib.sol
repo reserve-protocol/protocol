@@ -114,7 +114,9 @@ library RewardableLibP1 {
         // == Interactions ==
         // Sweep deltas
         for (uint256 i = 0; i < erc20sLen; ++i) {
-            IERC20Upgradeable(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
+            if (deltas[i] > 0) {
+                IERC20Upgradeable(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
+            }
         }
     }
 }
