@@ -1892,7 +1892,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
       })
 
-      it('Should claim and sweep rewards to BackingManager from the Revenue Traders', async () => {
+      it('Should claim but not sweep rewards to BackingManager from the Revenue Traders', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -1918,9 +1918,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Check rewards sent to Main
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        // Check rewards were not sent to Main
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
       })
 
       it('Should claim properly from multiple assets with the same Reward token', async () => {
