@@ -63,15 +63,14 @@ interface IAsset {
 
   // ==== Rewards ====
 
-  /// Get the message needed to call in order to claim rewards for holding this asset.
-  /// Returns zero values if there is no reward function to call.
-  /// @return _to The address to send the call to
-  /// @return _calldata The calldata to send
-  function getClaimCalldata() external view returns (address _to, bytes memory _calldata);
+  /// Emitted whenever a reward token balance is claimed
+  event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
 
-  /// The ERC20 token address that this Asset's rewards are paid in.
-  /// If there are no rewards, will return a zero value.
-  function rewardERC20() external view returns (IERC20 reward);
+  /// Claim rewards earned by holding a balance of the ERC20 token
+  /// There be dragons here!
+  /// Must emit `RewardsClaimed` for each token rewards are claimed for
+  /// @dev delegatecall
+  function claimRewards() external;
 }
 
 /// CollateralStatus must obey a linear ordering. That is:
@@ -312,12 +311,12 @@ If `refresh()` is called twice, and `refPerTok()` just after the second call is 
 
 If `status()` ever returns `CollateralStatus.DISABLED`, then it must always return `CollateralStatus.DISABLED` in the future.
 
-### Token rewards should be claimable.
+### Token rewards should be claimable via delegatecall.
 
-Protocol contracts that hold an asset for any significant amount of time are all able to use `rewardERC20()` and `getClaimCalldata()` to claim rewards. These are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
+Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` via delegatecall. The plugin contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
-- `rewardERC20()` should return the reward token's address, and
-- `getClaimCalldata()` should return a contract address and calldata `bytes` that an asset-storing contract can use to make a raw function call to claim its rewards. For more on preparing this call, check out the use of `abi.encodeWithSignature()` in [contracts/plugins/assets/CTokenFiatCollateral.sol](../contracts/plugins/assets/CTokenFiatCollateral.sol).
+- `claimRewards()` should expected to be executed via delegatecall. It must claim all rewards that may be earned by holding the asset ERC20.
+- The `RewardsClaimed` event should be emitted for each claim.
 
 ### Smaller Constraints
 
@@ -327,7 +326,6 @@ The values returned by the following view methods should never change:
 
 - `targetName()`
 - `erc20()`
-- `rewardERC20()`
 - `erc20Deciamls()`
 
 ## Function-by-function walkthrough
