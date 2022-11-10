@@ -42,15 +42,14 @@ interface IAsset {
 
     // ==== Rewards ====
 
-    /// Get the message needed to call in order to claim rewards for holding this asset.
-    /// Returns zero values if there is no reward function to call.
-    /// @return _to The address to send the call to
-    /// @return _calldata The calldata to send
-    function getClaimCalldata() external view returns (address _to, bytes memory _calldata);
+    /// Emitted whenever a reward token balance is claimed
+    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
 
-    /// The ERC20 token address that this Asset's rewards are paid in.
-    /// If there are no rewards, will return a zero value.
-    function rewardERC20() external view returns (IERC20 reward);
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// There be dragons here!
+    /// Must emit `RewardsClaimed` for each token rewards are claimed for
+    /// @dev delegatecall
+    function claimRewards() external;
 }
 
 interface TestIAsset is IAsset {
