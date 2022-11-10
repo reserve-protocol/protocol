@@ -240,7 +240,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       await waitForTx(await uniswapV3Wrapper.mint(mintParams));
 
       const MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-      const mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.connect(addr1).deploy(8, bn('1e8'))
+      const mockChainlinkFeed0 = <MockV3Aggregator>await MockV3AggregatorFactory.connect(addr1).deploy(8, bn('1e8'))
+      const mockChainlinkFeed1 = <MockV3Aggregator>await MockV3AggregatorFactory.connect(addr1).deploy(8, bn('1e8'))
 
       const uniswapV3CollateralContractFactory: UniswapV3Collateral__factory = await ethers.getContractFactory('UniswapV3Collateral')
 
@@ -249,7 +250,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
         await uniswapV3CollateralContractFactory.connect(addr1).deploy(
           fallbackPrice,
-          mockChainlinkFeed.address,
+          mockChainlinkFeed0.address,
+          mockChainlinkFeed1.address,
           uniswapV3Wrapper.address,
           asset1.address, //asset's rewards are paid in
           RTOKEN_MAX_TRADE_VALUE,
@@ -272,9 +274,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       expect(await uniswapV3Collateral.refPerTok()).to.equal(fp('1'))
       expect(await uniswapV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await uniswapV3Collateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await uniswapV3Collateral.strictPrice()).to.equal(fp('200'))
+      //expect(await uniswapV3Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
       expect(await uniswapV3Collateral.bal(addr1.address)).to.equal(await adjustedAmout(uniswapV3Wrapper, 100))
-      expect(await uniswapV3Collateral.strictPrice()).to.equal(fp('1'))
-      expect(await uniswapV3Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+      
       expect(await uniswapV3Collateral.rewardERC20()).to.equal(asset1.address)
 
     })

@@ -8,11 +8,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
 
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
 
 contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     struct Deposit {
         uint256 tokenId;
-        uint128 liquidity; //TODO replace with this.totalSupply();
         address token0;
         address token1;
     }
@@ -20,8 +23,13 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     bool isInitialized = false;
     Deposit deposit;
 
+    //IUniswapV3Pool immutable pool;
+
     INonfungiblePositionManager immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
+
+    IUniswapV3Factory immutable uniswapV3Factory =
+        IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
 
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
@@ -79,7 +87,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             TransferHelper.safeTransfer(params.token1, msg.sender, refund1);
         }
 
-        deposit.liquidity = liquidity;
         deposit.token0 = params.token0;
         deposit.token1 = params.token1;
         deposit.tokenId = tokenId;
@@ -120,7 +127,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         (liquidity, amount0, amount1) = nonfungiblePositionManager.increaseLiquidity(
             increaseLiquidityParams
         );
-        deposit.liquidity = liquidity;
         _mint(msg.sender, liquidity);
     }
 
@@ -138,7 +144,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         decreaseLiquidityParams.amount1Min = 0;
         decreaseLiquidityParams.deadline = block.timestamp;
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
-        deposit.liquidity -= liquidity;
 
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
             .CollectParams(deposit.tokenId, msg.sender, uint128(amount0), uint128(amount1));
@@ -147,6 +152,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     }
 
     //collect fees only for second asset
+    //todo check permissions, only reserve should be permitted
     function collect(address recipient)
         external
         nonReentrant
@@ -156,6 +162,18 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
             .CollectParams(deposit.tokenId, recipient, 0, type(uint128).max);
+        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+    }
+
+    function collectAll(address recipient)
+        external
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1)
+    {
+        require(isInitialized, "Contract is not initialized!");
+
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
+            .CollectParams(deposit.tokenId, recipient, type(uint128).max, type(uint128).max);
         (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
     }
 
@@ -183,5 +201,60 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     function positionId() external view returns (uint256) {
         return deposit.tokenId;
+    }
+
+    function slot0()
+        external
+        view
+        returns (
+            uint160 sqrtPriceX96,
+            bool unlocked,
+            uint96 nonce,
+            address operator,
+            address token0,
+            address token1,
+            uint24 fee,
+            int24 tickLower,
+            int24 tickUpper,
+            uint128 liquidity
+        )
+    {
+        require(isInitialized, "Contract is not initialized!");
+
+        (nonce, operator, token0, token1, fee, tickLower, tickUpper, liquidity, , , , ) = this
+            .positions();
+
+        //TODO is it cheaper than
+        //PoolAddress.PoolKey({token0: params.token0, token1: params.token1, fee: params.fee})
+        //PoolAddress.computeAddress(factory, poolKey);
+        IUniswapV3Pool pool = IUniswapV3Pool(uniswapV3Factory.getPool(token0, token1, fee));
+        (sqrtPriceX96, , , , , , unlocked) = pool.slot0();
+    }
+
+    function principal()
+        external
+        view
+        returns (
+            uint256 amount0,
+            uint256 amount1,
+            address token0,
+            address token1
+        )
+    {
+        uint160 sqrtRatioX96;
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 liquidity;
+        (sqrtRatioX96, , , , token0, token1, , tickLower, tickUpper, liquidity) = this.slot0();
+
+        amount0 = 1;
+        amount1 = 1;
+        
+        (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            sqrtRatioX96,
+            TickMath.getSqrtRatioAtTick(tickLower),
+            TickMath.getSqrtRatioAtTick(tickUpper),
+            liquidity
+        );
     }
 }
