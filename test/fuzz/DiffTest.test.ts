@@ -326,5 +326,10 @@ describe('The Differential Testing scenario', () => {
       expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
       expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
+
+    it('regression test: asset error', async () => {
+      await scenario.unregisterAsset(0)
+      expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
   })
 })
