@@ -22,6 +22,7 @@ interface IStaticAToken is IERC20Metadata {
     function rate() external view returns (uint256);
 
     /// @return The reward token, ie stkAAVE
+    // solhint-disable-next-line func-name-mixedcase
     function REWARD_TOKEN() external view returns (IERC20);
 }
 

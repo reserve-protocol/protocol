@@ -28,6 +28,22 @@ The IAsset and ICollateral interfaces, from `IAsset.sol`, are as follows:
 
 ```solidity
 /**
+ * @title IRewardable
+ * @notice A simple interface mixin to support claiming of rewards.
+ */
+interface IRewardable {
+  /// Emitted whenever a reward token balance is claimed
+  event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
+
+  /// Claim rewards earned by holding a balance of the ERC20 token
+  /// There be dragons here!
+  /// Must emit `RewardsClaimed` for each token rewards are claimed for
+  /// @dev delegatecall
+  /// @custom:interaction
+  function claimRewards() external;
+}
+
+/**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
  * whether it is used as RToken backing or not. Any token that can report a price in the UoA
@@ -60,17 +76,6 @@ interface IAsset {
 
   /// @param {UoA} The max trade volume, in UoA
   function maxTradeVolume() external view returns (uint192);
-
-  // ==== Rewards ====
-
-  /// Emitted whenever a reward token balance is claimed
-  event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
-
-  /// Claim rewards earned by holding a balance of the ERC20 token
-  /// There be dragons here!
-  /// Must emit `RewardsClaimed` for each token rewards are claimed for
-  /// @dev delegatecall
-  function claimRewards() external;
 }
 
 /// CollateralStatus must obey a linear ordering. That is:

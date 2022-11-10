@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
+import "./IRewardable.sol";
 
 /**
  * @title IAsset
@@ -12,7 +13,7 @@ import "./IMain.sol";
  * whether it is used as RToken backing or not. Any token that can report a price in the UoA
  * is eligible to be an asset.
  */
-interface IAsset {
+interface IAsset is IRewardable {
     /// Can return 0, can revert
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
@@ -39,17 +40,6 @@ interface IAsset {
 
     /// @param {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
-
-    // ==== Rewards ====
-
-    /// Emitted whenever a reward token balance is claimed
-    event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
-
-    /// Claim rewards earned by holding a balance of the ERC20 token
-    /// There be dragons here!
-    /// Must emit `RewardsClaimed` for each token rewards are claimed for
-    /// @dev delegatecall
-    function claimRewards() external;
 }
 
 interface TestIAsset is IAsset {

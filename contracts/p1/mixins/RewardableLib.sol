@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
 
@@ -12,6 +13,7 @@ import "contracts/interfaces/IBackingManager.sol";
  * @dev The caller must implement the IRewardable interface!
  */
 library RewardableLibP1 {
+    using Address for address;
     using SafeERC20 for IERC20;
 
     // === Used by Traders + RToken ===
@@ -22,22 +24,13 @@ library RewardableLibP1 {
     // actions:
     //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
     function claimRewards(IAssetRegistry reg) external {
-        (IERC20[] memory erc20s, IAsset[] memory assets) = reg.getRegistry();
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            // Claim rewards via delegatecall, inlined for gas-efficiency
-            // Taken from OZ's Address lib
-
-            // Address.functionDelegateCall -- simplified
-            (bool success, ) = address(assets[i]).delegatecall(
-                abi.encodeWithSignature("claimRewards()")
+        (, IAsset[] memory assets) = reg.getRegistry();
+        for (uint256 i = 0; i < assets.length; ++i) {
+            // Claim rewards via delegatecall
+            address(assets[i]).functionDelegateCall(
+                abi.encodeWithSignature("claimRewards()"),
+                "rewards claim failed"
             );
-
-            if (!success) {
-                revert("Address: low-level delegate call failed");
-            }
-
-            // require(Address.isContract())
-            require(address(assets[i]).code.length > 0, "Address: call to non-contract");
         }
     }
 
@@ -49,6 +42,8 @@ library RewardableLibP1 {
     /// @param liabilities The storage mapping of liabilities by token
     /// @param reg The AssetRegistry
     /// @param bm The BackingManager
+    // actions:
+    //   do erc20.safeTransfer(bm, bal - liabilities[erc20]) for erc20 in erc20s
     function sweepRewards(
         mapping(IERC20 => uint256) storage liabilities,
         IAssetRegistry reg,
@@ -68,9 +63,10 @@ library RewardableLibP1 {
         for (uint256 i = 0; i < erc20sLen; ++i) {
             if (deltas[i] > 0) {
                 IERC20(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
-                require(
-                    IERC20(address(erc20s[i])).balanceOf(address(this)) >= liabilities[erc20s[i]],
-                    "missing liabilities"
+
+                // Verify nothing has gone wrong
+                assert(
+                    IERC20(address(erc20s[i])).balanceOf(address(this)) >= liabilities[erc20s[i]]
                 );
             }
         }

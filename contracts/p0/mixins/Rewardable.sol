@@ -24,7 +24,10 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
             IAsset asset = reg.toAsset(erc20s[i]);
 
             // Claim rewards via delegatecall
-            address(asset).functionDelegateCall(abi.encodeWithSignature("claimRewards()"));
+            address(asset).functionDelegateCall(
+                abi.encodeWithSignature("claimRewards()"),
+                "rewards claim failed"
+            );
         }
     }
 }
