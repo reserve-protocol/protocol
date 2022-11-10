@@ -492,7 +492,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// Claim rewards
     /// @custom:interaction
     function claimRewards() external notPausedOrFrozen {
-        RewardableLibP1.claimRewards();
+        RewardableLibP1.claimRewards(assetRegistry);
     }
 
     /// Sweep all reward tokens in excess of liabilities to the BackingManager

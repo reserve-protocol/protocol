@@ -41,8 +41,7 @@ library RewardableLibP1 {
     //   rewards = {claim.rewardToken for claim in claims}
     // actions:
     //   do to.functionCall(calldata) for claim in claims
-    function claimRewards() external {
-        IAssetRegistry reg = IRewardable(address(this)).main().assetRegistry();
+    function claimRewards(IAssetRegistry reg) external {
         IERC20[] memory erc20s = reg.erc20s();
 
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
@@ -116,6 +115,11 @@ library RewardableLibP1 {
         for (uint256 i = 0; i < erc20sLen; ++i) {
             if (deltas[i] > 0) {
                 IERC20Upgradeable(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
+                require(
+                    IERC20Upgradeable(address(erc20s[i])).balanceOf(address(this)) >=
+                        liabilities[erc20s[i]],
+                    "missing liabilities"
+                );
             }
         }
     }

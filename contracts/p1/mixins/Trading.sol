@@ -74,8 +74,7 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
     /// Collective Action
     /// @custom:interaction CEI
     function claimRewards() external notPausedOrFrozen {
-        // == Interaction ==
-        RewardableLibP1.claimRewards();
+        RewardableLibP1.claimRewards(main.assetRegistry());
     }
 
     /// Try to initiate a trade with a trading partner provided by the broker
