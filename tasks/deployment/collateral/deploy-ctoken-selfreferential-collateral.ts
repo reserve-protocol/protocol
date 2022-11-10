@@ -6,7 +6,6 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('cToken', 'CToken address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
@@ -31,7 +30,6 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
         params.fallbackPrice,
         params.priceFeed,
         params.cToken,
-        params.rewardToken,
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,
