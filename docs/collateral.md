@@ -106,16 +106,13 @@ interface ICollateral is IAsset {
 
   /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
   function targetPerRef() external view returns (uint192);
-
-  /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
-  function pricePerTarget() external view returns (uint192);
 }
 
 ```
 
 ## Accounting Units and Exchange Rates
 
-To create a Collateral plugin, you need to select its accounting units (`{tok}`, `{ref}`, `{target}`, and `{UoA}`), and implement views of the exchange rates between those units: `refPerTok()`, `targetPerRef()`, and `pricePerTarget`.
+To create a Collateral plugin, you need to select its accounting units (`{tok}`, `{ref}`, `{target}`, and `{UoA}`), and implement views of the exchange rates: `refPerTok()` and `targetPerRef()`.
 
 Typical accounting units in this sense are things like ETH, USD, USDC -- tokens, assets, currencies; anything that can be used as a measure of value. In general, a valid accounting unit is a linear combination of any number of assets; so (1 USDC + 0.5 USDP + 0.25 TUSD) is a valid unit, as is (say) (0.5 USD + 0.5 EUR), though such units will probably only arise in particularly tricky cases. Each Collateral plugin should describe in its documentation each of its four accounting units
 
@@ -393,7 +390,6 @@ After a call to `refresh()`, it is expected the collateral is either `IFFY` or `
 - `price(false)`
 - `refPerTok()`
 - `targetPerRef()`
-- `pricePerTarget()`
 
 The collateral should also be immediately set to `DISABLED` if `refPerTok()` has fallen.
 
@@ -430,12 +426,6 @@ Should be gas-efficient.
 ### targetPerRef() `{target/ref}`
 
 Should never revert. Must return a constant value.
-
-Should be gas-efficient.
-
-### pricePerTarget() `{UoA/target}`
-
-Should never revert. May decrease, or increase, or do anything, really. Monitoring for deviation does not make sense here.
 
 Should be gas-efficient.
 
