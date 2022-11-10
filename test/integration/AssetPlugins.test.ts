@@ -454,7 +454,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.tokenCollateral.pricePerTarget()).to.equal(fp('1'))
         expect(await tkInf.tokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.05')) // Should always be close to $1
 
-        await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(tkInf, 'RewardsClaimed')
+        await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(
+          tkInf.tokenCollateral,
+          'RewardsClaimed'
+        )
         expect(await tkInf.tokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       }
     })
@@ -533,7 +536,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         ) // close to $0.022 cents
 
         await expect(ctkInf.cTokenCollateral.claimRewards())
-          .to.emit(ctkInf, 'RewardsClaimed')
+          .to.emit(ctkInf.cTokenCollateral, 'RewardsClaimed')
           .withArgs(compToken.address, 0)
 
         expect(await ctkInf.cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
@@ -615,8 +618,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.aTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.095'))
 
         await expect(atkInf.aTokenCollateral.claimRewards())
-          .to.emit(atkInf, 'RewardsClaimed')
-          .withArgs(atkInf.stataToken.address, 0)
+          .to.emit(atkInf.aTokenCollateral, 'RewardsClaimed')
+          .withArgs(aaveToken.address, 0)
 
         // Check StaticAToken
         expect(await atkInf.stataToken.name()).to.equal(
