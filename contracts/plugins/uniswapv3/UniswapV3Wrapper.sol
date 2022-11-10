@@ -146,6 +146,19 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         _burn(msg.sender, liquidity);
     }
 
+    //collect fees only for second asset
+    function collect(address recipient)
+        external
+        nonReentrant
+        returns (uint256 amount0, uint256 amount1)
+    {
+        require(isInitialized, "Contract is not initialized!");
+
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
+            .CollectParams(deposit.tokenId, recipient, 0, type(uint128).max);
+        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+    }
+
     function positions()
         external
         view

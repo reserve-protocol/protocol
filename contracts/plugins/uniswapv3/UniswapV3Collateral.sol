@@ -27,6 +27,17 @@ contract UniswapV3Collateral is Collateral {
         )
     {
     }
+
+    function getClaimCalldata()
+        external
+        view
+        virtual
+        override
+        returns (address _to, bytes memory _cd)
+    {
+        _to = address(erc20);
+        _cd = abi.encodeWithSignature("collect(address)", msg.sender);
+    }
     //TODO RefPerTok() always equals 1 but we need to implement check
 
 }
