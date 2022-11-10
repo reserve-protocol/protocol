@@ -460,7 +460,7 @@ describe('FacadeAct contract', () => {
       await aToken.setRewards(backingManager.address, rewardAmountAAVE)
 
       // Claim new rewards
-      await facadeTest.claimRewards(rToken.address)
+      await facadeTest.claimAndSweepRewards(rToken.address)
 
       // Via Facade get next call - will transfer RSR to Trader
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)

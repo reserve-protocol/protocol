@@ -2085,12 +2085,22 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('Reward Claiming #fast', () => {
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not sweep rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
     })
 
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not claim rewards when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
     })
   })
 

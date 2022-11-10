@@ -491,7 +491,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       }
 
       // Claim rewards
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Do auctions
       await runRevenueAuctionsUntilCompletion()

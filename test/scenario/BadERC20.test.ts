@@ -219,7 +219,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still be able to claim rewards', async () => {
-      await rToken.connect(addr1).claimAndSweepRewards()
+      await rToken.connect(addr1).claimRewards()
+    })
+
+    it('should still be able to sweep rewards', async () => {
+      await rToken.connect(addr1).sweepRewards()
     })
 
     it('should still melt', async () => {
@@ -316,7 +320,11 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still be able to claim rewards', async () => {
-      await rToken.connect(addr1).claimAndSweepRewards()
+      await rToken.connect(addr1).claimRewards()
+    })
+
+    it('should still be able to sweep rewards', async () => {
+      await rToken.connect(addr1).sweepRewards()
     })
 
     it('should still have price', async () => {
