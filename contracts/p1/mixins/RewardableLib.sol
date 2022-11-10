@@ -91,7 +91,7 @@ library RewardableLibP1 {
 
     // ==== Used only by RToken ===
 
-    /// Sweep all reward tokens in excess of liabilities to the BackingManager
+    /// Sweep all tokens in excess of liabilities to the BackingManager
     /// Caller must be the RToken
     /// @custom:interaction
     /// @param liabilities The storage mapping of liabilities by token
