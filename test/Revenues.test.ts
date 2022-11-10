@@ -2005,8 +2005,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards - should revert
-        await expect(backingManager.claimRewards()).to.be.revertedWith('rewards claim failed')
+        // Claim and sweep rewards - should revert and bubble up msg
+        await expect(backingManager.claimRewards()).to.be.revertedWith('claimRewards() error')
 
         // Check status - nothing claimed
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
