@@ -187,7 +187,7 @@ Wherever contract variables have these units, it's understood that even though t
 
 For more about our approach for handling decimal-fixed-point, see our [docs on the Fix Library](solidity-style.md#The-Fix-Library).
 
-## Synthetic Unit Example
+## Synthetic Units
 
 Some collateral positions require a synthetic reference unit. This can be tricky to reason through, so here we'll provide a few examples.
 
@@ -218,6 +218,45 @@ This would be sensible for many UNI v2 pools, but someone holding value in a two
 - The UNI v2 pool is far from the 1:1 point for some time
 
 And even then, it would be somewhat dangerous for an RToken designer to use this LP token as a _backup_ Collateral position -- because whenever the pool's proportion is away from 1:1 at all, it'll take more than \$1 of collateral to buy an LP position that can reliably convert to \$1 later.
+
+### Demurrage Collateral
+
+In some cases the collateral token does not have a reference unit it is nondecreasing against except for itself. In this case a revenue stream can be created by composing a synthetic reference unit that refers to a falling quantity of the collateral token. This causes the reference unit to become inflationary with respect to the collateral unit, resulting in a monotonically increasing `refPerTok()`.
+
+Consider `wstETH`, the wrapped version of Lido's `stETH` token. While the `wstETH/stETH` exchange rate should generally increase, there may be times when Lido node operators go offline and the exchange rate temporarily falls. This is very different than a case like `cWETH`, where even a small decrease in `refPerTok()` would be sufficient to justify defaulting the collateral on the grounds that the protocol itself is failing. _Large_ decreases may be sufficient to justify default, but small decreases may be acceptable. Unfortunately, the protocol requires `refPerTok()` is strictly nondecreasing. One way to achieve this is to make the collateral self-referential, with a penalty term based on how much time has passed. We call this _demurrage_.
+
+Plan: In order to ensure `refPerTok()` is nondecreasing the reference unit is defined as a falling quantity of the collateral unit. As the reference unit "gets smaller", `refPerTok()` increases. This is viewed by the protocol as appreciation, allowing it to decrease how much `wstETH` is required to back the RToken supply.
+
+Alternatively you can view this as making the reference unit inflationary, which may or may not be an easier mental model.
+
+**Reference Unit**
+
+The equation below describes the relationship between the collateral unit and an inflationary reference unit. Over time there come to be more reference units per collateral token, allowing the protocol to identify revenue.
+
+```
+refPerTok(): (1 + demurrage_rate_per_second) ^ t
+    where t is seconds since 01/01/2020 00:00:00 GMT+0000
+```
+
+The timestamp of 01/01/2020 00:00:00 GMT+0000 is chosen arbitrarily. It's not important what this value is, generally, but it's going to wind up being important that this anchor timestamp is the same for all demurrage collateral, so we suggest just sticking with the provided timestamp. In unix time this is `1640995200`.
+
+Note: In practice this equation will also have to be adjusted to account for the limited computation available on Ethereum. While the equation is expressed in terms of seconds, a larger granularity is likely necessary, such as hours or days. Exponentiation is expensive!
+
+**Target Unit**
+
+A [constraint on the target unit](#target-unit-target) is that it should have a roughly constant exchange rate to the reference unit, modulo short-term price movements. In order to maintain this property, the target unit should be set to inflate at the same rate as the reference unit. This yields a trivial `targetPerRef()`.
+
+```
+targetPerRef(): 1
+```
+
+The target unit must be named in a way that distinguishes it from the non-demurrage version of itself. We suggest the following naming scheme:
+
+`DMR{annual_demurrage_in_basis_points}{token_symbol}` or `DMR100wstETH` in this example.
+
+The `DMR` prefix is short for demurrage; the `annual_demurrage_in_basis_points` is a number such as 100 for 1% annually; the `token_symbol` is the symbol of what would have otherwise been the target unit had the collateral been purely SelfReferential.
+
+Collateral can only be automatically substituted in the basket with collateral that share the same target unit. This unfortunately means that a standard WETH collateral would not be in the same class as our demurrage wstETH collateral, unless the WETH collateral were also demurrage-based, and at the same rate.
 
 ## Important Properties for Collateral Plugins
 
@@ -414,6 +453,8 @@ The target name is just a bytes32 serialization of the target unit string. Here 
 - BTC: `0x4254430000000000000000000000000000000000000000000000000000000000`
 
 For a collateral plugin that uses a novel target unit, get the targetName with `ethers.utils.formatBytes32String(unitName)`.
+
+If implementing a demurrage-based collateral plugin, make sure your targetName differs from the examples above and follows the pattern laid out in [Demurrage Collateral](#demurrage-collateral).
 
 ## Practical Advice from Previous Work
 
