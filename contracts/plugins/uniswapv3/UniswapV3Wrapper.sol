@@ -247,13 +247,13 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         uint128 liquidity;
         (sqrtRatioX96, , , , token0, token1, , tickLower, tickUpper, liquidity) = this.slot0();
 
-        amount0 = 1;
-        amount1 = 1;
-        
+        uint160 lowerSqrtRatio = TickMath.getSqrtRatioAtTick(tickLower);
+        uint160 upperSqrtRatio = TickMath.getSqrtRatioAtTick(tickUpper);
+
         (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
             sqrtRatioX96,
-            TickMath.getSqrtRatioAtTick(tickLower),
-            TickMath.getSqrtRatioAtTick(tickUpper),
+            lowerSqrtRatio,
+            upperSqrtRatio,
             liquidity
         );
     }

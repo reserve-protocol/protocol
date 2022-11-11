@@ -7,6 +7,7 @@ import "hardhat/console.sol";
 
 
 contract UniswapV3Collateral is Collateral {
+    using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
 
     constructor(
@@ -45,13 +46,9 @@ contract UniswapV3Collateral is Collateral {
         (
             uint256 amount0,
             uint256 amount1,
-            address token0,
-            address token1
+            ,
         ) = IUniswapV3Wrapper(address(erc20)).principal();
-
-        console.log(amount0, amount1);
-        console.log(token0, token1);
-        return 1;
+        return uint192((chainlinkFeed.price(oracleTimeout) * amount0) + (chainlinkFeedSecondAsset.price(oracleTimeout) * amount1));
     }
 
     function getClaimCalldata()
