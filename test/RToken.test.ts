@@ -2085,12 +2085,68 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('Reward Claiming #fast', () => {
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not sweep rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
     })
 
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not claim rewards when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+    })
+  })
+
+  describe('Reward Sweeping #fast', () => {
+    const issueAmt = bn('100000e18')
+    const amt = fp('2')
+
+    beforeEach(async () => {
+      // Provide approvals for future issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmt)
+      await token1.connect(addr1).approve(rToken.address, issueAmt)
+      await token2.connect(addr1).approve(rToken.address, issueAmt)
+      await token3.connect(addr1).approve(rToken.address, issueAmt)
+    })
+
+    it('should sweep without liabilities', async () => {
+      await token0.mint(rToken.address, amt)
+
+      const smallerAmt = bn('10000e18') // fits in one block
+      await rToken.connect(addr1).issue(smallerAmt) // fast issuance
+
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+
+      await token0.mint(rToken.address, amt.add(1))
+
+      await rToken.connect(addr1).redeem(smallerAmt)
+
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt.add(1))
+    })
+
+    it('should not sweep with full liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+      await expect(rToken.sweepRewards()).to.not.emit(token0, 'Transfer')
+    })
+
+    it('should sweep with partial liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+
+      await token0.mint(rToken.address, amt)
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
     })
   })
 
@@ -2427,15 +2483,19 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
+        libraries: { OracleLib: oracle.address },
+      })
       const coll: FiatCollateral = <FiatCollateral>(
         await CollateralFactory.deploy(
           fp('1'),
           oracle.address,
           erc20.address,
+          ZERO_ADDRESS,
           fp('1e36'),
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           fp('0.05'),
           bn(86400)

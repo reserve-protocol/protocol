@@ -124,6 +124,10 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @custom:interaction
     function redeem(uint256 amount) external;
 
+    /// Sweep all reward tokens in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewards() external;
+
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken
     /// @param amount {qRTok} The amount to be minted

@@ -105,7 +105,4 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
-
-    /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
-    function pricePerTarget() external view returns (uint192);
 }

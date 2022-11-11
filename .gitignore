@@ -29,3 +29,6 @@ typechain/
 *.orig
 
 .idea
+
+test/__snapshots/
+contracts/facade/FacadeAct.sol

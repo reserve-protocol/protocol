@@ -564,7 +564,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const requiredRSRAmt: BigNumber = rewardAmount.mul(compPrice).div(rsrPrice)
     const minBuyAmt: BigNumber = requiredRSRAmt.sub(requiredRSRAmt.div(100)) //  due to trade slippage 1%
 
-    await expectEvents(backingManager.claimAndSweepRewards(), [
+    await expectEvents(backingManager.claimRewards(), [
       {
         contract: backingManager,
         name: 'RewardsClaimed',
