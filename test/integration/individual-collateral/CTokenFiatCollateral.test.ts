@@ -131,11 +131,11 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await loadFixture(defaultFixture))
 
     // Get required contracts for cDAI
-    // COMP btoken
+    // COMP token
     compToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
     )
-    // COMPOUND Comptroller
+    // Compound Comptroller
     comptroller = await ethers.getContractAt(
       'ComptrollerMock',
       networkConfig[chainId].COMPTROLLER || ''
@@ -157,7 +157,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('1'),
         networkConfig[chainId].chainlinkFeeds.COMP || '',
         compToken.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT
       )
@@ -248,7 +247,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   describe('Deployment', () => {
     // Check the initial state
-    it('Should deploy RToken, Assets, and Collateral correctly', async () => {
+    it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Rewards assets (if applies)
       // COMP Asset
       expect(await compAsset.isCollateral()).to.equal(false)
@@ -306,7 +305,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await assetRegistry.toColl(ERC20s[3])).to.equal(cDaiCollateral.address)
     })
 
-    // Check basket in RToken
+    // Check RToken basket
     it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
@@ -435,12 +434,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
 
-      // Advance time and blocks slightly
+      // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
       await advanceBlocks(10000)
 
       // Refresh cToken manually (required)
       await cDaiCollateral.refresh()
+      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
       const cDaiPrice2: BigNumber = await cDaiCollateral.strictPrice() // ~0.022016
@@ -460,12 +460,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
-      // Advance time and blocks significantly
+      // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(100000000)
       await advanceBlocks(100000000)
 
       // Refresh cToken manually (required)
       await cDaiCollateral.refresh()
+      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
       const cDaiPrice3: BigNumber = await cDaiCollateral.strictPrice() // ~0.03294
@@ -512,7 +513,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
   // claiming calls throughout the protocol are handled correctly and do not revert.
   describe('Rewards', () => {
-    it('Should be able to claim rewards (if applies)', async () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
@@ -641,7 +642,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
   })
 
-  // Note: Here the idea is to test all the possible statuses for the Collateral and check all possible defaults
+  // Note: Here the idea is to test all possible statuses and check all possible paths to default
+  // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
+  // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
   describe('Collateral Status', () => {
     // Test for soft default
