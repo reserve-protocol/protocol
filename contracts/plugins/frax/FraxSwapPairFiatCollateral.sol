@@ -118,7 +118,7 @@ contract FraxSwapPairFiatCollateral is Collateral {
         // gets supply of token0 and token1
         (uint112 _reserve0, uint112 _reserve1,) = IFraxswapPair(address(erc20));
 
-        // rate = sqrt(x * y)/L
+        // rate is sqrt(x * y)/L
         uint256 rate = (Math.sqrt(uint256(_reserve0) * uint256(_reserve1)) /
                         IFraxswapPair(address(erc20)).totalSupply());
 
