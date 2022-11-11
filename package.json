@@ -33,7 +33,7 @@
     "prepare": "husky install",
     "prettier": "bash tools/prettier",
     "size": "hardhat size-contracts",
-    "slither": "bash tools/slither"
+    "slither": "python3 tools/slither.py"
   },
   "repository": {
     "type": "git",
