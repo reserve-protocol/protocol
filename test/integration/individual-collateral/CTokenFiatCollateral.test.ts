@@ -171,7 +171,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('0.02'),
         networkConfig[chainId].chainlinkFeeds.DAI as string,
         cDai.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -255,8 +254,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
-      expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Check Collateral plugin
@@ -273,12 +271,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.strictPrice()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
 
       // Check claim data
-      const calldata = comptroller.interface.encodeFunctionData('claimComp', [owner.address])
-      expect(await cDaiCollateral.connect(owner).getClaimCalldata()).to.eql([
-        comptroller.address,
-        calldata,
-      ])
-      expect(await cDaiCollateral.rewardERC20()).to.equal(compToken.address)
+      await expect(cDaiCollateral.claimRewards())
+        .to.emit(cDaiCollateral, 'RewardsClaimed')
+        .withArgs(compToken.address, 0)
       expect(await cDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -338,7 +333,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('0.02'),
           networkConfig[chainId].chainlinkFeeds.DAI as string,
           cDai.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -349,30 +343,12 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
-      // Reward ERC20
-      await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          (await dai.decimals()).toString(),
-          comptroller.address
-        )
-      ).to.be.revertedWith('rewardERC20 missing')
-
       // ReferemceERC20Decimals
       await expect(
         CTokenCollateralFactory.deploy(
           fp('0.02'),
           networkConfig[chainId].chainlinkFeeds.DAI as string,
           cDai.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -389,7 +365,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('0.02'),
           networkConfig[chainId].chainlinkFeeds.DAI as string,
           cDai.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -398,7 +373,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           (await dai.decimals()).toString(),
           ZERO_ADDRESS
         )
-      ).to.be.revertedWith('comptrollerAddr missing')
+      ).to.be.revertedWith('comptroller missing')
     })
   })
 
@@ -520,7 +495,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Try to claim rewards at this point - Nothing for Backing Manager
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
-      await expectEvents(backingManager.claimAndSweepRewards(), [
+      await expectEvents(backingManager.claimRewards(), [
         {
           contract: backingManager,
           name: 'RewardsClaimed',
@@ -548,7 +523,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards both in COMP and stkAAVE
       const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
@@ -559,7 +534,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(3600)
 
       // Get additional rewards
-      await expect(backingManager.claimAndSweepRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
 
@@ -593,7 +568,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('0.02'),
         NO_PRICE_DATA_FEED,
         cDai.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -619,7 +593,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('0.02'),
         mockChainlinkFeed.address,
         cDai.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -658,7 +631,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('0.02'),
         mockChainlinkFeed.address,
         await cDaiCollateral.erc20(),
-        await cDaiCollateral.rewardERC20(),
         await cDaiCollateral.maxTradeVolume(),
         await cDaiCollateral.oracleTimeout(),
         await cDaiCollateral.targetName(),
@@ -721,7 +693,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('0.02'),
         await cDaiCollateral.chainlinkFeed(),
         cDaiMock.address,
-        await cDaiCollateral.rewardERC20(),
         await cDaiCollateral.maxTradeVolume(),
         await cDaiCollateral.oracleTimeout(),
         await cDaiCollateral.targetName(),
@@ -761,7 +732,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('0.02'),
           invalidChainlinkFeed.address,
           await cDaiCollateral.erc20(),
-          await cDaiCollateral.rewardERC20(),
           await cDaiCollateral.maxTradeVolume(),
           await cDaiCollateral.oracleTimeout(),
           await cDaiCollateral.targetName(),
