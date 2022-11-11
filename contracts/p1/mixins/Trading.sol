@@ -77,6 +77,14 @@ abstract contract TradingP1 is Multicall, ComponentP1, ReentrancyGuardUpgradeabl
         RewardableLibP1.claimRewards(main.assetRegistry());
     }
 
+    /// Claim rewards for a single asset
+    /// Collective Action
+    /// @param erc20 The ERC20 to claimRewards on
+    /// @custom:interaction CEI
+    function claimRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+        RewardableLibP1.claimRewardsSingle(main.assetRegistry().toAsset(erc20));
+    }
+
     /// Try to initiate a trade with a trading partner provided by the broker
     /// @custom:interaction (only reads or writes `trades`, and is marked `nonReentrant`)
     // checks:

@@ -355,6 +355,8 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         if (allZero) revert("Empty redemption");
     }
 
+    // === Rewards ===
+
     /// Sweep all reward tokens in excess of liabilities to the BackingManager
     /// @custom:interaction
     function sweepRewards() external notPausedOrFrozen {
@@ -367,6 +369,20 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             if (delta > 0) IERC20(address(erc20s[i])).safeTransfer(address(bm), delta);
         }
     }
+
+    /// Sweep an ERC20's rewards in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+        uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
+        if (amt > 0) {
+            erc20.safeTransfer(address(main.backingManager()), amt);
+
+            // Verify nothing has gone wrong
+            assert(erc20.balanceOf(address(this)) >= liabilities[erc20]);
+        }
+    }
+
+    // ===
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken

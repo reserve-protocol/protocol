@@ -12,7 +12,7 @@ import "./IRewardable.sol";
  * @title ITrading
  * @notice Common events and refresher function for all Trading contracts
  */
-interface ITrading is IComponent, IRewardable {
+interface ITrading is IComponent, IRewardableComponent {
     event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
     event MinTradeVolumeSet(uint192 indexed oldVal, uint192 indexed newVal);
 

@@ -19,7 +19,6 @@ library RewardableLibP1 {
     // === Used by Traders + RToken ===
 
     /// Claim all rewards
-    /// Collective Action
     /// @custom:interaction mostly CEI but see comments
     // actions:
     //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
@@ -34,10 +33,21 @@ library RewardableLibP1 {
         }
     }
 
+    /// Claim rewards for a single ERC20
+    /// @custom:interaction mostly CEI but see comments
+    // actions:
+    //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()"))
+    function claimRewardsSingle(IAsset asset) external {
+        // Claim rewards via delegatecall
+        address(asset).functionDelegateCall(
+            abi.encodeWithSignature("claimRewards()"),
+            "rewards claim failed"
+        );
+    }
+
     // ==== Used only by RToken ===
 
     /// Sweep all tokens in excess of liabilities to the BackingManager
-    /// Caller must be the RToken
     /// @custom:interaction
     /// @param liabilities The storage mapping of liabilities by token
     /// @param reg The AssetRegistry
@@ -64,11 +74,32 @@ library RewardableLibP1 {
             if (deltas[i] > 0) {
                 IERC20(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
 
-                // Verify nothing has gone wrong
+                // Verify nothing has gone wrong -- we should keep this assert, even in P1
                 assert(
                     IERC20(address(erc20s[i])).balanceOf(address(this)) >= liabilities[erc20s[i]]
                 );
             }
+        }
+    }
+
+    /// Sweep a ERC20 in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    /// @param liabilities The storage mapping of liabilities by token
+    /// @param erc20 The erc20 to sweep
+    /// @param bm The BackingManager
+    // actions:
+    //   erc20.safeTransfer(bm, bal - liabilities[erc20]) if bal > liabilities[erc20]
+    function sweepRewardsSingle(
+        mapping(IERC20 => uint256) storage liabilities,
+        IERC20 erc20,
+        IBackingManager bm
+    ) external {
+        uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
+        if (amt > 0) {
+            erc20.safeTransfer(address(bm), amt);
+
+            // Verify nothing has gone wrong -- we should keep this assert, even in P1
+            assert(erc20.balanceOf(address(this)) >= liabilities[erc20]);
         }
     }
 }

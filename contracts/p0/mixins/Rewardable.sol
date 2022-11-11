@@ -9,7 +9,7 @@ import "contracts/interfaces/IRewardable.sol";
  * @title Rewardable
  * @notice A mix-in that makes a contract able to claim rewards
  */
-abstract contract RewardableP0 is ComponentP0, IRewardable {
+abstract contract RewardableP0 is ComponentP0, IRewardableComponent {
     using Address for address;
 
     /// Claim all rewards
@@ -29,5 +29,19 @@ abstract contract RewardableP0 is ComponentP0, IRewardable {
                 "rewards claim failed"
             );
         }
+    }
+
+    /// Claim rewards for a single asset
+    /// Collective Action
+    /// @param erc20 The ERC20 to claimRewards on
+    /// @custom:interaction CEI
+    function claimRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+        IAsset asset = main.assetRegistry().toAsset(erc20);
+
+        // Claim rewards via delegatecall
+        address(asset).functionDelegateCall(
+            abi.encodeWithSignature("claimRewards()"),
+            "rewards claim failed"
+        );
     }
 }
