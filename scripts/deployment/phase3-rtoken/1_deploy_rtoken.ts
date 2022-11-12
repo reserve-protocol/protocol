@@ -65,6 +65,11 @@ async function main() {
         backupCollateral: [assetCollDeployments.collateral.USDC as string],
       },
     ],
+    beneficiary: deployerUser.address, // doesn't matter what this is since it won't get used
+    revShare: {
+      rTokenDist: bn('0'),
+      rsrDist: bn('0'),
+    },
   }
 
   // Validate assets
