@@ -1149,13 +1149,13 @@ contract DiffTestScenario {
         // equivalent price(false)
         try a.price(false) returns (bool, uint192 price) {
             (aFail, aPrice) = (false, price);
-            assert(aPrice == a.strictPrice());
+            require(aPrice == a.strictPrice(), "aPrice != a.strictPrice()");
         } catch {
             aFail = true;
         }
         try b.price(false) returns (bool, uint192 price) {
             (bFail, bPrice) = (false, price);
-            assert(bPrice == b.strictPrice());
+            require(bPrice == b.strictPrice(), "bPrice != b.strictPrice()");
         } catch {
             bFail = true;
         }
@@ -1166,10 +1166,10 @@ contract DiffTestScenario {
 
         (bool aFail2, uint192 aPrice2) = a.price(true);
         (bool bFail2, uint192 bPrice2) = b.price(true);
-        assert(aPrice == aPrice2);
-        assert(aFail == aFail2);
-        assert(bPrice == bPrice2);
-        assert(bFail == bFail2);
+        if(!aFail) require(aPrice == aPrice2, "aPrice != aPrice2");
+        require(aFail == aFail2, "aFail != aFail2");
+        if(!bFail) require(bPrice == bPrice2, "bPrice != bPrice2");
+        require(bFail == bFail2, "bFail != bFail2");
 
         return true;
     }

@@ -327,9 +327,24 @@ describe('The Differential Testing scenario', () => {
       expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
 
-    // currently failing!
-    it.skip('regression test: asset error', async () => {
+    it('regression test: asset error', async () => {
       await scenario.unregisterAsset(0)
+      await expect(p0.poke()).not.to.be.reverted
+      const numTokens = await (await p0.numTokens()).toNumber()
+      for (let i = 0; i < numTokens + 3; i++) {
+        const tokenAddr = await p0.someToken(i)
+        const sym = await (await ConAt('IERC20Metadata', tokenAddr)).symbol()
+        if (await comp0.assetRegistry.isRegistered(tokenAddr)) {
+          const asset = await ConAt('IAsset', await comp0.assetRegistry.toAsset(tokenAddr))
+          const priceVal = await asset.price(true)
+
+          if (!priceVal.isFallback) {
+            const priceBVal = await asset.price(false)
+            expect(priceBVal[1]).to.equal(priceVal[1])
+          }
+        }
+      }
+
       expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
     })
   })
