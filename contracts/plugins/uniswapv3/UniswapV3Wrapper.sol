@@ -151,30 +151,22 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         _burn(msg.sender, liquidity);
     }
 
-    //collect fees only for second asset
-    //todo check permissions, only reserve should be permitted
-    function collect(address recipient)
+    //TODO collect per token balance similar to /contracts/plugins/aave/StaticATokenLM.sol
+    function claimRewards(address recipient)
         external
         nonReentrant
-        returns (uint256 amount0, uint256 amount1)
+        returns (
+            address token0,
+            address token1,
+            uint256 amount0,
+            uint256 amount1
+        )
     {
         require(isInitialized, "Contract is not initialized!");
-
-        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
-            .CollectParams(deposit.tokenId, recipient, 0, type(uint128).max);
-        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
-    }
-
-    function collectAll(address recipient)
-        external
-        nonReentrant
-        returns (uint256 amount0, uint256 amount1)
-    {
-        require(isInitialized, "Contract is not initialized!");
-
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
             .CollectParams(deposit.tokenId, recipient, type(uint128).max, type(uint128).max);
         (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+        return (token0, token1, amount0, amount1);
     }
 
     function positions()
