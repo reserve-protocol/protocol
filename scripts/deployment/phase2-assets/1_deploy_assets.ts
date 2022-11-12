@@ -2,7 +2,6 @@ import fs from 'fs'
 import hre from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
-import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import {
   getDeploymentFile,
@@ -44,7 +43,6 @@ async function main() {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
-    rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,
@@ -58,7 +56,6 @@ async function main() {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     tokenAddress: networkConfig[chainId].tokens.COMP,
-    rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     oracleLib: phase1Deployment.oracleLib,

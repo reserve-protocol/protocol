@@ -228,6 +228,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await backingManager.tradingDelay()).to.equal(config.tradingDelay)
       expect(await backingManager.maxTradeSlippage()).to.equal(config.maxTradeSlippage)
       expect(await backingManager.backingBuffer()).to.equal(config.backingBuffer)
+
+      // Should have semver version from deployer
+      expect(await main.version()).to.equal(await deployer.version())
     })
 
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -1091,7 +1094,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1102,7 +1104,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1148,7 +1149,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1162,7 +1162,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           newToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1214,7 +1213,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1226,7 +1224,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1566,7 +1563,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         bn('1'), // Will not be used, 0 will be returned instead
         await collateral2.chainlinkFeed(),
         await collateral2.erc20(),
-        await collateral2.rewardERC20(),
         await collateral2.maxTradeVolume(),
         await collateral2.oracleTimeout(),
         ethers.utils.formatBytes32String('USD'),
@@ -1601,7 +1597,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token1.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1739,8 +1734,41 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
-    it('Should return FIX_MAX as basket price in case of overflow (for individual collateral)', async () => {
+    it('Should return FIX_MAX as basket price in case of 1st overflow (for individual collateral)', async () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Set RefperTok = 0
+      await token2.setExchangeRate(fp('0'))
+      expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
+
+      // Also set price of underlying to 0 so Fallback price is used
+      await setOraclePrice(collateral2.address, bn(0))
+
+      // Check BU price
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(MAX_UINT192)
+    })
+
+    it('Should return FIX_MAX as basket price in case of 2nd overflow (for individual collateral)', async () => {
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+
+      // Swap out collateral plugin for one that can return a 0 price without raising FIX_MAX
+      const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+      const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
+        fp('1.01'), // fallback price just above 1
+        await collateral2.chainlinkFeed(),
+        await collateral2.erc20(),
+        config.rTokenMaxTradeVolume,
+        await collateral2.oracleTimeout(),
+        ethers.utils.formatBytes32String('USD'),
+        await collateral2.defaultThreshold(),
+        await collateral2.delayUntilDefault()
+      )
+      await assetRegistry.connect(owner).swapRegistered(coll.address)
+      await basketHandler.refreshBasket()
 
       // Set RefperTok = 0
       await token2.setExchangeRate(fp('0'))
@@ -1764,7 +1792,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         fp('1'),
         await collateral0.chainlinkFeed(),
         token0.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         await collateral0.oracleTimeout(),
         await ethers.utils.formatBytes32String('NEW TARGET'),
@@ -1817,7 +1844,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1827,7 +1853,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[6].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )

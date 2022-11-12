@@ -140,7 +140,7 @@ describeP1(`Governance - P${IMPLEMENTATION}`, () => {
       expect(await governor.votingDelay()).to.equal(VOTING_DELAY)
       expect(await governor.votingPeriod()).to.equal(VOTING_PERIOD)
       expect(await governor.proposalThreshold()).to.equal(PROPOSAL_THRESHOLD)
-      expect(await governor.name()).to.equal('Reserve Governor')
+      expect(await governor.name()).to.equal('Governor Alexios')
       // Quorum
       expect(await governor['quorumNumerator()']()).to.equal(QUORUM_PERCENTAGE)
       expect(await governor.quorumDenominator()).to.equal(100)

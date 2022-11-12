@@ -1200,46 +1200,87 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
       await rToken.connect(addr1).issue(issueAmount)
 
+      let currentBlockNumber = await getLatestBlockNumber()
+      const whenIssuance0 = fp(currentBlockNumber - 1).add(fp(5))
+      await expectUnprocessedIssuance(addr1.address, 0, {
+        amount: issueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: whenIssuance0,
+      })
+
       // Check vestings - Nothing available yet
       expect(await endIdForVest(addr1.address)).to.equal(0)
 
       // Create three additional issuances of 3 blocks each
       const newIssueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(3)
       await rToken.connect(addr1).issue(newIssueAmount)
-      await rToken.connect(addr1).issue(newIssueAmount)
-      await rToken.connect(addr1).issue(newIssueAmount)
+      const whenIssuance1 = whenIssuance0.add(fp(3))
+      await expectUnprocessedIssuance(addr1.address, 1, {
+        amount: newIssueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: whenIssuance1,
+      })
 
-      // Check vestings - Nothing available yet, need two more blocks
+      await rToken.connect(addr1).issue(newIssueAmount)
+      const whenIssuance2 = whenIssuance1.add(fp(3))
+      await expectUnprocessedIssuance(addr1.address, 2, {
+        amount: newIssueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: whenIssuance2,
+      })
+
+      await rToken.connect(addr1).issue(newIssueAmount)
+      const whenIssuance3 = whenIssuance2.add(fp(3))
+      await expectUnprocessedIssuance(addr1.address, 3, {
+        amount: newIssueAmount,
+        basketNonce: initialBasketNonce,
+        blockAvailableAt: whenIssuance3,
+      })
+
+      // Check vestings - Nothing available yet, need one more block
       expect(await endIdForVest(addr1.address)).to.equal(0)
 
-      //  Advance 2 blocks
-      await advanceBlocks(2)
+      //  Advance 1 additional block required for first issuance
+      await advanceBlocks(1)
 
       // Check vestings - We can vest the first issuance only
+      currentBlockNumber = await getLatestBlockNumber()
+      expect(whenIssuance0).to.be.lte(fp(currentBlockNumber))
+      expect(whenIssuance1).to.be.gt(fp(currentBlockNumber))
       expect(await endIdForVest(addr1.address)).to.equal(1)
 
       // Advance 3 blocks, should be able to vest second issuance
       await advanceBlocks(3)
 
-      // Check vestings - Can vest issuances #1 and #2
+      // Check vestings - Can vest issuances #0 and #1
+      currentBlockNumber = await getLatestBlockNumber()
+      expect(whenIssuance1).to.be.lte(fp(currentBlockNumber))
+      expect(whenIssuance2).to.be.gt(fp(currentBlockNumber))
       expect(await endIdForVest(addr1.address)).to.equal(2)
 
       // Advance 1 block
       await advanceBlocks(1)
 
       // Check vestings - Nothing changed
+      currentBlockNumber = await getLatestBlockNumber()
+      expect(whenIssuance2).to.be.gt(fp(currentBlockNumber))
       expect(await endIdForVest(addr1.address)).to.equal(2)
 
-      // Advance 3 more blocks, will unlock third issuance
-      await advanceBlocks(3)
+      // Advance 2 more blocks, will unlock issuance #2
+      await advanceBlocks(2)
 
-      // Check vestings - Can vest issuances #1, #2, and #3
+      // Check vestings - Can vest issuances #0, #1, and #2
+      currentBlockNumber = await getLatestBlockNumber()
+      expect(whenIssuance2).to.be.lte(fp(currentBlockNumber))
+      expect(whenIssuance3).to.be.gt(fp(currentBlockNumber))
       expect(await endIdForVest(addr1.address)).to.equal(3)
 
       // Advance 10 blocks will unlock all issuances
       await advanceBlocks(10)
 
       // Check vestings - Can vest all issuances
+      currentBlockNumber = await getLatestBlockNumber()
+      expect(whenIssuance3).to.be.lt(fp(currentBlockNumber))
       expect(await endIdForVest(addr1.address)).to.equal(4)
 
       // Vest all issuances
@@ -2044,12 +2085,107 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   describe('Reward Claiming #fast', () => {
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not sweep rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
-      await expect(rToken.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not claim rewards when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+  })
+
+  describe('Reward Sweeping #fast', () => {
+    const issueAmt = bn('100000e18')
+    const amt = fp('2')
+
+    beforeEach(async () => {
+      // Provide approvals for future issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmt)
+      await token1.connect(addr1).approve(rToken.address, issueAmt)
+      await token2.connect(addr1).approve(rToken.address, issueAmt)
+      await token3.connect(addr1).approve(rToken.address, issueAmt)
+    })
+
+    it('should sweep without liabilities', async () => {
+      await token0.mint(rToken.address, amt)
+
+      const smallerAmt = bn('10000e18') // fits in one block
+      await rToken.connect(addr1).issue(smallerAmt) // fast issuance
+
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+
+      await token0.mint(rToken.address, amt.add(1))
+
+      await rToken.connect(addr1).redeem(smallerAmt)
+
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt.add(1))
+    })
+
+    it('should not sweep with full liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+      await expect(rToken.sweepRewards()).to.not.emit(token0, 'Transfer')
+    })
+
+    it('should sweep with partial liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+
+      await token0.mint(rToken.address, amt)
+      await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+    })
+
+    // ===
+
+    it('should single sweep without liabilities', async () => {
+      await token0.mint(rToken.address, amt)
+
+      const smallerAmt = bn('10000e18') // fits in one block
+      await rToken.connect(addr1).issue(smallerAmt) // fast issuance
+
+      await expect(rToken.sweepRewardsSingle(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+
+      await token0.mint(rToken.address, amt.add(1))
+
+      await rToken.connect(addr1).redeem(smallerAmt)
+
+      await expect(rToken.sweepRewardsSingle(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt.add(1))
+    })
+
+    it('should not single sweep with full liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.not.emit(token0, 'Transfer')
+    })
+
+    it('should single sweep with partial liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+
+      await token0.mint(rToken.address, amt)
+      await expect(rToken.sweepRewardsSingle(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
     })
   })
 
@@ -2386,15 +2522,18 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
       const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
+      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
+        libraries: { OracleLib: oracle.address },
+      })
       const coll: FiatCollateral = <FiatCollateral>(
         await CollateralFactory.deploy(
           fp('1'),
           oracle.address,
           erc20.address,
           fp('1e36'),
+          ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           fp('0.05'),
           bn(86400)

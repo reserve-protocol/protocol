@@ -43,6 +43,10 @@ interface IAssetRegistry is IComponent {
     /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
 
+    /// @return The list of registered ERC20s
+    /// @return The list of registered Assets, in the same order
+    function getRegistry() external view returns (IERC20[] memory, IAsset[] memory);
+
     function register(IAsset asset) external returns (bool);
 
     function swapRegistered(IAsset asset) external returns (bool swapped);

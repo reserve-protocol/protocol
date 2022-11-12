@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { ContractFactory, Contract, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
 import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
@@ -29,7 +29,6 @@ import {
   PermitLib,
   RevenueTraderP1,
   RevenueTraderP1V2,
-  RewardableLibP1,
   RTokenAsset,
   RTokenP1,
   RTokenP1V2,
@@ -78,7 +77,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
-  let rewardableLib: RewardableLibP1
+  let rewardableLib: Contract
   let permitLib: PermitLib
 
   // Factories
@@ -134,7 +133,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
+    rewardableLib = <Contract>await RewardableLibFactory.deploy()
 
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
@@ -353,7 +352,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'],
+          unsafeAllow: ['external-library-linking', 'delegatecall'],
         }
       )
       await newRToken.deployed()
@@ -431,7 +430,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await mainV2.rTokenTrader()).to.equal(rTokenTrader.address)
 
       // Check new version is implemented
-      expect(await mainV2.version()).to.equal('V2')
+      expect(await mainV2.version()).to.equal('2.0.0')
 
       expect(await mainV2.newValue()).to.equal(0)
       await mainV2.connect(owner).setNewValue(bn(1000))
@@ -456,7 +455,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await assetRegV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await assetRegV2.version()).to.equal('V2')
+      expect(await assetRegV2.version()).to.equal('2.0.0')
 
       expect(await assetRegV2.newValue()).to.equal(0)
       await assetRegV2.connect(owner).setNewValue(bn(1000))
@@ -492,7 +491,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await backingMgrV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await backingMgrV2.version()).to.equal('V2')
+      expect(await backingMgrV2.version()).to.equal('2.0.0')
 
       expect(await backingMgrV2.newValue()).to.equal(0)
       await backingMgrV2.connect(owner).setNewValue(bn(1000))
@@ -515,7 +514,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await bskHndlrV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await bskHndlrV2.version()).to.equal('V2')
+      expect(await bskHndlrV2.version()).to.equal('2.0.0')
 
       expect(await bskHndlrV2.newValue()).to.equal(0)
       await bskHndlrV2.connect(owner).setNewValue(bn(1000))
@@ -539,7 +538,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await brokerV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await brokerV2.version()).to.equal('V2')
+      expect(await brokerV2.version()).to.equal('2.0.0')
 
       expect(await brokerV2.newValue()).to.equal(0)
       await brokerV2.connect(owner).setNewValue(bn(1000))
@@ -565,7 +564,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await distributorV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await distributorV2.version()).to.equal('V2')
+      expect(await distributorV2.version()).to.equal('2.0.0')
 
       expect(await distributorV2.newValue()).to.equal(0)
       await distributorV2.connect(owner).setNewValue(bn(1000))
@@ -589,7 +588,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await furnaceV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await furnaceV2.version()).to.equal('V2')
+      expect(await furnaceV2.version()).to.equal('2.0.0')
 
       expect(await furnaceV2.newValue()).to.equal(0)
       await furnaceV2.connect(owner).setNewValue(bn(1000))
@@ -636,8 +635,8 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await rTokenTraderV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await rsrTraderV2.version()).to.equal('V2')
-      expect(await rTokenTraderV2.version()).to.equal('V2')
+      expect(await rsrTraderV2.version()).to.equal('2.0.0')
+      expect(await rTokenTraderV2.version()).to.equal('2.0.0')
 
       expect(await rsrTraderV2.newValue()).to.equal(0)
       await rsrTraderV2.connect(owner).setNewValue(bn(1000))
@@ -657,7 +656,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         rToken.address,
         RTokenV2Factory,
         {
-          unsafeAllow: ['external-library-linking'],
+          unsafeAllow: ['external-library-linking', 'delegatecall'],
         }
       )
 
@@ -673,7 +672,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await rTokenV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await rTokenV2.version()).to.equal('V2')
+      expect(await rTokenV2.version()).to.equal('2.0.0')
 
       expect(await rTokenV2.newValue()).to.equal(0)
       await rTokenV2.connect(owner).setNewValue(bn(1000))
@@ -707,7 +706,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
       expect(await stRSRV2.main()).to.equal(main.address)
 
       // Check new version is implemented
-      expect(await stRSRV2.version()).to.equal('V2')
+      expect(await stRSRV2.version()).to.equal('2.0.0')
 
       expect(await stRSRV2.newValue()).to.equal(0)
       await stRSRV2.connect(owner).setNewValue(bn(1000))

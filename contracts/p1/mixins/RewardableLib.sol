@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "contracts/interfaces/IAssetRegistry.sol";
 import "contracts/interfaces/IBackingManager.sol";
-import "contracts/interfaces/IRewardable.sol";
 
 /**
  * @title RewardableLibP1
@@ -14,105 +13,91 @@ import "contracts/interfaces/IRewardable.sol";
  * @dev The caller must implement the IRewardable interface!
  */
 library RewardableLibP1 {
-    using AddressUpgradeable for address;
-    using SafeERC20Upgradeable for IERC20Upgradeable;
+    using Address for address;
+    using SafeERC20 for IERC20;
 
-    /// Redefines event for when rewards are claimed, to be able to emit from library
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
+    // === Used by Traders + RToken ===
 
-    struct Claim {
-        IERC20 reward;
-        address callTo;
-        bytes _calldata;
+    /// Claim all rewards
+    /// @custom:interaction mostly CEI but see comments
+    // actions:
+    //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
+    function claimRewards(IAssetRegistry reg) external {
+        (, IAsset[] memory assets) = reg.getRegistry();
+        for (uint256 i = 0; i < assets.length; ++i) {
+            // Claim rewards via delegatecall
+            address(assets[i]).functionDelegateCall(
+                abi.encodeWithSignature("claimRewards()"),
+                "rewards claim failed"
+            );
+        }
     }
 
-    /// Claim all rewards and sweep to BackingManager
-    /// Collective Action
+    /// Claim rewards for a single ERC20
     /// @custom:interaction mostly CEI but see comments
-    // where:
-    //   this: the contract from which this function is being delegateCall'dd
-    //   claims = {{rewardToken: erc20.rewardERC20(), to, calldata}
-    //     for erc20 in assetRegistry
-    //     where (to, calldata) = erc20.getClaimCalldata(){caller: this}
-    //     if to != 0 and rewardToken in assetRegistry}
-    //   rewards = {claim.rewardToken for claim in claims}
     // actions:
-    //   first, do to.functionCall(calldata) for claim in claims
-    //   then, if this is not backingManager
-    //     then do
-    //       reward.transfer(bal, backingManager) for claim in claims if bal > 0
-    //       where reward = claim.reward and bal = reward.balanceOf(this)
-    function claimAndSweepRewards() external {
-        IAssetRegistry reg = assetRegistry();
+    //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()"))
+    function claimRewardsSingle(IAsset asset) external {
+        // Claim rewards via delegatecall
+        address(asset).functionDelegateCall(
+            abi.encodeWithSignature("claimRewards()"),
+            "rewards claim failed"
+        );
+    }
+
+    // ==== Used only by RToken ===
+
+    /// Sweep all tokens in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    /// @param liabilities The storage mapping of liabilities by token
+    /// @param reg The AssetRegistry
+    /// @param bm The BackingManager
+    // actions:
+    //   do erc20.safeTransfer(bm, bal - liabilities[erc20]) for erc20 in erc20s
+    function sweepRewards(
+        mapping(IERC20 => uint256) storage liabilities,
+        IAssetRegistry reg,
+        IBackingManager bm
+    ) external {
         IERC20[] memory erc20s = reg.erc20s();
+        uint256 erc20sLen = erc20s.length;
+        uint256[] memory deltas = new uint256[](erc20sLen); // {qTok}
 
-        IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
-        uint256 numRewardTokens = 0;
-
-        Claim[] memory claims = new Claim[](erc20s.length);
-        uint256 numClaims = 0;
-
-        // Compute the interactions to have...
-        for (uint256 i = 0; i < erc20s.length; ++i) {
-            // Does erc20s[i] _have_ a reward function and reward token?
-            IAsset asset = reg.toAsset(erc20s[i]);
-
-            IERC20 rewardToken = asset.rewardERC20();
-            if (address(rewardToken) == address(0) || !reg.isRegistered(rewardToken)) continue;
-
-            (address _to, bytes memory _calldata) = asset.getClaimCalldata();
-            if (_to == address(0)) continue;
-
-            // Save Claim
-            claims[numClaims] = Claim({ reward: rewardToken, callTo: _to, _calldata: _calldata });
-            ++numClaims;
-
-            // Save rewardToken address, if new
-            uint256 rtIndex = 0;
-            while (rtIndex < numRewardTokens && rewardToken != rewardTokens[rtIndex]) rtIndex++;
-            if (rtIndex >= numRewardTokens) {
-                rewardTokens[rtIndex] = rewardToken;
-                numRewardTokens++;
-            }
+        // Calculate deltas
+        for (uint256 i = 0; i < erc20sLen; ++i) {
+            deltas[i] = erc20s[i].balanceOf(address(this)) - liabilities[erc20s[i]]; // {qTok}
         }
 
         // == Interactions ==
-        // Claim rewards
-        for (uint256 i = 0; i < numClaims; i++) {
-            // Safe violation of strict CEI: we're reading balanceOf() here, but oldBal and newBal
-            // are only used here to emit the right event. Their definitions don't leave the inner
-            // block of this loop.
-            uint256 oldBal = claims[i].reward.balanceOf(address(this));
-            claims[i].callTo.functionCall(claims[i]._calldata, "rewards claim failed");
-            uint256 newBal = claims[i].reward.balanceOf(address(this));
+        // Sweep deltas
+        for (uint256 i = 0; i < erc20sLen; ++i) {
+            if (deltas[i] > 0) {
+                erc20s[i].safeTransfer(address(bm), deltas[i]);
 
-            emit RewardsClaimed(address(claims[i].reward), newBal - oldBal);
-        }
-
-        // Sweep reward tokens to the backingManager
-        if (address(this) != address(backingManager())) {
-            for (uint256 i = 0; i < numRewardTokens; ++i) {
-                // Safe violation of strict CEI: we're reading balanceOf() here, too, but it's
-                // actually our intention to sweep all of rewardTokens[i] at this point, regardless
-                // of whatever else we may have computed in the function above.
-                uint256 bal = rewardTokens[i].balanceOf(address(this));
-                if (bal > 0) {
-                    IERC20Upgradeable(address(rewardTokens[i])).safeTransfer(
-                        address(backingManager()),
-                        bal
-                    );
-                }
+                // Verify nothing has gone wrong -- we should keep this assert, even in P1
+                assert(erc20s[i].balanceOf(address(this)) >= liabilities[erc20s[i]]);
             }
         }
     }
 
-    /// @return The AssetRegistry
-    function assetRegistry() private view returns (IAssetRegistry) {
-        return IRewardable(address(this)).main().assetRegistry();
-    }
+    /// Sweep a ERC20 in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    /// @param liabilities The storage mapping of liabilities by token
+    /// @param erc20 The erc20 to sweep
+    /// @param bm The BackingManager
+    // actions:
+    //   erc20.safeTransfer(bm, bal - liabilities[erc20]) if bal > liabilities[erc20]
+    function sweepRewardsSingle(
+        mapping(IERC20 => uint256) storage liabilities,
+        IERC20 erc20,
+        IBackingManager bm
+    ) external {
+        uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
+        if (amt > 0) {
+            erc20.safeTransfer(address(bm), amt);
 
-    /// @return The BackingManager
-    function backingManager() private view returns (IBackingManager) {
-        return IRewardable(address(this)).main().backingManager();
+            // Verify nothing has gone wrong -- we should keep this assert, even in P1
+            assert(erc20.balanceOf(address(this)) >= liabilities[erc20]);
+        }
     }
 }

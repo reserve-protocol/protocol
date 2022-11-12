@@ -18,13 +18,15 @@ import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDeployer.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/libraries/String.sol";
+import "contracts/mixins/Versioned.sol";
 
 /**
  * @title DeployerP0
  * @notice The factory contract that deploys the entire P0 system.
  */
-contract DeployerP0 is IDeployer {
+contract DeployerP0 is IDeployer, Versioned {
     string public constant ENS = "reserveprotocol.eth";
+
     IERC20Metadata public immutable rsr;
     IGnosis public immutable gnosis;
     IAsset public immutable rsrAsset;
@@ -153,7 +155,7 @@ contract DeployerP0 is IDeployer {
         main.renounceRole(LONG_FREEZER, address(this));
         main.renounceRole(PAUSER, address(this));
 
-        emit RTokenCreated(main, components.rToken, components.stRSR, owner);
+        emit RTokenCreated(main, components.rToken, components.stRSR, owner, version());
         return (address(components.rToken));
     }
 }

@@ -189,7 +189,7 @@ contract FacadeRead is IFacadeRead {
             uint256 test = (left + right) / 2;
             // In this condition: D18{block} < D18{block}
             item = rToken.issueItem(account, test);
-            if (item.when < blockNumber) left = test;
+            if (item.when <= blockNumber) left = test;
             else right = test;
         }
         return right;

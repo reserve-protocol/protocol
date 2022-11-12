@@ -25,7 +25,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
@@ -132,7 +132,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         fp('1'),
         chainlinkFeed.address,
         erc20.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -175,7 +174,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         fp('1'),
         chainlinkFeed.address,
         atoken.address,
-        aaveToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -214,7 +212,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         fp('1').div(50),
         chainlinkFeed.address,
         ctoken.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -531,9 +528,9 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Claim Rewards
       if (process.env.REPORT_GAS) {
-        await snapshotGasCost(backingManager.claimAndSweepRewards())
+        await snapshotGasCost(backingManager.claimRewards())
       } else {
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',

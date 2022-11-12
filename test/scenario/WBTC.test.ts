@@ -5,7 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import {
   ERC20Mock,
   IAssetRegistry,
@@ -111,7 +111,6 @@ describe(`Non-fiat collateral (eg WBTC) - P${IMPLEMENTATION}`, () => {
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),

@@ -8,7 +8,6 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
@@ -33,7 +32,6 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
         params.referenceUnitFeed,
         params.targetUnitFeed,
         params.tokenAddress,
-        params.rewardToken,
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,

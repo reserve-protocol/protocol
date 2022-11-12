@@ -1,7 +1,7 @@
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Contract, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
@@ -18,9 +18,9 @@ import {
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   OracleLib,
-  RewardableLibP1,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -206,7 +206,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
           'RewardableLibP1'
         )
-        const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+        const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
 
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
           'RevenueTraderP1',
@@ -358,12 +358,12 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should not claim rewards if paused', async () => {
         await main.connect(owner).pause()
-        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
       })
 
       it('Should not claim rewards if frozen', async () => {
         await main.connect(owner).freezeShort()
-        await expect(rTokenTrader.claimAndSweepRewards()).to.be.revertedWith('paused or frozen')
+        await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
       })
 
       it('Should not settle trade if paused', async () => {
@@ -421,7 +421,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -571,7 +571,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -630,7 +630,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
         // Can also claim through Facade
-        await expectEvents(facadeTest.claimRewards(rToken.address), [
+        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -745,7 +745,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             compToken.address,
-            ZERO_ADDRESS,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -784,7 +783,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -938,7 +937,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             aaveToken.address,
-            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -975,7 +973,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmt: BigNumber = bn('1e18') // due to max trade volume
         const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1131,7 +1129,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             compToken.address,
-            compToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1172,7 +1169,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
         const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1405,7 +1402,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1463,7 +1460,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1547,7 +1544,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Claim rewards
 
-        await expectEvents(facadeTest.claimRewards(rToken.address), [
+        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1670,7 +1667,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
         // Claim rewards
-        await expectEvents(facadeTest.claimRewards(rToken.address), [
+        await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1722,7 +1719,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
 
         // Collect revenue
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1780,7 +1777,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
         const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1892,7 +1889,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
       })
 
-      it('Should claim and sweep rewards to BackingManager from the Revenue Traders', async () => {
+      it('Should claim but not sweep rewards to BackingManager from the Revenue Traders', async () => {
         rewardAmountAAVE = bn('0.5e18')
 
         // AAVE Rewards
@@ -1903,7 +1900,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Collect revenue
-        await expectEvents(rsrTrader.claimAndSweepRewards(), [
+        await expectEvents(rsrTrader.claimRewards(), [
           {
             contract: rsrTrader,
             name: 'RewardsClaimed',
@@ -1918,9 +1915,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Check rewards sent to Main
-        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(rewardAmountAAVE)
-        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(0)
+        // Check rewards were not sent to Main
+        expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
+        expect(await aaveToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountAAVE)
       })
 
       it('Should claim properly from multiple assets with the same Reward token', async () => {
@@ -1944,7 +1941,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await newToken.setRewards(backingManager.address, rewardAmountAAVE.add(1))
 
         // Claim and sweep rewards
-        await expectEvents(backingManager.claimAndSweepRewards(), [
+        await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
             name: 'RewardsClaimed',
@@ -1971,7 +1968,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should handle properly assets with invalid claim logic', async () => {
+      it('Should revert on invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
           'InvalidATokenFiatCollateralMock',
@@ -1981,19 +1978,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
 
-        const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-          await ATokenCollateralFactory.deploy(
-            fp('1'),
-            chainlinkFeed.address,
-            token2.address,
-            aaveToken.address,
-            config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT,
-            ethers.utils.formatBytes32String('USD'),
-            await collateral2.defaultThreshold(),
-            await collateral2.delayUntilDefault()
-          )
-        )
+        const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
+          InvalidATokenFiatCollateralMock
+        >((await ATokenCollateralFactory.deploy(
+          fp('1'),
+          chainlinkFeed.address,
+          token2.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          await collateral2.defaultThreshold(),
+          await collateral2.delayUntilDefault()
+        )) as unknown)
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -2009,10 +2005,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards - Should not fail, only processes COMP rewards
-        await expect(backingManager.claimAndSweepRewards())
-          .to.emit(backingManager, 'RewardsClaimed')
-          .withArgs(compToken.address, bn(0))
+        // Claim and sweep rewards - should revert and bubble up msg
+        await expect(backingManager.claimRewards()).to.be.revertedWith('claimRewards() error')
 
         // Check status - nothing claimed
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
@@ -2820,10 +2814,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
     it('Claim and Sweep Rewards', async () => {
       // Claim and sweep Rewards - Nothing to claim
-      await snapshotGasCost(backingManager.claimAndSweepRewards())
-      await snapshotGasCost(rsrTrader.claimAndSweepRewards())
-      await snapshotGasCost(rTokenTrader.claimAndSweepRewards())
-      await snapshotGasCost(rToken.claimAndSweepRewards())
+      await snapshotGasCost(backingManager.claimRewards())
+      await snapshotGasCost(rsrTrader.claimRewards())
+      await snapshotGasCost(rTokenTrader.claimRewards())
+      await snapshotGasCost(rToken.claimRewards())
+      await snapshotGasCost(rToken.sweepRewards())
 
       // Set Rewards
       rewardAmountCOMP = bn('0.8e18')
@@ -2842,10 +2837,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await token2.setRewards(rToken.address, rewardAmountAAVE)
 
       // Claim and sweep Rewards - With Rewards
-      await snapshotGasCost(backingManager.claimAndSweepRewards())
-      await snapshotGasCost(rsrTrader.claimAndSweepRewards())
-      await snapshotGasCost(rTokenTrader.claimAndSweepRewards())
-      await snapshotGasCost(rToken.claimAndSweepRewards())
+      await snapshotGasCost(backingManager.claimRewards())
+      await snapshotGasCost(rsrTrader.claimRewards())
+      await snapshotGasCost(rTokenTrader.claimRewards())
+      await snapshotGasCost(rToken.claimRewards())
+      await snapshotGasCost(rToken.sweepRewards())
     })
 
     it('Settle Trades / Manage Funds', async () => {
@@ -2857,7 +2853,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await AssetFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
-          compToken.address,
           compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT
@@ -2891,7 +2886,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
       const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
 
-      await backingManager.claimAndSweepRewards()
+      await backingManager.claimRewards()
 
       // Manage Funds
       await backingManager.manageTokens([compToken.address])
