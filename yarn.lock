@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 5
+  version: 6
   cacheKey: 8
 
 "@aave/protocol-v2@npm:^1.0.1":
@@ -1353,6 +1353,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@openzeppelin/contracts@npm:4.6.0":
+  version: 4.6.0
+  resolution: "@openzeppelin/contracts@npm:4.6.0"
+  checksum: 1de06211b279d7aef2bb9abbdd58eb80c71256f7e888a10855ea23bb06ef8723b22fb550d06af60247dfbd7f0f23de9821732012d7541a823339070a8442d1db
+  languageName: node
+  linkType: hard
+
 "@openzeppelin/contracts@npm:^4.7.3":
   version: 4.7.3
   resolution: "@openzeppelin/contracts@npm:4.7.3"
@@ -2163,6 +2170,33 @@ __metadata:
   version: 1.1.2
   resolution: "@ungap/promise-all-settled@npm:1.1.2"
   checksum: 08d37fdfa23a6fe8139f1305313562ebad973f3fac01bcce2773b2bda5bcb0146dfdcf3cb6a722cf0a5f2ca0bc56a827eac8f1e7b3beddc548f654addf1fc34c
+  languageName: node
+  linkType: hard
+
+"@uniswap/v2-core@npm:1.0.1":
+  version: 1.0.1
+  resolution: "@uniswap/v2-core@npm:1.0.1"
+  checksum: eaa118fe45eac2e80b7468547ce2cde12bd3c8157555d2e40e0462a788c9506c6295247b511382da85e44a89ad92aff7bb3433b23bfbd2eeea23942ecd46e979
+  languageName: node
+  linkType: hard
+
+"@uniswap/v3-core@npm:1.0.2-solc-0.8-simulate":
+  version: 1.0.2-solc-0.8-simulate
+  resolution: "@uniswap/v3-core@npm:1.0.2-solc-0.8-simulate"
+  checksum: c2fefe8951062c6152d1cb56f19b9ecb1a20b6ee147534aaf2a710f5c619b9422d9d5661f42272d0e558356657e39ad44bb34114802f2371a2b243d956331b90
+  languageName: node
+  linkType: hard
+
+"@uniswap/v3-periphery@github:Uniswap/v3-periphery#0.8":
+  version: 1.4.2-solc-0.8
+  resolution: "@uniswap/v3-periphery@https://github.com/Uniswap/v3-periphery.git#commit=b325bb0905d922ae61fcc7df85ee802e8df5e96c"
+  dependencies:
+    "@openzeppelin/contracts": 4.6.0
+    "@uniswap/v2-core": 1.0.1
+    "@uniswap/v3-core": 1.0.2-solc-0.8-simulate
+    base64-sol: 1.1.0
+    hardhat-watcher: ^2.1.1
+  checksum: ed139a658b314bb9842ef40c76d6f27ead29be7a9c4ffe87a973d1f42784f79ba020e753ee8bd57b573d90b38fc4aece8549f95fa1242b109c2ec89dc8b85108
   languageName: node
   linkType: hard
 
@@ -3537,6 +3571,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"base64-sol@npm:1.1.0":
+  version: 1.1.0
+  resolution: "base64-sol@npm:1.1.0"
+  checksum: 9bea828af71e6adcf7c841cf0001e03bd1eae8cc1aef86daedb36f04117b2a626ac23631f700d56a24515f88c2021d7ebdbee4608369f66c53e51c0b4b39ee47
+  languageName: node
+  linkType: hard
+
 "base@npm:^0.11.1":
   version: 0.11.2
   resolution: "base@npm:0.11.2"
@@ -4192,7 +4233,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chokidar@npm:3.5.3, chokidar@npm:^3.4.0":
+"chokidar@npm:3.5.3, chokidar@npm:^3.4.0, chokidar@npm:^3.5.3":
   version: 3.5.3
   resolution: "chokidar@npm:3.5.3"
   dependencies:
@@ -7645,6 +7686,17 @@ fsevents@~2.1.1:
   peerDependencies:
     hardhat: ^2.0.2
   checksum: bf18aacd08e0bdef81b180f3c97f76fcab885de3e92ed2dc014712e671c83ee7f77755c0e6c0f923a95f8372714cfcb7cdaa019afc42984c159603f8a8d724cf
+  languageName: node
+  linkType: hard
+
+"hardhat-watcher@npm:^2.1.1":
+  version: 2.5.0
+  resolution: "hardhat-watcher@npm:2.5.0"
+  dependencies:
+    chokidar: ^3.5.3
+  peerDependencies:
+    hardhat: ^2.0.0
+  checksum: e6c0d52865529653733b3fed6887b41a676fc5185eb835909b360e8cc24223a2fc4c398e3874b234fa918ec59be9de86d7fe92963022139c05cf07f027377cbb
   languageName: node
   linkType: hard
 
@@ -12092,6 +12144,7 @@ fsevents@~2.1.1:
     "@types/node": ^12.20.37
     "@typescript-eslint/eslint-plugin": ^5.17.0
     "@typescript-eslint/parser": ^5.17.0
+    "@uniswap/v3-periphery": "github:Uniswap/v3-periphery#0.8"
     "@withtally/tally-publish-dao": ^0.0.5
     axios: ^0.24.0
     big.js: ^6.1.1
@@ -14023,11 +14076,11 @@ typescript@^4.4.2:
 
 "typescript@patch:typescript@^4.4.2#~builtin<compat/typescript>":
   version: 4.7.4
-  resolution: "typescript@patch:typescript@npm%3A4.7.4#~builtin<compat/typescript>::version=4.7.4&hash=ddd1e8"
+  resolution: "typescript@patch:typescript@npm%3A4.7.4#~builtin<compat/typescript>::version=4.7.4&hash=701156"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 96d3030cb01143570567cb4f3a616b10df65f658f0e74e853e77a089a6a954e35c800be7db8b9bfe9a1ae05d9c2897e281359f65e4caa1caf266368e1c4febd3
+  checksum: 9096d8f6c16cb80ef3bf96fcbbd055bf1c4a43bd14f3b7be45a9fbe7ada46ec977f604d5feed3263b4f2aa7d4c7477ce5f9cd87de0d6feedec69a983f3a4f93e
   languageName: node
   linkType: hard
 
