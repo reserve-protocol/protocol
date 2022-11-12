@@ -15,7 +15,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;
-    mapping(address => RevenueShare) internal distribution;
+    mapping(address => RevenueShare) public distribution;
 
     // ==== Invariants ====
     // distribution is nonzero. (That is, distribution has at least one nonzero value)
@@ -159,6 +159,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     //   destinations' = destinations.add(dest)
     //   distribution' = distribution.set(dest, share)
     function _setDistribution(address dest, RevenueShare memory share) internal {
+        require(dest != address(0), "dest cannot be zero");
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= 10000, "RSR distribution too high");
