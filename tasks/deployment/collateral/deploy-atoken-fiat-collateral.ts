@@ -7,7 +7,6 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('staticAToken', 'Static AToken address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
@@ -29,7 +28,6 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
         params.fallbackPrice,
         params.priceFeed,
         params.staticAToken,
-        params.rewardToken,
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,

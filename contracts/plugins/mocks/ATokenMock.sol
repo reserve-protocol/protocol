@@ -68,6 +68,11 @@ contract StaticATokenMock is ERC20Mock {
         return aToken;
     }
 
+    //solhint-disable-next-line func-name-mixedcase
+    function REWARD_TOKEN() external view returns (IERC20) {
+        return aaveToken;
+    }
+
     function setRewards(address recipient, uint256 amount) external {
         aaveBalances[recipient] = amount;
     }

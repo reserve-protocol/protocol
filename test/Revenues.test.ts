@@ -1,7 +1,7 @@
 import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory, Wallet } from 'ethers'
+import { BigNumber, ContractFactory, Contract, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
@@ -18,9 +18,9 @@ import {
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   OracleLib,
-  RewardableLibP1,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -206,7 +206,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const RewardableLibFactory: ContractFactory = await ethers.getContractFactory(
           'RewardableLibP1'
         )
-        const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+        const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
 
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
           'RevenueTraderP1',
@@ -745,7 +745,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             compToken.address,
-            ZERO_ADDRESS,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -938,7 +937,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             aaveToken.address,
-            aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
           )
@@ -1130,7 +1128,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await AssetFactory.deploy(
             fp('1'),
             chainlinkFeed.address,
-            compToken.address,
             compToken.address,
             fp('1'),
             ORACLE_TIMEOUT
@@ -1971,7 +1968,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it('Should handle properly assets with invalid claim logic', async () => {
+      it('Should revert on invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
           'InvalidATokenFiatCollateralMock',
@@ -1981,19 +1978,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
 
-        const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-          await ATokenCollateralFactory.deploy(
-            fp('1'),
-            chainlinkFeed.address,
-            token2.address,
-            aaveToken.address,
-            config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT,
-            ethers.utils.formatBytes32String('USD'),
-            await collateral2.defaultThreshold(),
-            await collateral2.delayUntilDefault()
-          )
-        )
+        const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
+          InvalidATokenFiatCollateralMock
+        >((await ATokenCollateralFactory.deploy(
+          fp('1'),
+          chainlinkFeed.address,
+          token2.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          await collateral2.defaultThreshold(),
+          await collateral2.delayUntilDefault()
+        )) as unknown)
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -2009,10 +2005,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // AAVE Rewards
         await token2.setRewards(backingManager.address, rewardAmountAAVE)
 
-        // Claim and sweep rewards - Should not fail, only processes COMP rewards
-        await expect(backingManager.claimRewards())
-          .to.emit(backingManager, 'RewardsClaimed')
-          .withArgs(compToken.address, bn(0))
+        // Claim and sweep rewards - should revert and bubble up msg
+        await expect(backingManager.claimRewards()).to.be.revertedWith('claimRewards() error')
 
         // Check status - nothing claimed
         expect(await aaveToken.balanceOf(backingManager.address)).to.equal(0)
@@ -2859,7 +2853,6 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await AssetFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
-          compToken.address,
           compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT

@@ -106,7 +106,6 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       fp('1'),
       chainlinkFeed.address,
       token0.address,
-      aaveToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('USD'),

@@ -11,8 +11,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
+        IStaticAToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -23,7 +22,6 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -41,9 +39,8 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
         }
     }
 
-    /// Invalid claim calldata
-    function getClaimCalldata() external pure override returns (address _to, bytes memory _cd) {
-        _to = address(0);
-        _cd = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
+    /// Reverting claimRewards function
+    function claimRewards() external pure override {
+        revert("claimRewards() error");
     }
 }
