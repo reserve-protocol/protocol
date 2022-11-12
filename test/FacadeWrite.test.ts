@@ -197,6 +197,12 @@ describe('FacadeWrite contract', () => {
   })
 
   it('Should perform validations', async () => {
+    // Should not accept zero addr beneficiary
+    rTokenSetup.beneficiary = ZERO_ADDRESS
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('beneficiary revShare mismatch')
+
     // Cannot deploy with no basket
     rTokenSetup.primaryBasket = []
     await expect(

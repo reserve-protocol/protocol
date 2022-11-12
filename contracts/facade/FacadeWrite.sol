@@ -33,6 +33,13 @@ contract FacadeWrite is IFacadeWrite {
             require(setup.backups[i].backupCollateral.length > 0, "no backup collateral");
         }
 
+        // Validate beneficiary was set intentionally
+        require(
+            setup.beneficiary != address(0) ||
+                (setup.revShare.rTokenDist == 0 && setup.revShare.rsrDist == 0),
+            "beneficiary revShare mismatch"
+        );
+
         // Deploy contracts
         IRToken rToken = IRToken(
             deployer.deploy(
@@ -46,11 +53,14 @@ contract FacadeWrite is IFacadeWrite {
 
         // Get Main
         IMain main = rToken.main();
+        IAssetRegistry assetRegistry = main.assetRegistry();
+        IBackingManager backingManager = main.backingManager();
+        IBasketHandler basketHandler = main.basketHandler();
 
         // Register assets
         for (uint256 i = 0; i < setup.assets.length; ++i) {
-            main.assetRegistry().register(setup.assets[i]);
-            main.backingManager().grantRTokenAllowance(setup.assets[i].erc20());
+            assetRegistry.register(setup.assets[i]);
+            backingManager.grantRTokenAllowance(setup.assets[i].erc20());
         }
 
         // Setup basket
@@ -59,15 +69,15 @@ contract FacadeWrite is IFacadeWrite {
 
             // Register collateral
             for (uint256 i = 0; i < setup.primaryBasket.length; ++i) {
-                main.assetRegistry().register(setup.primaryBasket[i]);
+                assetRegistry.register(setup.primaryBasket[i]);
                 IERC20 erc20 = setup.primaryBasket[i].erc20();
                 basketERC20s[i] = erc20;
-                main.backingManager().grantRTokenAllowance(erc20);
+                backingManager.grantRTokenAllowance(erc20);
             }
 
             // Set basket
-            main.basketHandler().setPrimeBasket(basketERC20s, setup.weights);
-            main.basketHandler().refreshBasket();
+            basketHandler.setPrimeBasket(basketERC20s, setup.weights);
+            basketHandler.refreshBasket();
         }
 
         // Setup backup config
@@ -79,13 +89,13 @@ contract FacadeWrite is IFacadeWrite {
 
                 for (uint256 j = 0; j < setup.backups[i].backupCollateral.length; ++j) {
                     ICollateral backupColl = setup.backups[i].backupCollateral[j];
-                    main.assetRegistry().register(backupColl);
+                    assetRegistry.register(backupColl);
                     IERC20 erc20 = backupColl.erc20();
                     backupERC20s[j] = erc20;
-                    main.backingManager().grantRTokenAllowance(erc20);
+                    backingManager.grantRTokenAllowance(erc20);
                 }
 
-                main.basketHandler().setBackupConfig(
+                basketHandler.setBackupConfig(
                     setup.backups[i].backupUnit,
                     setup.backups[i].diversityFactor,
                     backupERC20s
@@ -94,10 +104,7 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Setup revshare beneficiary
-        if (
-            setup.beneficiary != address(0) &&
-            (setup.revShare.rTokenDist > 0 || setup.revShare.rsrDist > 0)
-        ) {
+        if (setup.beneficiary != address(0)) {
             main.distributor().setDistribution(setup.beneficiary, setup.revShare);
         }
 
