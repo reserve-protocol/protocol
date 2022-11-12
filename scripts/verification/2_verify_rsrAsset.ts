@@ -30,7 +30,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       await asset.chainlinkFeed(),
       await asset.erc20(),
-      await asset.rewardERC20(),
       (await asset.maxTradeVolume()).toString(),
       (await asset.oracleTimeout()).toString(),
     ],

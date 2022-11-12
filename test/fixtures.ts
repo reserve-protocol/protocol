@@ -1,12 +1,12 @@
 import { Fixture } from 'ethereum-waffle'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber, ContractFactory, Contract } from 'ethers'
 import { expect } from 'chai'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../common/configuration'
 import { expectInReceipt } from '../common/events'
 import { bn, fp } from '../common/numbers'
-import { ZERO_ADDRESS, CollateralStatus } from '../common/constants'
+import { CollateralStatus } from '../common/constants'
 import {
   Asset,
   AssetRegistryP1,
@@ -36,7 +36,6 @@ import {
   OracleLib,
   PermitLib,
   RevenueTraderP1,
-  RewardableLibP1,
   RTokenAsset,
   RTokenP1,
   StaticATokenMock,
@@ -182,7 +181,6 @@ async function collateralFixture(
         fp('1'),
         chainlinkFeed.address,
         erc20.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -203,7 +201,6 @@ async function collateralFixture(
         fp('1'),
         chainlinkFeed.address,
         erc20.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -216,8 +213,7 @@ async function collateralFixture(
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
-    chainlinkAddr: string,
-    compToken: ERC20Mock
+    chainlinkAddr: string
   ): Promise<[CTokenMock, CTokenFiatCollateral]> => {
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
@@ -227,7 +223,6 @@ async function collateralFixture(
         fp('1').div(50),
         chainlinkAddr,
         erc20.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -255,7 +250,6 @@ async function collateralFixture(
         fp('1'),
         chainlinkAddr,
         erc20.address,
-        aaveToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -271,19 +265,9 @@ async function collateralFixture(
   const usdc = await makeSixDecimalCollateral('USDC')
   const usdt = await makeVanillaCollateral('USDT')
   const busd = await makeVanillaCollateral('BUSD')
-  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed(), compToken)
-  const cusdc = await makeCTokenCollateral(
-    'cUSDC',
-    usdc[0],
-    await usdc[1].chainlinkFeed(),
-    compToken
-  )
-  const cusdt = await makeCTokenCollateral(
-    'cUSDT',
-    usdt[0],
-    await usdt[1].chainlinkFeed(),
-    compToken
-  )
+  const cdai = await makeCTokenCollateral('cDAI', dai[0], await dai[1].chainlinkFeed())
+  const cusdc = await makeCTokenCollateral('cUSDC', usdc[0], await usdc[1].chainlinkFeed())
+  const cusdt = await makeCTokenCollateral('cUSDT', usdt[0], await usdt[1].chainlinkFeed())
   const adai = await makeATokenCollateral('aDAI', dai[0], await dai[1].chainlinkFeed(), aaveToken)
   const ausdc = await makeATokenCollateral(
     'aUSDC',
@@ -443,7 +427,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       fp('1'),
       rsrChainlinkFeed.address,
       rsr.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
@@ -472,7 +455,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+    const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
 
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()
@@ -575,7 +558,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       fp('1'),
       aaveChainlinkFeed.address,
       aaveToken.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
@@ -589,7 +571,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       fp('1'),
       compChainlinkFeed.address,
       compToken.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )

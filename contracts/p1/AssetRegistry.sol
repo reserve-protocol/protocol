@@ -130,6 +130,23 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         }
     }
 
+    /// TODO decide whether to keep and use it in more places, or dump
+    /// Returns keys(assets), values(assets) as (duplicate-free) lists.
+    // returns: [keys(assets)], [values(assets)] without duplicates.
+    function getRegistry()
+        external
+        view
+        returns (IERC20[] memory erc20s_, IAsset[] memory assets_)
+    {
+        uint256 length = _erc20s.length();
+        erc20s_ = new IERC20[](length);
+        assets_ = new IAsset[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            erc20s_[i] = IERC20(_erc20s.at(i));
+            assets_[i] = assets[IERC20(_erc20s.at(i))];
+        }
+    }
+
     /// Register an asset
     /// Forbids registering a different asset for an ERC20 that is already registered
     /// @return registered If the asset was moved from unregistered to registered

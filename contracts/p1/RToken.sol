@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRewardable.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/libraries/RedemptionBattery.sol";
@@ -22,7 +21,7 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
  * @title RTokenP1
  * An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
+contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
@@ -95,6 +94,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
 
     // Redemption throttle
     RedemptionBatteryLib.Battery private battery;
+
+    // {ERC20: {qTok} owed to Issuers}
+    // During reward sweeping, we sweep token balances - liabilities
+    mapping(IERC20 => uint256) private liabilities;
 
     // For an initialized IssueQueue queue:
     //     queue.right >= left
@@ -269,6 +272,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             : queue.items.push();
         curr.when = vestingEnd;
 
+        uint256 basketSize = erc20s.length; // gas optimization
+
         // Accumulate
         if (queue.right > 0) {
             IssueItem storage prev = queue.items[queue.right - 1];
@@ -278,7 +283,7 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             curr.amtBaskets = prev.amtBaskets + amtBaskets;
 
             curr.deposits = new uint256[](deposits.length);
-            for (uint256 i = 0; i < deposits.length; ++i) {
+            for (uint256 i = 0; i < basketSize; ++i) {
                 curr.deposits[i] = prev.deposits[i] + deposits[i];
             }
         } else {
@@ -303,8 +308,13 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             vestingEnd
         );
 
+        // Increment liabilities
+        for (uint256 i = 0; i < basketSize; ++i) {
+            liabilities[IERC20(erc20s[i])] += deposits[i];
+        }
+
         // == Interactions: accept collateral ==
-        for (uint256 i = 0; i < erc20s.length; ++i) {
+        for (uint256 i = 0; i < basketSize; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
     }
@@ -478,6 +488,38 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         if (allZero) revert("Empty redemption");
     }
 
+    // === Rewards ===
+
+    /// Claim rewards for all ERC20s
+    /// @custom:interaction
+    function claimRewards() external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.claimRewards(assetRegistry);
+    }
+
+    /// Claim rewards for one ERC20
+    /// @custom:interaction
+    function claimRewardsSingle(IERC20 erc20) external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.claimRewardsSingle(assetRegistry.toAsset(erc20));
+    }
+
+    /// Sweep all token balances in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewards() external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.sweepRewards(liabilities, assetRegistry, backingManager);
+    }
+
+    /// Sweep an ERC20's rewards in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewardsSingle(IERC20 erc20) external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, backingManager);
+    }
+
+    // ====
+
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
     /// @param amtRToken {qRTok} The amtRToken to be minted
@@ -486,7 +528,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
-    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
+    function mint(address recipient, uint256 amtRToken) external {
+        requireNotPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         _mint(recipient, amtRToken);
         requireValidBUExchangeRate();
@@ -508,17 +551,12 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
     /// @custom:protected
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
+        requireNotPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
         requireValidBUExchangeRate();
-    }
-
-    /// Claim all rewards and sweep to BackingManager
-    /// @custom:interaction
-    function claimAndSweepRewards() external notPausedOrFrozen {
-        RewardableLibP1.claimAndSweepRewards();
     }
 
     /// @param val {1/block}
@@ -610,12 +648,18 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             amtRToken = rightItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i];
+
+                // Decrement liabilities
+                liabilities[IERC20(queue.tokens[i])] -= amt[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[left - 1];
             amtRToken = rightItem.amtRToken - leftItem.amtRToken;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amt[i] = rightItem.deposits[i] - leftItem.deposits[i];
+
+                // Decrement liabilities
+                liabilities[IERC20(queue.tokens[i])] -= amt[i];
             }
         }
 
@@ -682,6 +726,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             amtBaskets = rightItem.amtBaskets;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amtDeposits[i] = rightItem.deposits[i];
+
+                // Decrement liabilities
+                liabilities[IERC20(queue.tokens[i])] -= amtDeposits[i];
             }
         } else {
             IssueItem storage leftItem = queue.items[queue.left - 1];
@@ -689,6 +736,9 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
             amtBaskets = rightItem.amtBaskets - leftItem.amtBaskets;
             for (uint256 i = 0; i < tokensLen; ++i) {
                 amtDeposits[i] = rightItem.deposits[i] - leftItem.deposits[i];
+
+                // Decrement liabilities
+                liabilities[IERC20(queue.tokens[i])] -= amtDeposits[i];
             }
         }
 
@@ -753,10 +803,14 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, IRToken {
         require(to != address(this), "RToken transfer to self");
     }
 
+    /// @dev Used in reward claim functions to save on contract size
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotPausedOrFrozen() private notPausedOrFrozen {}
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[38] private __gap;
+    uint256[37] private __gap;
 }

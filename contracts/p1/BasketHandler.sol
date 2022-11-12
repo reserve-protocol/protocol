@@ -309,9 +309,22 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            ICollateral coll = assetRegistry.toColl(basket.erc20s[i]);
+            bool isFallback_; // Is this token's price a fallback price
+            uint192 price_; // This token's price
 
-            (bool isFallback_, uint192 price_) = coll.price(allowFallback);
+            if (!allowFallback) {
+                (isFallback_, price_) = assetRegistry.toAsset(basket.erc20s[i]).price(
+                    allowFallback
+                );
+            } else {
+                try assetRegistry.toAsset(basket.erc20s[i]) returns (IAsset asset) {
+                    (isFallback_, price_) = asset.price(true);
+                } catch {
+                    isFallback_ = true;
+                    price_ = 0;
+                }
+            }
+
             isFallback = isFallback || isFallback_;
             if (price_ == 0) continue;
             uint192 qty = quantity(basket.erc20s[i]);

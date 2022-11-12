@@ -19,8 +19,6 @@ contract RTokenAsset is IAsset {
 
     IERC20Metadata public immutable erc20;
 
-    IERC20 public immutable rewardERC20;
-
     uint8 public immutable erc20Decimals;
 
     uint192 public immutable override maxTradeVolume; // {UoA}
@@ -37,7 +35,6 @@ contract RTokenAsset is IAsset {
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
-        rewardERC20 = IERC20(address(0));
         maxTradeVolume = maxTradeVolume_;
     }
 
@@ -111,9 +108,9 @@ contract RTokenAsset is IAsset {
 
     // solhint-disable no-empty-blocks
 
-    /// (address, calldata) to call in order to claim rewards for holding this asset
-    /// @dev The default impl returns zero values, implying that no reward function exists.
-    function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev Use delegatecall
+    function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
 }

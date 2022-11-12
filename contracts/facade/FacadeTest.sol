@@ -56,12 +56,13 @@ contract FacadeTest is IFacadeTest {
     }
 
     /// Prompt all traders and the RToken itself to claim rewards and sweep to BackingManager
-    function claimRewards(IRToken rToken) external {
+    function claimAndSweepRewards(IRToken rToken) external {
         IMain main = rToken.main();
-        main.backingManager().claimAndSweepRewards();
-        main.rsrTrader().claimAndSweepRewards();
-        main.rTokenTrader().claimAndSweepRewards();
-        rToken.claimAndSweepRewards();
+        main.backingManager().claimRewards();
+        main.rsrTrader().claimRewards();
+        main.rTokenTrader().claimRewards();
+        rToken.claimRewards();
+        rToken.sweepRewards();
     }
 
     /// @return total {UoA} An estimate of the total value of all non-RSR assets at BackingManager

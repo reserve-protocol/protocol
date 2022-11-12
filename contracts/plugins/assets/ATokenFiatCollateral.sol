@@ -2,31 +2,29 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 
-// ==== External ====
-
-// External interfaces from: https://git.io/JX7iJ
+// This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
+// but it's compiled with a different solidity version.
 interface IStaticAToken is IERC20Metadata {
+    /**
+     * @notice Claim rewards
+     * @param forceUpdate Flag to retrieve latest rewards from `INCENTIVES_CONTROLLER`
+     */
     function claimRewardsToSelf(bool forceUpdate) external;
 
-    // @return RAY{fiatTok/tok}
+    /**
+     * @notice Returns the Aave liquidity index of the underlying aToken, denominated rate here
+     * as it can be considered as an ever-increasing exchange rate
+     * @return The liquidity index
+     **/
     function rate() external view returns (uint256);
 
+    /// @return The reward token, ie stkAAVE
     // solhint-disable-next-line func-name-mixedcase
-    function ATOKEN() external view returns (AToken);
-
-    function getClaimableRewards(address user) external view returns (uint256);
+    function REWARD_TOKEN() external view returns (IERC20);
 }
-
-interface AToken {
-    // solhint-disable-next-line func-name-mixedcase
-    function UNDERLYING_ASSET_ADDRESS() external view returns (address);
-}
-
-// ==== End External ====
 
 /**
  * @title ATokenFiatCollateral
@@ -49,8 +47,7 @@ contract ATokenFiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
+        IStaticAToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -61,14 +58,12 @@ contract ATokenFiatCollateral is Collateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
             delayUntilDefault_
         )
     {
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         defaultThreshold = defaultThreshold_;
 
@@ -124,17 +119,12 @@ contract ATokenFiatCollateral is Collateral {
         return shiftl_toFix(rateInRAYs, -27);
     }
 
-    /// Get the message needed to call in order to claim rewards for holding this asset.
-    /// @return _to The address to send the call to
-    /// @return _cd The calldata to send
-    function getClaimCalldata()
-        external
-        view
-        virtual
-        override
-        returns (address _to, bytes memory _cd)
-    {
-        _to = address(erc20); // this should be a StaticAToken
-        _cd = abi.encodeWithSignature("claimRewardsToSelf(bool)", true);
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev Use delegatecall
+    function claimRewards() external virtual override {
+        IERC20 stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
+        uint256 oldBal = stkAAVE.balanceOf(address(this));
+        IStaticAToken(address(erc20)).claimRewardsToSelf(true);
+        emit RewardsClaimed(stkAAVE, stkAAVE.balanceOf(address(this)) - oldBal);
     }
 }
