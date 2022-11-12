@@ -20,9 +20,6 @@ abstract contract RewardableLibP1 is IRewardable {
 
     // === Used by Traders + RToken ===
 
-    /// Redefines event for when rewards are claimed, to be able to emit from library
-    event RewardsClaimed(address indexed erc20, uint256 indexed amount);
-
     struct Claim {
         IERC20 reward;
         address callTo;
@@ -41,7 +38,7 @@ abstract contract RewardableLibP1 is IRewardable {
     //   rewards = {claim.rewardToken for claim in claims}
     // actions:
     //   do to.functionCall(calldata) for claim in claims
-    function claimRewards(IAssetRegistry reg) external {
+    function claimRewards(IAssetRegistry reg) internal {
         IERC20[] memory erc20s = reg.erc20s();
 
         IERC20[] memory rewardTokens = new IERC20[](erc20s.length);
@@ -100,7 +97,7 @@ abstract contract RewardableLibP1 is IRewardable {
         mapping(IERC20 => uint256) storage liabilities,
         IAssetRegistry reg,
         IBackingManager bm
-    ) external {
+    ) internal {
         IERC20[] memory erc20s = reg.erc20s();
         uint256 erc20sLen = erc20s.length;
         uint256[] memory deltas = new uint256[](erc20sLen); // {qTok}

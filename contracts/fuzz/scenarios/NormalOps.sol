@@ -386,12 +386,16 @@ contract NormalOpsScenario {
         // same signature on CollateralMock. Could define a whole interface, but eh
     }
 
-    function claimProtocolRewards(uint8 which) public {
+    function claimRewards(uint8 which) public {
         which %= 4;
-        if (which == 0) main.rTokenTrader().claimAndSweepRewards();
-        else if (which == 1) main.rsrTrader().claimAndSweepRewards();
-        else if (which == 2) main.backingManager().claimAndSweepRewards();
-        else if (which == 3) main.rToken().claimAndSweepRewards();
+        if (which == 0) main.rTokenTrader().claimRewards();
+        else if (which == 1) main.rsrTrader().claimRewards();
+        else if (which == 2) main.backingManager().claimRewards();
+        else if (which == 3) main.rToken().claimRewards();
+    }
+
+    function sweepRewards() public {
+        main.rToken().sweepRewards();
     }
 
     function pushSeedForTrades(uint256 seed) public {

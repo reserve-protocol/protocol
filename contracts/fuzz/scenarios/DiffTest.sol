@@ -560,13 +560,19 @@ contract DiffTestScenario {
         }
     }
 
-    function claimProtocolRewards(uint8 which) public {
+    function claimRewards(uint8 which) public {
         for (uint256 N = 0; N < 2; N++) {
             which %= 4;
-            if (which == 0) p[N].rTokenTrader().claimAndSweepRewards();
-            else if (which == 1) p[N].rsrTrader().claimAndSweepRewards();
-            else if (which == 2) p[N].backingManager().claimAndSweepRewards();
-            else if (which == 3) p[N].rToken().claimAndSweepRewards();
+            if (which == 0) p[N].rTokenTrader().claimRewards();
+            else if (which == 1) p[N].rsrTrader().claimRewards();
+            else if (which == 2) p[N].backingManager().claimRewards();
+            else if (which == 3) p[N].rToken().claimRewards();
+        }
+    }
+
+    function sweepRewards() public {
+        for (uint256 N = 0; N < 2; N++) {
+            p[N].rToken().sweepRewards();
         }
     }
 
@@ -1196,7 +1202,6 @@ contract DiffTestScenario {
             if (coll0.status() != coll1.status()) return false;
             if (coll0.refPerTok() != coll1.refPerTok()) return false;
             if (coll0.targetPerRef() != coll1.targetPerRef()) return false;
-            if (coll0.pricePerTarget() != coll1.pricePerTarget()) return false;
         }
         return true;
     }

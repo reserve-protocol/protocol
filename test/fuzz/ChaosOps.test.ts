@@ -581,12 +581,17 @@ describe('The Chaos Operations scenario', () => {
 
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
-        const bal0 = await r0.balanceOf(comp.backingManager.address)
-        await scenario.claimProtocolRewards(i) // claim rewards
-        const bal1 = await r0.balanceOf(comp.backingManager.address)
+        const bal0 = await r0.balanceOf(rewardables[i])
+        await scenario.claimRewards(i) // claim rewards
+        const bal1 = await r0.balanceOf(rewardables[i])
 
         expect(bal1.sub(bal0)).to.equal(2n * exa)
       }
+
+      const bal2 = await r0.balanceOf(comp.backingManager.address)
+      scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
+      const bal3 = await r0.balanceOf(comp.backingManager.address)
+      expect(bal3.sub(bal2)).to.equal(2n * exa)
     })
 
     // return a (mapping string => BigNumber)
@@ -1189,7 +1194,7 @@ describe('The Chaos Operations scenario', () => {
       await scenario.updateRewards(0, 20000n * exa) // set C0 rewards to 20Kexa R0
 
       // claim rewards
-      await scenario.claimProtocolRewards(2) // claim rewards in backing manager (2)
+      await scenario.claimRewards(2) // claim rewards in backing manager (2)
       expect(await r0.balanceOf(comp.backingManager.address)).to.equal(20000n * exa)
 
       // Manage C0 and R0 in backing manager

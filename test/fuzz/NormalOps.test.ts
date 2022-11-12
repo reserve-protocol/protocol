@@ -542,12 +542,17 @@ describe('The Normal Operations scenario', () => {
 
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
-        const bal0 = await r0.balanceOf(comp.backingManager.address)
-        await scenario.claimProtocolRewards(i) // claim rewards
-        const bal1 = await r0.balanceOf(comp.backingManager.address)
+        const bal0 = await r0.balanceOf(rewardables[i])
+        await scenario.claimRewards(i) // claim rewards
+        const bal1 = await r0.balanceOf(rewardables[i])
 
         expect(bal1.sub(bal0)).to.equal(2n * exa)
       }
+
+      const bal2 = await r0.balanceOf(comp.backingManager.address)
+      scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
+      const bal3 = await r0.balanceOf(comp.backingManager.address)
+      expect(bal3.sub(bal2)).to.equal(2n * exa)
     })
 
     // return a (mapping string => BigNumber)
