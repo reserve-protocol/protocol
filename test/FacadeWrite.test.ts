@@ -54,6 +54,7 @@ describe('FacadeWrite contract', () => {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
+  let beneficiary: SignerWithAddress
 
   // RSR
   let rsr: ERC20Mock
@@ -117,7 +118,7 @@ describe('FacadeWrite contract', () => {
   })
 
   beforeEach(async () => {
-    ;[deployerUser, owner, addr1, addr2] = await ethers.getSigners()
+    ;[deployerUser, owner, addr1, addr2, beneficiary] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ rsr, compToken, compAsset, basket, config, facade, facadeTest, deployer } =
@@ -144,6 +145,11 @@ describe('FacadeWrite contract', () => {
     })
     facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
+    const revShare = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.1%
+    // Decrease revenue splits for nicer rounding
+    config.dist.rTokenDist = bn('398')
+    config.dist.rsrDist = bn('597')
+
     // Set parameters
     rTokenConfig = {
       name: 'RTKN RToken',
@@ -163,6 +169,8 @@ describe('FacadeWrite contract', () => {
           backupCollateral: [cTokenAsset.address],
         },
       ],
+      beneficiary: beneficiary.address,
+      revShare,
     }
 
     // Set governance params
@@ -189,27 +197,6 @@ describe('FacadeWrite contract', () => {
   })
 
   it('Should perform validations', async () => {
-    // Set parameters
-    rTokenConfig = {
-      name: 'RTKN RToken',
-      symbol: 'RTKN',
-      mandate: 'mandate',
-      params: config,
-    }
-
-    rTokenSetup = {
-      assets: [compAsset.address],
-      primaryBasket: [tokenAsset.address, usdcAsset.address],
-      weights: [fp('0.5'), fp('0.5')],
-      backups: [
-        {
-          backupUnit: ethers.utils.formatBytes32String('USD'),
-          diversityFactor: bn(1),
-          backupCollateral: [cTokenAsset.address],
-        },
-      ],
-    }
-
     // Cannot deploy with no basket
     rTokenSetup.primaryBasket = []
     await expect(
@@ -349,6 +336,11 @@ describe('FacadeWrite contract', () => {
         expect(await stRSR.decimals()).to.equal(18)
         expect(await stRSR.totalSupply()).to.equal(0)
         expect(await stRSR.main()).to.equal(main.address)
+
+        // Distributor
+        const dist = await distributor.distribution(beneficiary.address)
+        expect(dist[0]).to.equal(rTokenSetup.revShare.rTokenDist)
+        expect(dist[1]).to.equal(rTokenSetup.revShare.rsrDist)
       })
 
       it('Should register Assets/Collateral correctly', async () => {

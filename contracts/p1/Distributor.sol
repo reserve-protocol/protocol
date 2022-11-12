@@ -15,7 +15,7 @@ contract DistributorP1 is ComponentP1, IDistributor {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;
-    mapping(address => RevenueShare) internal distribution;
+    mapping(address => RevenueShare) public distribution;
 
     // ==== Invariants ====
     // distribution is nonzero. (That is, distribution has at least one nonzero value)

@@ -13,7 +13,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;
-    mapping(address => RevenueShare) internal distribution;
+    mapping(address => RevenueShare) public distribution;
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
     // invariant: distribution[FURNACE].rsrDist == FIX_ZERO
     // invariant: distribution[ST_RSR].rTokenDist == FIX_ZERO
