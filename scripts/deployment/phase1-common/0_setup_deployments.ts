@@ -4,6 +4,7 @@ import hre from 'hardhat'
 import { getChainId, isValidContract } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { fileExists, getDeploymentFilename, IDeployments } from '../common'
+import { bn } from '../../../common/numbers'
 
 async function main() {
   // ==== Read Configuration ====
@@ -21,35 +22,11 @@ async function main() {
     throw new Error(`${deploymentFilename} exists; I won't overwrite it.`)
   }
 
-  // Get RSR Address
-  const rsrAddr = networkConfig[chainId].tokens.RSR
-  if (!rsrAddr) {
-    throw new Error(`Missing address for RSR in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, rsrAddr))) {
-    throw new Error(`RSR contract not found in network ${hre.network.name}`)
-  }
-
-  // Get RSR Feed Address
-  const rsrFeedAddr = networkConfig[chainId].chainlinkFeeds.RSR
-  if (!rsrFeedAddr) {
-    throw new Error(`Missing address for RSR Feed in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, rsrFeedAddr))) {
-    throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
-  }
-
-  // Get Gnosis EasyAuction Address
-  const gnosisAddr = networkConfig[chainId].GNOSIS_EASY_AUCTION
-  if (!gnosisAddr) {
-    throw new Error(`Missing address for GNOSIS_EASY_AUCTION in network ${hre.network.name}`)
-  } else if (!(await isValidContract(hre, gnosisAddr))) {
-    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
-  }
-  // ********************* Output Configuration******************************
   const deployments: IDeployments = {
     prerequisites: {
-      RSR: rsrAddr,
-      RSR_FEED: rsrFeedAddr,
-      GNOSIS_EASY_AUCTION: gnosisAddr,
+      RSR: '',
+      RSR_FEED: '',
+      GNOSIS_EASY_AUCTION: '',
     },
     rewardableLib: '',
     tradingLib: '',
@@ -78,6 +55,53 @@ async function main() {
       },
     },
   }
+
+  let rsrAddr = networkConfig[chainId].tokens.RSR || ''
+  let rsrFeedAddr = networkConfig[chainId].chainlinkFeeds.RSR || ''
+  let gnosisAddr = networkConfig[chainId].GNOSIS_EASY_AUCTION || ''
+  console.log('name', networkConfig[chainId].name, chainId)
+
+  if (!process.env.FORK) {
+    console.log('FORK')
+    // Deploy RSR prereqiusite      console.log('deploying')
+    const { erc20 } = await hre.run('deploy-mock-erc20', {
+      name: 'RSR token',
+      symbol: 'RSR',
+    })
+    console.log('set to', erc20)
+    rsrAddr = erc20
+
+    // Deploy RSR Feed prereqiusite
+    const { feed } = await hre.run('deploy-mock-oracle', {
+      decimals: bn('8').toString(),
+      answer: bn('1e8').toString(),
+    })
+    rsrFeedAddr = feed
+
+    // Deploy Gnosis EasyAuction prerequisite
+    const { gnosis } = await hre.run('deploy-mock-gnosis')
+    gnosisAddr = gnosis
+  }
+
+  // Ensure RSR deployed
+  console.log('rsrAddr', rsrAddr)
+  if (!(await isValidContract(hre, rsrAddr))) {
+    throw new Error(`RSR contract not found in network ${hre.network.name}`)
+  }
+
+  // Ensure RSR feed deployed
+  if (!(await isValidContract(hre, rsrFeedAddr))) {
+    throw new Error(`RSR Feed contract not found in network ${hre.network.name}`)
+  }
+
+  // Ensure gnosis EasyAuction deployed
+  if (!(await isValidContract(hre, gnosisAddr))) {
+    throw new Error(`GNOSIS_EASY_AUCTION contract not found in network ${hre.network.name}`)
+  }
+
+  deployments.prerequisites.RSR = rsrAddr
+  deployments.prerequisites.RSR_FEED = rsrFeedAddr
+  deployments.prerequisites.GNOSIS_EASY_AUCTION = gnosisAddr
   fs.writeFileSync(deploymentFilename, JSON.stringify(deployments, null, 2))
 
   console.log(`Deployment file created for ${hre.network.name} (${chainId}):
