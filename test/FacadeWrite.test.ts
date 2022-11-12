@@ -203,26 +203,23 @@ describe('FacadeWrite contract', () => {
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).to.be.revertedWith('beneficiary revShare mismatch')
 
-    // Cannot deploy with no basket
-    rTokenSetup.primaryBasket = []
+    // Cannot deploy backup info with no collateral tokens
+    rTokenSetup.backups[0].backupCollateral = []
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('no collateral')
+    ).to.be.revertedWith('no backup collateral')
 
     // Cannot deploy with invalid length in weights
-    rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
     rTokenSetup.weights = [fp('1')]
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).to.be.revertedWith('invalid length')
 
-    // Cannot deploy backup info with no collateral tokens
-    rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
-    rTokenSetup.weights = [fp('0.5'), fp('0.5')]
-    rTokenSetup.backups[0].backupCollateral = []
+    // Cannot deploy with no basket
+    rTokenSetup.primaryBasket = []
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('no backup collateral')
+    ).to.be.revertedWith('no collateral')
   })
 
   describe('Deployment Process', () => {
