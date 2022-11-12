@@ -49,7 +49,7 @@ contract FacadeWrite is IFacadeWrite {
 
         // Register assets
         for (uint256 i = 0; i < setup.assets.length; ++i) {
-            IAssetRegistry(address(main.assetRegistry())).register(setup.assets[i]);
+            main.assetRegistry().register(setup.assets[i]);
             main.backingManager().grantRTokenAllowance(setup.assets[i].erc20());
         }
 
@@ -59,7 +59,7 @@ contract FacadeWrite is IFacadeWrite {
 
             // Register collateral
             for (uint256 i = 0; i < setup.primaryBasket.length; ++i) {
-                IAssetRegistry(address(main.assetRegistry())).register(setup.primaryBasket[i]);
+                main.assetRegistry().register(setup.primaryBasket[i]);
                 IERC20 erc20 = setup.primaryBasket[i].erc20();
                 basketERC20s[i] = erc20;
                 main.backingManager().grantRTokenAllowance(erc20);
@@ -70,7 +70,7 @@ contract FacadeWrite is IFacadeWrite {
             main.basketHandler().refreshBasket();
         }
 
-        // Set backup config
+        // Setup backup config
         {
             for (uint256 i = 0; i < setup.backups.length; ++i) {
                 IERC20[] memory backupERC20s = new IERC20[](
@@ -79,7 +79,7 @@ contract FacadeWrite is IFacadeWrite {
 
                 for (uint256 j = 0; j < setup.backups[i].backupCollateral.length; ++j) {
                     ICollateral backupColl = setup.backups[i].backupCollateral[j];
-                    IAssetRegistry(address(main.assetRegistry())).register(backupColl);
+                    main.assetRegistry().register(backupColl);
                     IERC20 erc20 = backupColl.erc20();
                     backupERC20s[j] = erc20;
                     main.backingManager().grantRTokenAllowance(erc20);
@@ -91,6 +91,11 @@ contract FacadeWrite is IFacadeWrite {
                     backupERC20s
                 );
             }
+        }
+
+        // Setup revshare beneficiary
+        if (setup.revShare.rTokenDist > 0 || setup.revShare.rsrDist > 0) {
+            main.distributor().setDistribution(setup.beneficiary, setup.revShare);
         }
 
         // Pause until setupGovernance
