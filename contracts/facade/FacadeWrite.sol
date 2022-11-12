@@ -94,7 +94,10 @@ contract FacadeWrite is IFacadeWrite {
         }
 
         // Setup revshare beneficiary
-        if (setup.revShare.rTokenDist > 0 || setup.revShare.rsrDist > 0) {
+        if (
+            setup.beneficiary != address(0) &&
+            (setup.revShare.rTokenDist > 0 || setup.revShare.rsrDist > 0)
+        ) {
             main.distributor().setDistribution(setup.beneficiary, setup.revShare);
         }
 
