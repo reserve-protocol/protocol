@@ -102,7 +102,6 @@ contract CTokenSelfReferentialCollateral is Collateral {
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// There be dragons here!
     /// @dev delegatecall
     function claimRewards() external virtual override {
         IERC20 comp = IERC20(comptroller.getCompAddress());

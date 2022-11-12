@@ -14,9 +14,8 @@ interface IRewardable {
     event RewardsClaimed(IERC20 indexed erc20, uint256 indexed amount);
 
     /// Claim rewards earned by holding a balance of the ERC20 token
-    /// There be dragons here!
     /// Must emit `RewardsClaimed` for each token rewards are claimed for
-    /// @dev delegatecall
+    /// @dev delegatecall: there be dragons here!
     /// @custom:interaction
     function claimRewards() external;
 }
@@ -27,9 +26,8 @@ interface IRewardable {
  */
 interface IRewardableComponent is IRewardable {
     /// Claim rewards for a single ERC20
-    /// There be dragons here!
     /// Must emit `RewardsClaimed` for each token rewards are claimed for
-    /// @dev delegatecall
+    /// @dev delegatecall: there be dragons here!
     /// @custom:interaction
     function claimRewardsSingle(IERC20 erc20) external;
 }
