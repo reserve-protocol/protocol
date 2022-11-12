@@ -5,8 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 
-// This interface is redundant with contracts/plugins/aave/IStaticAToken, but it's compiled with
-// a different version
+// This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
+// but it's compiled with a different solidity version.
 interface IStaticAToken is IERC20Metadata {
     /**
      * @notice Claim rewards

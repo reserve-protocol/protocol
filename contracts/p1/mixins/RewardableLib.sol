@@ -72,12 +72,10 @@ library RewardableLibP1 {
         // Sweep deltas
         for (uint256 i = 0; i < erc20sLen; ++i) {
             if (deltas[i] > 0) {
-                IERC20(address(erc20s[i])).safeTransfer(address(bm), deltas[i]);
+                erc20s[i].safeTransfer(address(bm), deltas[i]);
 
                 // Verify nothing has gone wrong -- we should keep this assert, even in P1
-                assert(
-                    IERC20(address(erc20s[i])).balanceOf(address(this)) >= liabilities[erc20s[i]]
-                );
+                assert(erc20s[i].balanceOf(address(this)) >= liabilities[erc20s[i]]);
             }
         }
     }
