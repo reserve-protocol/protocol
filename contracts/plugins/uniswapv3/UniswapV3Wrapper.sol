@@ -2,17 +2,25 @@
 pragma solidity ^0.8.9;
 
 import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
-import { INonfungiblePositionManager } from "./INonfungiblePositionManager.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
 
-import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
-import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
+import "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
+import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+
+/**
+    @title Uniswap V3 Wrapper
+    @notice ERC20 Wrapper token for Uniswap V3 positions
+    @author Gene A. Tsvigun
+    @author Vic G. Larson
+  */
 contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     struct Deposit {
         uint256 tokenId;
@@ -30,6 +38,15 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     IUniswapV3Factory immutable uniswapV3Factory =
         IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
+
+    //rewards distribution
+    uint256 private _totalReleased0;
+    uint256 private _totalReleased1;
+
+    mapping(address => uint256) private _totalRewardsAccounted0;
+    mapping(address => uint256) private _totalRewardsAccounted1;
+    mapping(address => uint256) private _owedRewards0;
+    mapping(address => uint256) private _owedRewards1;
 
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
@@ -76,7 +93,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         _mint(msg.sender, liquidity);
 
         if (amount0 < params.amount0Desired) {
-            TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager), 0); //TODO why approve 0 to other direction?
+            TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager), 0);
+            //TODO why approve 0 to other direction?
             uint256 refund0 = params.amount0Desired - amount0;
             TransferHelper.safeTransfer(params.token0, msg.sender, refund0);
         }
@@ -163,9 +181,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
-            .CollectParams(deposit.tokenId, recipient, type(uint128).max, type(uint128).max);
-        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+        //TODO @etsvigun send tokens based on `_owedRewards0` and `_owedRewards1`
+        //TODO @etsvigun only claim from Uniswap when balances are lower than `_owedRewards0` and `_owedRewards1`
         return (token0, token1, amount0, amount1);
     }
 
@@ -183,7 +200,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             uint128 liquidity,
             uint256 feeGrowthInside0LastX128,
             uint256 feeGrowthInside1LastX128,
-            uint128 tokensOwed0,
+            uint128 tokensOwed0, //
             uint128 tokensOwed1
         )
     {
@@ -248,5 +265,54 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             upperSqrtRatio,
             liquidity
         );
+    }
+
+    /**
+     * @notice Updates rewards both sender and receiver of each transfer
+     * @param from The address of the sender of tokens
+     * @param to The address of the receiver of tokens
+     */
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal override {
+        if (from != address(0)) {
+            _updateUser(from);
+        }
+        if (to != address(0)) {
+            _updateUser(to);
+        }
+    }
+
+    /**
+     * @notice Updates rewards both a single user
+     * @param from The address of the sender of tokens
+     * @param to The address of the receiver of tokens
+     */
+    function _updateUser(address user) internal {
+        uint256 balance = balanceOf(user);
+        if (balance > 0) {
+            (uint256 feesAmount0, uint256 feesAmount1) = PositionValue.fees(
+                nonfungiblePositionManager,
+                deposit.tokenId
+            );
+            uint256 totalEarned0 = _totalReleased0 + feesAmount0;
+            uint256 totalEarned1 = _totalReleased1 + feesAmount1;
+            uint256 unaccountedFees0 = totalEarned0 - _totalRewardsAccounted0[user];
+            uint256 unaccountedFees1 = totalEarned1 - _totalRewardsAccounted1[user];
+            _owedRewards0[user] += (unaccountedFees0 * balance) / totalSupply();
+            _owedRewards1[user] += (unaccountedFees1 * balance) / totalSupply();
+            _totalRewardsAccounted0[user] = totalEarned0;
+            _totalRewardsAccounted1[user] = totalEarned1;
+        }
+    }
+
+    function _claimFees() internal {
+        INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
+            .CollectParams(deposit.tokenId, recipient, type(uint128).max, type(uint128).max);
+        (amount0, amount1) = nonfungiblePositionManager.collect(collectParams);
+        _totalReleased0 += amount0;
+        _totalReleased1 += amount1;
     }
 }
