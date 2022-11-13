@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/plugins/assets/ICToken.sol";
 import "./ERC20Mock.sol";
 
-contract ComptrollerMock {
+contract ComptrollerMock is IComptroller {
     mapping(address => uint256) public compBalances;
 
     ERC20Mock public compToken;
@@ -25,5 +26,9 @@ contract ComptrollerMock {
             compBalances[holder] = 0;
             compToken.mint(holder, amount);
         }
+    }
+
+    function getCompAddress() external view returns (address) {
+        return address(compToken);
     }
 }

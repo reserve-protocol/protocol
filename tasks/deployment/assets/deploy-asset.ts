@@ -6,7 +6,6 @@ task('deploy-asset', 'Deploys an Asset')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max Oracle Timeout')
   .addParam('oracleLib', 'Oracle library address')
@@ -23,7 +22,6 @@ task('deploy-asset', 'Deploys an Asset')
           params.fallbackPrice,
           params.priceFeed,
           params.tokenAddress,
-          params.rewardToken,
           params.maxTradeVolume,
           params.oracleTimeout
         )

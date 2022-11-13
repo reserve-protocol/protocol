@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
-import { BN_SCALE_FACTOR, CollateralStatus, ZERO_ADDRESS } from '../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus } from '../common/constants'
 import { expectEvents } from '../common/events'
 import { bn, fp, pow10, toBNDecimals } from '../common/numbers'
 import {
@@ -616,7 +616,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             fp('1'),
             newEURFeed.address,
             token1.address,
-            ZERO_ADDRESS,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('EUR'),
@@ -631,7 +630,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             fp('1'),
             backupEURFeed.address,
             backupToken1.address,
-            ZERO_ADDRESS,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('EUR'),
@@ -1639,7 +1637,6 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
             fp('1'),
             chainlinkFeed.address,
             token0.address,
-            ZERO_ADDRESS,
             bn('25e18'),
             ORACLE_TIMEOUT,
             ethers.utils.formatBytes32String('USD'),

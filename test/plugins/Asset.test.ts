@@ -119,8 +119,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
       expect(await rsrAsset.strictPrice()).to.equal(fp('1'))
-      expect(await rsrAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await rsrAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(rsrAsset.claimRewards()).to.not.emit(rsrAsset, 'RewardsClaimed')
 
       // COMP Asset
       expect(await compAsset.isCollateral()).to.equal(false)
@@ -129,8 +128,7 @@ describe('Assets contracts #fast', () => {
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
       expect(await compAsset.strictPrice()).to.equal(fp('1'))
-      expect(await compAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await compAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
 
       // AAVE Asset
       expect(await aaveAsset.isCollateral()).to.equal(false)
@@ -139,8 +137,7 @@ describe('Assets contracts #fast', () => {
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
       expect(await aaveAsset.strictPrice()).to.equal(fp('1'))
-      expect(await aaveAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await aaveAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(aaveAsset.claimRewards()).to.not.emit(aaveAsset, 'RewardsClaimed')
 
       // RToken Asset
       expect(await rTokenAsset.isCollateral()).to.equal(false)
@@ -149,8 +146,7 @@ describe('Assets contracts #fast', () => {
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rTokenAsset.bal(wallet.address)).to.equal(amt)
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
-      expect(await rTokenAsset.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await rTokenAsset.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(rTokenAsset.claimRewards()).to.not.emit(rTokenAsset, 'RewardsClaimed')
     })
   })
 
@@ -281,56 +277,28 @@ describe('Assets contracts #fast', () => {
   describe('Constructor validation', () => {
     it('Should not allow fallback price to be zero', async () => {
       await expect(
-        AssetFactory.deploy(
-          0,
-          ONE_ADDRESS,
-          ONE_ADDRESS,
-          ONE_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          0
-        )
+        AssetFactory.deploy(0, ONE_ADDRESS, ONE_ADDRESS, config.rTokenMaxTradeVolume, 0)
       ).to.be.revertedWith('fallback price zero')
     })
     it('Should not allow missing chainlink feed', async () => {
       await expect(
-        AssetFactory.deploy(
-          1,
-          ZERO_ADDRESS,
-          ONE_ADDRESS,
-          ONE_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          1
-        )
+        AssetFactory.deploy(1, ZERO_ADDRESS, ONE_ADDRESS, config.rTokenMaxTradeVolume, 1)
       ).to.be.revertedWith('missing chainlink feed')
     })
     it('Should not allow missing erc20', async () => {
       await expect(
-        AssetFactory.deploy(
-          1,
-          ONE_ADDRESS,
-          ZERO_ADDRESS,
-          ONE_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          1
-        )
+        AssetFactory.deploy(1, ONE_ADDRESS, ZERO_ADDRESS, config.rTokenMaxTradeVolume, 1)
       ).to.be.revertedWith('missing erc20')
     })
     it('Should not allow 0 oracleTimeout', async () => {
       await expect(
-        AssetFactory.deploy(
-          1,
-          ONE_ADDRESS,
-          ONE_ADDRESS,
-          ONE_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          0
-        )
+        AssetFactory.deploy(1, ONE_ADDRESS, ONE_ADDRESS, config.rTokenMaxTradeVolume, 0)
       ).to.be.revertedWith('oracleTimeout zero')
     })
     it('Should not allow maxTradeVolume to be zero', async () => {
-      await expect(
-        AssetFactory.deploy(1, ONE_ADDRESS, ONE_ADDRESS, ONE_ADDRESS, 0, 1)
-      ).to.be.revertedWith('invalid max trade volume')
+      await expect(AssetFactory.deploy(1, ONE_ADDRESS, ONE_ADDRESS, 0, 1)).to.be.revertedWith(
+        'invalid max trade volume'
+      )
     })
 
     it('Should validate constructor in RTokenAsset', async () => {

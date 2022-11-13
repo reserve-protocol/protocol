@@ -13,8 +13,6 @@ contract Asset is IAsset {
 
     IERC20Metadata public immutable erc20;
 
-    IERC20 public immutable override rewardERC20;
-
     uint8 public immutable erc20Decimals;
 
     uint192 public immutable override maxTradeVolume; // {UoA}
@@ -30,7 +28,6 @@ contract Asset is IAsset {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_
     ) {
@@ -43,7 +40,6 @@ contract Asset is IAsset {
         chainlinkFeed = chainlinkFeed_;
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
-        rewardERC20 = rewardERC20_;
         maxTradeVolume = maxTradeVolume_;
         oracleTimeout = oracleTimeout_;
     }
@@ -80,9 +76,9 @@ contract Asset is IAsset {
 
     // solhint-disable no-empty-blocks
 
-    /// (address, calldata) to call in order to claim rewards for holding this asset
-    /// @dev The default impl returns zero values, implying that no reward function exists.
-    function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev Use delegatecall
+    function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
 }

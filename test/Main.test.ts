@@ -1094,7 +1094,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1105,7 +1104,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1151,7 +1149,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1165,7 +1162,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           newToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1217,7 +1213,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token0.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1229,7 +1224,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1569,7 +1563,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         bn('1'), // Will not be used, 0 will be returned instead
         await collateral2.chainlinkFeed(),
         await collateral2.erc20(),
-        await collateral2.rewardERC20(),
         await collateral2.maxTradeVolume(),
         await collateral2.oracleTimeout(),
         ethers.utils.formatBytes32String('USD'),
@@ -1604,7 +1597,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           token1.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1769,7 +1761,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         fp('1.01'), // fallback price just above 1
         await collateral2.chainlinkFeed(),
         await collateral2.erc20(),
-        aaveToken.address,
         config.rTokenMaxTradeVolume,
         await collateral2.oracleTimeout(),
         ethers.utils.formatBytes32String('USD'),
@@ -1801,7 +1792,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         fp('1'),
         await collateral0.chainlinkFeed(),
         token0.address,
-        ZERO_ADDRESS,
         config.rTokenMaxTradeVolume,
         await collateral0.oracleTimeout(),
         await ethers.utils.formatBytes32String('NEW TARGET'),
@@ -1854,7 +1844,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[5].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
@@ -1864,7 +1853,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           ONE_ADDRESS,
           erc20s[6].address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           1
         )
