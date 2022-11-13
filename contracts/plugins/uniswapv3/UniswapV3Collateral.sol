@@ -5,7 +5,6 @@ import "../assets/AbstractCollateral.sol";
 import "./IUniswapV3Wrapper.sol";
 import "hardhat/console.sol";
 
-
 contract UniswapV3Collateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
@@ -15,7 +14,6 @@ contract UniswapV3Collateral is Collateral {
         AggregatorV3Interface chainlinkFeed_,
         AggregatorV3Interface chainlinkFeedSecondAsset_,
         IUniswapV3Wrapper erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -25,7 +23,6 @@ contract UniswapV3Collateral is Collateral {
             fallbackPrice_,
             chainlinkFeed_,
             IERC20Metadata(erc20_),
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -43,23 +40,20 @@ contract UniswapV3Collateral is Collateral {
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
     function strictPrice() external view override returns (uint192) {
-        (
-            uint256 amount0,
-            uint256 amount1,
-            ,
-        ) = IUniswapV3Wrapper(address(erc20)).principal();
-        return uint192((chainlinkFeed.price(oracleTimeout) * amount0) + (chainlinkFeedSecondAsset.price(oracleTimeout) * amount1));
+        (uint256 amount0, uint256 amount1, , ) = IUniswapV3Wrapper(address(erc20)).principal();
+        return
+            uint192(
+                (chainlinkFeed.price(oracleTimeout) * amount0) +
+                    (chainlinkFeedSecondAsset.price(oracleTimeout) * amount1)
+            );
     }
 
-    function getClaimCalldata()
-        external
-        view
-        virtual
-        override
-        returns (address _to, bytes memory _cd)
-    {
-        _to = address(erc20);
-        _cd = abi.encodeWithSignature("collect(address)", msg.sender);
-    }
     //TODO RefPerTok() always equals 1 but we need to implement check
+    function claimRewards() external {
+        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(
+            address(erc20)
+        ).claimRewards(msg.sender);
+        emit RewardsClaimed(IERC20(token0), amount0);
+        emit RewardsClaimed(IERC20(token1), amount1);
+    }
 }

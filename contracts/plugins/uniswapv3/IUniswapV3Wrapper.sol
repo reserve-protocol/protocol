@@ -47,10 +47,14 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
 
     function positionId() external view returns (uint256);
 
-    //collects fees only for second asset
-    function collect(address recipient) external returns (uint256 amount0, uint256 amount1);
-
-    function collectAll(address recipient) external returns (uint256 amount0, uint256 amount1);
+    function claimRewards(address recipient)
+        external
+        returns (
+            address token0,
+            address token1,
+            uint256 amount0,
+            uint256 amount1
+        );
 
     /// @notice The 0th storage slot in the pool stores many values, and is exposed as a single method to save gas
     /// when accessed externally.
@@ -89,5 +93,5 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
             uint256 amount1,
             address token0,
             address token1
-        ); 
+        );
 }
