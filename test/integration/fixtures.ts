@@ -52,9 +52,13 @@ import {
   TestIRToken,
   TestIStRSR,
   RecollateralizationLibP1,
+  CurveStableCoinLPCollateral,
+  CurveStablePoolMock,
+  ConvexStakingWrapper,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
+import { getEtherscanBaseURL } from '../../scripts/deployment/utils'
 
 export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
@@ -70,12 +74,30 @@ async function rsrFixture(): Promise<RSRFixture> {
   return { rsr }
 }
 
+interface ConvexCurveFixutre {
+  curveLPTokenMock: CurveStablePoolMock
+}
 interface COMPAAVEFixture {
   weth: ERC20Mock
   compToken: ERC20Mock
   compoundMock: ComptrollerMock
   aaveToken: ERC20Mock
   aaveMock: AaveLendingPoolMock
+}
+
+async function ConvexCurveFixutre(): Promise<ConvexCurveFixutre> {
+  const chainId = await getChainId(hre)
+  if (!networkConfig[chainId]) {
+    throw new Error(`Missing network configuration for ${hre.network.name}`)
+  }
+
+  const curveLPTokenMock: CurveStablePoolMock = <CurveStablePoolMock>(
+    await ethers.getContractAt('CurveStablePoolMock', networkConfig[chainId].tokens.USDD_3CRV || '')
+  )
+
+  return {
+    curveLPTokenMock,
+  }
 }
 
 async function compAaveFixture(): Promise<COMPAAVEFixture> {
@@ -143,7 +165,8 @@ async function collateralFixture(
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
   compToken: ERC20Mock,
-  config: IConfig
+  config: IConfig,
+  curveLPTokenMock: CurveStablePoolMock
 ): Promise<CollateralFixture> {
   const chainId = await getChainId(hre)
   if (!networkConfig[chainId]) {
@@ -171,6 +194,17 @@ async function collateralFixture(
       libraries: { OracleLib: oracleLib.address },
     }
   )
+
+  const CurveStableCoinLPCollateralFactory = await ethers.getContractFactory(
+    'CurveStableCoinLPCollateral',
+    {
+      libraries: { OracleLib: oracleLib.address },
+    }
+  )
+
+  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
+    libraries: { OracleLib: oracleLib.address },
+  })
 
   const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
@@ -352,6 +386,39 @@ async function collateralFixture(
     ]
   }
 
+  const makeCurveStableCoinLPCollateral = async (
+    tokenAddress: string,
+    referenceERC20: IERC20Metadata,
+    referenceUnitOracleAddr: string,
+    lpToken: CurveStablePoolMock
+  ): Promise<[IERC20Metadata, CurveStableCoinLPCollateral]> => {
+    const erc20: IERC20Metadata = <IERC20Metadata>(
+      await ethers.getContractAt('CTokenMock', tokenAddress)
+    )
+    const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>(
+      await ConvexStakingWrapperFactory.deploy()
+    )
+    return [
+      erc20,
+      <CurveStableCoinLPCollateral>(
+        await CurveStableCoinLPCollateralFactory.deploy(
+          fp('1'),
+          referenceUnitOracleAddr,
+          erc20.address,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          delayUntilDefault,
+          defaultThreshold,
+          lpToken.address,
+          (await referenceERC20.decimals()).toString(),
+          convexStakingWrapper.address
+        )
+      ),
+    ]
+  }
+
   const makeSelfReferentialCollateral = async (
     selfRefTokenAddress: string,
     chainlinkAddr: string,
@@ -522,6 +589,13 @@ async function collateralFixture(
     'BTC'
   )
 
+  const cCstablePool = await makeCurveStableCoinLPCollateral(
+    networkConfig[chainId].tokens.DAI as string,
+    dai[0],
+    networkConfig[chainId].chainlinkFeeds.DAI as string,
+    curveLPTokenMock
+  )
+
   const weth = await makeSelfReferentialCollateral(
     networkConfig[chainId].tokens.WETH as string,
     networkConfig[chainId].chainlinkFeeds.ETH as string,
@@ -564,6 +638,7 @@ async function collateralFixture(
     weth[0],
     cETH[0],
     eurt[0],
+    cCstablePool[0],
   ]
   const collateral = [
     dai[1],
@@ -586,6 +661,7 @@ async function collateralFixture(
     weth[1],
     cETH[1],
     eurt[1],
+    cCstablePool[1],
   ]
 
   // Create the initial basket
@@ -600,12 +676,13 @@ async function collateralFixture(
   }
 }
 
-type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
+type RSRAndCompAaveConvexAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
+  ConvexCurveFixutre &
   CollateralFixture &
   ModuleFixture
 
-interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
+interface DefaultFixture extends RSRAndCompAaveConvexAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer
@@ -635,6 +712,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
+  const { curveLPTokenMock } = await ConvexCurveFixutre()
   const { gnosis } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
@@ -838,6 +916,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       ORACLE_TIMEOUT
     )
   )
+
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
   )
@@ -861,7 +940,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveMock,
     aaveToken,
     compToken,
-    config
+    config,
+    curveLPTokenMock
   )
 
   const rsrTrader = <TestIRevenueTrader>(
@@ -925,5 +1005,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rsrTrader,
     rTokenTrader,
     oracleLib,
+    curveLPTokenMock,
   }
 }

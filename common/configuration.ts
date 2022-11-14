@@ -32,6 +32,7 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  USDD_3CRV?: string
 }
 
 interface INetworkConfig {
@@ -80,7 +81,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
-      RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -141,6 +142,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      USDD_3CRV:'0xe6b5CC1B4b47305c58392CE3D359B10282FC36Ea'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
