@@ -1,10 +1,10 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumberish, Wallet } from 'ethers'
+import { BigNumber, BigNumberish, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { defaultFixture, IMPLEMENTATION } from '../fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { networkConfig } from '../../common/configuration'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   ERC20Mock,
   MockV3Aggregator,
@@ -326,14 +326,15 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         ]
 
 
-      function accumulatedFees(stage: number): [number, number, number, number] {
-        let result: [number, number, number, number] = [0, 0, 0, 0];
+      async function accumulatedFees(stage: number): Promise<[BigNumber, BigNumber, BigNumber, BigNumber]>{
+        let result: [BigNumber, BigNumber, BigNumber, BigNumber] = [fp(0), fp(0), fp(0), fp(0)];
         for (let i = 0; i <= stage; i++) {
-          result[0] += expectedFeesAtStage[i][0];
-          result[1] += expectedFeesAtStage[i][1];
-          result[2] += expectedFeesAtStage[i][2];
-          result[3] += expectedFeesAtStage[i][3];
+          result[0] = result[0].add(toBNDecimals(fp(expectedFeesAtStage[i][0]), await asset0.decimals()));
+          result[1] = result[1].add(toBNDecimals(fp(expectedFeesAtStage[i][1]), await asset1.decimals()));
+          result[2] = result[2].add(toBNDecimals(fp(expectedFeesAtStage[i][2]), await asset0.decimals()));
+          result[3] = result[3].add(toBNDecimals(fp(expectedFeesAtStage[i][3]), await asset1.decimals()));
         }
+        console.log('accumulatedFees', result, result[0], result[1], result[2], result[3])
         return result;
       }
 
@@ -376,11 +377,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       )
 
       {
-        let [value1, value2, value3, value4] = accumulatedFees(1);
-        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(await adjustedAmout(asset0, value1.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(await adjustedAmout(asset1, value2.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(await adjustedAmout(asset0, value3.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(await adjustedAmout(asset1, value4.toFixed(18)))
+        let [value1, value2, value3, value4] = await accumulatedFees(1);
+        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(value1)
+        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(value2)
+        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(value3)
+        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(value4)
       }
 
       // 2. then transfer 100U3W to addr2               // Accumulated Fees are 20 30 on position at the moment
@@ -390,11 +391,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       );
 
       {
-        let [value1, value2, value3, value4] = accumulatedFees(2);
-        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(await adjustedAmout(asset0, value1.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(await adjustedAmout(asset1, value2.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(await adjustedAmout(asset0, value3.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(await adjustedAmout(asset1, value4.toFixed(18)))
+        let [value1, value2, value3, value4] = await accumulatedFees(2);
+        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(value1)
+        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(value2)
+        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(value3)
+        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(value4)
       }
       // 3. addr 2 burns 20U3W                          // Accumulated Fees are 30 40 on position at the moment
       uniswapV3Wrapper.setFees(await adjustedAmout(asset0, 30), await adjustedAmout(asset1, 40))
@@ -403,11 +404,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       )
 
       {
-        let [value1, value2, value3, value4] = accumulatedFees(3);
-        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(await adjustedAmout(asset0, value1.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(await adjustedAmout(asset1, value2.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(await adjustedAmout(asset0, value3.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(await adjustedAmout(asset1, value4.toFixed(18)))
+        let [value1, value2, value3, value4] = await accumulatedFees(3);
+        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(value1)
+        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(value2)
+        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(value3)
+        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(value4)
       }
       // 4. addr 2 tranfer 20U3W to addr1               // Accumulated Fees are 40 50 on position at the moment
       uniswapV3Wrapper.setFees(await adjustedAmout(asset0, 40), await adjustedAmout(asset1, 50))
@@ -416,11 +417,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       );
 
       {
-        let [value1, value2, value3, value4] = accumulatedFees(4);
-        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(await adjustedAmout(asset0, value1.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(await adjustedAmout(asset1, value2.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(await adjustedAmout(asset0, value3.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(await adjustedAmout(asset1, value4.toFixed(18)))
+        let [value1, value2, value3, value4] = await accumulatedFees(4);
+        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(value1)
+        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(value2)
+        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(value3)
+        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(value4)
       }
       // 5. they collect fees                           // Accumulated Fees are 50 60 on position at the moment
       uniswapV3Wrapper.setFees(await adjustedAmout(asset0, 50), await adjustedAmout(asset1, 60))
@@ -444,11 +445,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
       );
 
       {
-        let [value1, value2, value3, value4] = accumulatedFees(0);
-        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(await adjustedAmout(asset0, value1.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(await adjustedAmout(asset1, value2.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(await adjustedAmout(asset0, value3.toFixed(18)))
-        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(await adjustedAmout(asset1, value4.toFixed(18)))
+        let [value1, value2, value3, value4] = await accumulatedFees(0);
+        expect(await uniswapV3Wrapper.owedRewards0(addr1.address)).to.equal(value1)
+        expect(await uniswapV3Wrapper.owedRewards1(addr1.address)).to.equal(value2)
+        expect(await uniswapV3Wrapper.owedRewards0(addr2.address)).to.equal(value3)
+        expect(await uniswapV3Wrapper.owedRewards1(addr2.address)).to.equal(value4)
       }
 
       await logBalances("Balances after claim:",
