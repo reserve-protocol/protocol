@@ -2089,22 +2089,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
 
-    it('should not sweep rewards when paused', async () => {
-      await main.connect(owner).pause()
-      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
-      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
-    })
-
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
       await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
-    })
-
-    it('should not claim rewards when frozen', async () => {
-      await main.connect(owner).freezeShort()
-      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
-      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
   })
 
@@ -2118,6 +2106,25 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmt)
       await token2.connect(addr1).approve(rToken.address, issueAmt)
       await token3.connect(addr1).approve(rToken.address, issueAmt)
+    })
+
+    it('should not sweep rewards when paused', async () => {
+      await main.connect(owner).pause()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not sweep rewards when frozen', async () => {
+      await main.connect(owner).freezeShort()
+      await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should not sweep unregistered ERC20', async () => {
+      await assetRegistry.connect(owner).unregister(collateral3.address)
+      await expect(rToken.sweepRewardsSingle(token3.address)).to.be.revertedWith(
+        'erc20 unregistered'
+      )
     })
 
     it('should sweep without liabilities', async () => {
