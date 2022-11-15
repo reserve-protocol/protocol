@@ -373,6 +373,7 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
     /// Sweep an ERC20's rewards in excess of liabilities to the BackingManager
     /// @custom:interaction
     function sweepRewardsSingle(IERC20 erc20) external notPausedOrFrozen {
+        require(main.assetRegistry().isRegistered(erc20), "erc20 unregistered");
         uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
         if (amt > 0) {
             erc20.safeTransfer(address(main.backingManager()), amt);
