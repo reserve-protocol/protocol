@@ -4,7 +4,8 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, ZERO } from '../../common/numbers'
+import { ZERO_ADDRESS } from '../../common/constants'
 import {
   AaveLendingPoolMock,
   Asset,
@@ -694,6 +695,7 @@ interface DefaultFixture extends RSRAndCompAaveConvexAndCollateralAndModuleFixtu
   rsrAsset: Asset
   compAsset: Asset
   aaveAsset: Asset
+  convexAsset: Asset
   rToken: TestIRToken
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
@@ -905,16 +907,28 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     )
   )
 
-  const compAsset: Asset = <Asset>(
+  const convexAsset: Asset = <Asset>(
     await (
       await ethers.getContractFactory('Asset')
     ).deploy(
       fp('1'),
-      networkConfig[chainId].chainlinkFeeds.COMP || '',
-      compToken.address,
+      networkConfig[chainId].chainlinkFeeds.DAI || '',
+      curveLPTokenMock.address,
+      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
+  )
+
+  const compAsset: Asset = <Asset>await (
+    await ethers.getContractFactory('Asset')
+  ).deploy(
+    fp('1'),
+    networkConfig[chainId].chainlinkFeeds.COMP || '',
+    compToken.address,
+    ZERO_ADDRESS, // also uncertain about this one
+    config.rTokenMaxTradeVolume,
+    ORACLE_TIMEOUT
   )
 
   const rToken: TestIRToken = <TestIRToken>(
@@ -1006,5 +1020,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rTokenTrader,
     oracleLib,
     curveLPTokenMock,
+    convexAsset,
   }
 }
