@@ -45,8 +45,9 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     mapping(address => uint256) private _totalRewardsAccounted0;
     mapping(address => uint256) private _totalRewardsAccounted1;
-    mapping(address => uint256) public owedRewards0;
-    mapping(address => uint256) public owedRewards1;
+    mapping(address => uint256) public owedRewards0; //what is owed to the user for the previous period before the last time their U3W balance changed
+    mapping(address => uint256) public owedRewards1; //TODO consider different naming
+    //TODO count per-user total claimed rewards or cleanup ownedRewards on withdraw
 
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
 
@@ -294,16 +295,32 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
      */
     function _updateUser(address user) internal {
         uint256 balance = balanceOf(user);
-        if (balance > 0) {
-            (uint256 feesAmount0, uint256 feesAmount1) = _fees();
-            uint256 totalEarned0 = _totalReleased0 + feesAmount0;
-            uint256 totalEarned1 = _totalReleased1 + feesAmount1;
-            uint256 unaccountedFees0 = totalEarned0 - _totalRewardsAccounted0[user];
-            uint256 unaccountedFees1 = totalEarned1 - _totalRewardsAccounted1[user];
-            owedRewards0[user] += (unaccountedFees0 * balance) / totalSupply();
-            owedRewards1[user] += (unaccountedFees1 * balance) / totalSupply();
+        console.log("user", user);
+        console.log("balance", balance);
+        console.log("totalSupply", totalSupply());
+        if (totalSupply() > 0) {
+
+            (uint256 feesAmount0, uint256 feesAmount1) = _fees(); //30 40
+            console.log("feesAmount0", feesAmount0);
+            console.log("feesAmount1", feesAmount1);
+            uint256 totalEarned0 = _totalReleased0 + feesAmount0; //30
+            uint256 totalEarned1 = _totalReleased1 + feesAmount1; //40
+            console.log("totalEarned0", totalEarned0);
+            console.log("totalEarned1", totalEarned1);
+            console.log("accounted0", _totalRewardsAccounted0[user]);
+            console.log("accounted1", _totalRewardsAccounted1[user]);
+            uint256 unaccountedFees0 = totalEarned0 - _totalRewardsAccounted0[user]; // 30 - 20 = 10
+            uint256 unaccountedFees1 = totalEarned1 - _totalRewardsAccounted1[user]; // 40 - 30 = 10
+            console.log("unaccountedFees0", unaccountedFees0);
+            console.log("unaccountedFees1", unaccountedFees1);
+            owedRewards0[user] += (unaccountedFees0 * balance) / totalSupply(); // 10 * 100 / 180 = 5.55
+            owedRewards1[user] += (unaccountedFees1 * balance) / totalSupply(); // 10 * 100 / 180 = 5.55
+            console.log("owedRewards0", owedRewards0[user]);
+            console.log("owedRewards1", owedRewards1[user]);
             _totalRewardsAccounted0[user] = totalEarned0;
             _totalRewardsAccounted1[user] = totalEarned1;
+            console.log("totalRewardsAccounted0", _totalRewardsAccounted0[user]);
+            console.log("totalRewardsAccounted1", _totalRewardsAccounted1[user]);
         }
     }
 

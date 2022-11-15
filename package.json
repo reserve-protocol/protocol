@@ -104,6 +104,6 @@
   },
   "packageManager": "yarn@3.2.4",
   "dependencies": {
-    "@uniswap/v3-periphery": "github:Uniswap/v3-periphery#0.8"
+    "@uniswap/v3-periphery": "github:chainhackers/v3-periphery#0.8"
   }
 }
