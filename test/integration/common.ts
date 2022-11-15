@@ -41,7 +41,7 @@ export async function adjustedAmout(
 ): Promise<BigNumber> {
   return BigNumber.from(10)
     .pow(await asset.decimals())
-    .mul(bn(amount))
+    .mul(amount)
 }
 
 export async function logBalances(
