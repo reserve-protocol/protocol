@@ -10,8 +10,8 @@ import "./IFraxSwapPair.sol";
 
 /**
  * @title FraxSwapNonFiatCollateral
- * @notice Collateral plugin for FraxSwap LP Token of nonfiat collateral that requires default checks.
- * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
+ * @notice Collateral plugin for FraxSwap LP Token of nonfiat collateral that 
+ * requires default checks. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract FraxSwapNonFiatCollateral is Collateral {
     using FixLib for uint192;
@@ -19,27 +19,28 @@ contract FraxSwapNonFiatCollateral is Collateral {
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
-    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
 
+    AggregatorV3Interface public immutable token0chainlinkFeed;
+    AggregatorV3Interface public immutable token1chainlinkFeed;
+    AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}
+
     int8 public immutable referenceERC20Decimals;
 
-    /// @param refUnitChainlinkFeed_ Feed units: {target/ref}
-    /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target}
+    /// @param targetUnitUSDChainlinkFeed_ Feed units: {UoA/target} -> feed for token X
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
-        AggregatorV3Interface refUnitChainlinkFeed_,
+        AggregatorV3Interface token0chainlinkFeed_,
+        AggregatorV3Interface token1chainlinkFeed_,
         AggregatorV3Interface targetUnitUSDChainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -50,9 +51,9 @@ contract FraxSwapNonFiatCollateral is Collateral {
     )
         Collateral(
             fallbackPrice_,
-            refUnitChainlinkFeed_,
+            AggregatorV3Interface(address(0)),
             erc20_,
-            rewardERC20_,
+            IERC20Metadata(address(0)),
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -64,24 +65,29 @@ contract FraxSwapNonFiatCollateral is Collateral {
             address(targetUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
         );
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
-        targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
         comptrollerAddr = comptrollerAddr_;
+
+        // chainlink feeds
+        token0chainlinkFeed = token0chainlinkFeed_;
+        token1chainlinkFeed = token1chainlinkFeed_;
+        targetUnitChainlinkFeed = targetUnitUSDChainlinkFeed_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        return
-            targetUnitChainlinkFeed
-                .price(oracleTimeout)
-                .mul(chainlinkFeed.price(oracleTimeout))
-                .mul(refPerTok());
+
+        (uint192 _reserve0, uint192 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
+
+        uint192 priceTotal = token0chainlinkFeed.price(oracleTimeout).mul(_reserve0) + 
+            token1chainlinkFeed.price(oracleTimeout).mul(_reserve1);
+
+        return priceTotal.div( uint192(IFraxswapPair(address(erc20)).totalSupply()) );
     }
 
     /// Refresh exchange rates and update default status.
@@ -101,28 +107,48 @@ contract FraxSwapNonFiatCollateral is Collateral {
             markStatus(CollateralStatus.DISABLED);
         } else {
             // p {target/ref}
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+                // p0 {UoA/token0}
+            try token0chainlinkFeed.price_(oracleTimeout) returns (uint192 p0) {
                 // We don't need the return value from this next feed, but it should still function
-                try targetUnitChainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                    // {target/ref}
-                    uint192 peg = targetPerRef();
+                // p1 {UoA/token1}
+                try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+                    if (p0 > 0 || p1 > 0) {
 
-                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+                        // D18{target/ref}= D18{target/ref} * D18{1} / D18
 
-                    // If the price is below the default-threshold price, default eventually
-                    // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                    else markStatus(CollateralStatus.SOUND);
+                        // exchange rate between tokens in the fraxswap amm, token0 -> token1
+                        address token0 = IFraxswapPair(address(erc20)).token0();
+                        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
+                            FIX_ONE, 
+                            token0
+                        ));
+
+                        uint192 feedRate = p1.div(p0);
+
+                        uint192 delta = (feedRate * defaultThreshold) / FIX_ONE;
+
+                        // If the exchange rate in the AMM is off by a certain percentage from the 
+                        // rate calculated from oracles for a long time, then this defaults
+                        if (p < feedRate - delta || p > feedRate + delta) {
+                            markStatus(CollateralStatus.IFFY);
+                        } else {
+                            markStatus(CollateralStatus.SOUND);
+                        }
+
+                    } else {
+                        markStatus(CollateralStatus.IFFY);
+                    }
                 } catch (bytes memory errData) {
                     // see: docs/solidity-style.md#Catching-Empty-Data
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
             } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
+
         }
         prevReferencePrice = referencePrice;
 
@@ -137,32 +163,12 @@ contract FraxSwapNonFiatCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         // gets supply of token0 and token1
-        (uint112 _reserve0, uint112 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
+        (uint256 _reserve0, uint256 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
 
         // rate is sqrt(x * y)/L
-        uint256 rate = (Math.sqrt(uint256(_reserve0) * uint256(_reserve1)) /
-                        IFraxswapPair(address(erc20)).totalSupply());
+        uint192 rate = uint192(Math.sqrt((_reserve0) * (_reserve1))).div(
+                        uint192(IFraxswapPair(address(erc20)).totalSupply()));
 
-        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
-        return shiftl_toFix(rate, shiftLeft);
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view override returns (uint192) {
-        return targetUnitChainlinkFeed.price(oracleTimeout);
-    }
-
-    /// Get the message needed to call in order to claim rewards for holding this asset.
-    /// @return _to The address to send the call to
-    /// @return _cd The calldata to send
-    function getClaimCalldata()
-        external
-        view
-        virtual
-        override
-        returns (address _to, bytes memory _cd)
-    {
-        _to = comptrollerAddr;
-        _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
+        return rate;
     }
 }

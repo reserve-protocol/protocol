@@ -28,6 +28,7 @@ pragma solidity ^0.8.0;
 import "./IUniswapV2PairV5.sol";
 
 interface IFraxswapPair is IUniswapV2PairV5 {
+    function getAmountOut(uint amountIn, address tokenIn) external view returns (uint);
     function totalSupply() external view returns (uint);
     function getReserves() external override view returns (uint112 , uint112 , uint32);
 }

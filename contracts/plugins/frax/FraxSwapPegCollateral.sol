@@ -10,9 +10,8 @@ import "./IFraxSwapPair.sol";
 /**
  * @title FraxSwapPegCollateral
  * @notice Collateral plugin for a FraxPair LP Token representing a share of 
- * a pool containing a pair of coins pegged to the same reference target, 
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA (USD)}
- * if and only if target is denominated in a USD pegged coin, else {target} != {UoA (USD)}
+ * a pool containing a pair of coins pegged to UOA (USD), 
+ * Expected: {tok} != {ref}, {target} == {UoA}  
  */
 contract FraxSwapPegCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
@@ -77,16 +76,12 @@ contract FraxSwapPegCollateral is Collateral {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ref} * {ref/tok} -> in this case this does NOT work since:
-        // {UoA/tok} should be (P(token0)x + P(token1)y)/(totalSupply), but using the 
-        // formula it becomes:
-        // {UoA/tok} = sqrt(P(token0)*x*P(token1)*y) * sqrt(x*y)/totalSupply which is not correct
         (uint192 _reserve0, uint192 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
 
-        uint192 price0 = token0chainlinkFeed.price(oracleTimeout);
-        uint192 price1 = token1chainlinkFeed.price(oracleTimeout);
+        uint192 priceTotal = token0chainlinkFeed.price(oracleTimeout).mul(_reserve0) + 
+            token1chainlinkFeed.price(oracleTimeout).mul(_reserve1);
 
-        return ( (price0.mul(_reserve0) + (price1.mul(_reserve1) ).div(IFraxSwapPair(address(erc20)).totalSupply());
+        return priceTotal.div( uint192(IFraxswapPair(address(erc20)).totalSupply()) );
 
     }
 
@@ -111,13 +106,18 @@ contract FraxSwapPegCollateral is Collateral {
                 try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
                     if (p0 > 0 || p1 > 0) {
                         // {target/ref}
-                        uint192 peg = targetPerRef();
+                        uint192 peg = FIX_ONE;
 
                         // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                        uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+                        uint192 delta = (peg * defaultThreshold) / peg;
 
-                        // {target/ref} = {UoA/ref} / {UoA/target}
-                        uint192 p = p0.div(p1);
+                        address token0 = IFraxswapPair(address(erc20)).token0();
+
+                        // exchange rate between tokens in the fraxswap amm p0:p1
+                        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
+                            FIX_ONE, 
+                            token0
+                        ));
 
                         // If the price is below the default-threshold price, default eventually
                         if (p0 < peg - delta || p0 > peg + delta) {
@@ -157,13 +157,12 @@ contract FraxSwapPegCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         // gets supply of token0 and token1
-        (uint112 _reserve0, uint112 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
+        (uint256 _reserve0, uint256 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
 
         // rate is sqrt(x * y)/L
-        uint256 rate = (Math.sqrt(uint256(_reserve0) * uint256(_reserve1)) /
-                        IFraxswapPair(address(erc20)).totalSupply());
+        uint192 rate = uint192(Math.sqrt((_reserve0) * (_reserve1))).div(
+                        uint192(IFraxswapPair(address(erc20)).totalSupply()));
 
-        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
-        return shiftl_toFix(rate, shiftLeft);
+        return rate;
     }
 }
