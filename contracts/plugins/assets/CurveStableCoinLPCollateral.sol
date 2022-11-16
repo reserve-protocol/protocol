@@ -114,7 +114,9 @@ contract CurveStableCoinLPCollateral is Collateral {
                     markStatus(CollateralStatus.IFFY);
                 }
             }
+            checkAverageValueDeviation(stableCoinValueSum);
         }
+
         prevReferencePrice = referencePrice;
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
