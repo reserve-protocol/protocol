@@ -26,6 +26,9 @@ contract FraxSwapPegCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
 
+    bool public immutable token0isFiat;
+    bool public immutable token1isFiat;
+
     AggregatorV3Interface public immutable token0chainlinkFeed;
     AggregatorV3Interface public immutable token1chainlinkFeed;
 
@@ -39,6 +42,8 @@ contract FraxSwapPegCollateral is Collateral {
         uint192 fallbackPrice_,
         AggregatorV3Interface token0chainlinkFeed_,
         AggregatorV3Interface token1chainlinkFeed_,
+        bool token0isFiat_,
+        bool token1isFiat_,
         IERC20Metadata erc20_,
         IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
@@ -72,6 +77,10 @@ contract FraxSwapPegCollateral is Collateral {
         // chainlink feeds
         token0chainlinkFeed = token0chainlinkFeed_;
         token1chainlinkFeed = token1chainlinkFeed_;
+
+        // is fiat
+        token0isFiat = token0isFiat_; 
+        token1isFiat = token1isFiat_; 
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -120,14 +129,20 @@ contract FraxSwapPegCollateral is Collateral {
                         ));
 
                         // If the price is below the default-threshold price, default eventually
-                        if (p0 < peg - delta || p0 > peg + delta) {
+                        if(token0isFiat){
+                            if (p0 < peg - delta || p0 > peg + delta) {
+                                markStatus(CollateralStatus.IFFY);
+                            }
+                        }
+
+                        if(token1isFiat){
+                            if (p1 < peg - delta || p1 > peg + delta) {
+                                markStatus(CollateralStatus.IFFY);
+                            }
+                        }
+
+                        if (p < peg - delta || p > peg + delta) {
                             markStatus(CollateralStatus.IFFY);
-                        } else if (p1 < peg - delta || p1 > peg + delta) {
-                            markStatus(CollateralStatus.IFFY);
-                        // default if the internal exchange rate between the tokens
-                        // in the AMM is very different from the value from the oracles
-                        } else if (p < peg - delta || p > peg + delta) {
-                        markStatus(CollateralStatus.IFFY);
                         } else {
                             markStatus(CollateralStatus.SOUND);
                         }
