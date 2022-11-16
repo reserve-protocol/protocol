@@ -17,7 +17,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
 
     int8 public immutable referenceERC20Decimals;
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    address public immutable comptrollerAddr;
+    IComptroller public immutable comptroller;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -26,19 +26,17 @@ contract CTokenSelfReferentialCollateral is Collateral {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
-        address comptrollerAddr_
+        IComptroller comptroller_
     )
         Collateral(
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -46,11 +44,10 @@ contract CTokenSelfReferentialCollateral is Collateral {
         )
     {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(rewardERC20_) != address(0), "rewardERC20 missing");
-        require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
+        require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
-        comptrollerAddr = comptrollerAddr_;
+        comptroller = comptroller_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -104,11 +101,12 @@ contract CTokenSelfReferentialCollateral is Collateral {
         return chainlinkFeed.price(oracleTimeout);
     }
 
-    /// Get the message needed to call in order to claim rewards for holding this asset.
-    /// @return _to The address to send the call to
-    /// @return _cd The calldata to send
-    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
-        _to = comptrollerAddr;
-        _cd = abi.encodeWithSignature("claimComp(address)", msg.sender);
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev delegatecall
+    function claimRewards() external virtual override {
+        IERC20 comp = IERC20(comptroller.getCompAddress());
+        uint256 oldBal = comp.balanceOf(address(this));
+        comptroller.claimComp(address(this));
+        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
     }
 }

@@ -29,13 +29,7 @@ import {
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
-import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  FURNACE_DEST,
-  STRSR_DEST,
-  ZERO_ADDRESS,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -179,7 +173,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         fp('1'),
         await rsrAsset.chainlinkFeed(),
         rsr.address,
-        ZERO_ADDRESS,
         MAX_TRADE_VOLUME,
         ORACLE_TIMEOUT
       )
@@ -210,7 +203,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       fallbackPrice: fp('1').toString(),
       priceFeed: usdFeed.address,
       tokenAddress: usdToken.address, // DAI Token
-      rewardToken: ZERO_ADDRESS,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -235,7 +227,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       referenceUnitFeed: eurRefUnitFeed.address,
       targetUnitFeed: eurTargetUnitFeed.address,
       tokenAddress: eurToken.address,
-      rewardToken: ZERO_ADDRESS,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('EURO'),
@@ -256,7 +247,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       fallbackPrice: fp('1').div(50).toString(),
       priceFeed: usdFeed.address,
       cToken: cUSDToken.address,
-      rewardToken: compToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -278,7 +268,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       fallbackPrice: fp('1').toString(),
       priceFeed: usdFeed.address,
       staticAToken: aUSDToken.address,
-      rewardToken: aaveToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
@@ -302,7 +291,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       tokenAddress: wbtc.address,
-      rewardToken: ZERO_ADDRESS,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
@@ -324,7 +312,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       cToken: cWBTC.address,
-      rewardToken: compToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('BTC'),
@@ -348,7 +335,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       fallbackPrice: fp('1200').toString(),
       priceFeed: ethFeed.address,
       tokenAddress: weth.address,
-      rewardToken: ZERO_ADDRESS,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
@@ -371,7 +357,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
         fallbackPrice: fp('1200').div(50).toString(),
         priceFeed: ethFeed.address,
         cToken: cETH.address,
-        rewardToken: compToken.address,
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),

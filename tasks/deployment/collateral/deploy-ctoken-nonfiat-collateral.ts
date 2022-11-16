@@ -7,7 +7,6 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('cToken', 'CToken address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
@@ -43,7 +42,6 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
       params.referenceUnitFeed,
       params.targetUnitFeed,
       params.cToken,
-      params.rewardToken,
       params.maxTradeVolume,
       params.oracleTimeout,
       params.targetName,

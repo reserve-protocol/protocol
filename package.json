@@ -23,7 +23,7 @@
     "test:p0": "PROTO_IMPL=0 hardhat test test/*.test.ts --parallel",
     "test:p1": "PROTO_IMPL=1 hardhat test test/*.test.ts --parallel",
     "test:plugins": "hardhat test test/libraries/*.test.ts test/plugins/*.test.ts --parallel",
-    "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/*.test.ts",
+    "test:integration": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/*.test.ts test/integration/individual-collateral/*.test.ts",
     "test:scenario": "PROTO_IMPL=1 hardhat test test/scenario/*.test.ts --parallel",
     "test:coverage": "hardhat coverage --temp artifacts",
     "test:serial": "hardhat test",
@@ -33,7 +33,7 @@
     "prepare": "husky install",
     "prettier": "bash tools/prettier",
     "size": "hardhat size-contracts",
-    "slither": "bash tools/slither"
+    "slither": "python3 tools/slither.py"
   },
   "repository": {
     "type": "git",

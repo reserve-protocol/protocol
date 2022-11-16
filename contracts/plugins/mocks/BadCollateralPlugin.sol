@@ -16,8 +16,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
+        IStaticAToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -28,7 +27,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,

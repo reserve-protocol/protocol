@@ -2086,21 +2086,25 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should not sweep rewards when paused', async () => {
       await main.connect(owner).pause()
       await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
 
     it('should not claim rewards when frozen', async () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.sweepRewards()).to.be.revertedWith('paused or frozen')
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
     })
   })
 
@@ -2145,6 +2149,41 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       await token0.mint(rToken.address, amt)
       await expect(rToken.sweepRewards())
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+    })
+
+    // ===
+
+    it('should single sweep without liabilities', async () => {
+      await token0.mint(rToken.address, amt)
+
+      const smallerAmt = bn('10000e18') // fits in one block
+      await rToken.connect(addr1).issue(smallerAmt) // fast issuance
+
+      await expect(rToken.sweepRewardsSingle(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt)
+
+      await token0.mint(rToken.address, amt.add(1))
+
+      await rToken.connect(addr1).redeem(smallerAmt)
+
+      await expect(rToken.sweepRewardsSingle(token0.address))
+        .to.emit(token0, 'Transfer')
+        .withArgs(rToken.address, backingManager.address, amt.add(1))
+    })
+
+    it('should not single sweep with full liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+      await expect(rToken.sweepRewardsSingle(token0.address)).to.not.emit(token0, 'Transfer')
+    })
+
+    it('should single sweep with partial liabilities', async () => {
+      await rToken.connect(addr1).issue(issueAmt) // slow issuance
+
+      await token0.mint(rToken.address, amt)
+      await expect(rToken.sweepRewardsSingle(token0.address))
         .to.emit(token0, 'Transfer')
         .withArgs(rToken.address, backingManager.address, amt)
     })
@@ -2493,7 +2532,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           fp('1'),
           oracle.address,
           erc20.address,
-          ZERO_ADDRESS,
           fp('1e36'),
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),

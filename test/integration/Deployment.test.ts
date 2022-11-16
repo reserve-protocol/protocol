@@ -89,6 +89,8 @@ describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, fu
             backupCollateral: [usdtCollateral.address],
           },
         ],
+        beneficiary: ZERO_ADDRESS,
+        revShare: { rTokenDist: bn(0), rsrDist: bn(0) },
       }
       // Deploy RToken via FacadeWrite
       const receipt = await (

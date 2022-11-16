@@ -168,8 +168,7 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await tokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
       expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
-      expect(await tokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await tokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(tokenCollateral.claimRewards()).to.not.emit(tokenCollateral, 'RewardsClaimed')
 
       // USDC Fiat Token
       expect(await usdcCollateral.isCollateral()).to.equal(true)
@@ -187,8 +186,7 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
-      expect(await usdcCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await usdcCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(usdcCollateral.claimRewards()).to.not.emit(usdcCollateral, 'RewardsClaimed')
 
       // AToken
       expect(await aTokenCollateral.isCollateral()).to.equal(true)
@@ -209,9 +207,9 @@ describe('Collateral contracts', () => {
         await aTokenCollateral.refPerTok()
       )
       expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
-      let calldata = aToken.interface.encodeFunctionData('claimRewardsToSelf', [true])
-      expect(await aTokenCollateral.getClaimCalldata()).to.eql([aToken.address, calldata])
-      expect(await aTokenCollateral.rewardERC20()).to.equal(aaveToken.address)
+      await expect(aTokenCollateral.claimRewards())
+        .to.emit(aTokenCollateral, 'RewardsClaimed')
+        .withArgs(aaveToken.address, 0)
 
       // CToken
       expect(await cTokenCollateral.isCollateral()).to.equal(true)
@@ -233,12 +231,9 @@ describe('Collateral contracts', () => {
         await cTokenCollateral.refPerTok()
       )
       expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
-      calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-      expect(await cTokenCollateral.connect(owner).getClaimCalldata()).to.eql([
-        compoundMock.address,
-        calldata,
-      ])
-      expect(await cTokenCollateral.rewardERC20()).to.equal(compToken.address)
+      await expect(cTokenCollateral.claimRewards())
+        .to.emit(cTokenCollateral, 'RewardsClaimed')
+        .withArgs(compToken.address, 0)
     })
   })
 
@@ -249,7 +244,6 @@ describe('Collateral contracts', () => {
           1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.constants.HashZero,
@@ -266,7 +260,6 @@ describe('Collateral contracts', () => {
           1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -281,7 +274,6 @@ describe('Collateral contracts', () => {
           1,
           await aTokenCollateral.chainlinkFeed(),
           aToken.address,
-          aaveToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -296,7 +288,6 @@ describe('Collateral contracts', () => {
           1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -314,7 +305,6 @@ describe('Collateral contracts', () => {
           1,
           await tokenCollateral.chainlinkFeed(),
           token.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -329,7 +319,6 @@ describe('Collateral contracts', () => {
           1,
           await aTokenCollateral.chainlinkFeed(),
           aToken.address,
-          aaveToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -344,7 +333,6 @@ describe('Collateral contracts', () => {
           1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -356,66 +344,13 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('delayUntilDefault zero')
     })
 
-    it('Should not allow missing rewardERC20 - CTokens/ATokens', async () => {
-      // ATokenFiatCollateral
-      await expect(
-        ATokenFiatCollateralFactory.deploy(
-          1,
-          await aTokenCollateral.chainlinkFeed(),
-          aToken.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT
-        )
-      ).to.be.revertedWith('rewardERC20 missing')
-
-      await expect(
-        CTokenFiatCollateralFactory.deploy(
-          1,
-          await cTokenCollateral.chainlinkFeed(),
-          cToken.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT,
-          18,
-          compoundMock.address
-        )
-      ).to.be.revertedWith('rewardERC20 missing')
-    })
-
-    it('Should not allow missing referenceERC20Decimals - CTokens', async () => {
+    it('Should not allow missing comptroller - CTokens', async () => {
       // CTokenFiatCollateral
       await expect(
         CTokenFiatCollateralFactory.deploy(
           1,
           await cTokenCollateral.chainlinkFeed(),
           cToken.address,
-          compToken.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT,
-          0,
-          compoundMock.address
-        )
-      ).to.be.revertedWith('referenceERC20Decimals missing')
-    })
-
-    it('Should not allow missing comptrollerAddr - CTokens', async () => {
-      // CTokenFiatCollateral
-      await expect(
-        CTokenFiatCollateralFactory.deploy(
-          1,
-          await cTokenCollateral.chainlinkFeed(),
-          cToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -424,7 +359,7 @@ describe('Collateral contracts', () => {
           18,
           ZERO_ADDRESS
         )
-      ).to.be.revertedWith('comptrollerAddr missing')
+      ).to.be.revertedWith('comptroller missing')
     })
   })
 
@@ -680,7 +615,6 @@ describe('Collateral contracts', () => {
           1,
           invalidChainlinkFeed.address,
           await tokenCollateral.erc20(),
-          ZERO_ADDRESS,
           await tokenCollateral.maxTradeVolume(),
           await tokenCollateral.oracleTimeout(),
           await tokenCollateral.targetName(),
@@ -710,7 +644,6 @@ describe('Collateral contracts', () => {
           1,
           invalidChainlinkFeed.address,
           await aTokenCollateral.erc20(),
-          await aTokenCollateral.rewardERC20(),
           await aTokenCollateral.maxTradeVolume(),
           await aTokenCollateral.oracleTimeout(),
           await aTokenCollateral.targetName(),
@@ -740,7 +673,6 @@ describe('Collateral contracts', () => {
           1,
           invalidChainlinkFeed.address,
           await cTokenCollateral.erc20(),
-          await cTokenCollateral.rewardERC20(),
           await cTokenCollateral.maxTradeVolume(),
           await cTokenCollateral.oracleTimeout(),
           await cTokenCollateral.targetName(),
@@ -832,7 +764,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -852,7 +783,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -869,7 +799,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -886,7 +815,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -903,7 +831,6 @@ describe('Collateral contracts', () => {
           ZERO_ADDRESS,
           targetUnitOracle.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -934,8 +861,10 @@ describe('Collateral contracts', () => {
       expect(await nonFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await nonFiatCollateral.pricePerTarget()).to.equal(fp('20000'))
       expect(await nonFiatCollateral.strictPrice()).to.equal(fp('20000'))
-      expect(await nonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await nonFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(nonFiatCollateral.claimRewards()).to.not.emit(
+        nonFiatCollateral,
+        'RewardsClaimed'
+      )
     })
 
     it('Should calculate prices correctly', async function () {
@@ -981,7 +910,6 @@ describe('Collateral contracts', () => {
           invalidChainlinkFeed.address,
           targetUnitOracle.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1007,7 +935,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           invalidChainlinkFeed.address,
           nonFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1063,7 +990,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1085,7 +1011,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1104,7 +1029,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1123,7 +1047,6 @@ describe('Collateral contracts', () => {
           ZERO_ADDRESS,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1142,7 +1065,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1154,25 +1076,6 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('missing target unit chainlink feed')
     })
 
-    it('Should not allow missing rewardERC20', async () => {
-      await expect(
-        CTokenNonFiatFactory.deploy(
-          fp('20000'),
-          referenceUnitOracle.address,
-          targetUnitOracle.address,
-          cNonFiatToken.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('BTC'),
-          DEFAULT_THRESHOLD,
-          DELAY_UNTIL_DEFAULT,
-          await nonFiatToken.decimals(),
-          compoundMock.address
-        )
-      ).to.be.revertedWith('rewardERC20 missing')
-    })
-
     it('Should not allow missing referenceERC20Decimals', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
@@ -1180,7 +1083,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1192,14 +1094,13 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('referenceERC20Decimals missing')
     })
 
-    it('Should not allow missing comptrollerAddr', async () => {
+    it('Should not allow missing comptroller', async () => {
       await expect(
         CTokenNonFiatFactory.deploy(
           fp('20000'),
           referenceUnitOracle.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1208,7 +1109,7 @@ describe('Collateral contracts', () => {
           18,
           ZERO_ADDRESS
         )
-      ).to.be.revertedWith('comptrollerAddr missing')
+      ).to.be.revertedWith('comptroller missing')
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1243,12 +1144,9 @@ describe('Collateral contracts', () => {
       )
 
       expect(await cTokenNonFiatCollateral.strictPrice()).to.equal(fp('400')) // 0.02 of 20K
-      const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-      expect(await cTokenNonFiatCollateral.connect(owner).getClaimCalldata()).to.eql([
-        compoundMock.address,
-        calldata,
-      ])
-      expect(await cTokenNonFiatCollateral.rewardERC20()).to.equal(compToken.address)
+      await expect(cTokenNonFiatCollateral.claimRewards())
+        .to.emit(cTokenNonFiatCollateral, 'RewardsClaimed')
+        .withArgs(compToken.address, 0)
     })
 
     it('Should calculate prices correctly', async function () {
@@ -1304,7 +1202,6 @@ describe('Collateral contracts', () => {
           invalidChainlinkFeed.address,
           targetUnitOracle.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1332,7 +1229,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           invalidChainlinkFeed.address,
           cNonFiatToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('BTC'),
@@ -1374,7 +1270,6 @@ describe('Collateral contracts', () => {
           fp('1'),
           chainlinkFeed.address,
           selfRefToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
@@ -1402,8 +1297,10 @@ describe('Collateral contracts', () => {
       expect(await selfReferentialCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await selfReferentialCollateral.strictPrice()).to.equal(fp('1'))
-      expect(await selfReferentialCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await selfReferentialCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(selfReferentialCollateral.claimRewards()).to.not.emit(
+        selfReferentialCollateral,
+        'RewardsClaimed'
+      )
     })
 
     it('Should calculate prices correctly', async function () {
@@ -1449,7 +1346,6 @@ describe('Collateral contracts', () => {
           fp('1'),
           invalidChainlinkFeed.address,
           selfRefToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
@@ -1500,7 +1396,6 @@ describe('Collateral contracts', () => {
           fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
@@ -1514,30 +1409,12 @@ describe('Collateral contracts', () => {
       await cSelfRefToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
     })
 
-    it('Should not allow missing rewardERC20', async () => {
-      await expect(
-        CTokenSelfReferentialFactory.deploy(
-          fp('1'),
-          chainlinkFeed.address,
-          cSelfRefToken.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          DELAY_UNTIL_DEFAULT,
-          await selfRefToken.decimals(),
-          compoundMock.address
-        )
-      ).to.be.revertedWith('rewardERC20 missing')
-    })
-
     it('Should not allow missing referenceERC20Decimals', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
@@ -1548,13 +1425,12 @@ describe('Collateral contracts', () => {
       ).to.be.revertedWith('referenceERC20Decimals missing')
     })
 
-    it('Should not allow missing comptrollerAddr', async () => {
+    it('Should not allow missing comptroller', async () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
           cSelfRefToken.address,
-          compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
@@ -1562,7 +1438,7 @@ describe('Collateral contracts', () => {
           18,
           ZERO_ADDRESS
         )
-      ).to.be.revertedWith('comptrollerAddr missing')
+      ).to.be.revertedWith('comptroller missing')
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1592,12 +1468,9 @@ describe('Collateral contracts', () => {
       )
 
       expect(await cTokenSelfReferentialCollateral.strictPrice()).to.equal(fp('0.02'))
-      const calldata = compoundMock.interface.encodeFunctionData('claimComp', [owner.address])
-      expect(await cTokenSelfReferentialCollateral.connect(owner).getClaimCalldata()).to.eql([
-        compoundMock.address,
-        calldata,
-      ])
-      expect(await cTokenSelfReferentialCollateral.rewardERC20()).to.equal(compToken.address)
+      await expect(cTokenSelfReferentialCollateral.claimRewards())
+        .to.emit(cTokenSelfReferentialCollateral, 'RewardsClaimed')
+        .withArgs(compToken.address, 0)
     })
 
     it('Should calculate prices correctly', async function () {
@@ -1643,7 +1516,6 @@ describe('Collateral contracts', () => {
         fp('1'),
         invalidChainlinkFeed.address,
         cSelfRefToken.address,
-        compToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
@@ -1693,7 +1565,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1713,7 +1584,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1730,7 +1600,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           targetUnitOracle.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1747,7 +1616,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           ZERO_ADDRESS,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1764,7 +1632,6 @@ describe('Collateral contracts', () => {
           ZERO_ADDRESS,
           targetUnitOracle.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1803,8 +1670,10 @@ describe('Collateral contracts', () => {
       expect(await eurFiatCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await eurFiatCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await eurFiatCollateral.strictPrice()).to.equal(fp('1'))
-      expect(await eurFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-      expect(await eurFiatCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
+      await expect(eurFiatCollateral.claimRewards()).to.not.emit(
+        eurFiatCollateral,
+        'RewardsClaimed'
+      )
     })
 
     it('Should calculate prices correctly', async function () {
@@ -1848,7 +1717,6 @@ describe('Collateral contracts', () => {
           invalidChainlinkFeed.address,
           targetUnitOracle.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
@@ -1874,7 +1742,6 @@ describe('Collateral contracts', () => {
           referenceUnitOracle.address,
           invalidChainlinkFeed.address,
           eurFiatToken.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('EUR'),
