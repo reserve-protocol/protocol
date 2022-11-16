@@ -244,7 +244,6 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             if (price_ == 0) continue;
             uint192 qty = quantity(basket.erc20s[i]);
 
-
             if (!allowFallback) {
                 p = p.plus(price_.mul(qty));
             } else {
@@ -257,7 +256,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
                     if (rawDelta / price_ != qty) return (true, FIX_MAX);
 
                     // add in FIX_HALF for rounding
-                    uint256 shiftDelta = rawDelta + (FIX_ONE/2);
+                    uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
                     if (shiftDelta < rawDelta) return (true, FIX_MAX);
 
                     // delta = _div(rawDelta, FIX_ONE, ROUND)
