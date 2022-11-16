@@ -333,7 +333,6 @@ describe('The Differential Testing scenario', () => {
       const numTokens = await (await p0.numTokens()).toNumber()
       for (let i = 0; i < numTokens + 3; i++) {
         const tokenAddr = await p0.someToken(i)
-        const sym = await (await ConAt('IERC20Metadata', tokenAddr)).symbol()
         if (await comp0.assetRegistry.isRegistered(tokenAddr)) {
           const asset = await ConAt('IAsset', await comp0.assetRegistry.toAsset(tokenAddr))
           const priceVal = await asset.price(true)
@@ -363,7 +362,6 @@ describe('The Differential Testing scenario', () => {
       const numTokens = await (await p0.numTokens()).toNumber()
       for (let i = 0; i < numTokens + 2; i++) {
         const t0Addr = await p0.someToken(i)
-        const t0 = await ConAt('IERC20Metadata', t0Addr)
         const t1Addr = await p1.someToken(i)
         const asset0 = await ConAt('IAsset', await comp0.assetRegistry.toAsset(t0Addr))
         const asset1 = await ConAt('IAsset', await comp1.assetRegistry.toAsset(t1Addr))

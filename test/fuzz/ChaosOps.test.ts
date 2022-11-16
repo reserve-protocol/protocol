@@ -589,7 +589,7 @@ describe('The Chaos Operations scenario', () => {
       }
 
       const bal2 = await r0.balanceOf(comp.backingManager.address)
-      scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
+      await scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
       const bal3 = await r0.balanceOf(comp.backingManager.address)
       expect(bal3.sub(bal2)).to.equal(2n * exa)
     })
