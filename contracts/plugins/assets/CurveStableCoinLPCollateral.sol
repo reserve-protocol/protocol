@@ -93,13 +93,11 @@ contract CurveStableCoinLPCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
-            uint192 stableCoinValueSum = 0;
             for (uint256 i = 0; i < stableCoinChainLinkFeeds.length; i++) {
                 try stableCoinChainLinkFeeds[i].price_(oracleTimeout) returns (uint192 p) {
                     // Check for soft default of underlying reference token
                     // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                     uint192 peg = targetPerRef() / FIX_ONE;
-                    stableCoinValueSum = stableCoinValueSum + peg;
 
                     // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
                     uint192 delta = (peg * stableCoinThresholds[i]) / FIX_ONE; // D18{UoA/ref}
@@ -114,7 +112,6 @@ contract CurveStableCoinLPCollateral is Collateral {
                     markStatus(CollateralStatus.IFFY);
                 }
             }
-            checkAverageValueDeviation(stableCoinValueSum);
         }
 
         prevReferencePrice = referencePrice;
@@ -122,18 +119,6 @@ contract CurveStableCoinLPCollateral is Collateral {
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-
-        // No interactions beyond the initial refresher
-    }
-
-    function checkAverageValueDeviation(uint192 stableCoinValueSum) internal {
-        uint192 avgStableCoinsPrice = stableCoinValueSum.divu(stableCoinChainLinkFeeds.length);
-        uint192 stableCoinAvgDelta = (avgStableCoinsPrice * defaultThreshold) / FIX_ONE;
-        if (
-            avgStableCoinsPrice < avgStableCoinsPrice - stableCoinAvgDelta ||
-            avgStableCoinsPrice > avgStableCoinsPrice + stableCoinAvgDelta
-        ) markStatus(CollateralStatus.IFFY);
-        else markStatus(CollateralStatus.SOUND);
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
