@@ -58,7 +58,7 @@ su echidna
 ## Install system packages
 
 ``` bash
-sudo apt-cache update
+sudo apt-get update
 sudo apt-get install emacs-nox python3-pip unzip moreutils # moreutils gives us ts
 
 # Local packages will be installed to ~/.local/bin; we want them on PATH.
@@ -72,14 +72,19 @@ pip3 install solc-select slither_analyzer echidna_parade
 solc-select install all 
 
 # Install the things hardhat is going to need
-# This will grab a huge mass of X libs that we really don't need. Oh well!
-sudo apt install npm
+### The following would grab a huge mass of X libs that we really don't need.
+# sudo apt install npm
+# sudo npm install -g n
+# sudo n lts
+# Instead I prefer:
+cd
+curl -L https://raw.githubusercontent.com/tj/n/master/bin/n -o n
+sudo bash n lts
 sudo npm install -g n
-sudo n lts
 
-# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.2; see https://github.com/crytic/echidna/releases/latest
-wget "https://github.com/crytic/echidna/releases/download/v2.0.2/echidna-test-2.0.2-Ubuntu-18.04.tar.gz"
-tar -xf echidna-test-2.0.2-Ubuntu-18.04.tar.gz
+# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.3; see https://github.com/crytic/echidna/releases/latest
+wget "https://github.com/crytic/echidna/releases/download/v2.0.3/echidna-test-2.0.3-Ubuntu-18.04.tar.gz"
+tar -xf echidna-test-2.0.3-Ubuntu-18.04.tar.gz
 mv echidna-test /home/echidna/.local/bin
 ```
 
@@ -99,7 +104,7 @@ TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
 
 # Test run echidna briefly, see that it actually works
 echidna-test . --config tools/quick-echidna-minutes.yml \
-  --contract NormalOpsScenario --test-limit 300
+  --contract NormalOpsScenario --test-limit 3
 ```
 
 # Launch Fuzzing!
@@ -128,16 +133,15 @@ The settings in this command are as follows:
 Largely following the instructions above, but for an N2 memory and performance testing setup...
 
 ```bash
-
-# Create N2 system named "test-0", with 512 GB memory and 4 vCPUs
+# Create N2 system named "difftest", with 512 GB memory and 4 vCPUs
 # custom-extensions is needed to use >8GB memory per vCPU
-gcloud compute instances create test-0 \
+gcloud compute instances create difftest \
   --custom-extensions   --custom-vm-type=n2 \
-  --custom-cpu=4 --custom-memory=512 \
+  --custom-cpu=2 --custom-memory=256 \
   --image-family=ubuntu-2204-lts --image-project=ubuntu-os-cloud
 
 gcloud compute config-ssh
-ssh test-0.us-central1-a.rtoken-fuzz
+ssh difftest.us-central1-a.rtoken-fuzz
 
 # Drop in my personal setup (for tmux and emacs QoL improvements)
 git clone https://github.com/fiddlemath/dotfiles.git
@@ -145,27 +149,26 @@ cd dotfiles && . install.sh && cd ..
 
 # not bothering with a separate echidna user. I already have a non-root user, and I don't expect to share this setup with anyone, so the extra login step is just a nuisance.
 
-sudo apt update
-sudo apt install emacs-nox python3-pip unzip moreutils
+sudo apt-get update
+sudo apt-get install emacs-nox python3-pip unzip moreutils
 
 # Local packages will be installed to ~/.local/bin; we want them on PATH.
 export PATH="$PATH:$HOME/.local/bin" && hash -r
 echo 'export PATH="$PATH:$HOME/.local/bin"' >> .bashrc
 
 # install python packages
-pip3 install solc-select slither_analyzer echidna_parade
-
+pip3 install solc-select slither_analyzer echidna_parade 
 # Maybe overkill, but it won't take too long
 solc-select install all 
 
 # Also, I'm going to ignore the previous node-js installation instructions, as they lead to (a) installing X11 and (b) getting outdated versions of everything. Instead, per the instructions here (https://github.com/nodejs/snap), I will try the nodejs snap.
 sudo snap install node --classic --channel=16
 
-# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.2; see https://github.com/crytic/echidna/releases/latest
-wget "https://github.com/crytic/echidna/releases/download/v2.0.2/echidna-test-2.0.2-Ubuntu-18.04.tar.gz"
-tar -xf echidna-test-2.0.2-Ubuntu-18.04.tar.gz
+# Fetch and install echidna. The URL and filename given here assume most recent release is v2.0.3; see https://github.com/crytic/echidna/releases/latest
+wget "https://github.com/crytic/echidna/releases/download/v2.0.3/echidna-test-2.0.3-Ubuntu-18.04.tar.gz"
+tar -xf echidna-test-2.0.3-Ubuntu-18.04.tar.gz
 mv echidna-test ~/.local/bin
-rm echidna-test-2.0.2-Ubuntu-18.04.tar.gz
+rm echidna-test-2.0.3-Ubuntu-18.04.tar.gz
 
 # Install echidna parade (from source, with live files)
 git clone https://github.com/crytic/echidna-parade.git
@@ -184,6 +187,7 @@ git switch fuzz
 npm install --force 
 
 # Compile our code
+rm -rf contracts/facade/ #currently not compiling properly in fuzz. :Po
 TS_NODE_TRANSPILE_ONLY=1 npx hardhat compile
 
 ```
@@ -200,7 +204,7 @@ Write launch-parade.sh:
 nice echidna-parade protocol --name parade \
     --contract NormalOpsScenario \
     --config protocol/tools/echidna.config.yml \ 
-    --ncores 4 \
+    --ncores 2 \
     --timeout -1 \
     --gen_time 1800 --initial_time 3600 \
     --minseqLen 10 --maxseqLen 100 \
