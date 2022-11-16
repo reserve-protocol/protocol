@@ -4,6 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
+import "hardhat/console.sol";
+
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
 import "contracts/libraries/Fixed.sol";
@@ -526,6 +528,8 @@ contract DiffTestScenario {
         }
     }
 
+    // TODO: trigger AssetMock.setStalePrice or AssetMock.setPriceOutsideRange
+
     function updatePrice(
         uint256 seedID,
         uint192 a,
@@ -1030,6 +1034,9 @@ contract DiffTestScenario {
     }
 
     // ================ Equivalence Properties ================
+    // Absolute tolerance for differences due to rounding after sequences of <= 100 runs
+    uint192 private constant EPSILON = 10_000;
+
     function echidna_assetRegistryInvariants() external view returns (bool) {
         return HasInv(address(p[1].assetRegistry())).invariantsHold();
     }
@@ -1080,13 +1087,15 @@ contract DiffTestScenario {
 
         for (uint256 t = 0; t < p[0].numTokens() + 3; t++) {
             // total supplies are equal
-            if (p[0].someToken(t).totalSupply() != p[1].someToken(t).totalSupply()) return false;
+            if (!isClose(p[0].someToken(t).totalSupply(), p[1].someToken(t).totalSupply())) {
+                return false;
+            }
 
             // balances are equal
             for (uint256 u = 0; u < p[0].numUsers(); u++) {
                 uint256 bal0 = p[0].someToken(t).balanceOf(p[0].users(u));
                 uint256 bal1 = p[1].someToken(t).balanceOf(p[1].users(u));
-                if (bal0 != bal1) return false;
+                if (!isClose(bal0, bal1)) return false;
             }
         }
         return true;
@@ -1137,7 +1146,7 @@ contract DiffTestScenario {
     }
 
     // AssetRegistry: isRegsietered(token), <isAsset(token)>, <isCollateral(token)>
-    function assetsEqualPrices(IAsset a, IAsset b) internal returns (bool) {
+    function assetsEqualPrices(IAsset a, IAsset b) public returns (bool) {
         p[0].poke();
         p[1].poke();
 
@@ -1159,16 +1168,14 @@ contract DiffTestScenario {
         } catch {
             bFail = true;
         }
-        if (aFail != bFail) return false;
-        if (aPrice != bPrice) return false;
+        if (aFail != bFail) require(false, "aFail != bFail");
+        if (!aPrice.near(bPrice, EPSILON)) require(false, "aPrice not near bPrice");
 
         // equivalent price(true)
 
         (bool aFail2, uint192 aPrice2) = a.price(true);
         (bool bFail2, uint192 bPrice2) = b.price(true);
-        if(!aFail) require(aPrice == aPrice2, "aPrice != aPrice2");
         require(aFail == aFail2, "aFail != aFail2");
-        if(!bFail) require(bPrice == bPrice2, "bPrice != bPrice2");
         require(bFail == bFail2, "bFail != bFail2");
 
         return true;
@@ -1200,8 +1207,8 @@ contract DiffTestScenario {
             ICollateral coll1 = ICollateral(address(asset1));
             if (coll0.targetName() != coll1.targetName()) return false;
             if (coll0.status() != coll1.status()) return false;
-            if (coll0.refPerTok() != coll1.refPerTok()) return false;
-            if (coll0.targetPerRef() != coll1.targetPerRef()) return false;
+            if (!coll0.refPerTok().near(coll1.refPerTok(), EPSILON)) return false;
+            if (!coll0.targetPerRef().near(coll1.targetPerRef(), EPSILON)) return false;
         }
         return true;
     }
@@ -1230,7 +1237,7 @@ contract DiffTestScenario {
         (bool aFail, uint192 aPrice) = a.price(true);
         (bool bFail, uint192 bPrice) = b.price(true);
         if (aFail != bFail) return false;
-        if (aPrice != bPrice) return false;
+        if (!aPrice.near(bPrice, EPSILON)) return false;
 
         try a.price(false) returns (bool, uint192 price) {
             (aFail, aPrice) = (false, price);
@@ -1243,7 +1250,7 @@ contract DiffTestScenario {
             bFail = true;
         }
         if (aFail != bFail) return false;
-        if (aPrice != bPrice) return false;
+        if (!aPrice.near(bPrice, EPSILON)) return false;
         return true;
     }
 
@@ -1257,7 +1264,9 @@ contract DiffTestScenario {
         // quantity(token)
         uint256 numTokens = p[0].numTokens() + 3;
         for (uint256 t = 0; t < numTokens; t++) {
-            if (a.quantity(p[0].someToken(t)) != b.quantity(p[1].someToken(t))) return false;
+            if (!a.quantity(p[0].someToken(t)).near(b.quantity(p[1].someToken(t)), EPSILON)) {
+                return false;
+            }
         }
         return true;
     }
@@ -1292,7 +1301,9 @@ contract DiffTestScenario {
             (, uint256[] memory bQtys) = b.quote(1e24, mode);
             if (aQtys.length != bQtys.length) return false;
             for (uint256 i = 0; i < aQtys.length; i++) {
-                if (aQtys[i] != bQtys[i]) return false;
+                if (!isClose(aQtys[i], bQtys[i])) {
+                    return false;
+                }
             }
         }
         return true;
@@ -1311,5 +1322,10 @@ contract DiffTestScenario {
         p[1].poke();
 
         return p[0].broker().disabled() == p[1].broker().disabled();
+    }
+
+    function isClose(uint256 a, uint256 b) internal pure returns (bool) {
+        uint256 diff = a <= b ? b - a : a - b;
+        return diff < uint256(EPSILON);
     }
 }

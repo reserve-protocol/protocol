@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp } from '../../common/numbers'
+import { fp, near } from '../../common/numbers'
 
 import * as sc from '../../typechain' // All smart contract types
 
@@ -346,6 +346,55 @@ describe('The Differential Testing scenario', () => {
       }
 
       expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
+
+    it('regression test: updatePrice failure', async () => {
+      await scenario.updatePrice(
+        0,
+        0,
+        359231878025571n,
+        337680369927843182947551945778576176638523057871n,
+        13903n
+      )
+
+      await p0.poke()
+      await p1.poke()
+
+      const numTokens = await (await p0.numTokens()).toNumber()
+      for (let i = 0; i < numTokens + 2; i++) {
+        const t0Addr = await p0.someToken(i)
+        const t0 = await ConAt('IERC20Metadata', t0Addr)
+        const t1Addr = await p1.someToken(i)
+        const asset0 = await ConAt('IAsset', await comp0.assetRegistry.toAsset(t0Addr))
+        const asset1 = await ConAt('IAsset', await comp1.assetRegistry.toAsset(t1Addr))
+
+        expect(await asset0.strictPrice()).to.equal(await asset1.strictPrice())
+        const price0 = await asset0.price(true)
+        const price1 = await asset1.price(true)
+        expect(price0.isFallback).to.equal(price1.isFallback)
+        expect(near(price0[1], price1[1], 1e4)).to.be.true
+
+        const price0f = await asset0.price(false)
+        const price1f = await asset1.price(false)
+        expect(price0f.isFallback).to.equal(price1f.isFallback)
+        expect(near(price0f[1], price1f[1], 1e4)).to.be.true
+
+        expect(price0f.isFallback).to.be.false
+        expect(price0[1]).to.equal(price0f[1])
+
+        expect(price1f.isFallback).to.be.false
+        expect(price1[1]).to.equal(price1f[1])
+
+        await expect(scenario.assetsEqualPrices(asset0.address, asset1.address)).not.to.be.reverted
+      }
+
+      const ret1t = await comp1.basketHandler.price(true)
+      const ret1f = await comp1.basketHandler.price(false)
+
+      // not fallback prices:
+      expect(ret1t[0]).to.be.false
+      expect(ret1f[0]).to.be.false
+      expect(ret1t[1]).to.equal(ret1f[1])
     })
   })
 })
