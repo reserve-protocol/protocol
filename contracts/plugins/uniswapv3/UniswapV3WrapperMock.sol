@@ -23,6 +23,18 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
         return (values.feesAmount0, values.feesAmount1);
     }
 
+    function updateUser(address user) public {
+        _updateUser(user);
+    }
+
+    function unclaimedRewards0(address user) public view returns (uint256) {
+        return _unclaimedRewards0[user];
+    }
+
+    function unclaimedRewards1(address user) public view returns (uint256) {
+        return _unclaimedRewards1[user];
+    }
+
     function setFees(uint256 feesAmount0, uint256 feesAmount1) public  {
         values.feesAmount0 = feesAmount0;
         values.feesAmount1 = feesAmount1;

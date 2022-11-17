@@ -292,19 +292,19 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             // addr1 sum(column), sum(column)
 
             async function unclaimed0(signer: SignerWithAddress): Promise<BigNumber> {
-                return await uniswapV3Wrapper.unclaimedRewards0(signer.address)
+                return await uniswapV3WrapperMock.unclaimedRewards0(signer.address)
             }
             async function unclaimed1(signer: SignerWithAddress): Promise<BigNumber> {
-                return await uniswapV3Wrapper.unclaimedRewards1(signer.address)
+                return await uniswapV3WrapperMock.unclaimedRewards1(signer.address)
             }
             async function setFees(fees0: number, fees1: number) {
-                await uniswapV3Wrapper.setFees(await adjustedAmount(asset0, fees0), await adjustedAmount(asset1, fees1))
+                await uniswapV3WrapperMock.setFees(await adjustedAmount(asset0, fees0), await adjustedAmount(asset1, fees1))
             }
             async function burn(signer: SignerWithAddress, amount: BigNumber) {
-                await waitForTx(await uniswapV3Wrapper.connect(signer).decreaseLiquidity(amount))
+                await waitForTx(await uniswapV3WrapperMock.connect(signer).decreaseLiquidity(amount))
             }
             async function transfer(signer: SignerWithAddress, to: SignerWithAddress, amount: BigNumber) {
-                await waitForTx(await uniswapV3Wrapper.connect(signer).transfer(to.address, amount))
+                await waitForTx(await uniswapV3WrapperMock.connect(signer).transfer(to.address, amount))
             }
 
             const asset0 = dai
@@ -396,7 +396,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             //1. addr1 creates position and mints 200U3W     // Accumulated Fees are 0 0 on position at the moment
             //const uniswapV3Wrapper = await deployMockContract(owner, UniswapV3Wrapper__factory.abi);
             const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
-            const uniswapV3Wrapper: UniswapV3WrapperMock = <UniswapV3WrapperMock>(
+            const uniswapV3WrapperMock: UniswapV3WrapperMock = <UniswapV3WrapperMock>(
                 await uniswapV3WrapperContractFactory.connect(owner).deploy('UniswapV3WrapperToken', 'U3W')
             )
 
@@ -413,11 +413,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 recipient: ZERO_ADDRESS,
                 deadline: 0,
             }
-            await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired))
-            await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired))
-            await waitForTx(await uniswapV3Wrapper.connect(addr1).mint(mintParams))
+            await waitForTx(await asset0.connect(addr1).approve(uniswapV3WrapperMock.address, mintParams.amount0Desired))
+            await waitForTx(await asset1.connect(addr1).approve(uniswapV3WrapperMock.address, mintParams.amount1Desired))
+            await waitForTx(await uniswapV3WrapperMock.connect(addr1).mint(mintParams))
 
-            const positions = await uniswapV3Wrapper.positions()
+            const positions = await uniswapV3WrapperMock.positions()
             const minted200 = positions.liquidity
 
             // 0. addr1 creates position and mints 200 U3W      // Accumulated Fees are  0  0 on position at the moment
@@ -426,37 +426,39 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await logBalances(
                 '0. A creates position and mints 200 U3W',
                 [addr1, addr2],
-                [uniswapV3Wrapper, asset0, asset1]
+                [uniswapV3WrapperMock, asset0, asset1]
             )
 
             // 1. then burns 20 U3W and obtains liquidity back  // Accumulated Fees are 10 20 on position at the moment
             await setFees(10, 20)
-            // await uniswapV3Wrapper.setFees(
-            //   await adjustedAmout(asset0, 10),
-            //   await adjustedAmout(asset1, 20)
-            // )
             await burn(addr1, minted200.div(10))
-            // await waitForTx(await uniswapV3Wrapper.connect(addr1).decreaseLiquidity(minted200.div(10)))
-            //   [(200 / 200) * 10, (200 / 200) * 20, 0, 0],
-            expect(await unclaimed0(addr1)).to.be.equal(await adjustedAmount(asset0, 10))
-            expect(await unclaimed1(addr1)).to.be.equal(await adjustedAmount(asset1, 20))
+            expect(await unclaimed0(addr1)).to.be.closeTo(
+                p0(10),
+                pow10(decimals0 - 2))
+            expect(await unclaimed1(addr1)).to.be.closeTo(
+                await adjustedAmount(asset1, 20),
+                pow10(decimals1 - 2))
             expect(await unclaimed0(addr2)).to.be.equal(0)
             expect(await unclaimed1(addr2)).to.be.equal(0)
 
             await logBalances(
                 '1. B burns 20 U3W and obtains DAI and USDC back',
                 [addr1, addr2],
-                [uniswapV3Wrapper, asset0, asset1]
+                [uniswapV3WrapperMock, asset0, asset1]
             )
 
             // 2. A transfers 100 U3W to B, up till now A had 100% of liquidity
             await setFees(20, 30)
             await transfer(addr1, addr2, minted200.div(2)) //now addr2 has 100/180 of liquidity
-            await logBalances('2. A transfers 100 U3W to B', [addr1, addr2], [uniswapV3Wrapper, asset0, asset1])
+            await logBalances('2. A transfers 100 U3W to B', [addr1, addr2], [uniswapV3WrapperMock, asset0, asset1])
 
             // When a single address holds all the wrapper balance, this address gets all the fees
-            expect(await unclaimed0(addr1)).to.be.equal(await adjustedAmount(asset0, 20))
-            expect(await unclaimed1(addr1)).to.be.equal(await adjustedAmount(asset1, 30))
+            expect(await unclaimed0(addr1)).to.be.closeTo(
+                p0(20),
+                pow10(decimals0 - 2))
+            expect(await unclaimed1(addr1)).to.be.closeTo(
+                p1(30),
+                pow10(decimals1 - 2))
             expect(await unclaimed0(addr2)).to.be.equal(0)
             expect(await unclaimed1(addr2)).to.be.equal(0)
 
@@ -464,9 +466,16 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await setFees(30, 40)
             await burn(addr2, minted200.div(10)) //now B has 50% of liquidity
 
+
             // addr1 did not participate in the last balance-changing operation, same as before
-            expect(await unclaimed0(addr1)).to.be.equal(await adjustedAmount(asset0, 20))
-            expect(await unclaimed1(addr1)).to.be.equal(await adjustedAmount(asset1, 30))
+            expect(await unclaimed0(addr1)).to.be.closeTo(
+                p0(20),
+                pow10(decimals0 - 5))
+            expect(await unclaimed1(addr1)).to.be.closeTo(
+                p1(30),
+                pow10(decimals1 - 5))
+
+            await waitForTx(await uniswapV3WrapperMock.connect(addr2).updateUser(addr2.address))
             expect(await unclaimed0(addr2)).to.be.closeTo(
                 BigNumber.from(10).pow(18).mul(100).div(180).mul(10),
                 BigNumber.from(10).pow(6)
@@ -477,44 +486,48 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             ) // addr2 holds 100 / 180 of U3W.totalSupply() during the period when fees grow by 10
 
             // 4. addr 2 tranfer 20U3W to addr1
-            await uniswapV3Wrapper.setFees(await adjustedAmount(asset0, 40), await adjustedAmount(asset1, 50))
-            await waitForTx(await uniswapV3Wrapper.connect(addr2).transfer(addr1.address, minted200.div(10)))
+            await uniswapV3WrapperMock.setFees(await adjustedAmount(asset0, 40), await adjustedAmount(asset1, 50))
+            await waitForTx(await uniswapV3WrapperMock.connect(addr2).transfer(addr1.address, minted200.div(10)))
 
             {
                 const [value1, value2, value3, value4] = await accumulatedFees(4)
-                expect(await uniswapV3Wrapper.unclaimedRewards0(addr1.address)).to.equal(value1)
-                expect(await uniswapV3Wrapper.unclaimedRewards1(addr1.address)).to.equal(value2)
-                expect(await uniswapV3Wrapper.unclaimedRewards0(addr2.address)).to.equal(value3)
-                expect(await uniswapV3Wrapper.unclaimedRewards1(addr2.address)).to.equal(value4)
+                expect(await uniswapV3WrapperMock.unclaimedRewards0(addr1.address)).to.closeTo(
+                    value1, p0(decimals0-5))
+                expect(await uniswapV3WrapperMock.unclaimedRewards1(addr1.address)).to.closeTo(
+                    value2, p0(decimals0-5))
+                expect(await uniswapV3WrapperMock.unclaimedRewards0(addr2.address)).to.closeTo(
+                    value3, p1(decimals1-5))
+                expect(await uniswapV3WrapperMock.unclaimedRewards1(addr2.address)).to.closeTo(
+                    value4, p1(decimals1-5))
             }
             // 5. they collect fees                           // Accumulated Fees are 50 60 on position at the moment
-            await uniswapV3Wrapper.setFees(await adjustedAmount(asset0, 50), await adjustedAmount(asset1, 60))
+            await uniswapV3WrapperMock.setFees(await adjustedAmount(asset0, 50), await adjustedAmount(asset1, 60))
 
             //todo map holder signer asset
             await whileImpersonating(holderDAI, async (daiSigner) => {
                 await asset0
                     .connect(daiSigner)
-                    .transfer(uniswapV3Wrapper.address, await adjustedAmount(asset0, initialBal))
+                    .transfer(uniswapV3WrapperMock.address, await adjustedAmount(asset0, initialBal))
             })
             await whileImpersonating(holderUSDC, async (usdcSigner) => {
                 await asset1
                     .connect(usdcSigner)
-                    .transfer(uniswapV3Wrapper.address, await adjustedAmount(asset1, initialBal))
+                    .transfer(uniswapV3WrapperMock.address, await adjustedAmount(asset1, initialBal))
             })
 
-            await logBalances('Balances before claim:', [addr1, addr2], [asset0, asset1, uniswapV3Wrapper])
+            await logBalances('Balances before claim:', [addr1, addr2], [asset0, asset1, uniswapV3WrapperMock])
 
-            await waitForTx(await uniswapV3Wrapper.connect(addr1).claimRewards(addr1.address))
-            await waitForTx(await uniswapV3Wrapper.connect(addr2).claimRewards(addr2.address))
+            await waitForTx(await uniswapV3WrapperMock.connect(addr1).claimRewards(addr1.address))
+            await waitForTx(await uniswapV3WrapperMock.connect(addr2).claimRewards(addr2.address))
 
             {
                 const [value1, value2, value3, value4] = await accumulatedFees(0)
-                expect(await uniswapV3Wrapper.unclaimedRewards0(addr1.address)).to.equal(value1)
-                expect(await uniswapV3Wrapper.unclaimedRewards1(addr1.address)).to.equal(value2)
-                expect(await uniswapV3Wrapper.unclaimedRewards0(addr2.address)).to.equal(value3)
-                expect(await uniswapV3Wrapper.unclaimedRewards1(addr2.address)).to.equal(value4)
+                expect(await uniswapV3WrapperMock.unclaimedRewards0(addr1.address)).to.equal(value1)
+                expect(await uniswapV3WrapperMock.unclaimedRewards1(addr1.address)).to.equal(value2)
+                expect(await uniswapV3WrapperMock.unclaimedRewards0(addr2.address)).to.equal(value3)
+                expect(await uniswapV3WrapperMock.unclaimedRewards1(addr2.address)).to.equal(value4)
             }
-            await logBalances('Balances after claim:', [addr1, addr2], [asset0, asset1, uniswapV3Wrapper])
+            await logBalances('Balances after claim:', [addr1, addr2], [asset0, asset1, uniswapV3WrapperMock])
         })
     })
 })

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
+import {IUniswapV3Wrapper} from "./IUniswapV3Wrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
@@ -46,10 +46,10 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     uint256 internal _accRewardsPerToken0;
     uint256 internal _accRewardsPerToken1;
 
-    mapping(address => uint256) private _userSnapshotRewardsPerToken0;
-    mapping(address => uint256) private _userSnapshotRewardsPerToken1;
-    mapping(address => uint256) public unclaimedRewards0; //what is owed to the user for the previous period before the last time their U3W balance changed
-    mapping(address => uint256) public unclaimedRewards1; //TODO consider different naming
+    mapping(address => uint256) internal _userSnapshotRewardsPerToken0;
+    mapping(address => uint256) internal _userSnapshotRewardsPerToken1;
+    mapping(address => uint256) internal _unclaimedRewards0; //what is owed to the user for the previous period before the last time their U3W balance changed
+    mapping(address => uint256) internal _unclaimedRewards1; //TODO consider different naming
 
     //TODO count per-user total claimed rewards or cleanup ownedRewards on withdraw
 
@@ -66,7 +66,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(!isInitialized, "Contract is already initialized here!");
         isInitialized = true;
-        _updateRewards();
+        //_updateRewards();
 
         params.recipient = address(this);
         params.deadline = block.timestamp;
@@ -108,7 +108,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        _updateRewards();
+        //_updateRewards();
 
         TransferHelper.safeTransferFrom(deposit.token0, msg.sender, address(this), amount0Desired);
         TransferHelper.safeTransferFrom(deposit.token1, msg.sender, address(this), amount1Desired);
@@ -129,7 +129,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     function decreaseLiquidity(uint128 liquidity) external nonReentrant returns (uint256 amount0, uint256 amount1) {
         require(isInitialized, "Contract is not initialized!");
-        _updateRewards();
+        //_updateRewards();
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = deposit.tokenId;
@@ -163,13 +163,13 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         require(isInitialized, "Contract is not initialized!");
         //TODO @etsvigun seewards0` and `_owedRewards1`
         //TODO @etsvigun only claim fromnd tokens based on `_owedR Uniswap when balances are lower than `_owedRewards0` and `_owedRewards1`
+        _updateUser(msg.sender);
         _claimFees();
-        TransferHelper.safeTransfer(deposit.token0, recipient, unclaimedRewards0[msg.sender]);
-        TransferHelper.safeTransfer(deposit.token1, recipient, unclaimedRewards1[msg.sender]);
-        unclaimedRewards0[msg.sender] = 0;
-        unclaimedRewards1[msg.sender] = 0;
-        _updateUserSnapshotRewardsPerToken(msg.sender);
-        return (deposit.token0, deposit.token1, unclaimedRewards0[msg.sender], unclaimedRewards1[msg.sender]);
+        TransferHelper.safeTransfer(deposit.token0, recipient, _unclaimedRewards0[msg.sender]);
+        TransferHelper.safeTransfer(deposit.token1, recipient, _unclaimedRewards1[msg.sender]);
+        _unclaimedRewards0[msg.sender] = 0;
+        _unclaimedRewards1[msg.sender] = 0;
+        return (deposit.token0, deposit.token1, _unclaimedRewards0[msg.sender], _unclaimedRewards1[msg.sender]);
     }
 
     function positions()
@@ -262,12 +262,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         address to,
         uint256
     ) internal override {
+        _updateRewards();
         if (from != address(0)) {
             _updateUser(from);
         }
         if (to != address(0)) {
             _updateUser(to);
         }
+        console.log("_beforeTokenTransfer");
     }
 
     function _updateRewards() internal {
@@ -282,8 +284,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         uint256 rewardsAccrued0 = lifetimeRewards0 - _lifetimeRewards0;
         uint256 rewardsAccrued1 = lifetimeRewards1 - _lifetimeRewards1;
 
-        _accRewardsPerToken0 = _accRewardsPerToken0 + rewardsAccrued0 / supply;
-        _accRewardsPerToken1 = _accRewardsPerToken1 + rewardsAccrued1 / supply;
+        _accRewardsPerToken0 = _accRewardsPerToken0 + (rewardsAccrued0 * 10**21) / supply;
+        _accRewardsPerToken1 = _accRewardsPerToken1 + (rewardsAccrued1 * 10**21) / supply;
         _lifetimeRewards0 = lifetimeRewards0;
         _lifetimeRewards1 = lifetimeRewards1;
     }
@@ -297,37 +299,36 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         console.log("user", user);
         console.log("balance", balance);
         console.log("totalSupply", totalSupply());
-        if (balance > 0) {
-            (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
-            //30 40
-            console.log("pending0", pending0);
-            console.log("pending1", pending1);
-            unclaimedRewards0[user] += pending0;
-            unclaimedRewards1[user] += pending1;
-            _updateUserSnapshotRewardsPerToken(user);
-            //
-            //            //40
-            //            console.log("totalEarned0", totalEarned0);
-            //            console.log("totalEarned1", totalEarned1);
-            //            console.log("accounted0", _userSnapshotRewardsPerToken0[user]);
-            //            console.log("accounted1", _userSnapshotRewardsPerToken1[user]);
-            //            uint256 unaccountedFees0 = totalEarned0 - _userSnapshotRewardsPerToken0[user];
-            //            // 30 - 20 = 10
-            //            uint256 unaccountedFees1 = totalEarned1 - _userSnapshotRewardsPerToken1[user];
-            //            // 40 - 30 = 10
-            //            console.log("unaccountedFees0", unaccountedFees0);
-            //            console.log("unaccountedFees1", unaccountedFees1);
-            //            unclaimedRewards0[user] += (unaccountedFees0 * balance) / totalSupply();
-            //            // 10 * 100 / 180 = 5.55
-            //            unclaimedRewards1[user] += (unaccountedFees1 * balance) / totalSupply();
-            //            // 10 * 100 / 180 = 5.55
-            //            console.log("owedRewards0", unclaimedRewards0[user]);
-            //            console.log("owedRewards1", unclaimedRewards1[user]);
-            //            _userSnapshotRewardsPerToken0[user] = totalEarned0;
-            //            _userSnapshotRewardsPerToken1[user] = totalEarned1;
-            //            console.log("totalRewardsAccounted0", _userSnapshotRewardsPerToken0[user]);
-            //            console.log("totalRewardsAccounted1", _userSnapshotRewardsPerToken1[user]);
-        }
+
+        (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
+        //30 40
+        console.log("pending0", pending0);
+        console.log("pending1", pending1);
+        _unclaimedRewards0[user] += pending0;
+        _unclaimedRewards1[user] += pending1;
+        _updateUserSnapshotRewardsPerToken(user);
+        //
+        //            //40
+        //            console.log("totalEarned0", totalEarned0);
+        //            console.log("totalEarned1", totalEarned1);
+        //            console.log("accounted0", _userSnapshotRewardsPerToken0[user]);
+        //            console.log("accounted1", _userSnapshotRewardsPerToken1[user]);
+        //            uint256 unaccountedFees0 = totalEarned0 - _userSnapshotRewardsPerToken0[user];
+        //            // 30 - 20 = 10
+        //            uint256 unaccountedFees1 = totalEarned1 - _userSnapshotRewardsPerToken1[user];
+        //            // 40 - 30 = 10
+        //            console.log("unaccountedFees0", unaccountedFees0);
+        //            console.log("unaccountedFees1", unaccountedFees1);
+        //            unclaimedRewards0[user] += (unaccountedFees0 * balance) / totalSupply();
+        //            // 10 * 100 / 180 = 5.55
+        //            unclaimedRewards1[user] += (unaccountedFees1 * balance) / totalSupply();
+        //            // 10 * 100 / 180 = 5.55
+        //            console.log("owedRewards0", unclaimedRewards0[user]);
+        //            console.log("owedRewards1", unclaimedRewards1[user]);
+        //            _userSnapshotRewardsPerToken0[user] = totalEarned0;
+        //            _userSnapshotRewardsPerToken1[user] = totalEarned1;
+        //            console.log("totalRewardsAccounted0", _userSnapshotRewardsPerToken0[user]);
+        //            console.log("totalRewardsAccounted1", _userSnapshotRewardsPerToken1[user]);
     }
 
     /**
@@ -342,8 +343,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         view
         returns (uint256 pending0, uint256 pending1)
     {
-        pending0 = balance * (_accRewardsPerToken0 - _userSnapshotRewardsPerToken0[user]);
-        pending1 = balance * (_accRewardsPerToken1 - _userSnapshotRewardsPerToken1[user]);
+        pending0 = (balance * (_accRewardsPerToken0 - _userSnapshotRewardsPerToken0[user])) / 10**21;
+        pending1 = (balance * (_accRewardsPerToken1 - _userSnapshotRewardsPerToken1[user])) / 10**21;
     }
 
     /**
