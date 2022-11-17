@@ -19,8 +19,26 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
 
     constructor(string memory name_, string memory symbol_) UniswapV3Wrapper(name_, symbol_) {}
 
-    function _fees() internal view override returns (uint256 feesAmount0, uint256 feesAmount1) {
-        return (values.feesAmount0, values.feesAmount1);
+    function positions()
+    external
+    view
+    returns (
+        uint96 nonce,
+        address operator,
+        address token0,
+        address token1,
+        uint24 fee,
+        int24 tickLower,
+        int24 tickUpper,
+        uint128 liquidity,
+        uint256 feeGrowthInside0LastX128,
+        uint256 feeGrowthInside1LastX128,
+        uint128 tokensOwed0, //
+        uint128 tokensOwed1
+    )
+    {
+        require(isInitialized, "Contract is not initialized!");
+        return nonfungiblePositionManager.positions(deposit.tokenId);
     }
 
     function updateUser(address user) public {
@@ -40,5 +58,7 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
         values.feesAmount1 = feesAmount1;
     }
 
-
+    function _fees() internal view override returns (uint256 feesAmount0, uint256 feesAmount1) {
+        return (values.feesAmount0, values.feesAmount1);
+    }
 }

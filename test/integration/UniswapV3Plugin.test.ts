@@ -61,8 +61,6 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
         beforeEach(async () => {
             ;[owner, , addr1, addr2] = await ethers.getSigners()
-            addr1 = addr1
-            addr2 = addr2
             await loadFixture(defaultFixture)
             dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI!)
             await whileImpersonating(holderDAI, async (daiSigner) => {
@@ -148,21 +146,22 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             expect(await asset1.balanceOf(addr2.address)).to.be.eq(bn('0'))
 
-            const positions = await uniswapV3Wrapper.positions()
-            const liquidityToTransfer = positions.liquidity.div(4)
+            // const positions = await uniswapV3Wrapper.positions()
+            const liquidity = await uniswapV3Wrapper.totalSupply()
+            const liquidityToTransfer = liquidity.div(4)
 
             await waitForTx(await uniswapV3Wrapper.connect(addr1).transfer(addr2.address, liquidityToTransfer))
             await logBalances('Balances after liquidity transfer:', [addr1, addr2], [asset0, asset1, uniswapV3Wrapper])
 
             const balance1 = await uniswapV3Wrapper.balanceOf(addr1.address)
-            expect(balance1).to.be.eq(positions.liquidity.sub(liquidityToTransfer))
+            expect(balance1).to.be.eq(liquidity.sub(liquidityToTransfer))
 
             expect(await uniswapV3Wrapper.balanceOf(addr2.address)).to.be.eq(liquidityToTransfer)
 
             await waitForTx(await uniswapV3Wrapper.connect(addr1).decreaseLiquidity(liquidityToTransfer))
             await logBalances('add1 decreased liquidity:', [addr1, addr2], [asset0, asset1, uniswapV3Wrapper])
 
-            expect(await uniswapV3Wrapper.balanceOf(addr1.address)).to.be.closeTo(positions.liquidity.div(2), 10 ** 6)
+            expect(await uniswapV3Wrapper.balanceOf(addr1.address)).to.be.closeTo(liquidity.div(2), 10 ** 6)
 
             expect(await asset0.balanceOf(addr1.address)).to.be.closeTo(
                 await adjustedAmount(asset0, 19925),

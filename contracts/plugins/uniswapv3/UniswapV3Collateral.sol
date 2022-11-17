@@ -29,10 +29,7 @@ contract UniswapV3Collateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(
-            address(chainlinkFeedSecondAsset_) != address(0),
-            "missing chainlink feed for second asset in pair"
-        );
+        require(address(chainlinkFeedSecondAsset_) != address(0), "missing chainlink feed for second asset in pair");
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
     }
 
@@ -40,7 +37,7 @@ contract UniswapV3Collateral is Collateral {
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
     function strictPrice() external view override returns (uint192) {
-        (uint256 amount0, uint256 amount1, , ) = IUniswapV3Wrapper(address(erc20)).principal();
+        (uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20)).principal();
         return
             uint192(
                 (chainlinkFeed.price(oracleTimeout) * amount0) +
@@ -50,9 +47,8 @@ contract UniswapV3Collateral is Collateral {
 
     //TODO RefPerTok() always equals 1 but we need to implement check
     function claimRewards() external {
-        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(
-            address(erc20)
-        ).claimRewards(msg.sender);
+        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
+            .claimRewards(msg.sender);
         emit RewardsClaimed(IERC20(token0), amount0);
         emit RewardsClaimed(IERC20(token1), amount1);
     }
