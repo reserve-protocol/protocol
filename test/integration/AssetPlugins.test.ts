@@ -1735,6 +1735,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(ERC20s[1]).to.equal(rsr.address)
       expect(ERC20s[2]).to.equal(aaveToken.address)
       expect(ERC20s[3]).to.equal(compToken.address)
+      expect(ERC20s[20]).to.equal(curveLpToken.address)
 
       const initialTokens: string[] = await Promise.all(
         basket.map(async (c): Promise<string> => {
@@ -1757,6 +1758,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await assetRegistry.toColl(ERC20s[4])).to.equal(daiCollateral.address)
       expect(await assetRegistry.toColl(ERC20s[5])).to.equal(aDaiCollateral.address)
       expect(await assetRegistry.toColl(ERC20s[6])).to.equal(cDaiCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[20])).to.equal(curveStableCoinLPCollateral.address)
     })
 
     it('Should register simple Basket correctly', async () => {
