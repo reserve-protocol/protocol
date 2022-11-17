@@ -32,13 +32,16 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
-  USDD_3CRV?: string
+  BUSD_3CRV?: string
 }
-
+interface CPools {
+  BUSD_3CRV?: string
+}
 interface INetworkConfig {
   name: string
   tokens: ITokens
   chainlinkFeeds: ITokens & ICurrencies
+  curvePools: CPools
   AAVE_LENDING_POOL?: string
   AAVE_INCENTIVES?: string
   AAVE_EMISSIONS_MGR?: string
@@ -51,6 +54,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
   default: {
     name: 'hardhat',
     tokens: {},
+    curvePools: {},
     chainlinkFeeds: {},
   },
   // Config used for Mainnet forking -- Mirrors mainnet
@@ -99,6 +103,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
+    curvePools: {},
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
     AAVE_EMISSIONS_MGR: '0xEE56e2B3D491590B5b31738cC34d5232F378a8D5',
@@ -112,6 +117,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       USDC: '0x07865c6e87b9f70255377e024ace6630c1eaa37f',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
     },
+    curvePools: {},
     chainlinkFeeds: {},
     COMPTROLLER: '0xcfa7b0e37f5AC60f3ae25226F5e39ec59AD26152',
   },
@@ -142,7 +148,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
-      USDD_3CRV:'0xe6b5CC1B4b47305c58392CE3D359B10282FC36Ea'
+      BUSD_3CRV:'0x3b3ac5386837dc563660fb6a0937dfaa5924333b',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -159,6 +165,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
+    },
+    curvePools:{
+      BUSD_3CRV:'0x79a8c46dea5ada233abaffd40f3a0a2b1e5a4f27',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
@@ -210,6 +219,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0x68aA66BCde901c741C5EF07314875434E51E5D30',
       EUR: '0x12336777de46b9a6Edd7176E532810149C787bcD',
     },
+    curvePools: {},
     AAVE_LENDING_POOL: '0x3e9E33B84C1cD9037be16AA45A0B296ae5F185AD', // mock
     GNOSIS_EASY_AUCTION: '0x1fbab40c338e2e7243da945820ba680c92ef8281', // canonical
     COMPTROLLER: '0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b', // canonical

@@ -76,7 +76,7 @@ async function rsrFixture(): Promise<RSRFixture> {
 }
 
 interface ConvexCurveFixutre {
-  curveLPTokenMock: CurveStablePoolMock
+  curvePoolMock: CurveStablePoolMock
 }
 interface COMPAAVEFixture {
   weth: ERC20Mock
@@ -92,12 +92,15 @@ async function ConvexCurveFixutre(): Promise<ConvexCurveFixutre> {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
   }
 
-  const curveLPTokenMock: CurveStablePoolMock = <CurveStablePoolMock>(
-    await ethers.getContractAt('CurveStablePoolMock', networkConfig[chainId].tokens.USDD_3CRV || '')
+  const curvePoolMock: CurveStablePoolMock = <CurveStablePoolMock>(
+    await ethers.getContractAt(
+      'CurveStablePoolMock',
+      networkConfig[chainId].curvePools.BUSD_3CRV || ''
+    )
   )
 
   return {
-    curveLPTokenMock,
+    curvePoolMock,
   }
 }
 
@@ -391,7 +394,8 @@ async function collateralFixture(
     tokenAddress: string,
     referenceERC20: IERC20Metadata,
     referenceUnitOracleAddr: string,
-    lpToken: CurveStablePoolMock
+    lpPool: string,
+    stableCoinList: string[]
   ): Promise<[IERC20Metadata, CurveStableCoinLPCollateral]> => {
     const erc20: IERC20Metadata = <IERC20Metadata>(
       await ethers.getContractAt('CTokenMock', tokenAddress)
@@ -399,25 +403,29 @@ async function collateralFixture(
     const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>(
       await ConvexStakingWrapperFactory.deploy()
     )
-    return [
-      erc20,
-      <CurveStableCoinLPCollateral>(
-        await CurveStableCoinLPCollateralFactory.deploy(
-          fp('1'),
-          referenceUnitOracleAddr,
-          erc20.address,
-          erc20.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          delayUntilDefault,
-          defaultThreshold,
-          lpToken.address,
-          (await referenceERC20.decimals()).toString(),
-          convexStakingWrapper.address
-        )
-      ),
-    ]
+    const curveStableCoinLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
+      await CurveStableCoinLPCollateralFactory.deploy(
+        fp('1'),
+        referenceUnitOracleAddr,
+        erc20.address,
+        erc20.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold,
+        lpPool,
+        (await referenceERC20.decimals()).toString(),
+        convexStakingWrapper.address
+      )
+    )
+
+    await curveStableCoinLPCollateral.setChainlinkPriceFeedsForStableCoins(
+      stableCoinList,
+      stableCoinList.map(() => fp('1'))
+    )
+
+    return [erc20, curveStableCoinLPCollateral]
   }
 
   const makeSelfReferentialCollateral = async (
@@ -591,10 +599,16 @@ async function collateralFixture(
   )
 
   const cCstablePool = await makeCurveStableCoinLPCollateral(
-    networkConfig[chainId].tokens.DAI as string,
+    networkConfig[chainId].tokens.BUSD_3CRV as string,
     dai[0],
     networkConfig[chainId].chainlinkFeeds.DAI as string,
-    curveLPTokenMock
+    networkConfig[chainId].curvePools.BUSD_3CRV as string,
+    [
+      networkConfig[chainId].tokens.BUSD as string,
+      networkConfig[chainId].tokens.DAI as string,
+      networkConfig[chainId].tokens.USDC as string,
+      networkConfig[chainId].tokens.USDT as string,
+    ]
   )
 
   const weth = await makeSelfReferentialCollateral(
@@ -714,7 +728,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
-  const { curveLPTokenMock } = await ConvexCurveFixutre()
+  const { curvePoolMock } = await ConvexCurveFixutre()
   const { gnosis } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
@@ -913,7 +927,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     ).deploy(
       fp('1'),
       networkConfig[chainId].chainlinkFeeds.DAI || '',
-      curveLPTokenMock.address,
+      curvePoolMock.address,
       ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -955,7 +969,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveToken,
     compToken,
     config,
-    curveLPTokenMock
+    curvePoolMock
   )
 
   const rsrTrader = <TestIRevenueTrader>(
@@ -1019,7 +1033,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rsrTrader,
     rTokenTrader,
     oracleLib,
-    curveLPTokenMock,
+    curvePoolMock,
     convexAsset,
   }
 }
