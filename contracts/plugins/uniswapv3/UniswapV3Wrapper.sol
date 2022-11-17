@@ -163,6 +163,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         require(isInitialized, "Contract is not initialized!");
         //TODO @etsvigun seewards0` and `_owedRewards1`
         //TODO @etsvigun only claim fromnd tokens based on `_owedR Uniswap when balances are lower than `_owedRewards0` and `_owedRewards1`
+        _updateRewards();
         _updateUser(msg.sender);
         _claimFees();
         TransferHelper.safeTransfer(deposit.token0, recipient, _unclaimedRewards0[msg.sender]);
