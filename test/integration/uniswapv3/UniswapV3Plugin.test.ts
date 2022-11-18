@@ -301,10 +301,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const fees = [
                 [10, 20],
-                [10, 10],
-                [10, 10],
-                [10, 10],
-                [10, 10],
+                [10, 20],
+                [10, 20],
+                [10, 20],
+                [10, 20],
             ]
 
             const liquidities = [200, 180, 180, 160, 160]
