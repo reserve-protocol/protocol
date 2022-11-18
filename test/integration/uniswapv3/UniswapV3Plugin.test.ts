@@ -377,6 +377,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     result[2] = result[2].add(expectedFeesAtStage[i][2])
                     result[3] = result[3].add(expectedFeesAtStage[i][3])
                 }
+                console.log('accumulatedFees', stage, result)
                 return result
             }
 
@@ -392,8 +393,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 fee: 100, //0.01%
                 tickLower: MIN_TICK,
                 tickUpper: MAX_TICK,
-                amount0Desired: await adjustedAmount(asset0, 100),
-                amount1Desired: await adjustedAmount(asset1, 100),
+                amount0Desired: p0(100),
+                amount1Desired: p1(100),
                 amount0Min: 0,
                 amount1Min: 0,
                 recipient: ZERO_ADDRESS,
@@ -461,7 +462,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             // addr1 did not participate in the last balance-changing operation, same as before
             {
-                const [value1, value2, , ] = await accumulatedFees(2)
+                const [value1, value2, ,] = await accumulatedFees(2)
                 expect(await uniswapV3WrapperMock.unclaimedRewards0(addr1.address)).to.closeTo(
                     value1, d0(1))
                 expect(await uniswapV3WrapperMock.unclaimedRewards1(addr1.address)).to.closeTo(
@@ -524,6 +525,29 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     value4, d1(1))
             }
             await logBalances('Balances after claim:', [addr1, addr2], [asset0, asset1, uniswapV3WrapperMock])
+
+            {
+                const [value1, value2, value3, value4] = await accumulatedFees(5)
+                expect(await asset0.balanceOf(addr1.address)).to.closeTo(
+                    value1
+                    .add(p0(10)) // burned
+                    .add(p0(initialBal)).sub(mintParams.amount0Desired)
+                    , d0(1))
+                expect(await asset1.balanceOf(addr1.address)).to.closeTo(
+                    value2
+                    .add(p1(10)) //burned
+                    .add(p1(initialBal)).sub(mintParams.amount1Desired)
+                    , d1(100))
+                expect(await asset0.balanceOf(addr2.address)).to.closeTo(
+                    value3
+                    .add(p0(10))
+                    , d0(1))
+                expect(await asset1.balanceOf(addr2.address)).to.closeTo(
+                    value4
+                    .add(p1(10))
+                    , d1(100))
+            }
+
         })
     })
 })
