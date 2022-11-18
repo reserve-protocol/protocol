@@ -17,8 +17,6 @@ contract FraxSwapPegCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
-
     int8 public immutable referenceERC20Decimals;
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05

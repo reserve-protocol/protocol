@@ -17,8 +17,6 @@ contract FraxSwapNonFiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}

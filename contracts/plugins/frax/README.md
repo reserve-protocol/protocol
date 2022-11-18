@@ -1,12 +1,11 @@
-**IGNORE THIS FOR NOW - THIS IS A WIP**
 # Fraxlend Collateral Plugins - Documentation
-## 1.0 FraxSwap LP Token Plugins
+## 1.0 FraxSwap LP Token Plugins - 
+**IGNORE THIS FOR NOW - THIS IS A WIP**
 
-LP Token represents share of underlying tokens ($A$ & $B$) in a pool     
-- Let:
+LP Token represents the share of underlying tokens ($A$ & $B$) in a pool     
 
-  $X$ be some unit to test the stability of tokens off of (can be UoA = USD))                                 
-    $
+  $$
+  \text{Let } X \text { be some unit to test the stability of tokens off of (can be UoA = USD))} \\ 
     \frac{ref}{tok} = \frac{\sqrt{xy}}{L}, \text{where } \\
     x \text{ and } y \text{ are the amount of tokens } A \text{ and } B \\
     \text{in the pool respectively, and } L \text{ is the total }\\
@@ -18,7 +17,7 @@ LP Token represents share of underlying tokens ($A$ & $B$) in a pool
     \tau \text{ be the price drift default threshold} \\ 
     \delta_A = P_A \tau \\ 
     \delta_B = P_B \tau
-    $
+    $$
 
 There are different situations 
                       

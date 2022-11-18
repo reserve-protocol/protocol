@@ -9,15 +9,14 @@ import "./IFraxSwapPair.sol";
 
 /**
  * @title FraxSwapPegCollateral
- * @notice Collateral plugin for a FraxPair LP Token representing a share of 
- * a pool containing a pair of coins pegged to UOA (USD), 
+ * @notice Collateral plugin for a FraxPair LP Tokens representing a share of 
+ * a pool containing a pair of coins pegged to UOA (USD). This is like
+ * FraxSwapPegCollateral, but more generalized so the tokens can also be non-fiat
  * Expected: {tok} != {ref}, {target} == {UoA}  
  */
 contract FraxSwapPegCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
-
-    // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     int8 public immutable referenceERC20Decimals;
 
