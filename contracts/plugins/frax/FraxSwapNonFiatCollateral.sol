@@ -53,7 +53,6 @@ contract FraxSwapNonFiatCollateral is Collateral {
             fallbackPrice_,
             AggregatorV3Interface(address(0)),
             erc20_,
-            IERC20Metadata(address(0)),
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -93,10 +92,6 @@ contract FraxSwapNonFiatCollateral is Collateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        // == Refresh ==
-        // Update the Compound Protocol
-        ICToken(address(erc20)).exchangeRateCurrent();
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -113,28 +108,7 @@ contract FraxSwapNonFiatCollateral is Collateral {
                 // p1 {UoA/token1}
                 try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
                     if (p0 > 0 || p1 > 0) {
-
-                        // D18{target/ref}= D18{target/ref} * D18{1} / D18
-
-                        // exchange rate between tokens in the fraxswap amm, token0 -> token1
-                        address token0 = IFraxswapPair(address(erc20)).token0();
-                        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
-                            FIX_ONE, 
-                            token0
-                        ));
-
-                        uint192 feedRate = p1.div(p0);
-
-                        uint192 delta = (feedRate * defaultThreshold) / FIX_ONE;
-
-                        // If the exchange rate in the AMM is off by a certain percentage from the 
-                        // rate calculated from oracles for a long time, then this defaults
-                        if (p < feedRate - delta || p > feedRate + delta) {
-                            markStatus(CollateralStatus.IFFY);
-                        } else {
-                            markStatus(CollateralStatus.SOUND);
-                        }
-
+                        _checkPriceDeviation(p0, p1);
                     } else {
                         markStatus(CollateralStatus.IFFY);
                     }
@@ -158,6 +132,30 @@ contract FraxSwapNonFiatCollateral is Collateral {
         }
 
         // No interactions beyond the initial refresher
+    }
+
+    function _checkPriceDeviation(uint192 p0, uint192 p1) internal {
+        // exchange rate between tokens in the fraxswap amm, token0 -> token1
+
+        uint192 fixOne = 1 ether;
+        address token0 = IFraxswapPair(address(erc20)).token0();
+        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
+            fixOne, 
+            token0
+        ));
+
+
+        uint192 feedRate = p1.div(p0);
+        uint192 delta = (feedRate * defaultThreshold) / fixOne;
+
+        // If the exchange rate in the AMM is off by a certain percentage from the 
+        // rate calculated from oracles for a long time, then this defaults
+        if (p < feedRate - delta || p > feedRate + delta) {
+            markStatus(CollateralStatus.IFFY);
+        } else {
+            markStatus(CollateralStatus.SOUND);
+        }
+
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

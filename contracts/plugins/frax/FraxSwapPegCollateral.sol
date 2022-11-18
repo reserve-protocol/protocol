@@ -40,7 +40,6 @@ contract FraxSwapPegCollateral is Collateral {
         AggregatorV3Interface token0chainlinkFeed_,
         AggregatorV3Interface token1chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -53,7 +52,6 @@ contract FraxSwapPegCollateral is Collateral {
             fallbackPrice_,
             AggregatorV3Interface(address(0)),
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -88,8 +86,6 @@ contract FraxSwapPegCollateral is Collateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        // == Refresh ==
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -105,33 +101,7 @@ contract FraxSwapPegCollateral is Collateral {
                 // p1 {UoA/token1}
                 try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
                     if (p0 > 0 || p1 > 0) {
-                        // {target/ref}
-                        uint192 peg = FIX_ONE;
-
-                        // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                        uint192 delta = (peg * defaultThreshold) / peg;
-
-                        address token0 = IFraxswapPair(address(erc20)).token0();
-
-                        // exchange rate between tokens in the fraxswap amm p0:p1
-                        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
-                            FIX_ONE, 
-                            token0
-                        ));
-
-                        // If the price is below the default-threshold price, default eventually
-                        if (p0 < peg - delta || p0 > peg + delta) {
-                            markStatus(CollateralStatus.IFFY);
-                        } else if (p1 < peg - delta || p1 > peg + delta) {
-                            markStatus(CollateralStatus.IFFY);
-                        // default if the internal exchange rate between the tokens
-                        // in the AMM is very different from the value from the oracles
-                        } else if (p < peg - delta || p > peg + delta) {
-                        markStatus(CollateralStatus.IFFY);
-                        } else {
-                            markStatus(CollateralStatus.SOUND);
-                        }
-
+                        _checkPriceDeviation(p0, p1);
                     } else {
                         markStatus(CollateralStatus.IFFY);
                     }
@@ -154,6 +124,35 @@ contract FraxSwapPegCollateral is Collateral {
         }
 
         // No interactions beyond the initial refresher
+    }
+
+    function _checkPriceDeviation(uint192 p0, uint192 p1) internal {
+        // {target/ref}
+        uint192 peg = 1 ether; // 1 ether = 1e18 
+        // D18{target/ref}= D18{target/ref} * D18{1} / D18
+
+        address token0 = IFraxswapPair(address(erc20)).token0();
+        // exchange rate between tokens in the fraxswap amm p0:p1
+        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
+            peg, 
+            token0
+        ));
+
+        uint192 delta = (peg * defaultThreshold) / peg;
+
+        // If the price is below the default-threshold price, default eventually
+        if (p0 < peg - delta || p0 > peg + delta) {
+            markStatus(CollateralStatus.IFFY);
+        } else if (p1 < peg - delta || p1 > peg + delta) {
+            markStatus(CollateralStatus.IFFY);
+        // default if the internal exchange rate between the tokens
+        // in the AMM is very different from the value from the oracles
+        // TODO: is this necessary?
+        } else if (p < peg - delta || p > peg + delta) {
+            markStatus(CollateralStatus.IFFY);
+        } else {
+            markStatus(CollateralStatus.SOUND);
+        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens

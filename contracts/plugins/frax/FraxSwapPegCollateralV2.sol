@@ -23,15 +23,20 @@ contract FraxSwapPegCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
+    // bitmap of which tokens are fiat:
+    // e.g if the bit representation of tokenisFiat is:
+    // 00...001 -> token0 is pegged to UoA
+    // 00...010 -> token1 is pegged to UoA
+    // 00...011 -> both of them are pegged to UoA;
+    uint256 public immutable tokenisFiat;
+
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     address public immutable comptrollerAddr;
-
-    bool public immutable token0isFiat;
-    bool public immutable token1isFiat;
 
     AggregatorV3Interface public immutable token0chainlinkFeed;
     AggregatorV3Interface public immutable token1chainlinkFeed;
 
+    /// @param tokenisFiat_ bitmap of which tokens are pegged to UoA (see lines 26-31)
     /// @param token0chainlinkFeed_ Feed units: {UoA/token0}
     /// @param token1chainlinkFeed_ Feed units: {UoA/token1}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -40,12 +45,10 @@ contract FraxSwapPegCollateral is Collateral {
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
+        uint256 tokenisFiat_,
         AggregatorV3Interface token0chainlinkFeed_,
         AggregatorV3Interface token1chainlinkFeed_,
-        bool token0isFiat_,
-        bool token1isFiat_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -58,7 +61,6 @@ contract FraxSwapPegCollateral is Collateral {
             fallbackPrice_,
             AggregatorV3Interface(address(0)),
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -68,6 +70,8 @@ contract FraxSwapPegCollateral is Collateral {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
+        require(tokenisFiat_ <= 3 && tokenisFiat_ > 0, "invalid tokenisFiat bitmap");
+
         defaultThreshold = defaultThreshold_;
         referenceERC20Decimals = referenceERC20Decimals_;
 
@@ -79,8 +83,13 @@ contract FraxSwapPegCollateral is Collateral {
         token1chainlinkFeed = token1chainlinkFeed_;
 
         // is fiat
-        token0isFiat = token0isFiat_; 
-        token1isFiat = token1isFiat_; 
+        tokenisFiat = tokenisFiat_; 
+    }
+
+    // used to check which tokens are fiat 
+    function isTokenFiat(uint256 indexFromRight) public view returns (bool) {
+        uint256 bitAtIndex = tokenisFiat & (1 << indexFromRight);
+        return bitAtIndex > 0;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -97,8 +106,6 @@ contract FraxSwapPegCollateral is Collateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        // == Refresh ==
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -114,39 +121,7 @@ contract FraxSwapPegCollateral is Collateral {
                 // p1 {UoA/token1}
                 try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
                     if (p0 > 0 || p1 > 0) {
-                        // {target/ref}
-                        uint192 peg = FIX_ONE;
-
-                        // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                        uint192 delta = (peg * defaultThreshold) / peg;
-
-                        address token0 = IFraxswapPair(address(erc20)).token0();
-
-                        // exchange rate between tokens in the fraxswap amm p0:p1
-                        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
-                            FIX_ONE, 
-                            token0
-                        ));
-
-                        // If the price is below the default-threshold price, default eventually
-                        if(token0isFiat){
-                            if (p0 < peg - delta || p0 > peg + delta) {
-                                markStatus(CollateralStatus.IFFY);
-                            }
-                        }
-
-                        if(token1isFiat){
-                            if (p1 < peg - delta || p1 > peg + delta) {
-                                markStatus(CollateralStatus.IFFY);
-                            }
-                        }
-
-                        if (p < peg - delta || p > peg + delta) {
-                            markStatus(CollateralStatus.IFFY);
-                        } else {
-                            markStatus(CollateralStatus.SOUND);
-                        }
-
+                        _checkPriceDeviation(p0, p1);
                     } else {
                         markStatus(CollateralStatus.IFFY);
                     }
@@ -169,6 +144,43 @@ contract FraxSwapPegCollateral is Collateral {
         }
 
         // No interactions beyond the initial refresher
+    }
+
+    function _checkPriceDeviation(uint192 p0, uint192 p1) internal {
+        uint192 peg = 1 ether;
+
+        address token0 = IFraxswapPair(address(erc20)).token0();
+        // exchange rate between tokens in the fraxswap amm p0:p1
+        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
+            peg, 
+            token0
+        ));
+
+        // If the price is below the default-threshold price, default eventually
+        uint192 pegDelta = (peg * defaultThreshold) / peg;
+        uint192 feedRate = p1.div(p0);
+        uint192 ammDelta = (feedRate * defaultThreshold) / peg;
+
+        // checks peg for token0 to UoA
+        if(isTokenFiat(0)){
+            if (p0 < peg - pegDelta || p0 > peg + pegDelta) {
+                markStatus(CollateralStatus.IFFY);
+            }
+        }
+
+        // checks peg for token1 to UoA
+        if(isTokenFiat(1)){
+            if (p1 < peg -  pegDelta || p1 > peg + pegDelta) {
+                markStatus(CollateralStatus.IFFY);
+            }
+        }
+
+        // checks exchange rate in Fraxswap's amm
+        if (p < peg - ammDelta || p > peg + ammDelta) {
+            markStatus(CollateralStatus.IFFY);
+        } else {
+            markStatus(CollateralStatus.SOUND);
+        }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
