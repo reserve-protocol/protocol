@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
+import {IUniswapV3Wrapper} from "./IUniswapV3Wrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
@@ -199,7 +199,12 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         if (to != address(0)) {
             _updateUser(to);
         }
-        console.log("_beforeTokenTransfer");
+    }
+
+    function divUnchecked(uint256 a, uint256 b) internal pure returns (uint256) {
+        unchecked {
+            return a / b;
+        }
     }
 
     function _updateRewards() internal {
@@ -214,8 +219,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         uint256 rewardsAccrued0 = lifetimeRewards0 - _lifetimeRewards0;
         uint256 rewardsAccrued1 = lifetimeRewards1 - _lifetimeRewards1;
 
-        _accRewardsPerToken0 = _accRewardsPerToken0 + (rewardsAccrued0 * PRECISION_RATIO) / supply;
-        _accRewardsPerToken1 = _accRewardsPerToken1 + (rewardsAccrued1 * PRECISION_RATIO) / supply;
+        _accRewardsPerToken0 = _accRewardsPerToken0 + divUnchecked(rewardsAccrued0 * PRECISION_RATIO, supply);
+        _accRewardsPerToken1 = _accRewardsPerToken1 + divUnchecked(rewardsAccrued1 * PRECISION_RATIO, supply);
         _lifetimeRewards0 = lifetimeRewards0;
         _lifetimeRewards1 = lifetimeRewards1;
     }
@@ -231,7 +236,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         console.log("totalSupply", totalSupply());
 
         (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
-        //30 40
         console.log("pending0", pending0);
         console.log("pending1", pending1);
         _unclaimedRewards0[user] += pending0;
