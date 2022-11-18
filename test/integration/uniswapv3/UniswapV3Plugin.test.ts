@@ -218,10 +218,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
             const mockChainlinkFeed0 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(await dai.decimals(), bn("1e8"))
+                await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
             )
             const mockChainlinkFeed1 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(await usdc.decimals(), bn("1e8"))
+                await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
             )
 
             const uniswapV3CollateralContractFactory: UniswapV3Collateral__factory = await ethers.getContractFactory(
@@ -258,7 +258,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV3Collateral.refPerTok()).to.equal(fp("1"))
             expect(await uniswapV3Collateral.targetPerRef()).to.equal(fp("1"))
             expect(await uniswapV3Collateral.pricePerTarget()).to.equal(fp("1"))
-            // expect(await uniswapV3Collateral.strictPrice()).to.equal(fp('200'))
+            expect(await uniswapV3Collateral.strictPrice()).to.equal(fp("200"))
+            //TODO
             //expect(await uniswapV3Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
             // expect(await uniswapV3Collateral.bal(addr1.address)).to.equal(
             //   await adjustedAmout(uniswapV3Wrapper, 100)

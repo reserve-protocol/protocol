@@ -37,12 +37,15 @@ contract UniswapV3Collateral is Collateral {
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
     function strictPrice() external view override returns (uint192) {
-        (uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20)).principal();
-        return
-            uint192(
-                (chainlinkFeed.price(oracleTimeout) * amount0) +
-                    (chainlinkFeedSecondAsset.price(oracleTimeout) * amount1)
-            );
+        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
+            .principal();
+        uint192 price0 = chainlinkFeed.price(oracleTimeout);
+        uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
+        uint256 price0adj = price0 * amount0;
+        uint256 price1adj = price1 * amount1;
+        int8 shift0 = -int8(IERC20Metadata(token0).decimals()) - 18;
+        int8 shift1 = -int8(IERC20Metadata(token1).decimals()) - 18;
+        return uint192(shiftl_toFix(price0adj, shift0) + shiftl_toFix(price1adj, shift1));
     }
 
     //TODO RefPerTok() always equals 1 but we need to implement check

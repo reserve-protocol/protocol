@@ -55,6 +55,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     function mint(INonfungiblePositionManager.MintParams memory params)
         external
+        nonReentrant
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -176,10 +177,25 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         return deposit.tokenId;
     }
 
-    function principal() external view returns (uint256 amount0, uint256 amount1) {
+    function principal()
+        external
+        view
+        returns (
+            address token0,
+            address token1,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
         require(isInitialized, "Contract is not initialized!");
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-        (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, deposit.tokenId, sqrtRatioX96);
+        (amount0, amount1) = PositionValue.principal(
+            nonfungiblePositionManager,
+            deposit.tokenId,
+            sqrtRatioX96
+        );
+        token0 = deposit.token0;
+        token1 = deposit.token1;
     }
 
     /**

@@ -36,5 +36,13 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
             uint256 amount1
         );
 
-    function principal() external view returns (uint256 amount0, uint256 amount1);
+    function principal()
+        external
+        view
+        returns (
+            address token0,
+            address token1,
+            uint256 amount0,
+            uint256 amount1
+        );
 }
