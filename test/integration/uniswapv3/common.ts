@@ -1,15 +1,18 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { ERC20Mock } from '@typechain/ERC20Mock'
 import { UniswapV3Wrapper } from '@typechain/UniswapV3Wrapper'
+import { UniswapV3WrapperMock } from '@typechain/UniswapV3WrapperMock'
 import { USDCMock } from '@typechain/USDCMock'
-import { BigNumber, BigNumberish } from 'ethers'
+import { BigNumber, BigNumberish, ContractInterface, Signer } from 'ethers'
+import { Provider } from "@ethersproject/providers";
 import { ethers } from 'hardhat'
-import { bn } from '../../common/numbers'
+import { waitForTx } from '../utils'
 
 /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
 export const MIN_TICK = -887272
 /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
 export const MAX_TICK = -MIN_TICK
+
 
 export type TMintParams = {
   token0: string
