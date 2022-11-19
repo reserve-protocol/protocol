@@ -1,5 +1,3 @@
-
-
 # Our Development Environment
 
 We're using:
@@ -23,7 +21,7 @@ These instructions assume you already have standard installations of `node`, `np
 
 Set up yarn and hardhat, needed for compiling and running tests:
 
-``` bash
+```bash
 # If needed, install yarn
 npm install -g yarn
 
@@ -61,15 +59,15 @@ hash -r && slither --version
 - Autoformat solidity and typescript: `yarn prettier`
 - Report compiled contract sizes: `yarn size`
 - There are many available test sets. A few of the most useful are:
-    - Run only fast tests: `yarn test:fast`
-    - Run most tests: `yarn test`
-    - Run all tests (very slow!): `yarn test:exhaustive`
-    - Run tests and report test coverage: `yarn test:coverage`
+  - Run only fast tests: `yarn test:fast`
+  - Run most tests: `yarn test`
+  - Run all tests (very slow!): `yarn test:exhaustive`
+  - Run tests and report test coverage: `yarn test:coverage`
 - Lint Solidity code: `yarn lint`
 - Lint Typescript code: `yarn eslint`
 - Run the Slither static checker: `yarn slither`
-- Run a local evm devchain: `yarn devchain`
-- Deploy our system to your local evm devchain: `yarn deploy`
+- Run a local mainnet fork devchain: `yarn devchain`
+- Deploy our system to your local evm devchain: `yarn deploy --network localhost`
 
 ## Mainnet Forking
 
@@ -96,4 +94,3 @@ We _have_ some tooling for testing with Echidna, but it is immature, out-of-date
 ## Test Deployment
 
 See our [deployment documentation](deployment.md).
-
