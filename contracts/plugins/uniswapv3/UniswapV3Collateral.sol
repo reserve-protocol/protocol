@@ -33,8 +33,6 @@ contract UniswapV3Collateral is Collateral {
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
     }
 
-    
-
     function _calculatePrice(
         address token0,
         address token1,
@@ -45,12 +43,14 @@ contract UniswapV3Collateral is Collateral {
         uint192 price0 = chainlinkFeed.price(oracleTimeout);
         uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
         //TODO liquidity can be 10 ** 18 for some assets.
-        //Resulting price for one liquidity would have too bad precision. Need to check 
-        uint256 price0adj = (price0 * amount0) / liquidity;
-        uint256 price1adj = (price1 * amount1) / liquidity;
+        //Resulting price per one liquidity would have too bad precision. Need to check
+        uint256 price0adj = (price0 * amount0);
+        uint256 price1adj = (price1 * amount1);
         int8 shift0 = -int8(IERC20Metadata(token0).decimals()) - 18;
         int8 shift1 = -int8(IERC20Metadata(token1).decimals()) - 18;
-        return uint192(shiftl_toFix(price0adj, shift0) + shiftl_toFix(price1adj, shift1));
+        return uint192(
+            (shiftl_toFix(price0adj, shift0) + shiftl_toFix(price1adj, shift1)) / liquidity
+            );
     }
 
     function strictPrice() external view override returns (uint192) {
@@ -59,10 +59,12 @@ contract UniswapV3Collateral is Collateral {
         return _calculatePrice(token0, token1, amount0, amount1, IERC20(erc20).totalSupply());
     }
 
-    function _fallbackPrice() internal view returns (uint192) {
-        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
-            .pricePerOneLiquidity();
-        return _calculatePrice(token0, token1, amount0, amount1, 1);
+    function _fallbackPrice() public view returns (uint192) {
+        (address token0, address token1, uint256 amount0, uint256 amount1, uint128 liquidity) = IUniswapV3Wrapper(
+            address(erc20)
+        ).priceSimilarPosition();
+        console.log("amount0", "amount1", amount0, amount1);
+        return _calculatePrice(token0, token1, amount0, amount1, liquidity);
     }
 
     function price(bool allowFallback) public view override returns (bool isFallback, uint192) {

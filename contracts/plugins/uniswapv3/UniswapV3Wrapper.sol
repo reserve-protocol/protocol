@@ -176,28 +176,34 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         return deposit.tokenId;
     }
 
-    function pricePerOneLiquidity()
+    function max(uint8 a, uint8 b) internal pure returns (uint8) {
+        return a >= b ? a : b;
+    }
+
+    function priceSimilarPosition()
         external
         view
         returns (
             address token0,
             address token1,
             uint256 amount0,
-            uint256 amount1
+            uint256 amount1,
+            uint128 liquidity
         )
     {
+        token0 = deposit.token0;
+        token1 = deposit.token1;
+        liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
         (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
         (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(deposit.tokenId);
         amount0 = 0;
         amount1 = 0;
         if (tick < tickUpper) {
-            amount0 = uint256(SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), 1));
+            amount0 = uint256(SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity)));
         }
         if (tick > tickLower) {
-            amount1 = uint256(SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, 1));
+            amount1 = uint256(SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, int128(liquidity)));
         }
-        token0 = deposit.token0;
-        token1 = deposit.token1;
     }
 
     function principal()
