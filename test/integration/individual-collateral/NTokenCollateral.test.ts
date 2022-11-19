@@ -127,6 +127,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
+    initialBal = bn('2000000e18')
+
     // NOTE token
     noteToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.NOTE || '')
@@ -136,7 +138,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     nUsdcMock = <NTokenERC20ProxyMock>(
       await (await ethers.getContractFactory('NTokenERC20ProxyMock')).deploy('nUSDCMock', 'NMOCK')
     )
-    await nUsdcMock.mint(addr1.address, '1')
+    await nUsdcMock.mint(addr1.address, initialBal)
+    await nUsdcMock.setUnderlyingValue(initialBal)
 
     // nUSDC live token
     nUsdcLive = <NTokenERC20ProxyMock>(
@@ -238,14 +241,12 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   describe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-      await nUsdcMock.setUnderlyingValue('1')
-
       // Check Rewards asset NOTE
       expect(await noteAsset.isCollateral()).to.equal(false)
       expect(await noteAsset.erc20()).to.equal(noteToken.address)
       expect(await noteAsset.erc20()).to.equal(networkConfig[chainId].tokens.NOTE)
       expect(await noteToken.decimals()).to.equal(8)
-      expect(await noteAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
+      expect(await noteAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // TODO : change when price feed
       await expect(noteAsset.claimRewards()).to.not.emit(noteAsset, 'RewardsClaimed')
       expect(await noteAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -268,6 +269,70 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
+    })
+
+    // Check assets/collaterals in the Asset Registry
+    it('Should register ERC20s and Assets/Collateral correctly', async () => {
+      // Check assets/collateral
+      const ERC20s = await assetRegistry.erc20s()
+      expect(ERC20s[0]).to.equal(rToken.address)
+      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[2]).to.equal(noteToken.address)
+      expect(ERC20s[3]).to.equal(nUsdcMock.address)
+      expect(ERC20s.length).to.eql(4)
+
+      // Assets
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(noteAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(nUsdcCollateral.address)
+
+      // Collaterals
+      expect(await assetRegistry.toColl(ERC20s[3])).to.equal(nUsdcCollateral.address)
+    })
+
+    // Check RToken basket
+    it('Should register Basket correctly', async () => {
+      // Basket
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
+      const backing = await facade.basketTokens(rToken.address)
+      expect(backing[0]).to.equal(nUsdcMock.address)
+      expect(backing.length).to.equal(1)
+
+      // Check other values
+      expect(await basketHandler.nonce()).to.be.gt(bn(0))
+      expect(await basketHandler.timestamp()).to.be.gt(bn(0))
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
+      const [isFallback, price] = await basketHandler.price(true)
+      expect(isFallback).to.equal(false)
+      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
+
+      // Check RToken price
+      const issueAmount: BigNumber = bn('10000e18')
+      await nUsdcMock.connect(addr1).approve(rToken.address, issueAmount)
+      expect(await rToken.connect(addr1).balanceOf(addr1.address)).to.equal(bn('0'))
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      expect(await rToken.connect(addr1).balanceOf(addr1.address)).to.equal(issueAmount)
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+    })
+
+    // Validate constructor arguments
+    it('Should validate constructor arguments correctly', async () => {
+      // Default threshold
+      await expect(
+        NTokenCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          nUsdcMock.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          delayUntilDefault,
+          ethers.constants.AddressZero,
+          defaultThreshold
+        )
+      ).to.be.revertedWith('Notional proxy address missing')
     })
   })
 })
