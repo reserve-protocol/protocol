@@ -11,6 +11,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+import "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
@@ -106,7 +107,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        _updateRewards();
 
         TransferHelper.safeTransferFrom(deposit.token0, msg.sender, address(this), amount0Desired);
         TransferHelper.safeTransferFrom(deposit.token1, msg.sender, address(this), amount1Desired);
@@ -127,7 +127,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
 
     function decreaseLiquidity(uint128 liquidity) external nonReentrant returns (uint256 amount0, uint256 amount1) {
         require(isInitialized, "Contract is not initialized!");
-        _updateRewards();
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = deposit.tokenId;
@@ -177,6 +176,30 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         return deposit.tokenId;
     }
 
+    function pricePerOneLiquidity()
+        external
+        view
+        returns (
+            address token0,
+            address token1,
+            uint256 amount0,
+            uint256 amount1
+        )
+    {
+        (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
+        (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(deposit.tokenId);
+        amount0 = 0;
+        amount1 = 0;
+        if (tick < tickUpper) {
+            amount0 = uint256(SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), 1));
+        }
+        if (tick > tickLower) {
+            amount1 = uint256(SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, 1));
+        }
+        token0 = deposit.token0;
+        token1 = deposit.token1;
+    }
+
     function principal()
         external
         view
@@ -189,11 +212,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(isInitialized, "Contract is not initialized!");
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-        (amount0, amount1) = PositionValue.principal(
-            nonfungiblePositionManager,
-            deposit.tokenId,
-            sqrtRatioX96
-        );
+        (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, deposit.tokenId, sqrtRatioX96);
         token0 = deposit.token0;
         token1 = deposit.token1;
     }
@@ -229,6 +248,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             return;
         }
         (uint256 freshRewards0, uint256 freshRewards1) = _fees();
+
         uint256 lifetimeRewards0 = _lifetimeRewardsClaimed0 + freshRewards0;
         uint256 lifetimeRewards1 = _lifetimeRewardsClaimed1 + freshRewards1;
 
@@ -247,13 +267,9 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
      */
     function _updateUser(address user) internal {
         uint256 balance = balanceOf(user);
-        console.log("user", user);
-        console.log("balance", balance);
-        console.log("totalSupply", totalSupply());
 
         (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
-        console.log("pending0", pending0);
-        console.log("pending1", pending1);
+
         _unclaimedRewards0[user] += pending0;
         _unclaimedRewards1[user] += pending1;
         _updateUserSnapshotRewardsPerToken(user);
@@ -288,6 +304,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         (feesAmount0, feesAmount1) = PositionValue.fees(nonfungiblePositionManager, deposit.tokenId);
     }
 
+    function _collect(INonfungiblePositionManager.CollectParams memory collectParams)
+        internal
+        virtual
+        returns (uint256 amount0, uint256 amount1)
+    {
+        return nonfungiblePositionManager.collect(collectParams);
+    }
+
     function _claimFees() internal {
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams(
             deposit.tokenId,
@@ -295,10 +319,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             type(uint128).max,
             type(uint128).max
         );
-        (uint256 amount0, uint256 amount1) = nonfungiblePositionManager.collect(collectParams);
+        (uint256 amount0, uint256 amount1) = _collect(collectParams);
         _lifetimeRewardsClaimed0 += amount0;
         _lifetimeRewardsClaimed1 += amount1;
-        _lifetimeRewards0 += amount0;
-        _lifetimeRewards1 += amount1;
     }
 }
