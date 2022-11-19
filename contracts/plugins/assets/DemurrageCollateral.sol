@@ -7,26 +7,25 @@ import "../../interfaces/IAsset.sol";
 import "./OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-abstract contract Demurrage is ICollateral {
+abstract contract DemurrageCollateral is ICollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     IERC20Metadata public immutable override erc20;
-
     uint8 public immutable override erc20Decimals;
-
-    // solhint-disable-next-line const-name-snakecase
-    IERC20 public constant override rewardERC20 = IERC20(address(0));
 
     bytes32 public immutable override targetName;
 
-    uint192 public immutable override maxTradeVolume; // {UoA}
-
     uint192 public immutable fallbackPrice; // {UoA}
 
-    uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
-
+    uint192 public immutable override maxTradeVolume; // {UoA}
     uint64 public immutable startTime;
+
+    uint192 public lastTokPerRef;
+    uint64 public lastTokPerRefTime;
+
+    uint256 public constant PERIOD = 60; // {s} seconds contained in a single time period for calculating fee
+    uint256 public immutable ratePerPeriod;
 
     // Default Status:
     // _whenDefault == NEVER: no risk of default (initial value)
@@ -39,24 +38,24 @@ abstract contract Demurrage is ICollateral {
     uint256 public immutable delayUntilDefault; // {s} e.g 86400
 
     constructor(
-        address vault_,
+        address token_,
         uint256 maxTradeVolume_,
         uint256 fallbackPrice_,
-        uint256 oracleTimeout_,
         bytes32 targetName_,
-        uint256 delayUntilDefault_
+        uint256 delayUntilDefault_,
+        uint256 ratePerPeriod_
     ) {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
-        require(vault_ != address(0), "");
-        erc20 = IERC20Metadata(vault_);
+        require(token_ != address(0), "");
+        erc20 = IERC20Metadata(token_);
         erc20Decimals = erc20.decimals();
         maxTradeVolume = _safeWrap(maxTradeVolume_);
         fallbackPrice = _safeWrap(fallbackPrice_);
-        oracleTimeout = uint48(oracleTimeout_);
         targetName = targetName_;
         delayUntilDefault = delayUntilDefault_;
         startTime = uint64(block.timestamp);
+        ratePerPeriod = ratePerPeriod_;
     }
 
     function markStatus(CollateralStatus status_) internal {
@@ -82,7 +81,7 @@ abstract contract Demurrage is ICollateral {
     /// Can return 0, can revert
     /// @return {UoA/tok} The current price()
     function strictPrice() public view override returns (uint192) {
-        return prefPerTok() * pricePerPref();
+        return uTokPerTok() * pricePerUTok();
     }
 
     /// Can return 0
@@ -116,7 +115,7 @@ abstract contract Demurrage is ICollateral {
     function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
 
     /// @return The status of this collateral asset. (Is it defaulting? Might it soon?)
-    function status() public view virtual returns (CollateralStatus) {
+    function status() public view virtual override returns (CollateralStatus) {
         if (_whenDefault == NEVER) {
             return CollateralStatus.SOUND;
         } else if (_whenDefault > block.timestamp) {
@@ -133,13 +132,19 @@ abstract contract Demurrage is ICollateral {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
-        try this.strictPrice() returns (uint192) {
-            markStatus(CollateralStatus.SOUND);
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
+        bool isSound = _checkAndUpdateDefaultStatus();
+        if (isSound) {
+            try this.strictPrice() returns (uint192) {
+                markStatus(CollateralStatus.SOUND);
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
         }
+
+        lastTokPerRef = tokPerRef();
+        lastTokPerRefTime = uint64(block.timestamp);
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
@@ -157,6 +162,8 @@ abstract contract Demurrage is ICollateral {
 
     // TODO: calculate the value of [k] in constructor from basis points specified
     function tokPerRef() public view returns (uint192) {
+        if (block.timestamp == lastTokPerRefTime) return lastTokPerRef;
+
         // Formula for new value of {tok} per unit {ref}
         // A = (1 - r)**t
         // where r is the demurrage fee charged per second (or hour or day,
@@ -164,10 +171,9 @@ abstract contract Demurrage is ICollateral {
         // The value of [A] is always decreasing such that after one year,
         // A == (A * (10000 - feeBasisPoints) / 10000)
         // For simplicity sake, we can just provide (1 - r)
-        // as a variable since that's also constant (let's call it k)
-        uint192 k = 999999999683119000; // D18
-        uint48 t = uint48(block.timestamp - startTime);
-        return k.powu(t);
+        // as a variable since that's also constant (let's call it ratePerPeriod)
+        uint48 t = uint48((block.timestamp - lastTokPerRefTime) / PERIOD);
+        return lastTokPerRef.mul(_safeWrap(ratePerPeriod).powu(t));
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
@@ -175,13 +181,9 @@ abstract contract Demurrage is ICollateral {
         return FIX_ONE;
     }
 
-    /// @return {UoA/target} The price of the target unit in UoA (usually this is {UoA/UoA} = 1)
-    function pricePerTarget() external view virtual returns (uint192) {
-        // {UoA/target} = {UoA/tok} * {tok/ref} / {target/ref}
-        return strictPrice().mul(tokPerRef()).div(targetPerRef());
-    }
+    function uTokPerTok() internal view virtual returns (uint192);
 
-    function prefPerTok() internal view virtual returns (uint192);
+    function pricePerUTok() internal view virtual returns (uint192);
 
-    function pricePerPref() internal view virtual returns (uint192);
+    function _checkAndUpdateDefaultStatus() internal virtual returns (bool isSound);
 }
