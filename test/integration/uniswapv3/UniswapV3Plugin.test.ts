@@ -270,10 +270,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 fp("200").div(positions.liquidity),
                 10
                 )
-            expect(await uniswapV3Collateral.strictPrice()).to.closeTo(
-                await uniswapV3Collateral._fallbackPrice(),
-                1
-            )     
+            expect(await uniswapV3Collateral.strictPrice()).to.equal(
+                await uniswapV3Collateral._fallbackPrice())     
             //TODO
             //expect(await uniswapV3Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
             // expect(await uniswapV3Collateral.bal(addr1.address)).to.equal(

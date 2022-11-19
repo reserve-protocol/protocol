@@ -44,13 +44,11 @@ contract UniswapV3Collateral is Collateral {
         uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
         //TODO liquidity can be 10 ** 18 for some assets.
         //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 price0adj = (price0 * amount0);
-        uint256 price1adj = (price1 * amount1);
+        uint256 price0adj = (price0 * amount0) / liquidity;
+        uint256 price1adj = (price1 * amount1) / liquidity;
         int8 shift0 = -int8(IERC20Metadata(token0).decimals()) - 18;
         int8 shift1 = -int8(IERC20Metadata(token1).decimals()) - 18;
-        return uint192(
-            (shiftl_toFix(price0adj, shift0) + shiftl_toFix(price1adj, shift1)) / liquidity
-            );
+        return uint192((shiftl_toFix(price0adj, shift0) + shiftl_toFix(price1adj, shift1)));
     }
 
     function strictPrice() external view override returns (uint192) {
