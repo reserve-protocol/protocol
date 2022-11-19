@@ -20,7 +20,6 @@ contract FraxSwapNonFiatCollateral is Collateral {
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    address public immutable comptrollerAddr;
 
     AggregatorV3Interface public immutable token0chainlinkFeed;
     AggregatorV3Interface public immutable token1chainlinkFeed;
@@ -44,8 +43,7 @@ contract FraxSwapNonFiatCollateral is Collateral {
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_,
-        address comptrollerAddr_
+        int8 referenceERC20Decimals_
     )
         Collateral(
             fallbackPrice_,
@@ -63,11 +61,9 @@ contract FraxSwapNonFiatCollateral is Collateral {
             "missing target unit chainlink feed"
         );
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
-        comptrollerAddr = comptrollerAddr_;
 
         // chainlink feeds
         token0chainlinkFeed = token0chainlinkFeed_;

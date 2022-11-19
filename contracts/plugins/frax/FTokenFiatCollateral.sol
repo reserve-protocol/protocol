@@ -8,13 +8,13 @@ import "contracts/libraries/Fixed.sol";
 import "./IFraxlendPair.sol";
 
 /**
- * @title FTokenNonFiatCollateral 
+ * @title FTokenFiatCollateral 
  * @notice Collateral plugin for a fToken from Fraxlend of a fiat collateral that requires 
  * default checks (i.e USDC, DAI, and also EURT). 
  * Expected: {tok} != {ref}, {ref} should be pegged to {target}, {target} != {UoA}
  */
 
-contract FTokenNonFiatCollateral is Collateral {
+contract FTokenFiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -23,7 +23,6 @@ contract FTokenNonFiatCollateral is Collateral {
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    address public immutable comptrollerAddr;
 
     int8 public immutable referenceERC20Decimals;
 
@@ -46,8 +45,7 @@ contract FTokenNonFiatCollateral is Collateral {
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_,
-        address comptrollerAddr_
+        int8 referenceERC20Decimals_
     )
         Collateral(
             fallbackPrice_,
@@ -62,11 +60,9 @@ contract FTokenNonFiatCollateral is Collateral {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(uoaPerTargetFeed_) != address(0), "uoaPerTargetFeed missing");
-        require(address(comptrollerAddr_) != address(0), "comptrollerAddr missing");
         defaultThreshold = defaultThreshold_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
-        comptrollerAddr = comptrollerAddr_;
 
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
