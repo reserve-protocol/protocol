@@ -28,14 +28,14 @@ export type TMintParams = {
   deadline: BigNumberish
 }
 
-export async function deployUniswapV3Wrapper(
+export async function deployUniswapV3WrapperMock(
   address: SignerWithAddress
 ): Promise<UniswapV3Wrapper> {
-  const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
-  const uniswapV3Wrapper: UniswapV3Wrapper = <UniswapV3Wrapper>(
+  const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
+  const uniswapV3WrapperMock: UniswapV3WrapperMock = <UniswapV3WrapperMock>(
     await uniswapV3WrapperContractFactory.connect(address).deploy('UniswapV3WrapperToken', 'U3W')
   )
-  return uniswapV3Wrapper
+  return uniswapV3WrapperMock
 }
 
 export async function adjustedAmout(
