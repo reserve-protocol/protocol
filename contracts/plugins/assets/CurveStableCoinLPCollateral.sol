@@ -10,7 +10,7 @@ interface IConvexStakingWrapper {
     function getConvexPoolId() external view returns (address);
 }
 
-interface ICurveUSDMemPool {
+interface Curve {
     function get_virtual_price() external view returns (uint256);
 }
 
@@ -124,7 +124,7 @@ contract CurveStableCoinLPCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     /// Curve calculate it and provides the ratio as the value of the collateral token
     function refPerTok() public view override returns (uint192) {
-        uint256 refPerTokValue = ICurveUSDMemPool(curveStablePool).get_virtual_price();
+        uint256 refPerTokValue = Curve(curveStablePool).get_virtual_price();
         int8 shiftLeft = 8 - referenceERC20Decimals - 18;
         return shiftl_toFix(refPerTokValue, shiftLeft);
     }
