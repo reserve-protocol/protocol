@@ -61,7 +61,6 @@ jobs:
       - run: yarn install --immutable
       - run: yarn compile
       - run: yarn devchain
-      - run: yarn deploy --network localhost
         env:
-          TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: yarn deploy --network localhost
