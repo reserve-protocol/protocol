@@ -18,7 +18,7 @@ contract FTokenFiatCollateral is Collateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable uoaPerTargetFeed;
+    AggregatorV3Interface public immutable uoaPerRefFeed;
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
@@ -49,7 +49,7 @@ contract FTokenFiatCollateral is Collateral {
     )
         Collateral(
             fallbackPrice_,
-            uoaPerRefFeed_,
+            uoaPerTargetFeed_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -59,29 +59,22 @@ contract FTokenFiatCollateral is Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(uoaPerTargetFeed_) != address(0), "uoaPerTargetFeed missing");
+        // require(address(uoaPerTargetFeed_) != address(0), "uoaPerRefFeed missing");
         defaultThreshold = defaultThreshold_;
         referenceERC20Decimals = referenceERC20Decimals_;
         prevReferencePrice = refPerTok();
 
-        uoaPerTargetFeed = uoaPerTargetFeed_;
-    }
-
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        return
-            uoaPerTargetFeed
-                .price(oracleTimeout)
-                .mul(targetPerRef())
-                .mul(refPerTok());
+        uoaPerRefFeed = uoaPerRefFeed_;
     }
 
     /// Refresh exchange rates and update default status.
-    /// @custom:interaction RCEI
+    /// @custom:refresher
     function refresh() external virtual override {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
+
+        // accrue interest for Fraxlend lenders 
+        IFraxlendPair(address(erc20)).addInterest();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
@@ -89,29 +82,23 @@ contract FTokenFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
+            // defaults if the Fraxlend pair contract is paused
             if (IFraxlendPair(address(erc20)).paused()) markStatus(CollateralStatus.IFFY);
 
             // {uoa/target}
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 uoaPerTarget) {
-                // {uoa/ref}
-                try chainlinkFeed.price_(oracleTimeout) returns (uint192 uoaPerRef) {
-                    // if there is a target/ref price feed
-                    // {target/ref} = {u}{uoa/target}
-                    uint192 p = uoaPerRef.div(uoaPerTarget);
-                    uint192 peg = 1 ether;
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 uoaPerTarget) {
+                // {uoa/ref} = {uoa/target} * {target/ref}
+                uint192 p = uoaPerTarget.mul(targetPerRef());
+                uint192 peg = 1 ether; // FIX_ONE, but not reading from storage to use less gas :D
 
-                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                    uint192 delta = (peg * defaultThreshold) / peg;
-                    // defaults if exchange rate between ref and target is not close to 1:1
-                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
+                // D18{target/ref}= D18{target/ref} * D18{1} / D18
+                uint192 delta = (peg * defaultThreshold) / peg;
 
-                    // defaults if the Fraxlend pair contract is paused
-                    else markStatus(CollateralStatus.SOUND);
+                // defaults if exchange rate between ref and target is not close to 1:1
+                if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
 
-                } catch (bytes memory errData) {
-                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                    markStatus(CollateralStatus.IFFY);
-                }
+                else markStatus(CollateralStatus.SOUND);
+
 
             } catch (bytes memory errData) {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -126,19 +113,34 @@ contract FTokenFiatCollateral is Collateral {
         }
     }
 
-    function targetPerRef() public view override returns (uint192) {
-        return address(chainlinkFeed) != address(0) ? 
-            // {target/ref} = {uoa/ref} / {uoa/target}
-            chainlinkFeed.price(oracleTimeout).div(uoaPerTargetFeed.price(oracleTimeout)) : 1 ether;
-    }
-
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
       return uint192(IFraxlendPair(address(erc20)).toAssetAmount(1 ether, false));
     }
 
+    function targetPerRef() public view override returns (uint192) {
+        // if ref != target
+        if(address(uoaPerRefFeed) != address(0)){
+            // {target/ref} = {uoa/ref} / {uoa/target}
+            return (uoaPerRefFeed.price(oracleTimeout)).div(chainlinkFeed.price(oracleTimeout));
+        }
+
+        // else when target == ref, target/ref = 1 
+        return 1 ether;
+    }
+
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
+    function strictPrice() public view virtual override returns (uint192) {
+        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+        return
+            chainlinkFeed
+                .price(oracleTimeout)
+                .mul(targetPerRef())
+                .mul(refPerTok());
+    }
+
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return uoaPerTargetFeed.price(oracleTimeout);
+        return chainlinkFeed.price(oracleTimeout);
     }
 }

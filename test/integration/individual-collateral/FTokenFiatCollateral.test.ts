@@ -43,7 +43,7 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const holderFFRAXWETH = '0xdb3388e770f49a604e11f1a2084b39279492a61f'
+const holderFFRAXCRV = '0xfcf7c8fb47855e04a1bee503d1091b65359c6009'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -55,7 +55,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   // Tokens/Assets
   let frax: ERC20Mock
-  let fFraxWeth: FTokenMock // TODO: write mock contract for FTokens
+  let fFraxCrv: FTokenMock // TODO: write mock contract for FTokens
   let fTokenCollateral: FTokenFiatCollateral
   // let compToken: ERC20Mock
   // let comptroller: ComptrollerMock
@@ -133,38 +133,44 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     frax = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.FRAX || '')
     )
-    // fFRAXWETH token
-    fFraxWeth = <FTokenMock>(
-      await ethers.getContractAt('FTokenMock', networkConfig[chainId].tokens.fFRAXWETH || '')
+    // fFRAXCRV token
+    fFraxCrv = <FTokenMock>(
+      await ethers.getContractAt('FTokenMock', networkConfig[chainId].tokens.fFRAXCRV || '')
     )
 
-    // Deploy fFraxWeth collateral plugin
+    // Deploy fFraxCrv collateral plugin
     FTokenCollateralFactory = await ethers.getContractFactory('FTokenFiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
+
     fTokenCollateral = <FTokenFiatCollateral>(
       await FTokenCollateralFactory.deploy(
         fp('1'),
         '0x0000000000000000000000000000000000000000', // no {uoa/ref} feed for this stablecoin
         networkConfig[chainId].chainlinkFeeds.FRAX as string, // frax chainlink feed
-        fFraxWeth.address,
+        fFraxCrv.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
         (await frax.decimals()).toString(),
+        {gasLimit: 5000000}
       )
     )
 
+    await fTokenCollateral.deployed();
+
     // Setup balances for addr1 - Transfer from Mainnet holder
-    // fFRAXWETH
-    initialBal = bn('2000000e18')
+    // fFRAXCRV
+    initialBal = bn('75e18')
     
-    await whileImpersonating(holderFFRAXWETH, async (ffraxwethSigner) => {
-      await fFraxWeth.connect(ffraxwethSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
+    await whileImpersonating(holderFFRAXCRV, async (ffraxcrvSigner) => {
+      await fFraxCrv.connect(ffraxcrvSigner).transfer(addr1.address, initialBal)
     })
 
+    console.log('addr1 balance:')
+    await console.log(await fFraxCrv.balanceOf(addr1.address))
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
       name: 'RTKN RToken',
@@ -227,21 +233,21 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Collateral plugin
-      // fFRAXWETH (FTokenFiatCollateral)
+      // fFRAXCRV (FTokenFiatCollateral)
       expect(await fTokenCollateral.isCollateral()).to.equal(true)
       expect(await fTokenCollateral.referenceERC20Decimals()).to.equal(await frax.decimals())
-      expect(await fTokenCollateral.erc20()).to.equal(fFraxWeth.address)
-      expect(await fFraxWeth.decimals()).to.equal(8)
+      expect(await fTokenCollateral.erc20()).to.equal(fFraxCrv.address)
+      expect(await fFraxCrv.decimals()).to.equal(18)
       expect(await fTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await fTokenCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(await fTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.01'))
       expect(await fTokenCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await fTokenCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await fTokenCollateral.pricePerTarget()).to.be.closeTo(fp('1'), fp('0.01'))
       expect(await fTokenCollateral.prevReferencePrice()).to.equal(await fTokenCollateral.refPerTok())
       expect(await fTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('1')) // close to $1
 
       // TODO: Check claim data 
-      await expect(fTokenCollateral.claimRewards())
-        .to.returned(undefined);
+      // await expect(fTokenCollateral.claimRewards())
+      //   .to.emit(undefined);
       expect(await fTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -254,8 +260,8 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(fFraxWeth.address)
-      expect(ERC20s.length).to.eql(4)
+      expect(ERC20s[2]).to.equal(fFraxCrv.address)
+      expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
@@ -271,7 +277,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(fFraxWeth.address)
+      expect(backing[0]).to.equal(fFraxCrv.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -284,8 +290,9 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await fFraxWeth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      const issueAmount: BigNumber = bn('10e18')
+      // await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await fFraxCrv.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
@@ -299,7 +306,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('1'),
           '0x0000000000000000000000000000000000000000',
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
-          fFraxWeth.address,
+          fFraxCrv.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -315,7 +322,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('1'),
           '0x0000000000000000000000000000000000000000',
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
-          fFraxWeth.address,
+          fFraxCrv.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -328,14 +335,15 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('10e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await fFraxWeth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      // await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await fFraxCrv.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -344,20 +352,20 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1cDai: BigNumber = await fFraxWeth.balanceOf(addr1.address)
+      const balanceAddr1fFraxCrv: BigNumber = await fFraxCrv.balanceOf(addr1.address)
 
       // Check rates and prices
-      const cDaiPrice1: BigNumber = await fTokenCollateral.strictPrice() // ~ 0.022015 cents
-      const cDaiRefPerTok1: BigNumber = await fTokenCollateral.refPerTok() // ~ 0.022015 cents
+      const fFraxCrvPrice1: BigNumber = await fTokenCollateral.strictPrice() // ~ $1 
+      const fFraxCrvRefPerTok1: BigNumber = await fTokenCollateral.refPerTok() // ~ $1 
 
-      expect(cDaiPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(fFraxCrvPrice1).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(fFraxCrvRefPerTok1).to.be.closeTo(fp('1'), fp('0.01'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('0.05')) // approx 10K in value
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
@@ -368,16 +376,16 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await fTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const cDaiPrice2: BigNumber = await fTokenCollateral.strictPrice() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await fTokenCollateral.refPerTok() // ~0.022016
+      const fFraxCrvPrice2: BigNumber = await fTokenCollateral.strictPrice() // ~$1
+      const fFraxCrvRefPerTok2: BigNumber = await fTokenCollateral.refPerTok() // ~$1
 
       // Check rates and price increase
-      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+      expect(fFraxCrvPrice2).to.be.gt(fFraxCrvPrice1)
+      expect(fFraxCrvRefPerTok2).to.be.gt(fFraxCrvRefPerTok1)
 
       // Still close to the original values
-      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(fFraxCrvPrice2).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(fFraxCrvRefPerTok2).to.be.closeTo(fp('1'), fp('0.01'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -394,16 +402,20 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await fTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const cDaiPrice3: BigNumber = await fTokenCollateral.strictPrice() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await fTokenCollateral.refPerTok() // ~0.03294
+      const fFraxCrvPrice3: BigNumber = await fTokenCollateral.strictPrice() // ~$1.5
+      const fFraxCrvRefPerTok3: BigNumber = await fTokenCollateral.refPerTok() // ~$1.5
 
+
+      console.log(fFraxCrvPrice1, fFraxCrvRefPerTok1)
+      console.log(fFraxCrvPrice2, fFraxCrvRefPerTok2)
+      console.log(fFraxCrvPrice3, fFraxCrvRefPerTok3)
       // Check rates and price increase
-      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+      expect(fFraxCrvPrice3).to.be.gt(fFraxCrvPrice2)
+      expect(fFraxCrvRefPerTok3).to.be.gt(fFraxCrvRefPerTok2)
 
       // Need to adjust ranges
-      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(fFraxCrvPrice3).to.be.closeTo(fp('1.5'), fp('0.01'))
+      expect(fFraxCrvRefPerTok3).to.be.closeTo(fp('1.5'), fp('0.01'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -419,18 +431,18 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1cDai: BigNumber = await fFraxWeth.balanceOf(addr1.address)
+      const newBalanceAddr1fFraxCrv: BigNumber = await fFraxCrv.balanceOf(addr1.address)
 
-      // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      // Check received tokens represent ~$10 in value at current prices
+      expect(newBalanceAddr1fFraxCrv.sub(balanceAddr1fFraxCrv)).to.be.closeTo(bn('6.6e18'), bn('1e17')) // ~$1.5 * 6.6 ~= $10 (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await fFraxWeth.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await fFraxCrv.balanceOf(backingManager.address)).to.be.closeTo(bn('3.3e18'), bn('1e17')) // ~= 4.95 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('4962.8'), // ~= 4962.8 usd (from above)
-        fp('0.5')
+        fp('4.95'), // ~= 4.95 usd (from above)
+        fp('0.03')
       )
     })
   })
@@ -458,7 +470,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
   //     // Provide approvals for issuances
-  //     await fFraxWeth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+  //     await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
   //     // Issue rTokens
   //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -518,7 +530,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('1'),
         NO_PRICE_DATA_FEED, // TODO: figure out how this should be configured
         NO_PRICE_DATA_FEED,
-        fFraxWeth.address,
+        fFraxCrv.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -543,7 +555,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         fp('1'),
         mockChainlinkFeed.address, // TODO: figure out how this should be configured
         mockChainlinkFeed.address,
-        fFraxWeth.address,
+        fFraxCrv.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -626,24 +638,24 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('FTokenMock')
-      const symbol = await fFraxWeth.symbol()
-      const fFraxWethMock: FTokenMock = <FTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, frax.address)
+      const FTokenMockFactory: ContractFactory = await ethers.getContractFactory('FTokenMock')
+      const symbol = await fFraxCrv.symbol()
+      const fFraxCrvMock: FTokenMock = <FTokenMock>(
+        await FTokenMockFactory.deploy(symbol + ' Token', symbol)
       )
-      // Set initial exchange rate to the new fFraxWeth Mock
-      await fFraxWethMock.setAssetsPerShare(fp('1'))
+      // Set initial exchange rate to the new fFraxCrv Mock
+      await fFraxCrvMock.setAssetsPerShare(fp('1'))
 
-      // Redeploy plugin using the new fFraxWeth mock
+      // Redeploy plugin using the new fFraxCrv mock
       const newFTokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>await (
         await ethers.getContractFactory('FTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
+        await fTokenCollateral.uoaPerRefFeed(),
         await fTokenCollateral.chainlinkFeed(),
-        await fTokenCollateral.uoaPerTargetFeed(),
-        fFraxWethMock.address,
+        fFraxCrvMock.address,
         await fTokenCollateral.maxTradeVolume(),
         await fTokenCollateral.oracleTimeout(),
         await fTokenCollateral.targetName(),
@@ -656,8 +668,8 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newFTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for fFRAXWETH, will disable collateral immediately
-      await fFraxWethMock.setAssetsPerShare(fp('0.94'))
+      // Decrease rate for fFRAXCRV, will disable collateral immediately
+      await fFraxCrvMock.setAssetsPerShare(fp('0.94'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newFTokenCollateral.refresh())

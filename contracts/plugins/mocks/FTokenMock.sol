@@ -7,15 +7,38 @@ import "./ERC20Mock.sol";
 
 contract FTokenMock is ERC20Mock {
     using FixLib for uint192;
-    bool internal _paused;
+    bool public _paused;
     uint256 public assetsPerShare;
 
     constructor(
         string memory name,
         string memory symbol
     ) ERC20Mock(name, symbol) {
-        _paused = true;
+        _paused = false;
         assetsPerShare = 1 ether;
+    }
+
+ function addInterest()
+        external
+        returns (
+            uint256 _interestEarned,
+            uint256 _feesAmount,
+            uint256 _feesShare,
+            uint64 _newRate
+        )
+    {
+        return _addInterest();
+    }
+
+    function _addInterest()
+        internal
+        returns (
+            uint256 _interestEarned,
+            uint256 _feesAmount,
+            uint256 _feesShare,
+            uint64 _newRate
+        )
+    {
     }
 
     function decimals() public pure override returns (uint8) {
@@ -27,6 +50,7 @@ contract FTokenMock is ERC20Mock {
     }
 
     function pause() external {
+        _addInterest();
         _paused = true;
     }
 
