@@ -2569,5 +2569,48 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
       expect(rewardsAAVE2.sub(rewardsAAVE1)).to.be.gt(0)
     })
+
+    it('Should call rewards from convexStaking wrapper', async function () {
+      const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
+        await ethers.getContractFactory('ConvexStakingWrapperFactory', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy()
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      const convexCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1.022'),
+        NO_PRICE_DATA_FEED,
+        curveLpToken.address,
+        ZERO_ADDRESS,
+        config.rTokenMaxTradeVolume,
+        MAX_ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault,
+        curvePoolMock.address,
+        (await curveLpToken.decimals()).toString(),
+        convexStakingWrapper.address
+      )
+      const convexStakingWrapperGetRewardsABI = [
+        {
+          name: 'getReward',
+          inputs: [{ type: 'address' }],
+          outputs: [{ type: 'void' }],
+        },
+      ]
+
+      const getRewardsInterface = new ethers.utils.Interface(convexStakingWrapperGetRewardsABI)
+
+      expect(convexCollateral.functions.getClaimCalldata()).to.be.equal(
+        getRewardsInterface.encodeFunctionData('getReward', [convexStakingWrapper.address])
+      )
+    })
   })
 })
