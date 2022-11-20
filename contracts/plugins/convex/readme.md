@@ -38,3 +38,13 @@ The refresh algorithm will go through all the available stable coins in the pool
 There are different thresholds for different coins. This is in consideration that different USD's behave differently. LUSD for example is designed in such a way that it can deviate upto 10% before their arbitrage mechanisms kick in. 
 
 The implmentation of the collateral is present in `/contracts/plugins/assets/CurveStaleCoinLPCollateral.js`
+
+### Deployment
+
+1) Deploy `ConvexStakingWrapped.sol` and deposit all LP tokens using the staking wrapper. 
+2) The deployed wrapper should give you the erc20 required to deploy the contract. Deploy collateral token
+3) Initialize/set the base tokens for the stable coins and the collateral should be ready
+
+Notes:
+1) As you may have guessed by reading the collateral `setChainlinkPriceFeedsForStableCoins()` should be present in the construtor but ethereum has this weird issue where you cannot pass too many params in to a function i.e construtor in this case. So we split the initiation to two different functions.
+2) This erc20 which reserve will need to create will not have a chainlink feed. So we'll need to use some dummy value instead. 

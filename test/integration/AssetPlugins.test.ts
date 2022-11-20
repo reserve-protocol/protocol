@@ -2063,8 +2063,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           wethCollateral,
           cETHCollateral,
           eurtCollateral,
+          curveStableCoinLPCollateral,
         ]
-        newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000')]
+        newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000'), fp('1')]
 
         // Register prime collateral and grant allowances
         const newBasketERC20s = []
@@ -2084,6 +2085,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await weth.connect(addr1).approve(rToken.address, await weth.balanceOf(addr1.address))
         await cETH.connect(addr1).approve(rToken.address, await cETH.balanceOf(addr1.address))
         await eurt.connect(addr1).approve(rToken.address, await eurt.balanceOf(addr1.address))
+        await curveLpToken
+          .connect(addr1)
+          .approve(rToken.address, await curveLpToken.balanceOf(addr1.address))
       })
 
       it('Should Issue/Redeem (wBTC, cWBTC, wETH, cETH, EURT)', async () => {
@@ -2113,6 +2117,13 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const eurPrice = fp('1.07') // approx price EUR-USD June 6, 2022
         expect(await eurtCollateral.strictPrice()).to.be.closeTo(eurPrice, fp('0.01')) // ref price approx 1.07
 
+        // CurveLPToken
+        const curveLPToken = fp('1.2')
+        expect(await curveStableCoinLPCollateral.strictPrice()).to.be.closeTo(
+          curveLPToken,
+          fp('0.1')
+        )
+
         // Aproximate total price of Basket in USD
         const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
 
@@ -2124,7 +2135,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing[2]).to.equal(weth.address)
         expect(backing[3]).to.equal(cETH.address)
         expect(backing[4]).to.equal(eurt.address)
-        expect(backing.length).to.equal(5)
+        expect(backing[5]).to.equal(curveLpToken.address)
+        expect(backing.length).to.equal(6)
 
         // Check initial values
         expect(await basketHandler.nonce()).to.be.gt(bn(0))
@@ -2150,6 +2162,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await weth.balanceOf(backingManager.address)).to.equal(0)
         expect(await cETH.balanceOf(backingManager.address)).to.equal(0)
         expect(await eurt.balanceOf(backingManager.address)).to.equal(0)
+        expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
 
         expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
         expect(await cWBTC.balanceOf(addr1.address)).to.equal(
