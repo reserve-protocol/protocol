@@ -199,16 +199,33 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
         (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
         (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(deposit.tokenId);
-        amount0 = 0;
-        amount1 = 0;
-        if (tick < tickUpper) {
+
+        if (tick < tickLower) {
+            // current tick is below the passed range; liquidity can only become in range by crossing from left to
+            // right, when we'll need _more_ token0 (it's becoming more valuable) so user must provide it
+            amount0 = uint256(
+                SqrtPriceMath.getAmount0Delta(
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    int128(liquidity)
+                )
+            );
+        } else if (tick < tickUpper) {
             amount0 = uint256(
                 SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity))
             );
-        }
-        if (tick > tickLower) {
             amount1 = uint256(
                 SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, int128(liquidity))
+            );
+        } else {
+            // current tick is above the passed range; liquidity can only become in range by crossing from right to
+            // left, when we'll need _more_ token1 (it's becoming more valuable) so user must provide it
+            amount1 = uint256(
+                SqrtPriceMath.getAmount1Delta(
+                    TickMath.getSqrtRatioAtTick(tickLower),
+                    TickMath.getSqrtRatioAtTick(tickUpper),
+                    int128(liquidity)
+                )
             );
         }
     }
