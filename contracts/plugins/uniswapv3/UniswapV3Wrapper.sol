@@ -66,6 +66,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(!isInitialized, "Contract is already initialized here!");
         isInitialized = true;
+
         pool = IUniswapV3Pool(uniswapV3Factory.getPool(params.token0, params.token1, params.fee));
 
         params.recipient = address(this);
@@ -248,12 +249,6 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         }
     }
 
-    function divUnchecked(uint256 a, uint256 b) internal pure returns (uint256) {
-        unchecked {
-            return a / b;
-        }
-    }
-
     function _updateRewards() internal {
         uint256 supply = totalSupply();
         if (supply == 0) {
@@ -267,8 +262,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         uint256 rewardsAccrued0 = lifetimeRewards0 - _lifetimeRewards0;
         uint256 rewardsAccrued1 = lifetimeRewards1 - _lifetimeRewards1;
 
-        _accRewardsPerToken0 = _accRewardsPerToken0 + divUnchecked(rewardsAccrued0 * PRECISION_RATIO, supply);
-        _accRewardsPerToken1 = _accRewardsPerToken1 + divUnchecked(rewardsAccrued1 * PRECISION_RATIO, supply);
+        _accRewardsPerToken0 = _accRewardsPerToken0 + (rewardsAccrued0 * PRECISION_RATIO) / supply;
+        _accRewardsPerToken1 = _accRewardsPerToken1 + (rewardsAccrued1 * PRECISION_RATIO) / supply;
         _lifetimeRewards0 = lifetimeRewards0;
         _lifetimeRewards1 = lifetimeRewards1;
     }
