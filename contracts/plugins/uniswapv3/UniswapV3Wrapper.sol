@@ -191,6 +191,8 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             uint128 liquidity
         )
     {
+        require(isInitialized, "Contract is not initialized!");
+
         token0 = deposit.token0;
         token1 = deposit.token1;
         liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
@@ -199,10 +201,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         amount0 = 0;
         amount1 = 0;
         if (tick < tickUpper) {
-            amount0 = uint256(SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity)));
+            amount0 = uint256(
+                SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity))
+            );
         }
         if (tick > tickLower) {
-            amount1 = uint256(SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, int128(liquidity)));
+            amount1 = uint256(
+                SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, int128(liquidity))
+            );
         }
     }
 
