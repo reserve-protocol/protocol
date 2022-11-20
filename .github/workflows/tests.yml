@@ -59,8 +59,8 @@ jobs:
           node-version: 16.x
           cache: 'yarn'
       - run: yarn install --immutable
-      - run: yarn compile
-      - run: yarn devchain
+      - run: yarn devchain &
         env:
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
+      - run: yarn compile
       - run: yarn deploy --network localhost
