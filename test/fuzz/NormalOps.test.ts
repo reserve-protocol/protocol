@@ -5,7 +5,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
-import { RoundingMode } from '../../common/constants'
+import { RoundingMode, TradeStatus } from '../../common/constants'
 import { advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
@@ -205,81 +205,6 @@ describe('The Normal Operations scenario', () => {
         // Alice now has no extra USD0 and 456 RSR.
         expect(await usd0.balanceOf(aliceAddr)).to.equal(alice_usd0_0)
         expect(await rsr.balanceOf(aliceAddr)).to.equal(fp(456).add(alice_rsr_0))
-      })
-
-      it('lets BackingManager buy and sell RTokens', async () => {
-        // Note: this isn't the usual pattern for testing some mutations. Really, this is specifically
-        // testing TradingMock and MarketMock, but those need a deployment to be properly tested. :/
-
-        const usd0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('USD0'))
-        const bm_addr = comp.backingManager.address
-        const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
-        const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
-
-        // This is a little bit confusing here -- we're pretending to be the backingManager here
-        // just so that we are a trader registered with the Broker. RToken trader would work too, I
-        // think, and would be a somewhat cleaner test.
-
-        // As owner, mint 123 USD0 to BackingMgr
-        await usd0.mint(bm_addr, fp(123))
-        expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
-        expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
-
-        // As BackingMgr, approve the broker for 123 USD0
-        await main.spoof(owner.address, bm_addr)
-        await usd0.approve(comp.broker.address, fp(123))
-
-        // As BackingMgr, init the trade
-        const tradeReq = {
-          buy: rtoken_asset,
-          sell: usd0_asset,
-          minBuyAmount: fp(456),
-          sellAmount: fp(123),
-        }
-
-        await comp.broker.openTrade(tradeReq)
-
-        // (trade has 123 usd0)
-        const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-        expect(await trade.origin()).to.equal(bm_addr)
-        expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
-
-        // Settle the trade.
-        await advanceTime(31 * 60)
-        await comp.broker.settleTrades()
-
-        // (BackingMgr has no USD0 and 456 rToken.)
-        expect(await usd0.balanceOf(bm_addr)).to.equal(0)
-        expect(await comp.rToken.balanceOf(bm_addr)).to.equal(fp(456))
-
-        // ================ Now, we sell the USD0 back, for RToken!
-
-        // As BackingMgr, approve the broker for 456 RTokens
-        await comp.rToken.approve(comp.broker.address, fp(456))
-
-        // As BackingMgr, init the trade
-        const tradeReq2 = {
-          buy: usd0_asset,
-          sell: rtoken_asset,
-          minBuyAmount: fp(789),
-          sellAmount: fp(456),
-        }
-        await comp.broker.openTrade(tradeReq2)
-
-        // (new trade should have 456 rtoken)
-        const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-        expect(await trade2.origin()).to.equal(bm_addr)
-        expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
-
-        // As BackingMgr, settle the trade
-        await advanceTime(31 * 60)
-        await comp.broker.settleTrades()
-
-        // (Backing Manager has no RTokens and 789 USD0)
-        expect(await usd0.balanceOf(bm_addr)).to.equal(fp(789))
-        expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
-
-        await main.unspoof(owner.address)
       })
     })
 
@@ -761,6 +686,61 @@ describe('The Normal Operations scenario', () => {
       // Should work for other tokens as well
       await c0.mint(comp.rTokenTrader.address, exa)
       await expect(scenario.manageTokenInRTokenTrader(0)).to.not.be.reverted
+    })
+
+    it('can perform a revenue auction', async () => {
+      const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('C0'))
+      const r0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('R0'))
+
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(0)
+      expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.equal(0)
+
+      // mint some c0 to backing manager
+      await c0.mint(comp.backingManager.address, exa)
+
+      await scenario.updateRewards(0, 20000n * exa) // set C0 rewards to 20Kexa R0
+
+      // claim rewards
+      await scenario.claimRewards(2) // claim rewards in backing manager (2)
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(20000n * exa)
+
+      // Manage C0 and R0 in backing manager
+      await scenario.pushBackingToManage(0)
+      await scenario.pushBackingToManage(1)
+
+      // Manage revenue asset in Backing Manager
+      await scenario.manageBackingTokens()
+      expect(await r0.balanceOf(comp.backingManager.address)).to.equal(0)
+      expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(12000n * exa) // 60%
+      expect(await r0.balanceOf(comp.rTokenTrader.address)).to.equal(8000n * exa) // 40%
+
+      // Perform auction of R0
+      await scenario.manageTokenInRSRTrader(1)
+      expect(await r0.balanceOf(comp.rsrTrader.address)).to.equal(0)
+
+      // Check trade
+      const tradeInTrader = await ConAt('TradeMock', await comp.rsrTrader.trades(r0.address))
+      const tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      expect(tradeInTrader.address).to.equal(tradeInBroker.address)
+
+      expect(await r0.balanceOf(tradeInTrader.address)).to.equal(12000n * exa)
+      expect(await tradeInTrader.status()).to.equal(TradeStatus.OPEN)
+      expect(await tradeInTrader.canSettle()).to.be.false
+
+      // Wait and settle the trade
+      await advanceTime(await comp.broker.auctionLength())
+      expect(await tradeInTrader.canSettle()).to.be.true
+
+      // Manually update MarketMock seed to minBuyAmount, will provide the expected tokens
+      await scenario.pushSeedForTrades(await tradeInTrader.requestedBuyAmt())
+
+      // Settle trades
+      await scenario.settleTrades()
+      expect(await tradeInTrader.status()).to.equal(TradeStatus.CLOSED)
+
+      expect(await r0.balanceOf(tradeInTrader.address)).to.equal(0)
+      // Check received RSR
+      expect(await comp.rsr.balanceOf(comp.rsrTrader.address)).to.be.gt(0)
     })
   })
 
