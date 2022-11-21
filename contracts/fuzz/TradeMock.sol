@@ -80,6 +80,10 @@ contract TradeMock is ITrade {
         return (requestedSellAmt, actualBuyAmt);
     }
 
+    function allowInstantSettlement() external {
+        endTime = uint48(block.timestamp);
+    }
+
     function _msgSender() internal view virtual returns (address) {
         return main.translateAddr(msg.sender);
     }
@@ -129,6 +133,7 @@ contract MarketMock is IMarketMock {
 
         // Calculate buy amount
         uint256 actualBuyAmt = calculateActualBuyAmt(buy, buyAmt);
+
         if (address(buy) == address(main.rToken())) {
             procureRTokens(actualBuyAmt);
         } else {
@@ -193,16 +198,26 @@ contract MarketMock is IMarketMock {
 
         uint256 maxTradeSlippage = getMaxTradeSlippage(buy);
 
+        uint256 lower;
+        uint256 upper;
         if (mode == SettlingMode.Acceptable || (mode == SettlingMode.Random && seed % 5 > 0)) {
-            actualBuyAmt = between(
-                buyAmt,
-                ((buyAmt * FIX_ONE) / (FIX_ONE - maxTradeSlippage)),
-                seed
-            );
+            // Acceptable prices
+            if (buyAmt > 0) {
+                lower = buyAmt;
+                upper = ((buyAmt * FIX_ONE) / (FIX_ONE - maxTradeSlippage));
+            } else {
+                // Selling defaulted token, should get something valid in the Acceptable scenario
+                lower = 1;
+                upper = GNOSIS_MAX_TOKENS;
+            }
         } else if (mode == SettlingMode.Random) {
             // Allow to cause a violation in some cases
-            actualBuyAmt = between(0, GNOSIS_MAX_TOKENS + 1, seed);
+            lower = 0;
+            upper = GNOSIS_MAX_TOKENS + 1;
         } else revert("invalid settling mode");
+
+        // set actual buy amount
+        actualBuyAmt = between(lower, upper, seed);
 
         return actualBuyAmt;
     }
