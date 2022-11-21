@@ -234,92 +234,6 @@ describe('The Chaos Operations scenario', () => {
         expect(await usd0.balanceOf(aliceAddr)).to.equal(alice_usd0_0)
         expect(await rsr.balanceOf(aliceAddr)).to.equal(fp(456).add(alice_rsr_0))
       })
-
-      it('lets BackingManager buy and sell RTokens', async () => {
-        // Note: this isn't the usual pattern for testing some mutations. Really, this is specifically
-        // testing TradingMock and MarketMock, but those need a deployment to be properly tested. :/
-
-        const usd0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA0'))
-        const bm_addr = comp.backingManager.address
-        const rtoken_asset = await comp.assetRegistry.toAsset(comp.rToken.address)
-        const usd0_asset = await comp.assetRegistry.toAsset(usd0.address)
-
-        // This is a little bit confusing here -- we're pretending to be the backingManager here
-        // just so that we are a trader registered with the Broker. RToken trader would work too, I
-        // think, and would be a somewhat cleaner test.
-
-        // As owner, mint 123 USD0 to BackingMgr
-        await usd0.mint(bm_addr, fp(123))
-        expect(await usd0.balanceOf(bm_addr)).to.equal(fp(123))
-        expect(await comp.rToken.balanceOf(bm_addr)).to.equal(0)
-
-        // As BackingMgr, approve the broker for 123 USD0
-        await main.spoof(owner.address, bm_addr)
-        await usd0.approve(comp.broker.address, fp(123))
-
-        // As BackingMgr, init the trade
-        const tradeReq = {
-          buy: rtoken_asset,
-          sell: usd0_asset,
-          minBuyAmount: fp(456),
-          sellAmount: fp(123),
-        }
-
-        await comp.broker.openTrade(tradeReq)
-
-        // (trade has 123 usd0)
-        const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-        expect(await trade.origin()).to.equal(bm_addr)
-        expect(await usd0.balanceOf(trade.address)).to.equal(fp(123))
-
-        // Settle the trade.
-        await advanceTime(31 * 60)
-
-        // Set Market seed to an acceptable buy amount - will provide more tokens than expected
-        const market = await ConAt('MarketMock', await main.marketMock())
-        await market.pushSeed(tradeReq.minBuyAmount.add(fp(1)))
-
-        await comp.broker.settleTrades()
-
-        // (BackingMgr has no USD0 and more than 456 rToken.)
-        expect(await usd0.balanceOf(bm_addr)).to.equal(0)
-        expect(await comp.rToken.balanceOf(bm_addr)).to.be.gt(fp(456))
-
-        // ================ Now, we sell the USD0 back, for RToken!
-
-        // As BackingMgr, approve the broker for 456 RTokens
-        await comp.rToken.approve(comp.broker.address, fp(456))
-
-        const bm_rToken_bal_0 = await comp.rToken.balanceOf(bm_addr)
-
-        // As BackingMgr, init the trade
-        const tradeReq2 = {
-          buy: usd0_asset,
-          sell: rtoken_asset,
-          minBuyAmount: fp(789),
-          sellAmount: fp(456),
-        }
-        await comp.broker.openTrade(tradeReq2)
-
-        // (new trade should have 456 rtoken)
-        const trade2 = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
-        expect(await trade2.origin()).to.equal(bm_addr)
-        expect(await comp.rToken.balanceOf(trade2.address)).to.equal(fp(456))
-
-        // As BackingMgr, settle the trade
-        await advanceTime(31 * 60)
-
-        // Set Market seed to an acceptable buy amount - will provide more tokens than expected
-        await scenario.pushSeedForTrades(tradeReq2.minBuyAmount.add(fp(1)))
-
-        await comp.broker.settleTrades()
-
-        // (Backing Manager has no RTokens and more than 789 USD0)
-        expect(await usd0.balanceOf(bm_addr)).to.be.gt(fp(789))
-        expect(await comp.rToken.balanceOf(bm_addr)).to.equal(bm_rToken_bal_0.sub(fp(456)))
-
-        await main.unspoof(owner.address)
-      })
     })
 
     it('guarantees that someTokens = tokens and someAddr = users on their shared range', async () => {
@@ -1344,13 +1258,7 @@ describe('The Chaos Operations scenario', () => {
     expect(await scenario.echidna_rTokenTraderInvariants()).to.be.true
     expect(await scenario.echidna_rTokenInvariants()).to.be.true
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
-
-    // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
-    await comp.basketHandler.savePrev()
-    await whileImpersonating(scenario.address, async (asOwner) => {
-      await comp.basketHandler.connect(asOwner).refreshBasket()
-    })
-    expect(await comp.basketHandler.isValidBasketAfterRefresh()).to.be.true
+    expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
   })
 
   it('does not fail on refreshBasket after just one call to updatePrice', async () => {
