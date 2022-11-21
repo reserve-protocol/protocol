@@ -73,7 +73,7 @@ contract UniswapV3Collateral is Collateral {
     }
 
     //TODO RefPerTok() always equals 1 but we need to implement check
-    function claimRewards() external {
+    function claimRewards() override external {
         (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
             .claimRewards(msg.sender);
         emit RewardsClaimed(IERC20(token0), amount0);
