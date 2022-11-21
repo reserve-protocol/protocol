@@ -4,6 +4,12 @@ import { IConfig } from '../../common/configuration'
 import { bn, fp } from '../../common/numbers'
 import { ZERO_ADDRESS } from '../../common/constants'
 
+export enum RebalancingScenarioStatus {
+  BEFORE_REBALANCING,
+  REBALANCING_ONGOING,
+  REBALANCING_DONE,
+}
+
 export enum PriceModelKind {
   CONSTANT,
   MANUAL,
