@@ -242,7 +242,6 @@ contract BrokerP1Fuzz is BrokerP1 {
 
     function settleTrades() public {
         uint256 length = tradesLength();
-        IMainFuzz m = IMainFuzz(address(main));
         for (uint256 i = 0; i < length; i++) {
             TradeMock trade = TradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
