@@ -109,6 +109,11 @@ contract CollateralMock is OracleErrorMock, Collateral {
         deviationModel.update(d);
     }
 
+    function partialUpdate(uint192 a, uint192 b) public {
+        uoaPerTargetModel.update(a);
+        deviationModel.update(b);
+    }
+
     function refresh() public override {
         // == Refresh ==
         if (alreadyDefaulted()) return;
