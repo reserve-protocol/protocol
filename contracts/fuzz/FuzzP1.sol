@@ -114,6 +114,98 @@ contract BasketHandlerP1Fuzz is BasketHandlerP1 {
 }
 
 contract BackingManagerP1Fuzz is BackingManagerP1 {
+    using FixLib for uint192;
+
+    RecollateralizationLibP1.BasketRange public basketRangePrev;
+
+    IERC20[] public surplusTokens;
+    IERC20[] public deficitTokens;
+
+    function saveBasketRange() external {
+        basketRangePrev = getCurrentBasketRange();
+    }
+
+    function saveSurplusAndDeficitTokens() external {
+        ComponentCache memory components = ComponentCache({
+            trader: ITrading(address(this)),
+            bh: IMainFuzz(address(main)).basketHandler(),
+            reg: IMainFuzz(address(main)).assetRegistry(),
+            stRSR: IMainFuzz(address(main)).stRSR(),
+            rsr: IMainFuzz(address(main)).rsr(),
+            rToken: IMainFuzz(address(main)).rToken()
+        });
+
+        IERC20[] memory erc20s = components.reg.erc20s();
+
+        RecollateralizationLibP1.BasketRange memory range = getCurrentBasketRange();
+
+        // Cleanup stored arrays
+        delete surplusTokens;
+        delete deficitTokens;
+
+        for (uint256 i = 0; i < erc20s.length; ++i) {
+            if (erc20s[i] == components.rsr) continue;
+
+            IAsset asset = components.reg.toAsset(erc20s[i]);
+            uint192 bal = asset.bal(address(components.trader)); // {tok}
+            uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
+            if (bal.gt(needed)) {
+                surplusTokens.push(asset.erc20());
+            } else {
+                // needed(Bottom): token balance needed at bottom of the basket range
+                needed = range.bottom.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok};
+                if (bal.lt(needed)) {
+                    deficitTokens.push(ICollateral(address(asset)).erc20());
+                }
+            }
+        }
+    }
+
+    function isBasketRangeSmaller() external view returns (bool) {
+        RecollateralizationLibP1.BasketRange memory currentRange = getCurrentBasketRange();
+        return
+            currentRange.top <= basketRangePrev.top &&
+            currentRange.bottom >= basketRangePrev.bottom;
+    }
+
+    function isValidSurplusToken(IERC20 token) external view returns (bool) {
+        if (address(token) == address(IMainFuzz(address(main)).rsr())) return true;
+
+        for (uint256 i = 0; i < surplusTokens.length; i++) {
+            if (address(token) == address(surplusTokens[i])) return true;
+        }
+        return false;
+    }
+
+    function isValidDeficitToken(IERC20 token) external view returns (bool) {
+        for (uint256 i = 0; i < deficitTokens.length; i++) {
+            if (address(token) == address(deficitTokens[i])) return true;
+        }
+        return false;
+    }
+
+    function getCurrentBasketRange()
+        public
+        view
+        returns (RecollateralizationLibP1.BasketRange memory)
+    {
+        ComponentCache memory components = ComponentCache({
+            trader: ITrading(address(this)),
+            bh: IMainFuzz(address(main)).basketHandler(),
+            reg: IMainFuzz(address(main)).assetRegistry(),
+            stRSR: IMainFuzz(address(main)).stRSR(),
+            rsr: IMainFuzz(address(main)).rsr(),
+            rToken: IMainFuzz(address(main)).rToken()
+        });
+        TradingRules memory rules = TradingRules({
+            minTradeVolume: ITrading(address(this)).minTradeVolume(),
+            maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
+        });
+        IERC20[] memory erc20s = components.reg.erc20s();
+
+        return RecollateralizationLibP1.basketRange(components, rules, erc20s);
+    }
+
     function _msgSender() internal view virtual override returns (address) {
         return IMainFuzz(address(main)).translateAddr(msg.sender);
     }
@@ -149,16 +241,18 @@ contract BrokerP1Fuzz is BrokerP1 {
     }
 
     function settleTrades() public {
-        uint256 length = tradeSet.length();
+        uint256 length = tradesLength();
         IMainFuzz m = IMainFuzz(address(main));
         for (uint256 i = 0; i < length; i++) {
             TradeMock trade = TradeMock(tradeSet.at(i));
             if (trade.canSettle()) {
-                m.spoof(address(this), trade.origin());
-                trade.settle();
-                m.unspoof(address(this));
+                ITrading(trade.origin()).settleTrade(IERC20(address(trade.sell())));
             }
         }
+    }
+
+    function tradesLength() public view returns (uint256) {
+        return tradeSet.length();
     }
 
     function _msgSender() internal view virtual override returns (address) {
