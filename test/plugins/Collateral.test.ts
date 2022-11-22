@@ -54,6 +54,7 @@ describe('Collateral contracts', () => {
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
+  let cbEth: CBEthMock
   let aaveToken: ERC20Mock
   let compToken: ERC20Mock
 
@@ -62,6 +63,7 @@ describe('Collateral contracts', () => {
   let usdcCollateral: FiatCollateral
   let aTokenCollateral: ATokenFiatCollateral
   let cTokenCollateral: CTokenFiatCollateral
+  let cbEthCollateral: CbEthCollateral
   let rTokenAsset: RTokenAsset
 
   // Aave / Compound / Chainlink
@@ -89,6 +91,7 @@ describe('Collateral contracts', () => {
   let wallet: Wallet
 
   const amt = bn('100e18')
+  let basket: Collateral[]
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -97,45 +100,46 @@ describe('Collateral contracts', () => {
 
   beforeEach(async () => {
     ;[owner] = await ethers.getSigners()
-
-    let basket: Collateral[]
-
-      // Deploy fixture
-      ; ({
-        compToken,
-        compoundMock,
-        aaveToken,
-        basket,
-        config,
-        backingManager,
-        rToken,
-        facadeTest,
-        oracleLib,
-        rTokenAsset,
-      } = await loadFixture(defaultFixture))
+    // Deploy fixture
+    ;({
+      compToken,
+      compoundMock,
+      aaveToken,
+      basket,
+      config,
+      backingManager,
+      rToken,
+      facadeTest,
+      oracleLib,
+      rTokenAsset,
+    } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
     tokenCollateral = <FiatCollateral>basket[0]
     usdcCollateral = <FiatCollateral>basket[1]
     aTokenCollateral = <ATokenFiatCollateral>basket[2]
     cTokenCollateral = <CTokenFiatCollateral>basket[3]
+    cbEthCollateral = <CbEthCollateral>basket[4]
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await tokenCollateral.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await usdcCollateral.erc20())
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await aTokenCollateral.erc20())
     )
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await cTokenCollateral.erc20())
+    cbEth = <CBEthMock>await ethers.getContractAt('CBEthMock', await cbEthCollateral.erc20())
 
     await token.connect(owner).mint(owner.address, amt)
     await usdc.connect(owner).mint(owner.address, amt.div(bn('1e12')))
     await aToken.connect(owner).mint(owner.address, amt)
     await cToken.connect(owner).mint(owner.address, amt.div(bn('1e10')).mul(50))
+    await cbEth.connect(owner).mint(owner.address, amt)
 
     // Issue RToken to enable RToken.price
     await token.connect(owner).approve(rToken.address, amt)
     await usdc.connect(owner).approve(rToken.address, amt.div(bn('1e12')))
     await aToken.connect(owner).approve(rToken.address, amt)
     await cToken.connect(owner).approve(rToken.address, amt.div(bn('1e10')).mul(50))
+    await cbEth.connect(owner).approve(rToken.address, amt)
     await rToken.connect(owner).issue(amt)
 
     // Factories
@@ -156,6 +160,7 @@ describe('Collateral contracts', () => {
 
   describe('Deployment', () => {
     it('Deployment should setup collateral correctly #fast', async () => {
+      const nbCol = basket.length
       // Fiat Token Asset
       expect(await tokenCollateral.isCollateral()).to.equal(true)
       expect(await tokenCollateral.erc20()).to.equal(token.address)
@@ -170,7 +175,7 @@ describe('Collateral contracts', () => {
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await tokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tokenCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await tokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
+      expect(await tokenCollateral.bal(owner.address)).to.equal(amt.mul(nbCol - 1).div(nbCol))
       expect(await tokenCollateral.strictPrice()).to.equal(fp('1'))
       await expect(tokenCollateral.claimRewards()).to.not.emit(tokenCollateral, 'RewardsClaimed')
 
@@ -185,7 +190,7 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await usdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await usdcCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
-      expect(await usdcCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
+      expect(await usdcCollateral.bal(owner.address)).to.equal(amt.mul(nbCol - 1).div(nbCol))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await usdcCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -203,7 +208,7 @@ describe('Collateral contracts', () => {
       expect(await aTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await aTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
-      expect(await aTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4))
+      expect(await aTokenCollateral.bal(owner.address)).to.equal(amt.mul(nbCol - 1).div(nbCol))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await aTokenCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -227,7 +232,12 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
       expect(await cTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await cTokenCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
-      expect(await cTokenCollateral.bal(owner.address)).to.equal(amt.mul(3).div(4).mul(50))
+      expect(await cTokenCollateral.bal(owner.address)).to.equal(
+        amt
+          .mul(nbCol - 1)
+          .div(nbCol)
+          .mul(50)
+      )
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
       expect(await cTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await cTokenCollateral.pricePerTarget()).to.equal(fp('1'))
@@ -238,6 +248,25 @@ describe('Collateral contracts', () => {
       await expect(cTokenCollateral.claimRewards())
         .to.emit(cTokenCollateral, 'RewardsClaimed')
         .withArgs(compToken.address, 0)
+
+      // CbEth
+      expect(await cbEthCollateral.isCollateral()).to.equal(true)
+      expect(await cbEthCollateral.erc20()).to.equal(cbEth.address)
+      expect(await cbEth.decimals()).to.equal(18)
+      expect(await cbEthCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('ETH'))
+      expect(await cbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await cbEthCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await cbEthCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      expect(await cbEthCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+      expect(await cbEthCollateral.bal(owner.address)).to.equal(amt.mul(nbCol - 1).div(nbCol))
+      expect(await cbEthCollateral.refPerTok()).to.equal(fp('1'))
+      expect(await cbEthCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await cbEthCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await cbEthCollateral.prevReferencePrice()).to.equal(await cbEthCollateral.refPerTok())
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
+      await expect(cbEthCollateral.claimRewards())
+        .to.emit(cbEthCollateral, 'RewardsClaimed')
+        .withArgs(cbEth.address, 0)
     })
   })
 
@@ -374,28 +403,33 @@ describe('Collateral contracts', () => {
       expect(await usdcCollateral.strictPrice()).to.equal(fp('1'))
       expect(await aTokenCollateral.strictPrice()).to.equal(fp('1'))
       expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.02'))
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
 
       // Check refPerTok initial values
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
 
       // Update values in Oracles increase by 10-20%
       await setOraclePrice(tokenCollateral.address, bn('1.1e8')) // 10%
       await setOraclePrice(usdcCollateral.address, bn('1.1e8')) // 10%
+      await setOraclePrice(cbEthCollateral.address, bn('1.1e8')) // 10%
 
       // Check new prices
       expect(await tokenCollateral.strictPrice()).to.equal(fp('1.1'))
       expect(await usdcCollateral.strictPrice()).to.equal(fp('1.1'))
       expect(await aTokenCollateral.strictPrice()).to.equal(fp('1.1'))
       expect(await cTokenCollateral.strictPrice()).to.equal(fp('0.022'))
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('1.1'))
 
       // Check refPerTok remains the same
       expect(await tokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await usdcCollateral.refPerTok()).to.equal(fp('1'))
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('1'))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.02'))
+      expect(await cbEthCollateral.refPerTok()).to.equal(fp('1'))
 
       // Check RToken price
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1.1'))
@@ -421,6 +455,26 @@ describe('Collateral contracts', () => {
       // RefPerTok also doubles in this case
       expect(await aTokenCollateral.refPerTok()).to.equal(fp('2'))
       expect(await cTokenCollateral.refPerTok()).to.equal(fp('0.04'))
+
+      // Check RToken price - Remains the same until Revenues are processed
+      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+    })
+
+    it('Should calculate price correctly when CbEthTokens appreciate', async () => {
+      // Check initial prices
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
+
+      // Check refPerTok initial values
+      expect(await cbEthCollateral.refPerTok()).to.equal(fp('1'))
+
+      // Increase rate for cbeth to double
+      await cbEth.connect(owner).updateExchangeRate(fp(2))
+
+      // Check prices doubled
+      expect(await cbEthCollateral.strictPrice()).to.equal(fp('2'))
+
+      // RefPerTok also doubles in this case
+      expect(await cbEthCollateral.refPerTok()).to.equal(fp('2'))
 
       // Check RToken price - Remains the same until Revenues are processed
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
@@ -1516,17 +1570,17 @@ describe('Collateral contracts', () => {
 
       const invalidCTokenSelfRefCollateral: CTokenSelfReferentialCollateral = <
         CTokenSelfReferentialCollateral
-        >await CTokenSelfReferentialFactory.deploy(
-          fp('1'),
-          invalidChainlinkFeed.address,
-          cSelfRefToken.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          DELAY_UNTIL_DEFAULT,
-          18,
-          compoundMock.address
-        )
+      >await CTokenSelfReferentialFactory.deploy(
+        fp('1'),
+        invalidChainlinkFeed.address,
+        cSelfRefToken.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT,
+        18,
+        compoundMock.address
+      )
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
@@ -1561,27 +1615,22 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CBEthMock')
       ).deploy(cbEthOracle.address, fp('1'))
 
-      CbEthCollateralFactory = await ethers.getContractFactory(
-        'CbEthCollateral',
-        {
-          libraries: { OracleLib: oracleLib.address },
-        }
-      )
+      CbEthCollateralFactory = await ethers.getContractFactory('CbEthCollateral', {
+        libraries: { OracleLib: oracleLib.address },
+      })
 
       // cbEthController = await (await ethers.getContractFactory('CbEthControllerMock')).deploy()
       // await cbEthController.setStakedToken(cbEth.address)
 
-      cbEthCollateral = <CbEthCollateral>(
-        await CbEthCollateralFactory.deploy(
-          bn('1'),
-          chainlinkFeed.address,
-          cbEth.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          DELAY_UNTIL_DEFAULT,
-          // cbEthController.address
-        )
+      cbEthCollateral = <CbEthCollateral>await CbEthCollateralFactory.deploy(
+        bn('1'),
+        chainlinkFeed.address,
+        cbEth.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT
+        // cbEthController.address
       )
       // Mint some tokens
       await cbEth.connect(owner).mint(owner.address, amt)
@@ -1596,7 +1645,7 @@ describe('Collateral contracts', () => {
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('ETH'),
-          DELAY_UNTIL_DEFAULT,
+          DELAY_UNTIL_DEFAULT
           // ZERO_ADDRESS
         )
       ).to.be.revertedWith('stakedController missing')
@@ -1608,24 +1657,18 @@ describe('Collateral contracts', () => {
       expect(await cbEthCollateral.chainlinkFeed()).to.equal(chainlinkFeed.address)
       expect(await cbEthCollateral.erc20()).to.equal(cbEth.address)
       expect(await cbEth.decimals()).to.equal(18)
-      expect(await cbEthCollateral.targetName()).to.equal(
-        ethers.utils.formatBytes32String('ETH')
-      )
+      expect(await cbEthCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('ETH'))
       // Get priceable info
       await cbEthCollateral.refresh()
       expect(await cbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cbEthCollateral.whenDefault()).to.equal(MAX_UINT256)
-      expect(await cbEthCollateral.maxTradeVolume()).to.equal(
-        config.rTokenMaxTradeVolume
-      )
+      expect(await cbEthCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await cbEthCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
       expect(await cbEthCollateral.bal(owner.address)).to.equal(amt)
       expect(await cbEthCollateral.refPerTok()).to.equal(bn('1e18'))
       expect(await cbEthCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await cbEthCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await cbEthCollateral.prevReferencePrice()).to.equal(
-        await cbEthCollateral.refPerTok()
-      )
+      expect(await cbEthCollateral.prevReferencePrice()).to.equal(await cbEthCollateral.refPerTok())
 
       expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
       await expect(cbEthCollateral.claimRewards())
@@ -1656,9 +1699,7 @@ describe('Collateral contracts', () => {
 
       // Revert if price is zero - Update Oracles and check prices
       await setOraclePrice(cbEthCollateral.address, bn(0))
-      await expect(cbEthCollateral.strictPrice()).to.be.revertedWith(
-        'PriceOutsideRange()'
-      )
+      await expect(cbEthCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
 
       // When refreshed, sets status to Unpriced
       await cbEthCollateral.refresh()
@@ -1670,17 +1711,16 @@ describe('Collateral contracts', () => {
         await InvalidMockV3AggregatorFactory.deploy(18, bn('1e18'))
       )
 
-      const invalidCbEthCollateral: CbEthCollateral =
-        await CbEthCollateralFactory.deploy(
-          fp('1'),
-          invalidChainlinkFeed.address,
-          cbEth.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('ETH'),
-          DELAY_UNTIL_DEFAULT,
-          //cbEthController.address
-        )
+      const invalidCbEthCollateral: CbEthCollateral = await CbEthCollateralFactory.deploy(
+        fp('1'),
+        invalidChainlinkFeed.address,
+        cbEth.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        DELAY_UNTIL_DEFAULT
+        //cbEthController.address
+      )
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
@@ -1694,7 +1734,6 @@ describe('Collateral contracts', () => {
     })
 
     it('Should triggers in an immediate default if refPerTok decreaces, add must stay defaulted', async () => {
-
       expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
 
       // Check refPerTok initial values
@@ -1719,7 +1758,7 @@ describe('Collateral contracts', () => {
       await cbEth.connect(cbEthOracle).updateExchangeRate(fp('2'))
       await cbEthCollateral.refresh()
       expect(await cbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-      // decrease disables token 
+      // decrease disables token
       await cbEth.connect(cbEthOracle).updateExchangeRate(fp('1.5'))
       await cbEthCollateral.refresh()
       expect(await cbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
@@ -1733,12 +1772,12 @@ describe('Collateral contracts', () => {
     it('Should claim correct reward amount', async () => {
       // Increase rate to 1 cbEth / 3 ETH ie 4e18 = fp(3)
       await cbEth.connect(cbEthOracle).updateExchangeRate(fp('3'))
-      expect(await cbEth.exchangeRate()).to.equal(fp('3'));
-      await cbEthCollateral.refresh();
+      expect(await cbEth.exchangeRate()).to.equal(fp('3'))
+      await cbEthCollateral.refresh()
       expect(await cbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await cbEthCollateral.refPerTok()).to.equal(fp('3'))
       expect(await cbEthCollateral.bal(owner.address)).to.equal(amt)
-      expect(await cbEthCollateral.claimRewards())
+      await expect(await cbEthCollateral.claimRewards())
         .to.emit(cbEthCollateral, 'RewardsClaimed')
         .withArgs(cbEth.address, 0)
 
@@ -1748,7 +1787,7 @@ describe('Collateral contracts', () => {
       expect(await cbEthCollateral.bal(owner.address)).to.equal(fp('96'))
       expect(await cbEth.balanceOf(cbEthCollateral.address)).to.equal(fp('4'))
       // reward 4 cbEth @ 3 ex rate = 12 ETH - 4 cbEth = 8 ETH
-      expect(await cbEthCollateral.claimRewards())
+      await expect(await cbEthCollateral.claimRewards())
         .to.emit(cbEthCollateral, 'RewardsClaimed')
         .withArgs(cbEth.address, fp('8'))
     })

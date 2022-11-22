@@ -18,6 +18,8 @@ import {
   TestIBackingManager,
   TestIRToken,
   USDCMock,
+  CBEthMock,
+  CbEthCollateral,
 } from '../../typechain'
 import { Collateral, defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
 
@@ -33,12 +35,14 @@ describe('Assets contracts #fast', () => {
   let usdc: USDCMock
   let aToken: StaticATokenMock
   let cToken: CTokenMock
+  let cbEth: CBEthMock
 
   // Assets
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let collateral4: CbEthCollateral
 
   // Assets
   let rsrAsset: Asset
@@ -87,12 +91,15 @@ describe('Assets contracts #fast', () => {
     collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
+    collateral4 = <CbEthCollateral>basket[4]
+    
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     aToken = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
     cToken = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    cbEth = <CBEthMock>await ethers.getContractAt('CBEthMock', await collateral4.erc20())
 
     await rsr.connect(wallet).mint(wallet.address, amt)
     await compToken.connect(wallet).mint(wallet.address, amt)
@@ -177,6 +184,7 @@ describe('Assets contracts #fast', () => {
       // Update values of underlying tokens - increase all by 10%
       await setOraclePrice(collateral0.address, bn('1.1e8')) // 10%
       await setOraclePrice(collateral1.address, bn('1.1e8')) // 10%
+      await setOraclePrice(collateral4.address, bn('1.1e8')) // 10%
 
       // Price of RToken should increase by 10%
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1.1'))
@@ -217,6 +225,7 @@ describe('Assets contracts #fast', () => {
       await usdc.burn(backingManager.address, await usdc.balanceOf(backingManager.address))
       await aToken.burn(backingManager.address, await aToken.balanceOf(backingManager.address))
       await cToken.burn(backingManager.address, await cToken.balanceOf(backingManager.address))
+      await cbEth.burn(backingManager.address, await cbEth.balanceOf(backingManager.address))
 
       expect(await rTokenAsset.strictPrice()).to.equal(0)
     })

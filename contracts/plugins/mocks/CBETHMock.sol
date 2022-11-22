@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BlueOak-1.0.0
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 //import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./ERC20Mock.sol";

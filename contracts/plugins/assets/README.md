@@ -183,6 +183,37 @@ __`price(bool)`, `bal(address)`, `erc20()`, `erc20Decimals()` and `maxTradeVolum
 
 ### Tests
 
+#### yarn slither
+warning:
+
+```CbEthCollateral.refresh() (contracts/plugins/assets/CbEthCollateral.sol#58-85) ignores return value by chainlinkFeed.price_(oracleTimeout) (contracts/plugins/assets/CbEthCollateral.sol#70-76)```
+
+Can't be avoided. chainlinkFeed.price_(oracleTimeout) is only used to check 
+oracle avaibility. No use it's data
+
+#### yarn test:plugin
+
+cbEthCollateral contract added to [fixture.ts](../../../test/fixtures.ts) basket.
+Specific test in [Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
+
+- Result:
+```test
+  204 passing (4m)
+  3 pending
+```
+
+- Pendings:
+```
+  CbEth Collateral #fast
+    - Should not allow missing controller
+  Gas Reporting
+    - Force Updates - Soft Default
+    - Force Updates - Hard Default - ATokens/CTokens
+```
+
+
+
+
 ### Deployement
 
 

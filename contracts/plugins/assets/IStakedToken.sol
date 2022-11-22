@@ -2,14 +2,15 @@
 pragma solidity 0.8.9;
 
 /// External Interface for StakedTokenV1
-// See: https://github.com/coinbase/wrapped-tokens-os/blob/main/contracts/wrapped-tokens/staking/StakedTokenV1.sol
+// See: https://github.com/coinbase/wrapped-tokens-os/
+//      blob/main/contracts/wrapped-tokens/staking/StakedTokenV1.sol
 interface IStakedToken {
     /// @dev From Coinbase StakedTokenV1.sol: Returns the current exchange rate scaled by by 10**18
     /// @return _exchangeRate The exchange rate
     function exchangeRate() external view returns (uint256);
 }
 
-/// External Interface for future StakedTokenV1 Controller witch 
+/// External Interface for future StakedTokenV1 Controller witch
 /// should follow cToken model.
 // see https://www.coinbase.com/cbeth/whitepaper
 interface IStakedController {

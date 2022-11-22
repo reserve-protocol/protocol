@@ -54,6 +54,8 @@ import {
   USDCMock,
   NonFiatCollateral,
   SelfReferentialCollateral,
+  CBEthMock,
+  CbEthCollateral,
 } from '../typechain'
 
 export enum Implementation {
@@ -152,6 +154,7 @@ async function collateralFixture(
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
   const USDC: ContractFactory = await ethers.getContractFactory('USDCMock')
+  const CBETH = await ethers.getContractFactory('CBEthMock')
   const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
   const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
   const FiatCollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
@@ -161,6 +164,9 @@ async function collateralFixture(
     libraries: { OracleLib: oracleLib.address },
   })
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
+  const CbEthCollateralFactory = await ethers.getContractFactory('CbEthCollateral', {
     libraries: { OracleLib: oracleLib.address },
   })
   const defaultThreshold = fp('0.05') // 5%
@@ -260,6 +266,26 @@ async function collateralFixture(
     return [erc20, coll]
   }
 
+  const makeCbEthCollateral = async (): Promise<[CBEthMock, CbEthCollateral]> => {
+    const signer = (await ethers.getSigners())[0]
+    const erc20: CBEthMock = <CBEthMock>await CBETH.deploy(signer.address, fp(1))
+    const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    )
+    const coll = <CbEthCollateral>(
+      await CbEthCollateralFactory.deploy(
+        fp('1'),
+        chainlinkFeed.address,
+        erc20.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        delayUntilDefault
+      )
+    )
+    return [erc20, coll]
+  }
+
   // Create all possible collateral
   const dai = await makeVanillaCollateral('DAI')
   const usdc = await makeSixDecimalCollateral('USDC')
@@ -287,6 +313,7 @@ async function collateralFixture(
     await busd[1].chainlinkFeed(),
     aaveToken
   )
+  const cbeth = await makeCbEthCollateral()
   const erc20s = [
     dai[0],
     usdc[0],
@@ -299,6 +326,7 @@ async function collateralFixture(
     ausdc[0],
     ausdt[0],
     abusd[0],
+    cbeth[0],
   ]
   const collateral = [
     dai[1],
@@ -312,11 +340,12 @@ async function collateralFixture(
     ausdc[1],
     ausdt[1],
     abusd[1],
+    cbeth[1],
   ]
 
   // Create the initial basket
-  const basket = [dai[1], usdc[1], adai[1], cdai[1]]
-  const basketsNeededAmts = [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
+  const basket = [dai[1], usdc[1], adai[1], cdai[1], cbeth[1]]
+  const basketsNeededAmts = [fp('0.2'), fp('0.2'), fp('0.2'), fp('0.2'), fp('0.2')] // 0.2 * 5 = 1
 
   return {
     erc20s,

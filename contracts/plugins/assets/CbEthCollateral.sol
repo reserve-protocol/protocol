@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BlueOak-1.0.0
+// SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
 import "contracts/plugins/assets/AbstractCollateral.sol";
@@ -11,7 +11,7 @@ import "contracts/plugins/assets/IStakedToken.sol";
  * {ref} = ETH
  * {target} = {ref}  = ETH
  * {UoA} = USD
- * @notice implements Abstract collateral 
+ * @notice implements Abstract collateral
  */
 contract CbEthCollateral is Collateral {
     using FixLib for uint192;
@@ -19,7 +19,6 @@ contract CbEthCollateral is Collateral {
 
     // All cbEth Tokens have 18 decimals, same as ETH
     uint192 public prevReferencePrice; // previous rate, {tok/ref}
-    // IStakedController public immutable stakedController;
 
     event ReceivedReward(address indexed sender, uint256 amount);
 
@@ -34,7 +33,6 @@ contract CbEthCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_
-        // IStakedController stakedController_
     )
         Collateral(
             fallbackPrice_,
@@ -46,11 +44,7 @@ contract CbEthCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        //require(address(stakedController_) != address(0), "stakedController missing");
         prevReferencePrice = refPerTok();
-        // stakedController = stakedController_;
-        //IERC20 staked = IERC20(stakedController.getStakedAddress());
-        //staked.approve(address(stakedController), maxTradeVolume_);
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -81,14 +75,13 @@ contract CbEthCollateral is Collateral {
                 markStatus(CollateralStatus.IFFY);
             }
         }
-        // update ref price 
+        // update ref price
         prevReferencePrice = referencePrice;
-        // update status 
+        // update status
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-        // No interactions beyond the initial refresher
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
