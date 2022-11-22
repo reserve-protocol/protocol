@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 //import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import "./ERC20Mock.sol";
 import "contracts/libraries/Fixed.sol";
-import "hardhat/console.sol";
 
 /// Coinbase StakedTokenV1 Mock
 /// @dev ERC20 + Oracle functions + exchange rate function
@@ -48,7 +47,6 @@ contract StakedTokenV1Mock is ERC20Mock {
      */
     function updateExchangeRate(uint256 newExchangeRate) external onlyOracle {
         require(newExchangeRate > 0, "StakedTokenV1Mock: new exchange rate cannot be 0");
-        console.log("from cbEth rcv: " , newExchangeRate);
         EXCHANGE_RATE = newExchangeRate;
         emit ExchangeRateUpdated(msg.sender, newExchangeRate);
     }

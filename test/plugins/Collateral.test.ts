@@ -1693,7 +1693,7 @@ describe('Collateral contracts', () => {
       expect(await invalidCbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
 
-    it('Should disable if refPerTok decreaces', async () => {
+    it('Should triggers in an immediate default if refPerTok decreaces, add must stay defaulted', async () => {
 
       expect(await cbEthCollateral.strictPrice()).to.equal(fp('1'))
 
@@ -1747,13 +1747,11 @@ describe('Collateral contracts', () => {
       await cbEth.connect(owner).transfer(cbEthCollateral.address, amt.div('25'))
       expect(await cbEthCollateral.bal(owner.address)).to.equal(fp('96'))
       expect(await cbEth.balanceOf(cbEthCollateral.address)).to.equal(fp('4'))
-      // reward 4 cbEth @ 3 ex rate = 12 ETH
+      // reward 4 cbEth @ 3 ex rate = 12 ETH - 4 cbEth = 8 ETH
       expect(await cbEthCollateral.claimRewards())
         .to.emit(cbEthCollateral, 'RewardsClaimed')
-        .withArgs(cbEth.address, fp('12'))
-
+        .withArgs(cbEth.address, fp('8'))
     })
-
   })
 
   // Tests specific to EURFiatCollateral.sol contract, not used by default in fixture

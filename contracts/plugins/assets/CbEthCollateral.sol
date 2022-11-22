@@ -3,7 +3,6 @@ pragma solidity 0.8.9;
 
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/IStakedToken.sol";
-import "hardhat/console.sol";
 
 /**
  * @title CbEthCollateral
@@ -64,16 +63,16 @@ contract CbEthCollateral is Collateral {
     /// @custom:interaction RCEI
     function refresh() external virtual override {
         // == Refresh ==
-
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
-
         // Check for hard default
         uint192 referencePrice = refPerTok();
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
+            // no need to test targetPerRef() since {ref} = {target}
+            // test price and strictPrice via chainLinkFeed
             try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
                 markStatus(CollateralStatus.SOUND);
             } catch (bytes memory errData) {
@@ -94,9 +93,7 @@ contract CbEthCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        console.log("cbEth addr", address(erc20));
         uint256 rate = IStakedToken(address(erc20)).exchangeRate();
-        console.log("rate is " , rate);
         return uint192(rate);
     }
 
@@ -114,26 +111,9 @@ contract CbEthCollateral is Collateral {
     function claimRewards() external override {
         //IERC20 staked = IERC20(stakedController.getStakedAddress());
         IERC20 staked = IERC20(address(erc20));
-        console.log("cbEth addr", address(staked));
         uint256 bal = staked.balanceOf(address(this)); // cbETH balance
         //stakedController.claimStaked(address(this), bal);
-        console.log("bal " , bal);
-        uint192 reward = uint192(bal).mul(refPerTok());
-        console.log("refpertok ", refPerTok());
+        uint192 reward = uint192(bal).mul(refPerTok() - 10**18);
         emit RewardsClaimed(staked, reward);
     }
-
-    /// @custom:interaction RCEI
-    function approve( address spender, uint256 amount) external {
-        IERC20 staked = IERC20(address(erc20));
-        staked.approve(spender, amount);
-    }
-
-    receive() external payable {
-        //require(msg.sender == address(stakedController), "Receive ETH only from staked controller");
-        emit ReceivedReward(msg.sender, msg.value);
-    }
-
-    fallback() external {}
-
 }
