@@ -30,6 +30,7 @@ const config: any = {
   defaultNetwork: 'hardhat',
   networks: {
     hardhat: {
+      // network for tests/in-process stuff
       forking: {
         url: MAINNET_RPC_URL,
         blockNumber: process.env.MAINNET_BLOCK
@@ -42,6 +43,9 @@ const config: any = {
       allowUnlimitedContractSize: true,
     },
     localhost: {
+      // network for long-lived mainnet forks
+      chainId: 31337,
+      url: 'http://localhost:8546',
       gas: 0x1ffffffff,
       blockGasLimit: 0x1fffffffffffff,
       allowUnlimitedContractSize: true,

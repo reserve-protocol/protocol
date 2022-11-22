@@ -15,7 +15,7 @@
     "deploy": "hardhat run scripts/deploy.ts",
     "confirm": "hardhat run scripts/confirm.ts",
     "verify_etherscan": "hardhat run scripts/verify_etherscan.ts",
-    "devchain": "hardhat node",
+    "devchain": "FORK=true hardhat node --port 8546",
     "test": "yarn test:unit && yarn test:integration",
     "test:unit": "yarn test:plugins && yarn test:p0 && yarn test:p1 && yarn test:scenario",
     "test:fast": "bash tools/fast-test.sh",

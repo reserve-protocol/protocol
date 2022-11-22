@@ -1,14 +1,14 @@
 import fs from 'fs'
 import hre, { ethers } from 'hardhat'
-
+import { Contract } from 'ethers'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../common'
 import { validatePrerequisites } from '../utils'
-import { RecollateralizationLibP1, RewardableLibP1, OracleLib, PermitLib } from '../../../typechain'
+import { RecollateralizationLibP1, OracleLib, PermitLib } from '../../../typechain'
 
 let tradingLib: RecollateralizationLibP1
-let rewardableLib: RewardableLibP1
+let rewardableLib: Contract
 let oracleLib: OracleLib
 let permitLib: PermitLib
 
@@ -39,7 +39,7 @@ async function main() {
 
   // Deploy RewardableLib external library
   const RewardableLibFactory = await ethers.getContractFactory('RewardableLibP1')
-  rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
+  rewardableLib = <Contract>await RewardableLibFactory.deploy()
   await rewardableLib.deployed()
   deployments.rewardableLib = rewardableLib.address
 

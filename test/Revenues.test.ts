@@ -296,12 +296,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       await distributor
         .connect(owner)
         .setDistribution(FURNACE_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
-
       await expect(
         distributor
           .connect(owner)
           .setDistribution(STRSR_DEST, { rTokenDist: bn(0), rsrDist: bn(0) })
       ).to.be.revertedWith('no distribution defined')
+
+      // Cannot set zero addr beneficiary
+      await expect(
+        distributor
+          .connect(owner)
+          .setDistribution(ZERO_ADDRESS, { rTokenDist: bn(5), rsrDist: bn(5) })
+      ).to.be.revertedWith('dest cannot be zero')
     })
 
     it('Should validate number of destinations', async () => {

@@ -515,7 +515,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     /// @custom:interaction
     function sweepRewardsSingle(IERC20 erc20) external {
         requireNotPausedOrFrozen();
-        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, backingManager);
+        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, assetRegistry, backingManager);
     }
 
     // ====

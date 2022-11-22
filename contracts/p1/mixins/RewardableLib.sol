@@ -90,8 +90,10 @@ library RewardableLibP1 {
     function sweepRewardsSingle(
         mapping(IERC20 => uint256) storage liabilities,
         IERC20 erc20,
+        IAssetRegistry reg,
         IBackingManager bm
     ) external {
+        require(reg.isRegistered(erc20), "erc20 unregistered");
         uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
         if (amt > 0) {
             erc20.safeTransfer(address(bm), amt);

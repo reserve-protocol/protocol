@@ -287,6 +287,8 @@ export interface IRTokenSetup {
   primaryBasket: string[]
   weights: BigNumber[]
   backups: IBackupInfo[]
+  beneficiary: string
+  revShare: IRevenueShare
 }
 
 export interface IGovParams {

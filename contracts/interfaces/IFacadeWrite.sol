@@ -28,6 +28,9 @@ struct SetupParams {
     uint192[] weights;
     // === Basket Backup ===
     BackupInfo[] backups;
+    // === Revenue Sharing ===
+    address beneficiary;
+    RevenueShare revShare;
 }
 
 /**
