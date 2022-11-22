@@ -30,3 +30,4 @@ scripts/addresses/31337*
 *.orig
 
 .idea
+*.code-workspace
