@@ -46,14 +46,15 @@ const createFixtureLoader = waffle.createFixtureLoader
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
+const HOLDER_nUSDC = '0x02479bfc7dce53a02e26fe7baea45a0852cb0909'
+
 describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
   let notionalProxy: NotionalProxy
-  let nUsdcMock: NTokenERC20ProxyMock
-  let nUsdcLive: NTokenERC20ProxyMock
+  let nUsdc: NTokenERC20ProxyMock
   let nUsdcCollateral: NTokenCollateral
   let noteToken: ERC20Mock
   let noteAsset: Asset
@@ -134,15 +135,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.NOTE || '')
     )
 
-    // nUSDC mock token
-    nUsdcMock = <NTokenERC20ProxyMock>(
-      await (await ethers.getContractFactory('NTokenERC20ProxyMock')).deploy('nUSDCMock', 'NMOCK')
-    )
-    await nUsdcMock.mint(addr1.address, initialBal)
-    await nUsdcMock.setUnderlyingValue(initialBal)
-
     // nUSDC live token
-    nUsdcLive = <NTokenERC20ProxyMock>(
+    nUsdc = <NTokenERC20ProxyMock>(
       await ethers.getContractAt('NTokenERC20ProxyMock', networkConfig[chainId].tokens.nUSDC || '')
     )
 
@@ -166,19 +160,24 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     NTokenCollateralFactory = await ethers.getContractFactory('NTokenCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    nUsdcCollateral = <NTokenCollateral>(
-      await NTokenCollateralFactory.deploy(
-        fp('1'),
-        networkConfig[chainId].chainlinkFeeds.USDC as string,
-        nUsdcMock.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        delayUntilDefault,
-        notionalProxy.address,
-        defaultThreshold
-      )
+    nUsdcCollateral = <NTokenCollateral>await NTokenCollateralFactory.deploy(
+      fp('1'),
+      networkConfig[chainId].chainlinkFeeds.USDC as string,
+      nUsdc.address,
+      config.rTokenMaxTradeVolume,
+      ORACLE_TIMEOUT,
+      ethers.utils.formatBytes32String('USD'),
+      delayUntilDefault,
+      notionalProxy.address,
+      defaultThreshold,
+      fp('0.01') // 1%
     )
+
+    // Setup balances of nUSDC for addr1 - Transfer from Mainnet holder
+    initialBal = bn('2000000e18')
+    await whileImpersonating(HOLDER_nUSDC, async (nUsdcSigner) => {
+      await nUsdc.connect(nUsdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
+    })
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -250,16 +249,16 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(noteAsset.claimRewards()).to.not.emit(noteAsset, 'RewardsClaimed')
       expect(await noteAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
-      // Check nUSDC Collateral plugin
+      // Check nUSDC Collateral plugin'
       expect(await nUsdcCollateral.isCollateral()).to.equal(true)
-      expect(await nUsdcCollateral.erc20Decimals()).to.equal(await nUsdcMock.decimals())
-      expect(await nUsdcCollateral.erc20()).to.equal(nUsdcMock.address)
-      expect(await nUsdcMock.decimals()).to.equal(await nUsdcLive.decimals())
+      expect(await nUsdcCollateral.erc20Decimals()).to.equal(await nUsdc.decimals())
+      expect(await nUsdcCollateral.erc20()).to.equal(nUsdc.address)
+      expect(await nUsdc.decimals()).to.equal(8)
       expect(await nUsdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await nUsdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await nUsdcCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await nUsdcCollateral.refPerTok()).to.equal(fp('1'))
-      expect(await nUsdcCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.05')) // close to $1
+      expect(await nUsdcCollateral.refPerTok()).to.closeTo(fp('0.02'), fp('0.005')) // close to $1
+      expect(await nUsdcCollateral.strictPrice()).to.be.closeTo(fp('0.02'), fp('0.005')) // close to $1
       expect(await nUsdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Check claim data
@@ -278,7 +277,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
       expect(ERC20s[2]).to.equal(noteToken.address)
-      expect(ERC20s[3]).to.equal(nUsdcMock.address)
+      expect(ERC20s[3]).to.equal(nUsdc.address)
       expect(ERC20s.length).to.eql(4)
 
       // Assets
@@ -296,7 +295,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(nUsdcMock.address)
+      expect(backing[0]).to.equal(nUsdc.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -309,8 +308,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await nUsdcMock.connect(addr1).approve(rToken.address, issueAmount)
+      const issueAmount: BigNumber = bn('100e8')
+      await nUsdc.connect(addr1).approve(rToken.address, issueAmount)
       expect(await rToken.connect(addr1).balanceOf(addr1.address)).to.equal(bn('0'))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rToken.connect(addr1).balanceOf(addr1.address)).to.equal(issueAmount)
@@ -324,15 +323,48 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         NTokenCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
-          nUsdcMock.address,
+          nUsdc.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           delayUntilDefault,
           ethers.constants.AddressZero,
-          defaultThreshold
+          defaultThreshold,
+          fp('0.01') // 1%
         )
       ).to.be.revertedWith('Notional proxy address missing')
+
+      // Allowed refPerTok drop too high
+      await expect(
+        NTokenCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          nUsdc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          delayUntilDefault,
+          notionalProxy.address,
+          defaultThreshold,
+          fp('1') // 100%
+        )
+      ).to.be.revertedWith('Allowed refPerTok drop out of range')
+
+      // Negative drop on refPerTok
+      await expect(
+        NTokenCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          nUsdc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          delayUntilDefault,
+          notionalProxy.address,
+          defaultThreshold,
+          fp('-0.01') // negative value
+        )
+      ).to.be.reverted
     })
   })
 })

@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/INotionalProxy.sol";
@@ -20,8 +19,9 @@ contract NTokenCollateral is Collateral {
 
     INTokenERC20Proxy public immutable nToken;
     INotionalProxy public immutable notionalProxy;
-    uint192 public immutable defaultThreshold; // {%}
-    uint192 public previousReferenceRate; // previous rate {ref/tok}
+    uint192 public immutable defaultThreshold; // {%} percentage allowed of de-peg // D18
+    uint192 private immutable marginRatio; // max drop allowed // D0
+    uint192 private maxRefPerTok; // max rate previously seen {ref/tok} // D18
 
     constructor(
         uint192 _fallbackPrice,
@@ -32,7 +32,8 @@ contract NTokenCollateral is Collateral {
         bytes32 _targetName,
         uint256 _delayUntilDefault,
         address _notionalProxy,
-        uint192 _defaultThreshold
+        uint192 _defaultThreshold,
+        uint192 _allowedDrop
     )
     Collateral(
         _fallbackPrice,
@@ -45,17 +46,19 @@ contract NTokenCollateral is Collateral {
     )
     {
         require(_notionalProxy != address(0), "Notional proxy address missing");
+        require(_allowedDrop < FIX_ONE, "Allowed refPerTok drop out of range");
 
         nToken = INTokenERC20Proxy(address(_erc20Collateral));
         notionalProxy = INotionalProxy(_notionalProxy);
         defaultThreshold = _defaultThreshold;
+        marginRatio = FIX_ONE - _allowedDrop;
     }
 
     /// Can return 0, can revert
     /// Shortcut for price(false)
     /// @return {UoA/tok} The current price(), without considering fallback prices
     function strictPrice() external view returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        return chainlinkFeed.price(oracleTimeout).mul(actualRefPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -66,11 +69,13 @@ contract NTokenCollateral is Collateral {
 
         CollateralStatus oldStatus = status();
 
-        uint192 referenceRate = refPerTok();
-        // check if refRate has decreased
-        if (referenceRate < previousReferenceRate) {
+        uint192 _actualRefPerTok = actualRefPerTok();
+
+        // check if refPerTok rate has decreased below accepted threshold
+        if (_actualRefPerTok < refPerTok()) {
             markStatus(CollateralStatus.DISABLED);
         } else {
+            // if it didn't, check the peg of the reference
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 currentPrice) {
                 // the peg of our reference is always ONE target
                 uint192 peg = FIX_ONE;
@@ -98,7 +103,9 @@ contract NTokenCollateral is Collateral {
         }
 
         // store refRate for the next iteration
-        previousReferenceRate = referenceRate;
+        if (_actualRefPerTok > maxRefPerTok) {
+            maxRefPerTok = _actualRefPerTok;
+        }
 
         // check if updated status
         CollateralStatus newStatus = status();
@@ -107,14 +114,22 @@ contract NTokenCollateral is Collateral {
         }
     }
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
+    /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
+    function actualRefPerTok() public view returns (uint192) {
         // fetch value of all current liquidity
         uint192 valueOfAll = _safeWrap(uint256(nToken.getPresentValueUnderlyingDenominated()));
         // fetch total supply of tokens
         uint192 totalSupply = _safeWrap(nToken.totalSupply());
         // divide to get the value of one token
         return valueOfAll.div(totalSupply);
+    }
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    /// @notice This amount has a {margin} space discounted to allow a certain drop on value
+    function refPerTok() public view override returns (uint192) {
+        // We can do this because we know {margin_ratio} is a
+        // small controlled number so it won't overflow
+        return maxRefPerTok.div(FIX_ONE).mul(marginRatio);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
