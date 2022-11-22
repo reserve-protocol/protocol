@@ -95,11 +95,11 @@ function shiftl_toFix(
     int8 shiftLeft,
     RoundingMode rounding
 ) pure returns (uint192) {
-    shiftLeft += 18;
-
     if (x == 0) return 0;
-    if (shiftLeft <= -77) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
-    if (57 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
+    if (shiftLeft <= -96) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
+    if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
+
+    shiftLeft += 18;
 
     uint256 coeff = 10**abs(shiftLeft);
     uint256 shifted = (shiftLeft >= 0) ? x * coeff : _divrnd(x, coeff, rounding);
@@ -205,6 +205,11 @@ library FixLib {
         int8 decimals,
         RoundingMode rounding
     ) internal pure returns (uint192) {
+        // Handle overflow cases
+        if (x == 0) return 0;
+        if (decimals <= -58) return (rounding == CEIL ? 1 : 0);
+        if (58 <= decimals) revert UIntOutOfBounds();
+
         uint256 coeff = uint256(10**abs(decimals));
         return _safeWrap(decimals >= 0 ? x * coeff : _divrnd(x, coeff, rounding));
     }
@@ -305,7 +310,7 @@ library FixLib {
     /// Raise this uint192 to a nonnegative integer power.
     /// Intermediate muls do nearest-value rounding.
     /// Presumes that powu(0.0, 0) = 1
-    /// @dev The gas cost is O(lg(y))
+    /// @dev The gas cost is O(lg(y)), precision is only reasonable for x_ <= FIX_ONE
     /// @return x_ ** y
     // as-ints: x_ ** y / 1e18**(y-1)    <- technically correct for y = 0. :D
     function powu(uint192 x_, uint48 y) internal pure returns (uint192) {
@@ -379,7 +384,13 @@ library FixLib {
         int8 decimals,
         RoundingMode rounding
     ) internal pure returns (uint256) {
+        // Handle overflow cases
+        if (x == 0) return 0; // always computable, no matter what decimals is
+        if (decimals <= -60) return (rounding == CEIL ? 1 : 0);
+        if (96 <= decimals) revert UIntOutOfBounds();
+
         decimals -= 18; // shift so that toUint happens at the same time.
+
         uint256 coeff = uint256(10**abs(decimals));
         return decimals >= 0 ? uint256(x * coeff) : uint256(_divrnd(x, coeff, rounding));
     }
