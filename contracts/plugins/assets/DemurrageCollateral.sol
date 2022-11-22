@@ -19,12 +19,12 @@ abstract contract DemurrageCollateral is ICollateral {
     uint192 public immutable fallbackPrice; // {UoA}
 
     uint192 public immutable override maxTradeVolume; // {UoA}
-    uint64 public immutable startTime;
 
     uint192 public lastTokPerRef;
     uint64 public lastTokPerRefTime;
 
-    uint256 public constant PERIOD = 60; // {s} seconds contained in a single time period for calculating fee
+    // {s} seconds contained in a single time period for calculating fee
+    uint256 public constant PERIOD = 60;
     uint256 public immutable ratePerPeriod;
 
     // Default Status:
@@ -47,6 +47,7 @@ abstract contract DemurrageCollateral is ICollateral {
     ) {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
+        require(ratePerPeriod_ > 0, "ratePerPeriod zero");
         require(token_ != address(0), "");
         erc20 = IERC20Metadata(token_);
         erc20Decimals = erc20.decimals();
@@ -54,8 +55,9 @@ abstract contract DemurrageCollateral is ICollateral {
         fallbackPrice = _safeWrap(fallbackPrice_);
         targetName = targetName_;
         delayUntilDefault = delayUntilDefault_;
-        startTime = uint64(block.timestamp);
         ratePerPeriod = ratePerPeriod_;
+        lastTokPerRef = FIX_ONE;
+        lastTokPerRefTime = 1640995200;
     }
 
     function markStatus(CollateralStatus status_) internal {
@@ -81,7 +83,7 @@ abstract contract DemurrageCollateral is ICollateral {
     /// Can return 0, can revert
     /// @return {UoA/tok} The current price()
     function strictPrice() public view override returns (uint192) {
-        return uTokPerTok() * pricePerUTok();
+        return uTokPerTok().mul(pricePerUTok());
     }
 
     /// Can return 0
