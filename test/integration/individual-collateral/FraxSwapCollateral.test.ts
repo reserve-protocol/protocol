@@ -21,8 +21,8 @@ import { setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  FTokenFiatCollateral,
-  FTokenMock,
+  FraxSwapCollateral,
+  FraxSwapPairMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -30,6 +30,7 @@ import {
   IAssetRegistry,
   IBasketHandler,
   InvalidMockV3Aggregator,
+  IFraxswapPair,
   OracleLib,
   MockV3Aggregator,
   RTokenAsset,
@@ -38,24 +39,28 @@ import {
   TestIMain,
   TestIRToken,
 } from '../../../typechain'
+import { getEtherscanBaseURL } from '../../../scripts/deployment/utils'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const holderFFRAXCRV = '0xfcf7c8fb47855e04a1bee503d1091b65359c6009'
+const holderFSFXSFRAX = '0x3f2e53b1a3036fd33f3c2f3cc49dab26a88df2e0'
+// absolute 🐋
+const fxsWhale = '0x66df2139c24446f5b43db80a680fb94d0c1c5d8e'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
+  let fxs: ERC20Mock
   let frax: ERC20Mock
-  let fFraxCrv: FTokenMock 
-  let fTokenCollateral: FTokenFiatCollateral
+  let fsFxsFrax: FraxSwapPairMock 
+  let fraxSwapCollateral: FraxSwapCollateral
   // let compToken: ERC20Mock
   // let comptroller: ComptrollerMock
   let rsr: ERC20Mock
@@ -99,6 +104,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
+  const ammThreshold = fp('0.05') // 5%
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
 
@@ -109,7 +115,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let chainId: number
 
-  let FTokenCollateralFactory: ContractFactory
+  let FraxSwapCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
@@ -132,40 +138,44 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     frax = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.FRAX || '')
     )
-    // fFRAXCRV token
-    fFraxCrv = <FTokenMock>(
-      await ethers.getContractAt('FTokenMock', networkConfig[chainId].tokens.fFRAXCRV || '')
+    fxs = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.FXS || '')
+    )
+    // fsFXSFRAX token
+    fsFxsFrax = <FraxSwapPairMock>(
+      await ethers.getContractAt('FraxSwapPairMock', networkConfig[chainId].tokens.fsFXSFRAX || '')
     )
 
-    // Deploy fFraxCrv collateral plugin
-    FTokenCollateralFactory = await ethers.getContractFactory('FTokenFiatCollateral', {
+    // Deploy fsFxsFrax collateral plugin
+    FraxSwapCollateralFactory = await ethers.getContractFactory('FraxSwapCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
 
-    fTokenCollateral = <FTokenFiatCollateral>(
-      await FTokenCollateralFactory.deploy(
+    fraxSwapCollateral = <FraxSwapCollateral>(
+      await FraxSwapCollateralFactory.deploy(
         fp('1'),
-        '0x0000000000000000000000000000000000000000', // no {uoa/ref} feed for this stablecoin
+        2,
+        networkConfig[chainId].chainlinkFeeds.FXS as string, // frax chainlink feed
         networkConfig[chainId].chainlinkFeeds.FRAX as string, // frax chainlink feed
-        fFraxCrv.address,
+        fsFxsFrax.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+        ammThreshold,
         defaultThreshold,
         delayUntilDefault,
-        (await frax.decimals()).toString(),
         {gasLimit: 5000000}
       )
     )
 
-    await fTokenCollateral.deployed();
+    await fraxSwapCollateral.deployed();
 
     // Setup balances for addr1 - Transfer from Mainnet holder
-    // fFRAXCRV
+    // fsFXSFRAX
     initialBal = bn('75e18')
     
-    await whileImpersonating(holderFFRAXCRV, async (ffraxcrvSigner) => {
-      await fFraxCrv.connect(ffraxcrvSigner).transfer(addr1.address, initialBal)
+    await whileImpersonating(holderFSFXSFRAX, async (fsfxsfraxSigner) => {
+      await fsFxsFrax.connect(fsfxsfraxSigner).transfer(addr1.address, initialBal)
     })
 
     // Set parameters
@@ -179,7 +189,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
       assets: [],
-      primaryBasket: [fTokenCollateral.address],
+      primaryBasket: [fraxSwapCollateral.address],
       weights: [fp('1')],
       backups: [],
       beneficiary: ZERO_ADDRESS,
@@ -230,22 +240,21 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Collateral plugin
-      // fFRAXCRV (FTokenFiatCollateral)
-      expect(await fTokenCollateral.isCollateral()).to.equal(true)
-      expect(await fTokenCollateral.referenceERC20Decimals()).to.equal(await frax.decimals())
-      expect(await fTokenCollateral.erc20()).to.equal(fFraxCrv.address)
-      expect(await fFraxCrv.decimals()).to.equal(18)
-      expect(await fTokenCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await fTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.01'))
-      expect(await fTokenCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await fTokenCollateral.pricePerTarget()).to.be.closeTo(fp('1'), fp('0.01'))
-      expect(await fTokenCollateral.prevReferencePrice()).to.equal(await fTokenCollateral.refPerTok())
-      expect(await fTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('1')) // close to $1
+      // fsFXSFRAX (FraxSwapCollateral)
+      expect(await fraxSwapCollateral.isCollateral()).to.equal(true)
+      expect(await fraxSwapCollateral.erc20()).to.equal(fsFxsFrax.address)
+      expect(await fsFxsFrax.decimals()).to.equal(18)
+      expect(await fraxSwapCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'))
+      expect(await fraxSwapCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(await fraxSwapCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await fraxSwapCollateral.pricePerTarget()).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(await fraxSwapCollateral.prevReferencePrice()).to.equal(await fraxSwapCollateral.refPerTok())
+      expect(await fraxSwapCollateral.strictPrice()).to.be.closeTo(fp('4.27'), fp('0.01')) // close to $4.27
 
       // TODO: Check claim data 
-      // await expect(fTokenCollateral.claimRewards())
+      // await expect(fraxSwapCollateral.claimRewards())
       //   .to.emit(undefined);
-      expect(await fTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      expect(await fraxSwapCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -257,16 +266,16 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(fFraxCrv.address)
+      expect(ERC20s[2]).to.equal(fsFxsFrax.address)
       expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(fTokenCollateral.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(fraxSwapCollateral.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(fTokenCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(fraxSwapCollateral.address)
     })
 
     // Check RToken basket
@@ -274,7 +283,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(fFraxCrv.address)
+      expect(backing[0]).to.equal(fsFxsFrax.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -284,50 +293,70 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(price).to.be.closeTo(fp('4.23'), fp('0.01'))
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10e18')
-      // await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await fFraxCrv.connect(addr1).approve(rToken.address, issueAmount)
+      // await fsFxsFrax.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await fsFxsFrax.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('4.23'), fp('0.01'))
     })
 
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
       // Default threshold
+
       await expect(
-        FTokenCollateralFactory.deploy(
+        FraxSwapCollateralFactory.deploy(
           fp('1'),
-          '0x0000000000000000000000000000000000000000',
+          2,
+          networkConfig[chainId].chainlinkFeeds.FXS as string,
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
-          fFraxCrv.address,
+          fsFxsFrax.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+          bn(0),
+          defaultThreshold,
+          delayUntilDefault,
+        )
+      ).to.be.revertedWith('ammThreshold zero')
+
+      await expect(
+        FraxSwapCollateralFactory.deploy(
+          fp('1'),
+          2,
+          networkConfig[chainId].chainlinkFeeds.FXS as string,
+          networkConfig[chainId].chainlinkFeeds.FRAX as string,
+          fsFxsFrax.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+          ammThreshold,
           bn(0),
           delayUntilDefault,
-          (await frax.decimals()).toString(),
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
-      // ReferenceERC20Decimals
+
       await expect(
-        FTokenCollateralFactory.deploy(
+        FraxSwapCollateralFactory.deploy(
           fp('1'),
-          '0x0000000000000000000000000000000000000000',
+          4,
+          networkConfig[chainId].chainlinkFeeds.FXS as string,
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
-          fFraxCrv.address,
+          fsFxsFrax.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+          ammThreshold,
           defaultThreshold,
           delayUntilDefault,
-          0,
         )
-      ).to.be.revertedWith('referenceERC20Decimals missing')
+      ).to.be.revertedWith('invalid tokenisFiat bitmap')
+
     })
   })
 
@@ -339,8 +368,8 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      // await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await fFraxCrv.connect(addr1).approve(rToken.address, issueAmount)
+      // await fsFxsFrax.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await fsFxsFrax.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -349,40 +378,67 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1fFraxCrv: BigNumber = await fFraxCrv.balanceOf(addr1.address)
+      const balanceAddr1fFxsFrax: BigNumber = await fsFxsFrax.balanceOf(addr1.address)
 
       // Check rates and prices
-      const fFraxCrvPrice1: BigNumber = await fTokenCollateral.strictPrice() // ~ $1 
-      const fFraxCrvRefPerTok1: BigNumber = await fTokenCollateral.refPerTok() // ~ $1 
+      const fFxsFraxPrice1: BigNumber = await fraxSwapCollateral.strictPrice() // ~ $4.27
+      const fFxsFraxRefPerTok1: BigNumber = await fraxSwapCollateral.refPerTok() // ~ $4.27
 
-      expect(fFraxCrvPrice1).to.be.closeTo(fp('1'), fp('0.01'))
-      expect(fFraxCrvRefPerTok1).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(fFxsFraxPrice1).to.be.closeTo(fp('4.27'), fp('0.01'))
+      expect(fFxsFraxRefPerTok1).to.be.closeTo(fp('1'), fp('0.01'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('0.05')) // approx 10K in value
+      expect(totalAssetValue1).to.be.closeTo(fp('42.3'), fp('0.05')) // approx $42.3 in value
 
-      // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(10000)
-      await advanceBlocks(10000)
+      //perform swap - increasing refPerTok()
+      const pair = <IFraxswapPair>(
+        await ethers.getContractAt("IFraxswapPair", await fraxSwapCollateral.erc20() as string)
+      )
+
+      let swapReceipt
+      await whileImpersonating(fxsWhale, async (fxsWhaleSigner) => {
+        await fxs.connect(fxsWhaleSigner).approve(fraxSwapCollateral.address, ethers.constants.MaxUint256);
+        // swap fxs for ~40k frax
+        await pair.connect(fxsWhaleSigner).swap(
+          fp('0'), 
+          fp('40000'), 
+          addr1.address, 
+          [] // no data
+        );
+      })
+
+      const fxsBal = await fxs.balanceOf(fxsWhale);
+      console.log('fxsBal:');
+      console.log(fxsBal);
+      const addr1FraxBal = await frax.balanceOf(addr1.address);
+      console.log('addr1FraxBal:');
+      console.log(addr1FraxBal);
+      // pair.swap(0, )
+
+      await advanceTime(100)
+      await advanceBlocks(100)
 
       // Refresh cToken manually (required)
-      await fTokenCollateral.refresh()
-      expect(await fTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await fraxSwapCollateral.refresh()
+      expect(await fraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const fFraxCrvPrice2: BigNumber = await fTokenCollateral.strictPrice() // ~$1
-      const fFraxCrvRefPerTok2: BigNumber = await fTokenCollateral.refPerTok() // ~$1
+      const fFxsFraxPrice2: BigNumber = await fraxSwapCollateral.strictPrice() // ~$1
+      const fFxsFraxRefPerTok2: BigNumber = await fraxSwapCollateral.refPerTok() // ~$1
 
       // Check rates and price increase
-      expect(fFraxCrvPrice2).to.be.gt(fFraxCrvPrice1)
-      expect(fFraxCrvRefPerTok2).to.be.gt(fFraxCrvRefPerTok1)
+      expect(fFxsFraxPrice2).to.be.gt(fFxsFraxPrice1)
+      expect(fFxsFraxRefPerTok2).to.be.gt(fFxsFraxRefPerTok1)
+      console.log("prices:")
+      console.log(fFxsFraxPrice1, fFxsFraxPrice2)
+      console.log(fFxsFraxRefPerTok1, fFxsFraxRefPerTok2)
 
       // Still close to the original values
-      expect(fFraxCrvPrice2).to.be.closeTo(fp('1'), fp('0.01'))
-      expect(fFraxCrvRefPerTok2).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(fFxsFraxPrice2).to.be.closeTo(fp('1'), fp('0.01'))
+      expect(fFxsFraxRefPerTok2).to.be.closeTo(fp('1'), fp('0.01'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -390,31 +446,31 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
-      // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
+      // // Advance time and blocks slightly, causing refPerTok() to increase
+      // await advanceTime(100000000)
+      // await advanceBlocks(100000000)
 
-      // Refresh cToken manually (required)
-      await fTokenCollateral.refresh()
-      expect(await fTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      // // Refresh cToken manually (required)
+      // await fraxSwapCollateral.refresh()
+      // expect(await fraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Check rates and prices - Have changed significantly
-      const fFraxCrvPrice3: BigNumber = await fTokenCollateral.strictPrice() // ~$1.5
-      const fFraxCrvRefPerTok3: BigNumber = await fTokenCollateral.refPerTok() // ~$1.5
+      // // Check rates and prices - Have changed significantly
+      // const fFxsFraxPrice3: BigNumber = await fraxSwapCollateral.strictPrice() // ~$1.5
+      // const fFxsFraxRefPerTok3: BigNumber = await fraxSwapCollateral.refPerTok() // ~$1.5
 
-      // Check rates and price increase
-      expect(fFraxCrvPrice3).to.be.gt(fFraxCrvPrice2)
-      expect(fFraxCrvRefPerTok3).to.be.gt(fFraxCrvRefPerTok2)
+      // // Check rates and price increase
+      // expect(fFxsFraxPrice3).to.be.gt(fFxsFraxPrice2)
+      // expect(fFxsFraxRefPerTok3).to.be.gt(fFxsFraxRefPerTok2)
 
-      // Need to adjust ranges
-      expect(fFraxCrvPrice3).to.be.closeTo(fp('1.5'), fp('0.01'))
-      expect(fFraxCrvRefPerTok3).to.be.closeTo(fp('1.5'), fp('0.01'))
+      // // Need to adjust ranges
+      // expect(fFxsFraxPrice3).to.be.closeTo(fp('1.5'), fp('0.01'))
+      // expect(fFxsFraxRefPerTok3).to.be.closeTo(fp('1.5'), fp('0.01'))
 
-      // Check total asset value increased
-      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+      // // Check total asset value increased
+      // const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
+      //   rToken.address
+      // )
+      // expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
@@ -424,13 +480,13 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1fFraxCrv: BigNumber = await fFraxCrv.balanceOf(addr1.address)
+      const newBalanceAddr1fFxsFrax: BigNumber = await fsFxsFrax.balanceOf(addr1.address)
 
       // Check received tokens represent ~$10 in value at current prices
-      expect(newBalanceAddr1fFraxCrv.sub(balanceAddr1fFraxCrv)).to.be.closeTo(bn('6.6e18'), bn('1e17')) // ~$1.5 * 6.6 ~= $10 (100% of basket)
+      expect(newBalanceAddr1fFxsFrax.sub(balanceAddr1fFxsFrax)).to.be.closeTo(bn('6.6e18'), bn('1e17')) // ~$1.5 * 6.6 ~= $10 (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await fFraxCrv.balanceOf(backingManager.address)).to.be.closeTo(bn('3.3e18'), bn('1e17')) // ~= 4.95 usd in value
+      expect(await fsFxsFrax.balanceOf(backingManager.address)).to.be.closeTo(bn('3.3e18'), bn('1e17')) // ~= 4.95 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -464,7 +520,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
   //     // Provide approvals for issuances
-  //     await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+  //     await fsFxsFrax.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
   //     // Issue rTokens
   //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -504,33 +560,34 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expect(fTokenCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(fraxSwapCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Fallback price is returned
-      const [isFallback, price] = await fTokenCollateral.price(true)
+      const [isFallback, price] = await fraxSwapCollateral.price(true)
       expect(isFallback).to.equal(true)
       expect(price).to.equal(fp('1'))
 
       // Refresh should mark status IFFY
-      await fTokenCollateral.refresh()
-      expect(await fTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await fraxSwapCollateral.refresh()
+      expect(await fraxSwapCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>await (
-        await ethers.getContractFactory('FTokenFiatCollateral', {
+      const nonpriceCtokenCollateral: FraxSwapCollateral = <FraxSwapCollateral>await (
+        await ethers.getContractFactory('FraxSwapCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
+        2,
         NO_PRICE_DATA_FEED, // TODO: figure out how this should be configured
         NO_PRICE_DATA_FEED,
-        fFraxCrv.address,
+        fsFxsFrax.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+        ammThreshold,
         defaultThreshold,
         delayUntilDefault,
-        await frax.decimals(),
       )
 
       // CTokens - Collateral with no price info should revert
@@ -541,21 +598,22 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>await (
-        await ethers.getContractFactory('FTokenFiatCollateral', {
+      const invalidpriceCtokenCollateral: FraxSwapCollateral = <FraxSwapCollateral>await (
+        await ethers.getContractFactory('FraxSwapCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
+        2,
         mockChainlinkFeed.address, // TODO: figure out how this should be configured
         mockChainlinkFeed.address,
-        fFraxCrv.address,
+        fsFxsFrax.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('FSV2SQRTFXSFRAX'),
+        ammThreshold,
         defaultThreshold,
         delayUntilDefault,
-        await frax.decimals()
       )
 
       await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
@@ -579,101 +637,111 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newFTokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>await (
-        await ethers.getContractFactory('FTokenFiatCollateral', {
+      const newFraxSwapCollateral: FraxSwapCollateral = <FraxSwapCollateral>await (
+        await ethers.getContractFactory('FraxSwapCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
-        '0x0000000000000000000000000000000000000000', // no {uoa/ref} feed for this stablecoin
+        2, // token0 is non-fiat, while token1 is
         mockChainlinkFeed.address,
-        await fTokenCollateral.erc20(),
-        await fTokenCollateral.maxTradeVolume(),
-        await fTokenCollateral.oracleTimeout(),
-        await fTokenCollateral.targetName(),
-        await fTokenCollateral.defaultThreshold(),
-        await fTokenCollateral.delayUntilDefault(),
-        18,
+        mockChainlinkFeed.address,
+        await fraxSwapCollateral.erc20(),
+        await fraxSwapCollateral.maxTradeVolume(),
+        await fraxSwapCollateral.oracleTimeout(),
+        await fraxSwapCollateral.targetName(),
+        await fraxSwapCollateral.ammThreshold(),
+        await fraxSwapCollateral.defaultThreshold(),
+        await fraxSwapCollateral.delayUntilDefault(),
       )
 
       // Check initial state
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newFTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newFraxSwapCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newFTokenCollateral.address, bn('8e7')) // -20%
+      // Depeg token1 (a fiat) Reducing price 20%
+      await setOraclePrice(newFraxSwapCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
-      await expect(newFTokenCollateral.refresh())
-        .to.emit(newFTokenCollateral, 'DefaultStatusChanged')
+      await expect(newFraxSwapCollateral.refresh())
+        .to.emit(newFraxSwapCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newFTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newFraxSwapCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // CToken
-      const prevWhenDefault: BigNumber = await newFTokenCollateral.whenDefault()
-      await expect(newFTokenCollateral.refresh()).to.not.emit(
-        newFTokenCollateral,
+      const prevWhenDefault: BigNumber = await newFraxSwapCollateral.whenDefault()
+      await expect(newFraxSwapCollateral.refresh()).to.not.emit(
+        newFraxSwapCollateral,
         'DefaultStatusChanged'
       )
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newFTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newFraxSwapCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const FTokenMockFactory: ContractFactory = await ethers.getContractFactory('FTokenMock')
-      const symbol = await fFraxCrv.symbol()
-      const fFraxCrvMock: FTokenMock = <FTokenMock>(
-        await FTokenMockFactory.deploy(symbol + ' Token', symbol)
+      const FraxSwapPairMockFactory: ContractFactory = await ethers.getContractFactory('FraxSwapPairMock')
+      const symbol = await fsFxsFrax.symbol()
+      const fFxsFraxMock: FraxSwapPairMock = <FraxSwapPairMock>(
+        await FraxSwapPairMockFactory.deploy(
+          symbol + ' Token', 
+          symbol, 
+          networkConfig[chainId].tokens.FXS as string,
+          networkConfig[chainId].tokens.FRAX as string,
+          100, // fee in basis points, 100bp = 1%
+          fp('10000'),
+          fp('42700') // 4x more FRAX than FXS, so FXS -> FRAX exchange rate is ~4.27 FRAX ($4.27)
+        )
       )
-      // Set initial exchange rate to the new fFraxCrv Mock
-      await fFraxCrvMock.setAssetsPerShare(fp('1'))
 
-      // Redeploy plugin using the new fFraxCrv mock
-      const newFTokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>await (
-        await ethers.getContractFactory('FTokenFiatCollateral', {
+      // Redeploy plugin using the new fsFxsFrax mock
+      const newFraxSwapCollateral: FraxSwapCollateral = <FraxSwapCollateral>await (
+        await ethers.getContractFactory('FraxSwapCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
-        await fTokenCollateral.uoaPerRefFeed(),
-        await fTokenCollateral.chainlinkFeed(),
-        fFraxCrvMock.address,
-        await fTokenCollateral.maxTradeVolume(),
-        await fTokenCollateral.oracleTimeout(),
-        await fTokenCollateral.targetName(),
-        await fTokenCollateral.defaultThreshold(),
-        await fTokenCollateral.delayUntilDefault(),
-        18,
+        2,
+        await fraxSwapCollateral.token0chainlinkFeed(),
+        await fraxSwapCollateral.token1chainlinkFeed(),
+        fFxsFraxMock.address,
+        await fraxSwapCollateral.maxTradeVolume(),
+        await fraxSwapCollateral.oracleTimeout(),
+        await fraxSwapCollateral.targetName(),
+        await fraxSwapCollateral.ammThreshold(),
+        await fraxSwapCollateral.defaultThreshold(),
+        await fraxSwapCollateral.delayUntilDefault(),
+        {gasLimit: 5000000}
       )
 
       // Check initial state
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newFTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newFraxSwapCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for fFRAXCRV, will disable collateral immediately
-      await fFraxCrvMock.setAssetsPerShare(fp('0.94')) 
-      // TODO: add more functions to the mock contract, so we can test more stuff?
+      // Decrease rate for fsFXSFRAX, will disable collateral immediately
+      // this is done here by making liquidity just disappear from the fraxswap
+      // pool without changing the supply of shares lol.
+      await fFxsFraxMock.manipulateReserves(fp('1000'), fp('42700')) // each token supplies are down by 90%, oof!
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newFTokenCollateral.refresh())
-        .to.emit(newFTokenCollateral, 'DefaultStatusChanged')
+      await expect(newFraxSwapCollateral.refresh())
+        .to.emit(newFraxSwapCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newFTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newFraxSwapCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -684,30 +752,31 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidFTokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>(
-        await FTokenCollateralFactory.deploy(
+      const invalidFraxSwapCollateral: FraxSwapCollateral = <FraxSwapCollateral>(
+        await FraxSwapCollateralFactory.deploy(
           fp('1'),
+          2,
           invalidChainlinkFeed.address,
           invalidChainlinkFeed.address,
-          await fTokenCollateral.erc20(),
-          await fTokenCollateral.maxTradeVolume(),
-          await fTokenCollateral.oracleTimeout(),
-          await fTokenCollateral.targetName(),
-          await fTokenCollateral.defaultThreshold(),
-          await fTokenCollateral.delayUntilDefault(),
-          18,
+          await fraxSwapCollateral.erc20(),
+          await fraxSwapCollateral.maxTradeVolume(),
+          await fraxSwapCollateral.oracleTimeout(),
+          await fraxSwapCollateral.targetName(),
+          await fraxSwapCollateral.ammThreshold(),
+          await fraxSwapCollateral.defaultThreshold(),
+          await fraxSwapCollateral.delayUntilDefault(),
         )
       )
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidFTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidFraxSwapCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidFraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidFTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidFTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidFraxSwapCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidFraxSwapCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })

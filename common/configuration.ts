@@ -9,6 +9,7 @@ interface ICurrencies {
 export interface ITokens {
   DAI?: string
   FRAX?: string
+  FXS?: string
   USDC?: string
   USDT?: string
   USDP?: string
@@ -27,6 +28,7 @@ export interface ITokens {
   cETH?: string
   cWBTC?: string
   fFRAXCRV?: string
+  fsFXSFRAX?: string
   AAVE?: string
   stkAAVE?: string
   COMP?: string
@@ -60,6 +62,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     tokens: {
       DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      FXS: '0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0',
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
@@ -78,6 +81,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
       fFRAXCRV: '0x3835a58CA93Cdb5f912519ad366826aC9a752510',
+      fsFXSFRAX: '0x03B59Bd1c8B9F6C265bA0c3421923B93f15036Fa',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
@@ -92,6 +96,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5',
       DAI: '0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9',
       FRAX: '0xb9e1e3a9feff48998e45fa90847ed4d467e8bcfd',
+      FXS: '0x6Ebc52C8C1089be9eB3945C4350B68B8E4C2233f',
       USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
       USDT: '0x3E7d1eAB13ad0104d2750B8863b489D65364e32D',
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
@@ -124,6 +129,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     tokens: {
       DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
       FRAX: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
+      FXS: '0x3432B6A60D23Ca0dFCa7761B7ab56459D9C964D0',
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
       USDT: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
       BUSD: '0x4Fabb145d64652a948d72533023f6E7A623C7C53',
@@ -141,6 +147,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
       fFRAXCRV: '0x794F6B13FBd7EB7ef10d1ED205c9a416910207Ff',
+      fsFXSFRAX: '0x03B59Bd1c8B9F6C265bA0c3421923B93f15036Fa',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
@@ -155,6 +162,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       COMP: '0xdbd020CAeF83eFd542f4De03e3cF0C28A4428bd5',
       DAI: '0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9',
       FRAX: '0xb9e1e3a9feff48998e45fa90847ed4d467e8bcfd',
+      FXS: '0x6Ebc52C8C1089be9eB3945C4350B68B8E4C2233f',
       USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
       USDT: '0x3E7d1eAB13ad0104d2750B8863b489D65364e32D',
       BUSD: '0x833D8Eb16D306ed1FbB5D7A2E019e106B960965A',
