@@ -35,16 +35,6 @@ const div = (x: bigint, y: bigint, r: RoundingMode) =>
 const pow10 = (n: bigint, d: bigint, r: RoundingMode) =>
   d > 0 ? n * 10n ** d : div(n, 10n ** -d, r)
 
-function numBits(input: bigint) {
-  let n: bigint = abs(input)
-  let count = 0n
-  while (n > 0n) {
-    count += 1n
-    n = n >> 1n
-  }
-  return count
-}
-
 // shorthand arbitraries
 // arbInt: if N is positive, an arbitrary uint<n> value; if N is negative, an arbitrary int<-n> value
 const arbInt = (n: number) => (n > 0 ? fc.bigUintN(n) : fc.bigIntN(-n))
@@ -409,29 +399,26 @@ describe('FixLib Fuzzing', () => {
     // We do two versions: arbitrary x, and x bound less than 1e18
     // The latter tends to locate more frequent true bugs, because overflow isn't
     // so immediate
-    for (const arbBase of [fc.bigUint(10n ** 18n), arbInt(192)]) {
-      await fc.assert(
-        fc.asyncProperty(arbBase, arbInt(12), async (base, power) => {
-          if (power == 0n) return
-          const expected = div(base ** power, SCALE ** (power - 1n), ROUND)
-          if (expected < 2n ** 192n) {
-            const bits = numBits(power)
-            const error = 2n ** (bits - 1n)
-            const actual = (await caller.powu(base, power)).toBigInt()
+    await fc.assert(
+      fc.asyncProperty(fc.bigUint(10n ** 18n), arbInt(12), async (base, power) => {
+        if (power == 0n) return
+        const expected = div(base ** power, SCALE ** (power - 1n), ROUND)
+        if (expected < 2n ** 192n) {
+          const error = 1n
+          const actual = (await caller.powu(base, power)).toBigInt()
 
-            assert(
-              actual >= expected - error,
-              `Expected ${actual} to be within ${bits} of ${expected}`
-            )
-            assert(
-              actual <= expected + error,
-              `Expected ${actual} to be within ${bits} of ${expected}`
-            )
-          } else {
-            await expect(caller.powu(base, power)).to.be.reverted
-          }
-        })
-      )
-    }
+          assert(
+            actual >= expected - error,
+            `Expected ${actual} to be within ${bits} of ${expected}`
+          )
+          assert(
+            actual <= expected + error,
+            `Expected ${actual} to be within ${bits} of ${expected}`
+          )
+        } else {
+          await expect(caller.powu(base, power)).to.be.reverted
+        }
+      })
+    )
   })
 })

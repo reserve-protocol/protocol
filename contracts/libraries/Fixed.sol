@@ -2,6 +2,8 @@
 // solhint-disable func-name-mixedcase func-visibility
 pragma solidity ^0.8.9;
 
+import "hardhat/console.sol";
+
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
 
@@ -307,25 +309,23 @@ library FixLib {
 
     uint64 constant FIX_HALF = uint64(FIX_SCALE) / 2;
 
-    /// Raise this uint192 to a nonnegative integer power.
-    /// Intermediate muls do nearest-value rounding.
-    /// Presumes that powu(0.0, 0) = 1
-    /// @dev The gas cost is O(lg(y)), precision is only reasonable for x_ <= FIX_ONE
+    /// Raise this uint192 to a nonnegative integer power. Requires that x_ <= FIX_ONE
+    /// Gas cost is O(lg(y)), precision is +- 1e-18.
     /// @return x_ ** y
     // as-ints: x_ ** y / 1e18**(y-1)    <- technically correct for y = 0. :D
-    function powu(uint192 x_, uint48 y) internal pure returns (uint192) {
-        // The algorithm is exponentiation by squaring. See: https://w.wiki/4LjE
+    function powu(uint192 x_, uint48 y) internal view returns (uint192) {
+        require(x_ <= FIX_ONE);
         if (y == 1) return x_;
         if (x_ == FIX_ONE || y == 0) return FIX_ONE;
-        uint256 x = uint256(x_);
-        uint256 result = FIX_SCALE;
+        uint256 x = uint256(x_) * FIX_SCALE; // x is D36
+        uint256 result = FIX_SCALE_SQ; // result is D36
         while (true) {
-            if (y & 1 == 1) result = (result * x + FIX_HALF) / FIX_SCALE;
+            if (y & 1 == 1) result = (result * x + FIX_SCALE_SQ/2) / FIX_SCALE_SQ;
             if (y <= 1) break;
-            y = y >> 1;
-            x = (x * x + FIX_HALF) / FIX_SCALE;
+            y = (y >> 1);
+            x = (x * x + FIX_SCALE_SQ/2) / FIX_SCALE_SQ;
         }
-        return _safeWrap(result);
+        return _safeWrap(result/FIX_SCALE);
     }
 
     /// Comparison operators...
