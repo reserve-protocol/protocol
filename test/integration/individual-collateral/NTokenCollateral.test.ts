@@ -45,6 +45,8 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 const HOLDER_nUSDC = '0x02479bfc7dce53a02e26fe7baea45a0852cb0909'
 
+const BALANCER_NOTE_ORACLE = '0x5122E01D819E58BB2E22528c0D68D310f0AA6FD7'
+
 describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
@@ -149,9 +151,9 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         libraries: { OracleLib: oracleLib.address },
       })
     ).deploy(
-      fp('1'),
+      fp('0.22'),
       networkConfig[chainId].chainlinkFeeds.ETH || '',
-      '0x5122E01D819E58BB2E22528c0D68D310f0AA6FD7',
+      BALANCER_NOTE_ORACLE,
       noteToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -163,7 +165,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
     nUsdcCollateral = <NTokenCollateral>(
       await NTokenCollateralFactory.deploy(
-        fp('0.20'),
+        fp('1'),
         networkConfig[chainId].chainlinkFeeds.USDC as string,
         nUsdc.address,
         config.rTokenMaxTradeVolume,
@@ -444,8 +446,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const nUsdcRefPerTok3: BigNumber = await nUsdcCollateral.refPerTok() // ~0.03294
 
       // Need to adjust ranges
-      expect(nUsdcPrice3).to.be.closeTo(fp('0.029'), fp('0.001'))
-      expect(nUsdcRefPerTok3).to.be.closeTo(fp('0.029'), fp('0.001'))
+      expect(nUsdcPrice3).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(nUsdcRefPerTok3).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check price is within the accepted range
       expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDrop))
@@ -469,15 +471,15 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const newBalanceAddr1nUsdc: BigNumber = await nUsdc.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(338851e8), bn(1e8)) // ~0.0225 * 338851 ~= 10K (100% of basket)
+      expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(449159e8), bn(1e8)) // ~0.0223 * 449159 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(110751e8), bn(1e8)) // ~= 4962.8 usd in value
+      expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(1), bn(1e8)) // ~= 0.0000000002 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('3301.0'), // ~= 4962.8 usd (from above)
-        fp('0.5')
+        fp('0.0000000002'), // ~= 0.0000000002 usd (from above)
+        fp('0.00000000005')
       )
     })
   })
