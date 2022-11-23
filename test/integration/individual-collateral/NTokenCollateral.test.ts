@@ -13,23 +13,19 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
+import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
+import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { setOraclePrice } from '../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
+import { advanceBlocks, advanceTime } from '../../utils/time'
 import {
   Asset,
-  ComptrollerMock,
-  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
   IBasketHandler,
-  InvalidMockV3Aggregator,
   OracleLib,
   MockV3Aggregator,
   RTokenAsset,
@@ -38,7 +34,7 @@ import {
   TestIMain,
   TestIRToken,
   NTokenCollateral,
-  NTokenERC20ProxyMock,
+  NTokenERC20ProxyMock, INotionalProxy,
 } from '../../../typechain'
 import { NotionalProxy } from '@typechain/NotionalProxy'
 
@@ -101,6 +97,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
+  const allowedDrop = fp('0.01') // 1%
 
   let initialBal: BigNumber
 
@@ -141,8 +138,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     )
 
     // Notional Proxy
-    notionalProxy = <NotionalProxy>(
-      await ethers.getContractAt('NotionalProxyMock', networkConfig[chainId].NOTIONAL_PROXY || '')
+    notionalProxy = <INotionalProxy>(
+      await ethers.getContractAt('INotionalProxy', networkConfig[chainId].NOTIONAL_PROXY || '')
     )
 
     // Create NOTE asset
@@ -160,17 +157,19 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     NTokenCollateralFactory = await ethers.getContractFactory('NTokenCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    nUsdcCollateral = <NTokenCollateral>await NTokenCollateralFactory.deploy(
-      fp('1'),
-      networkConfig[chainId].chainlinkFeeds.USDC as string,
-      nUsdc.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('USD'),
-      delayUntilDefault,
-      notionalProxy.address,
-      defaultThreshold,
-      fp('0.01') // 1%
+    nUsdcCollateral = <NTokenCollateral>(
+      await NTokenCollateralFactory.deploy(
+        fp('1'),
+        networkConfig[chainId].chainlinkFeeds.USDC as string,
+        nUsdc.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        notionalProxy.address,
+        defaultThreshold,
+        allowedDrop
+      )
     )
 
     // Setup balances of nUSDC for addr1 - Transfer from Mainnet holder
@@ -245,7 +244,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await noteAsset.erc20()).to.equal(noteToken.address)
       expect(await noteAsset.erc20()).to.equal(networkConfig[chainId].tokens.NOTE)
       expect(await noteToken.decimals()).to.equal(8)
-      expect(await noteAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // TODO : change when price feed
+      //expect(await noteAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // TODO : change when price feed
       await expect(noteAsset.claimRewards()).to.not.emit(noteAsset, 'RewardsClaimed')
       expect(await noteAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -367,4 +366,120 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).to.be.reverted
     })
   })
+
+  describe('Issuance/Appreciation/Redemption', () => {
+    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+
+    // Issuance and redemption, making the collateral appreciate over time
+    it('Should issue, redeem, and handle appreciation rates correctly', async () => {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+
+      // Provide approvals for issuances
+      await nUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Store Balances after issuance
+      const balanceAddr1nUsdc: BigNumber = await nUsdc.balanceOf(addr1.address)
+
+      // Check rates and prices
+      const nUsdcPrice1: BigNumber = await nUsdcCollateral.strictPrice() // ~ 0.022 cents
+      const nUsdcRefPerTok1: BigNumber = await nUsdcCollateral.refPerTok() // ~ 0.022 cents
+
+      expect(nUsdcPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(nUsdcRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check total asset value
+      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      const minExpectedValue = minimumValue(issueAmount, allowedDrop) // minimum expected value given the drop
+      expect(totalAssetValue1).to.be.gt(minExpectedValue) // approx 10K in value
+
+      // Advance time and blocks slightly, causing refPerTok() to increase
+      await advanceTime(10000)
+      await advanceBlocks(10000)
+
+      // Refresh nToken manually (required)
+      await nUsdcCollateral.refresh()
+      expect(await nUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check rates and prices - Have changed, slight increase
+      const nUsdcPrice2: BigNumber = await nUsdcCollateral.strictPrice() // ~0.022
+      const nUsdcRefPerTok2: BigNumber = await nUsdcCollateral.refPerTok() // ~0.022
+
+      // Still close to the original values
+      expect(nUsdcPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(nUsdcRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check price is within the accepted range
+      expect(nUsdcPrice2).to.be.gt(minimumValue(nUsdcPrice1, allowedDrop))
+      // Check the refPerTok is greater or equal than the previous one
+      expect(nUsdcRefPerTok2).to.be.gte(nUsdcRefPerTok1)
+
+      // Check total asset value did not drop more than the allowed margin
+      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue2).to.be.gte(minimumValue(totalAssetValue1, allowedDrop))
+
+      // Advance time and blocks slightly, causing refPerTok() to increase
+      await advanceTime(100000000)
+      await advanceBlocks(100000000)
+
+      // Refresh cToken manually (required)
+      await nUsdcCollateral.refresh()
+      expect(await nUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check rates and prices - Have changed significantly
+      const nUsdcPrice3: BigNumber = await nUsdcCollateral.strictPrice() // ~0.03294
+      const nUsdcRefPerTok3: BigNumber = await nUsdcCollateral.refPerTok() // ~0.03294
+
+      // Need to adjust ranges
+      expect(nUsdcPrice3).to.be.closeTo(fp('0.029'), fp('0.001'))
+      expect(nUsdcRefPerTok3).to.be.closeTo(fp('0.029'), fp('0.001'))
+
+      // Check price is within the accepted range
+      expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDrop))
+      // Check the refPerTok is greater or equal than the previous one
+      expect(nUsdcRefPerTok3).to.be.gte(nUsdcRefPerTok2)
+
+      // Check total asset value did not drop more than the allowed margin
+      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue3).to.be.gt(minimumValue(totalAssetValue2, allowedDrop))
+
+      // Redeem Rtokens with the updated rates
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+      // Check funds were transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
+
+      // Check balances - Fewer cTokens should have been sent to the user
+      const newBalanceAddr1nUsdc: BigNumber = await nUsdc.balanceOf(addr1.address)
+
+      // Check received tokens represent ~10K in value at current prices
+      expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(338851e8), bn(1e8)) // ~0.0225 * 338851 ~= 10K (100% of basket)
+
+      // Check remainders in Backing Manager
+      expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(110751e8), bn(1e8)) // ~= 4962.8 usd in value
+
+      //  Check total asset value (remainder)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        fp('3301.0'), // ~= 4962.8 usd (from above)
+        fp('0.5')
+      )
+    })
+  })
 })
+
+function minimumValue(amount: BigNumber, allowedDrop: BigNumber): BigNumber {
+  const one = fp(1)
+  return amount.div(one).mul(one.sub(allowedDrop))
+}
