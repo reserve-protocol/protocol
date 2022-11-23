@@ -409,11 +409,11 @@ describe('FixLib Fuzzing', () => {
 
           assert(
             actual >= expected - error,
-            `Expected ${actual} to be within ${bits} of ${expected}`
+            `Expected ${actual} to be within ${error} of ${expected}`
           )
           assert(
             actual <= expected + error,
-            `Expected ${actual} to be within ${bits} of ${expected}`
+            `Expected ${actual} to be within ${error} of ${expected}`
           )
         } else {
           await expect(caller.powu(base, power)).to.be.reverted

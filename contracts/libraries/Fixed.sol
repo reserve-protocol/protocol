@@ -313,7 +313,7 @@ library FixLib {
     /// Gas cost is O(lg(y)), precision is +- 1e-18.
     /// @return x_ ** y
     // as-ints: x_ ** y / 1e18**(y-1)    <- technically correct for y = 0. :D
-    function powu(uint192 x_, uint48 y) internal view returns (uint192) {
+    function powu(uint192 x_, uint48 y) internal pure returns (uint192) {
         require(x_ <= FIX_ONE);
         if (y == 1) return x_;
         if (x_ == FIX_ONE || y == 0) return FIX_ONE;
