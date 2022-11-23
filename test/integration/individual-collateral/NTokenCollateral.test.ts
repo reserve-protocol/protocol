@@ -35,10 +35,11 @@ import {
   TestIRToken,
   NTokenCollateral,
   NTokenERC20ProxyMock,
-  INotionalProxy,
+  INotionalProxy, CTokenFiatCollateral,
 } from '../../../typechain'
 import { NotionalProxy } from '@typechain/NotionalProxy'
 import forkBlockNumber from '../fork-block-numbers'
+import { setOraclePrice } from '../../utils/oracles';
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -47,6 +48,7 @@ const describeFork = process.env.FORK ? describe : describe.skip
 const HOLDER_nUSDC = '0x02479bfc7dce53a02e26fe7baea45a0852cb0909'
 
 const BALANCER_NOTE_ORACLE = '0x5122E01D819E58BB2E22528c0D68D310f0AA6FD7'
+const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -544,6 +546,80 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const rewardsNOTE2: BigNumber = await noteToken.balanceOf(backingManager.address)
 
         expect(rewardsNOTE2.sub(rewardsNOTE1)).to.be.gt(0)
+      })
+    })
+
+    describe('Price Handling', () => {
+      it('Should handle invalid/stale Price', async () => {
+        /** Default instance */
+        // Reverts with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+
+        // Test oracle timout
+        await expect(nUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+
+        // Fallback price is returned
+        const [isFallback, price] = await nUsdcCollateral.price(true)
+        expect(isFallback).to.equal(true)
+        expect(price).to.equal(fp('1'))
+
+        // Refresh should mark status IFFY
+        await nUsdcCollateral.refresh()
+        expect(await nUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        /** No price instance */
+
+        // nTokens Collateral with no price
+        const nonPriceNUsdcCollateral = <NTokenCollateral>(
+          await NTokenCollateralFactory.deploy(
+            fp('1'),
+            NO_PRICE_DATA_FEED,
+            nUsdc.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault,
+            notionalProxy.address,
+            defaultThreshold,
+            allowedDrop
+          )
+        )
+
+        // CTokens - Collateral with no price info should revert
+        await expect(nonPriceNUsdcCollateral.strictPrice()).to.be.reverted
+
+        // Refresh should also revert - status is not modified
+        await expect(nonPriceNUsdcCollateral.refresh()).to.be.reverted
+        expect(await nonPriceNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        /** Invalid price instance */
+
+        // Reverts with a feed with zero price
+        const invalidPriceNUsdcCollateral = <NTokenCollateral>(
+          await NTokenCollateralFactory.deploy(
+            fp('1'),
+            mockChainlinkFeed.address,
+            nUsdc.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault,
+            notionalProxy.address,
+            defaultThreshold,
+            allowedDrop
+          )
+        )
+
+        await setOraclePrice(invalidPriceNUsdcCollateral.address, bn(0))
+
+        // Reverts with zero price
+        await expect(invalidPriceNUsdcCollateral.strictPrice()).to.be.revertedWith(
+          'PriceOutsideRange()'
+        )
+
+        // Refresh should mark status IFFY
+        await invalidPriceNUsdcCollateral.refresh()
+        expect(await invalidPriceNUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
       })
     })
   })
