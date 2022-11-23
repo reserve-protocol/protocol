@@ -3,6 +3,7 @@ pragma solidity ^0.8.9;
 
 import "../assets/AbstractCollateral.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "hardhat/console.sol";
 
 //TODO Uniswap2 doesnt update some values until block changed
@@ -60,7 +61,9 @@ contract UniswapV2Collateral is Collateral {
 
     function refPerTok() public view override returns (uint192) {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-        return uint192(pair.kLast() / pair.totalSupply());
+        (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast) = pair.getReserves();
+        uint256 rootK = Math.sqrt(reserve0 * reserve1);
+        return uint192(rootK / pair.totalSupply());
     } 
 
     function _fallbackPrice() public view returns (uint192) {
