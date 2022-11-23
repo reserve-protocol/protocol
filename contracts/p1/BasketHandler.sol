@@ -597,8 +597,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         // Keep records, emit event
-        uint192[] memory refAmts = new uint192[](newBasketLength);
-        for (uint256 i = 0; i < newBasketLength; ++i) {
+        basketLength = basket.erc20s.length;
+        uint192[] memory refAmts = new uint192[](basketLength);
+        for (uint256 i = 0; i < basketLength; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);
