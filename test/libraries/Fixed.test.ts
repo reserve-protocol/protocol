@@ -546,10 +546,6 @@ describe('In FixLib,', () => {
       }
     })
 
-    it('gets fuzzed', async () => {
-      await binaryUintProperty([192, 192, 256], caller.mul, (x, y) => (x * y + HALF) / ONE, null)
-    })
-
     it('correctly rounds', async () => {
       const table = mulu_table.flatMap(([a, b]) => [[fp(a), fp(b)]])
 
