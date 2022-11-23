@@ -47,7 +47,7 @@ library TradeLib {
             return (false, req);
         }
 
-        // {sellTok} - reads trade.sell.price(true)
+        // {sellTok}
         uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
 
         // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}

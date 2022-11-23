@@ -87,10 +87,9 @@ interface IBasketHandler is IComponent {
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
-    /// @param allowFallback Whether to fail over to the fallback price or not
-    /// @return isFallback If any fallback prices were used
-    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price(bool allowFallback) external view returns (bool isFallback, uint192 p);
+    /// Should never revert
+    /// @return {UoA/tok} A price range for the asset in the unit of account
+    function price() external view returns (PriceRange memory);
 
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);

@@ -66,14 +66,13 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
-
         TradeInfo memory trade = TradeInfo({
             sell: sell,
             buy: buy,
             sellAmount: sell.bal(address(this)),
             buyAmount: 0,
-            sellPrice: sell.strictPrice(),
-            buyPrice: buy.strictPrice()
+            sellPrice: sell.price().low,
+            buyPrice: buy.price().high
         });
         TradingRules memory rules = TradingRules({
             minTradeVolume: minTradeVolume,

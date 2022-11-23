@@ -303,58 +303,49 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// @param allowFallback Whether to fail over to the fallback price or not
-    /// @return isFallback If any fallback prices were used
-    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
+    /// Returns a price range for one BU in the unit of account
+    /// @return range {UoA/BU} A price range for a basket unit in the unit of account
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price(bool allowFallback) external view returns (bool isFallback, uint192 p) {
+    function price() external view returns (PriceRange memory range) {
+        uint256 low256;
+        uint256 mid256;
+        uint256 high256;
+
         uint256 length = basket.erc20s.length;
         for (uint256 i = 0; i < length; ++i) {
-            bool isFallback_; // Is this token's price a fallback price
-            uint192 price_; // This token's price
-
-            if (!allowFallback) {
-                (isFallback_, price_) = assetRegistry.toAsset(basket.erc20s[i]).price(
-                    allowFallback
-                );
-            } else {
-                try assetRegistry.toAsset(basket.erc20s[i]) returns (IAsset asset) {
-                    (isFallback_, price_) = asset.price(true);
-                } catch {
-                    isFallback_ = true;
-                    price_ = 0;
-                }
-            }
-
-            isFallback = isFallback || isFallback_;
-            if (price_ == 0) continue;
             uint192 qty = quantity(basket.erc20s[i]);
+            if (qty == 0) continue;
 
-            if (!allowFallback) {
-                p = p.plus(price_.mul(qty));
-            } else {
-                // if allowFallback, compute p := p + price * qty,
-                // but return FIX_MAX instead of throwing overflow errors.
-                unchecked {
-                    // price_, mul, and p *are* Fix values, so have 18 decimals (D18)
-                    uint256 rawDelta = uint256(price_) * qty; // {D36} = {D18} * {D18}
-                    // if we overflowed *, then return FIX_MAX
-                    if (rawDelta / price_ != qty) return (true, FIX_MAX);
+            PriceRange memory p = assetRegistry.toAsset(basket.erc20s[i]).price();
+            low256 += quantityMulPrice(qty, p.low);
+            mid256 += quantityMulPrice(qty, p.mid);
+            high256 += quantityMulPrice(qty, p.high);
+        }
 
-                    // add in FIX_HALF for rounding
-                    uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
-                    if (shiftDelta < rawDelta) return (true, FIX_MAX);
+        range.low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
+        range.mid = mid256 >= FIX_MAX ? FIX_MAX : uint192(mid256);
+        range.high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+    }
 
-                    // delta = _div(rawDelta, FIX_ONE, ROUND)
-                    uint256 delta = shiftDelta / FIX_ONE; // {D18} = {D36} / {D18}
+    /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
+    /// @param qty {tok/BU}
+    /// @param p {UoA/tok}
+    function quantityMulPrice(uint192 qty, uint192 p) internal pure returns (uint192) {
+        if (qty == 0 || p == 0) return 0;
 
-                    uint256 nextP = p + delta; // {D18} = {D18} + {D18}
+        // return FIX_MAX instead of throwing overflow errors.
+        unchecked {
+            // p and mul *are* Fix values, so have 18 decimals (D18)
+            uint256 rawDelta = uint256(p) * qty; // {D36} = {D18} * {D18}
+            // if we overflowed *, then return FIX_MAX
+            if (rawDelta / p != qty) return FIX_MAX;
 
-                    // if we overflowed +, or would otherwise overflow the downcast to uint192:
-                    if (nextP < delta || nextP > FIX_MAX) return (true, FIX_MAX);
-                    p = uint192(nextP);
-                }
-            }
+            // add in FIX_HALF for rounding
+            uint256 shiftDelta = rawDelta + (FIX_ONE / 2);
+            if (shiftDelta < rawDelta) return FIX_MAX;
+
+            // return _div(rawDelta, FIX_ONE, ROUND)
+            return uint192(shiftDelta / FIX_ONE); // {D18} = {D36} / {D18}
         }
     }
 

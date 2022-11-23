@@ -57,7 +57,7 @@ abstract contract Collateral is ICollateral, Asset {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
-        try this.strictPrice() returns (uint192) {
+        try this.price() returns (PriceRange memory) {
             markStatus(CollateralStatus.SOUND);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

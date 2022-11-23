@@ -44,23 +44,15 @@ contract Asset is IAsset {
         oracleTimeout = oracleTimeout_;
     }
 
-    /// Can return 0, can revert
-    /// @return {UoA/tok} The current price()
-    function strictPrice() public view virtual returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
-    }
-
-    /// Can return 0
-    /// Cannot revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a allowFallback price
-    /// @return {UoA/tok} The current price, or if it's reverting, a fallback price
-    function price(bool allowFallback) public view virtual returns (bool isFallback, uint192) {
-        try this.strictPrice() returns (uint192 p) {
-            return (false, p);
+    /// Should never revert
+    /// @return {UoA/tok} A price range for the asset
+    function price() public view virtual returns (PriceRange memory) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // TODO add new constructor arg for % deviation, and propagate to errMargin below
+            uint192 errMargin; // {UoA/tok}
+            return PriceRange(p - errMargin, p, p + errMargin);
         } catch {
-            require(allowFallback, "price reverted without failover enabled");
-            return (true, fallbackPrice);
+            return PriceRange(0, fallbackPrice, FIX_MAX);
         }
     }
 

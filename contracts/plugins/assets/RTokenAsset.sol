@@ -38,32 +38,22 @@ contract RTokenAsset is IAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Can return 0 and revert
-    /// @return {UoA/tok} An estimate of the current RToken redemption price
-    function strictPrice() public view virtual returns (uint192) {
-        (bool isFallback, uint192 price_) = price(false);
-        require(!isFallback, "RTokenAsset: need fallback prices");
-        return price_;
-    }
-
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) public view virtual returns (bool, uint192) {
+    /// Should never revert
+    /// @return range {UoA/tok} A price range for the asset
+    function price() public view virtual returns (PriceRange memory range) {
         // {UoA/BU}
-        (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
+        PriceRange memory buPriceRange = basketHandler.price();
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return (isFallback_, price_);
+        if (supply == 0) return buPriceRange;
 
-        uint192 basketsBottom; // {BU}
+        RecollateralizationLibP1.BasketRange memory basketRange; // {BU}
         if (basketHandler.fullyCollateralized()) {
-            basketsBottom = IRToken(address(erc20)).basketsNeeded();
+            basketRange.bottom = IRToken(address(erc20)).basketsNeeded();
+            basketRange.top = basketRange.bottom;
         } else {
             // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
             // there is _some_ asset to represent the RToken itself when it is deployed, in
@@ -85,13 +75,21 @@ contract RTokenAsset is IAsset {
             });
 
             // will exclude UoA value from RToken balances at BackingManager
-            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
-                .basketRange(components, rules, assetRegistry.erc20s());
-            basketsBottom = range.bottom;
+            basketRange = RecollateralizationLibP1.basketRange(
+                components,
+                rules,
+                assetRegistry.erc20s()
+            );
         }
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return (isFallback_, basketsBottom.mulDiv(price_, supply));
+        range.low = basketRange.bottom.mulDiv(buPriceRange.low, supply);
+
+        // TODO: can we do better?
+        range.mid = range.low;
+
+        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
+        range.high = basketRange.top.mulDiv(buPriceRange.high, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

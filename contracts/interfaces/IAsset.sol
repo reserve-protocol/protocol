@@ -7,6 +7,20 @@ import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
+// low <= mid <= high
+struct PriceRange {
+    uint192 low; // {UoA/tok} A lower-bound for the price of the token on secondary markets
+    // can be 0
+    // MUST be 0 if oracle is reverting or Collateral is DISABLED
+    // TODO: propagate this requirement to docs/collateral.md
+
+    uint192 mid; // {UoA/tok} A precise estimate for the price of the token on secondary markets
+    // SHOULD NOT be 0
+
+    uint192 high; // {UoA/tok} An upper-bound for the price of the token on secondary markets
+    // SHOULD NOT be 0
+}
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -14,17 +28,9 @@ import "./IRewardable.sol";
  * is eligible to be an asset.
  */
 interface IAsset is IRewardable {
-    /// Can return 0, can revert
-    /// Shortcut for price(false)
-    /// @return {UoA/tok} The current price(), without considering fallback prices
-    function strictPrice() external view returns (uint192);
-
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) external view returns (bool isFallback, uint192);
+    /// Should never revert
+    /// @return {UoA/tok} A price range for the asset in the unit of account
+    function price() external view returns (PriceRange memory);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
