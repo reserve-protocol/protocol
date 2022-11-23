@@ -13,11 +13,11 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { advanceBlocks, advanceTime } from '../../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
   ERC20Mock,
@@ -35,11 +35,12 @@ import {
   TestIRToken,
   NTokenCollateral,
   NTokenERC20ProxyMock,
-  INotionalProxy, CTokenFiatCollateral,
+  INotionalProxy,
+  InvalidMockV3Aggregator,
 } from '../../../typechain'
 import { NotionalProxy } from '@typechain/NotionalProxy'
 import forkBlockNumber from '../fork-block-numbers'
-import { setOraclePrice } from '../../utils/oracles';
+import { setOraclePrice } from '../../utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -620,6 +621,141 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         // Refresh should mark status IFFY
         await invalidPriceNUsdcCollateral.refresh()
         expect(await invalidPriceNUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+      })
+    })
+
+    // Note: Here the idea is to test all possible statuses and check all possible paths to default
+    // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
+    // hard default = SOUND -> DISABLED due to an invariant violation
+    // This may require to deploy some mocks to be able to force some of these situations
+    describe('Collateral Status', () => {
+      // Test for soft default
+      it('Updates status in case of soft default', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        const newNUsdcCollateral = <NTokenCollateral>(
+          await NTokenCollateralFactory.deploy(
+            fp('1'),
+            mockChainlinkFeed.address,
+            nUsdc.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault,
+            notionalProxy.address,
+            defaultThreshold,
+            allowedDrop
+          )
+        )
+
+        // Check initial state
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newNUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+        // Depeg one of the underlying tokens - Reducing price 20%
+        await setOraclePrice(newNUsdcCollateral.address, bn('8e7')) // -20%
+
+        // Force updates - Should update whenDefault and status
+        await expect(newNUsdcCollateral.refresh())
+          .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+          delayUntilDefault
+        )
+        expect(await newNUsdcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+        // Move time forward past delayUntilDefault
+        await advanceTime(Number(delayUntilDefault))
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+        // Nothing changes if attempt to refresh after default
+        const prevWhenDefault: BigNumber = await newNUsdcCollateral.whenDefault()
+        await expect(newNUsdcCollateral.refresh()).to.not.emit(
+          newNUsdcCollateral,
+          'DefaultStatusChanged'
+        )
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await newNUsdcCollateral.whenDefault()).to.equal(prevWhenDefault)
+      })
+
+      // Test for hard default
+      it('Updates status in case of hard default', async () => {
+        // Note: In this case requires to use a CToken mock to be able to change the rate
+        const NTokenMockFactory = await ethers.getContractFactory('NTokenERC20ProxyMock')
+        const nToken: NTokenERC20ProxyMock = await NTokenMockFactory.deploy('TName', 'SMB')
+
+        await nToken.connect(owner).mint(addr1.address, fp('1e8'))
+
+        // Set initial exchange rate to the new nToken Mock
+        await nToken.setUnderlyingValue(fp('1e8'))
+
+        // Redeploy plugin using the new cDai mock
+        const newNUsdcCollateral = <NTokenCollateral>await NTokenCollateralFactory.deploy(
+          fp('1'),
+          mockChainlinkFeed.address,
+          nToken.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          delayUntilDefault,
+          notionalProxy.address,
+          defaultThreshold,
+          fp('0.01') // 1%
+        )
+
+        // Initialize internal state of max redPerTok
+        await newNUsdcCollateral.refresh()
+
+        // Check initial state
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newNUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+        // Decrease rate for nToken, will disable collateral immediately
+        await nToken.setUnderlyingValue(fp('5e7'))
+
+        // Force updates - Should update whenDefault and status for collateral
+        await expect(newNUsdcCollateral.refresh())
+          .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+        expect(await newNUsdcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      })
+
+      it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+        const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+          'InvalidMockV3Aggregator'
+        )
+        const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+          await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+        )
+
+        const newNUsdcCollateral = <NTokenCollateral>(
+          await NTokenCollateralFactory.deploy(
+            fp('1'),
+            invalidChainlinkFeed.address,
+            nUsdc.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault,
+            notionalProxy.address,
+            defaultThreshold,
+            allowedDrop
+          )
+        )
+
+        // Reverting with no reason
+        await invalidChainlinkFeed.setSimplyRevert(true)
+        await expect(newNUsdcCollateral.refresh()).to.be.revertedWith('')
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Running out of gas (same error)
+        await invalidChainlinkFeed.setSimplyRevert(false)
+        await expect(newNUsdcCollateral.refresh()).to.be.revertedWith('')
+        expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       })
     })
   })
