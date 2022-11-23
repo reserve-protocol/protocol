@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "contracts/plugins/assets/INotionalProxy.sol";
-import "contracts/plugins/assets/INTokenERC20Proxy.sol";
+import "contracts/plugins/assets/notional/INotionalProxy.sol";
+import "contracts/plugins/assets/notional/INTokenERC20Proxy.sol";
 import "contracts/plugins/assets/RevenueHiding.sol";
 import "contracts/libraries/Fixed.sol";
 
