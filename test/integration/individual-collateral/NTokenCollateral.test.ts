@@ -14,7 +14,7 @@ import {
   networkConfig,
 } from '../../../common/configuration'
 import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
-import { expectInIndirectReceipt } from '../../../common/events'
+import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { advanceBlocks, advanceTime } from '../../utils/time'
@@ -487,6 +487,63 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           fp('0.0000000002'), // ~= 0.0000000002 usd (from above)
           fp('0.00000000005')
         )
+      })
+    })
+
+    // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
+    // claiming calls throughout the protocol are handled correctly and do not revert.
+    describe('Rewards', () => {
+      it('Should be able to claim rewards (if applicable)', async () => {
+        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+        // Try to claim rewards at this point - Nothing for Backing Manager
+        expect(await noteToken.balanceOf(backingManager.address)).to.equal(0)
+
+        await expectEvents(backingManager.claimRewards(), [
+          {
+            contract: backingManager,
+            name: 'RewardsClaimed',
+            args: [noteToken.address, bn(0)],
+            emitted: true,
+          },
+        ])
+
+        // No rewards so far
+        expect(await noteToken.balanceOf(backingManager.address)).to.equal(0)
+
+        // Provide approvals for issuances
+        await nUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+        // Now we can claim rewards - check initial balance still 0
+        expect(await noteToken.balanceOf(backingManager.address)).to.equal(0)
+
+        // Advance Time
+        await advanceTime(8000)
+
+        // Claim rewards
+        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+        // Check rewards both in COMP and stkAAVE
+        const rewardsNOTE1: BigNumber = await noteToken.balanceOf(backingManager.address)
+
+        expect(rewardsNOTE1).to.be.gt(0)
+
+        // Keep moving time
+        await advanceTime(3600)
+
+        // Get additional rewards
+        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+
+        const rewardsNOTE2: BigNumber = await noteToken.balanceOf(backingManager.address)
+
+        expect(rewardsNOTE2.sub(rewardsNOTE1)).to.be.gt(0)
       })
     })
   })
