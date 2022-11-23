@@ -3,37 +3,6 @@
 ## Collateral Plugin - Coinbase - CbETH
 [bounty url](https://gitcoin.co/issue/29506)
 
-### Submission Requirements
-- [no] Twitter handle (if any)
-- [no] Telegram handle (if any)
-- [no] Discord handle (if any)
-- [] Source code for your Collateral plugin or plugins
-- [] An open source license
-- [here] Documentation (e.g, a README file), describing the following for each plugin:
-    - [x] What are the collateral token, reference unit, and target unit for this plugin?
-    - [] How does one configure and deploy an instance of the plugin?
-    - [] If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
-    - [] Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
-    - [] How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
-    - [] Tests demonstrating the behaviors checked by our example Collateral plugin test, which we encourage you to use as a starting template for your own testing.Particular behaviors must include:
-        - [] Deployment.
-        - [] Issuance, appreciation, and redemption of an RToken with this Collateral in its basket.
-        - [] Claiming rewards (or, if no rewards are available for this token, tests demonstrating that the claim-reward functions do nothing and don't revert)
-        - [] Correct behavior for price() when any price sources return invalid values.
-        - [] Correctly changing status() whenever that's needed in order to flag sudden or impending default.
-
-### Acceptance Criteria
-Each Collateral plugin must:​
-
-- [x] Fully implement the [ICollateral interface][icoll].
-- [x] Satisfy the correctness properties given in the Collateral plugin-writing howto.
-- [] Be fully permissionless once deployed.
-- [] Be documented with cogent explanations of its economics.
-- [x] Be deployable with USD as its Unit of Account.
-- [] Not be prone to relatively simple economic attacks or cough cough “highly profitable trading strategies”​
-
-Additionally, static analysis with slither over your whole codebase should not yield avoidable issues of moderate or greater severity. If some slither report is not sensibly avoidable, your documentation should note that, and explain either how we can see that the report is spurious, or that the problem it’s reporting is unavoidable in this circumstance.
-
 ## Plugin description
 
 ### Economics
@@ -183,13 +152,22 @@ __`price(bool)`, `bal(address)`, `erc20()`, `erc20Decimals()` and `maxTradeVolum
 
 ### Tests
 
+Added cbEthCollateral test to [plugin tests](../../../test/plugins/Collateral.test.ts) and [fixture basket](../../../test/fixtures.ts)
+Added cbEthCollateral to [integrated tests](../../../test/integration/individual-collateral/CbEthCollateral.test.ts)
+
 #### yarn slither
-warning:
+warnings:
 
-```CbEthCollateral.refresh() (contracts/plugins/assets/CbEthCollateral.sol#58-85) ignores return value by chainlinkFeed.price_(oracleTimeout) (contracts/plugins/assets/CbEthCollateral.sol#70-76)```
+```
+CbEthCollateral.refresh().errData (contracts/plugins/assets/CbEthCollateral.sol#72) is a local variable never initialized
+```
 
-Can't be avoided. chainlinkFeed.price_(oracleTimeout) is only used to check 
-oracle avaibility. No use it's data
+```
+CbEthCollateral.refresh() (contracts/plugins/assets/CbEthCollateral.sol#58-85) ignores return value by chainlinkFeed.price_(oracleTimeout) (contracts/plugins/assets/CbEthCollateral.sol#70-76)
+```
+
+Can't be avoided. `chainlinkFeed.price_(oracleTimeout)` is only used to check 
+oracle avaibility. No use it's data nor `errData`.
 
 #### yarn test:plugin
 
@@ -211,10 +189,57 @@ Specific test in [Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
     - Force Updates - Hard Default - ATokens/CTokens
 ```
 
+#### yarn test:integration
 
+- Result:
+
+```
+  57 passing (8m)
+  34 pending
+```
+
+- Pending (for cbEthCollateral)
+```
+Collateral Status
+  - No Updates status in case of soft default because there is no soft reset
+```
+Skipped since cbEth has no soft default condition.
 
 
 ### Deployement
+
+As any other collateral asset.
+
+### Submission Requirements
+- [no] Twitter handle (if any)
+- [no] Telegram handle (if any)
+- [no] Discord handle (if any)
+- [x] Source code for your Collateral plugin or plugins
+- [x] An open source license
+- [x] Documentation (e.g, a README file), describing the following for each plugin:
+    - [x] What are the collateral token, reference unit, and target unit for this plugin?
+    - [] How does one configure and deploy an instance of the plugin?
+    - [x] If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
+    - [x] Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
+    - [x] How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
+    - [x] Tests demonstrating the behaviors checked by our example Collateral plugin test, which we encourage you to use as a starting template for your own testing.Particular behaviors must include:
+        - [x] Deployment.
+        - [x] Issuance, appreciation, and redemption of an RToken with this Collateral in its basket.
+        - [x] Claiming rewards (or, if no rewards are available for this token, tests demonstrating that the claim-reward functions do nothing and don't revert)
+        - [x] Correct behavior for price() when any price sources return invalid values.
+        - [x] Correctly changing status() whenever that's needed in order to flag sudden or impending default.
+
+### Acceptance Criteria
+Each Collateral plugin must:​
+
+- [x] Fully implement the [ICollateral interface][icoll].
+- [x] Satisfy the correctness properties given in the Collateral plugin-writing howto.
+- [x] Be fully permissionless once deployed.
+- [x] Be documented with cogent explanations of its economics.
+- [x] Be deployable with USD as its Unit of Account.
+- [x] Not be prone to relatively simple economic attacks or cough cough “highly profitable trading strategies”​
+
+Additionally, static analysis with slither over your whole codebase should not yield avoidable issues of moderate or greater severity. If some slither report is not sensibly avoidable, your documentation should note that, and explain either how we can see that the report is spurious, or that the problem it’s reporting is unavoidable in this circumstance.
 
 
 

@@ -10,14 +10,27 @@ import "contracts/libraries/Fixed.sol";
 contract StakedTokenV1Mock is ERC20Mock {
     using FixLib for uint192;
 
-    uint256 internal EXCHANGE_RATE;
-    address internal EXCHANGE_RATE_ORACLE;
+    bytes32 private constant _EXCHANGE_RATE_ORACLE_POSITION = keccak256(
+        "org.coinbase.stakedToken.exchangeRateOracle"
+    );
+    /**
+     * @dev Storage slot with the current exchange rate.
+     * This is the keccak-256 hash of "org.coinbase.stakedToken.exchangeRate"
+     */
+    bytes32 private constant _EXCHANGE_RATE_POSITION = keccak256(
+        "org.coinbase.stakedToken.exchangeRate"
+    );
+
+    address public masterMinter;
+    mapping(address => bool) internal minters;
+    mapping(address => uint256) internal minterAllowed;
 
     event OracleUpdated(address indexed newOracle);
     event ExchangeRateUpdated(address indexed oracle, uint256 newExchangeRate);
+     event MinterConfigured(address indexed minter, uint256 minterAllowedAmount);
 
     modifier onlyOracle() {
-        require(msg.sender == EXCHANGE_RATE_ORACLE, "StakedTokenV1Mock: caller is not the oracle");
+        require(msg.sender == oracle(), "StakedTokenV1Mock: caller is not the oracle");
         _;
     }
 
@@ -27,8 +40,22 @@ contract StakedTokenV1Mock is ERC20Mock {
         address _oracle,
         uint256 _exchangeRate
     ) ERC20Mock(name, symbol) {
-        EXCHANGE_RATE_ORACLE = _oracle;
-        EXCHANGE_RATE = _exchangeRate;
+        require(
+            _oracle != address(0),
+            "StakedTokenV1: oracle is the zero address"
+        );
+        bytes32 position = _EXCHANGE_RATE_ORACLE_POSITION;
+        assembly {
+            sstore(position, _oracle)
+        }
+        require(
+            _exchangeRate > 0,
+            "StakedTokenV1: new exchange rate cannot be 0"
+        );
+        position = _EXCHANGE_RATE_POSITION;
+        assembly {
+            sstore(position, _exchangeRate)
+        }
     }
 
     /// @dev Returns ERC20 decimals => 18 for coin base StakedTokenV1
@@ -36,9 +63,15 @@ contract StakedTokenV1Mock is ERC20Mock {
         return 18;
     }
 
-    /// @dev Returns the current exchange rate scaled by by 10**18
-    function exchangeRate() external view returns (uint256) {
-        return EXCHANGE_RATE;
+    /**
+     * @dev Returns the current exchange rate scaled by by 10**18
+     * @return _exchangeRate The exchange rate
+     */
+    function exchangeRate() public view returns (uint256 _exchangeRate) {
+        bytes32 position = _EXCHANGE_RATE_POSITION;
+        assembly {
+            _exchangeRate := sload(position)
+        }
     }
 
     /**
@@ -46,16 +79,54 @@ contract StakedTokenV1Mock is ERC20Mock {
      * @param newExchangeRate The new exchange rate
      */
     function updateExchangeRate(uint256 newExchangeRate) external onlyOracle {
-        require(newExchangeRate > 0, "StakedTokenV1Mock: new exchange rate cannot be 0");
-        EXCHANGE_RATE = newExchangeRate;
+        require(
+            newExchangeRate > 0,
+            "StakedTokenV1: new exchange rate cannot be 0"
+        );
+        bytes32 position = _EXCHANGE_RATE_POSITION;
+        assembly {
+            sstore(position, newExchangeRate)
+        }
         emit ExchangeRateUpdated(msg.sender, newExchangeRate);
     }
 
-    function updateOracle(address newExOracle) external onlyOracle {
-        require(newExOracle != address(0), "StakedTokenV1Mock: oracle is the zero address");
-        require(newExOracle != EXCHANGE_RATE_ORACLE,  "StakedTokenV1Mock: new oracle is already the oracle");
-        EXCHANGE_RATE_ORACLE = newExOracle;
-        emit OracleUpdated(newExOracle);
+    function updateOracle(address newOracle) external onlyOracle {
+        require(
+            newOracle != address(0),
+            "StakedTokenV1: oracle is the zero address"
+        );
+        require(
+            newOracle != oracle(),
+            "StakedTokenV1: new oracle is already the oracle"
+        );
+        bytes32 position = _EXCHANGE_RATE_ORACLE_POSITION;
+        assembly {
+            sstore(position, newOracle)
+        }
+        emit OracleUpdated(newOracle);
+    }
+
+    function oracle() public view returns (address _oracle) {
+        bytes32 position = _EXCHANGE_RATE_ORACLE_POSITION;
+        assembly {
+            _oracle := sload(position)
+        }
+    }
+
+    /**
+     * @dev Function to add/update a new minter
+     * @param minter The address of the minter
+     * @param minterAllowedAmount The minting amount allowed for the minter
+     * @return True if the operation was successful.
+     */
+    function configureMinter(address minter, uint256 minterAllowedAmount)
+        external
+        returns (bool)
+    {
+        minters[minter] = true;
+        minterAllowed[minter] = minterAllowedAmount;
+        emit MinterConfigured(minter, minterAllowedAmount);
+        return true;
     }
 }
 
