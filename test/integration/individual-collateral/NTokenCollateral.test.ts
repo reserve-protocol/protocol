@@ -34,7 +34,8 @@ import {
   TestIMain,
   TestIRToken,
   NTokenCollateral,
-  NTokenERC20ProxyMock, INotionalProxy,
+  NTokenERC20ProxyMock,
+  INotionalProxy,
 } from '../../../typechain'
 import { NotionalProxy } from '@typechain/NotionalProxy'
 
@@ -144,10 +145,13 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Create NOTE asset
     noteAsset = <Asset>await (
-      await ethers.getContractFactory('Asset')
+      await ethers.getContractFactory('NoteAsset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
     ).deploy(
       fp('1'),
-      networkConfig[chainId].chainlinkFeeds.COMP || '', // ???
+      networkConfig[chainId].chainlinkFeeds.ETH || '',
+      '0x5122E01D819E58BB2E22528c0D68D310f0AA6FD7',
       noteToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -159,7 +163,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
     nUsdcCollateral = <NTokenCollateral>(
       await NTokenCollateralFactory.deploy(
-        fp('1'),
+        fp('0.20'),
         networkConfig[chainId].chainlinkFeeds.USDC as string,
         nUsdc.address,
         config.rTokenMaxTradeVolume,
@@ -244,7 +248,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await noteAsset.erc20()).to.equal(noteToken.address)
       expect(await noteAsset.erc20()).to.equal(networkConfig[chainId].tokens.NOTE)
       expect(await noteToken.decimals()).to.equal(8)
-      //expect(await noteAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // TODO : change when price feed
+      expect(await noteAsset.strictPrice()).to.be.closeTo(fp('0.22'), fp('0.5'))
       await expect(noteAsset.claimRewards()).to.not.emit(noteAsset, 'RewardsClaimed')
       expect(await noteAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
