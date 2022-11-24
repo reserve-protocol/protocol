@@ -9,7 +9,7 @@ import "contracts/plugins/assets/RevenueHiding.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title NTokenCollateral
+ * @title NTokenFiatCollateral
  * @notice Collateral plugin for a NToken of fiat collateral
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
