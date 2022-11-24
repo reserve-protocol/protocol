@@ -1,7 +1,7 @@
 # Collateral plugins for gitcoin bounties
 
 ## Collateral Plugin - Coinbase - CbETH
-[bounty url](https://gitcoin.co/issue/29506)
+[Gitcoin bounty 29506](https://gitcoin.co/issue/29506)
 
 ## Plugin description
 
@@ -205,20 +205,54 @@ Collateral Status
 ```
 Skipped since cbEth has no soft default condition.
 
+#### yarn test
+
 
 ### Deployement
+   
+1) Deploy [CbEthCollateral contract](./CbEthCollateral.sol) with params: 
+```ts
+    let fallbackPrice_: BigNumberish = fp('1')
+    let chainlinkFeed_: networkConfig[chainId].chainlinkFeeds.ETH as string
+    let erc20_: cbEth.address
+    let maxTradeVolume_: config.rTokenMaxTradeVolume
+    let oracleTimeout_: BigNumberish = ORACLE_TIMEOUT
+    let targetName_: BytesLike =ethers.utils.formatBytes32String('ETH')
+    let delayUntilDefault_: BigNumberish = delayUntilDefault
 
-As any other collateral asset.
+    const cbEthCollateralFactory = await ethers.getContractFactory('CbEthCollateral', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+
+    cbEthCollateral = <CbEthCollateral>(
+      await cbEthCollateralFactory.deploy(
+        fallbackPrice_,
+        chainlinkFeed_,
+        erc20_,
+        maxTradeVolume_,
+        oracleTimeout_,
+        targetName_,
+        delayUntilDefault_,
+      )
+    )   
+```
+Mainnet addresses for chainlink added in [config file](../../../common/configuration.ts)
+
+2) Initialize/set the base tokens and the collateral should be ready.
+3) Creata Rtoken with cbEthCollateral
+4) As CbEth holder approve Rtoken adddress to transfer your cbEth (ERC20).
+5) test
+6) Follow [deployment](../../../docs/deployment.md).
 
 ### Submission Requirements
-- [no] Twitter handle (if any)
-- [no] Telegram handle (if any)
-- [no] Discord handle (if any)
+- [not aplicable] Twitter handle
+- [not aplicable] Telegram handle
+- [not aplicable] Discord handle
 - [x] Source code for your Collateral plugin or plugins
 - [x] An open source license
 - [x] Documentation (e.g, a README file), describing the following for each plugin:
     - [x] What are the collateral token, reference unit, and target unit for this plugin?
-    - [] How does one configure and deploy an instance of the plugin?
+    - [x] How does one configure and deploy an instance of the plugin?
     - [x] If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
     - [x] Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
     - [x] How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
@@ -230,16 +264,11 @@ As any other collateral asset.
         - [x] Correctly changing status() whenever that's needed in order to flag sudden or impending default.
 
 ### Acceptance Criteria
-Each Collateral plugin must:​
-
 - [x] Fully implement the [ICollateral interface][icoll].
 - [x] Satisfy the correctness properties given in the Collateral plugin-writing howto.
 - [x] Be fully permissionless once deployed.
 - [x] Be documented with cogent explanations of its economics.
 - [x] Be deployable with USD as its Unit of Account.
 - [x] Not be prone to relatively simple economic attacks or cough cough “highly profitable trading strategies”​
-
-Additionally, static analysis with slither over your whole codebase should not yield avoidable issues of moderate or greater severity. If some slither report is not sensibly avoidable, your documentation should note that, and explain either how we can see that the report is spurious, or that the problem it’s reporting is unavoidable in this circumstance.
-
 
 

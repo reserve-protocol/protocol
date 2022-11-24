@@ -92,7 +92,7 @@ describe('Assets contracts #fast', () => {
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
     collateral4 = <CbEthCollateral>basket[4]
-    
+
     token = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     usdc = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     aToken = <StaticATokenMock>(
