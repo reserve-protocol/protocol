@@ -30,9 +30,12 @@ import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
+import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
+
+const REPORT_GAS = useEnv('REPORT_GAS')
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -298,7 +301,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Issue
       const issueAmt = initialBal.div(100)
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(rToken.connect(addr1).issue(issueAmt))
       } else {
         await rToken.connect(addr1).issue(issueAmt)
@@ -306,7 +309,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Redemption
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
         await rToken.connect(addr1).redeem(issueAmt)
@@ -363,7 +366,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await firstCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Ensure valid basket
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(basketHandler.refreshBasket())
       } else {
         await basketHandler.refreshBasket()
@@ -380,7 +383,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
 
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -429,7 +432,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
       // Issue
       const issueAmt = initialBal.div(100)
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(rToken.connect(addr1).issue(issueAmt))
       } else {
         await rToken.connect(addr1).issue(issueAmt)
@@ -437,7 +440,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
 
       // Redemption
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(rToken.connect(addr1).redeem(issueAmt))
       } else {
         await rToken.connect(addr1).redeem(issueAmt)
@@ -481,7 +484,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await advanceTime(DELAY_UNTIL_DEFAULT.toString())
 
       // Ensure valid basket
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(basketHandler.refreshBasket())
       } else {
         await basketHandler.refreshBasket()
@@ -500,7 +503,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       )
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
 
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
@@ -527,7 +530,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Claim Rewards
-      if (process.env.REPORT_GAS) {
+      if (REPORT_GAS) {
         await snapshotGasCost(backingManager.claimRewards())
       } else {
         await expectEvents(backingManager.claimRewards(), [

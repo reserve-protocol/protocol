@@ -10,10 +10,11 @@ import { ZERO_ADDRESS } from '../../common/constants'
 import { expectInIndirectReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
 import { FacadeWrite, FiatCollateral, TestIDeployer, TestIMain } from '../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`Deployment - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
