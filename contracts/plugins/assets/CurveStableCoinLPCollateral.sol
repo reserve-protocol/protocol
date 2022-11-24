@@ -24,6 +24,23 @@ contract CurveStableCoinLPCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    struct Configuration {
+        uint192 fallbackPrice_;
+        AggregatorV3Interface chainlinkFeed_;
+        IERC20Metadata erc20_;
+        IERC20Metadata rewardERC20_;
+        uint192 maxTradeVolume_;
+        uint48 oracleTimeout_;
+        bytes32 targetName_;
+        uint256 delayUntilDefault_;
+        uint192 defaultThreshold_;
+        address curveStablePool_;
+        int8 referenceERC20Decimals_;
+        address convexWrappingContract_;
+        AggregatorV3Interface[] stableCoinChainLinkFeeds_;
+        uint192[] stableCoinThresholds_;
+    }
+
     int8 public immutable referenceERC20Decimals;
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
     address public immutable curveStablePool;
@@ -32,52 +49,28 @@ contract CurveStableCoinLPCollateral is Collateral {
     AggregatorV3Interface[] public stableCoinChainLinkFeeds;
     uint192[] public stableCoinThresholds;
 
-    /// @param chainlinkFeed_ Feed units: {UoA/ref}
-    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @param delayUntilDefault_ {s} The number of seconds an oracle can mulfunction
-    constructor(
-        uint192 fallbackPrice_,
-        AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
-        uint192 maxTradeVolume_,
-        uint48 oracleTimeout_,
-        bytes32 targetName_,
-        uint256 delayUntilDefault_,
-        uint192 defaultThreshold_,
-        address curveStablePool_,
-        int8 referenceERC20Decimals_,
-        address convexWrappingContract_
-    )
+    constructor(Configuration memory config)
         Collateral(
-            fallbackPrice_,
-            chainlinkFeed_,
-            erc20_,
-            rewardERC20_,
-            maxTradeVolume_,
-            oracleTimeout_,
-            targetName_,
-            delayUntilDefault_
+            config.fallbackPrice_,
+            config.chainlinkFeed_,
+            config.erc20_,
+            config.rewardERC20_,
+            config.maxTradeVolume_,
+            config.oracleTimeout_,
+            config.targetName_,
+            config.delayUntilDefault_
         )
     {
-        require(targetName_ != bytes32(0), "targetName missing");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
-        require(defaultThreshold_ > 0, "defaultThreshold zero");
-        defaultThreshold = defaultThreshold_;
-        referenceERC20Decimals = referenceERC20Decimals_;
-        curveStablePool = curveStablePool_;
+        require(config.targetName_ != bytes32(0), "targetName missing");
+        require(config.delayUntilDefault_ > 0, "delayUntilDefault zero");
+        require(config.defaultThreshold_ > 0, "defaultThreshold zero");
+        defaultThreshold = config.defaultThreshold_;
+        referenceERC20Decimals = config.referenceERC20Decimals_;
+        curveStablePool = config.curveStablePool_;
         prevReferencePrice = refPerTok();
-        convexWrappingContract = convexWrappingContract_;
-    }
-
-    /// Setting the chainlink pricefeeds for stable coins backing the LP token
-    function setChainlinkPriceFeedsForStableCoins(
-        AggregatorV3Interface[] memory stableCoinChainLinkFeeds_,
-        uint192[] memory stableCoinThresholds_
-    ) external {
-        stableCoinChainLinkFeeds = stableCoinChainLinkFeeds_;
-        stableCoinThresholds = stableCoinThresholds_;
+        convexWrappingContract = config.convexWrappingContract_;
+        stableCoinChainLinkFeeds = config.stableCoinChainLinkFeeds_;
+        stableCoinThresholds = config.stableCoinThresholds_;
     }
 
     /// Refresh exchange rates and update default status.
@@ -97,19 +90,22 @@ contract CurveStableCoinLPCollateral is Collateral {
                 try stableCoinChainLinkFeeds[i].price_(oracleTimeout) returns (uint192 p) {
                     // Check for soft default of underlying reference token
                     // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-                    uint192 peg = targetPerRef() / FIX_ONE;
+                    uint192 peg = targetPerRef();
 
                     // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
-                    uint192 delta = (peg * stableCoinThresholds[i]) / FIX_ONE; // D18{UoA/ref}
+                    uint192 delta = (peg * stableCoinThresholds[i]) / FIX_ONE;
 
                     // If the price is below the default-threshold price, default eventually
                     // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                    else markStatus(CollateralStatus.SOUND);
+                    if (p < peg - delta || p > peg + delta) {
+                        markStatus(CollateralStatus.IFFY);
+                        break;
+                    } else markStatus(CollateralStatus.SOUND);
                 } catch (bytes memory errData) {
                     // see: docs/solidity-style.md#Catching-Empty-Data
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
+                    break;
                 }
             }
         }

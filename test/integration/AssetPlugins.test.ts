@@ -238,6 +238,23 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       eurt = <ERC20Mock>erc20s[19] // eurt
       curveLpToken = <ERC20Mock>erc20s[20] // curveLPToken
 
+      interface ConvexConstructorConfig {
+        fallbackPrice_: BigNumber
+        chainlinkFeed_: string
+        erc20_: string
+        rewardERC20_: string
+        maxTradeVolume_: BigNumber
+        oracleTimeout_: BigNumber
+        targetName_: string
+        delayUntilDefault_: BigNumber
+        defaultThreshold_: BigNumber
+        curveStablePool_: string
+        referenceERC20Decimals_: string
+        convexWrappingContract_: string
+        stableCoinChainLinkFeeds_: string[]
+        stableCoinThresholds_: BigNumber[]
+      }
+
       // Get plain aTokens
       aDai = <IAToken>(
         await ethers.getContractAt(
@@ -1659,26 +1676,30 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         })
       ).deploy()
 
+      const constructorConfig = {
+        fallbackPrice_: fp('1.022'),
+        chainlinkFeed_: NO_PRICE_DATA_FEED,
+        erc20_: curveLpToken.address,
+        rewardERC20_: ZERO_ADDRESS,
+        maxTradeVolume_: config.rTokenMaxTradeVolume,
+        oracleTimeout_: MAX_ORACLE_TIMEOUT,
+        targetName_: ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault_: delayUntilDefault,
+        defaultThreshold_: defaultThreshold,
+        curveStablePool_: curvePoolMock.address,
+        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
+        convexWrappingContract_: convexStakingWrapper.address,
+        stableCoinChainLinkFeeds_: stableCoinList,
+        stableCoinThresholds_: stableCoinList.map(() => fp('1')),
+      }
+
       // Non price EURO Fiat collateral
       const nonPriceCurveCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
         await (
           await ethers.getContractFactory('CurveStableCoinLPCollateral', {
             libraries: { OracleLib: oracleLib.address },
           })
-        ).deploy(
-          fp('1.022'),
-          NO_PRICE_DATA_FEED,
-          curveLpToken.address,
-          ZERO_ADDRESS,
-          config.rTokenMaxTradeVolume,
-          MAX_ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          curvePoolMock.address,
-          (await curveLpToken.decimals()).toString(),
-          convexStakingWrapper.address
-        )
+        ).deploy(constructorConfig)
       )
 
       // Collateral with no price should revert
@@ -1688,6 +1709,8 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(nonPriceCurveCollateral.refresh()).to.be.reverted
       expect(await nonPriceCurveCollateral.status()).to.equal(CollateralStatus.SOUND)
 
+      constructorConfig.chainlinkFeed_ = mockChainlinkFeed.address
+
       // Reverts with a feed with zero price
       const invalidPriceConvexCollateral: CurveStableCoinLPCollateral = <
         CurveStableCoinLPCollateral
@@ -1695,25 +1718,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('CurveStableCoinLPCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
-      ).deploy(
-        fp('1'),
-        mockChainlinkFeed.address,
-        curveLpToken.address,
-        ZERO_ADDRESS,
-        config.rTokenMaxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        curvePoolMock.address,
-        (await curveLpToken.decimals()).toString(),
-        convexStakingWrapper.address
-      )
-
-      await invalidPriceConvexCollateral.setChainlinkPriceFeedsForStableCoins(
-        stableCoinList,
-        stableCoinList.map(() => fp('0.01'))
-      )
+      ).deploy(constructorConfig)
 
       // Set price = 0
       await setOraclePrice(invalidPriceConvexCollateral.address, bn(0))
@@ -2580,24 +2585,29 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const defaultThreshold = fp('0.05') // 5%
       const delayUntilDefault = bn('86400') // 24h
 
+      const constructorConfig = {
+        fallbackPrice_: fp('1.022'),
+        chainlinkFeed_: NO_PRICE_DATA_FEED,
+        erc20_: curveLpToken.address,
+        rewardERC20_: ZERO_ADDRESS,
+        maxTradeVolume_: config.rTokenMaxTradeVolume,
+        oracleTimeout_: MAX_ORACLE_TIMEOUT,
+        targetName_: ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault_: delayUntilDefault,
+        defaultThreshold_: defaultThreshold,
+        curveStablePool_: curvePoolMock.address,
+        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
+        convexWrappingContract_: convexStakingWrapper.address,
+        stableCoinChainLinkFeeds_: [],
+        stableCoinThresholds_: [],
+      }
+
       const convexCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
         await ethers.getContractFactory('CurveStableCoinLPCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
-      ).deploy(
-        fp('1.022'),
-        NO_PRICE_DATA_FEED,
-        curveLpToken.address,
-        ZERO_ADDRESS,
-        config.rTokenMaxTradeVolume,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        curvePoolMock.address,
-        (await curveLpToken.decimals()).toString(),
-        convexStakingWrapper.address
-      )
+      ).deploy(constructorConfig)
+
       const convexStakingWrapperGetRewardsABI = [
         {
           name: 'getReward',

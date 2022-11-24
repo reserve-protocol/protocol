@@ -86,6 +86,23 @@ interface COMPAAVEFixture {
   aaveMock: AaveLendingPoolMock
 }
 
+interface ConvexConstructorConfig {
+  fallbackPrice_: BigNumber
+  chainlinkFeed_: string
+  erc20_: string
+  rewardERC20_: string
+  maxTradeVolume_: BigNumber
+  oracleTimeout_: BigNumber
+  targetName_: string
+  delayUntilDefault_: BigNumber
+  defaultThreshold_: BigNumber
+  curveStablePool_: string
+  referenceERC20Decimals_: string
+  convexWrappingContract_: string
+  stableCoinChainLinkFeeds_: string[]
+  stableCoinThresholds_: BigNumber[]
+}
+
 async function ConvexCurveFixutre(): Promise<ConvexCurveFixutre> {
   const chainId = await getChainId(hre)
   if (!networkConfig[chainId]) {
@@ -169,8 +186,7 @@ async function collateralFixture(
   aaveLendingPool: AaveLendingPoolMock,
   aaveToken: ERC20Mock,
   compToken: ERC20Mock,
-  config: IConfig,
-  curveLPTokenMock: CurveStablePoolMock
+  config: IConfig
 ): Promise<CollateralFixture> {
   const chainId = await getChainId(hre)
   if (!networkConfig[chainId]) {
@@ -403,26 +419,26 @@ async function collateralFixture(
     const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>(
       await ConvexStakingWrapperFactory.deploy()
     )
-    const curveStableCoinLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
-      await CurveStableCoinLPCollateralFactory.deploy(
-        fp('1'),
-        referenceUnitOracleAddr,
-        erc20.address,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        delayUntilDefault,
-        defaultThreshold,
-        lpPool,
-        (await referenceERC20.decimals()).toString(),
-        convexStakingWrapper.address
-      )
-    )
 
-    await curveStableCoinLPCollateral.setChainlinkPriceFeedsForStableCoins(
-      stableCoinList,
-      stableCoinList.map(() => fp('1'))
+    const constructorConfig: ConvexConstructorConfig = {
+      fallbackPrice_: fp('1'),
+      chainlinkFeed_: referenceUnitOracleAddr,
+      erc20_: erc20.address,
+      rewardERC20_: erc20.address,
+      maxTradeVolume_: config.rTokenMaxTradeVolume,
+      oracleTimeout_: ORACLE_TIMEOUT,
+      targetName_: ethers.utils.formatBytes32String('USD'),
+      delayUntilDefault_: delayUntilDefault,
+      defaultThreshold_: defaultThreshold,
+      curveStablePool_: lpPool,
+      referenceERC20Decimals_: (await referenceERC20.decimals()).toString(),
+      convexWrappingContract_: convexStakingWrapper.address,
+      stableCoinChainLinkFeeds_: stableCoinList,
+      stableCoinThresholds_: stableCoinList.map(() => fp('1')),
+    }
+
+    const curveStableCoinLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
+      await CurveStableCoinLPCollateralFactory.deploy(constructorConfig)
     )
 
     return [erc20, curveStableCoinLPCollateral]
@@ -968,8 +984,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     aaveMock,
     aaveToken,
     compToken,
-    config,
-    curvePoolMock
+    config
   )
 
   const rsrTrader = <TestIRevenueTrader>(
