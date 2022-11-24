@@ -2187,16 +2187,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@uniswap/v3-periphery@github:Uniswap/v3-periphery#0.8":
+"@uniswap/v3-periphery@github:chainhackers/v3-periphery#0.8":
   version: 1.4.2-solc-0.8
-  resolution: "@uniswap/v3-periphery@https://github.com/Uniswap/v3-periphery.git#commit=b325bb0905d922ae61fcc7df85ee802e8df5e96c"
+  resolution: "@uniswap/v3-periphery@https://github.com/chainhackers/v3-periphery.git#commit=e01b4ca3584a5fe67ff7881340499dc6ca80e79f"
   dependencies:
     "@openzeppelin/contracts": 4.6.0
     "@uniswap/v2-core": 1.0.1
     "@uniswap/v3-core": 1.0.2-solc-0.8-simulate
     base64-sol: 1.1.0
     hardhat-watcher: ^2.1.1
-  checksum: ed139a658b314bb9842ef40c76d6f27ead29be7a9c4ffe87a973d1f42784f79ba020e753ee8bd57b573d90b38fc4aece8549f95fa1242b109c2ec89dc8b85108
+  checksum: 6648d22ddb00fa1c18df96fa2f27624a5676765b47018f7b04065ff4ddecac765c686d95b1286f95f011317604bcb831ac5ce771b8e0342efb070c7c70178d74
   languageName: node
   linkType: hard
 
@@ -12144,7 +12144,7 @@ fsevents@~2.1.1:
     "@types/node": ^12.20.37
     "@typescript-eslint/eslint-plugin": ^5.17.0
     "@typescript-eslint/parser": ^5.17.0
-    "@uniswap/v3-periphery": "github:Uniswap/v3-periphery#0.8"
+    "@uniswap/v3-periphery": "github:chainhackers/v3-periphery#0.8"
     "@withtally/tally-publish-dao": ^0.0.5
     axios: ^0.24.0
     big.js: ^6.1.1

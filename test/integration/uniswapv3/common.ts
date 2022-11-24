@@ -5,6 +5,8 @@ import { UniswapV3WrapperMock } from '@typechain/UniswapV3WrapperMock'
 import { USDCMock } from '@typechain/USDCMock'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
+import { ITokens, networkConfig } from '../../../common/configuration'
+import { ZERO_ADDRESS } from '../../../common/constants'
 
 /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
 export const MIN_TICK = -887272
@@ -25,6 +27,27 @@ export type TMintParams = {
     deadline: BigNumberish
 }
 
+export async function defaultMintParams(chainId: number): Promise<TMintParams> {
+    const tokens: ITokens = networkConfig[chainId].tokens
+    const daiAddress = tokens.DAI!
+    const usdcAddress = tokens.USDC!
+    const dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', daiAddress)
+    const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', usdcAddress)
+    return {
+        token0: daiAddress,
+        token1: usdcAddress,
+        fee: 100,
+        tickLower: MIN_TICK,
+        tickUpper: MAX_TICK,
+        amount0Desired: await adjustedAmount(dai, 100),
+        amount1Desired: await adjustedAmount(usdc, 100),
+        amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
+        amount1Min: 0,
+        recipient: ZERO_ADDRESS,
+        deadline: 0, //rewrite in constructor
+    }
+}
+
 export async function deployUniswapV3WrapperMock(address: SignerWithAddress): Promise<UniswapV3WrapperMock> {
     const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
     const uniswapV3WrapperMock = await uniswapV3WrapperContractFactory
@@ -33,7 +56,7 @@ export async function deployUniswapV3WrapperMock(address: SignerWithAddress): Pr
     return uniswapV3WrapperMock
 }
 
-export async function adjustedAmout(
+export async function adjustedAmount(
     asset: ERC20Mock | USDCMock | UniswapV3Wrapper,
     amount: BigNumberish
 ): Promise<BigNumber> {

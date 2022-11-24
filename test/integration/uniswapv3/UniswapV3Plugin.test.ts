@@ -9,15 +9,8 @@ import { ERC20Mock, MockV3Aggregator, UniswapV3Wrapper, UniswapV3WrapperMock, US
 import { whileImpersonating } from '../../utils/impersonation'
 import { waitForTx } from '../utils'
 import { expect } from 'chai'
-import {
-    adjustedAmout as adjustedAmount,
-    deployUniswapV3WrapperMock,
-    logBalances,
-    MAX_TICK,
-    MIN_TICK,
-    TMintParams,
-} from './common'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
+import { adjustedAmount, defaultMintParams, deployUniswapV3WrapperMock, logBalances, TMintParams } from './common'
+import { CollateralStatus, MAX_UINT256 } from '../../../common/constants'
 import { UniswapV3Collateral__factory } from '@typechain/factories/UniswapV3Collateral__factory'
 import { UniswapV3Collateral } from '@typechain/UniswapV3Collateral'
 
@@ -90,20 +83,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner)
 
-            const mintParams: TMintParams = {
-                token0: asset0.address,
-                token1: asset1.address,
-                fee: 100,
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
-                amount0Desired: await adjustedAmount(asset0, 100),
-                amount1Desired: await adjustedAmount(asset1, 100),
-                amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
-                amount1Min: 0,
-                recipient: ZERO_ADDRESS,
-                deadline: 0, //rewrite in constructor
-            }
-
+            const mintParams: TMintParams = await defaultMintParams(chainId)
             await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired))
             await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired))
             await waitForTx(await uniswapV3Wrapper.connect(addr1).mint(mintParams))
@@ -115,19 +95,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner)
 
-            const mintParams: TMintParams = {
-                token0: asset0.address,
-                token1: asset1.address,
-                fee: 100,
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
-                amount0Desired: await adjustedAmount(asset0, 100),
-                amount1Desired: await adjustedAmount(asset1, 100),
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: ZERO_ADDRESS,
-                deadline: 0,
-            }
+            const mintParams: TMintParams = await defaultMintParams(chainId)
 
             await logBalances('Balances before UniswapV3Wrapper mint:', [addr1], [asset0, asset1, uniswapV3Wrapper])
 
@@ -206,19 +174,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const asset0 = dai
             const asset1 = usdc
 
-            const mintParams: TMintParams = {
-                token0: asset0.address,
-                token1: asset1.address,
-                fee: 100, //0.01%
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
-                amount0Desired: await adjustedAmount(asset0, 100),
-                amount1Desired: await adjustedAmount(asset1, 100),
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: ZERO_ADDRESS,
-                deadline: 0,
-            }
+            const mintParams: TMintParams = await defaultMintParams(chainId)
             await waitForTx(
                 await asset0.connect(addr1).approve(uniswapV3WrapperMock.address, mintParams.amount0Desired)
             )
@@ -388,28 +344,18 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await uniswapV3WrapperContractFactory.connect(owner).deploy('UniswapV3WrapperToken', 'U3W')
             )
 
-            const mintParams: TMintParams = {
-                token0: asset0.address,
-                token1: asset1.address,
-                fee: 100, //0.01%
-                tickLower: MIN_TICK,
-                tickUpper: MAX_TICK,
-                amount0Desired: p0(100),
-                amount1Desired: p1(100),
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: ZERO_ADDRESS,
-                deadline: 0,
-            }
+            const mintParams: TMintParams = await defaultMintParams(chainId)
             const asset0addr1 = await asset0.connect(addr1)
+            const asset1addr1 = await asset1.connect(addr1)
             await waitForTx(await asset0addr1.approve(uniswapV3WrapperMock.address, mintParams.amount0Desired))
-            await waitForTx(await asset0addr1.approve(uniswapV3WrapperMock.address, mintParams.amount1Desired))
+            await waitForTx(await asset1addr1.approve(uniswapV3WrapperMock.address, mintParams.amount1Desired))
             await waitForTx(await uniswapV3WrapperMock.connect(addr1).mint(mintParams))
 
             // approve assets for mock rewards payouts
             const asset0Owner = await asset0.connect(owner)
+            const asset1Owner = await asset1.connect(owner)
             await waitForTx(await asset0Owner.approve(uniswapV3WrapperMock.address, await asset0.totalSupply()))
-            await waitForTx(await asset0Owner.approve(uniswapV3WrapperMock.address, await asset0.totalSupply()))
+            await waitForTx(await asset1Owner.approve(uniswapV3WrapperMock.address, await asset1.totalSupply()))
 
             const positions = await uniswapV3WrapperMock.positions()
             const minted200 = positions.liquidity
