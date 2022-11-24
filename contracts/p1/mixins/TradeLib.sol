@@ -40,22 +40,30 @@ library TradeLib {
         returns (bool notDust, TradeRequest memory req)
     {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
-        // assert(trade.sellPrice >= 0); not needed
+
+        uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellPrice, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, lotPrice, trade.sellAmount, rules.minTradeVolume)) {
             return (false, req);
         }
 
-        // {sellTok}
-        uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
+        // Calculate sell and buy amounts
+        uint192 s = trade.sellAmount; // {sellTok}
+        uint192 b; // {buyTok} initially 0
 
-        // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
-            trade.sellPrice,
-            trade.buyPrice,
-            CEIL
-        );
+        // Size trade if trade.sellPrice > 0
+        if (trade.sellPrice > 0) {
+            uint192 maxTradeSize_ = maxTradeSize(trade.sell, trade.sellPrice);
+            if (s > maxTradeSize_) s = maxTradeSize_;
+
+            // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
+            b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
+                trade.sellPrice,
+                trade.buyPrice,
+                CEIL
+            );
+        }
 
         req.sell = trade.sell;
         req.buy = trade.buy;

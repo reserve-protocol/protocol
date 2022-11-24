@@ -7,20 +7,6 @@ import "contracts/libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
-// low <= mid <= high
-struct PriceRange {
-    uint192 low; // {UoA/tok} A lower-bound for the price of the token on secondary markets
-    // can be 0
-    // MUST be 0 if oracle is reverting or Collateral is DISABLED
-    // TODO: propagate this requirement to docs/collateral.md
-
-    uint192 mid; // {UoA/tok} A precise estimate for the price of the token on secondary markets
-    // SHOULD NOT be 0
-
-    uint192 high; // {UoA/tok} An upper-bound for the price of the token on secondary markets
-    // SHOULD NOT be 0
-}
-
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -28,9 +14,15 @@ struct PriceRange {
  * is eligible to be an asset.
  */
 interface IAsset is IRewardable {
-    /// Should never revert
-    /// @return {UoA/tok} A price range for the asset in the unit of account
-    function price() external view returns (PriceRange memory);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() external view returns (uint192 low, uint192 high);
+
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A fallback price to use for trade sizing when price().low is 0
+    function fallbackPrice() external view returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);

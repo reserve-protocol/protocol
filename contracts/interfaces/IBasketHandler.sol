@@ -87,9 +87,10 @@ interface IBasketHandler is IComponent {
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
-    /// Should never revert
-    /// @return {UoA/tok} A price range for the asset in the unit of account
-    function price() external view returns (PriceRange memory);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() external view returns (uint192 low, uint192 high);
 
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);

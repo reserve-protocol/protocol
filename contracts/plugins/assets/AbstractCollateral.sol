@@ -35,13 +35,14 @@ abstract contract Collateral is ICollateral, Asset {
     /// @param delayUntilDefault_ {s} The number of seconds an oracle can mulfunction
     constructor(
         uint192 fallbackPrice_,
+        uint192 oracleError_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_
-    ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {
+    ) Asset(fallbackPrice_, oracleError_, chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         targetName = targetName_;
@@ -57,7 +58,7 @@ abstract contract Collateral is ICollateral, Asset {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
-        try this.price() returns (PriceRange memory) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
             markStatus(CollateralStatus.SOUND);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data

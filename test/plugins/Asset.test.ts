@@ -278,7 +278,7 @@ describe('Assets contracts #fast', () => {
     it('Should not allow fallback price to be zero', async () => {
       await expect(
         AssetFactory.deploy(0, ONE_ADDRESS, ONE_ADDRESS, config.rTokenMaxTradeVolume, 0)
-      ).to.be.revertedWith('fallback price zero')
+      ).to.be.revertedWith('lot size price zero')
     })
     it('Should not allow missing chainlink feed', async () => {
       await expect(

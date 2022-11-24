@@ -23,8 +23,15 @@ contract RTokenAsset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
+    uint192 public immutable override fallbackPrice; // {UoA/tok} A price for sizing trade lots
+
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    constructor(IRToken erc20_, uint192 maxTradeVolume_) {
+    constructor(
+        uint192 fallbackPrice_,
+        IRToken erc20_,
+        uint192 maxTradeVolume_
+    ) {
+        require(fallbackPrice_ > 0, "lot size price zero");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
@@ -33,27 +40,29 @@ contract RTokenAsset is IAsset {
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
 
+        fallbackPrice = fallbackPrice_;
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Should never revert
-    /// @return range {UoA/tok} A price range for the asset
-    function price() public view virtual returns (PriceRange memory range) {
-        // {UoA/BU}
-        PriceRange memory buPriceRange = basketHandler.price();
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192 low, uint192 high) {
+        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return buPriceRange;
+        if (supply == 0) return (lowBUPrice, highBUPrice);
 
-        RecollateralizationLibP1.BasketRange memory basketRange; // {BU}
+        uint192 basketsBottom; // {BU}
+        uint192 basketsTop; // {BU}
         if (basketHandler.fullyCollateralized()) {
-            basketRange.bottom = IRToken(address(erc20)).basketsNeeded();
-            basketRange.top = basketRange.bottom;
+            basketsBottom = IRToken(address(erc20)).basketsNeeded();
+            basketsTop = basketsBottom;
         } else {
             // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
             // there is _some_ asset to represent the RToken itself when it is deployed, in
@@ -75,21 +84,15 @@ contract RTokenAsset is IAsset {
             });
 
             // will exclude UoA value from RToken balances at BackingManager
-            basketRange = RecollateralizationLibP1.basketRange(
-                components,
-                rules,
-                assetRegistry.erc20s()
-            );
+            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
+                .basketRange(components, rules, assetRegistry.erc20s());
+            basketsBottom = range.bottom;
+            basketsTop = range.top;
         }
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        range.low = basketRange.bottom.mulDiv(buPriceRange.low, supply);
-
-        // TODO: can we do better?
-        range.mid = range.low;
-
-        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        range.high = basketRange.top.mulDiv(buPriceRange.high, supply);
+        low = basketsBottom.mulDiv(lowBUPrice, supply);
+        high = basketsTop.mulDiv(highBUPrice, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

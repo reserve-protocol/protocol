@@ -303,12 +303,12 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
     }
 
-    /// Returns a price range for one BU in the unit of account
-    /// @return range {UoA/BU} A price range for a basket unit in the unit of account
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function price() external view returns (PriceRange memory range) {
+    function price() external view returns (uint192 low, uint192 high) {
         uint256 low256;
-        uint256 mid256;
         uint256 high256;
 
         uint256 length = basket.erc20s.length;
@@ -316,15 +316,13 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 qty = quantity(basket.erc20s[i]);
             if (qty == 0) continue;
 
-            PriceRange memory p = assetRegistry.toAsset(basket.erc20s[i]).price();
-            low256 += quantityMulPrice(qty, p.low);
-            mid256 += quantityMulPrice(qty, p.mid);
-            high256 += quantityMulPrice(qty, p.high);
+            (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
+            low256 += quantityMulPrice(qty, lowP);
+            high256 += quantityMulPrice(qty, highP);
         }
 
-        range.low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
-        range.mid = mid256 >= FIX_MAX ? FIX_MAX : uint192(mid256);
-        range.high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
+        low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
+        high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }
 
     /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
