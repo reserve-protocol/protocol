@@ -15,7 +15,7 @@ abstract contract RevenueHiding is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    uint192 private immutable marginRatio; // max drop allowed // D18
+    uint192 private immutable marginRatio; // max drop allowed
     uint192 private maxRefPerTok; // max rate previously seen {ref/tok} // D18
 
     constructor(
