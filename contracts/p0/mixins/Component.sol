@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/mixins/Versioned.sol";
+import "../../interfaces/IMain.sol";
+import "../../mixins/Versioned.sol";
 
 /**
  * Abstract superclass for system contracts registered in Main

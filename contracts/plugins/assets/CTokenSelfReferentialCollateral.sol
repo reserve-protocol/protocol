@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/AbstractCollateral.sol";
-import "contracts/plugins/assets/ICToken.sol";
+import "./AbstractCollateral.sol";
+import "./ICToken.sol";
 
 /**
  * @title CTokenSelfReferentialCollateral

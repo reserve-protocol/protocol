@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 /// Represents a simple smart contract wallet that provides approvals via ERC1271
