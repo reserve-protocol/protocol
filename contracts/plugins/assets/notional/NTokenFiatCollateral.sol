@@ -13,7 +13,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice Collateral plugin for a NToken of fiat collateral
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract NTokenCollateral is RevenueHiding {
+contract NTokenFiatCollateral is RevenueHiding {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -81,9 +81,9 @@ contract NTokenCollateral is RevenueHiding {
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function actualRefPerTok() public view override returns (uint192) {
         // fetch value of all current liquidity
-        uint192 valueOfAll = _safeWrap(uint256(nToken.getPresentValueUnderlyingDenominated()));
+        uint192 valueOfAll = _safeWrap(uint256(nToken.getPresentValueUnderlyingDenominated())); // D8 uint256
         // fetch total supply of tokens
-        uint192 totalSupply = _safeWrap(nToken.totalSupply());
+        uint192 totalSupply = _safeWrap(nToken.totalSupply()); // D8 uint256
         // divide to get the value of one token
         return valueOfAll.div(totalSupply);
     }

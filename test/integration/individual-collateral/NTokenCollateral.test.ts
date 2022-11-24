@@ -33,7 +33,7 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  NTokenCollateral,
+  NTokenFiatCollateral,
   NTokenERC20ProxyMock,
   INotionalProxy,
   InvalidMockV3Aggregator,
@@ -48,7 +48,6 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 const HOLDER_nUSDC = '0x02479bfc7dce53a02e26fe7baea45a0852cb0909'
 
-const BALANCER_NOTE_ORACLE = '0x5122E01D819E58BB2E22528c0D68D310f0AA6FD7'
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
@@ -58,7 +57,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // Tokens/Assets
   let notionalProxy: NotionalProxy
   let nUsdc: NTokenERC20ProxyMock
-  let nUsdcCollateral: NTokenCollateral
+  let nUsdcCollateral: NTokenFiatCollateral
   let noteToken: ERC20Mock
   let noteAsset: Asset
   let rsr: ERC20Mock
@@ -104,7 +103,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
-  const allowedDrop = fp('0.01') // 1%
+  const allowedDropBasisPoints = 100 // 1%
 
   let initialBal: BigNumber
 
@@ -113,7 +112,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let chainId: number
 
-  let NTokenCollateralFactory: ContractFactory
+  let NTokenFiatCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
@@ -161,18 +160,18 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy(
         fp('0.22'),
         networkConfig[chainId].chainlinkFeeds.ETH || '',
-        BALANCER_NOTE_ORACLE,
+        networkConfig[chainId].balancerPools.NOTE || '',
         noteToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT
       )
 
       // Deploy nUsdc collateral plugin
-      NTokenCollateralFactory = await ethers.getContractFactory('NTokenCollateral', {
+      NTokenFiatCollateralFactory = await ethers.getContractFactory('NTokenFiatCollateral', {
         libraries: { OracleLib: oracleLib.address },
       })
-      nUsdcCollateral = <NTokenCollateral>(
-        await NTokenCollateralFactory.deploy(
+      nUsdcCollateral = <NTokenFiatCollateral>(
+        await NTokenFiatCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
           nUsdc.address,
@@ -182,7 +181,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           delayUntilDefault,
           notionalProxy.address,
           defaultThreshold,
-          allowedDrop
+          allowedDropBasisPoints
         )
       )
 
@@ -334,7 +333,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       it('Should validate constructor arguments correctly', async () => {
         // Default threshold
         await expect(
-          NTokenCollateralFactory.deploy(
+          NTokenFiatCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -344,13 +343,13 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             ethers.constants.AddressZero,
             defaultThreshold,
-            fp('0.01') // 1%
+            100 // 1%
           )
         ).to.be.revertedWith('Notional proxy address missing')
 
         // Allowed refPerTok drop too high
         await expect(
-          NTokenCollateralFactory.deploy(
+          NTokenFiatCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -360,13 +359,13 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            fp('1') // 100%
+            10000 // 100%
           )
         ).to.be.revertedWith('Allowed refPerTok drop out of range')
 
         // Negative drop on refPerTok
         await expect(
-          NTokenCollateralFactory.deploy(
+          NTokenFiatCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -376,7 +375,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            fp('-0.01') // negative value
+            -1 // negative value
           )
         ).to.be.reverted
       })
@@ -412,7 +411,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        const minExpectedValue = minimumValue(issueAmount, allowedDrop) // minimum expected value given the drop
+        const minExpectedValue = minimumValue(issueAmount, allowedDropBasisPoints) // minimum expected value given the drop
         expect(totalAssetValue1).to.be.gt(minExpectedValue) // approx 10K in value
 
         // Advance time and blocks slightly, causing refPerTok() to increase
@@ -432,7 +431,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(nUsdcRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
         // Check price is within the accepted range
-        expect(nUsdcPrice2).to.be.gt(minimumValue(nUsdcPrice1, allowedDrop))
+        expect(nUsdcPrice2).to.be.gt(minimumValue(nUsdcPrice1, allowedDropBasisPoints))
         // Check the refPerTok is greater or equal than the previous one
         expect(nUsdcRefPerTok2).to.be.gte(nUsdcRefPerTok1)
 
@@ -440,7 +439,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        expect(totalAssetValue2).to.be.gte(minimumValue(totalAssetValue1, allowedDrop))
+        expect(totalAssetValue2).to.be.gte(minimumValue(totalAssetValue1, allowedDropBasisPoints))
 
         // Advance time and blocks slightly, causing refPerTok() to increase
         await advanceTime(100000000)
@@ -459,7 +458,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         expect(nUsdcRefPerTok3).to.be.closeTo(fp('0.022'), fp('0.001'))
 
         // Check price is within the accepted range
-        expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDrop))
+        expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDropBasisPoints))
         // Check the refPerTok is greater or equal than the previous one
         expect(nUsdcRefPerTok3).to.be.gte(nUsdcRefPerTok2)
 
@@ -467,7 +466,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        expect(totalAssetValue3).to.be.gt(minimumValue(totalAssetValue2, allowedDrop))
+        expect(totalAssetValue3).to.be.gt(minimumValue(totalAssetValue2, allowedDropBasisPoints))
 
         // Redeem Rtokens with the updated rates
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
@@ -480,7 +479,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const newBalanceAddr1nUsdc: BigNumber = await nUsdc.balanceOf(addr1.address)
 
         // Check received tokens represent ~10K in value at current prices
-        expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(449159e8), bn(1e8)) // ~0.0223 * 449159 ~= 10K (100% of basket)
+        expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(448430e8), bn(1e8)) // ~0.0223 * 449159 ~= 10K (100% of basket)
 
         // Check remainders in Backing Manager
         expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(1), bn(1e8)) // ~= 0.0000000002 usd in value
@@ -571,8 +570,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         /** No price instance */
 
         // nTokens Collateral with no price
-        const nonPriceNUsdcCollateral = <NTokenCollateral>(
-          await NTokenCollateralFactory.deploy(
+        const nonPriceNUsdcCollateral = <NTokenFiatCollateral>(
+          await NTokenFiatCollateralFactory.deploy(
             fp('1'),
             NO_PRICE_DATA_FEED,
             nUsdc.address,
@@ -582,7 +581,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            allowedDrop
+            allowedDropBasisPoints
           )
         )
 
@@ -596,8 +595,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         /** Invalid price instance */
 
         // Reverts with a feed with zero price
-        const invalidPriceNUsdcCollateral = <NTokenCollateral>(
-          await NTokenCollateralFactory.deploy(
+        const invalidPriceNUsdcCollateral = <NTokenFiatCollateral>(
+          await NTokenFiatCollateralFactory.deploy(
             fp('1'),
             mockChainlinkFeed.address,
             nUsdc.address,
@@ -607,7 +606,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            allowedDrop
+            allowedDropBasisPoints
           )
         )
 
@@ -632,8 +631,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Test for soft default
       it('Updates status in case of soft default', async () => {
         // Redeploy plugin using a Chainlink mock feed where we can change the price
-        const newNUsdcCollateral = <NTokenCollateral>(
-          await NTokenCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenFiatCollateral>(
+          await NTokenFiatCollateralFactory.deploy(
             fp('1'),
             mockChainlinkFeed.address,
             nUsdc.address,
@@ -643,7 +642,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            allowedDrop
+            allowedDropBasisPoints
           )
         )
 
@@ -691,7 +690,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await nToken.setUnderlyingValue(fp('1e8'))
 
         // Redeploy plugin using the new cDai mock
-        const newNUsdcCollateral = <NTokenCollateral>await NTokenCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenFiatCollateral>await NTokenFiatCollateralFactory.deploy(
           fp('1'),
           mockChainlinkFeed.address,
           nToken.address,
@@ -701,7 +700,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           delayUntilDefault,
           notionalProxy.address,
           defaultThreshold,
-          fp('0.01') // 1%
+          100 // 1%
         )
 
         // Initialize internal state of max redPerTok
@@ -732,8 +731,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
         )
 
-        const newNUsdcCollateral = <NTokenCollateral>(
-          await NTokenCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenFiatCollateral>(
+          await NTokenFiatCollateralFactory.deploy(
             fp('1'),
             invalidChainlinkFeed.address,
             nUsdc.address,
@@ -743,7 +742,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             delayUntilDefault,
             notionalProxy.address,
             defaultThreshold,
-            allowedDrop
+            allowedDropBasisPoints
           )
         )
 
@@ -820,18 +819,18 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy(
         fp('0.22'),
         networkConfig[chainId].chainlinkFeeds.ETH || '',
-        BALANCER_NOTE_ORACLE,
+        networkConfig[chainId].balancerPools.NOTE || '',
         noteToken.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT
       )
 
       // Deploy nUsdc collateral plugin
-      NTokenCollateralFactory = await ethers.getContractFactory('NTokenCollateral', {
+      NTokenFiatCollateralFactory = await ethers.getContractFactory('NTokenFiatCollateral', {
         libraries: { OracleLib: oracleLib.address },
       })
-      nUsdcCollateral = <NTokenCollateral>(
-        await NTokenCollateralFactory.deploy(
+      nUsdcCollateral = <NTokenFiatCollateral>(
+        await NTokenFiatCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
           nUsdc.address,
@@ -841,7 +840,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           delayUntilDefault,
           notionalProxy.address,
           defaultThreshold,
-          allowedDrop
+          allowedDropBasisPoints
         )
       )
 
@@ -929,6 +928,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const nUsdcPrice1: BigNumber = await nUsdcCollateral.strictPrice() // ~ 0.022 cents
         const nUsdcRefPerTok1: BigNumber = await nUsdcCollateral.refPerTok() // ~ 0.022 cents
 
+        console.log(nUsdcRefPerTok1)
+
         expect(nUsdcPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
         expect(nUsdcRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
 
@@ -936,7 +937,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        const minExpectedValue = minimumValue(issueAmount, allowedDrop) // minimum expected value given the drop
+        const minExpectedValue = minimumValue(issueAmount, allowedDropBasisPoints) // minimum expected value given the drop
         expect(totalAssetValue1).to.be.gt(minExpectedValue) // approx 10K in value
 
         // Advance time and blocks slightly, causing refPerTok() to increase
@@ -951,12 +952,14 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const nUsdcPrice2: BigNumber = await nUsdcCollateral.strictPrice() // ~0.022
         const nUsdcRefPerTok2: BigNumber = await nUsdcCollateral.refPerTok() // ~0.022
 
+        console.log(nUsdcRefPerTok2)
+
         // Still close to the original values
         expect(nUsdcPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
         expect(nUsdcRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
         // Check price is within the accepted range
-        expect(nUsdcPrice2).to.be.gt(minimumValue(nUsdcPrice1, allowedDrop))
+        expect(nUsdcPrice2).to.be.gt(minimumValue(nUsdcPrice1, allowedDropBasisPoints))
         // Check the refPerTok is greater or equal than the previous one
         expect(nUsdcRefPerTok2).to.be.gte(nUsdcRefPerTok1)
 
@@ -964,7 +967,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        expect(totalAssetValue2).to.be.gte(minimumValue(totalAssetValue1, allowedDrop))
+        expect(totalAssetValue2).to.be.gte(minimumValue(totalAssetValue1, allowedDropBasisPoints))
 
         // Advance time and blocks slightly, causing refPerTok() to increase
         await advanceTime(100000000)
@@ -978,12 +981,14 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const nUsdcPrice3: BigNumber = await nUsdcCollateral.strictPrice() // ~0.03294
         const nUsdcRefPerTok3: BigNumber = await nUsdcCollateral.refPerTok() // ~0.03294
 
+        console.log(nUsdcRefPerTok3)
+
         // Need to adjust ranges
         expect(nUsdcPrice3).to.be.closeTo(fp('0.029'), fp('0.001'))
         expect(nUsdcRefPerTok3).to.be.closeTo(fp('0.029'), fp('0.001'))
 
         // Check price is within the accepted range
-        expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDrop))
+        expect(nUsdcPrice3).to.be.gt(minimumValue(nUsdcPrice2, allowedDropBasisPoints))
         // Check the refPerTok is greater or equal than the previous one
         expect(nUsdcRefPerTok3).to.be.gte(nUsdcRefPerTok2)
 
@@ -991,7 +996,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
           rToken.address
         )
-        expect(totalAssetValue3).to.be.gt(minimumValue(totalAssetValue2, allowedDrop))
+        expect(totalAssetValue3).to.be.gt(minimumValue(totalAssetValue2, allowedDropBasisPoints))
 
         // Redeem Rtokens with the updated rates
         await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
@@ -1004,14 +1009,14 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         const newBalanceAddr1nUsdc: BigNumber = await nUsdc.balanceOf(addr1.address)
 
         // Check received tokens represent ~10K in value at current prices
-        expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(338851e8), bn(1e8)) // ~0.0225 * 338851 ~= 10K (100% of basket)
+        expect(newBalanceAddr1nUsdc.sub(balanceAddr1nUsdc)).to.be.closeTo(bn(338983e8), bn(1e8)) // ~0.0225 * 338851 ~= 10K (100% of basket)
 
         // Check remainders in Backing Manager
-        expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(110751e8), bn(1e8)) // ~= 3301.8 usd in value
+        expect(await nUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(111467e8), bn(1e8)) // ~= 3301.8 usd in value
 
         //  Check total asset value (remainder)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-          fp('3301.0'), // ~= 3301.8 usd (from above)
+          fp('3322.0'), // ~= 3301.8 usd (from above)
           fp('0.5')
         )
       })
@@ -1019,7 +1024,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   })
 })
 
-function minimumValue(amount: BigNumber, allowedDrop: BigNumber): BigNumber {
-  const one = fp(1)
-  return amount.div(one).mul(one.sub(allowedDrop))
+function minimumValue(amount: BigNumber, allowedDrop: number): BigNumber {
+  const one = 10000
+  return amount.mul(one - allowedDrop).div(one)
 }
