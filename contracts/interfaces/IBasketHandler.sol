@@ -92,6 +92,11 @@ interface IBasketHandler is IComponent {
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() external view returns (uint192 low, uint192 high);
 
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A fallback price to use for trade sizing
+    function fallbackPrice() external view returns (uint192);
+
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);
 

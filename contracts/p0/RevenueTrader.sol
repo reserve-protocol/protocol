@@ -47,8 +47,8 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         IAssetRegistry reg = main.assetRegistry();
         IAsset sell = reg.toAsset(erc20);
         IAsset buy = reg.toAsset(tokenToBuy);
-        uint192 sellPrice = sell.strictPrice(); // {UoA/tok}
-        uint192 buyPrice = buy.strictPrice(); // {UoA/tok}
+        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
+        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
         require(buyPrice > 0, "buy asset has zero price");
 
@@ -64,13 +64,6 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
         );
 
         if (launch) {
-            if (sell.isCollateral()) {
-                CollateralStatus status = ICollateral(address(sell)).status();
-
-                if (status == CollateralStatus.IFFY) return;
-                if (status == CollateralStatus.DISABLED) trade.minBuyAmount = 0;
-            }
-
             tryTrade(trade);
         }
     }

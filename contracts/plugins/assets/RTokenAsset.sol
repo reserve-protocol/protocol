@@ -23,15 +23,8 @@ contract RTokenAsset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint192 public immutable override fallbackPrice; // {UoA/tok} A price for sizing trade lots
-
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
-    constructor(
-        uint192 fallbackPrice_,
-        IRToken erc20_,
-        uint192 maxTradeVolume_
-    ) {
-        require(fallbackPrice_ > 0, "lot size price zero");
+    constructor(IRToken erc20_, uint192 maxTradeVolume_) {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
 
@@ -40,7 +33,6 @@ contract RTokenAsset is IAsset {
         assetRegistry = main.assetRegistry();
         backingManager = main.backingManager();
 
-        fallbackPrice = fallbackPrice_;
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
         maxTradeVolume = maxTradeVolume_;
@@ -93,6 +85,51 @@ contract RTokenAsset is IAsset {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = basketsBottom.mulDiv(lowBUPrice, supply);
         high = basketsTop.mulDiv(highBUPrice, supply);
+    }
+
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A fallback price to use for trade sizing
+    function fallbackPrice() external view returns (uint192) {
+        uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
+
+        // Here we take advantage of the fact that we know RToken has 18 decimals
+        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
+        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
+
+        if (supply == 0) return buFallbackPrice;
+
+        uint192 basketsBottom; // {BU}
+        if (basketHandler.fullyCollateralized()) {
+            basketsBottom = IRToken(address(erc20)).basketsNeeded();
+        } else {
+            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
+            // there is _some_ asset to represent the RToken itself when it is deployed, in
+            // the absence of an external price feed. Any RToken that gets reasonably big
+            // should switch over to an asset with a price feed.
+
+            IMain main = backingManager.main();
+            ComponentCache memory components = ComponentCache({
+                trader: backingManager,
+                bh: main.basketHandler(),
+                reg: main.assetRegistry(),
+                stRSR: main.stRSR(),
+                rsr: main.rsr(),
+                rToken: main.rToken()
+            });
+            TradingRules memory rules = TradingRules({
+                minTradeVolume: backingManager.minTradeVolume(),
+                maxTradeSlippage: backingManager.maxTradeSlippage()
+            });
+
+            // will exclude UoA value from RToken balances at BackingManager
+            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
+                .basketRange(components, rules, assetRegistry.erc20s());
+            basketsBottom = range.bottom;
+        }
+
+        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
+        return basketsBottom.mulDiv(buFallbackPrice, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

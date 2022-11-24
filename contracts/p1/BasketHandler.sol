@@ -325,6 +325,25 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
     }
 
+    /// Should not revert
+    /// Should be nonzero
+    /// @return p {UoA/tok} A fallback price to use for trade sizing when price().low is 0
+    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
+    function fallbackPrice() external view returns (uint192 p) {
+        uint256 p256;
+
+        uint256 length = basket.erc20s.length;
+        for (uint256 i = 0; i < length; ++i) {
+            uint192 qty = quantity(basket.erc20s[i]);
+            if (qty == 0) continue;
+
+            uint192 fbPrice = assetRegistry.toAsset(basket.erc20s[i]).fallbackPrice();
+            p256 += quantityMulPrice(qty, fbPrice);
+        }
+
+        p = p256 >= FIX_MAX ? FIX_MAX : uint192(p256);
+    }
+
     /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
     /// @param qty {tok/BU}
     /// @param p {UoA/tok}

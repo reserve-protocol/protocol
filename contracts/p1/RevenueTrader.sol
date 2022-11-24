@@ -66,8 +66,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
-        (uint192 sellPrice, ) = sell.price();
-        (, uint192 buyPrice) = buy.price();
+        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
+        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
         TradeInfo memory trade = TradeInfo({
             sell: sell,
