@@ -84,7 +84,11 @@ contract FacadeTest is IFacadeTest {
                 asset.isCollateral() &&
                 ICollateral(address(asset)).status() != CollateralStatus.DISABLED
             ) {
-                total = total.plus(asset.bal(backingManager).mul(asset.strictPrice()));
+                // Use midpoint price
+                (uint192 lowPrice, uint192 highPrice) = asset.price();
+                uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(2) : 0;
+
+                total = total.plus(asset.bal(backingManager).mul(midPrice));
             }
         }
     }
