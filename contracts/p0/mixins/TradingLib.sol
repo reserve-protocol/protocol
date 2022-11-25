@@ -467,7 +467,7 @@ library TradingLibP0 {
         uint192 backingHigh,
         uint192 basketPriceHigh
     ) private view returns (uint192 shortfall) {
-        // TODO: do we really needed the precision of not collapsing backingHigh / basketPriceHigh
+        // TODO: do we really need the precision of not collapsing backingHigh / basketPriceHigh
 
         assert(basketPriceHigh > 0); // div by zero further down in function
 

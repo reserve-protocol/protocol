@@ -17,34 +17,35 @@ contract Asset is IAsset {
 
     uint192 public immutable override maxTradeVolume; // {UoA}
 
-    uint192 public immutable override fallbackPrice; // {UoA/tok} A price for sizing trade lots
-
     uint192 public immutable oracleError; // {1} The max % deviation allowed by the oracle
 
     uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
-    /// @param fallbackPrice_ {UoA/tok} A reasonable price for sizing lots when oracles are down
+    uint192 internal _fallbackPrice; // {UoA/tok} A price for sizing trade lots
+
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         uint192 fallbackPrice_,
-        uint192 oracleError_,
         AggregatorV3Interface chainlinkFeed_,
+        uint192 oracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_
     ) {
-        require(fallbackPrice_ > 0, "lot size price zero");
+        require(fallbackPrice_ > 0, "fallback price zero");
+        require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(oracleError_ > 0, "oracle error zero"); // TODO test
         require(oracleError_ < FIX_MAX, "oracle error >=100%"); // TODO test
-        require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
-        fallbackPrice = fallbackPrice_;
-        oracleError = oracleError_;
+        _fallbackPrice = fallbackPrice_;
         chainlinkFeed = chainlinkFeed_;
+        oracleError = oracleError_;
         erc20 = erc20_;
         erc20Decimals = erc20.decimals();
         maxTradeVolume = maxTradeVolume_;
@@ -61,6 +62,13 @@ contract Asset is IAsset {
         } catch {
             return (0, FIX_MAX);
         }
+    }
+
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A fallback price to use for trade sizing when price().low is 0
+    function fallbackPrice() external view returns (uint192) {
+        return _fallbackPrice;
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

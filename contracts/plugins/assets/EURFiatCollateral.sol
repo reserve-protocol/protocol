@@ -19,6 +19,9 @@ contract EURFiatCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
+    uint192 public immutable uoaPerTargetOracleError; // {1} The max % error, target unit oracle
+
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param uoaPerRefFeed_ {UoA/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -28,7 +31,9 @@ contract EURFiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface uoaPerRefFeed_,
+        uint192 uoaPerRefOracleError_,
         AggregatorV3Interface uoaPerTargetFeed_,
+        uint192 uoaPerTargetOracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -39,6 +44,7 @@ contract EURFiatCollateral is Collateral {
         Collateral(
             fallbackPrice_,
             uoaPerRefFeed_,
+            uoaPerRefOracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -50,12 +56,20 @@ contract EURFiatCollateral is Collateral {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
+        uoaPerTargetOracleError = uoaPerTargetOracleError_;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192 low, uint192 high) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {UoA/tok} = {UoA/tok} * {1}
+            uint192 priceErr = p.mul(oracleError);
+            return (p - priceErr, p + priceErr);
+        } catch {
+            return (0, FIX_MAX);
+        }
     }
 
     /// Refresh exchange rates and update default status.
@@ -83,7 +97,12 @@ contract EURFiatCollateral is Collateral {
 
                     // If the price is below the default-threshold price, default eventually
                     if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                    else markStatus(CollateralStatus.SOUND);
+                    else {
+                        // {UoA/tok} = {UoA/tok}
+                        _fallbackPrice = p1;
+
+                        markStatus(CollateralStatus.SOUND);
+                    }
                 } else {
                     markStatus(CollateralStatus.IFFY);
                 }
@@ -105,7 +124,7 @@ contract EURFiatCollateral is Collateral {
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view override returns (uint192) {
+    function pricePerTarget() internal view override returns (uint192) {
         return uoaPerTargetFeed.price(oracleTimeout);
     }
 }

@@ -46,23 +46,11 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         delayUntilDefault = delayUntilDefault_;
     }
 
-    /// @return p {UoA/tok} The redemption price of the RToken
-    function strictPrice() public view override(RTokenAsset, IAsset) returns (uint192) {
-        return super.strictPrice();
-    }
-
-    /// Can return 0
-    /// Cannot revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback)
-        public
-        view
-        override(RTokenAsset, IAsset)
-        returns (bool isFallback, uint192)
-    {
-        return super.price(allowFallback);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() public view override(IAsset, RTokenAsset) returns (uint192 low, uint192 high) {
+        return super.price();
     }
 
     function refresh() external virtual override {
@@ -70,11 +58,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         CollateralStatus oldStatus = status();
 
         // No default checks -- we outsource stability to the collateral RToken
-        try this.strictPrice() returns (uint192) {
-            whenDefault = NEVER;
-        } catch {
-            whenDefault = Math.min(block.timestamp + delayUntilDefault, whenDefault);
-        }
+        whenDefault = NEVER;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
@@ -113,13 +97,5 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         // downcast is safe; rToken supply fits in uint192
         // {target/ref} = {BU/rTok} = {BU} / {rTok}
         return IRToken(address(erc20)).basketsNeeded().div(uint192(supply));
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (uint192) {
-        (, uint192 basketPrice) = basketHandler.price(false);
-
-        // price of a BU in the RToken
-        return basketPrice;
     }
 }

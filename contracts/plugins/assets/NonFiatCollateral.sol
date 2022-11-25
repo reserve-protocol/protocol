@@ -17,10 +17,15 @@ contract NonFiatCollateral is Collateral {
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}
 
+    uint192 public immutable uoaPerTargetOracleError; // {1} The max % error,  target unit oracle
+
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param targetPerRefFeed_ {target/ref}
+    /// @param targetPerRefOracleError_ {1} The % the oracle feed can be off by
     /// @param uoaPerTargetFeed_ {UoA/target}
+    /// @param uoaPerTargetOracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -28,7 +33,9 @@ contract NonFiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface targetPerRefFeed_,
+        uint192 targetPerRefOracleError_,
         AggregatorV3Interface uoaPerTargetFeed_,
+        uint192 uoaPerTargetOracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -39,6 +46,7 @@ contract NonFiatCollateral is Collateral {
         Collateral(
             fallbackPrice_,
             targetPerRefFeed_,
+            targetPerRefOracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -50,12 +58,32 @@ contract NonFiatCollateral is Collateral {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
+        uoaPerTargetOracleError = uoaPerTargetOracleError_;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok} (1)
-        return uoaPerTargetFeed.price(oracleTimeout).mul(chainlinkFeed.price(oracleTimeout));
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192 low, uint192 high) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
+                // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
+                uint192 _price = p2.mul(p1).mul(refPerTok());
+
+                // {1} = {1} * {1}
+                uint192 totalOracleError = oracleError
+                    .mul(FIX_ONE.plus(uoaPerTargetOracleError))
+                    .minus(FIX_ONE);
+
+                // {UoA/tok} = {UoA/tok} * {1}
+                uint192 priceErr = _price.mul(totalOracleError);
+                return (_price - priceErr, _price + priceErr);
+            } catch {
+                return (0, FIX_MAX);
+            }
+        } catch {
+            return (0, FIX_MAX);
+        }
     }
 
     /// Refresh exchange rates and update default status.
@@ -67,9 +95,9 @@ contract NonFiatCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // p {target/ref}
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
             // We don't need the return value from this next feed, but it should still function
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192) {
+            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
                 // {target/ref}
                 uint192 peg = targetPerRef();
 
@@ -77,8 +105,13 @@ contract NonFiatCollateral is Collateral {
                 uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
                 // If the price is below the default-threshold price, default eventually
-                if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                else markStatus(CollateralStatus.SOUND);
+                if (p1 < peg - delta || p1 > peg + delta) markStatus(CollateralStatus.IFFY);
+                else {
+                    // {UoA/tok} = {target/ref} * {UoA/target} * {ref/tok}
+                    _fallbackPrice = p1.mul(p2);
+
+                    markStatus(CollateralStatus.SOUND);
+                }
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -97,7 +130,7 @@ contract NonFiatCollateral is Collateral {
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view override returns (uint192) {
+    function pricePerTarget() internal view override returns (uint192) {
         return uoaPerTargetFeed.price(oracleTimeout);
     }
 }

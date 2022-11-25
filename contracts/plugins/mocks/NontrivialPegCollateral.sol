@@ -6,6 +6,9 @@ import "contracts/plugins/assets/FiatCollateral.sol";
 contract NontrivialPegCollateral is FiatCollateral {
     uint192 private peg = FIX_ONE; // {target/ref}
 
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -13,6 +16,7 @@ contract NontrivialPegCollateral is FiatCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
+        uint192 oracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -23,6 +27,7 @@ contract NontrivialPegCollateral is FiatCollateral {
         FiatCollateral(
             fallbackPrice_,
             chainlinkFeed_,
+            oracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,

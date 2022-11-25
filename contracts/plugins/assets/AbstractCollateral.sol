@@ -29,27 +29,27 @@ abstract contract Collateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param delayUntilDefault_ {s} The number of seconds an oracle can mulfunction
     constructor(
         uint192 fallbackPrice_,
-        uint192 oracleError_,
         AggregatorV3Interface chainlinkFeed_,
+        uint192 oracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_
-    ) Asset(fallbackPrice_, oracleError_, chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {
+    ) Asset(fallbackPrice_, chainlinkFeed_, oracleError_, erc20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         targetName = targetName_;
         delayUntilDefault = delayUntilDefault_;
     }
-
-    // solhint-disable-next-line no-empty-blocks
 
     /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
     /// refPerTok() has ever decreased since the last refresh() call!
@@ -58,7 +58,8 @@ abstract contract Collateral is ICollateral, Asset {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            _fallbackPrice = p;
             markStatus(CollateralStatus.SOUND);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -123,7 +124,7 @@ abstract contract Collateral is ICollateral, Asset {
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (uint192) {
+    function pricePerTarget() internal view virtual returns (uint192) {
         return FIX_ONE;
     }
 }

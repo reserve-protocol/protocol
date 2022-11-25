@@ -17,6 +17,9 @@ contract FiatCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -24,6 +27,7 @@ contract FiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
+        uint192 oracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -34,6 +38,7 @@ contract FiatCollateral is Collateral {
         Collateral(
             fallbackPrice_,
             chainlinkFeed_,
+            oracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -64,7 +69,11 @@ contract FiatCollateral is Collateral {
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
             if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-            else markStatus(CollateralStatus.SOUND);
+            else {
+                _fallbackPrice = p;
+
+                markStatus(CollateralStatus.SOUND);
+            }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string

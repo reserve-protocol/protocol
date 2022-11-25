@@ -18,7 +18,7 @@ contract CTokenFiatCollateral is Collateral {
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    int8 public immutable referenceERC20Decimals;
+    uint8 public immutable referenceERC20Decimals;
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
@@ -26,7 +26,9 @@ contract CTokenFiatCollateral is Collateral {
 
     IComptroller public immutable comptroller;
 
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -34,18 +36,19 @@ contract CTokenFiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
+        uint192 oracleError_,
+        ICToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_,
         IComptroller comptroller_
     )
         Collateral(
             fallbackPrice_,
             chainlinkFeed_,
+            oracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -54,19 +57,28 @@ contract CTokenFiatCollateral is Collateral {
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
         defaultThreshold = defaultThreshold_;
-        referenceERC20Decimals = referenceERC20Decimals_;
+        referenceERC20Decimals = IERC20Metadata(erc20_.underlying()).decimals();
 
         prevReferencePrice = refPerTok();
         comptroller = comptroller_;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192 low, uint192 high) {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
+            // {UoA/tok} = {UoA/ref} * {ref/tok}
+            uint192 _price = p.mul(refPerTok());
+
+            // {UoA/tok} = {UoA/tok} * {1}
+            uint192 priceErr = _price.mul(oracleError);
+            return (_price - priceErr, _price + priceErr);
+        } catch {
+            return (0, FIX_MAX);
+        }
     }
 
     /// Refresh exchange rates and update default status.
@@ -96,7 +108,12 @@ contract CTokenFiatCollateral is Collateral {
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                else markStatus(CollateralStatus.SOUND);
+                else {
+                    // {UoA/tok} = {UoA/ref} * {ref/tok}
+                    _fallbackPrice = p.mul(refPerTok());
+
+                    markStatus(CollateralStatus.SOUND);
+                }
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -116,7 +133,7 @@ contract CTokenFiatCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
+        int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 

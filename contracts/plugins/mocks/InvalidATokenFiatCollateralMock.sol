@@ -4,6 +4,9 @@ pragma solidity 0.8.9;
 import "contracts/plugins/assets/ATokenFiatCollateral.sol";
 
 contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
+    /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
+    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -11,6 +14,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
+        uint192 oracleError_,
         IStaticAToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -21,6 +25,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
         ATokenFiatCollateral(
             fallbackPrice_,
             chainlinkFeed_,
+            oracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -29,15 +34,6 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
             delayUntilDefault_
         )
     {}
-
-    // Returns 0 in case of failure - Used only as a Mock for testing
-    function price(bool) public view override returns (bool isFallback, uint192) {
-        try this.strictPrice() returns (uint192 p) {
-            return (false, p);
-        } catch {
-            return (true, 0);
-        }
-    }
 
     /// Reverting claimRewards function
     function claimRewards() external pure override {
