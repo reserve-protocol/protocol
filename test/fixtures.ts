@@ -76,6 +76,7 @@ export type Collateral =
   | ATokenFiatCollateral
   | NonFiatCollateral
   | SelfReferentialCollateral
+  | CbEthCollateral
 
 interface RSRFixture {
   rsr: ERC20Mock

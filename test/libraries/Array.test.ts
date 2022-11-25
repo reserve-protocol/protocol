@@ -13,6 +13,7 @@ const arbitraryAddrNums = fc.array(fc.bigUintN(160))
 
 const arbitraryAddressArray = fc.array(fc.bigUintN(160)).map((arr) => arr.map(addr))
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const is_unique = (arr: Array<any>) => new Set(arr).size === arr.length
 
 const compare = (a: bigint, b: bigint) => (a < b ? -1 : a > b ? 1 : 0)

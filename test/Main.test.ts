@@ -28,6 +28,8 @@ import { bn, fp } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
+  CbEthCollateral,
+  CBEthMock,
   CTokenFiatCollateral,
   CTokenMock,
   ERC20Mock,
@@ -94,10 +96,12 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
+  let token4: CBEthMock
   let collateral0: FiatCollateral
   let collateral1: FiatCollateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let collateral4: CbEthCollateral
   let erc20s: ERC20Mock[]
   let basketsNeededAmts: BigNumber[]
 
@@ -164,11 +168,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     token1 = <USDCMock>erc20s[collateral.indexOf(basket[1])]
     token2 = <StaticATokenMock>erc20s[collateral.indexOf(basket[2])]
     token3 = <CTokenMock>erc20s[collateral.indexOf(basket[3])]
+    token4 = <CBEthMock>erc20s[collateral.indexOf(basket[4])]
 
     collateral0 = <FiatCollateral>basket[0]
     collateral1 = <FiatCollateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
+    collateral4 = <CbEthCollateral>basket[4]
 
     // Mint initial balances
     initialBal = bn('1000000e18')
@@ -176,11 +182,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     await token1.connect(owner).mint(addr1.address, initialBal)
     await token2.connect(owner).mint(addr1.address, initialBal)
     await token3.connect(owner).mint(addr1.address, initialBal)
+    await token4.connect(owner).mint(addr1.address, initialBal)
 
     await token0.connect(owner).mint(addr2.address, initialBal)
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
+    await token4.connect(owner).mint(addr2.address, initialBal)
   })
 
   describe('Deployment #fast', () => {
@@ -268,12 +276,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toAsset(ERC20s[5])).to.equal(collateral1.address)
       expect(await assetRegistry.toAsset(ERC20s[6])).to.equal(collateral2.address)
       expect(await assetRegistry.toAsset(ERC20s[7])).to.equal(collateral3.address)
+      expect(await assetRegistry.toAsset(ERC20s[8])).to.equal(collateral4.address)
 
       // Collaterals
       expect(await assetRegistry.toColl(ERC20s[4])).to.equal(collateral0.address)
       expect(await assetRegistry.toColl(ERC20s[5])).to.equal(collateral1.address)
       expect(await assetRegistry.toColl(ERC20s[6])).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(ERC20s[7])).to.equal(collateral3.address)
+      expect(await assetRegistry.toColl(ERC20s[8])).to.equal(collateral4.address)
     })
 
     it('Should register Basket correctly', async () => {
@@ -284,8 +294,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
       expect(backing[3]).to.equal(token3.address)
+      expect(backing[4]).to.equal(token4.address)
 
-      expect(backing.length).to.equal(4)
+      expect(backing.length).to.equal(5)
 
       // Check other values
 
@@ -1000,6 +1011,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await token1.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
       expect(await token2.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
       expect(await token3.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
+      expect(await token4.allowance(backingManager.address, rToken.address)).to.equal(MAX_UINT256)
 
       // Cannot grant allowance token not registered
       await expect(
@@ -1027,6 +1039,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         token1.address,
         token2.address,
         token3.address,
+        token4.address,
       ])
     })
 
@@ -1081,6 +1094,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.isRegistered(token1.address)).to.equal(true)
       expect(await assetRegistry.isRegistered(token2.address)).to.equal(true)
       expect(await assetRegistry.isRegistered(token3.address)).to.equal(true)
+      expect(await assetRegistry.isRegistered(token4.address)).to.equal(true)
 
       // Try with non-registered address
       expect(await assetRegistry.isRegistered(other.address)).to.equal(false)
@@ -1288,6 +1302,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toAsset(token1.address)).to.equal(collateral1.address)
       expect(await assetRegistry.toAsset(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toAsset(token3.address)).to.equal(collateral3.address)
+      expect(await assetRegistry.toAsset(token4.address)).to.equal(collateral4.address)
     })
 
     it('Should return the Collateral for an ERC20 and perform validations', async () => {
@@ -1305,6 +1320,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await assetRegistry.toColl(token1.address)).to.equal(collateral1.address)
       expect(await assetRegistry.toColl(token2.address)).to.equal(collateral2.address)
       expect(await assetRegistry.toColl(token3.address)).to.equal(collateral3.address)
+      expect(await assetRegistry.toColl(token4.address)).to.equal(collateral4.address)
     })
   })
 
@@ -1460,8 +1476,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(backing[1]).to.equal(token1.address)
       expect(backing[2]).to.equal(token2.address)
       expect(backing[3]).to.equal(token3.address)
+      expect(backing[4]).to.equal(token4.address)
 
-      expect(backing.length).to.equal(4)
+      expect(backing.length).to.equal(5)
 
       // Not updated so basket last changed is not set
       expect(await basketHandler.nonce()).to.be.gt(bn(1))
@@ -1475,6 +1492,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Check status
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await basketHandler.quantity(token1.address)).to.equal(basketsNeededAmts[1])
+      expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
+      expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3].mul(50))
+      expect(await basketHandler.quantity(token4.address)).to.equal(basketsNeededAmts[4])
 
       // Set backup configuration
       await basketHandler
@@ -1486,21 +1506,25 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         assetRegistry,
         'AssetUnregistered'
       )
+
       await expect(assetRegistry.connect(owner).unregister(collateral2.address)).to.emit(
         assetRegistry,
         'AssetUnregistered'
       )
+
       await expect(assetRegistry.connect(owner).unregister(collateral3.address)).to.emit(
         assetRegistry,
         'AssetUnregistered'
       )
 
       await expect(basketHandler.refreshBasket()).to.emit(basketHandler, 'BasketSet')
+      await expect(await basketHandler.status()).to.be.equal(CollateralStatus.SOUND)
 
-      // Basket should be 100% collateral0
+      // Basket should be 100% collateral0 for USD and collateral4 100% for ETH
       const toks = await facade.basketTokens(rToken.address)
-      expect(toks.length).to.equal(1)
+      expect(toks.length).to.equal(2)
       expect(toks[0]).to.equal(token0.address)
+      expect(toks[1]).to.equal(token4.address)
 
       // Unregister collateral0
       await expect(assetRegistry.connect(owner).unregister(collateral0.address)).to.emit(
@@ -1542,7 +1566,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       const [isFallback2, price2] = await basketHandler.price(true)
       expect(isFallback2).to.equal(false)
-      expect(price2).to.equal(fp('0.75')) // no insurance to buffer the price
+      expect(price2).to.equal(fp('0.8')) // no insurance to buffer the price 0.2 *4 = 0.8
     })
 
     it('Should handle collateral wih price = 0 when checking basket price', async () => {
@@ -1580,13 +1604,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       const [isFallback2, price2] = await basketHandler.price(true)
       expect(isFallback2).to.equal(true)
-      expect(price2).to.equal(fp('0.75'))
+      expect(price2).to.equal(fp('0.8')) // 4 * 0.2 = 0.8
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(4)) // only 0.25 of each required
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(5)) // only 0.2 of each required
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(5)) // only 0.2 of each required
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
@@ -1629,6 +1653,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
       expect(await basketHandler.quantity(token3.address)).to.equal(basketsNeededAmts[3].mul(50))
+      expect(await basketHandler.quantity(token4.address)).to.equal(basketsNeededAmts[4])
 
       // Swap basket should not find valid basket because no backup config
       await expect(basketHandler.refreshBasket())
@@ -1648,6 +1673,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             token0.address,
             token2.address,
             token3.address,
+            //token4.address,
           ])
       ).to.emit(basketHandler, 'BackupConfigSet')
 
@@ -1683,8 +1709,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs(3, [], [], false)
 
       // Check values
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(2)) // 0.5 of each
-      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(2)) // 0.5 of each
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(5).div(2)) // 0.5 of each
+      expect(await basketHandler.basketsHeldBy(addr2.address)).to.equal(initialBal.mul(5).div(2)) // 0.5 of each
       expect(await basketHandler.basketsHeldBy(other.address)).to.equal(0)
 
       expect(await basketHandler.quantity(token0.address)).to.equal(basketsNeededAmts[0].mul(2))
@@ -1698,6 +1724,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         'AssetUnregistered'
       )
       await expect(assetRegistry.connect(owner).unregister(collateral2.address)).to.emit(
+        assetRegistry,
+        'AssetUnregistered'
+      )
+
+      await expect(assetRegistry.connect(owner).unregister(collateral4.address)).to.emit(
         assetRegistry,
         'AssetUnregistered'
       )
@@ -1716,6 +1747,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token1.address)).to.equal(0)
       expect(await basketHandler.quantity(token2.address)).to.equal(0)
       expect(await basketHandler.quantity(token3.address)).to.equal(0)
+      expect(await basketHandler.quantity(token4.address)).to.equal(0)
     })
 
     it('Should return FIX_MAX quantity for collateral when refPerTok = 0', async () => {
@@ -1727,7 +1759,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return no basketsHeld when refPerTok = 0', async () => {
-      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(4))
+      expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(initialBal.mul(5))
 
       // Set Token2 to hard default - Zero rate
       await token2.setExchangeRate(fp('0'))
@@ -1814,6 +1846,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
             token0.address,
             token2.address,
             token3.address,
+            token4.address,
           ])
       ).to.emit(basketHandler, 'BackupConfigSet')
 
