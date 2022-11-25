@@ -2,8 +2,6 @@
 // solhint-disable func-name-mixedcase func-visibility
 pragma solidity ^0.8.9;
 
-import "hardhat/console.sol";
-
 /// @title FixedPoint, a fixed-point arithmetic library defining the custom type uint192
 /// @author Matt Elder <matt.elder@reserve.org> and the Reserve Team <https://reserve.org>
 
@@ -320,12 +318,12 @@ library FixLib {
         uint256 x = uint256(x_) * FIX_SCALE; // x is D36
         uint256 result = FIX_SCALE_SQ; // result is D36
         while (true) {
-            if (y & 1 == 1) result = (result * x + FIX_SCALE_SQ/2) / FIX_SCALE_SQ;
+            if (y & 1 == 1) result = (result * x + FIX_SCALE_SQ / 2) / FIX_SCALE_SQ;
             if (y <= 1) break;
             y = (y >> 1);
-            x = (x * x + FIX_SCALE_SQ/2) / FIX_SCALE_SQ;
+            x = (x * x + FIX_SCALE_SQ / 2) / FIX_SCALE_SQ;
         }
-        return _safeWrap(result/FIX_SCALE);
+        return _safeWrap(result / FIX_SCALE);
     }
 
     /// Comparison operators...
