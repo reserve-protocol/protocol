@@ -69,6 +69,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
         (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
+        require(buyPrice > 0, "buy asset has zero price");
+
         TradeInfo memory trade = TradeInfo({
             sell: sell,
             buy: buy,
@@ -81,8 +83,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
             minTradeVolume: minTradeVolume,
             maxTradeSlippage: maxTradeSlippage
         });
-
-        require(trade.buyPrice > 0, "buy asset has zero price");
 
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here

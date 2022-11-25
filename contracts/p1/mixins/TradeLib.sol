@@ -44,7 +44,7 @@ library TradeLib {
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, lotPrice, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
@@ -128,24 +128,16 @@ library TradeLib {
         return prepareTradeSell(trade, rules);
     }
 
-    /// @param asset The asset in question
-    /// @param price {UoA/tok} The price to use
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
-        IAsset asset,
-        uint192 price,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
-    ) internal view returns (bool) {
-        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
-        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
-        // likely to be true of all the trading platforms we integrate with.
-        return
-            amt.gte(minTradeSize(minTradeVolume, price)) &&
-            // {qTok} = {tok} / {tok/qTok}
-            amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
+    ) internal pure returns (bool) {
+        return amt.gte(minTradeSize(minTradeVolume, price));
     }
 
     // === Private ===

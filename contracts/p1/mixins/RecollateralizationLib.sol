@@ -256,15 +256,12 @@ library RecollateralizationLibP1 {
 
             (uint192 lowPrice, uint192 highPrice) = asset.price(); // {UoA/tok}
 
-            // fallbackPrice = max(asset.fallbackPrice(), lowPrice)
-            uint192 lotPrice = asset.fallbackPrice(); // {UoA/tok}
-            if (lowPrice > lotPrice) lotPrice = lowPrice;
+            uint192 lotPrice = fixMax(asset.fallbackPrice(), lowPrice); // {UoA/tok}
 
             uint192 qty = components.bh.quantity(erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !TradeLib.isEnoughToSell(asset, lotPrice, bal, rules.minTradeVolume))
-                continue;
+            if (qty == 0 && !TradeLib.isEnoughToSell(bal, lotPrice, rules.minTradeVolume)) continue;
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
@@ -341,10 +338,7 @@ library RecollateralizationLibP1 {
             if (bal.gt(needed)) {
                 // Assume worst-case price for selling asset
                 (uint192 lowPrice, ) = asset.price(); // {UoA/tok}
-
-                // lotPrice = max(asset.fallbackPrice(), lowPrice)
-                uint192 lotPrice = asset.fallbackPrice(); // {UoA/tok}
-                if (lowPrice > lotPrice) lotPrice = lowPrice;
+                uint192 lotPrice = fixMax(asset.fallbackPrice(), lowPrice); // {UoA/tok}
 
                 // {UoA} = {tok} * {UoA/tok}
                 uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
@@ -357,12 +351,7 @@ library RecollateralizationLibP1 {
                 // as defined by a (status, surplusAmt) ordering
                 if (
                     isBetterSurplus(maxes, status, delta) &&
-                    TradeLib.isEnoughToSell(
-                        asset,
-                        lotPrice,
-                        bal.minus(needed),
-                        rules.minTradeVolume
-                    )
+                    TradeLib.isEnoughToSell(bal.minus(needed), lotPrice, rules.minTradeVolume)
                 ) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
@@ -402,7 +391,7 @@ library RecollateralizationLibP1 {
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
 
-            if (TradeLib.isEnoughToSell(rsrAsset, lowPrice, rsrAvailable, rules.minTradeVolume)) {
+            if (TradeLib.isEnoughToSell(rsrAvailable, lowPrice, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;

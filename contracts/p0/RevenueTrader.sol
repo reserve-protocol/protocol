@@ -52,19 +52,25 @@ contract RevenueTraderP0 is TradingP0, IRevenueTrader {
 
         require(buyPrice > 0, "buy asset has zero price");
 
+        TradingLibP0.TradeInfo memory trade = TradingLibP0.TradeInfo({
+            sell: sell,
+            buy: buy,
+            sellAmount: sell.bal(address(this)),
+            buyAmount: 0,
+            sellPrice: sellPrice,
+            buyPrice: buyPrice
+        });
+        TradingLibP0.TradingRules memory rules = TradingLibP0.TradingRules({
+            minTradeVolume: minTradeVolume,
+            maxTradeSlippage: maxTradeSlippage
+        });
+
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
-        (bool launch, TradeRequest memory trade) = TradingLibP0.prepareTradeSell(
-            this,
-            sell,
-            buy,
-            sell.bal(address(this)),
-            sellPrice,
-            buyPrice
-        );
+        (bool launch, TradeRequest memory req) = TradingLibP0.prepareTradeSell(trade, rules);
 
         if (launch) {
-            tryTrade(trade);
+            tryTrade(req);
         }
     }
 }

@@ -47,7 +47,7 @@ library TradingLibP0 {
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, lotPrice, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
@@ -309,14 +309,12 @@ library TradingLibP0 {
 
             (uint192 lowPrice, uint192 highPrice) = asset.price(); // {UoA/tok}
 
-            // fallbackPrice = max(asset.fallbackPrice(), lowPrice)
-            uint192 lotPrice = asset.fallbackPrice(); // {UoA/tok}
-            if (lowPrice > lotPrice) lotPrice = lowPrice;
+            uint192 lotPrice = fixMax(asset.fallbackPrice(), lowPrice); // {UoA/tok}
 
             uint192 qty = components.bh.quantity(erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !isEnoughToSell(asset, lotPrice, bal, rules.minTradeVolume)) continue;
+            if (qty == 0 && !isEnoughToSell(bal, lotPrice, rules.minTradeVolume)) continue;
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
@@ -393,10 +391,7 @@ library TradingLibP0 {
             if (bal.gt(needed)) {
                 // Assume worst-case price for selling asset
                 (uint192 lowPrice, ) = asset.price(); // {UoA/tok}
-
-                // lotPrice = max(asset.fallbackPrice(), lowPrice)
-                uint192 lotPrice = asset.fallbackPrice(); // {UoA/tok}
-                if (lowPrice > lotPrice) lotPrice = lowPrice;
+                uint192 lotPrice = fixMax(asset.fallbackPrice(), lowPrice); // {UoA/tok}
 
                 // {UoA} = {tok} * {UoA/tok}
                 uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
@@ -409,7 +404,7 @@ library TradingLibP0 {
                 // as defined by a (status, surplusAmt) ordering
                 if (
                     isBetterSurplus(maxes, status, delta) &&
-                    isEnoughToSell(asset, lotPrice, bal.minus(needed), rules.minTradeVolume)
+                    isEnoughToSell(bal, lotPrice, rules.minTradeVolume)
                 ) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
@@ -449,7 +444,7 @@ library TradingLibP0 {
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
 
-            if (isEnoughToSell(rsrAsset, lowPrice, rsrAvailable, rules.minTradeVolume)) {
+            if (isEnoughToSell(rsrAvailable, lowPrice, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;
@@ -576,24 +571,16 @@ library TradingLibP0 {
         return prepareTradeSell(trade, rules);
     }
 
-    /// @param asset The asset in question
-    /// @param price {UoA/tok} The price to use
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
-        IAsset asset,
-        uint192 price,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
-    ) internal view returns (bool) {
-        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
-        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
-        // likely to be true of all the trading platforms we integrate with.
-        return
-            amt.gte(minTradeSize(minTradeVolume, price)) &&
-            // {qTok} = {tok} / {tok/qTok}
-            amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
+    ) internal pure returns (bool) {
+        return amt.gte(minTradeSize(minTradeVolume, price));
     }
 
     // === Private ===
