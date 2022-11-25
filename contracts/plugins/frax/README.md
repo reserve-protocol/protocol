@@ -25,11 +25,17 @@ $$ \text{and } L \text{ is the total } \text{supply of LP tokens. } $$
 Methods used price of an LP token, as well as fiat peg related variables are highlighted below
 
 $$ P_A = \frac{\text{UoA}}{A}, P_B = \frac{\text{UoA}}{B} $$
+
 $$ \text{where } P_A, P_B \text{ denote the intended price of the tokens (if they're pegged)} $$
+
 $$ P_{\rho} = \frac{P_{A}'x + P_{B}'y}{L}, $$
+
 $$ \delta_A = P_A \tau $$
+
 $$ \delta_B = P_B \tau $$
+
 $$ \text{where } P_{\rho}, P_{A}',  P_{B}' \text{ is the live price of an LP token, token } A, \text{ token } B, $$
+
 $$ \tau \text{ and is price drift default threshold} $$
 
 ### 1.3 Defaulting Conditions    
@@ -43,11 +49,11 @@ $$ \tau \text{ and is price drift default threshold} $$
   - $P'_A \le 0$ OR $P'_B \le 0$
 
 - **Hard default**: 
-  - $\text{refPerTok}_t \lt \text{refPerTok}_{t-1}$
+  - $\text{refPerTok} _{t} \lt \text{refPerTok} _{t-1}$
 
 ### 1.4 Deployment and Configuration
 
-Deploy [FTokenFiatCollateral.sol](contracts/plugins/frax/FTokenFiatCollateral.sol) with construct args:
+Deploy [FraxSwapCollateral.sol](./FraxSwapCollateral.sol) with construct args:
 ```
 uint192 fallbackPrice_, // fallback price
 
@@ -96,24 +102,26 @@ of the inner workings of Fraxlend.
 | **Description** | the fToken | the fToken's <br>underlying asset <br>(i.e. USDC) | USD      | USD   |
 
 $$ P = \frac{\text{UoA}}{\text{tok}} \text{ is the intended peg price of the underlying asset, and}$$
+
 $$ \delta = P \tau $$
+
 $$ \text{ where } \delta \text{ is the maximum price deviation with } \tau \text{ being the default threshold}$$
 
 ### 2.3 Defaulting Conditions    
 
 - **Soft default**:
-  - $ P' \notin [P - \delta, P + \delta], \text{where } P' \text{ is the actual price of one unit of the underlying asset} $
+  - $P' \notin [P - \delta, P + \delta], \text{where } P' \text{ is the actual price of one unit of the underlying asset}$
   - The `FraxlendPair` contract of the fToken is `paused`.
 
 - **Hard default**: 
-  - $\text{refPerTok}_t \lt \text{refPerTok}_{t-1}$
+  - $\text{refPerTok} _t \lt \text{refPerTok} _{t-1}$
 
 Since fTokens represent a share of a lending pool which accrues yield from borrowers who pay interest, 
 unless the pool is exploited, $\text{refPerTok}$ should be non-decreasing.
 
 ### 2.4 Deployment and Configuration
 
-Deploy [FTokenFiatCollateral.sol](contracts/plugins/frax/FTokenFiatCollateral.sol) with construct args:
+Deploy [FTokenFiatCollateral.sol](./FTokenFiatCollateral.sol) with construct args:
 ```
 uint192 fallbackPrice_, // fallback price
 AggregatorV3Interface uoaPerRefFeed_, // {uoa/ref} chainlink feed
@@ -127,6 +135,6 @@ int8 referenceERC20Decimals_ // decimals of underlying token - default
 ```
 
 ## 3.0 Testing - Fraxswap and Fraxlend Plugins
-The unit tests for these plugins are [FraxSwapCollateral.test.ts](test/integration/individual-collateral/FraxSwapCollateral.test.ts) and [FTokenFiatCollateral.test.ts](test/integration/individual-collateral/FTokenFiatCollateral.test.ts) are intented to be run on `MAINNET_BLOCK=15995569`,
+The unit tests for these plugins are [FraxSwapCollateral.test.ts](../../../test/integration/individual-collateral/FraxSwapCollateral.test.ts) and [FTokenFiatCollateral.test.ts](../../../test/integration/individual-collateral/FTokenFiatCollateral.test.ts) are intented to be run on `MAINNET_BLOCK=15995569`,
 since Fraxlend and Fraxswap pools did not exist during the default testing block number.
 
