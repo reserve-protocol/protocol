@@ -17,7 +17,9 @@ This plugin currently supports both non-fiat and usd-pegged stablecoin pair LP t
 This plugins uses the [Defi Protocol Invariant](https://github.com/reserve-protocol/protocol/blob/master/docs/collateral.md#defi-protocol-invariant) to calculate $\frac{\text{ref}}{\text{tok}}$ as shown below:
 
 $$ \frac{\text{ref}}{\text{tok}} = \frac{\sqrt{xy}}{L}, \text{where }$$
+
 $$ x \text{ and } y \text{ are the amount of tokens } A \text{ and } B \text{ in the pool respectively,} $$
+
 $$ \text{and } L \text{ is the total } \text{supply of LP tokens. }$$
 
 Methods used price of an LP token, as well as fiat peg related variables are highlighted below
@@ -40,7 +42,7 @@ $$ \tau \text{ and is price drift default threshold} $$
   - $P'_A \le 0$ OR $P'_B \le 0$
 
 - **Hard default**: 
-  - $\text{refPerTok}_t < \text{refPerTok}_{t-1}$
+  - $\text{refPerTok}_t \lt \text{refPerTok}_{t-1}$
 
 ### 1.4 Deployment and Configuration
 
@@ -103,7 +105,7 @@ $$ \text{ where } \delta \text{ is the maximum price deviation with } \tau \text
   - The `FraxlendPair` contract of the fToken is `paused`.
 
 - **Hard default**: 
-  - $\text{refPerTok}_t < \text{refPerTok}_{t-1}$
+  - $\text{refPerTok}_t \lt \text{refPerTok}_{t-1}$
 
 Since fTokens represent a share of a lending pool which accrues yield from borrowers who pay interest, 
 unless the pool is exploited, $\text{refPerTok}$ should be non-decreasing.
