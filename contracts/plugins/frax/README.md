@@ -20,15 +20,16 @@ $$ \frac{\text{ref}}{\text{tok}} = \frac{\sqrt{xy}}{L}, \text{where }$$
 
 $$ x \text{ and } y \text{ are the amount of tokens } A \text{ and } B \text{ in the pool respectively,} $$
 
-$$ \text{and } L \text{ is the total } \text{supply of LP tokens. }$$
+$$ \text{and } L \text{ is the total } \text{supply of LP tokens. } $$
 
 Methods used price of an LP token, as well as fiat peg related variables are highlighted below
-$$ P_A = \frac{\text{UoA}}{A}, \text{ }P_B = \frac{\text{UoA}}{B}$$
-$$ \text{where } P_A, P_B \text{ denote the intended price of the tokens (if they're pegged)}$$
+
+$$ P_A = \frac{\text{UoA}}{A}, P_B = \frac{\text{UoA}}{B} $$
+$$ \text{where } P_A, P_B \text{ denote the intended price of the tokens (if they're pegged)} $$
 $$ P_{\rho} = \frac{P_{A}'x + P_{B}'y}{L}, $$
 $$ \delta_A = P_A \tau $$
 $$ \delta_B = P_B \tau $$
-$$ \text{where } P_{\rho}, P_{A}',  P_{B}' \text{ is the live price of an LP token, token } A, \text{ token } B,$$
+$$ \text{where } P_{\rho}, P_{A}',  P_{B}' \text{ is the live price of an LP token, token } A, \text{ token } B, $$
 $$ \tau \text{ and is price drift default threshold} $$
 
 ### 1.3 Defaulting Conditions    
@@ -101,7 +102,7 @@ $$ \text{ where } \delta \text{ is the maximum price deviation with } \tau \text
 ### 2.3 Defaulting Conditions    
 
 - **Soft default**:
-  - $P' \notin [P - \delta, P + \delta], \text{where } P' \text{ is the actual price of one unit of the underlying asset}$
+  - $ P' \notin [P - \delta, P + \delta], \text{where } P' \text{ is the actual price of one unit of the underlying asset} $
   - The `FraxlendPair` contract of the fToken is `paused`.
 
 - **Hard default**: 
