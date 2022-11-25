@@ -1,6 +1,6 @@
 # Fraxlend Collateral Plugins - Documentation
+### Author: [Shr1ftyy](https://github.com/Shr1ftyy)
 ## 1.0 FraxSwap Liquidity Pool (LP) Token Plugins 
-## IGNORE THIS FOR NOW - WIP
 
 ### 1.1 Introduction 
 
