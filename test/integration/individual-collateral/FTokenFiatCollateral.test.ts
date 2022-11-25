@@ -145,7 +145,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     fTokenCollateral = <FTokenFiatCollateral>(
       await FTokenCollateralFactory.deploy(
         fp('1'),
-        '0x0000000000000000000000000000000000000000', // no {uoa/ref} feed for this stablecoin
         networkConfig[chainId].chainlinkFeeds.FRAX as string, // frax chainlink feed
         fFraxCrv.address,
         config.rTokenMaxTradeVolume,
@@ -301,7 +300,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(
         FTokenCollateralFactory.deploy(
           fp('1'),
-          '0x0000000000000000000000000000000000000000',
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
           fFraxCrv.address,
           config.rTokenMaxTradeVolume,
@@ -317,7 +315,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(
         FTokenCollateralFactory.deploy(
           fp('1'),
-          '0x0000000000000000000000000000000000000000',
           networkConfig[chainId].chainlinkFeeds.FRAX as string,
           fFraxCrv.address,
           config.rTokenMaxTradeVolume,
@@ -523,7 +520,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy(
         fp('1'),
         NO_PRICE_DATA_FEED, // TODO: figure out how this should be configured
-        NO_PRICE_DATA_FEED,
         fFraxCrv.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -548,7 +544,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ).deploy(
         fp('1'),
         mockChainlinkFeed.address, // TODO: figure out how this should be configured
-        mockChainlinkFeed.address,
         fFraxCrv.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -585,7 +580,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         })
       ).deploy(
         fp('1'),
-        '0x0000000000000000000000000000000000000000', // no {uoa/ref} feed for this stablecoin
         mockChainlinkFeed.address,
         await fTokenCollateral.erc20(),
         await fTokenCollateral.maxTradeVolume(),
@@ -647,7 +641,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         })
       ).deploy(
         fp('1'),
-        await fTokenCollateral.uoaPerRefFeed(),
         await fTokenCollateral.chainlinkFeed(),
         fFraxCrvMock.address,
         await fTokenCollateral.maxTradeVolume(),
@@ -687,7 +680,6 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const invalidFTokenCollateral: FTokenFiatCollateral = <FTokenFiatCollateral>(
         await FTokenCollateralFactory.deploy(
           fp('1'),
-          invalidChainlinkFeed.address,
           invalidChainlinkFeed.address,
           await fTokenCollateral.erc20(),
           await fTokenCollateral.maxTradeVolume(),

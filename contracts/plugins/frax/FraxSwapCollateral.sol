@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IFraxSwapPair.sol";
-import "hardhat/console.sol";
 
 /**
  * @title FraxSwapCollateral
@@ -19,7 +18,6 @@ contract FraxSwapCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    uint192 public immutable ammThreshold; // {%} e.g. 0.05
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     // bitmap of which tokens are fiat:
@@ -39,7 +37,6 @@ contract FraxSwapCollateral is Collateral {
     /// @param token1chainlinkFeed_ Feed units: {UoA/token1}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @param ammThreshold_ {%} A value like 0.05 that represents a deviation tolerance 
     /// between amm price and oracle price
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
@@ -52,7 +49,6 @@ contract FraxSwapCollateral is Collateral {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
-        uint192 ammThreshold_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_
     )
@@ -66,7 +62,6 @@ contract FraxSwapCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(ammThreshold_ > 0, "ammThreshold zero");
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(
             address(token0chainlinkFeed_) != address(0),
@@ -79,7 +74,6 @@ contract FraxSwapCollateral is Collateral {
         require(tokenisFiat_ <= 3 && tokenisFiat_ > 0, "invalid tokenisFiat bitmap");
 
         defaultThreshold = defaultThreshold_;
-        ammThreshold = ammThreshold_;
 
         prevReferencePrice = refPerTok();
 
@@ -111,24 +105,20 @@ contract FraxSwapCollateral is Collateral {
         } else {
                 // p0 {UoA/token0}
             try token0chainlinkFeed.price_(oracleTimeout) returns (uint192 p0) {
-                // We don't need the return value from this next feed, but it should still function
                 // p1 {UoA/token1}
                 try token1chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
                     if (p0 > 0 && p1 > 0) {
                         _checkPriceDeviation(p0, p1);
                     } else {
-                        console.log("price not more than 0");
                         markStatus(CollateralStatus.IFFY);
                     }
                 } catch (bytes memory errData) {
                     // see: docs/solidity-style.md#Catching-Empty-Data
-                    console.log("errData0");
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
-                console.log("errData0");
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
@@ -139,40 +129,19 @@ contract FraxSwapCollateral is Collateral {
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-
-        // No interactions beyond the initial refresher
     }
 
     function _checkPriceDeviation(uint192 p0, uint192 p1) internal {
         uint192 peg = 1 ether;
 
-        address token0 = IFraxswapPair(address(erc20)).token0();
-        // exchange rate between tokens in the fraxswap amm:  token0 -> token1 (token1/token0)
-        uint192 p = uint192(IFraxswapPair(address(erc20)).getAmountOut(
-            peg, 
-            token0
-        ));
-
         // If prices are below their default-threshold price, default eventually
         uint192 pegDelta = (peg * defaultThreshold) / peg;
-        // exchange rate from oracles for token0 -> token1 (token1/token0)
-        uint192 feedRate = p0.div(p1);
-        uint192 ammDelta = (feedRate * ammThreshold) / peg; 
-        console.log("----------");
-        console.log("feedRate: ");
-        console.log(feedRate);
-        console.log("amm exchange rate: ");
-        console.log(p);
-        console.log("ammDelta: ");
-        console.log(ammDelta);
-        console.log("----------");
         // TODO: which div method uses less gas?
 
         // checks peg for token0 to UoA
         if(isTokenFiat(0)){
 
             if (p0 < peg - pegDelta || p0 > peg + pegDelta) {
-                console.log("peg0");
                 markStatus(CollateralStatus.IFFY);
             }
         }
@@ -180,17 +149,8 @@ contract FraxSwapCollateral is Collateral {
         // checks peg for token1 to UoA
         if(isTokenFiat(1)){
             if (p1 < peg -  pegDelta || p1 > peg + pegDelta) {
-                console.log("peg1");
                 markStatus(CollateralStatus.IFFY);
             }
-        }
-
-        // checks exchange rate in Fraxswap's amm
-        if (p < feedRate - ammDelta || p > feedRate + ammDelta) {
-            console.log("pegAMM");
-            markStatus(CollateralStatus.IFFY);
-        } else {
-            markStatus(CollateralStatus.SOUND);
         }
     }
 
