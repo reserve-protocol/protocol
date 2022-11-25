@@ -29,6 +29,9 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
+  CBEthMock,
+  FiatCollateral__factory,
+  OracleLib,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -66,10 +69,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let token1: USDCMock
   let token2: StaticATokenMock
   let token3: CTokenMock
+  let token4: CBEthMock
+
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: ATokenFiatCollateral
   let collateral3: CTokenFiatCollateral
+  let collateral4: CTokenFiatCollateral
+
   let basket: Collateral[]
   let initialBasketNonce: BigNumber
   let rTokenAsset: RTokenAsset
@@ -197,12 +204,15 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     collateral1 = <Collateral>basket[1]
     collateral2 = <ATokenFiatCollateral>basket[2]
     collateral3 = <CTokenFiatCollateral>basket[3]
+    collateral4 = <CTokenFiatCollateral>basket[4]
+
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
     token2 = <StaticATokenMock>(
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
+    token4 = <CBEthMock>await ethers.getContractAt('CBEthMock', await collateral4.erc20())
 
     initialBasketNonce = BigNumber.from(await basketHandler.nonce())
 
@@ -212,11 +222,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     await token1.connect(owner).mint(addr1.address, initialBal)
     await token2.connect(owner).mint(addr1.address, initialBal)
     await token3.connect(owner).mint(addr1.address, initialBal)
+    await token4.connect(owner).mint(addr1.address, initialBal)
 
     await token0.connect(owner).mint(addr2.address, initialBal)
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
+    await token4.connect(owner).mint(addr2.address, initialBal)
   })
 
   describe('Deployment #fast', () => {
@@ -232,6 +244,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
       expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
     })
@@ -411,6 +424,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Pause Main
@@ -433,6 +447,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Freeze Main
@@ -455,6 +470,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       await advanceTime(ORACLE_TIMEOUT.toString())
@@ -476,6 +492,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Freeze Main
@@ -493,6 +510,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Refresh from non-owner account should fail
@@ -521,6 +539,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       await token0.connect(addr1).approve(rToken.address, issueAmount)
@@ -553,18 +572,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       await token0.connect(addr1).approve(rToken.address, issueAmount)
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       await token0.connect(addr1).approve(rToken.address, issueAmount)
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Refresh from owner should succeed
@@ -588,6 +610,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Pause Main
@@ -605,6 +628,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Attempt to cancel
@@ -643,6 +667,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
 
       await expect(rToken.connect(addr1).issue(issueAmount)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance'
@@ -725,8 +750,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
+      expect(quotes.length).to.be.equal(basket.length)
 
       // check balances before
       expect(await token0.balanceOf(main.address)).to.equal(0)
@@ -740,6 +767,9 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       expect(await token3.balanceOf(main.address)).to.equal(0)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal)
+
+      expect(await token4.balanceOf(main.address)).to.equal(0)
+      expect(await token4.balanceOf(addr1.address)).to.equal(initialBal)
 
       expect(await rToken.balanceOf(main.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
@@ -765,6 +795,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
       expect(await token3.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn3))
 
+      const expectedTkn4: BigNumber = quotes[4]
+      expect(await token4.balanceOf(rToken.address)).to.equal(expectedTkn4)
+      expect(await token4.balanceOf(addr1.address)).to.equal(initialBal.sub(expectedTkn4))
+
       expect(await rToken.balanceOf(main.address)).to.equal(0)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
@@ -785,6 +819,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
+      await token4.connect(addr2).approve(rToken.address, initialBal)
       await advanceBlocks(1)
       await expectEvents(rToken.vest(addr1.address, await endIdForVest(addr1.address)), [
         {
@@ -822,6 +857,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       expect(await token1.balanceOf(rToken.address)).to.equal(expectedTkn1)
       expect(await token2.balanceOf(rToken.address)).to.equal(expectedTkn2)
       expect(await token3.balanceOf(rToken.address)).to.equal(expectedTkn3)
+      expect(await token4.balanceOf(rToken.address)).to.equal(expectedTkn4)
       expect(await rToken.balanceOf(rToken.address)).to.equal(0)
       expect(await rToken.balanceOf(backingManager.address)).to.equal(0)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -857,6 +893,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -890,6 +927,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -911,6 +949,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -928,10 +967,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const issueAmount = initialBal.div(2)
       // Check values, with no issued tokens
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        initialBal.mul(4)
+        initialBal.mul(basket.length)
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        initialBal.mul(4)
+        initialBal.mul(basket.length)
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
 
@@ -940,6 +979,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -955,10 +995,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // Check values, with issued tokens
       expect(await facade.callStatic.maxIssuable(rToken.address, addr1.address)).to.equal(
-        initialBal.mul(4).sub(issueAmount)
+        initialBal.mul(basket.length).sub(issueAmount)
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, addr2.address)).to.equal(
-        initialBal.mul(4)
+        initialBal.mul(basket.length)
       )
       expect(await facade.callStatic.maxIssuable(rToken.address, other.address)).to.equal(0)
     })
@@ -1005,6 +1045,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
@@ -1077,6 +1118,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -1154,6 +1196,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issuance #1 - Will be processed in 5 blocks
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
@@ -1195,6 +1238,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issuance - Will be processed in 5 blocks
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK.mul(5)
@@ -1298,6 +1342,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Set automine to false for multiple transactions in one block
       await hre.network.provider.send('evm_setAutomine', [false])
@@ -1340,6 +1385,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -1361,6 +1407,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Set automine to false for multiple transactions in one block
       await hre.network.provider.send('evm_setAutomine', [false])
@@ -1405,11 +1452,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
       await token2.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
       await token3.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
+      await token4.connect(owner).mint(addr1.address, bn('32e24').sub(initialBal))
 
       await token0.connect(addr1).approve(rToken.address, bn('32e24'))
       await token1.connect(addr1).approve(rToken.address, bn('32e24'))
       await token2.connect(addr1).approve(rToken.address, bn('32e24'))
       await token3.connect(addr1).approve(rToken.address, bn('32e24'))
+      await token4.connect(addr1).approve(rToken.address, bn('32e24'))
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, bn('1e24'))
       const expectedTkn0: BigNumber = quotes[0]
@@ -1463,6 +1512,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
       const expectedTkn0: BigNumber = quotes[0]
@@ -1511,6 +1561,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
       const expectedTkn0: BigNumber = quotes[0]
@@ -1580,6 +1631,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       const [, quotes] = await facade.connect(addr1).callStatic.issue(rToken.address, issueAmount)
 
@@ -1653,10 +1705,12 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
+      await token4.connect(addr2).approve(rToken.address, initialBal)
       // Issue rTokens
       await rToken.connect(addr1).issue(issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
@@ -1714,6 +1768,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token1.connect(addr1).approve(rToken.address, initialBal)
         await token2.connect(addr1).approve(rToken.address, initialBal)
         await token3.connect(addr1).approve(rToken.address, initialBal)
+        await token4.connect(addr1).approve(rToken.address, initialBal)
 
         // Issue rTokens
         await rToken.connect(addr1).issue(issueAmount)
@@ -1754,6 +1809,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token1.connect(addr2).approve(rToken.address, initialBal)
         await token2.connect(addr2).approve(rToken.address, initialBal)
         await token3.connect(addr2).approve(rToken.address, initialBal)
+        await token4.connect(addr2).approve(rToken.address, initialBal)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
 
         // Issue rTokens
@@ -1830,7 +1886,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       it('Should revert if empty redemption #fast', async function () {
         // Eliminate most token balances
-        const bal = issueAmount.div(4)
+        const bal = issueAmount.div(basket.length)
         await token0.connect(owner).burn(backingManager.address, bal)
         await token1.connect(owner).burn(backingManager.address, toBNDecimals(bal, 6))
         await token2.connect(owner).burn(backingManager.address, bal)
@@ -1843,6 +1899,10 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         await token3
           .connect(owner)
           .burn(backingManager.address, await token3.balanceOf(backingManager.address))
+
+        await token4
+          .connect(owner)
+          .burn(backingManager.address, await token4.balanceOf(backingManager.address))
 
         // Now it should revert
         await expect(rToken.connect(addr1).redeem(issueAmount.div(2))).to.be.revertedWith(
@@ -1942,6 +2002,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
           await token1.connect(addr2).approve(rToken.address, initialBal)
           await token2.connect(addr2).approve(rToken.address, initialBal)
           await token3.connect(addr2).approve(rToken.address, initialBal)
+          await token4.connect(addr2).approve(rToken.address, initialBal)
 
           await rToken.connect(addr2).issue(issueAmount)
           redeemAmount = issueAmount.mul(2).mul(config.scalingRedemptionRate).div(fp('1'))
@@ -1964,12 +2025,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(owner).mint(addr1.address, initialBal)
       await token2.connect(owner).mint(addr1.address, initialBal)
       await token3.connect(owner).mint(addr1.address, initialBal)
+      await token4.connect(owner).mint(addr1.address, initialBal)
 
       // Approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue tokens
       await rToken.connect(addr1).issue(issueAmount)
@@ -2106,6 +2169,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmt)
       await token2.connect(addr1).approve(rToken.address, issueAmt)
       await token3.connect(addr1).approve(rToken.address, issueAmt)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
     })
 
     it('should not sweep rewards when paused', async () => {
@@ -2207,6 +2271,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await rToken.connect(addr1).issue(amount)
@@ -2467,6 +2532,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, issueAmount)
       await token2.connect(addr1).approve(rToken.address, issueAmount)
       await token3.connect(addr1).approve(rToken.address, issueAmount)
+      await token4.connect(addr1).approve(rToken.address, issueAmount)
       await rToken.connect(addr1).issue(issueAmount)
 
       // Give RToken balance at ERC1271Mock
@@ -2529,26 +2595,31 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     async function makeColl(index: number | string, price: BigNumber): Promise<ERC20Mock> {
       const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
       const erc20: ERC20Mock = <ERC20Mock>await ERC20.deploy('Token ' + index, 'T' + index)
-      const OracleFactory: ContractFactory = await ethers.getContractFactory('MockV3Aggregator')
+      const OracleFactoryLib: ContractFactory = await ethers.getContractFactory('OracleLib')
+      const oracleLib = <OracleLib>await OracleFactoryLib.deploy()
+      const OracleFactory = await ethers.getContractFactory('MockV3Aggregator')
       const oracle: MockV3Aggregator = <MockV3Aggregator>await OracleFactory.deploy(8, bn('1e8'))
-      const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracle.address },
-      })
-      const coll: FiatCollateral = <FiatCollateral>(
-        await CollateralFactory.deploy(
-          fp('1'),
-          oracle.address,
-          erc20.address,
-          fp('1e36'),
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          fp('0.05'),
-          bn(86400)
-        )
+      const CollateralFactory: FiatCollateral__factory = await ethers.getContractFactory(
+        'FiatCollateral',
+        {
+          libraries: { OracleLib: oracleLib.address },
+        }
       )
+      const coll: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy(
+        fp('1'),
+        oracle.address,
+        erc20.address,
+        fp('1e36'),
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        fp('0.05'), // low for some tests
+        bn(86400)
+      )
+
       await assetRegistry.register(coll.address)
       expect(await assetRegistry.isRegistered(erc20.address)).to.be.true
       await setOraclePrice(coll.address, price)
+      await coll.refresh()
       return erc20
     }
 
@@ -2584,14 +2655,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const weights: BigNumber[] = []
       let totalWeight: BigNumber = fp(0)
       for (let i = 0; i < N; i++) {
-        const erc20 = await makeColl(i, fp('0.00025'))
+        const erc20 = await makeColl(i, bn('1e8')) //fp('0.00025'))
         erc20s.push(erc20)
         const currWeight = i == 0 ? weightFirst : weightRest
         weights.push(currWeight)
         totalWeight = totalWeight.add(currWeight)
       }
       expect(await forceUpdateGetStatus()).to.equal(CollateralStatus.SOUND)
-
       // ==== Switch Basket
 
       const basketAddresses: string[] = erc20s.map((erc20) => erc20.address)
@@ -2623,7 +2693,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await rToken.connect(owner).setIssuanceRate(issuanceRate)
 
       // ==== Issue the "initial" rtoken supply to owner
-
       expect(await rToken.balanceOf(owner.address)).to.equal(bn(0))
       await issueMany(facade, rToken, toIssue0, owner)
       expect(await rToken.balanceOf(owner.address)).to.equal(toIssue0)
@@ -2647,8 +2716,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       // ==== Redeem tokens
 
-      await rToken.connect(addr2).redeem(toRedeem)
-      expect(await rToken.balanceOf(addr2.address)).to.equal(0)
+      await rToken.connect(addr1).redeem(toRedeem)
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
     }
 
     // ==== Generate the tests
@@ -2683,6 +2752,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
       paramList = cartesianProduct(...bounds).concat(cartesianProduct(...bounds2))
     } else {
+      console.log('no slow')
       const bounds: BigNumber[][] = [
         [bn(1), MAX_RTOKENS], // toIssue
         [bn(1), MAX_RTOKENS], // toRedeem
@@ -2714,6 +2784,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
+      await token4.connect(addr1).approve(rToken.address, initialBal)
     })
 
     it('Transfer', async () => {

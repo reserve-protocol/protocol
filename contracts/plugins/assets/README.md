@@ -198,15 +198,22 @@ Specific test in [Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
   34 pending
 ```
 
-- Pending (for cbEthCollateral)
+- Pending (for cbEthCollateral), skipped since cbEth has no soft default condition.
 ```
 Collateral Status
   - No Updates status in case of soft default because there is no soft reset
 ```
-Skipped since cbEth has no soft default condition.
 
-#### yarn test
 
+#### yarn test:fast
+
+All tests pasing:
+```
+  231 passing (16m)
+  4 pending
+```
+
+See [yarn test:fast log file](../../../test-fast.log)
 
 ### Deployement
    
