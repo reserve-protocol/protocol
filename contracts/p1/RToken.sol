@@ -627,11 +627,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //
     //   (action) REFUND DEPOSITS: For i in [0, iss.deposits.length):
     //     issueQueues[account].erc20s[i].transfer(account, iss.deposits[i])
-    function refundSpan(
-        address account,
-        uint256 left,
-        uint256 right
-    ) private {
+    function refundSpan(address account, uint256 left, uint256 right) private {
         if (left >= right) return; // refund an empty span
 
         IssueQueue storage queue = issueQueues[account];
@@ -795,11 +791,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
      * - when `to` is zero, `amount` of ``from``'s tokens will be burned.
      * - `from` and `to` are never both zero.
      */
-    function _beforeTokenTransfer(
-        address,
-        address to,
-        uint256
-    ) internal virtual override {
+    function _beforeTokenTransfer(address, address to, uint256) internal virtual override {
         require(to != address(this), "RToken transfer to self");
     }
 

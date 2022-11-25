@@ -34,17 +34,16 @@ library TradeLib {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeSell(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sellAmount, lotPrice, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
@@ -101,11 +100,10 @@ library TradeLib {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeToCoverDeficit(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.
@@ -128,16 +126,22 @@ library TradeLib {
         return prepareTradeSell(trade, rules);
     }
 
+    /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
     /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
+        IAsset asset,
         uint192 amt,
         uint192 price,
         uint192 minTradeVolume
-    ) internal pure returns (bool) {
-        return amt.gte(minTradeSize(minTradeVolume, price));
+    ) internal view returns (bool) {
+        return
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
+            // Trading platforms often don't allow token quanta trades for rounding reasons
+            // {qTok} = {tok} / {tok/qTok}
+            amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }
 
     // === Private ===

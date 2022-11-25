@@ -37,17 +37,16 @@ library TradingLibP0 {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeSell(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sellAmount, lotPrice, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
@@ -111,11 +110,9 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(ITrading trader)
-        external
-        view
-        returns (bool doTrade, TradeRequest memory req)
-    {
+    function prepareRecollateralizationTrade(
+        ITrading trader
+    ) external view returns (bool doTrade, TradeRequest memory req) {
         // === Prepare cached values ===
 
         IMain main = trader.main();
@@ -314,7 +311,7 @@ library TradingLibP0 {
             uint192 qty = components.bh.quantity(erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !isEnoughToSell(bal, lotPrice, rules.minTradeVolume)) continue;
+            if (qty == 0 && !isEnoughToSell(asset, bal, lotPrice, rules.minTradeVolume)) continue;
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
@@ -391,7 +388,6 @@ library TradingLibP0 {
             if (bal.gt(needed)) {
                 // Assume worst-case price for selling asset
                 (uint192 lowPrice, ) = asset.price(); // {UoA/tok}
-                uint192 lotPrice = fixMax(asset.fallbackPrice(), lowPrice); // {UoA/tok}
 
                 // {UoA} = {tok} * {UoA/tok}
                 uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
@@ -404,7 +400,12 @@ library TradingLibP0 {
                 // as defined by a (status, surplusAmt) ordering
                 if (
                     isBetterSurplus(maxes, status, delta) &&
-                    isEnoughToSell(bal, lotPrice, rules.minTradeVolume)
+                    isEnoughToSell(
+                        asset,
+                        bal,
+                        fixMax(asset.fallbackPrice(), lowPrice),
+                        rules.minTradeVolume
+                    )
                 ) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
@@ -444,7 +445,7 @@ library TradingLibP0 {
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
 
-            if (isEnoughToSell(rsrAvailable, lowPrice, rules.minTradeVolume)) {
+            if (isEnoughToSell(rsrAsset, rsrAvailable, lowPrice, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;
@@ -544,11 +545,10 @@ library TradingLibP0 {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeToCoverDeficit(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.
@@ -571,16 +571,22 @@ library TradingLibP0 {
         return prepareTradeSell(trade, rules);
     }
 
+    /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
     /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
+        IAsset asset,
         uint192 amt,
         uint192 price,
         uint192 minTradeVolume
-    ) internal pure returns (bool) {
-        return amt.gte(minTradeSize(minTradeVolume, price));
+    ) internal view returns (bool) {
+        return
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
+            // Trading platforms often don't allow token quanta trades for rounding reasons
+            // {qTok} = {tok} / {tok/qTok}
+            amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }
 
     // === Private ===

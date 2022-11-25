@@ -50,41 +50,11 @@ contract RTokenAsset is IAsset {
 
         if (supply == 0) return (lowBUPrice, highBUPrice);
 
-        uint192 basketsBottom; // {BU}
-        uint192 basketsTop; // {BU}
-        if (basketHandler.fullyCollateralized()) {
-            basketsBottom = IRToken(address(erc20)).basketsNeeded();
-            basketsTop = basketsBottom;
-        } else {
-            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
-            // there is _some_ asset to represent the RToken itself when it is deployed, in
-            // the absence of an external price feed. Any RToken that gets reasonably big
-            // should switch over to an asset with a price feed.
-
-            IMain main = backingManager.main();
-            ComponentCache memory components = ComponentCache({
-                trader: backingManager,
-                bh: main.basketHandler(),
-                reg: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken()
-            });
-            TradingRules memory rules = TradingRules({
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage()
-            });
-
-            // will exclude UoA value from RToken balances at BackingManager
-            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
-                .basketRange(components, rules, assetRegistry.erc20s());
-            basketsBottom = range.bottom;
-            basketsTop = range.top;
-        }
+        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        low = basketsBottom.mulDiv(lowBUPrice, supply);
-        high = basketsTop.mulDiv(highBUPrice, supply);
+        low = range.bottom.mulDiv(lowBUPrice, supply);
+        high = range.top.mulDiv(highBUPrice, supply);
     }
 
     /// Should not revert
@@ -99,37 +69,10 @@ contract RTokenAsset is IAsset {
 
         if (supply == 0) return buFallbackPrice;
 
-        uint192 basketsBottom; // {BU}
-        if (basketHandler.fullyCollateralized()) {
-            basketsBottom = IRToken(address(erc20)).basketsNeeded();
-        } else {
-            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
-            // there is _some_ asset to represent the RToken itself when it is deployed, in
-            // the absence of an external price feed. Any RToken that gets reasonably big
-            // should switch over to an asset with a price feed.
-
-            IMain main = backingManager.main();
-            ComponentCache memory components = ComponentCache({
-                trader: backingManager,
-                bh: main.basketHandler(),
-                reg: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken()
-            });
-            TradingRules memory rules = TradingRules({
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage()
-            });
-
-            // will exclude UoA value from RToken balances at BackingManager
-            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
-                .basketRange(components, rules, assetRegistry.erc20s());
-            basketsBottom = range.bottom;
-        }
+        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return basketsBottom.mulDiv(buFallbackPrice, supply);
+        return range.bottom.mulDiv(buFallbackPrice, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -151,4 +94,41 @@ contract RTokenAsset is IAsset {
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
+
+    // ==== Private ====
+
+    function basketRange()
+        private
+        view
+        returns (RecollateralizationLibP1.BasketRange memory range)
+    {
+        if (basketHandler.fullyCollateralized()) {
+            range.bottom = IRToken(address(erc20)).basketsNeeded();
+            range.top = range.bottom;
+        } else {
+            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
+            // there is _some_ asset to represent the RToken itself when it is deployed, in
+            // the absence of an external price feed. Any RToken that gets reasonably big
+            // should switch over to an asset with a price feed.
+
+            IMain main = backingManager.main();
+            ComponentCache memory components = ComponentCache({
+                trader: backingManager,
+                bh: main.basketHandler(),
+                reg: main.assetRegistry(),
+                stRSR: main.stRSR(),
+                rsr: main.rsr(),
+                rToken: main.rToken()
+            });
+            TradingRules memory rules = TradingRules({
+                minTradeVolume: backingManager.minTradeVolume(),
+                maxTradeSlippage: backingManager.maxTradeSlippage()
+            });
+
+            Registry memory reg = assetRegistry.getRegistry();
+
+            // will exclude UoA value from RToken balances at BackingManager
+            range = RecollateralizationLibP1.basketRange(components, rules, reg);
+        }
+    }
 }

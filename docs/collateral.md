@@ -417,7 +417,7 @@ Should be gas-efficient.
 
 Should never revert.
 
-Should never return 0.
+Should be nonzero while the asset is worth selling.
 
 Should be gas-efficient.
 

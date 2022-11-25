@@ -96,22 +96,17 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         }
     }
 
-    /// TODO decide whether to keep and use it in more places, or dump
-    function getRegistry()
-        external
-        view
-        returns (IERC20[] memory erc20s_, IAsset[] memory assets_)
-    {
+    function getRegistry() external view returns (Registry memory reg) {
         uint256 length = _erc20s.length();
-        erc20s_ = new IERC20[](length);
-        assets_ = new IAsset[](length);
+        reg.erc20s = new IERC20[](length);
+        reg.assets = new IAsset[](length);
         for (uint256 i = 0; i < length; ++i) {
-            erc20s_[i] = IERC20(_erc20s.at(i));
-            assets_[i] = assets[IERC20(_erc20s.at(i))];
-            assert(address(erc20s_[i]) != address(0));
-            assert(address(assets_[i]) != address(0));
+            reg.erc20s[i] = IERC20(_erc20s.at(i));
+            reg.assets[i] = assets[IERC20(_erc20s.at(i))];
+            assert(address(reg.erc20s[i]) != address(0));
+            assert(address(reg.assets[i]) != address(0));
         }
-        assert(erc20s_.length == assets_.length);
+        assert(reg.erc20s.length == reg.assets.length);
     }
 
     //
