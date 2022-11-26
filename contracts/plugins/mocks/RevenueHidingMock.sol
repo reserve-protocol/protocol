@@ -15,9 +15,9 @@ contract RevenueHidingMock is RevenueHiding {
         IERC20Metadata _erc20Collateral,
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
+        uint16 _allowedDropBasisPoints,
         bytes32 _targetName,
-        uint256 _delayUntilDefault,
-        uint192 _allowedDropBasisPoints
+        uint256 _delayUntilDefault
     )
     RevenueHiding(
         _fallbackPrice,
@@ -25,9 +25,9 @@ contract RevenueHidingMock is RevenueHiding {
         _erc20Collateral,
         _maxTradeVolume,
         _oracleTimeout,
+        _allowedDropBasisPoints,
         _targetName,
-        _delayUntilDefault,
-        _allowedDropBasisPoints
+        _delayUntilDefault
     )
     {
         fakeRefPerTok = FIX_ONE;

@@ -24,9 +24,9 @@ abstract contract RevenueHiding is Collateral {
         IERC20Metadata _erc20Collateral,
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
+        uint16 _allowedDropBasisPoints,
         bytes32 _targetName,
-        uint256 _delayUntilDefault,
-        uint192 _allowedDropBasisPoints
+        uint256 _delayUntilDefault
     )
     Collateral(
         _fallbackPrice,
