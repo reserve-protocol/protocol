@@ -6,6 +6,7 @@ import { Collateral } from '../../../typechain'
 task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -18,13 +19,17 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     const chainId = await getChainId(hre)
 
     const SelfReferentialCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'SelfReferentialCollateral'
+      'SelfReferentialCollateral',
+      {
+        libraries: { OracleLib: params.oracleLib },
+      }
     )
 
     const collateral = <Collateral>(
       await SelfReferentialCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
         params.priceFeed,
+        params.oracleError,
         params.tokenAddress,
         params.maxTradeVolume,
         params.oracleTimeout,

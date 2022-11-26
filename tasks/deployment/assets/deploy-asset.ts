@@ -5,6 +5,7 @@ import { Asset } from '../../../typechain'
 task('deploy-asset', 'Deploys an Asset')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max Oracle Timeout')
@@ -15,17 +16,20 @@ task('deploy-asset', 'Deploys an Asset')
 
     const chainId = await getChainId(hre)
 
-    const asset = <Asset>(
-      await (await hre.ethers.getContractFactory('Asset'))
-        .connect(deployer)
-        .deploy(
-          params.fallbackPrice,
-          params.priceFeed,
-          params.tokenAddress,
-          params.maxTradeVolume,
-          params.oracleTimeout
-        )
+    const asset = <Asset>await (
+      await hre.ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: params.oracleLib },
+      })
     )
+      .connect(deployer)
+      .deploy(
+        params.fallbackPrice,
+        params.priceFeed,
+        params.oracleError,
+        params.tokenAddress,
+        params.maxTradeVolume,
+        params.oracleTimeout
+      )
     await asset.deployed()
 
     if (!params.noOutput) {

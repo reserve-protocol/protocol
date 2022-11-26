@@ -6,6 +6,7 @@ import { ATokenFiatCollateral } from '../../../typechain'
 task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('staticAToken', 'Static AToken address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -27,6 +28,7 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
       await ATokenCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
         params.priceFeed,
+        params.oracleError,
         params.staticAToken,
         params.maxTradeVolume,
         params.oracleTimeout,

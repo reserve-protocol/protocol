@@ -5,12 +5,12 @@ import { CTokenSelfReferentialCollateral } from '../../../typechain'
 task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referential Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('cToken', 'CToken address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('delayUntilDefault', 'Seconds until a default is recognized')
-  .addParam('decimals', 'Reference token decimals')
   .addParam('comptroller', 'Comptroller address')
   .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
@@ -29,12 +29,12 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
       await CTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
         params.priceFeed,
+        params.oracleError,
         params.cToken,
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,
         params.delayUntilDefault,
-        params.decimals,
         params.comptroller
       )
     )

@@ -1,11 +1,13 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
-import { CTokenNonFiatCollateral, CTokenMock, ERC20Mock } from '../../../typechain'
+import { CTokenNonFiatCollateral } from '../../../typechain'
 
 task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
+  .addParam('referenceUnitOracleError', 'The % error in the ref unit price feed as a fix')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
+  .addParam('targetUnitOracleError', 'The % error in the target unit price feed as a fix')
   .addParam('cToken', 'CToken address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -18,16 +20,6 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
 
     const chainId = await getChainId(hre)
 
-    // Get CToken to retrieve underlying
-    const cToken: CTokenMock = <CTokenMock>(
-      await hre.ethers.getContractAt('CTokenMock', params.cToken)
-    )
-
-    // Get Underlying
-    const erc20: ERC20Mock = <ERC20Mock>(
-      await hre.ethers.getContractAt('ERC20Mock', await cToken.underlying())
-    )
-
     const CTokenNonFiatCollateralFactory = await hre.ethers.getContractFactory(
       'CTokenNonFiatCollateral',
       {
@@ -35,20 +27,21 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
       }
     )
 
-    const collateral = <CTokenNonFiatCollateral>await CTokenNonFiatCollateralFactory.connect(
-      deployer
-    ).deploy(
-      params.fallbackPrice,
-      params.referenceUnitFeed,
-      params.targetUnitFeed,
-      params.cToken,
-      params.maxTradeVolume,
-      params.oracleTimeout,
-      params.targetName,
-      params.defaultThreshold,
-      params.delayUntilDefault,
-      await erc20.decimals(), // Reference ERC20 decimals
-      params.comptroller
+    const collateral = <CTokenNonFiatCollateral>(
+      await CTokenNonFiatCollateralFactory.connect(deployer).deploy(
+        params.fallbackPrice,
+        params.referenceUnitFeed,
+        params.referenceUnitOracleError,
+        params.targetUnitFeed,
+        params.targetUnitOracleError,
+        params.cToken,
+        params.maxTradeVolume,
+        params.oracleTimeout,
+        params.targetName,
+        params.defaultThreshold,
+        params.delayUntilDefault,
+        params.comptroller
+      )
     )
     await collateral.deployed()
 

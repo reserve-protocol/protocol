@@ -6,7 +6,9 @@ import { Collateral } from '../../../typechain'
 task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
+  .addParam('referenceUnitOracleError', 'The % error in the ref unit price feed as a fix')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
+  .addParam('targetUnitOracleError', 'The % error in the target unit price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -30,7 +32,9 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
       await NonFiatCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
         params.referenceUnitFeed,
+        params.referenceUnitOracleError,
         params.targetUnitFeed,
+        params.targetUnitOracleError,
         params.tokenAddress,
         params.maxTradeVolume,
         params.oracleTimeout,
