@@ -1,6 +1,4 @@
-# Collateral plugins for gitcoin bounties
-
-## Collateral Plugin - Coinbase - CbETH
+# Collateral Plugin - Coinbase - CbETH 
 [Gitcoin bounty 29506](https://gitcoin.co/issue/29506)
 
 ## Plugin description
@@ -278,5 +276,3 @@ Don't forget coinbase oracle actualises cbEth exchange rate every 4H.
 - [x] Be documented with cogent explanations of its economics.
 - [x] Be deployable with USD as its Unit of Account.
 - [x] Not be prone to relatively simple economic attacks or cough cough “highly profitable trading strategies”​
-
-
