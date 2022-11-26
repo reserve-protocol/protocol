@@ -1,9 +1,0 @@
-#!/bin/bash
-. "$(dirname "$0")/_/husky.sh"
-
-set -exuo pipefail
-
-bash tools/lint && \
-yarn eslint && \
-yarn compile && \
-yarn test:fast
