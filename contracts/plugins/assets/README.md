@@ -150,7 +150,7 @@ __`price(bool)`, `bal(address)`, `erc20()`, `erc20Decimals()` and `maxTradeVolum
 
 ### Tests
 
-Added cbEthCollateral test to [plugin tests](../../../test/plugins/Collateral.test.ts) and [fixture basket](../../../test/fixtures.ts)
+Added cbEthCollateral test to [plugin tests](../../../test/plugins/Collateral.test.ts) and [fixture](../../../test/fixtures.ts)
 Added cbEthCollateral to [integrated tests](../../../test/integration/individual-collateral/CbEthCollateral.test.ts)
 
 #### yarn slither
@@ -169,8 +169,9 @@ oracle avaibility. No use it's data nor `errData`.
 
 #### yarn test:plugin
 
-cbEthCollateral contract added to [fixture.ts](../../../test/fixtures.ts) basket.
-Specific test in [Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
+cbEthCollateral contract added to [test/fixture.ts](../../../test/fixtures.ts) basket.
+Specific test in [test/plugins/Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
+and [test/plugins/Asset.test.ts](../../../test/plugins/Asset.test.ts)
 
 - Result:
 ```test
@@ -188,6 +189,7 @@ Specific test in [Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
 ```
 
 #### yarn test:integration
+Added [test/integration/individual-collateral/CbEthCollateral.test.ts](../../../test/integration/individual-collateral/CbEthCollateral.test.ts)
 
 - Result:
 
@@ -204,6 +206,10 @@ Collateral Status
 
 
 #### yarn test:fast
+Updated [test/Furnace.test.ts](../../../test/Furnace.test.ts)
+Updated [test/Main.test.ts](../../../test/Main.test.ts)
+Updated [test/RToken.test.ts](../../../test/RToken.test.ts)
+
 
 All tests pasing:
 ```
