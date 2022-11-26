@@ -26,9 +26,9 @@ describe('Revenue hiding', () => {
       token.address,
       fp('1e6'), // $1M
       bn('500000000'), // 5700d - large for tests only
+      100, // 1%
       ethers.utils.formatBytes32String('USD'),
-      bn('86400'), // 24h
-      100 // 1%
+      bn('86400') // 24h
     )
   })
 
@@ -74,9 +74,9 @@ describe('Revenue hiding', () => {
           token.address,
           fp('1e6'), // $1M
           bn('500000000'), // 5700d - large for tests only
+          10000, // 100%
           ethers.utils.formatBytes32String('USD'),
-          bn('86400'), // 24h
-          10000 // 100%
+          bn('86400') // 24h
         )
       ).to.be.revertedWith('Allowed refPerTok drop out of range')
     })
