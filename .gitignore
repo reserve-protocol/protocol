@@ -31,6 +31,3 @@ scripts/addresses/31337*
 
 .idea
 *.code-workspace
-mytest.sh
-latest.sh
-test-fast.log
