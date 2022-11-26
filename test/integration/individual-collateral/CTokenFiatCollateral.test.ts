@@ -150,16 +150,16 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     )
 
     // Create COMP asset
-    compAsset = <Asset>(
-      await (
-        await ethers.getContractFactory('Asset')
-      ).deploy(
-        fp('1'),
-        networkConfig[chainId].chainlinkFeeds.COMP || '',
-        compToken.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT
-      )
+    compAsset = <Asset>await (
+      await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
+    ).deploy(
+      fp('1'),
+      networkConfig[chainId].chainlinkFeeds.COMP || '',
+      compToken.address,
+      config.rTokenMaxTradeVolume,
+      ORACLE_TIMEOUT
     )
 
     // Deploy cDai collateral plugin

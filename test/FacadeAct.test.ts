@@ -31,7 +31,13 @@ import {
   TestIRToken,
   USDCMock,
 } from '../typechain'
-import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import {
+  Collateral,
+  Implementation,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  defaultFixture,
+} from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -509,6 +515,7 @@ describe('FacadeAct contract', () => {
         ((await ATokenCollateralFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
+          ORACLE_ERROR,
           aToken.address,
           config.rTokenMaxTradeVolume,
           await aTokenAsset.oracleTimeout(),
@@ -554,6 +561,7 @@ describe('FacadeAct contract', () => {
         await ATokenCollateralFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
+          ORACLE_ERROR,
           aToken.address,
           config.rTokenMaxTradeVolume,
           await aTokenAsset.oracleTimeout(),
@@ -790,7 +798,9 @@ describe('FacadeAct contract', () => {
       const m = await ethers.getContractAt('MainP1', await rToken.main())
       const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await m.assetRegistry())
       const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-      const AssetFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const feed = await tokenAsset.chainlinkFeed()
 
       // Get to numAssets registered assets
@@ -799,6 +809,7 @@ describe('FacadeAct contract', () => {
         const asset = await AssetFactory.deploy(
           fp('1'),
           feed,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           bn(2).pow(47)

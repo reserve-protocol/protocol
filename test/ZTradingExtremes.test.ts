@@ -223,7 +223,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
     // Replace RSR and RToken assets with larger maxTradeVolume settings
     const RTokenAssetFactory: ContractFactory = await ethers.getContractFactory('RTokenAsset')
-    const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+    const RSRAssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
     const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, MAX_UOA)
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
@@ -415,7 +417,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await setupTrading(stRSRCut)
 
       // Replace registered reward assets with large maxTradeVolume assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAaveAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),

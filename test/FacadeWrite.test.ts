@@ -469,9 +469,9 @@ describe('FacadeWrite contract', () => {
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
           // Check BU price
-          const [isFallback, price] = await basketHandler.price(true)
-          expect(isFallback).to.equal(false)
-          expect(price).to.equal(fp('1'))
+          const [lowPrice, highPrice] = await basketHandler.price()
+          expect(lowPrice).to.equal(fp('0.99'))
+          expect(highPrice).to.equal(fp('1.01'))
         })
 
         it('Should setup backup basket correctly', async () => {

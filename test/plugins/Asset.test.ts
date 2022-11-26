@@ -106,7 +106,9 @@ describe('Assets contracts #fast', () => {
     }
     await rToken.connect(wallet).issue(amt)
 
-    AssetFactory = await ethers.getContractFactory('Asset')
+    AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
     RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
   })
 

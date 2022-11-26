@@ -68,6 +68,8 @@ export const SLOW = !!process.env.SLOW
 
 export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 
+export const ORACLE_ERROR = fp('0.01') // 1% oracle error
+
 export type Collateral =
   | FiatCollateral
   | CTokenFiatCollateral
@@ -180,6 +182,7 @@ async function collateralFixture(
       await FiatCollateralFactory.deploy(
         fp('1'),
         chainlinkFeed.address,
+        ORACLE_ERROR,
         erc20.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -200,6 +203,7 @@ async function collateralFixture(
       await FiatCollateralFactory.deploy(
         fp('1'),
         chainlinkFeed.address,
+        ORACLE_ERROR,
         erc20.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -222,13 +226,13 @@ async function collateralFixture(
       await CTokenCollateralFactory.deploy(
         fp('1').div(50),
         chainlinkAddr,
+        ORACLE_ERROR,
         erc20.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        (await referenceERC20.decimals()).toString(),
         comptroller.address
       )
     )
@@ -249,6 +253,7 @@ async function collateralFixture(
       await ATokenCollateralFactory.deploy(
         fp('1'),
         chainlinkAddr,
+        ORACLE_ERROR,
         erc20.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -421,11 +426,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy RSR Asset
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+    libraries: { OracleLib: oracleLib.address },
+  })
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
       fp('1'),
       rsrChainlinkFeed.address,
+      ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -557,6 +565,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await AssetFactory.deploy(
       fp('1'),
       aaveChainlinkFeed.address,
+      ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -570,6 +579,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await AssetFactory.deploy(
       fp('1'),
       compChainlinkFeed.address,
+      ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT

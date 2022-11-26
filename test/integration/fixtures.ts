@@ -58,6 +58,8 @@ import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
 
 export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only
 
+export const ORACLE_ERROR = fp('0.01') // 1% oracle error
+
 interface RSRFixture {
   rsr: ERC20Mock
 }
@@ -200,6 +202,7 @@ async function collateralFixture(
         await CollateralFactory.deploy(
           fp('1'),
           chainlinkAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -222,6 +225,7 @@ async function collateralFixture(
         await CollateralFactory.deploy(
           fp('1'),
           chainlinkAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -247,13 +251,13 @@ async function collateralFixture(
         await CTokenCollateralFactory.deploy(
           fp('0.02'),
           chainlinkAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
-          (await referenceERC20.decimals()).toString(),
           comptroller.address
         )
       ),
@@ -284,6 +288,7 @@ async function collateralFixture(
         await ATokenCollateralFactory.deploy(
           fp('1'),
           chainlinkAddr,
+          ORACLE_ERROR,
           staticErc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -309,7 +314,9 @@ async function collateralFixture(
         await NonFiatCollateralFactory.deploy(
           fp('1'),
           referenceUnitOracleAddr,
+          ORACLE_ERROR,
           targetUnitOracleAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -338,14 +345,15 @@ async function collateralFixture(
         await CTokenNonFiatCollateralFactory.deploy(
           fp('1'),
           referenceUnitOracleAddr,
+          ORACLE_ERROR,
           targetUnitOracleAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           defaultThreshold,
           delayUntilDefault,
-          (await referenceERC20.decimals()).toString(),
           comptroller.address
         )
       ),
@@ -365,6 +373,7 @@ async function collateralFixture(
         await SelfRefCollateralFactory.deploy(
           fp('1'),
           chainlinkAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -391,12 +400,12 @@ async function collateralFixture(
         await CTokenSelfReferentialCollateralFactory.deploy(
           fp('1'),
           chainlinkAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String(targetName),
           delayUntilDefault,
-          (await referenceERC20.decimals()).toString(),
           comptroller.address
         )
       ),
@@ -417,7 +426,9 @@ async function collateralFixture(
         await EURFiatCollateralFactory.deploy(
           fp('1'),
           referenceUnitOracleAddr,
+          ORACLE_ERROR,
           targetUnitOracleAddr,
+          ORACLE_ERROR,
           erc20.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -694,11 +705,14 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
 
   // Deploy RSR Asset
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+    libraries: { OracleLib: oracleLib.address },
+  })
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
       fp('0.007'),
       networkConfig[chainId].chainlinkFeeds.RSR || '',
+      ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
@@ -815,28 +829,30 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     await ethers.getContractAt('TestIDistributor', await main.distributor())
   )
 
-  const aaveAsset: Asset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(
-      fp('1'),
-      networkConfig[chainId].chainlinkFeeds.AAVE || '',
-      aaveToken.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
-    )
+  const aaveAsset: Asset = <Asset>await (
+    await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+  ).deploy(
+    fp('1'),
+    networkConfig[chainId].chainlinkFeeds.AAVE || '',
+    ORACLE_ERROR,
+    aaveToken.address,
+    config.rTokenMaxTradeVolume,
+    ORACLE_TIMEOUT
   )
 
-  const compAsset: Asset = <Asset>(
-    await (
-      await ethers.getContractFactory('Asset')
-    ).deploy(
-      fp('1'),
-      networkConfig[chainId].chainlinkFeeds.COMP || '',
-      compToken.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
-    )
+  const compAsset: Asset = <Asset>await (
+    await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+  ).deploy(
+    fp('1'),
+    networkConfig[chainId].chainlinkFeeds.COMP || '',
+    ORACLE_ERROR,
+    compToken.address,
+    config.rTokenMaxTradeVolume,
+    ORACLE_TIMEOUT
   )
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())

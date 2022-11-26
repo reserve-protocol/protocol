@@ -166,7 +166,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Replace RSRAsset
 
-    const AssetFactory = await ethers.getContractFactory('Asset')
+    const AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
 
     const newRSRAsset: Asset = <Asset>(
       await AssetFactory.deploy(

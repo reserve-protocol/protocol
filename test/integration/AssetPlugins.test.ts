@@ -955,32 +955,32 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await expect(aaveAsset.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Setup Assets with no price feed
-      const nonpriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          fp('1'),
-          NO_PRICE_DATA_FEED,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          config.rTokenMaxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
+      const nonpriceAsset: Asset = <Asset>await (
+        await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        NO_PRICE_DATA_FEED,
+        networkConfig[chainId].tokens.stkAAVE || '',
+        config.rTokenMaxTradeVolume,
+        MAX_ORACLE_TIMEOUT
       )
 
       // Assets with invalid price feed will revert
       await expect(nonpriceAsset.strictPrice()).to.be.reverted
 
       // Reverts with a feed with zero price
-      const invalidPriceAsset: Asset = <Asset>(
-        await (
-          await ethers.getContractFactory('Asset')
-        ).deploy(
-          fp('1'),
-          mockChainlinkFeed.address,
-          networkConfig[chainId].tokens.stkAAVE || '',
-          config.rTokenMaxTradeVolume,
-          MAX_ORACLE_TIMEOUT
-        )
+      const invalidPriceAsset: Asset = <Asset>await (
+        await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        mockChainlinkFeed.address,
+        networkConfig[chainId].tokens.stkAAVE || '',
+        config.rTokenMaxTradeVolume,
+        MAX_ORACLE_TIMEOUT
       )
 
       await setOraclePrice(invalidPriceAsset.address, bn(0))
