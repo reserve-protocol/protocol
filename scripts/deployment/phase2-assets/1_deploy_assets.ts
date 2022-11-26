@@ -42,6 +42,7 @@ async function main() {
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
+    oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -55,6 +56,7 @@ async function main() {
   const { asset: compAsset } = await hre.run('deploy-asset', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
+    oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.COMP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),

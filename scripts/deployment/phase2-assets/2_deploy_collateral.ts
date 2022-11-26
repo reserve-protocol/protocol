@@ -45,6 +45,7 @@ async function main() {
   const { collateral: daiCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
+    oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.DAI,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -63,6 +64,7 @@ async function main() {
   const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+    oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -81,6 +83,7 @@ async function main() {
   const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+    oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -99,6 +102,7 @@ async function main() {
   const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
+    oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.USDP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -117,6 +121,7 @@ async function main() {
   const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.TUSD,
+    oracleError: fp('0.003').toString(), // 0.3%
     tokenAddress: networkConfig[chainId].tokens.TUSD,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -133,6 +138,7 @@ async function main() {
   const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
     fallbackPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
+    oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.BUSD,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -180,6 +186,7 @@ async function main() {
   const { collateral: aDaiCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
+    oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: adaiStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -226,6 +233,7 @@ async function main() {
   const { collateral: aUsdcCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+    oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdcStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -272,6 +280,7 @@ async function main() {
   const { collateral: aUsdtCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+    oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdtStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -317,6 +326,7 @@ async function main() {
   const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
+    oracleError: fp('0.005').toString(), // 0.5%
     staticAToken: abusdStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -363,6 +373,7 @@ async function main() {
   const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
+    oracleError: fp('0.01').toString(), // 1%
     staticAToken: ausdpStaticToken.address,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -390,6 +401,7 @@ async function main() {
   const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
+    oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cDAI,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -418,6 +430,7 @@ async function main() {
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+    oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -446,6 +459,7 @@ async function main() {
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
+    oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -475,6 +489,7 @@ async function main() {
   const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
+    oracleError: fp('0.01').toString(), // 1%
     cToken: networkConfig[chainId].tokens.cUSDP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -503,7 +518,9 @@ async function main() {
   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
+    referenceUnitOracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
+    targetUnitOracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cWBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -532,12 +549,12 @@ async function main() {
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+    oracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     delayUntilDefault: bn('86400').toString(), // 24h
-    decimals: bn(18).toString(),
     comptroller: networkConfig[chainId].COMPTROLLER,
     oracleLib: phase1Deployment.oracleLib,
   })
@@ -551,7 +568,9 @@ async function main() {
   const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
+    referenceUnitOracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
+    targetUnitOracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -571,6 +590,7 @@ async function main() {
   const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+    oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -588,6 +608,7 @@ async function main() {
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
+    oracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
