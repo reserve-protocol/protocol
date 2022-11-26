@@ -243,7 +243,8 @@ See [yarn test:fast log file](../../../test-fast.log)
       )
     )   
 ```
-Mainnet addresses for chainlink added in [config file](../../../common/configuration.ts)
+Mainnet addresses for chainlink added in [config file](../../../common/configuration.ts).
+Don't forget coinbase oracle actualises cbEth exchange rate every 4H.
 
 2) Initialize/set the base tokens and the collateral should be ready.
 3) Creata Rtoken with cbEthCollateral
