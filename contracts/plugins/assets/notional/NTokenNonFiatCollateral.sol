@@ -27,11 +27,11 @@ contract NTokenNonFiatCollateral is NTokenFiatCollateral {
         IERC20Metadata _erc20Collateral,
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
+        uint16 _allowedDrop,
         bytes32 _targetName,
         uint256 _delayUntilDefault,
         address _notionalProxy,
-        uint192 _defaultThreshold,
-        uint192 _allowedDrop
+        uint192 _defaultThreshold
     )
     NTokenFiatCollateral(
         _fallbackPrice,
@@ -39,11 +39,11 @@ contract NTokenNonFiatCollateral is NTokenFiatCollateral {
         _erc20Collateral,
         _maxTradeVolume,
         _oracleTimeout,
+        _allowedDrop,
         _targetName,
         _delayUntilDefault,
         _notionalProxy,
-        _defaultThreshold,
-        _allowedDrop
+        _defaultThreshold
     )
     {
         require(address(_uoaPerTargetFeed) != address(0), "missing chainlink uaePerTarget feed");

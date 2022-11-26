@@ -177,11 +177,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           nUsdc.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
+          allowedDropBasisPoints,
           ethers.utils.formatBytes32String('USD'),
           delayUntilDefault,
           notionalProxy.address,
-          defaultThreshold,
-          allowedDropBasisPoints
+          defaultThreshold
         )
       )
 
@@ -339,11 +339,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            100, // 1%
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             ethers.constants.AddressZero,
-            defaultThreshold,
-            100 // 1%
+            defaultThreshold
           )
         ).to.be.revertedWith('Notional proxy address missing')
 
@@ -355,11 +355,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            10000, // 100%
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            10000 // 100%
+            defaultThreshold
           )
         ).to.be.revertedWith('Allowed refPerTok drop out of range')
 
@@ -371,11 +371,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            -1, // negative value
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            -1 // negative value
+            defaultThreshold
           )
         ).to.be.reverted
       })
@@ -577,11 +577,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            allowedDropBasisPoints,
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            allowedDropBasisPoints
+            defaultThreshold
           )
         )
 
@@ -602,11 +602,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            allowedDropBasisPoints,
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            allowedDropBasisPoints
+            defaultThreshold
           )
         )
 
@@ -638,11 +638,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            allowedDropBasisPoints,
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            allowedDropBasisPoints
+            defaultThreshold
           )
         )
 
@@ -696,11 +696,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           nToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
+          100, // 1%
           ethers.utils.formatBytes32String('USD'),
           delayUntilDefault,
           notionalProxy.address,
-          defaultThreshold,
-          100 // 1%
+          defaultThreshold
         )
 
         // Initialize internal state of max redPerTok
@@ -738,11 +738,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
             nUsdc.address,
             config.rTokenMaxTradeVolume,
             ORACLE_TIMEOUT,
+            allowedDropBasisPoints,
             ethers.utils.formatBytes32String('USD'),
             delayUntilDefault,
             notionalProxy.address,
-            defaultThreshold,
-            allowedDropBasisPoints
+            defaultThreshold
           )
         )
 
