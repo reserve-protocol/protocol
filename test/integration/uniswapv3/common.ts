@@ -5,6 +5,7 @@ import { UniswapV3WrapperMock } from '@typechain/UniswapV3WrapperMock'
 import { USDCMock } from '@typechain/USDCMock'
 import { BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
+const { getContractAddress } = require('@ethersproject/address')
 import { ITokens, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 
@@ -32,7 +33,8 @@ export async function defaultMintParams(chainId: number): Promise<TMintParams> {
     const daiAddress = tokens.DAI!
     const usdcAddress = tokens.USDC!
     const dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', daiAddress)
-    const usdc = <ERC20Mock>await ethers.getContractAt('ERC20Mock', usdcAddress)
+    const usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', usdcAddress)
+
     return {
         token0: daiAddress,
         token1: usdcAddress,
@@ -48,11 +50,20 @@ export async function defaultMintParams(chainId: number): Promise<TMintParams> {
     }
 }
 
-export async function deployUniswapV3WrapperMock(address: SignerWithAddress): Promise<UniswapV3WrapperMock> {
+export async function deployUniswapV3WrapperMock(
+    signer: SignerWithAddress,
+    mintParams: TMintParams
+): Promise<UniswapV3WrapperMock> {
     const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
+    const transactionCount = await signer.getTransactionCount()
+    const futureAddress = getContractAddress({
+        from: signer.address,
+        nonce: transactionCount + 2,
+    })
+
     const uniswapV3WrapperMock = await uniswapV3WrapperContractFactory
-        .connect(address)
-        .deploy('UniswapV3WrapperToken', 'U3W')
+        .connect(signer)
+        .deploy('UniswapV3WrapperToken', 'U3W', mintParams)
     return uniswapV3WrapperMock
 }
 

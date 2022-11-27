@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import {UniswapV3Wrapper} from "./UniswapV3Wrapper.sol";
+import { UniswapV3Wrapper } from "./UniswapV3Wrapper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
@@ -20,7 +20,11 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
 
     Values values;
 
-    constructor(string memory name_, string memory symbol_) UniswapV3Wrapper(name_, symbol_) {}
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        INonfungiblePositionManager.MintParams memory params
+    ) UniswapV3Wrapper(name_, symbol_, params) {}
 
     function positions()
         external
@@ -41,7 +45,7 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        return nonfungiblePositionManager.positions(deposit.tokenId);
+        return nonfungiblePositionManager.positions(_tokenId);
     }
 
     function updateUser(address user) public {
@@ -49,11 +53,11 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
     }
 
     function unclaimedRewards0(address user) public view returns (uint256) {
-        return _unclaimedRewards0[user];
+        return _unclaimedRewards[_rewardsTokens[0]][user];
     }
 
     function unclaimedRewards1(address user) public view returns (uint256) {
-        return _unclaimedRewards1[user];
+        return _unclaimedRewards[_rewardsTokens[1]][user];
     }
 
     function setFees(uint256 feesAmount0, uint256 feesAmount1) public {
@@ -65,20 +69,16 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
         values.sender = sender;
     }
 
-    function _collect(INonfungiblePositionManager.CollectParams calldata)
-        internal
-        override
-        returns (uint256 feesAmount0, uint256 feesAmount1)
-    {
-        TransferHelper.safeTransferFrom(deposit.token0, values.sender, address(this), values.feesAmount0);
-        TransferHelper.safeTransferFrom(deposit.token1, values.sender, address(this), values.feesAmount1);
+    function _collectRewards() internal override returns (uint256 feesAmount0, uint256 feesAmount1) {
+        TransferHelper.safeTransferFrom(_rewardsTokens[0], values.sender, address(this), values.feesAmount0);
+        TransferHelper.safeTransferFrom(_rewardsTokens[1], values.sender, address(this), values.feesAmount1);
         feesAmount0 = values.feesAmount0;
         feesAmount1 = values.feesAmount1;
         values.feesAmount0 = 0;
         values.feesAmount1 = 0;
     }
 
-    function _fees() internal view override returns (uint256 feesAmount0, uint256 feesAmount1) {
+    function _freshRewards() internal view override returns (uint256 feesAmount0, uint256 feesAmount1) {
         return (values.feesAmount0, values.feesAmount1);
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import {IUniswapV3Wrapper} from "./IUniswapV3Wrapper.sol";
+import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
@@ -15,6 +15,7 @@ import "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "./RewardSplitter.sol";
 
 /**
     @title Uniswap V3 Wrapper
@@ -22,16 +23,12 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
     @author Gene A. Tsvigun
     @author Vic G. Larson
   */
-contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
-    uint256 private constant PRECISION_RATIO = 1e21;
-    struct Deposit {
-        uint256 tokenId;
-        address token0;
-        address token1;
-    }
+contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard {
+    uint256 internal _tokenId; //TODO: make immutable
+    address internal immutable _token0;
+    address internal immutable _token1;
 
     bool isInitialized = false;
-    Deposit deposit;
 
     INonfungiblePositionManager immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
@@ -39,20 +36,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     IUniswapV3Factory immutable uniswapV3Factory = IUniswapV3Factory(0x1F98431c8aD98523631AE4a59f267346ea31F984);
     IUniswapV3Pool pool;
 
-    //rewards distribution
-    uint256 internal _lifetimeRewards0;
-    uint256 internal _lifetimeRewards1;
-    uint256 internal _lifetimeRewardsClaimed0;
-    uint256 internal _lifetimeRewardsClaimed1;
-    uint256 internal _accRewardsPerToken0;
-    uint256 internal _accRewardsPerToken1;
-
-    mapping(address => uint256) internal _userSnapshotRewardsPerToken0;
-    mapping(address => uint256) internal _userSnapshotRewardsPerToken1;
-    mapping(address => uint256) internal _unclaimedRewards0;
-    mapping(address => uint256) internal _unclaimedRewards1;
-
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        INonfungiblePositionManager.MintParams memory params
+    ) ERC20(name_, symbol_) RewardSplitter(_tokenArray(params)) {
+        _token0 = params.token0;
+        _token1 = params.token1;
+    }
 
     function mint(INonfungiblePositionManager.MintParams memory params)
         external
@@ -67,7 +58,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         require(!isInitialized, "Contract is already initialized here!");
         isInitialized = true;
 
-        pool = IUniswapV3Pool(uniswapV3Factory.getPool(params.token0, params.token1, params.fee));
+        pool = IUniswapV3Pool(uniswapV3Factory.getPool(_token0, _token1, params.fee));
 
         params.recipient = address(this);
         params.deadline = block.timestamp;
@@ -93,9 +84,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
             TransferHelper.safeTransfer(params.token1, msg.sender, refund1);
         }
 
-        deposit.token0 = params.token0;
-        deposit.token1 = params.token1;
-        deposit.tokenId = tokenId;
+        _tokenId = tokenId;
     }
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
@@ -109,14 +98,14 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(isInitialized, "Contract is not initialized!");
 
-        TransferHelper.safeTransferFrom(deposit.token0, msg.sender, address(this), amount0Desired);
-        TransferHelper.safeTransferFrom(deposit.token1, msg.sender, address(this), amount1Desired);
+        TransferHelper.safeTransferFrom(_token0, msg.sender, address(this), amount0Desired);
+        TransferHelper.safeTransferFrom(_token1, msg.sender, address(this), amount1Desired);
 
-        TransferHelper.safeApprove(deposit.token0, address(nonfungiblePositionManager), amount0Desired);
-        TransferHelper.safeApprove(deposit.token1, address(nonfungiblePositionManager), amount1Desired);
+        TransferHelper.safeApprove(_token0, address(nonfungiblePositionManager), amount0Desired);
+        TransferHelper.safeApprove(_token1, address(nonfungiblePositionManager), amount1Desired);
 
         INonfungiblePositionManager.IncreaseLiquidityParams memory increaseLiquidityParams;
-        increaseLiquidityParams.tokenId = deposit.tokenId;
+        increaseLiquidityParams.tokenId = _tokenId;
         increaseLiquidityParams.amount0Desired = amount0Desired;
         increaseLiquidityParams.amount1Desired = amount1Desired;
         increaseLiquidityParams.amount0Min = 0;
@@ -130,7 +119,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         require(isInitialized, "Contract is not initialized!");
 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
-        decreaseLiquidityParams.tokenId = deposit.tokenId;
+        decreaseLiquidityParams.tokenId = _tokenId;
         decreaseLiquidityParams.liquidity = liquidity;
         decreaseLiquidityParams.amount0Min = 0;
         decreaseLiquidityParams.amount1Min = 0;
@@ -138,7 +127,7 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
 
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams(
-            deposit.tokenId,
+            _tokenId,
             msg.sender,
             uint128(amount0),
             uint128(amount1)
@@ -158,23 +147,11 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
         )
     {
         require(isInitialized, "Contract is not initialized!");
-        _updateRewards();
-        _updateUser(msg.sender);
-        if (
-            _unclaimedRewards0[msg.sender] > IERC20(deposit.token0).balanceOf(address(this)) ||
-            _unclaimedRewards1[msg.sender] > IERC20(deposit.token1).balanceOf(address(this))
-        ) {
-            _claimFees();
-        }
-        TransferHelper.safeTransfer(deposit.token0, recipient, _unclaimedRewards0[msg.sender]);
-        TransferHelper.safeTransfer(deposit.token1, recipient, _unclaimedRewards1[msg.sender]);
-        _unclaimedRewards0[msg.sender] = 0;
-        _unclaimedRewards1[msg.sender] = 0;
-        return (deposit.token0, deposit.token1, _unclaimedRewards0[msg.sender], _unclaimedRewards1[msg.sender]);
+        return _claimRewardsShareTo(recipient);
     }
 
     function positionId() external view returns (uint256) {
-        return deposit.tokenId;
+        return _tokenId;
     }
 
     function max(uint8 a, uint8 b) internal pure returns (uint8) {
@@ -194,11 +171,11 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(isInitialized, "Contract is not initialized!");
 
-        token0 = deposit.token0;
-        token1 = deposit.token1;
+        token0 = _rewardsTokens[0];
+        token1 = _rewardsTokens[1];
         liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
         (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
-        (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(deposit.tokenId);
+        (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(_tokenId);
 
         if (tick < tickLower) {
             // current tick is below the passed range; liquidity can only become in range by crossing from left to
@@ -242,109 +219,28 @@ contract UniswapV3Wrapper is ERC20, IUniswapV3Wrapper, ReentrancyGuard {
     {
         require(isInitialized, "Contract is not initialized!");
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
-        (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, deposit.tokenId, sqrtRatioX96);
-        token0 = deposit.token0;
-        token1 = deposit.token1;
+        (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, _tokenId, sqrtRatioX96);
+        token0 = _rewardsTokens[0];
+        token1 = _rewardsTokens[1];
     }
 
-    /**
-     * @notice Updates rewards both sender and receiver of each transfer
-     * @param from The address of the sender of tokens
-     * @param to The address of the receiver of tokens
-     */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256
-    ) internal override {
-        _updateRewards();
-        if (from != address(0)) {
-            _updateUser(from);
-        }
-        if (to != address(0)) {
-            _updateUser(to);
-        }
+    function _freshRewards() internal view virtual override returns (uint256 feesAmount0, uint256 feesAmount1) {
+        (feesAmount0, feesAmount1) = PositionValue.fees(nonfungiblePositionManager, _tokenId);
     }
 
-    function _updateRewards() internal {
-        uint256 supply = totalSupply();
-        if (supply == 0) {
-            return;
-        }
-        (uint256 freshRewards0, uint256 freshRewards1) = _fees();
-
-        uint256 lifetimeRewards0 = _lifetimeRewardsClaimed0 + freshRewards0;
-        uint256 lifetimeRewards1 = _lifetimeRewardsClaimed1 + freshRewards1;
-
-        uint256 rewardsAccrued0 = lifetimeRewards0 - _lifetimeRewards0;
-        uint256 rewardsAccrued1 = lifetimeRewards1 - _lifetimeRewards1;
-
-        _accRewardsPerToken0 = _accRewardsPerToken0 + (rewardsAccrued0 * PRECISION_RATIO) / supply;
-        _accRewardsPerToken1 = _accRewardsPerToken1 + (rewardsAccrued1 * PRECISION_RATIO) / supply;
-        _lifetimeRewards0 = lifetimeRewards0;
-        _lifetimeRewards1 = lifetimeRewards1;
-    }
-
-    /**
-     * @notice Updates rewards both a single user
-     * @param user The address of the sender or receiver of tokens
-     */
-    function _updateUser(address user) internal {
-        uint256 balance = balanceOf(user);
-
-        (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
-
-        _unclaimedRewards0[user] += pending0;
-        _unclaimedRewards1[user] += pending1;
-        _updateUserSnapshotRewardsPerToken(user);
-    }
-
-    /**
-     * @notice Compute pending rewards for a user.
-     * @param user The user to compute pending rewards for
-     * @param balance The balance of the user
-     * @return pending0 The amount of pending rewards for token0
-     * @return pending1 The amount of pending rewards for token1
-     */
-    function _getPendingRewards(address user, uint256 balance)
-        internal
-        view
-        returns (uint256 pending0, uint256 pending1)
-    {
-        pending0 = (balance * (_accRewardsPerToken0 - _userSnapshotRewardsPerToken0[user])) / PRECISION_RATIO;
-        pending1 = (balance * (_accRewardsPerToken1 - _userSnapshotRewardsPerToken1[user])) / PRECISION_RATIO;
-    }
-
-    /**
-     * @notice Update the user's snapshot of rewards per token
-     * @param user The user to update
-     */
-    function _updateUserSnapshotRewardsPerToken(address user) internal {
-        _userSnapshotRewardsPerToken0[user] = _accRewardsPerToken0;
-        _userSnapshotRewardsPerToken1[user] = _accRewardsPerToken1;
-    }
-
-    function _fees() internal view virtual returns (uint256 feesAmount0, uint256 feesAmount1) {
-        (feesAmount0, feesAmount1) = PositionValue.fees(nonfungiblePositionManager, deposit.tokenId);
-    }
-
-    function _collect(INonfungiblePositionManager.CollectParams memory collectParams)
-        internal
-        virtual
-        returns (uint256 amount0, uint256 amount1)
-    {
-        return nonfungiblePositionManager.collect(collectParams);
-    }
-
-    function _claimFees() internal {
+    function _collectRewards() internal virtual override returns (uint256 amount0, uint256 amount1) {
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams(
-            deposit.tokenId,
+            _tokenId,
             address(this),
             type(uint128).max,
             type(uint128).max
         );
-        (uint256 amount0, uint256 amount1) = _collect(collectParams);
-        _lifetimeRewardsClaimed0 += amount0;
-        _lifetimeRewardsClaimed1 += amount1;
+        return nonfungiblePositionManager.collect(collectParams);
+    }
+
+    function _tokenArray(INonfungiblePositionManager.MintParams memory p) internal pure returns (address[] memory arr) {
+        arr = new address[](2);
+        arr[0] = p.token0;
+        arr[1] = p.token1;
     }
 }

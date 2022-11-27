@@ -81,9 +81,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const asset0 = dai
             const asset1 = usdc
 
-            const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner)
-
             const mintParams: TMintParams = await defaultMintParams(chainId)
+            const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner, mintParams)
+
             await waitForTx(await asset0.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount0Desired))
             await waitForTx(await asset1.connect(addr1).approve(uniswapV3Wrapper.address, mintParams.amount1Desired))
             await waitForTx(await uniswapV3Wrapper.connect(addr1).mint(mintParams))
@@ -93,9 +93,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const asset0 = dai
             const asset1 = usdc
 
-            const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner)
-
             const mintParams: TMintParams = await defaultMintParams(chainId)
+            const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(owner, mintParams)
 
             await logBalances('Balances before UniswapV3Wrapper mint:', [addr1], [asset0, asset1, uniswapV3Wrapper])
 
@@ -170,11 +169,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
             const RTOKEN_MAX_TRADE_VALUE = fp('1e6')
 
-            const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(owner)
             const asset0 = dai
             const asset1 = usdc
 
             const mintParams: TMintParams = await defaultMintParams(chainId)
+            const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(owner, mintParams)
             await waitForTx(
                 await asset0.connect(addr1).approve(uniswapV3WrapperMock.address, mintParams.amount0Desired)
             )
@@ -340,11 +339,11 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             //1. addr1 creates position and mints 200U3W
             const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
+            const mintParams: TMintParams = await defaultMintParams(chainId)
             const uniswapV3WrapperMock: UniswapV3WrapperMock = <UniswapV3WrapperMock>(
-                await uniswapV3WrapperContractFactory.connect(owner).deploy('UniswapV3WrapperToken', 'U3W')
+                await uniswapV3WrapperContractFactory.connect(owner).deploy('UniswapV3WrapperToken', 'U3W', mintParams)
             )
 
-            const mintParams: TMintParams = await defaultMintParams(chainId)
             const asset0addr1 = await asset0.connect(addr1)
             const asset1addr1 = await asset1.connect(addr1)
             await waitForTx(await asset0addr1.approve(uniswapV3WrapperMock.address, mintParams.amount0Desired))
@@ -570,3 +569,4 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
 //TODO check that fees earned remain intact after decreaseLiquidity calls
 //TODO @etsvigun cleanup helpers
+//https://github.com/reserve-protocol/protocol/blob/master/test/integration/individual-collateral/CTokenFiatCollateral.test.ts
