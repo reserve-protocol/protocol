@@ -28,8 +28,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     address internal immutable _token0;
     address internal immutable _token1;
 
-    bool isInitialized = false;
-
     INonfungiblePositionManager immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
@@ -39,15 +37,16 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     constructor(
         string memory name_,
         string memory symbol_,
-        INonfungiblePositionManager.MintParams memory params
+        INonfungiblePositionManager.MintParams memory params,
+        address liquidityProvider
     ) ERC20(name_, symbol_) RewardSplitter(_tokenArray(params)) {
         _token0 = params.token0;
         _token1 = params.token1;
+        _mint(params, liquidityProvider);
     }
 
-    function mint(INonfungiblePositionManager.MintParams memory params)
-        external
-        nonReentrant
+    function _mint(INonfungiblePositionManager.MintParams memory params, address liquidityProvider)
+        internal
         returns (
             uint256 tokenId,
             uint128 liquidity,
@@ -55,16 +54,13 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        require(!isInitialized, "Contract is already initialized here!");
-        isInitialized = true;
-
         pool = IUniswapV3Pool(uniswapV3Factory.getPool(_token0, _token1, params.fee));
 
         params.recipient = address(this);
         params.deadline = block.timestamp;
 
-        TransferHelper.safeTransferFrom(params.token0, msg.sender, address(this), params.amount0Desired);
-        TransferHelper.safeTransferFrom(params.token1, msg.sender, address(this), params.amount1Desired);
+        TransferHelper.safeTransferFrom(params.token0, liquidityProvider, address(this), params.amount0Desired);
+        TransferHelper.safeTransferFrom(params.token1, liquidityProvider, address(this), params.amount1Desired);
 
         TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager), params.amount0Desired);
         TransferHelper.safeApprove(params.token1, address(nonfungiblePositionManager), params.amount1Desired);
@@ -75,13 +71,13 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         if (amount0 < params.amount0Desired) {
             TransferHelper.safeApprove(params.token0, address(nonfungiblePositionManager), 0);
             uint256 refund0 = params.amount0Desired - amount0;
-            TransferHelper.safeTransfer(params.token0, msg.sender, refund0);
+            TransferHelper.safeTransfer(params.token0, liquidityProvider, refund0);
         }
 
         if (amount1 < params.amount1Desired) {
             TransferHelper.safeApprove(params.token1, address(nonfungiblePositionManager), 0);
             uint256 refund1 = params.amount1Desired - amount1;
-            TransferHelper.safeTransfer(params.token1, msg.sender, refund1);
+            TransferHelper.safeTransfer(params.token1, liquidityProvider, refund1);
         }
 
         _tokenId = tokenId;
@@ -96,8 +92,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        require(isInitialized, "Contract is not initialized!");
-
         TransferHelper.safeTransferFrom(_token0, msg.sender, address(this), amount0Desired);
         TransferHelper.safeTransferFrom(_token1, msg.sender, address(this), amount1Desired);
 
@@ -116,8 +110,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     }
 
     function decreaseLiquidity(uint128 liquidity) external nonReentrant returns (uint256 amount0, uint256 amount1) {
-        require(isInitialized, "Contract is not initialized!");
-
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = _tokenId;
         decreaseLiquidityParams.liquidity = liquidity;
@@ -146,7 +138,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        require(isInitialized, "Contract is not initialized!");
         return _claimRewardsShareTo(recipient);
     }
 
@@ -169,8 +160,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint128 liquidity
         )
     {
-        require(isInitialized, "Contract is not initialized!");
-
         token0 = _rewardsTokens[0];
         token1 = _rewardsTokens[1];
         liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
@@ -217,7 +206,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        require(isInitialized, "Contract is not initialized!");
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
         (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, _tokenId, sqrtRatioX96);
         token0 = _rewardsTokens[0];

@@ -6,8 +6,8 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
 /**
-    @title Uniswap V3 Wrapper
-    @notice ERC20 Wrapper token for Uniswap V3 positions
+    @title Uniswap V3 Wrapper Mock
+    @notice ERC20 Wrapper token for Uniswap V3 positions mock
     @author Gene A. Tsvigun
     @author Vic G. Larson
   */
@@ -23,8 +23,9 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
     constructor(
         string memory name_,
         string memory symbol_,
-        INonfungiblePositionManager.MintParams memory params
-    ) UniswapV3Wrapper(name_, symbol_, params) {}
+        INonfungiblePositionManager.MintParams memory params,
+        address liquidityProvider
+    ) UniswapV3Wrapper(name_, symbol_, params, liquidityProvider) {}
 
     function positions()
         external
@@ -44,7 +45,6 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
             uint128 tokensOwed1
         )
     {
-        require(isInitialized, "Contract is not initialized!");
         return nonfungiblePositionManager.positions(_tokenId);
     }
 

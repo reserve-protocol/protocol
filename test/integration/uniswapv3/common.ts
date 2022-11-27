@@ -8,6 +8,7 @@ import { ethers } from 'hardhat'
 const { getContractAddress } = require('@ethersproject/address')
 import { ITokens, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
+import { waitForTx } from '../utils'
 
 /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
 export const MIN_TICK = -887272
@@ -51,19 +52,40 @@ export async function defaultMintParams(chainId: number): Promise<TMintParams> {
 }
 
 export async function deployUniswapV3WrapperMock(
+    chainId: number,
     signer: SignerWithAddress,
-    mintParams: TMintParams
+    mintParams: TMintParams,
+    liquiDityProvider: SignerWithAddress = signer
 ): Promise<UniswapV3WrapperMock> {
+    const tokens: ITokens = networkConfig[chainId].tokens
+    const daiAddress = tokens.DAI!
+    const usdcAddress = tokens.USDC!
+    const dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', daiAddress)
+    const usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', usdcAddress)
+
     const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
     const transactionCount = await signer.getTransactionCount()
+
+    // just in case we want to deploy it with
+    // the same address for deployer and liquidity provider
     const futureAddress = getContractAddress({
         from: signer.address,
-        nonce: transactionCount + 2,
+        nonce: transactionCount + (liquiDityProvider == signer ? 2 : 0),
     })
+
+    await waitForTx(await dai.connect(liquiDityProvider).approve(futureAddress, mintParams.amount0Desired))
+    await waitForTx(await usdc.connect(liquiDityProvider).approve(futureAddress, mintParams.amount1Desired))
 
     const uniswapV3WrapperMock = await uniswapV3WrapperContractFactory
         .connect(signer)
-        .deploy('UniswapV3WrapperToken', 'U3W', mintParams)
+        .deploy('UniswapV3WrapperToken', 'U3W', mintParams, liquiDityProvider.address)
+    if (liquiDityProvider != signer) {
+        await waitForTx(
+            await uniswapV3WrapperMock
+                .connect(signer)
+                .transfer(liquiDityProvider.address, await uniswapV3WrapperMock.totalSupply())
+        )
+    }
     return uniswapV3WrapperMock
 }
 

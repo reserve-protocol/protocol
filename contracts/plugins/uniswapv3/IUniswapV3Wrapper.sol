@@ -5,15 +5,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
+/**
+    @title Uniswap V3 Wrapper Interface
+    @notice ERC20 Wrapper token for Uniswap V3 positions
+    @author Gene A. Tsvigun
+    @author Vic G. Larson
+  */
 interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
-    function mint(INonfungiblePositionManager.MintParams memory params)
-        external
-        returns (
-            uint256 tokenId,
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        );
+    //TODO events
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
         external
