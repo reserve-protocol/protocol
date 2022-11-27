@@ -23,7 +23,7 @@ import {
   MAX_UINT192,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
-import { setOraclePrice } from './utils/oracles'
+import { expectPrice, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
 import {
   Asset,
@@ -301,9 +301,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check BU price
-      const [lowPrice, highPrice] = await basketHandler.price()
-      expect(lowPrice).to.equal(fp('0.99'))
-      expect(highPrice).to.equal(fp('1.01'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
     })
   })
 
@@ -1539,9 +1537,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should exclude defaulted collateral when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [lowPrice, highPrice] = await basketHandler.price()
-      expect(lowPrice).to.equal(fp('0.99'))
-      expect(highPrice).to.equal(fp('1.01'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
 
       // Default one of the collaterals
       // Set Token1 to default - 50% price reduction
@@ -1560,8 +1556,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check BU price
-      const [newLowPrice, newHighPrice] = await basketHandler.price()
-      expect(newLowPrice.add(newHighPrice).div(2)).to.equal(fp('0.75')) // no insurance to buffer the price
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
 
       // Price should recover after basket change
 
@@ -1580,16 +1575,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await basketHandler.refreshBasket()
 
       // Check BU price
-      const [newNewLowPrice, newNewHighPrice] = await basketHandler.price()
-      expect(newNewLowPrice.add(newNewHighPrice).div(2)).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
     })
 
     it('Should handle collateral wih price = 0 when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [lowPrice, highPrice] = await basketHandler.price()
-      expect(lowPrice).to.equal(fp('0.99'))
-      expect(highPrice).to.equal(fp('1.01'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
 
       // Set fallback to 0 for one of the collaterals (swapping the collateral)
       const ZeroPriceATokenFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -1618,9 +1610,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      const [newLowPrice, _] = await basketHandler.price()
+      const [newLowPrice, newHighPrice] = await basketHandler.price()
       expect(newLowPrice).to.equal(fp('0.25').sub(fp('0.25').mul(ORACLE_ERROR).div(fp('1'))))
-      // TODO double-check that it's ok that newHighPrice is like FIX_MAX/4
+      expect(newHighPrice).to.equal(MAX_UINT192)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -1786,10 +1778,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
       // Check BU price
-      const [lowPrice, highPrice] = await basketHandler.price()
-      const onePct = fp('0.75').mul(ORACLE_ERROR).div(fp('1'))
-      expect(lowPrice).to.equal(fp('0.75').sub(onePct))
-      expect(highPrice).to.equal(fp('0.75').add(onePct))
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
     })
 
     // TODO I think we lost coverage here because the behavior changed
@@ -1819,10 +1808,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
       // Check BU price
-      const [lowPrice, highPrice] = await basketHandler.price()
-      const onePct = fp('0.75').mul(ORACLE_ERROR).div(fp('1'))
-      expect(lowPrice).to.equal(fp('0.75').sub(onePct))
-      expect(highPrice).to.equal(fp('0.75').add(onePct))
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
     })
 
     it('Should not put backup tokens with different targetName in the basket', async () => {

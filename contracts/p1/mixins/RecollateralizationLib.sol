@@ -258,10 +258,12 @@ library RecollateralizationLibP1 {
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsLow = lowPrice.mul(bal, FLOOR);
+            assetsLow += lowPrice.mul(bal, FLOOR);
+            // += is same as Fix.plus
 
             // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsHigh = highPrice.mul(bal, FLOOR);
+            assetsHigh += highPrice.mul(bal, FLOOR);
+            // += is same as Fix.plus
 
             // Accumulate potential losses to dust
             potentialDustLoss = potentialDustLoss.plus(rules.minTradeVolume);
