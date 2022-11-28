@@ -1275,13 +1275,8 @@ describe('The Chaos Operations scenario', () => {
   it('maintains basket invariants after refresh', async () => {
     await scenario.setBackupConfig(0)
     await scenario.unregisterAsset(0)
-    // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
-    await comp.basketHandler.savePrev()
-    await whileImpersonating(scenario.address, async (asOwner) => {
-      await comp.basketHandler.connect(asOwner).refreshBasket()
-    })
+    expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.equal(true)
     expect(await comp.basketHandler.isValidBasketAfterRefresh()).to.be.true
-
     expect(await comp.basketHandler.status()).to.equal(CollateralStatus.DISABLED)
   })
 
