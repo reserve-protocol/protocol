@@ -35,6 +35,15 @@ contract ReserveWrappedFCash is ERC20 {
         currencyId = _currencyId;
     }
 
+    function refPerTok() external returns (uint256 rate){
+        int256 underlyingValue = notionalProxy.getPresentfCashValue(
+            currencyId, getMaturity(), int88(int256(balanceOf(_msgSender()))), block.timestamp, false
+        );
+
+        // given the amount of deposited tokens, compute the value of a single one
+        rate = uint256(underlyingValue) * 10 ** underlyingAsset.decimals() / deposited[_msgSender()];
+    }
+
     function deposit(uint256 amount) external {
         require(amount > 0, "empty deposit amount");
 
@@ -83,15 +92,24 @@ contract ReserveWrappedFCash is ERC20 {
         wfCash.redeemToUnderlying(amount, _msgSender(), 0);
     }
 
-    function refPerTok() external returns (uint256 rate){
-        int256 underlyingValue = notionalProxy.getPresentfCashValue(
-            currencyId, getMaturity(), int88(int256(balanceOf(_msgSender()))), block.timestamp, false
-        );
-
-        // given the amount of deposited tokens, compute the value of a single one
-        rate = uint256(underlyingValue) * 10 ** underlyingAsset.decimals() / deposited[_msgSender()];
+    function depositedBy(address account) external view returns (uint256 amount) {
+        amount = deposited[account];
     }
 
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256 amount
+    ) internal override {
+        if (from == address(0) || to == address(0)) return;
+
+        uint256 balance = balanceOf(from);
+
+        uint256 percentageToMove = computePercentage(amount, balance);
+        uint256 depositedToMove = deposited[from] * percentageToMove / 1e18;
+
+        deposited[to] = deposited[to] + depositedToMove;
+    }
 
     /** Helpers **/
 
