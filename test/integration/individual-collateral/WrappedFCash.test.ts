@@ -133,4 +133,17 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(depositedAmount2).to.equal('49868334')
     })
   })
+
+  describe('RefPerTok compute', () => {
+    it('Should return an initial refPerTok below 1', async () => {
+      const amount = bn('100e6')
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).deposit(amount)
+
+      const refPerTok = await wfCash.connect(addr1).refPerTok()
+
+      expect(refPerTok).to.be.closeTo(bn('1e8'), bn('5e6'))
+    })
+  })
 })

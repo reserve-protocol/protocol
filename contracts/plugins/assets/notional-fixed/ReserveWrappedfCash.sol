@@ -35,13 +35,24 @@ contract ReserveWrappedFCash is ERC20 {
         currencyId = _currencyId;
     }
 
-    function refPerTok() external returns (uint256 rate){
-        int256 underlyingValue = notionalProxy.getPresentfCashValue(
-            currencyId, getMaturity(), int88(int256(balanceOf(_msgSender()))), block.timestamp, false
-        );
+    /// @notice This function will return the ratio of appreciation of the deposited assets
+    ///   of the calling account.
+    /// @return rate The ratio of value of a deposited token to what it's currently worth
+    /// @dev This rate might decrease when re-investing because of the fee to enter a market
+    function refPerTok() external view returns (uint256 rate) {
+        uint256 depositedAmount = deposited[_msgSender()];
 
-        // given the amount of deposited tokens, compute the value of a single one
-        rate = uint256(underlyingValue) * 10 ** underlyingAsset.decimals() / deposited[_msgSender()];
+        if (depositedAmount != 0) {
+            int256 underlyingValue = notionalProxy.getPresentfCashValue(
+                currencyId, maturity[_msgSender()], int88(int256(balanceOf(_msgSender()))), block.timestamp, false
+            );
+
+            // given the amount of deposited tokens, compute the value of a single one
+            rate = uint256(underlyingValue) * 10 ** underlyingAsset.decimals() / depositedAmount;
+        }
+        else {
+            rate = 0;
+        }
     }
 
     function deposit(uint256 amount) external {
@@ -92,10 +103,17 @@ contract ReserveWrappedFCash is ERC20 {
         wfCash.redeemToUnderlying(amount, _msgSender(), 0);
     }
 
+    /// @notice Returns the amount of tokens deposited by `account`
     function depositedBy(address account) external view returns (uint256 amount) {
         amount = deposited[account];
     }
 
+    /** Internal helpers **/
+
+    /// @dev Hook that is called before any transfer of tokens.
+    ///
+    /// It is used to transfer the `deposited` amounts when tokens
+    /// are transferred to a different account.
     function _beforeTokenTransfer(
         address from,
         address to,
@@ -110,8 +128,6 @@ contract ReserveWrappedFCash is ERC20 {
 
         deposited[to] = deposited[to] + depositedToMove;
     }
-
-    /** Helpers **/
 
     /// Compute the cost of depositing `amount` into the selected market
     ///
