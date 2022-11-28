@@ -5,13 +5,12 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
-import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
+import { CollateralStatus, RoundingMode, TradeStatus, ZERO_ADDRESS } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
-import { addr, PriceModelKind, RebalancingScenarioStatus } from './common'
-import { compileProject } from '@ethereum-waffle/compiler'
+import { addr, CONFIG, PriceModelKind, RebalancingScenarioStatus } from './common'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
@@ -1245,7 +1244,6 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('has only initially-true properties', async () => {
-    expect(await scenario.echidna_isFullyCollateralizedIfNotRebalancing()).to.be.true
     expect(await scenario.echidna_quoteProportionalToBasketIfNotRebalancing()).to.be.true
     expect(await scenario.echidna_RTokenRateNeverFallInNormalOps()).to.be.true
     expect(await scenario.echidna_mainInvariants()).to.be.true
@@ -1261,7 +1259,9 @@ describe('The Rebalancing scenario', () => {
     expect(await scenario.echidna_stRSRInvariants()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketIsNoopDuringAfterRebalancing()).to.be.true
     expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.be.true
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
     expect(await scenario.callStatic.echidna_rebalancingProperties()).to.be.true
+    expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
 
   it('does not fail on refreshBasket after just one call to updatePrice', async () => {
@@ -1276,15 +1276,11 @@ describe('The Rebalancing scenario', () => {
   })
 
   it('maintains basket invariants after refresh', async () => {
+    await scenario.unregisterAsset(8)
     await scenario.setBackupConfig(0)
     await scenario.unregisterAsset(0)
-    // emulate echidna_refreshBasketProperties, since it's not a view and we need its value
-    await comp.basketHandler.savePrev()
-    await whileImpersonating(scenario.address, async (asOwner) => {
-      await comp.basketHandler.connect(asOwner).refreshBasket()
-    })
+    expect(await scenario.callStatic.echidna_refreshBasketProperties()).to.equal(true)
     expect(await comp.basketHandler.isValidBasketAfterRefresh()).to.be.true
-
     expect(await comp.basketHandler.status()).to.equal(CollateralStatus.DISABLED)
   })
 
@@ -1369,6 +1365,11 @@ describe('The Rebalancing scenario', () => {
     // We are still in initial state
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
 
+    // Cannot save basket range - Properties hold
+    await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
     // Refresh basket - will perform basket switch - New basket: CA1 and CA0
     await scenario.refreshBasket()
 
@@ -1404,9 +1405,21 @@ describe('The Rebalancing scenario', () => {
 
     // Check echidna property is true at all times in the process
     expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Store basket range for future property check
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Manage backing tokens, will create auction
     await scenario.manageBackingTokens()
+
+    // Check property holds when trade is open and backing manager has less assets
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Noop during rebalancing - always true
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Check trade
     let tradeInBackingManager = await ConAt(
@@ -1436,6 +1449,7 @@ describe('The Rebalancing scenario', () => {
 
     // Check echidna property is true at all times in the process
     expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Settle trades - set some seed > 0
     await scenario.pushSeedForTrades(fp(1000000))
@@ -1443,6 +1457,7 @@ describe('The Rebalancing scenario', () => {
 
     // Check echidna property is true at all times in the process
     expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // State changed to Rebalancing Done
     // expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_DONE)
@@ -1452,6 +1467,10 @@ describe('The Rebalancing scenario', () => {
     // Check balances after
     expect(await c2.balanceOf(tradeInBackingManager.address)).to.equal(0)
     expect(await c0.balanceOf(comp.backingManager.address)).to.be.gt(0)
+
+    // Check range is correct
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
     // Manage backing tokens, will create auction for RSR
     await scenario.manageBackingTokens()
@@ -1485,5 +1504,218 @@ describe('The Rebalancing scenario', () => {
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_DONE)
 
     expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+    // Property noop after rebalancing, returns true. Properties hold.
+    await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Once on this state we cannot force another rebalancing
+    await expect(scenario.setPrimeBasket()).to.be.revertedWith('Not valid for current state')
+
+    // We cam still do normal operations
+    // Stake more RSR
+    await scenario.connect(alice).stake(1000n * exa)
+
+    // Can only do price updates that dont cause default
+    const defaultTokenId = Number(tokenIDs.get('CA0'))
+    const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(c0.address))
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    await scenario.updatePrice(defaultTokenId, 0, fp(1), fp(1), fp(1)) // Would default CA0
+
+    // Call main poke to perform refresh on assets
+    await scenario.poke()
+
+    // Collateral not defaulted
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+    expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
+  })
+
+  it('can manage scenario states - collateral default - partially covered by RSR', async () => {
+    // Scenario starts in BEFORE_REBALANCING
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
+
+    // Set a simple basket
+    const c0 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA0'))
+    const c2 = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
+
+    // Setup a simple basket of two tokens, only target type A
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA1') as number, fp('0.5').sub(1))
+    await scenario.pushBackingForPrimeBasket(tokenIDs.get('CA2') as number, fp('0.5').sub(1))
+    await scenario.setPrimeBasket()
+
+    // Switch basket
+    await scenario.refreshBasket()
+
+    // Set backup config CA0 as backup
+    await scenario.pushBackingForBackup(tokenIDs.get('CA0') as number)
+    await scenario.setBackupConfig(0)
+
+    // Status remains - still fully collateralized as no RTokens were issued
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
+
+    // Issue some RTokens
+    // As Alice, make allowances
+    const [tokenAddrs, amts] = await comp.rToken.quote(400000n * exa, RoundingMode.CEIL)
+    for (let i = 0; i < amts.length; i++) {
+      const token = await ConAt('ERC20Fuzz', tokenAddrs[i])
+      await token.connect(alice).approve(comp.rToken.address, amts[i])
+    }
+    // Issue RTokens
+    await scenario.connect(alice).justIssue(400000n * exa)
+
+    // Wait, then vest as Alice
+    await helpers.mine(100)
+    await scenario.connect(alice).vestIssuance(1)
+
+    // No c0 tokens in backing manager
+    expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
+
+    // Stake some amount of RSR
+    await scenario.connect(alice).stake(100000n * exa)
+
+    // Default one token in the basket CA2
+    const defaultTokenId = Number(tokenIDs.get('CA2'))
+    const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(c2.address))
+    expect(await coll.status()).to.equal(CollateralStatus.SOUND)
+    expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+    await scenario.updatePrice(defaultTokenId, 0, fp(1), fp(1), fp(1)) // Will default CA2
+    // Call main poke to perform refresh on assets
+    await scenario.poke()
+
+    // Collateral defaulted
+    expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
+    expect(await comp.basketHandler.fullyCollateralized()).to.equal(false)
+
+    // Trying to manage tokens will fail due to unsound basket
+    await scenario.pushBackingToManage(2)
+    await scenario.pushBackingToManage(4)
+    await expect(scenario.manageBackingTokens()).to.be.reverted
+
+    // We are still in initial state
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.BEFORE_REBALANCING)
+
+    // Cannot save basket range - Properties hold
+    await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Refresh basket - will perform basket switch - New basket: CA1 and CA0
+    await scenario.refreshBasket()
+
+    // Rebalancing has started
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
+
+    // Check echidna property is true at all times in the process
+    await scenario.pushSeedForTrades(fp(100000))
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Store basket range for future property check
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Manage backing tokens, will create auction
+    await scenario.manageBackingTokens()
+
+    // Check property holds when trade is open and backing manager has less assets
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Noop during rebalancing - always true
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Check trade
+    let tradeInBackingManager = await ConAt(
+      'TradeMock',
+      await comp.backingManager.trades(c2.address)
+    )
+    let tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+    expect(tradeInBackingManager.address).to.equal(tradeInBroker.address)
+
+    expect(await comp.backingManager.tradesOpen()).to.equal(1)
+    expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
+    expect(await tradeInBackingManager.canSettle()).to.be.false
+
+    // All c2 tokens moved to trader
+    expect(await c2.balanceOf(comp.backingManager.address)).to.equal(0)
+    expect(await c2.balanceOf(tradeInBackingManager.address)).to.be.gt(0)
+
+    // Wait and settle the trade
+    await advanceTime(await comp.broker.auctionLength())
+    expect(await tradeInBackingManager.canSettle()).to.be.true
+
+    // No C0 tokens in backing manager
+    expect(await c0.balanceOf(comp.backingManager.address)).to.equal(0)
+
+    // State remains ongoing
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_ONGOING)
+
+    // Check echidna property is true at all times in the process
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Settle trades - will use previous seed > 0
+    await scenario.settleTrades()
+
+    // Check echidna property is true at all times in the process
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    expect(await tradeInBackingManager.status()).to.equal(TradeStatus.CLOSED)
+    expect(await comp.backingManager.tradesOpen()).to.equal(0)
+
+    // Check balances after
+    expect(await c2.balanceOf(tradeInBackingManager.address)).to.equal(0)
+    expect(await c0.balanceOf(comp.backingManager.address)).to.be.gt(0)
+
+    // Check range is correct
+    await scenario.saveBasketRange()
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // Manage backing tokens, will create auction for RSR
+    await scenario.manageBackingTokens()
+
+    tradeInBackingManager = await ConAt(
+      'TradeMock',
+      await comp.backingManager.trades(comp.rsr.address)
+    )
+    tradeInBroker = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+    expect(tradeInBackingManager.address).to.equal(tradeInBroker.address)
+
+    expect(await comp.backingManager.tradesOpen()).to.equal(1)
+    expect(await tradeInBackingManager.status()).to.equal(TradeStatus.OPEN)
+    expect(await tradeInBackingManager.canSettle()).to.be.false
+
+    // RSR tokens moved to trader
+    expect(await comp.rsr.balanceOf(tradeInBackingManager.address)).to.be.gt(0)
+
+    // Wait and settle the trade
+    await advanceTime(await comp.broker.auctionLength())
+    expect(await tradeInBackingManager.canSettle()).to.be.true
+
+    // Settle trades - set some seed > 0
+    await scenario.pushSeedForTrades(fp(1000000))
+    await scenario.settleTrades()
+
+    // Check if another trade is created
+    await scenario.manageBackingTokens()
+
+    expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+    // Property noop after rebalancing, returns true. Properties hold.
+    expect(await scenario.callStatic.echidna_rebalancingProperties()).to.equal(true)
+    await expect(scenario.saveBasketRange()).to.be.revertedWith('Not valid for current state')
+    expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
+
+    // State changed to Rebalancing Done
+    expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_DONE)
+
+    expect(await comp.basketHandler.fullyCollateralized()).to.equal(true)
+
+    expect(await scenario.echidna_isFullyCollateralizedAfterRebalancing()).to.be.true
   })
 })
