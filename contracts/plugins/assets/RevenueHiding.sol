@@ -15,8 +15,8 @@ abstract contract RevenueHiding is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    uint192 internal maxRefPerTok; // max rate previously seen {ref/tok} // D18
     uint192 private immutable marginRatio; // max drop allowed
-    uint192 private maxRefPerTok; // max rate previously seen {ref/tok} // D18
 
     constructor(
         uint192 _fallbackPrice,
@@ -28,18 +28,17 @@ abstract contract RevenueHiding is Collateral {
         uint256 _delayUntilDefault,
         uint192 _allowedDropBasisPoints
     )
-    Collateral(
-        _fallbackPrice,
-        _chainlinkFeed,
-        _erc20Collateral,
-        _maxTradeVolume,
-        _oracleTimeout,
-        _targetName,
-        _delayUntilDefault
-    )
+        Collateral(
+            _fallbackPrice,
+            _chainlinkFeed,
+            _erc20Collateral,
+            _maxTradeVolume,
+            _oracleTimeout,
+            _targetName,
+            _delayUntilDefault
+        )
     {
         require(_allowedDropBasisPoints < 10000, "Allowed refPerTok drop out of range");
-
         marginRatio = 10000 - _allowedDropBasisPoints;
     }
 
