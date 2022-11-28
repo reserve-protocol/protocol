@@ -30,6 +30,9 @@ import {
   StRSRP1Votes,
   TestIDeployer,
   RecollateralizationLibP1,
+  CurveStableCoinLPCollateral,
+  CurveStablePoolMock,
+  ConvexStakingWrapper,
 } from '../../../typechain'
 
 export const ORACLE_TIMEOUT = bn('500000000') // 5700d - large for tests only

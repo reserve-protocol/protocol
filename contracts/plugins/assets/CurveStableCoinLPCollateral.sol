@@ -54,7 +54,6 @@ contract CurveStableCoinLPCollateral is Collateral {
             config.fallbackPrice_,
             config.chainlinkFeed_,
             config.erc20_,
-            config.rewardERC20_,
             config.maxTradeVolume_,
             config.oracleTimeout_,
             config.targetName_,
@@ -128,7 +127,7 @@ contract CurveStableCoinLPCollateral is Collateral {
     /// Get the message needed to call in order to claim rewards for holding this asset.
     /// @return _to The address to send the call to
     /// @return _cd The calldata to send
-    function getClaimCalldata() external view override returns (address _to, bytes memory _cd) {
+    function getClaimCalldata() external view returns (address _to, bytes memory _cd) {
         _to = convexWrappingContract;
         _cd = abi.encodeWithSignature("getReward(address)", msg.sender);
     }

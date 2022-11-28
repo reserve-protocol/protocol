@@ -53,9 +53,6 @@ import {
   TestIRToken,
   TestIStRSR,
   RecollateralizationLibP1,
-  CurveStableCoinLPCollateral,
-  CurveStablePoolMock,
-  ConvexStakingWrapper,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
@@ -74,51 +71,12 @@ async function rsrFixture(): Promise<RSRFixture> {
   )
   return { rsr }
 }
-
-interface ConvexCurveFixutre {
-  curvePoolMock: CurveStablePoolMock
-}
 interface COMPAAVEFixture {
   weth: ERC20Mock
   compToken: ERC20Mock
   compoundMock: ComptrollerMock
   aaveToken: ERC20Mock
   aaveMock: AaveLendingPoolMock
-}
-
-interface ConvexConstructorConfig {
-  fallbackPrice_: BigNumber
-  chainlinkFeed_: string
-  erc20_: string
-  rewardERC20_: string
-  maxTradeVolume_: BigNumber
-  oracleTimeout_: BigNumber
-  targetName_: string
-  delayUntilDefault_: BigNumber
-  defaultThreshold_: BigNumber
-  curveStablePool_: string
-  referenceERC20Decimals_: string
-  convexWrappingContract_: string
-  stableCoinChainLinkFeeds_: string[]
-  stableCoinThresholds_: BigNumber[]
-}
-
-async function ConvexCurveFixutre(): Promise<ConvexCurveFixutre> {
-  const chainId = await getChainId(hre)
-  if (!networkConfig[chainId]) {
-    throw new Error(`Missing network configuration for ${hre.network.name}`)
-  }
-
-  const curvePoolMock: CurveStablePoolMock = <CurveStablePoolMock>(
-    await ethers.getContractAt(
-      'CurveStablePoolMock',
-      networkConfig[chainId].curvePools.BUSD_3CRV || ''
-    )
-  )
-
-  return {
-    curvePoolMock,
-  }
 }
 
 async function compAaveFixture(): Promise<COMPAAVEFixture> {
@@ -214,17 +172,6 @@ async function collateralFixture(
       libraries: { OracleLib: oracleLib.address },
     }
   )
-
-  const CurveStableCoinLPCollateralFactory = await ethers.getContractFactory(
-    'CurveStableCoinLPCollateral',
-    {
-      libraries: { OracleLib: oracleLib.address },
-    }
-  )
-
-  const ConvexStakingWrapperFactory = await ethers.getContractFactory('ConvexStakingWrapper', {
-    libraries: { OracleLib: oracleLib.address },
-  })
 
   const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
@@ -406,44 +353,6 @@ async function collateralFixture(
     ]
   }
 
-  const makeCurveStableCoinLPCollateral = async (
-    tokenAddress: string,
-    referenceERC20: IERC20Metadata,
-    referenceUnitOracleAddr: string,
-    lpPool: string,
-    stableCoinList: string[]
-  ): Promise<[IERC20Metadata, CurveStableCoinLPCollateral]> => {
-    const erc20: IERC20Metadata = <IERC20Metadata>(
-      await ethers.getContractAt('CTokenMock', tokenAddress)
-    )
-    const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>(
-      await ConvexStakingWrapperFactory.deploy()
-    )
-
-    const constructorConfig: ConvexConstructorConfig = {
-      fallbackPrice_: fp('1'),
-      chainlinkFeed_: referenceUnitOracleAddr,
-      erc20_: erc20.address,
-      rewardERC20_: erc20.address,
-      maxTradeVolume_: config.rTokenMaxTradeVolume,
-      oracleTimeout_: ORACLE_TIMEOUT,
-      targetName_: ethers.utils.formatBytes32String('USD'),
-      delayUntilDefault_: delayUntilDefault,
-      defaultThreshold_: defaultThreshold,
-      curveStablePool_: lpPool,
-      referenceERC20Decimals_: (await referenceERC20.decimals()).toString(),
-      convexWrappingContract_: convexStakingWrapper.address,
-      stableCoinChainLinkFeeds_: stableCoinList,
-      stableCoinThresholds_: stableCoinList.map(() => fp('1')),
-    }
-
-    const curveStableCoinLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
-      await CurveStableCoinLPCollateralFactory.deploy(constructorConfig)
-    )
-
-    return [erc20, curveStableCoinLPCollateral]
-  }
-
   const makeSelfReferentialCollateral = async (
     selfRefTokenAddress: string,
     chainlinkAddr: string,
@@ -614,19 +523,6 @@ async function collateralFixture(
     'BTC'
   )
 
-  const cCstablePool = await makeCurveStableCoinLPCollateral(
-    networkConfig[chainId].tokens.BUSD_3CRV as string,
-    dai[0],
-    networkConfig[chainId].chainlinkFeeds.DAI as string,
-    networkConfig[chainId].curvePools.BUSD_3CRV as string,
-    [
-      networkConfig[chainId].tokens.BUSD as string,
-      networkConfig[chainId].tokens.DAI as string,
-      networkConfig[chainId].tokens.USDC as string,
-      networkConfig[chainId].tokens.USDT as string,
-    ]
-  )
-
   const weth = await makeSelfReferentialCollateral(
     networkConfig[chainId].tokens.WETH as string,
     networkConfig[chainId].chainlinkFeeds.ETH as string,
@@ -669,7 +565,6 @@ async function collateralFixture(
     weth[0],
     cETH[0],
     eurt[0],
-    cCstablePool[0],
   ]
   const collateral = [
     dai[1],
@@ -692,7 +587,6 @@ async function collateralFixture(
     weth[1],
     cETH[1],
     eurt[1],
-    cCstablePool[1],
   ]
 
   // Create the initial basket
@@ -709,7 +603,6 @@ async function collateralFixture(
 
 type RSRAndCompAaveConvexAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
-  ConvexCurveFixutre &
   CollateralFixture &
   ModuleFixture
 
@@ -725,7 +618,6 @@ interface DefaultFixture extends RSRAndCompAaveConvexAndCollateralAndModuleFixtu
   rsrAsset: Asset
   compAsset: Asset
   aaveAsset: Asset
-  convexAsset: Asset
   rToken: TestIRToken
   rTokenAsset: RTokenAsset
   furnace: TestIFurnace
@@ -744,7 +636,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 ]): Promise<DefaultFixture> {
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken, aaveMock } = await compAaveFixture()
-  const { curvePoolMock } = await ConvexCurveFixutre()
   const { gnosis } = await gnosisFixture()
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
@@ -937,28 +828,16 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     )
   )
 
-  const convexAsset: Asset = <Asset>(
+  const compAsset: Asset = <Asset>(
     await (
       await ethers.getContractFactory('Asset')
     ).deploy(
       fp('1'),
-      networkConfig[chainId].chainlinkFeeds.DAI || '',
-      curvePoolMock.address,
-      ZERO_ADDRESS,
+      networkConfig[chainId].chainlinkFeeds.COMP || '',
+      compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
-  )
-
-  const compAsset: Asset = <Asset>await (
-    await ethers.getContractFactory('Asset')
-  ).deploy(
-    fp('1'),
-    networkConfig[chainId].chainlinkFeeds.COMP || '',
-    compToken.address,
-    ZERO_ADDRESS, // also uncertain about this one
-    config.rTokenMaxTradeVolume,
-    ORACLE_TIMEOUT
   )
 
   const rToken: TestIRToken = <TestIRToken>(
@@ -1048,7 +927,5 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     rsrTrader,
     rTokenTrader,
     oracleLib,
-    curvePoolMock,
-    convexAsset,
   }
 }

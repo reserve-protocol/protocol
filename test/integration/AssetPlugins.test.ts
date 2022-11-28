@@ -21,7 +21,6 @@ import {
   CTokenMock,
   CTokenNonFiatCollateral,
   CTokenSelfReferentialCollateral,
-  CurveStableCoinLPCollateral,
   ERC20Mock,
   EURFiatCollateral,
   FacadeRead,
@@ -42,8 +41,6 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  CurveStablePoolMock,
-  ConvexStakingWrapper,
 } from '../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -61,7 +58,6 @@ const holdercWBTC = '0x7132ad0a72b5ba50bdaa005fad19caae029ae699'
 const holderWETH = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e'
 const holdercETH = '0x10d88638be3c26f3a47d861b8b5641508501035d'
 const holderEURT = '0x5754284f345afc66a98fbb0a0afe71e0f007b949'
-const holderCurveLPToken = '0xc62d511184dDDa33908b59cA27B1229977698118'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -147,8 +143,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let cETHCollateral: CTokenSelfReferentialCollateral
   let eurtCollateral: EURFiatCollateral
 
-  let curveStableCoinLPCollateral: CurveStableCoinLPCollateral
-
   // Contracts to retrieve after deploy
   let rToken: TestIRToken
   let rTokenAsset: RTokenAsset
@@ -174,9 +168,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let wallet: Wallet
 
   let chainId: number
-
-  // Curve token
-  let curvePoolMock: CurveStablePoolMock
 
   describe('Assets/Collateral', () => {
     before(async () => {
@@ -212,7 +203,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         facadeTest,
         config,
         oracleLib,
-        curvePoolMock,
       } = await loadFixture(defaultFixture))
 
       // Get tokens
@@ -236,7 +226,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       weth = <ERC20Mock>erc20s[17] // wETH
       cETH = <CTokenMock>erc20s[18] // cETH
       eurt = <ERC20Mock>erc20s[19] // eurt
-      curveLpToken = <ERC20Mock>erc20s[20] // curveLPToken
 
       interface ConvexConstructorConfig {
         fallbackPrice_: BigNumber
@@ -309,7 +298,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       wethCollateral = <SelfReferentialCollateral>collateral[17] // wETH
       cETHCollateral = <CTokenSelfReferentialCollateral>collateral[18] // cETH
       eurtCollateral = <EURFiatCollateral>collateral[19] // EURT
-      curveStableCoinLPCollateral = <CurveStableCoinLPCollateral>collateral[20]
 
       // Get assets and tokens for default basket
       daiCollateral = <FiatCollateral>basket[0]
@@ -383,13 +371,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       await whileImpersonating(holderEURT, async (eurtSigner) => {
         await eurt
           .connect(eurtSigner)
-          .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 6).mul(1000))
-      })
-
-      // curveLPToken
-      await whileImpersonating(holderCurveLPToken, async (curveLpTokenSigner) => {
-        await curveLpToken
-          .connect(curveLpTokenSigner)
           .transfer(addr1.address, toBNDecimals(initialBalBtcEth, 6).mul(1000))
       })
 
@@ -979,62 +960,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           .withArgs(compToken.address, 0)
 
         expect(await tkInf.eurFiatTokenCollateral.maxTradeVolume()).to.equal(
-          config.rTokenMaxTradeVolume
-        )
-      }
-    })
-
-    it('Should setup collateral correctly - Convex stable pools', async () => {
-      // Define interface required for each Eur-fiat coin
-      interface TokenInfo {
-        curveLPToken: ERC20Mock
-        curveLPTokenDecimals: number
-        curveLPTokenAddress: string
-        curveLPTokenCollateral: CurveStableCoinLPCollateral
-        targetPrice: BigNumber
-        refPrice: BigNumber
-        targetName: string
-      }
-
-      // CurveLPToken
-      const tokenInfos: TokenInfo[] = [
-        {
-          curveLPToken: curveLpToken,
-          curveLPTokenDecimals: 18,
-          curveLPTokenAddress: networkConfig[chainId].tokens.BUSD_3CRV || '',
-          curveLPTokenCollateral: curveStableCoinLPCollateral,
-          targetPrice: fp('1'),
-          refPrice: fp('1.022'),
-          targetName: 'USD',
-        },
-      ]
-
-      for (const tkInf of tokenInfos) {
-        // Non-Fiat Token Assets
-        expect(await tkInf.curveLPTokenCollateral.isCollateral()).to.equal(true)
-        expect(await tkInf.curveLPTokenCollateral.erc20()).to.equal(tkInf.curveLPToken.address)
-        expect(await tkInf.curveLPTokenCollateral.erc20()).to.equal(tkInf.curveLPTokenAddress)
-        expect(await tkInf.curveLPToken.decimals()).to.equal(tkInf.curveLPTokenDecimals)
-        expect(await tkInf.curveLPTokenCollateral.targetName()).to.equal(
-          ethers.utils.formatBytes32String(tkInf.targetName)
-        )
-
-        // Get priceable info
-        await tkInf.curveLPTokenCollateral.refresh()
-        expect(await tkInf.curveLPTokenCollateral.refPerTok()).to.equal(fp('1'))
-        expect(await tkInf.curveLPTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await tkInf.curveLPTokenCollateral.pricePerTarget()).to.be.closeTo(
-          tkInf.targetPrice,
-          fp('0.01')
-        )
-        expect(await tkInf.curveLPTokenCollateral.strictPrice()).to.be.closeTo(
-          tkInf.refPrice,
-          fp('0.01')
-        ) // ref price approx 1.07
-        expect(await tkInf.curveLPTokenCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-        expect(await tkInf.curveLPTokenCollateral.rewardERC20()).to.equal(ZERO_ADDRESS)
-
-        expect(await tkInf.curveLPTokenCollateral.maxTradeVolume()).to.equal(
           config.rTokenMaxTradeVolume
         )
       }
@@ -1656,83 +1581,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await invalidPriceEURCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
 
-    it('Should handle invalid/stale Price - Collateral - Convex collateral plugin', async () => {
-      // Reverts with stale price
-      await advanceTime(ORACLE_TIMEOUT.toString())
-
-      await expect(curveStableCoinLPCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
-
-      const stableCoinList = [mockChainlinkFeed.address, mockChainlinkFeed.address]
-
-      // Refresh should mark status IFFY
-      await curveStableCoinLPCollateral.refresh()
-
-      const defaultThreshold = fp('0.05') // 5%
-      const delayUntilDefault = bn('86400') // 24h
-
-      const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
-        await ethers.getContractFactory('ConvexStakingWrapperFactory', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy()
-
-      const constructorConfig = {
-        fallbackPrice_: fp('1.022'),
-        chainlinkFeed_: NO_PRICE_DATA_FEED,
-        erc20_: curveLpToken.address,
-        rewardERC20_: ZERO_ADDRESS,
-        maxTradeVolume_: config.rTokenMaxTradeVolume,
-        oracleTimeout_: MAX_ORACLE_TIMEOUT,
-        targetName_: ethers.utils.formatBytes32String('USD'),
-        delayUntilDefault_: delayUntilDefault,
-        defaultThreshold_: defaultThreshold,
-        curveStablePool_: curvePoolMock.address,
-        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
-        convexWrappingContract_: convexStakingWrapper.address,
-        stableCoinChainLinkFeeds_: stableCoinList,
-        stableCoinThresholds_: stableCoinList.map(() => fp('1')),
-      }
-
-      // Non price EURO Fiat collateral
-      const nonPriceCurveCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
-        await (
-          await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-            libraries: { OracleLib: oracleLib.address },
-          })
-        ).deploy(constructorConfig)
-      )
-
-      // Collateral with no price should revert
-      await expect(nonPriceCurveCollateral.strictPrice()).to.be.reverted
-
-      // Refresh should also revert - status is not modified
-      await expect(nonPriceCurveCollateral.refresh()).to.be.reverted
-      expect(await nonPriceCurveCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      constructorConfig.chainlinkFeed_ = mockChainlinkFeed.address
-
-      // Reverts with a feed with zero price
-      const invalidPriceConvexCollateral: CurveStableCoinLPCollateral = <
-        CurveStableCoinLPCollateral
-      >await (
-        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(constructorConfig)
-
-      // Set price = 0
-      await setOraclePrice(invalidPriceConvexCollateral.address, bn(0))
-
-      // Reverts with zero price
-      await expect(invalidPriceConvexCollateral.strictPrice()).to.be.revertedWith(
-        'PriceOutsideRange()'
-      )
-
-      // Refresh should mark status IFFY
-      await invalidPriceConvexCollateral.refresh()
-      expect(await invalidPriceConvexCollateral.status()).to.equal(CollateralStatus.IFFY)
-    })
-
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
       // Check assets/collateral
       const ERC20s = await assetRegistry.erc20s()
@@ -1763,7 +1611,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(await assetRegistry.toColl(ERC20s[4])).to.equal(daiCollateral.address)
       expect(await assetRegistry.toColl(ERC20s[5])).to.equal(aDaiCollateral.address)
       expect(await assetRegistry.toColl(ERC20s[6])).to.equal(cDaiCollateral.address)
-      expect(await assetRegistry.toColl(ERC20s[20])).to.equal(curveStableCoinLPCollateral.address)
     })
 
     it('Should register simple Basket correctly', async () => {
@@ -2068,7 +1915,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           wethCollateral,
           cETHCollateral,
           eurtCollateral,
-          curveStableCoinLPCollateral,
         ]
         newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000'), fp('1')]
 
@@ -2090,9 +1936,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await weth.connect(addr1).approve(rToken.address, await weth.balanceOf(addr1.address))
         await cETH.connect(addr1).approve(rToken.address, await cETH.balanceOf(addr1.address))
         await eurt.connect(addr1).approve(rToken.address, await eurt.balanceOf(addr1.address))
-        await curveLpToken
-          .connect(addr1)
-          .approve(rToken.address, await curveLpToken.balanceOf(addr1.address))
       })
 
       it('Should Issue/Redeem (wBTC, cWBTC, wETH, cETH, EURT)', async () => {
@@ -2122,13 +1965,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const eurPrice = fp('1.07') // approx price EUR-USD June 6, 2022
         expect(await eurtCollateral.strictPrice()).to.be.closeTo(eurPrice, fp('0.01')) // ref price approx 1.07
 
-        // CurveLPToken
-        const curveLPToken = fp('1.2')
-        expect(await curveStableCoinLPCollateral.strictPrice()).to.be.closeTo(
-          curveLPToken,
-          fp('0.1')
-        )
-
         // Aproximate total price of Basket in USD
         const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
 
@@ -2140,7 +1976,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing[2]).to.equal(weth.address)
         expect(backing[3]).to.equal(cETH.address)
         expect(backing[4]).to.equal(eurt.address)
-        expect(backing[5]).to.equal(curveLpToken.address)
         expect(backing.length).to.equal(6)
 
         // Check initial values
@@ -2167,7 +2002,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await weth.balanceOf(backingManager.address)).to.equal(0)
         expect(await cETH.balanceOf(backingManager.address)).to.equal(0)
         expect(await eurt.balanceOf(backingManager.address)).to.equal(0)
-        expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
 
         expect(await wbtc.balanceOf(addr1.address)).to.equal(toBNDecimals(initialBalBtcEth, 8))
         expect(await cWBTC.balanceOf(addr1.address)).to.equal(
@@ -2573,54 +2407,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
 
       expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
       expect(rewardsAAVE2.sub(rewardsAAVE1)).to.be.gt(0)
-    })
-
-    it('Should call rewards from convexStaking wrapper', async function () {
-      const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
-        await ethers.getContractFactory('ConvexStakingWrapperFactory', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy()
-
-      const defaultThreshold = fp('0.05') // 5%
-      const delayUntilDefault = bn('86400') // 24h
-
-      const constructorConfig = {
-        fallbackPrice_: fp('1.022'),
-        chainlinkFeed_: NO_PRICE_DATA_FEED,
-        erc20_: curveLpToken.address,
-        rewardERC20_: ZERO_ADDRESS,
-        maxTradeVolume_: config.rTokenMaxTradeVolume,
-        oracleTimeout_: MAX_ORACLE_TIMEOUT,
-        targetName_: ethers.utils.formatBytes32String('USD'),
-        delayUntilDefault_: delayUntilDefault,
-        defaultThreshold_: defaultThreshold,
-        curveStablePool_: curvePoolMock.address,
-        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
-        convexWrappingContract_: convexStakingWrapper.address,
-        stableCoinChainLinkFeeds_: [],
-        stableCoinThresholds_: [],
-      }
-
-      const convexCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
-        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(constructorConfig)
-
-      const convexStakingWrapperGetRewardsABI = [
-        {
-          name: 'getReward',
-          inputs: [{ type: 'address' }],
-          outputs: [{ type: 'void' }],
-        },
-      ]
-
-      const getRewardsInterface = new ethers.utils.Interface(convexStakingWrapperGetRewardsABI)
-
-      expect(convexCollateral.functions.getClaimCalldata()).to.be.equal(
-        getRewardsInterface.encodeFunctionData('getReward', [convexStakingWrapper.address])
-      )
     })
   })
 })
