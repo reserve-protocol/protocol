@@ -2,8 +2,8 @@
     "printWidth": 120,
     "tabWidth": 4,
     "semi": false,
-    "singleQuote": true,
-    "bracketSpacing": true,
+    "singleQuote": false,
+    "bracketSpacing": false,
     "useTabs": false,
     "overrides": [
         {
