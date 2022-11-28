@@ -36,13 +36,13 @@ contract ReserveWrappedFCash is ERC20 {
     }
 
     function deposit(uint256 amount) external {
-        IWrappedfCash wfCash = getCurrentWfCash();
+        require(amount > 0, "empty deposit amount");
 
-        uint32 minRate = 0;
+        IWrappedfCash wfCash = getCurrentWfCash();
 
         // ask Notional how much fCash we should receive for our assets
         (uint88 fCashAmount,,) = notionalProxy.getfCashLendFromDeposit(
-            currencyId, amount, getMaturity(), minRate, block.timestamp, true
+            currencyId, amount, getMaturity(), 0, block.timestamp, true
         );
 
         // transfer assets from user
@@ -52,7 +52,7 @@ contract ReserveWrappedFCash is ERC20 {
         underlyingAsset.safeApprove(address(wfCash), amount);
 
         // mint wfCash
-        wfCash.mintViaUnderlying(amount, fCashAmount, address(this), minRate);
+        wfCash.mintViaUnderlying(amount, fCashAmount, address(this), 0);
 
         // mint wrapped tokens
         _mint(_msgSender(), fCashAmount);
@@ -61,19 +61,26 @@ contract ReserveWrappedFCash is ERC20 {
         deposited[_msgSender()] = amount - costOfEnteringMarket(amount, wfCash);
     }
 
-    function withdrawn(uint256 amount) external {
+    function withdraw(uint256 amount) external {
+        require(amount > 0, "empty withdraw amount");
+        uint256 balance = balanceOf(_msgSender());
+        require(balance >= amount, "not enough balance");
+
         IWrappedfCash wfCash = getCurrentWfCash();
 
-        int256 redeemingValue = notionalProxy.getPresentfCashValue(
-            currencyId, getMaturity(), int256(amount), block.timestamp, false
-        );
+        // compute the total of deposited value to be discounted
+        uint256 currentlyDeposited = deposited[_msgSender()];
+        uint256 percentageToWithdraw = computePercentage(amount, balance);
+        uint256 depositedToDiscount = currentlyDeposited * percentageToWithdraw / 1e18;
 
-        wfCash.redeemToUnderlying(amount, _msgSender(), 0);
+        // update deposited balance
+        deposited[_msgSender()] = currentlyDeposited - depositedToDiscount;
 
-        // TODO : if before maturity, should discount exiting fee
-        //deposited[_msgSender()] -= convertToAssetDecimals(uint256(redeemingValue));
-
+        // burn the tokens being withdrawn
         _burn(_msgSender(), amount);
+
+        // redeem the lend to the user
+        wfCash.redeemToUnderlying(amount, _msgSender(), 0);
     }
 
     function refPerTok() external returns (uint256 rate){
@@ -99,7 +106,7 @@ contract ReserveWrappedFCash is ERC20 {
     ///
     /// @param amount The amount to deposit
     /// @param wfCash Instance of the wfCash market contract we are interacting with
-    function costOfEnteringMarket(uint256 amount, IWrappedfCash wfCash) private returns (uint256) {
+    function costOfEnteringMarket(uint256 amount, IWrappedfCash wfCash) private view returns (uint256) {
         uint32 daysUntilMaturity = getDaysUntilMaturity(wfCash);
         uint32 months = monthsTenor[_msgSender()];
         // compute the percentage fee to pay given the market we enter
@@ -117,6 +124,14 @@ contract ReserveWrappedFCash is ERC20 {
         // 4 to compensate the basis points units
         // delaying the division increases the precision
         return (amount * feeBasisPoints) / 1e11;
+    }
+
+    /// Compute how much percentage of `total` is `amount`
+    /// @param amount Amount that we want to know
+    /// @param total Amount that represents the total
+    /// @return result Percentage in 18 decimals to maximize precision
+    function computePercentage(uint256 amount, uint256 total) private pure returns (uint256 result) {
+        result = amount * 1e18 / total;
     }
 
     /// Return the amount of days between now and the maturity time of the market
@@ -164,7 +179,7 @@ contract ReserveWrappedFCash is ERC20 {
     /// Fetch all markets and returns the most profitable one
     /// @return bestMaturity The maturity of the selected market
     /// @return months The number of months that the market lasts (tenor)
-    function getMostProfitableMarket() private returns (uint256 bestMaturity, uint8 months) {
+    function getMostProfitableMarket() private view returns (uint256 bestMaturity, uint8 months) {
         INotionalProxy.MarketParameters[] memory markets = notionalProxy.getActiveMarkets(currencyId);
         uint256 length = markets.length;
         require(length > 0, 'no available markets');
@@ -185,32 +200,32 @@ contract ReserveWrappedFCash is ERC20 {
     /// @dev markets always come ordered and are enabled from short to long
     function getMonthsTenor(uint256 index) private pure returns (uint8 months) {
         if (index == 0) {
-            months = 3;
             // 3 months
+            months = 3;
         }
         else if (index == 1) {
-            months = 6;
             // 6 months
+            months = 6;
         }
         else if (index == 2) {
-            months = 12;
             // 1 year
+            months = 12;
         }
         else if (index == 3) {
-            months = 24;
             // 2 years
+            months = 24;
         }
         else if (index == 4) {
-            months = 60;
             // 5 years
+            months = 60;
         }
         else if (index == 5) {
-            months = 120;
             // 10 years
+            months = 120;
         }
         else if (index == 6) {
-            months = 240;
             // 20 years
+            months = 240;
         }
         else {
             revert("market index too high");
@@ -218,7 +233,7 @@ contract ReserveWrappedFCash is ERC20 {
     }
 
     /// @notice Using 8 decimals as the rest of Notional tokens
-    function decimals() public view override returns (uint8) {
+    function decimals() public pure override returns (uint8) {
         return 8;
     }
 }
