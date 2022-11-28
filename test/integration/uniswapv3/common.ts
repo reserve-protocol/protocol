@@ -29,22 +29,17 @@ export type TMintParams = {
     deadline: BigNumberish
 }
 
-export async function defaultMintParams(chainId: number): Promise<TMintParams> {
-    const tokens: ITokens = networkConfig[chainId].tokens
-    const daiAddress = tokens.DAI!
-    const usdcAddress = tokens.USDC!
-    const dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', daiAddress)
-    const usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', usdcAddress)
-
+export async function defaultMintParams(asset0: ERC20Mock | USDCMock,
+    asset1: ERC20Mock | USDCMock): Promise<TMintParams> {
     return {
-        token0: daiAddress,
-        token1: usdcAddress,
+        token0: asset0.address,
+        token1: asset1.address,
         fee: 100,
         tickLower: MIN_TICK,
         tickUpper: MAX_TICK,
-        amount0Desired: await adjustedAmount(dai, 100),
-        amount1Desired: await adjustedAmount(usdc, 100),
-        amount0Min: 0, //require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
+        amount0Desired: await adjustedAmount(asset0, 100),
+        amount1Desired: await adjustedAmount(asset1, 100),
+        amount0Min: 0, // TODO require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
         recipient: ZERO_ADDRESS,
         deadline: 0, //rewrite in constructor
@@ -52,16 +47,12 @@ export async function defaultMintParams(chainId: number): Promise<TMintParams> {
 }
 
 export async function deployUniswapV3WrapperMock(
-    chainId: number,
+    asset0: ERC20Mock | USDCMock,
+    asset1: ERC20Mock | USDCMock,
     signer: SignerWithAddress,
     mintParams: TMintParams,
     liquiDityProvider: SignerWithAddress = signer
 ): Promise<UniswapV3WrapperMock> {
-    const tokens: ITokens = networkConfig[chainId].tokens
-    const daiAddress = tokens.DAI!
-    const usdcAddress = tokens.USDC!
-    const dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', daiAddress)
-    const usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', usdcAddress)
 
     const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3WrapperMock')
     const transactionCount = await signer.getTransactionCount()
@@ -73,8 +64,8 @@ export async function deployUniswapV3WrapperMock(
         nonce: transactionCount + (liquiDityProvider == signer ? 2 : 0),
     })
 
-    await waitForTx(await dai.connect(liquiDityProvider).approve(futureAddress, mintParams.amount0Desired))
-    await waitForTx(await usdc.connect(liquiDityProvider).approve(futureAddress, mintParams.amount1Desired))
+    await waitForTx(await asset0.connect(liquiDityProvider).approve(futureAddress, mintParams.amount0Desired))
+    await waitForTx(await asset1.connect(liquiDityProvider).approve(futureAddress, mintParams.amount1Desired))
 
     const uniswapV3WrapperMock = await uniswapV3WrapperContractFactory
         .connect(signer)

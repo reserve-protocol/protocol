@@ -78,9 +78,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         })
 
         it('U3W can be minted', async () => {
-            const mintParams: TMintParams = await defaultMintParams(chainId)
+            const mintParams: TMintParams = await defaultMintParams(dai, usdc)
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(
-                chainId,
+                dai,
+                usdc,
                 owner,
                 mintParams,
                 addr1
@@ -97,9 +98,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await asset1.balanceOf(addr1.address)).to.be.eq(await adjustedAmount(asset1, initialBal))
             expect(await asset1.balanceOf(addr2.address)).to.be.eq(bn('0'))
 
-            const mintParams: TMintParams = await defaultMintParams(chainId)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(
-                chainId,
+                asset0,
+                asset1,
                 owner,
                 mintParams,
                 addr1
@@ -162,13 +164,17 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         })
 
         it('U3C can be deployed', async () => {
+            const asset0 = dai
+            const asset1 = usdc
+
             const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
             const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
             const RTOKEN_MAX_TRADE_VALUE = fp('1e6')
 
-            const mintParams: TMintParams = await defaultMintParams(chainId)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
-                chainId,
+                asset0,
+                asset1,
                 owner,
                 mintParams,
                 addr1
@@ -330,9 +336,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             }
 
             //1. addr1 creates position and mints 200U3W
-            const mintParams: TMintParams = await defaultMintParams(chainId)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
-                chainId,
+                asset0,
+                asset1,
                 owner,
                 mintParams,
                 addr1
