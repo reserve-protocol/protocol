@@ -276,6 +276,16 @@ contract RebalancingScenario {
         _;
     }
 
+    // If transitions from not fully collateralized to fully collateralized -> REBALANCING DONE
+    modifier mayEndRebalancing() {
+        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
+        bool prevFullyCollateralized = bh.fullyCollateralized();
+        _;
+        if (!prevFullyCollateralized && bh.fullyCollateralized()) {
+            status = ScenarioStatus.REBALANCING_DONE;
+        }
+    }
+
     // ================ mutators ================
 
     // ==== user functions: token ops ====
@@ -455,7 +465,6 @@ contract RebalancingScenario {
         IERC20 erc20 = main.someToken(tokenID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
-
         IAsset asset = reg.toAsset(erc20);
         reg.unregister(asset);
     }
@@ -692,14 +701,8 @@ contract RebalancingScenario {
     }
 
     // settleTrades: May end the Rebalancing Process
-    function settleTrades() public {
-        // If transitions from not fully collateralized to fully collateralized -> REBALANCING DONE
-        BasketHandlerP1Fuzz bh = BasketHandlerP1Fuzz(address(main.basketHandler()));
-        bool prevFullyCollateralized = bh.fullyCollateralized();
+    function settleTrades() public mayEndRebalancing {
         BrokerP1Fuzz(address(main.broker())).settleTrades();
-        if (!prevFullyCollateralized && bh.fullyCollateralized()) {
-            status = ScenarioStatus.REBALANCING_DONE;
-        }
     }
 
     IERC20[] internal backingToManage;
@@ -712,7 +715,7 @@ contract RebalancingScenario {
         if (backingToManage.length > 0) backingToManage.pop();
     }
 
-    function manageBackingTokens() public {
+    function manageBackingTokens() public mayEndRebalancing {
         main.backingManager().manageTokens(backingToManage);
     }
 
@@ -786,8 +789,8 @@ contract RebalancingScenario {
         ) {
             status = ScenarioStatus.REBALANCING_ONGOING;
 
-            // Compute basket range -  {BU}
-            //saveBasketRange();
+            // Save initial basket range
+            saveBasketRange();
         }
     }
 
@@ -1113,9 +1116,11 @@ contract RebalancingScenario {
         prevRTokenRate = rTokenRate();
     }
 
-    //  function saveBasketRange() public onlyDuringState(ScenarioStatus.REBALANCING_ONGOING) {
-    //     BasketRange memory range = basketRange(components, rules, erc20s);
-    //    }
+    function saveBasketRange() public onlyDuringState(ScenarioStatus.REBALANCING_ONGOING) {
+        BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
+        // Only store basket range if no trades are open
+        if (bm.tradesOpen() == 0) bm.saveBasketRange();
+    }
 
     function assertRTokenIssuances(address user) public view {
         RTokenP1Fuzz(address(main.rToken())).assertIssuances(user);
@@ -1123,13 +1128,6 @@ contract RebalancingScenario {
 
     function assertFurnacePayouts() public view {
         FurnaceP1Fuzz(address(main.furnace())).assertPayouts();
-    }
-
-    // The system is always fully collateralized, if not rebalancing
-    function echidna_isFullyCollateralizedIfNotRebalancing() external view returns (bool) {
-        if (status != ScenarioStatus.REBALANCING_ONGOING) {
-            return main.basketHandler().fullyCollateralized();
-        } else return true;
     }
 
     // The system is always fully collateralized if not rebalancing
@@ -1221,6 +1219,17 @@ contract RebalancingScenario {
         return StRSRP1Fuzz(address(main.stRSR())).invariantsHold();
     }
 
+    function echidna_basketRangeSmallerWhenRebalancing() external view returns (bool) {
+        BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
+        // Invariant is only valid during Rebalancing, and if no trades are open
+        if (
+            status == ScenarioStatus.REBALANCING_ONGOING &&
+            bm.tradesOpen() == 0 &&
+            !bm.isBasketRangeSmaller()
+        ) return false;
+        return true;
+    }
+
     function echidna_rebalancingProperties() external returns (bool) {
         assert(main.hasRole(OWNER, address(this)));
         BackingManagerP1Fuzz bm = BackingManagerP1Fuzz(address(main.backingManager()));
@@ -1256,5 +1265,12 @@ contract RebalancingScenario {
             }
         }
         return true;
+    }
+
+    // The system is fully collateralized after rebalancing
+    function echidna_isFullyCollateralizedAfterRebalancing() external view returns (bool) {
+        if (status == ScenarioStatus.REBALANCING_DONE) {
+            return main.basketHandler().fullyCollateralized();
+        } else return true;
     }
 }
