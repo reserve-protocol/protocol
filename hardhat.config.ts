@@ -12,6 +12,11 @@ import dotenv from 'dotenv'
 import { HardhatUserConfig } from 'hardhat/types'
 import forkBlockNumber from './test/integration/fork-block-numbers'
 
+import chai from "chai";
+import { solidity } from "ethereum-waffle";
+
+chai.use(solidity);
+
 dotenv.config()
 
 // eslint-disable-next-line node/no-missing-require
