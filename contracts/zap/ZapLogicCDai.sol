@@ -9,7 +9,7 @@ contract ZapLogicCDai is ZapLogicBase {
     using SafeERC20 for IERC20;
 
     address private constant CURVE_THREE_POOL = 0xbEbc44782C7dB0a1A60Cb6fe97d0b483032FF1C7;
-    address private constant cDAI = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
+    address private constant CDAI = 0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643;
 
     function zapToCollateral(address _inputToken, uint256 _inputAmount)
         public
@@ -39,17 +39,17 @@ contract ZapLogicCDai is ZapLogicBase {
             tokensPurchased = depositToCompound(IERC20(DAI).balanceOf(address(this)));
         }
 
-        if (tokensPurchased > 0) IERC20(cDAI).safeTransfer(msg.sender, tokensPurchased);
+        if (tokensPurchased > 0) IERC20(CDAI).safeTransfer(msg.sender, tokensPurchased);
 
         /// TODO - add support for other tokens
     }
 
     /// Internal function for depositing DAI on Compound
     function depositToCompound(uint256 _inputAmount) internal returns (uint256) {
-        IERC20(DAI).safeApprove(cDAI, 0);
-        IERC20(DAI).safeApprove(cDAI, _inputAmount);
-        require(ICToken(cDAI).mint(_inputAmount) == 0, "!deposit");
+        IERC20(DAI).safeApprove(CDAI, 0);
+        IERC20(DAI).safeApprove(CDAI, _inputAmount);
+        require(ICToken(CDAI).mint(_inputAmount) == 0, "!deposit");
 
-        return IERC20(cDAI).balanceOf(address(this));
+        return IERC20(CDAI).balanceOf(address(this));
     }
 }
