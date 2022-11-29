@@ -4,7 +4,6 @@ pragma solidity ^0.8.9;
 import {IUniswapV3Wrapper} from "./IUniswapV3Wrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "hardhat/console.sol"; //TODO remove console.log
 
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
@@ -19,14 +18,15 @@ import "./RewardSplitter.sol";
 
 /**
     @title Uniswap V3 Wrapper
-    @notice ERC20 Wrapper token for Uniswap V3 positions
+    @notice ERC20 Wrapper token for Uniswap V3 positions,
+    @notice representing ERC721 NFT positions as ERC20 tokens with pro rata rewards sharing
     @author Gene A. Tsvigun
     @author Vic G. Larson
   */
 contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard {
     uint256 internal _tokenId; //TODO: make immutable
-    address internal immutable _token0;
-    address internal immutable _token1;
+    address public immutable token0;
+    address public immutable token1;
 
     INonfungiblePositionManager immutable nonfungiblePositionManager =
         INonfungiblePositionManager(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
@@ -40,8 +40,8 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         INonfungiblePositionManager.MintParams memory params,
         address liquidityProvider
     ) ERC20(name_, symbol_) RewardSplitter(params.token0, params.token1) {
-        _token0 = params.token0;
-        _token1 = params.token1;
+        token0 = params.token0;
+        token1 = params.token1;
         _mint(params, liquidityProvider);
     }
 
@@ -54,7 +54,7 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        pool = IUniswapV3Pool(uniswapV3Factory.getPool(_token0, _token1, params.fee));
+        pool = IUniswapV3Pool(uniswapV3Factory.getPool(token0, token1, params.fee));
 
         params.recipient = address(this);
         params.deadline = block.timestamp;
@@ -92,11 +92,11 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        TransferHelper.safeTransferFrom(_token0, msg.sender, address(this), amount0Desired);
-        TransferHelper.safeTransferFrom(_token1, msg.sender, address(this), amount1Desired);
+        TransferHelper.safeTransferFrom(token0, msg.sender, address(this), amount0Desired);
+        TransferHelper.safeTransferFrom(token1, msg.sender, address(this), amount1Desired);
 
-        TransferHelper.safeApprove(_token0, address(nonfungiblePositionManager), amount0Desired);
-        TransferHelper.safeApprove(_token1, address(nonfungiblePositionManager), amount1Desired);
+        TransferHelper.safeApprove(token0, address(nonfungiblePositionManager), amount0Desired);
+        TransferHelper.safeApprove(token1, address(nonfungiblePositionManager), amount1Desired);
 
         INonfungiblePositionManager.IncreaseLiquidityParams memory increaseLiquidityParams;
         increaseLiquidityParams.tokenId = _tokenId;
@@ -154,15 +154,11 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         external
         view
         returns (
-            address token0,
-            address token1,
             uint256 amount0,
             uint256 amount1,
             uint128 liquidity
         )
     {
-        token0 = _rewardsTokens[0];
-        token1 = _rewardsTokens[1];
         liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
         (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
         (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(_tokenId);
@@ -177,6 +173,7 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
                     int128(liquidity)
                 )
             );
+            amount1 = 0;
         } else if (tick < tickUpper) {
             amount0 = uint256(
                 SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity))
@@ -187,6 +184,7 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         } else {
             // current tick is above the passed range; liquidity can only become in range by crossing from right to
             // left, when we'll need _more_ token1 (it's becoming more valuable) so user must provide it
+            amount0 = 0;
             amount1 = uint256(
                 SqrtPriceMath.getAmount1Delta(
                     TickMath.getSqrtRatioAtTick(tickLower),
@@ -197,20 +195,9 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         }
     }
 
-    function principal()
-        external
-        view
-        returns (
-            address token0,
-            address token1,
-            uint256 amount0,
-            uint256 amount1
-        )
-    {
+    function principal() external view returns (uint256 amount0, uint256 amount1) {
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();
         (amount0, amount1) = PositionValue.principal(nonfungiblePositionManager, _tokenId, sqrtRatioX96);
-        token0 = _rewardsTokens[0];
-        token1 = _rewardsTokens[1];
     }
 
     function _freshRewards() internal view virtual override returns (uint256[2] memory amounts) {
