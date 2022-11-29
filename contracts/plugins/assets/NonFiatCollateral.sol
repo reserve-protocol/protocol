@@ -3,14 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 
 /**
  * @title NonFiatCollateral
  * @notice Collateral plugin for a nonfiat collateral that requires default checks, such as WBTC.
  * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaulting, {target} != {UoA}
  */
-contract NonFiatCollateral is Collateral {
+contract NonFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -21,7 +21,7 @@ contract NonFiatCollateral is Collateral {
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface uoaPerTargetFeed_
-    ) Collateral(config) {
+    ) FiatCollateral(config) {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }

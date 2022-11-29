@@ -54,16 +54,14 @@ contract Asset is IAsset {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// @dev Override this when pricing is more complicated than just a single oracle
+    /// @dev The third (unused) variable is only here for compatibility with Collateral
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
     function tryPrice() external view virtual returns (uint192 low, uint192 high, uint192) {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
 
         // oracleError is on whatever the _true_ price is, not the one observed
-        low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError));
-        // third return value is unused; only exists for compatibility with Collateral
+        return (p.div(FIX_ONE.plus(oracleError)), p.div(FIX_ONE.minus(oracleError)), 0);
     }
 
     /// Should not revert

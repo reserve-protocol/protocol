@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
@@ -10,7 +10,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice Collateral plugin for a EURO fiatcoin collateral, like EURT
  * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} != {UoA}
  */
-contract EURFiatCollateral is Collateral {
+contract EURFiatCollateral is FiatCollateral {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -21,7 +21,7 @@ contract EURFiatCollateral is Collateral {
     constructor(
         CollateralConfig memory config,
         AggregatorV3Interface uoaPerTargetFeed_
-    ) Collateral(config) {
+    ) FiatCollateral(config) {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }

@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 
 // This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
 // but it's compiled with a different solidity version.
@@ -31,13 +31,13 @@ interface IStaticAToken is IERC20Metadata {
  * @notice Collateral plugin for an aToken for a UoA-pegged asset, like aUSDC or a aUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract ATokenFiatCollateral is Collateral {
+contract ATokenFiatCollateral is FiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     // solhint-disable no-empty-blocks
 
-    constructor(CollateralConfig memory config) Collateral(config) {}
+    constructor(CollateralConfig memory config) FiatCollateral(config) {}
 
     // solhint-enable no-empty-blocks
 

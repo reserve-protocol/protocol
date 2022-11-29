@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/Collateral.sol";
+import "contracts/plugins/assets/FiatCollateral.sol";
 import "contracts/plugins/assets/ICToken.sol";
 import "contracts/libraries/Fixed.sol";
 
@@ -11,7 +11,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract CTokenFiatCollateral is Collateral {
+contract CTokenFiatCollateral is FiatCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -22,7 +22,7 @@ contract CTokenFiatCollateral is Collateral {
     IComptroller public immutable comptroller;
 
     /// @param comptroller_ The CompoundFinance Comptroller
-    constructor(CollateralConfig memory config, IComptroller comptroller_) Collateral(config) {
+    constructor(CollateralConfig memory config, IComptroller comptroller_) FiatCollateral(config) {
         require(address(comptroller_) != address(0), "comptroller missing");
         ICToken erc20 = ICToken(address(config.erc20));
         referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();

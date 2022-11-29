@@ -22,19 +22,21 @@ struct CollateralConfig {
 }
 
 /**
- * @title Collateral
- * Parent class for all UoA-targeted collateral. Can be extended.
- * @dev For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
- * @dev Can disable default checks by setting config.defaultThreshold to 0
- * @dev Can be easily extended by (optionally) re-implementing:
+ * @title FiatCollateral
+ * Parent class for all collateral. Can be extended to support changing refPerToks or non-fiat
+ *
+ * For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
+ * Can be easily extended by (optionally) re-implementing:
  *   - refresh()
  *   - tryPrice()
  *   - refPerTok()
  *   - targetPerRef()
  *   - claimRewards()
  * Should not have to re-implement any other methods.
+ *
+ * Can intentionally disable default checks by setting config.defaultThreshold to 0
  */
-contract Collateral is ICollateral, Asset {
+contract FiatCollateral is ICollateral, Asset {
     using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
@@ -86,6 +88,7 @@ contract Collateral is ICollateral, Asset {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
+    /// @dev Override this when pricing is more complicated than just a single oracle
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
     /// @param pegPrice {target/ref} The actual price observed in the peg
@@ -114,7 +117,7 @@ contract Collateral is ICollateral, Asset {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // Check for soft default
+        // Check for soft default + save fallbackPrice
         try this.tryPrice() returns (uint192 low, uint192, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
 
