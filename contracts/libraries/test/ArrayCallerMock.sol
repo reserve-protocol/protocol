@@ -8,6 +8,7 @@ contract ArrayCallerMock {
     function allUnique(IERC20[] memory arr) public pure returns (bool) {
         return ArrayLib.allUnique(arr);
     }
+
     function sortedAndAllUnique(IERC20[] memory arr) public pure returns (bool) {
         return ArrayLib.sortedAndAllUnique(arr);
     }

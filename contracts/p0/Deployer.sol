@@ -2,23 +2,23 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/plugins/assets/Asset.sol";
-import "contracts/plugins/assets/RTokenAsset.sol";
-import "contracts/p0/AssetRegistry.sol";
-import "contracts/p0/BackingManager.sol";
-import "contracts/p0/BasketHandler.sol";
-import "contracts/p0/Broker.sol";
-import "contracts/p0/Distributor.sol";
-import "contracts/p0/Furnace.sol";
-import "contracts/p0/Main.sol";
-import "contracts/p0/RevenueTrader.sol";
-import "contracts/p0/RToken.sol";
-import "contracts/p0/StRSR.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IDeployer.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/String.sol";
-import "contracts/mixins/Versioned.sol";
+import "../plugins/assets/Asset.sol";
+import "../plugins/assets/RTokenAsset.sol";
+import "./AssetRegistry.sol";
+import "./BackingManager.sol";
+import "./BasketHandler.sol";
+import "./Broker.sol";
+import "./Distributor.sol";
+import "./Furnace.sol";
+import "./Main.sol";
+import "./RevenueTrader.sol";
+import "./RToken.sol";
+import "./StRSR.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IDeployer.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/String.sol";
+import "../mixins/Versioned.sol";
 
 /**
  * @title DeployerP0

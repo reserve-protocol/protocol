@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IGnosis.sol";
-import "contracts/interfaces/ITrade.sol";
+import "../../libraries/Fixed.sol";
+import "../../interfaces/IBroker.sol";
+import "../../interfaces/IGnosis.sol";
+import "../../interfaces/ITrade.sol";
 
 enum TradeStatus {
     NOT_STARTED, // before init()

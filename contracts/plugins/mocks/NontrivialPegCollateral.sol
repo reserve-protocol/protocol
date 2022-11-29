@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/FiatCollateral.sol";
+import "../assets/FiatCollateral.sol";
 
 contract NontrivialPegCollateral is FiatCollateral {
     uint192 private peg = FIX_ONE; // {target/ref}

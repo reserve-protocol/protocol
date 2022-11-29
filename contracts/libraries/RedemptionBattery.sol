@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/interfaces/IRToken.sol";
+import "../interfaces/IRToken.sol";
 import "./Fixed.sol";
 
 // NOTE: This algorithm assumes the contract is running on PoS Ethereum and 100% of the

@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/libraries/Fixed.sol";
+import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
