@@ -30,3 +30,5 @@ scripts/addresses/31337*
 *.orig
 
 .idea
+
+.tool-versions
