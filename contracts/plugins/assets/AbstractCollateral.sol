@@ -30,7 +30,7 @@ abstract contract Collateral is ICollateral, Asset {
     bytes32 public immutable targetName;
 
     /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
-    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param chainlinkFeed_ Feed units: {target/ref}
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -51,30 +51,8 @@ abstract contract Collateral is ICollateral, Asset {
         delayUntilDefault = delayUntilDefault_;
     }
 
-    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
-    /// refPerTok() has ever decreased since the last refresh() call!
-    /// (In this base class, refPerTok() is constant, so this is trivially satisfied.)
-    function refresh() external virtual {
-        if (alreadyDefaulted()) return;
-
-        CollateralStatus oldStatus = status();
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            _fallbackPrice = p;
-            markStatus(CollateralStatus.SOUND);
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
-        }
-
-        CollateralStatus newStatus = status();
-        if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
-        }
-    }
-
     /// @return The collateral's status
-    function status() public view virtual override returns (CollateralStatus) {
+    function status() public view returns (CollateralStatus) {
         if (_whenDefault == NEVER) {
             return CollateralStatus.SOUND;
         } else if (_whenDefault > block.timestamp) {
@@ -120,11 +98,6 @@ abstract contract Collateral is ICollateral, Asset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() public view virtual returns (uint192) {
-        return FIX_ONE;
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() internal view virtual returns (uint192) {
         return FIX_ONE;
     }
 }

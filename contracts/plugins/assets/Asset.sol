@@ -7,9 +7,10 @@ import "contracts/interfaces/IAsset.sol";
 import "./OracleLib.sol";
 
 contract Asset is IAsset {
+    using FixLib for uint192;
     using OracleLib for AggregatorV3Interface;
 
-    AggregatorV3Interface public immutable chainlinkFeed;
+    AggregatorV3Interface public immutable chainlinkFeed; // {UoA/tok}
 
     IERC20Metadata public immutable erc20;
 
@@ -38,8 +39,7 @@ contract Asset is IAsset {
     ) {
         require(fallbackPrice_ > 0, "fallback price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
-        require(oracleError_ > 0, "oracle error zero"); // TODO test
-        require(oracleError_ < FIX_MAX, "oracle error >=100%"); // TODO test
+        require(oracleError_ > 0 && oracleError_ < FIX_MAX, "oracle error out of range"); // TODO test
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
@@ -53,15 +53,32 @@ contract Asset is IAsset {
     }
 
     /// Should not revert
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param chainlinkFeedPrice {target/ref}
+    function _price()
+        internal
+        view
+        virtual
+        returns (uint192 low, uint192 high, uint192 chainlinkFeedPrice)
+    {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            // oracleError is on whatever the _true_ price is, not the one observed
+            low = p1.div(FIX_ONE.plus(oracleError));
+            high = p1.div(FIX_ONE.minus(oracleError));
+            chainlinkFeedPrice = p1; // {target/ref}
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            high = FIX_MAX;
+        }
+    }
+
+    /// Should not revert
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192 low, uint192 high) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            uint192 priceErr = (p * oracleError) / FIX_ONE;
-            return (p - priceErr, p + priceErr);
-        } catch {
-            return (0, FIX_MAX);
-        }
+        (low, high, ) = _price();
     }
 
     /// Should not revert

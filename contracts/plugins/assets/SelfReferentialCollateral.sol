@@ -45,8 +45,27 @@ contract SelfReferentialCollateral is Collateral {
 
     // solhint-enable no-empty-blocks
 
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() internal view virtual override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+    /// Refresh exchange rates and update default status.
+    /// @dev This default check assumes that the collateral's price() value is expected
+    /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
+    /// collateral you're defining, you MUST redefine refresh()!!
+    function refresh() external virtual override {
+        if (alreadyDefaulted()) return;
+        CollateralStatus oldStatus = status();
+
+        (uint192 low, , ) = _price(); // {UoA/tok}
+
+        // If the price is below the default-threshold price, default eventually
+        // uint192(+/-) is the same as Fix.plus/minus
+        if (low == 0) markStatus(CollateralStatus.IFFY);
+        else {
+            _fallbackPrice = low;
+            markStatus(CollateralStatus.SOUND);
+        }
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
     }
 }

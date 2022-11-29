@@ -16,7 +16,7 @@ contract CTokenSelfReferentialCollateral is Collateral {
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
     uint8 public immutable referenceERC20Decimals;
-    uint192 public prevReferencePrice; // previous rate, {collateral/reference}
+    uint192 public prevReferencePrice; // previous rate, {ref/tok}
     IComptroller public immutable comptroller;
 
     /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
@@ -53,19 +53,35 @@ contract CTokenSelfReferentialCollateral is Collateral {
     }
 
     /// Should not revert
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param chainlinkFeedPrice {UoA/ref}
+    function _price()
+        internal
+        view
+        override
+        returns (uint192 low, uint192 high, uint192 chainlinkFeedPrice)
+    {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            // {UoA/tok} = {UoA/ref} * {ref/tok}
+            uint192 p = p1.mul(refPerTok());
+
+            // oracleError is on whatever the _true_ price is, not the one observed
+            low = p.div(FIX_ONE.plus(oracleError));
+            high = p.div(FIX_ONE.minus(oracleError));
+            chainlinkFeedPrice = p1;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            high = FIX_MAX;
+        }
+    }
+
+    /// Should not revert
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192 low, uint192 high) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // {UoA/tok} = {UoA/ref} * {ref/tok}
-            uint192 _price = p.mul(refPerTok());
-
-            // {UoA/tok} = {UoA/tok} * {1}
-            uint192 priceErr = _price.mul(oracleError);
-            return (_price - priceErr, _price + priceErr);
-        } catch {
-            return (0, FIX_MAX);
-        }
+        (low, high, ) = _price();
     }
 
     /// Refresh exchange rates and update default status.
@@ -84,15 +100,12 @@ contract CTokenSelfReferentialCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                // {UoA/tok} = {UoA/ref} * {ref/tok}
-                _fallbackPrice = p.mul(refPerTok());
+            (uint192 low, , ) = _price();
 
+            if (low == 0) markStatus(CollateralStatus.IFFY);
+            else {
+                _fallbackPrice = low;
                 markStatus(CollateralStatus.SOUND);
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;
@@ -109,11 +122,6 @@ contract CTokenSelfReferentialCollateral is Collateral {
         uint256 rate = ICToken(address(erc20)).exchangeRateStored();
         int8 shiftLeft = 8 - int8(referenceERC20Decimals) - 18;
         return shiftl_toFix(rate, shiftLeft);
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() internal view override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

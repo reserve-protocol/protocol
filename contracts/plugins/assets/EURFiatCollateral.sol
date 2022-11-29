@@ -19,11 +19,14 @@ contract EURFiatCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint192 public immutable uoaPerTargetOracleError; // {1} The max % error, target unit oracle
+    uint192 public immutable pegBottom; // {target/ref} The bottom of the peg
+
+    uint192 public immutable pegTop; // {target/ref} The top of the peg
 
     /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param uoaPerRefFeed_ {UoA/ref}
     /// @param uoaPerTargetFeed_ {UoA/target}
+    /// @param combinedOracleError_ {1} The % the oracles (together) can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
@@ -31,9 +34,8 @@ contract EURFiatCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface uoaPerRefFeed_,
-        uint192 uoaPerRefOracleError_,
         AggregatorV3Interface uoaPerTargetFeed_,
-        uint192 uoaPerTargetOracleError_,
+        uint192 combinedOracleError_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -44,7 +46,7 @@ contract EURFiatCollateral is Collateral {
         Collateral(
             fallbackPrice_,
             uoaPerRefFeed_,
-            uoaPerRefOracleError_,
+            combinedOracleError_,
             erc20_,
             maxTradeVolume_,
             oracleTimeout_,
@@ -52,24 +54,63 @@ contract EURFiatCollateral is Collateral {
             delayUntilDefault_
         )
     {
+        // TODO the error calculation in L:49 might be wrong
+
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;
         uoaPerTargetFeed = uoaPerTargetFeed_;
-        uoaPerTargetOracleError = uoaPerTargetOracleError_;
+
+        // Set up cached constants
+        uint192 peg = FIX_ONE; // D18{target/ref}
+
+        // D18{target/ref}= D18{target/ref} * D18{1} / D18
+        uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+        pegBottom = peg - delta;
+        pegTop = peg + delta;
+    }
+
+    /// Should not revert
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param refPerTargetPrice {target/ref}
+    function _price()
+        internal
+        view
+        override
+        returns (uint192 low, uint192 high, uint192 refPerTargetPrice)
+    {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
+                if (p2 == 0) {
+                    return (0, FIX_MAX, 0);
+                }
+
+                // {target/ref} = {UoA/ref} / {UoA/target}
+                uint192 p = p1.div(p2);
+
+                // oracleError is on whatever the _true_ price is, not the one observed
+                // this oracleError is already the combined total oracle error
+                low = p.div(FIX_ONE.plus(oracleError));
+                high = p.div(FIX_ONE.minus(oracleError));
+                refPerTargetPrice = p;
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                high = FIX_MAX;
+            }
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            high = FIX_MAX;
+        }
     }
 
     /// Should not revert
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192 low, uint192 high) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // {UoA/tok} = {UoA/tok} * {1}
-            uint192 priceErr = p.mul(oracleError);
-            return (p - priceErr, p + priceErr);
-        } catch {
-            return (0, FIX_MAX);
-        }
+        (low, high, ) = _price();
     }
 
     /// Refresh exchange rates and update default status.
@@ -80,51 +121,19 @@ contract EURFiatCollateral is Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // p1 {UoA/ref}
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
-            // We don't need the return value from this next feed, but it should still function
-            // p2 {UoA/target}
-            try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
-                if (p2 > 0) {
-                    // {target/ref}
-                    uint192 peg = targetPerRef();
+        (uint192 low, , uint192 p) = _price(); // {UoA/tok}, {target/ref}
 
-                    // D18{target/ref}= D18{target/ref} * D18{1} / D18
-                    uint192 delta = (peg * defaultThreshold) / FIX_ONE;
-
-                    // {target/ref} = {UoA/ref} / {UoA/target}
-                    uint192 p = p1.div(p2);
-
-                    // If the price is below the default-threshold price, default eventually
-                    if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                    else {
-                        // {UoA/tok} = {UoA/tok}
-                        _fallbackPrice = p1;
-
-                        markStatus(CollateralStatus.SOUND);
-                    }
-                } else {
-                    markStatus(CollateralStatus.IFFY);
-                }
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                markStatus(CollateralStatus.IFFY);
-            }
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
+        // If the price is below the default-threshold price, default eventually
+        // uint192(+/-) is the same as Fix.plus/minus
+        if (low == 0 || p < pegBottom || p > pegTop) markStatus(CollateralStatus.IFFY);
+        else {
+            _fallbackPrice = low;
+            markStatus(CollateralStatus.SOUND);
         }
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() internal view override returns (uint192) {
-        return uoaPerTargetFeed.price(oracleTimeout);
     }
 }

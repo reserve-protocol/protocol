@@ -37,7 +37,11 @@ contract ATokenFiatCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
-    uint192 public prevReferencePrice; // previous rate, {collateral/reference}
+    uint192 public immutable pegBottom; // {UoA/ref} The bottom of the peg
+
+    uint192 public immutable pegTop; // {UoA/ref} The top of the peg
+
+    uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
     /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
@@ -70,25 +74,51 @@ contract ATokenFiatCollateral is Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         defaultThreshold = defaultThreshold_;
-
         prevReferencePrice = refPerTok();
+
+        // Set up cached constants
+        uint192 peg = FIX_ONE; // D18{UoA/ref}
+
+        // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
+        uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+        pegBottom = peg - delta;
+        pegTop = peg + delta;
+    }
+
+    /// Should not revert
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param chainlinkFeedPrice {UoA/ref}
+    function _price()
+        internal
+        view
+        virtual
+        override
+        returns (uint192 low, uint192 high, uint192 chainlinkFeedPrice)
+    {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            // {UoA/tok} = {UoA/ref} * {ref/tok}
+            uint192 p = p1.mul(refPerTok());
+
+            // oracleError is on whatever the _true_ price is, not the one observed
+            low = p.div(FIX_ONE.plus(oracleError));
+            high = p.div(FIX_ONE.minus(oracleError));
+            chainlinkFeedPrice = p1; // {UoA/ref}
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            high = FIX_MAX;
+        }
     }
 
     /// Should not revert
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
-    function price() public view virtual returns (uint192 low, uint192 high) {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-            // {UoA/tok} = {UoA/ref} * {ref/tok}
-            uint192 _price = p.mul(refPerTok());
-
-            uint192 priceErr = _price.mul(oracleError);
-            return (_price - priceErr, _price + priceErr);
-        } catch {
-            return (0, FIX_MAX);
-        }
+    function price() public view returns (uint192 low, uint192 high) {
+        (low, high, ) = _price();
     }
 
+    /// Should not revert
     /// Refresh exchange rates and update default status.
     function refresh() external virtual override {
         if (alreadyDefaulted()) return;
@@ -99,28 +129,14 @@ contract ATokenFiatCollateral is Collateral {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
-            // {UoA/ref}
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                // Check for soft default of underlying reference token
-                // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            (uint192 low, , uint192 p) = _price();
 
-                // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
-
-                // If the price is below the default-threshold price, default eventually
-                // uint192(+/-) is the same as Fix.plus/minus
-                if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
-                else {
-                    // {UoA/tok} = {UoA/ref} * {ref/tok}
-                    _fallbackPrice = p.mul(refPerTok());
-
-                    markStatus(CollateralStatus.SOUND);
-                }
-            } catch (bytes memory errData) {
-                // see: docs/solidity-style.md#Catching-Empty-Data
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                markStatus(CollateralStatus.IFFY);
+            // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
+            if (low == 0 || p < pegBottom || p > pegTop) markStatus(CollateralStatus.IFFY);
+            else {
+                _fallbackPrice = low;
+                markStatus(CollateralStatus.SOUND);
             }
         }
         prevReferencePrice = referencePrice;
@@ -139,7 +155,7 @@ contract ATokenFiatCollateral is Collateral {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev Use delegatecall
-    function claimRewards() external virtual override {
+    function claimRewards() external virtual {
         IERC20 stkAAVE = IStaticAToken(address(erc20)).REWARD_TOKEN();
         uint256 oldBal = stkAAVE.balanceOf(address(this));
         IStaticAToken(address(erc20)).claimRewardsToSelf(true);

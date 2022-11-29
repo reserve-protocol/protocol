@@ -49,8 +49,34 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         checkHardDefault = on;
     }
 
+    /// Should not revert
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    /// @param chainlinkFeedPrice {UoA/ref}
+    function _price()
+        internal
+        view
+        override
+        returns (uint192 low, uint192 high, uint192 chainlinkFeedPrice)
+    {
+        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
+            // {UoA/tok} = {UoA/ref} * {ref/tok}
+            uint192 p = p1.mul(refPerTok());
+
+            // oracleError is on whatever the _true_ price is, not the one observed
+            low = p.div(FIX_ONE.plus(oracleError));
+            high = p.div(FIX_ONE.minus(oracleError));
+            chainlinkFeedPrice = p1; // {UoA/ref}
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            high = FIX_MAX;
+        }
+    }
+
+    /// Should not revert
     /// Refresh exchange rates and update default status.
-    function refresh() external virtual override {
+    function refresh() external override {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
@@ -59,26 +85,14 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
         if (checkHardDefault && referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else if (checkSoftDefault) {
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                // Check for soft default of underlying reference token
-                // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
-                uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+            (uint192 low, , uint192 p) = _price();
 
-                // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
-
-                // If the price is below the default-threshold price, default eventually
-                // uint192(+/-) is the same as Fix.plus/minus
-                if (p < peg - delta || p > peg + delta) {
-                    markStatus(CollateralStatus.IFFY);
-                } else {
-                    // {UoA/tok} = {UoA/ref} * {ref/tok}
-                    _fallbackPrice = p.mul(refPerTok());
-
-                    markStatus(CollateralStatus.SOUND);
-                }
-            } catch {
-                markStatus(CollateralStatus.IFFY);
+            // If the price is below the default-threshold price, default eventually
+            // uint192(+/-) is the same as Fix.plus/minus
+            if (low == 0 || p < pegBottom || p > pegTop) markStatus(CollateralStatus.IFFY);
+            else {
+                _fallbackPrice = low;
+                markStatus(CollateralStatus.SOUND);
             }
         }
         prevReferencePrice = referencePrice;

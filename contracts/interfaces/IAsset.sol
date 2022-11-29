@@ -77,6 +77,8 @@ interface ICollateral is IAsset {
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
+    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// refPerTok() has ever decreased since last call.
     function refresh() external;
 
     /// @return The canonical name of this collateral's target unit.
