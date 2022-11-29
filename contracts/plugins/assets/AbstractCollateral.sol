@@ -67,7 +67,7 @@ abstract contract Collateral is ICollateral, Asset {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 

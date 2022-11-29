@@ -651,7 +651,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status
       await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
+        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -669,7 +669,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
       await expect(newCDaiCollateral.refresh()).to.not.emit(
         newCDaiCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -713,7 +713,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
+        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)

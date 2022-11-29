@@ -71,7 +71,7 @@ interface ICollateral is IAsset {
     /// Emitted whenever the collateral status is changed
     /// @param newStatus The old CollateralStatus
     /// @param newStatus The updated CollateralStatus
-    event DefaultStatusChanged(
+    event CollateralStatusChanged(
         CollateralStatus indexed oldStatus,
         CollateralStatus indexed newStatus
     );
