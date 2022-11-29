@@ -5,9 +5,8 @@ import { CTokenNonFiatCollateral } from '../../../typechain'
 task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
-  .addParam('referenceUnitOracleError', 'The % error in the ref unit price feed as a fix')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
-  .addParam('targetUnitOracleError', 'The % error in the target unit price feed as a fix')
+  .addParam('combinedOracleError', 'The combined % error from both oracle sources')
   .addParam('cToken', 'CToken address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -31,9 +30,8 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
       await CTokenNonFiatCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
         params.referenceUnitFeed,
-        params.referenceUnitOracleError,
         params.targetUnitFeed,
-        params.targetUnitOracleError,
+        params.combinedOracleError,
         params.cToken,
         params.maxTradeVolume,
         params.oracleTimeout,

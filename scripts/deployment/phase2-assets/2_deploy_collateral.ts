@@ -1,4 +1,5 @@
 import fs from 'fs'
+import { BigNumber } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
@@ -13,6 +14,10 @@ import {
 } from '../common'
 import { getCurrentPrice, getOracleTimeout } from '../utils'
 import { ATokenMock, StaticATokenLM } from '../../../typechain'
+
+const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
+  return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
+}
 
 async function main() {
   // ==== Read Configuration ====
@@ -515,12 +520,15 @@ async function main() {
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e18'))
 
+  const wbtcOracleError = fp('0.02') // 2%
+  const btcOracleError = fp('0.005') // 0.5%
+  const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
+
   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
     fallbackPrice: fallbackPrice.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
-    referenceUnitOracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
-    targetUnitOracleError: fp('0.005').toString(), // 0.5%
+    combinedOracleError: combinedBTCWBTCError.toString(),
     cToken: networkConfig[chainId].tokens.cWBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -568,9 +576,8 @@ async function main() {
   const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
-    referenceUnitOracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
-    targetUnitOracleError: fp('0.005').toString(), // 0.5%
+    combinedOracleError: combinedBTCWBTCError.toString(),
     tokenAddress: networkConfig[chainId].tokens.WBTC,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -605,11 +612,14 @@ async function main() {
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
   /********  Deploy EURO Fiat Collateral  - EURT **************************/
+  const eurtError = fp('0.02') // 2%
+  const eurError = fp('0.0015') // 0.15%
+
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
-    oracleError: fp('0.02').toString(), // 2%
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
+    oracleError: combinedError(eurtError, eurError).toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
