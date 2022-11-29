@@ -203,8 +203,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       primaryBasket: [cDaiCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite

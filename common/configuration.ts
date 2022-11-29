@@ -279,13 +279,17 @@ export interface IBackupInfo {
   backupCollateral: string[]
 }
 
+export interface IBeneficiaryInfo {
+  beneficiary: string
+  revShare: IRevenueShare
+}
+
 export interface IRTokenSetup {
   assets: string[]
   primaryBasket: string[]
   weights: BigNumber[]
   backups: IBackupInfo[]
-  beneficiary: string
-  revShare: IRevenueShare
+  beneficiaries: IBeneficiaryInfo[]
 }
 
 export interface IGovParams {
