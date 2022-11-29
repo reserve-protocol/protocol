@@ -1,21 +1,18 @@
 //
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { BigNumber, BigNumberish, Wallet } from 'ethers'
+import { BigNumberish, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { defaultFixture, IMPLEMENTATION } from '../../../fixtures'
 import { getChainId } from '../../../../common/blockchain-utils'
 import { networkConfig } from '../../../../common/configuration'
 import { bn, fp, pow10 } from '../../../../common/numbers'
-import { ERC20Mock, MockV3Aggregator, USDCMock, IUniswapV2Router02, UniswapV2Router02Mock__factory, IUniswapV2Factory } from '../../../../typechain'
+import { ERC20Mock, MockV3Aggregator, USDCMock, IUniswapV2Router02, IUniswapV2Factory } from '../../../../typechain'
 import { whileImpersonating } from '../../../utils/impersonation'
 import { waitForTx } from '../../utils'
 import { expect } from 'chai'
-import { defaultMintParams, logBalances, TMintParams } from '../common'
 import { CollateralStatus, MAX_UINT256 } from '../../../../common/constants'
 import { UniswapV2Collateral__factory } from '@typechain/factories/UniswapV2Collateral__factory'
 import { UniswapV2Collateral } from '@typechain/UniswapV2Collateral'
-import { Token, CurrencyAmount } from '@uniswap/sdk-core'
-import { Pair } from '@uniswap/v2-sdk'
 import { getLatestBlockTimestamp } from '../../../utils/time'
 
 const createFixtureLoader = waffle.createFixtureLoader
