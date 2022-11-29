@@ -23,11 +23,19 @@ abstract contract RewardSplitter is ERC20 {
     mapping(address => mapping(address => uint256)) internal _unclaimedRewards;
     mapping(address => mapping(address => uint256)) internal _userSnapshotRewardsPerToken;
 
-    constructor(address[] memory tokens) {
-        _length = tokens.length;
-        for (uint256 i; i < _length; i++) {
-            _rewardsTokens[i] = tokens[i];
-        }
+    /**
+     * @notice Splits rewards to all liquidity holders 
+     * @param token0 The address of token0
+     * @param token1 The address of token1. Can be zero for rewards in one currency.
+     */
+    constructor(address token0, address token1) {
+        _rewardsTokens[0] = token0;
+        uint256 length = 1;
+        if (token1 != address(0)) {
+            _rewardsTokens[1] = token1;
+            length = 2; 
+        } 
+        _length = length;     
     }
 
     function _claimRewardsShareTo(address recipient)

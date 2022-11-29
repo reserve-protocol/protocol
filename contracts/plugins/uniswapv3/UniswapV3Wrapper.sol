@@ -39,7 +39,7 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         string memory symbol_,
         INonfungiblePositionManager.MintParams memory params,
         address liquidityProvider
-    ) ERC20(name_, symbol_) RewardSplitter(_tokenArray(params)) {
+    ) ERC20(name_, symbol_) RewardSplitter(params.token0, params.token1) {
         _token0 = params.token0;
         _token1 = params.token1;
         _mint(params, liquidityProvider);
@@ -225,11 +225,5 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             type(uint128).max
         );
         (amounts[0], amounts[1]) = nonfungiblePositionManager.collect(collectParams);
-    }
-
-    function _tokenArray(INonfungiblePositionManager.MintParams memory p) internal pure returns (address[] memory arr) {
-        arr = new address[](2);
-        arr[0] = p.token0;
-        arr[1] = p.token1;
     }
 }
