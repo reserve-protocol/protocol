@@ -20,7 +20,7 @@ interface IAsset is IRewardable {
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert
-    /// Should be nonzero
+    /// Should be nonzero when the asset might be worth selling
     /// @return {UoA/tok} A fallback price to use for trade sizing when price().low is 0
     function fallbackPrice() external view returns (uint192);
 

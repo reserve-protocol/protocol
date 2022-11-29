@@ -53,7 +53,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         return super.price();
     }
 
-    function refresh() external virtual override {
+    function refresh() public virtual override {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 

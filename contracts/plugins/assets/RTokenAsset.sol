@@ -6,7 +6,7 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/p1/mixins/RecollateralizationLib.sol";
 
-/// Once an RToken gets large eonugh to get a price feed, replacing this asset with
+/// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
     using FixLib for uint192;
@@ -38,10 +38,10 @@ contract RTokenAsset is IAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
-    function price() public view virtual returns (uint192 low, uint192 high) {
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
         (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
@@ -58,9 +58,25 @@ contract RTokenAsset is IAsset {
     }
 
     /// Should not revert
+    /// @return {UoA/tok} The lower end of the price estimate
+    /// @return {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192, uint192) {
+        try this.tryPrice() returns (uint192 low, uint192 high) {
+            return (low, high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (0, FIX_MAX);
+        }
+    }
+
+    /// Should not revert
     /// Should be nonzero
     /// @return {UoA/tok} A fallback price to use for trade sizing
     function fallbackPrice() external view returns (uint192) {
+        // This function can revert if of the math inside it reverts
+        // But we prefer reverting over returning a zero value for fallbackPrice()
+
         uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals

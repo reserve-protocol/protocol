@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "contracts/interfaces/IAsset.sol";
+import "contracts/libraries/Fixed.sol";
 import "./OracleLib.sol";
 
 contract Asset is IAsset {
@@ -22,7 +23,7 @@ contract Asset is IAsset {
 
     uint48 public immutable oracleTimeout; // {s} Seconds that an oracle value is considered valid
 
-    uint192 internal _fallbackPrice; // {UoA/tok} A price for sizing trade lots
+    uint192 public fallbackPrice; // {UoA/tok} A price for sizing trade lots
 
     /// @param fallbackPrice_ {UoA/tok} A fallback price to use for lot sizing when oracles fail
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
@@ -43,7 +44,7 @@ contract Asset is IAsset {
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
-        _fallbackPrice = fallbackPrice_;
+        fallbackPrice = fallbackPrice_;
         chainlinkFeed = chainlinkFeed_;
         oracleError = oracleError_;
         erc20 = erc20_;
@@ -52,40 +53,31 @@ contract Asset is IAsset {
         oracleTimeout = oracleTimeout_;
     }
 
-    /// Should not revert
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @dev Override this when pricing is more complicated than just a single oracle
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    /// @param chainlinkFeedPrice {target/ref}
-    function _price()
-        internal
-        view
-        virtual
-        returns (uint192 low, uint192 high, uint192 chainlinkFeedPrice)
-    {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
-            // oracleError is on whatever the _true_ price is, not the one observed
-            low = p1.div(FIX_ONE.plus(oracleError));
-            high = p1.div(FIX_ONE.minus(oracleError));
-            chainlinkFeedPrice = p1; // {target/ref}
+    function tryPrice() external view virtual returns (uint192 low, uint192 high, uint192) {
+        uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
+
+        // oracleError is on whatever the _true_ price is, not the one observed
+        low = p.div(FIX_ONE.plus(oracleError));
+        high = p.div(FIX_ONE.minus(oracleError));
+        // third return value is unused; only exists for compatibility with Collateral
+    }
+
+    /// Should not revert
+    /// @dev This function should be general enough to not need to be overridden
+    /// @return {UoA/tok} The lower end of the price estimate
+    /// @return {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192, uint192) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
-            high = FIX_MAX;
+            return (0, FIX_MAX);
         }
-    }
-
-    /// Should not revert
-    /// @return low {UoA/tok} The lower end of the price estimate
-    /// @return high {UoA/tok} The upper end of the price estimate
-    function price() public view virtual returns (uint192 low, uint192 high) {
-        (low, high, ) = _price();
-    }
-
-    /// Should not revert
-    /// Should be nonzero
-    /// @return {UoA/tok} A fallback price to use for trade sizing when price().low is 0
-    function fallbackPrice() external view returns (uint192) {
-        return _fallbackPrice;
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
