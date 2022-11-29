@@ -36,9 +36,9 @@ contract FacadeWrite is IFacadeWrite {
         // Validate beneficiaries
         for (uint256 i = 0; i < setup.beneficiaries.length; ++i) {
             require(
-                setup.beneficiaries[i].beneficiary != address(0) ||
-                    (setup.beneficiaries[i].revShare.rTokenDist == 0 &&
-                        setup.beneficiaries[i].revShare.rsrDist == 0),
+                setup.beneficiaries[i].beneficiary != address(0) &&
+                    (setup.beneficiaries[i].revShare.rTokenDist > 0 ||
+                        setup.beneficiaries[i].revShare.rsrDist > 0),
                 "beneficiary revShare mismatch"
             );
         }

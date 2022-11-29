@@ -117,7 +117,9 @@ describe('FacadeWrite contract', () => {
   let rTokenSetup: IRTokenSetup
   let govParams: IGovParams
 
-  let revShare: IRevenueShare
+  let revShare1: IRevenueShare
+  let revShare2: IRevenueShare
+
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -154,11 +156,12 @@ describe('FacadeWrite contract', () => {
     })
     facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
-    revShare = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.5% for each beneficiary
+    revShare1 = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.5% for beneficiary1
+    revShare2 = { rTokenDist: bn('4'), rsrDist: bn('6') } // 1% for beneficiary2
 
     // Decrease revenue splits for nicer rounding
-    config.dist.rTokenDist = bn('396')
-    config.dist.rsrDist = bn('594')
+    config.dist.rTokenDist = bn('394')
+    config.dist.rsrDist = bn('591')
 
     // Set parameters
     rTokenConfig = {
@@ -180,8 +183,8 @@ describe('FacadeWrite contract', () => {
         },
       ],
       beneficiaries: [
-        { beneficiary: beneficiary1.address, revShare },
-        { beneficiary: beneficiary2.address, revShare },
+        { beneficiary: beneficiary1.address, revShare: revShare1 },
+        { beneficiary: beneficiary2.address, revShare: revShare2 },
       ],
     }
 
@@ -210,7 +213,15 @@ describe('FacadeWrite contract', () => {
 
   it('Should perform validations', async () => {
     // Should not accept zero addr beneficiary
-    rTokenSetup.beneficiaries = [{ beneficiary: ZERO_ADDRESS, revShare }]
+    rTokenSetup.beneficiaries = [{ beneficiary: ZERO_ADDRESS, revShare: revShare1 }]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('beneficiary revShare mismatch')
+
+    // Should not accept empty revShare
+    rTokenSetup.beneficiaries = [
+      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(0), rTokenDist: bn(0) } },
+    ]
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).to.be.revertedWith('beneficiary revShare mismatch')
