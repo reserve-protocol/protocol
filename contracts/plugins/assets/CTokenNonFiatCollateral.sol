@@ -2,10 +2,10 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
-import "contracts/plugins/assets/ICToken.sol";
-import "contracts/plugins/assets/OracleLib.sol";
-import "contracts/libraries/Fixed.sol";
+import "./AbstractCollateral.sol";
+import "./ICToken.sol";
+import "./OracleLib.sol";
+import "../../libraries/Fixed.sol";
 
 /**
  * @title CTokenNonFiatCollateral

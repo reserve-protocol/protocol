@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "contracts/interfaces/IMain.sol";
+import "../interfaces/IMain.sol";
 
 uint256 constant LONG_FREEZE_CHARGES = 6; // 6 uses
 uint48 constant MAX_UNFREEZE_AT = type(uint48).max;

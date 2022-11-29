@@ -42,6 +42,7 @@ import {
   USDCMock,
   WETH9,
 } from '../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -63,7 +64,7 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 let owner: SignerWithAddress
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
 
@@ -2249,7 +2250,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         params: [
           {
             forking: {
-              jsonRpcUrl: process.env.MAINNET_RPC_URL,
+              jsonRpcUrl: useEnv('MAINNET_RPC_URL'),
               blockNumber: blockNumber,
             },
           },
