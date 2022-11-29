@@ -117,7 +117,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
   let weth: ERC20Mock
   let cETH: CTokenMock
   let eurt: ERC20Mock
-  let curveLpToken: ERC20Mock
 
   let daiCollateral: FiatCollateral
   let usdcCollateral: FiatCollateral
@@ -226,23 +225,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       weth = <ERC20Mock>erc20s[17] // wETH
       cETH = <CTokenMock>erc20s[18] // cETH
       eurt = <ERC20Mock>erc20s[19] // eurt
-
-      interface ConvexConstructorConfig {
-        fallbackPrice_: BigNumber
-        chainlinkFeed_: string
-        erc20_: string
-        rewardERC20_: string
-        maxTradeVolume_: BigNumber
-        oracleTimeout_: BigNumber
-        targetName_: string
-        delayUntilDefault_: BigNumber
-        defaultThreshold_: BigNumber
-        curveStablePool_: string
-        referenceERC20Decimals_: string
-        convexWrappingContract_: string
-        stableCoinChainLinkFeeds_: string[]
-        stableCoinThresholds_: BigNumber[]
-      }
 
       // Get plain aTokens
       aDai = <IAToken>(
@@ -1588,7 +1570,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(ERC20s[1]).to.equal(rsr.address)
       expect(ERC20s[2]).to.equal(aaveToken.address)
       expect(ERC20s[3]).to.equal(compToken.address)
-      expect(ERC20s[20]).to.equal(curveLpToken.address)
 
       const initialTokens: string[] = await Promise.all(
         basket.map(async (c): Promise<string> => {
@@ -1916,7 +1897,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cETHCollateral,
           eurtCollateral,
         ]
-        newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000'), fp('1')]
+        newBasketsNeededAmts = [fp('1'), fp('1'), fp('1'), fp('1'), fp('1000')]
 
         // Register prime collateral and grant allowances
         const newBasketERC20s = []
@@ -1976,7 +1957,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(backing[2]).to.equal(weth.address)
         expect(backing[3]).to.equal(cETH.address)
         expect(backing[4]).to.equal(eurt.address)
-        expect(backing.length).to.equal(6)
+        expect(backing.length).to.equal(5)
 
         // Check initial values
         expect(await basketHandler.nonce()).to.be.gt(bn(0))

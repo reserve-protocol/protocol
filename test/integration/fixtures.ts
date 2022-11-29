@@ -4,8 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
-import { bn, fp, ZERO } from '../../common/numbers'
-import { ZERO_ADDRESS } from '../../common/constants'
+import { bn, fp } from '../../common/numbers'
 import {
   AaveLendingPoolMock,
   Asset,
@@ -71,6 +70,7 @@ async function rsrFixture(): Promise<RSRFixture> {
   )
   return { rsr }
 }
+
 interface COMPAAVEFixture {
   weth: ERC20Mock
   compToken: ERC20Mock
@@ -601,12 +601,12 @@ async function collateralFixture(
   }
 }
 
-type RSRAndCompAaveConvexAndCollateralAndModuleFixture = RSRFixture &
+type RSRAndCompAaveAndCollateralAndModuleFixture = RSRFixture &
   COMPAAVEFixture &
   CollateralFixture &
   ModuleFixture
 
-interface DefaultFixture extends RSRAndCompAaveConvexAndCollateralAndModuleFixture {
+interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixture {
   config: IConfig
   dist: IRevenueShare
   deployer: TestIDeployer
@@ -839,7 +839,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
       ORACLE_TIMEOUT
     )
   )
-
   const rToken: TestIRToken = <TestIRToken>(
     await ethers.getContractAt('TestIRToken', await main.rToken())
   )
