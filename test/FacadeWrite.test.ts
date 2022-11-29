@@ -154,7 +154,7 @@ describe('FacadeWrite contract', () => {
     })
     facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
-    revShare = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.1% in total for each beneficiary
+    revShare = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.5% for each beneficiary
 
     // Decrease revenue splits for nicer rounding
     config.dist.rTokenDist = bn('396')
