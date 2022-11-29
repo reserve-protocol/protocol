@@ -1,23 +1,20 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { BigNumber, BigNumberish, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { defaultFixture, IMPLEMENTATION } from '../../fixtures'
-import { getChainId } from '../../../common/blockchain-utils'
-import { networkConfig } from '../../../common/configuration'
-import { bn, fp, pow10 } from '../../../common/numbers'
-import { ERC20Mock, MockV3Aggregator, UniswapV3Wrapper, UniswapV3WrapperMock, USDCMock } from '../../../typechain'
-import { whileImpersonating } from '../../utils/impersonation'
-import { waitForTx } from '../utils'
+import { defaultFixture, IMPLEMENTATION } from '../../../fixtures'
+import { getChainId } from '../../../../common/blockchain-utils'
+import { networkConfig } from '../../../../common/configuration'
+import { bn, fp, pow10 } from '../../../../common/numbers'
+import { ERC20Mock, MockV3Aggregator, UniswapV3Wrapper, UniswapV3WrapperMock, USDCMock } from '../../../../typechain'
+import { whileImpersonating } from '../../../utils/impersonation'
+import { waitForTx } from '../../utils'
 import { expect } from 'chai'
-import { defaultMintParams, deployUniswapV3WrapperMock, logBalances, TMintParams } from './common'
-import { CollateralStatus, MAX_UINT256 } from '../../../common/constants'
+import { defaultMintParams, deployUniswapV3WrapperMock, logBalances, TMintParams } from '../common'
+import { CollateralStatus, MAX_UINT256 } from '../../../../common/constants'
 import { UniswapV3Collateral__factory } from '@typechain/factories/UniswapV3Collateral__factory'
 import { UniswapV3Collateral } from '@typechain/UniswapV3Collateral'
 
 const createFixtureLoader = waffle.createFixtureLoader
-
-const P18 = BigNumber.from(10).pow(18)
-const P6 = BigNumber.from(10).pow(6)
 
 // Relevant addresses (Mainnet)
 const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
