@@ -49,9 +49,10 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC || '')
     )
 
-    initialBalance = bn('1000e6')
+    initialBalance = bn('10000e6')
     await whileImpersonating(holderUSDC, async (usdcSigner) => {
       await usdc.connect(usdcSigner).transfer(addr1.address, initialBalance)
+      await usdc.connect(usdcSigner).transfer(addr2.address, initialBalance)
     })
   })
 
@@ -73,7 +74,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const balance1 = await usdc.balanceOf(addr1.address)
 
       expect(balanceRwfCash1).to.be.gt(toBNDecimals(amount, 8))
-      expect(depositedAmount1).to.equal('99736669')
+      expect(depositedAmount1).to.equal('99936667')
 
       await wfCash.connect(addr1).withdraw(balanceRwfCash1)
 
@@ -97,7 +98,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const balance1 = await usdc.balanceOf(addr1.address)
 
       expect(balanceRwfCash1).to.be.gt(toBNDecimals(amount, 8))
-      expect(depositedAmount1).to.equal('99736669')
+      expect(depositedAmount1).to.closeTo(bn('99.9366e6'), bn('1e2'))
 
       await wfCash.connect(addr1).withdraw(balanceRwfCash1.div(2))
 
@@ -105,14 +106,14 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const depositedAmount2 = await wfCash.depositedBy(addr1.address)
       const balance2 = await usdc.balanceOf(addr1.address)
 
-      expect(depositedAmount2).to.equal('49868335')
+      expect(depositedAmount2).to.closeTo(bn('49.9683e6'), bn('1e2'))
       expect(balanceRwfCash2).to.equal(balanceRwfCash1.div(2))
       expect(balance2.sub(balance1)).to.be.lt(amount) // due to premature redeeming is less
     })
   })
 
   describe('Transfers', () => {
-    it('Should transfer half the stack correctly', async () => {
+    it('Should transfer correctly to an empty address', async () => {
       const amount = bn('100e6')
 
       await usdc.connect(addr1).approve(wfCash.address, amount)
@@ -121,16 +122,62 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
       const depositedAmount1 = await wfCash.depositedBy(addr1.address)
 
-      expect(balanceRwfCash1).to.equal('10332924990')
-      expect(depositedAmount1).to.equal('99736669')
+      expect(balanceRwfCash1).to.closeTo(bn('100.56427e8'), bn('1e4'))
+      expect(depositedAmount1).to.closeTo(bn('99.9366e6'), bn('1e2'))
 
       await wfCash.connect(addr1).transfer(addr2.address, balanceRwfCash1.div(2))
 
       const balanceRwfCash2 = await wfCash.balanceOf(addr2.address)
       const depositedAmount2 = await wfCash.depositedBy(addr2.address)
 
-      expect(balanceRwfCash2).to.equal('5166462495')
-      expect(depositedAmount2).to.equal('49868334')
+      expect(balanceRwfCash2).to.closeTo(bn('50.2821e8'), bn('1e4'))
+      expect(depositedAmount2).to.closeTo(bn('49.9683e6'), bn('1e2'))
+    })
+
+    it('Should fail to transfer to a different maturity', async () => {
+      const amount = bn('100e6')
+
+      // address 1 deposit
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, 0)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+
+      // address 2 deposit
+      await usdc.connect(addr2).approve(wfCash.address, amount)
+      await wfCash.connect(addr2).depositTo(amount, 1)
+
+      await expect(
+        wfCash.connect(addr1).transfer(addr2.address, balanceRwfCash1.div(2))
+      ).to.be.revertedWith('different maturities')
+    })
+
+    it('Should allow to transfer to the same maturity', async () => {
+      const amount = bn('100e6')
+
+      // address 1 deposit
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, 0)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+      const depositedAmount1 = await wfCash.depositedBy(addr1.address)
+
+      // address 2 deposit
+      await usdc.connect(addr2).approve(wfCash.address, amount)
+      await wfCash.connect(addr2).depositTo(amount, 0)
+      const balanceRwfCash2 = await wfCash.balanceOf(addr2.address)
+      const depositedAmount2 = await wfCash.depositedBy(addr2.address)
+
+      // transfer
+      const balanceToSend = balanceRwfCash1.div(2)
+      await wfCash.connect(addr1).transfer(addr2.address, balanceToSend)
+
+      // assert
+      expect(await wfCash.balanceOf(addr1.address)).to.equal(balanceToSend)
+      expect(await wfCash.balanceOf(addr2.address)).to.equal(balanceRwfCash2.add(balanceToSend))
+
+      expect(await wfCash.depositedBy(addr1.address)).to.closeTo(depositedAmount1.div(2), bn(1e2))
+      expect(await wfCash.depositedBy(addr2.address)).to.equal(
+        depositedAmount2.add(depositedAmount2.div(2))
+      )
     })
   })
 
@@ -141,9 +188,43 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       await usdc.connect(addr1).approve(wfCash.address, amount)
       await wfCash.connect(addr1).deposit(amount)
 
-      const refPerTok = await wfCash.connect(addr1).refPerTok()
+      const refPerTok1 = await wfCash.connect(addr1).refPerTok()
 
-      expect(refPerTok).to.be.closeTo(bn('1e8'), bn('5e6'))
+      expect(refPerTok1).to.be.lt(bn('1e8'))
+    })
+
+    it('Should have an increasing refPerTok', async () => {
+      const amount = bn('100e6')
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).deposit(amount)
+      let lastRefPerTok = await wfCash.connect(addr1).refPerTok()
+
+      for (let i = 0; i < 50; i++) {
+        await advanceTime(1000)
+        await advanceBlocks(1000)
+        const refPerTok = await wfCash.connect(addr1).refPerTok()
+        expect(refPerTok).to.be.gt(lastRefPerTok)
+        lastRefPerTok = refPerTok
+      }
+    })
+  })
+
+  describe('Reinvest', () => {
+    it('Should mature after a while', async () => {
+      const amount = bn('100e6')
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).deposit(amount)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+
+      while (!(await wfCash.connect(addr1).hasMatured())) {
+        await advanceTime(100000)
+        await advanceBlocks(100000)
+      }
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.true
     })
   })
 })

@@ -19,9 +19,16 @@ contract ReserveWrappedFCash is ERC20 {
     IERC20Metadata private immutable underlyingAsset;
     uint16 private immutable currencyId;
 
-    mapping(address => uint256) private maturity;
+    struct Market {
+        uint256 maturity;
+        uint8 monthsTenor;
+    }
+
+    Market private globalMarket;
+
+    mapping(address => Market) private market;
     mapping(address => uint256) private deposited;
-    mapping(address => uint8) private monthsTenor;
+    mapping(address => uint256) private previousRate;
 
     constructor(
         address _notionalProxy,
@@ -39,30 +46,162 @@ contract ReserveWrappedFCash is ERC20 {
     ///   of the calling account.
     /// @return rate The ratio of value of a deposited token to what it's currently worth
     /// @dev This rate might decrease when re-investing because of the fee to enter a market
-    function refPerTok() external view returns (uint256 rate) {
+    function refPerTok() public view returns (uint256 rate) {
         uint256 depositedAmount = deposited[_msgSender()];
 
         if (depositedAmount != 0) {
-            int256 underlyingValue = notionalProxy.getPresentfCashValue(
-                currencyId, maturity[_msgSender()], int88(int256(balanceOf(_msgSender()))), block.timestamp, false
-            );
+            uint256 maturity = market[_msgSender()].maturity;
+            IWrappedfCash wfCash = getWfCash(maturity);
+            int256 underlyingValue;
+
+            if (wfCash.hasMatured()) {
+                underlyingValue = int256(balanceOf(_msgSender()));
+            }
+            else {
+                underlyingValue = notionalProxy.getPresentfCashValue(
+                    currencyId, maturity, int88(int256(balanceOf(_msgSender()))), block.timestamp, false
+                );
+            }
 
             // given the amount of deposited tokens, compute the value of a single one
             rate = uint256(underlyingValue) * 10 ** underlyingAsset.decimals() / depositedAmount;
+            rate = rate * previousRate[_msgSender()];
         }
         else {
             rate = 0;
         }
     }
 
+    /// @notice Deposits `amount` into the most profitable market at this time
+    ///   or the market where the account is already invested
     function deposit(uint256 amount) external {
         require(amount > 0, "empty deposit amount");
 
-        IWrappedfCash wfCash = getCurrentWfCash();
+        if (globalMarket.maturity < block.timestamp) {
+            // if globalMarket maturity is in the past
+            // it has matured and it needs to update
+            globalMarket = getMostProfitableMarket();
+        }
 
-        // ask Notional how much fCash we should receive for our assets
-        (uint88 fCashAmount,,) = notionalProxy.getfCashLendFromDeposit(
-            currencyId, amount, getMaturity(), 0, block.timestamp, true
+        if (market[_msgSender()].maturity == 0) {
+            // if maturity is zero this account has no positions open
+            market[_msgSender()] = globalMarket;
+            previousRate[_msgSender()] = 1;
+        }
+
+        _depositByUser(amount, market[_msgSender()].maturity);
+    }
+
+    /// @notice Deposits `amount` into the given `marketIndex`
+    /// @dev to use this method the account needs to not have any prior position
+    function depositTo(uint256 amount, uint8 marketIndex) external {
+        require(amount > 0, "empty deposit amount");
+        require(market[_msgSender()].maturity == 0, "market already selected");
+
+        Market memory chosenMarket = getMarket(marketIndex);
+        market[_msgSender()] = chosenMarket;
+        previousRate[_msgSender()] = 1;
+
+        _depositByUser(amount, chosenMarket.maturity);
+    }
+
+    function withdraw(uint256 amount) external {
+        require(amount > 0, "empty withdraw amount");
+        uint256 balance = balanceOf(_msgSender());
+        require(balance >= amount, "not enough balance");
+
+        Market memory currentMarket = market[_msgSender()];
+
+        IWrappedfCash wfCash = getWfCash(currentMarket.maturity);
+
+        // compute the total of deposited value to be discounted
+        uint256 currentlyDeposited = deposited[_msgSender()];
+        uint256 percentageToWithdraw = amount * 1e18 / balance;
+        uint256 depositedToDiscount = currentlyDeposited * percentageToWithdraw / 1e18;
+
+        // update deposited balance
+        deposited[_msgSender()] = currentlyDeposited - depositedToDiscount;
+
+        // burn the tokens being withdrawn
+        _burn(_msgSender(), amount);
+
+        // redeem the lend to the user
+        wfCash.redeemToUnderlying(amount, _msgSender(), 0);
+
+        if (percentageToWithdraw == 1e18) {
+            delete market[_msgSender()];
+            delete deposited[_msgSender()];
+            delete previousRate[_msgSender()];
+        }
+    }
+
+    function reinvest() external {
+        Market memory currentMarket = market[_msgSender()];
+        require(currentMarket.maturity > 0, "market not initialized");
+        IWrappedfCash wfCash = getWfCash(currentMarket.maturity);
+        require(wfCash.hasMatured(), "market has not matured yet");
+
+        previousRate[_msgSender()] = refPerTok();
+
+        // take everything out
+        uint256 currentfCashAmount = balanceOf(_msgSender());
+        _burn(_msgSender(), currentfCashAmount);
+        wfCash.redeemToUnderlying(currentfCashAmount, address(this), 0);
+
+        // get new maturity
+        if (currentMarket.maturity == globalMarket.maturity) {
+            Market memory bestMarket = getMostProfitableMarket();
+            market[_msgSender()] = bestMarket;
+            currentMarket = bestMarket;
+            globalMarket = bestMarket;
+        }
+        else {
+            market[_msgSender()] = globalMarket;
+            currentMarket = globalMarket;
+        }
+
+        // get new market
+        wfCash = IWrappedfCash(
+            wfCashFactory.deployWrapper(currencyId, uint40(currentMarket.maturity))
+        );
+
+        // lend everything
+        _deposit(currentfCashAmount, wfCash);
+    }
+
+    /** Getters **/
+
+    function activeMarkets() external view returns (Market[] memory markets) {
+        INotionalProxy.MarketParameters[] memory _activeMarkets = notionalProxy.getActiveMarkets(currencyId);
+        uint256 length = _activeMarkets.length;
+        require(length > 0, 'no available markets');
+
+        markets = new Market[](length);
+
+        for (uint i = 0; i < length; i++) {
+            markets[i] = Market(_activeMarkets[i].maturity, getMonthsTenor(i));
+        }
+    }
+
+    /// @notice Returns the amount of tokens deposited by `account`
+    function depositedBy(address account) external view returns (uint256 amount) {
+        amount = deposited[account];
+    }
+
+    function hasMatured() external view returns (bool) {
+        require(market[_msgSender()].maturity > 0, "no existing position");
+        IWrappedfCash wfCash = getWfCash(market[_msgSender()].maturity);
+        return wfCash.hasMatured();
+    }
+
+    /** Helpers **/
+
+    /// Deposits `amount` into a specific market maturity`
+    /// @param amount The amount to deposit
+    /// @param maturity The maturity of the market to enter
+    function _depositByUser(uint256 amount, uint256 maturity) private {
+        IWrappedfCash wfCash = IWrappedfCash(
+            wfCashFactory.deployWrapper(currencyId, uint40(maturity))
         );
 
         // transfer assets from user
@@ -70,6 +209,18 @@ contract ReserveWrappedFCash is ERC20 {
 
         // approve wfCash's Notional contract
         underlyingAsset.safeApprove(address(wfCash), amount);
+
+        _deposit(amount, wfCash);
+    }
+
+    /// Deposits `amount` into a specific market `wfCash`
+    /// @param amount The amount to deposit
+    /// @param wfCash The maturity of the market to enter
+    function _deposit(uint256 amount, IWrappedfCash wfCash) private {
+        // ask Notional how much fCash we should receive for our assets
+        (uint88 fCashAmount,,) = notionalProxy.getfCashLendFromDeposit(
+            currencyId, amount, wfCash.getMaturity(), 0, block.timestamp, true
+        );
 
         // mint wfCash
         wfCash.mintViaUnderlying(amount, fCashAmount, address(this), 0);
@@ -81,35 +232,6 @@ contract ReserveWrappedFCash is ERC20 {
         deposited[_msgSender()] = amount - costOfEnteringMarket(amount, wfCash);
     }
 
-    function withdraw(uint256 amount) external {
-        require(amount > 0, "empty withdraw amount");
-        uint256 balance = balanceOf(_msgSender());
-        require(balance >= amount, "not enough balance");
-
-        IWrappedfCash wfCash = getCurrentWfCash();
-
-        // compute the total of deposited value to be discounted
-        uint256 currentlyDeposited = deposited[_msgSender()];
-        uint256 percentageToWithdraw = computePercentage(amount, balance);
-        uint256 depositedToDiscount = currentlyDeposited * percentageToWithdraw / 1e18;
-
-        // update deposited balance
-        deposited[_msgSender()] = currentlyDeposited - depositedToDiscount;
-
-        // burn the tokens being withdrawn
-        _burn(_msgSender(), amount);
-
-        // redeem the lend to the user
-        wfCash.redeemToUnderlying(amount, _msgSender(), 0);
-    }
-
-    /// @notice Returns the amount of tokens deposited by `account`
-    function depositedBy(address account) external view returns (uint256 amount) {
-        amount = deposited[account];
-    }
-
-    /** Internal helpers **/
-
     /// @dev Hook that is called before any transfer of tokens.
     ///
     /// It is used to transfer the `deposited` amounts when tokens
@@ -120,12 +242,17 @@ contract ReserveWrappedFCash is ERC20 {
         uint256 amount
     ) internal override {
         if (from == address(0) || to == address(0)) return;
+        require(
+            market[to].maturity == 0 || market[from].maturity == market[to].maturity,
+            "different maturities"
+        );
 
         uint256 balance = balanceOf(from);
 
         uint256 percentageToMove = computePercentage(amount, balance);
         uint256 depositedToMove = deposited[from] * percentageToMove / 1e18;
 
+        deposited[from] = deposited[from] - depositedToMove;
         deposited[to] = deposited[to] + depositedToMove;
     }
 
@@ -142,7 +269,7 @@ contract ReserveWrappedFCash is ERC20 {
     /// @param wfCash Instance of the wfCash market contract we are interacting with
     function costOfEnteringMarket(uint256 amount, IWrappedfCash wfCash) private view returns (uint256) {
         uint32 daysUntilMaturity = getDaysUntilMaturity(wfCash);
-        uint32 months = monthsTenor[_msgSender()];
+        uint32 months = market[_msgSender()].monthsTenor;
         // compute the percentage fee to pay given the market we enter
         // multipy by 100 to avoid decimals
         uint32 marketRate = (months * 1e2) / 12;
@@ -188,32 +315,19 @@ contract ReserveWrappedFCash is ERC20 {
         }
     }
 
-    /// Return an instance to Notional's wfCash contract of the current user's maturity
-    /// @dev if a user happens to use a maturity that is not deployed yet, a deploy will happen
-    function getCurrentWfCash() internal returns (IWrappedfCash wfCash){
+    /// Return an instance to Notional's wfCash contract of the given maturity
+    /// @dev if it's used a maturity that is not deployed yet, a deploy will happen
+    function getWfCash(uint256 maturity) internal view returns (IWrappedfCash wfCash){
         // has internal cache so will only deploy if still not deployed
         wfCash = IWrappedfCash(
-            wfCashFactory.deployWrapper(currencyId, uint40(getMaturity()))
+            wfCashFactory.computeAddress(currencyId, uint40(maturity))
         );
         return wfCash;
     }
 
-    /// Return the current maturity of the user interacting with the contract
-    /// if there's none yet, it fetches the most profitable
-    function getMaturity() private returns (uint256) {
-        if (maturity[_msgSender()] == 0) {
-            (uint256 bestMaturity, uint8 months) = getMostProfitableMarket();
-            maturity[_msgSender()] = bestMaturity;
-            monthsTenor[_msgSender()] = months;
-        }
-
-        return maturity[_msgSender()];
-    }
-
     /// Fetch all markets and returns the most profitable one
-    /// @return bestMaturity The maturity of the selected market
-    /// @return months The number of months that the market lasts (tenor)
-    function getMostProfitableMarket() private view returns (uint256 bestMaturity, uint8 months) {
+    /// @return selectedMarket The market with the best rate at the moment
+    function getMostProfitableMarket() private view returns (Market memory selectedMarket) {
         INotionalProxy.MarketParameters[] memory markets = notionalProxy.getActiveMarkets(currencyId);
         uint256 length = markets.length;
         require(length > 0, 'no available markets');
@@ -223,10 +337,22 @@ contract ReserveWrappedFCash is ERC20 {
         for (uint i = 0; i < length; i++) {
             if (markets[i].oracleRate > biggestRate) {
                 biggestRate = markets[i].oracleRate;
-                bestMaturity = markets[i].maturity;
-                months = getMonthsTenor(i);
+                selectedMarket.maturity = markets[i].maturity;
+                selectedMarket.monthsTenor = getMonthsTenor(i);
             }
         }
+    }
+
+    /// Fetch all markets and returns the one on the selected index
+    /// @return selectedMarket The market with the selected index
+    function getMarket(uint8 index) private view returns (Market memory selectedMarket) {
+        INotionalProxy.MarketParameters[] memory availableMarkets = notionalProxy.getActiveMarkets(currencyId);
+        uint256 length = availableMarkets.length;
+        require(length > 0, 'no available markets');
+        require(index < length, 'market not available');
+
+        selectedMarket.maturity = availableMarkets[index].maturity;
+        selectedMarket.monthsTenor = getMonthsTenor(index);
     }
 
     /// @param index The market index to be checked
