@@ -71,12 +71,12 @@ contract EURFiatCollateral is Collateral {
     /// Should not revert
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    /// @param refPerTargetPrice {target/ref}
+    /// @param targetPerRef {UoA/ref}
     function _price()
         internal
         view
         override
-        returns (uint192 low, uint192 high, uint192 refPerTargetPrice)
+        returns (uint192 low, uint192 high, uint192 targetPerRef)
     {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p1) {
             try uoaPerTargetFeed.price_(oracleTimeout) returns (uint192 p2) {
@@ -84,14 +84,13 @@ contract EURFiatCollateral is Collateral {
                     return (0, FIX_MAX, 0);
                 }
 
-                // {target/ref} = {UoA/ref} / {UoA/target}
-                uint192 p = p1.div(p2);
-
                 // oracleError is on whatever the _true_ price is, not the one observed
                 // this oracleError is already the combined total oracle error
-                low = p.div(FIX_ONE.plus(oracleError));
-                high = p.div(FIX_ONE.minus(oracleError));
-                refPerTargetPrice = p;
+                low = p1.div(FIX_ONE.plus(oracleError));
+                high = p1.div(FIX_ONE.minus(oracleError));
+
+                // {target/ref} = {UoA/ref} / {UoA/target}
+                targetPerRef = p1.div(p2);
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -119,12 +118,13 @@ contract EURFiatCollateral is Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        (uint192 low, , uint192 p) = _price(); // {UoA/tok}, {target/ref}
+        (uint192 low, , uint192 targetPerRef) = _price(); // {UoA/tok}, {target/ref}
 
         // If the price is below the default-threshold price, default eventually
         // uint192(+/-) is the same as Fix.plus/minus
-        if (low == 0 || p < pegBottom || p > pegTop) markStatus(CollateralStatus.IFFY);
-        else {
+        if (low == 0 || targetPerRef < pegBottom || targetPerRef > pegTop) {
+            markStatus(CollateralStatus.IFFY);
+        } else {
             _fallbackPrice = low;
             markStatus(CollateralStatus.SOUND);
         }
