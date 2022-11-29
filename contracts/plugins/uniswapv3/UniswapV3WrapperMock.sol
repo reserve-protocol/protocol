@@ -69,16 +69,17 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
         values.sender = sender;
     }
 
-    function _collectRewards() internal override returns (uint256 feesAmount0, uint256 feesAmount1) {
+    function _collectRewards() internal override returns (uint256[2] memory feesAmounts) {
         TransferHelper.safeTransferFrom(_rewardsTokens[0], values.sender, address(this), values.feesAmount0);
         TransferHelper.safeTransferFrom(_rewardsTokens[1], values.sender, address(this), values.feesAmount1);
-        feesAmount0 = values.feesAmount0;
-        feesAmount1 = values.feesAmount1;
+        feesAmounts[0] = values.feesAmount0;
+        feesAmounts[1] = values.feesAmount1;
         values.feesAmount0 = 0;
         values.feesAmount1 = 0;
     }
 
-    function _freshRewards() internal view override returns (uint256 feesAmount0, uint256 feesAmount1) {
-        return (values.feesAmount0, values.feesAmount1);
+    function _freshRewards() internal view override returns (uint256[2] memory feesAmounts) {
+        feesAmounts[0] = values.feesAmount0;
+        feesAmounts[1] = values.feesAmount1;
     }
 }

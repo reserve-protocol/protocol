@@ -3,6 +3,8 @@ pragma solidity ^0.8.9;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
+uint256 constant MAX_TOKENS = 2;
+
 /**
     @title Uniswap V3 Wrapper
     @notice ERC20 Wrapper token for Uniswap V3 positions
@@ -11,46 +13,49 @@ import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
   */
 abstract contract RewardSplitter is ERC20 {
     uint256 internal constant PRECISION_RATIO = 1e21;
-    address[] internal _rewardsTokens;
-    uint256[] internal _lifetimeRewards;
-    uint256[] internal _lifetimeRewardsClaimed;
-    uint256[] internal _accRewardsPerToken;
+
+    uint256 internal immutable _length;
+
+    address[MAX_TOKENS] internal _rewardsTokens;
+    uint256[MAX_TOKENS] internal _lifetimeRewards;
+    uint256[MAX_TOKENS] internal _lifetimeRewardsClaimed;
+    uint256[MAX_TOKENS] internal _accRewardsPerToken;
     mapping(address => mapping(address => uint256)) internal _unclaimedRewards;
     mapping(address => mapping(address => uint256)) internal _userSnapshotRewardsPerToken;
 
     constructor(address[] memory tokens) {
-        _rewardsTokens = tokens;
-        _lifetimeRewards = new uint256[](tokens.length);
-        _lifetimeRewardsClaimed = new uint256[](tokens.length);
-        _accRewardsPerToken = new uint256[](tokens.length);
+        _length = tokens.length;
+        for (uint256 i; i < _length; i++) {
+            _rewardsTokens[i] = tokens[i];
+        }
     }
 
     function _claimRewardsShareTo(address recipient)
         internal
         returns (
-            address token0,
-            address token1,
-            uint256 amount0,
-            uint256 amount1
+            address[MAX_TOKENS] memory tokens,
+            uint256[MAX_TOKENS] memory amounts
         )
     {
         _updateRewards();
         _updateUser(msg.sender);
-        if (
-            _unclaimedRewards[_rewardsTokens[0]][msg.sender] > IERC20(_rewardsTokens[0]).balanceOf(address(this)) ||
-            _unclaimedRewards[_rewardsTokens[1]][msg.sender] > IERC20(_rewardsTokens[1]).balanceOf(address(this))
-        ) {
-            _claimRewardsFromUnderlying();
+        for (uint256 i; i < _length; i++) {
+            if (_unclaimedRewards[_rewardsTokens[i]][msg.sender] > IERC20(_rewardsTokens[i]).balanceOf(address(this))) {
+                _claimRewardsFromUnderlying();
+                break;
+            }
         }
-        TransferHelper.safeTransfer(_rewardsTokens[0], recipient, _unclaimedRewards[_rewardsTokens[0]][msg.sender]);
-        TransferHelper.safeTransfer(_rewardsTokens[1], recipient, _unclaimedRewards[_rewardsTokens[1]][msg.sender]);
-        _unclaimedRewards[_rewardsTokens[0]][msg.sender] = 0;
-        _unclaimedRewards[_rewardsTokens[1]][msg.sender] = 0;
+        for (uint256 i; i < _length; i++) {
+            TransferHelper.safeTransfer(_rewardsTokens[i], recipient, _unclaimedRewards[_rewardsTokens[i]][msg.sender]);
+            _unclaimedRewards[_rewardsTokens[i]][msg.sender] = 0;
+        }
+        //rearrange _unclaimedRewards
+        for (uint256 i; i < _length; i++) {
+            amounts[i] = _unclaimedRewards[_rewardsTokens[i]][msg.sender];
+        }
         return (
-            _rewardsTokens[0],
-            _rewardsTokens[1],
-            _unclaimedRewards[_rewardsTokens[0]][msg.sender],
-            _unclaimedRewards[_rewardsTokens[1]][msg.sender]
+            _rewardsTokens,
+            amounts
         );
     }
 
@@ -78,8 +83,9 @@ abstract contract RewardSplitter is ERC20 {
      * @param user The user to update
      */
     function _updateUserSnapshotRewardsPerToken(address user) internal {
-        _userSnapshotRewardsPerToken[_rewardsTokens[0]][user] = _accRewardsPerToken[0];
-        _userSnapshotRewardsPerToken[_rewardsTokens[1]][user] = _accRewardsPerToken[1];
+        for (uint256 i; i < _length; i++) {
+            _userSnapshotRewardsPerToken[_rewardsTokens[i]][user] = _accRewardsPerToken[i];
+        }
     }
 
     /**
@@ -92,18 +98,14 @@ abstract contract RewardSplitter is ERC20 {
         if (supply == 0) {
             return;
         }
-        (uint256 freshRewards0, uint256 freshRewards1) = _freshRewards();
+        uint256[MAX_TOKENS] memory freshRewards = _freshRewards();
 
-        uint256 lifetimeRewards0 = _lifetimeRewardsClaimed[0] + freshRewards0;
-        uint256 lifetimeRewards1 = _lifetimeRewardsClaimed[1] + freshRewards1;
-
-        uint256 rewardsAccrued0 = lifetimeRewards0 - _lifetimeRewards[0];
-        uint256 rewardsAccrued1 = lifetimeRewards1 - _lifetimeRewards[1];
-
-        _accRewardsPerToken[0] += (rewardsAccrued0 * PRECISION_RATIO) / supply;
-        _accRewardsPerToken[1] += (rewardsAccrued1 * PRECISION_RATIO) / supply;
-        _lifetimeRewards[0] = lifetimeRewards0;
-        _lifetimeRewards[1] = lifetimeRewards1;
+        for (uint256 i; i < _length; i++) {
+            uint256 lifetimeRewards = _lifetimeRewardsClaimed[i] + freshRewards[i];
+            uint256 rewardsAccrued = lifetimeRewards - _lifetimeRewards[i];
+            _accRewardsPerToken[i] += (rewardsAccrued * PRECISION_RATIO) / supply;
+            _lifetimeRewards[i] = lifetimeRewards;
+        }
     }
 
     /**
@@ -113,16 +115,18 @@ abstract contract RewardSplitter is ERC20 {
      */
     function _updateUser(address user) internal {
         uint256 balance = balanceOf(user);
-        (uint256 pending0, uint256 pending1) = _getPendingRewards(user, balance);
-        _unclaimedRewards[_rewardsTokens[0]][user] += pending0;
-        _unclaimedRewards[_rewardsTokens[1]][user] += pending1;
+        uint256[MAX_TOKENS] memory pendingRewards = _getPendingRewards(user, balance);
+        for (uint256 i; i < _length; i++) {
+            _unclaimedRewards[_rewardsTokens[i]][user] += pendingRewards[i];
+        }
         _updateUserSnapshotRewardsPerToken(user);
     }
 
     function _claimRewardsFromUnderlying() internal {
-        (uint256 amount0, uint256 amount1) = _collectRewards();
-        _lifetimeRewardsClaimed[0] += amount0;
-        _lifetimeRewardsClaimed[1] += amount1;
+        uint256[MAX_TOKENS] memory amounts = _collectRewards();
+        for (uint256 i; i < _length; i++) {
+            _lifetimeRewardsClaimed[i] += amounts[i];
+        }
     }
 
     function userSnapshotRewardsPerToken(uint256 index, address user) internal view returns (uint256) {
@@ -134,24 +138,25 @@ abstract contract RewardSplitter is ERC20 {
      * @notice Compute pending rewards for a user.
      * @param user The user to compute pending rewards for
      * @param balance The balance of the user
-     * @return pending0 The amount of pending rewards for token0
-     * @return pending1 The amount of pending rewards for token1
+     * @return pendingRewards The amount of pending rewards for each token
      */
     function _getPendingRewards(address user, uint256 balance)
         internal
         view
-        returns (uint256 pending0, uint256 pending1)
+        returns (uint256[MAX_TOKENS] memory pendingRewards)
     {
-        pending0 = (balance * (_accRewardsPerToken[0] - userSnapshotRewardsPerToken(0, user))) / PRECISION_RATIO;
-        pending1 = (balance * (_accRewardsPerToken[1] - userSnapshotRewardsPerToken(1, user))) / PRECISION_RATIO;
+        for (uint256 i; i < _length; i++) {
+            pendingRewards[i] =
+                (balance * (_accRewardsPerToken[i] - userSnapshotRewardsPerToken(i, user))) /
+                PRECISION_RATIO;
+        }
     }
 
-    function _freshRewards() internal view virtual returns (uint256, uint256);
+    function _freshRewards() internal view virtual returns (uint256[MAX_TOKENS] memory freshRewards);
 
     /**
      * @notice Collect rewards from the contract paying them, like a Uniswap V3 position
-     * @return amount0 The amount of rewards collected for token0
-     * @return amount1 The amount of rewards collected for token1
+     * @return amounts The amount of rewards collected for each token
      */
-    function _collectRewards() internal virtual returns (uint256 amount0, uint256 amount1); //TODO make it usable for any number of tokens
+    function _collectRewards() internal virtual returns (uint256[MAX_TOKENS] memory amounts); //TODO make it usable for any number of tokens
 }

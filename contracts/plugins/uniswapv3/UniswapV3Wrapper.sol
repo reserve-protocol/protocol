@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import { IUniswapV3Wrapper } from "./IUniswapV3Wrapper.sol";
+import {IUniswapV3Wrapper} from "./IUniswapV3Wrapper.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol"; //TODO remove console.log
@@ -138,7 +138,8 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint256 amount1
         )
     {
-        return _claimRewardsShareTo(recipient);
+        (address[MAX_TOKENS] memory tokens, uint256[MAX_TOKENS] memory amounts) = _claimRewardsShareTo(recipient);
+        return (tokens[0], tokens[1], amounts[0], amounts[1]);
     }
 
     function positionId() external view returns (uint256) {
@@ -212,18 +213,18 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         token1 = _rewardsTokens[1];
     }
 
-    function _freshRewards() internal view virtual override returns (uint256 feesAmount0, uint256 feesAmount1) {
-        (feesAmount0, feesAmount1) = PositionValue.fees(nonfungiblePositionManager, _tokenId);
+    function _freshRewards() internal view virtual override returns (uint256[2] memory amounts) {
+        (amounts[0], amounts[1]) = PositionValue.fees(nonfungiblePositionManager, _tokenId);
     }
 
-    function _collectRewards() internal virtual override returns (uint256 amount0, uint256 amount1) {
+    function _collectRewards() internal virtual override returns (uint256[2] memory amounts) {
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager.CollectParams(
             _tokenId,
             address(this),
             type(uint128).max,
             type(uint128).max
         );
-        return nonfungiblePositionManager.collect(collectParams);
+        (amounts[0], amounts[1]) = nonfungiblePositionManager.collect(collectParams);
     }
 
     function _tokenArray(INonfungiblePositionManager.MintParams memory p) internal pure returns (address[] memory arr) {
