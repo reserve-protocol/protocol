@@ -3,12 +3,10 @@ pragma solidity 0.8.9;
 
 import "../../libraries/Fixed.sol";
 import "../assets/OracleLib.sol";
-import "./AbstractYTokenCollateral.sol";
+import "./AbstractDMYTokenCollateral.sol";
 
-contract YTokenFiatCollateral is AbstractYTokenCollateral {
+contract DMYTokenFiatCollateral is AbstractDMYTokenCollateral {
     using OracleLib for AggregatorV3Interface;
-
-    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     constructor(
         address vault_,
@@ -21,7 +19,7 @@ contract YTokenFiatCollateral is AbstractYTokenCollateral {
         uint48 oracleTimeout_,
         uint256 defaultThreshold_
     )
-        AbstractYTokenCollateral(
+        AbstractDMYTokenCollateral(
             vault_,
             maxTradeVolume_,
             fallbackPrice_,
@@ -29,12 +27,10 @@ contract YTokenFiatCollateral is AbstractYTokenCollateral {
             delayUntilDefault_,
             ratePerPeriod_,
             chainlinkFeed_,
-            oracleTimeout_
+            oracleTimeout_,
+            defaultThreshold_
         )
-    {
-        require(defaultThreshold_ > 0, "defaultThreshold zero");
-        defaultThreshold = _safeWrap(defaultThreshold_);
-    }
+    {} // solhint-disable-line no-empty-blocks
 
     function _checkAndUpdateDefaultStatus() internal override returns (bool isSound) {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
