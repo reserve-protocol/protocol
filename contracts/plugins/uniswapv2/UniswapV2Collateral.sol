@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: agpl-3.0
+
 // done as part of a reserver-protocol hackathon
 pragma solidity ^0.8.9;
 
