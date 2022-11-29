@@ -39,7 +39,7 @@ contract Asset is IAsset {
     ) {
         require(fallbackPrice_ > 0, "fallback price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
-        require(oracleError_ > 0 && oracleError_ < FIX_MAX, "oracle error out of range"); // TODO test
+        require(oracleError_ > 0 && oracleError_ < FIX_ONE, "oracle error out of range");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");

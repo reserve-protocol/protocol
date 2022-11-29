@@ -54,8 +54,6 @@ contract EURFiatCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        // TODO the error calculation in L:49 might be wrong
-
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         defaultThreshold = defaultThreshold_;

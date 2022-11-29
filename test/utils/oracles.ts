@@ -2,18 +2,35 @@ import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
 import { fp } from '../../common/numbers'
+import { MAX_UINT192 } from '../../common/constants'
 
-// Expects a symmetric price around `avgPrice` assuming a consistent percentage oracle error
+// Expects a price around `avgPrice` assuming a consistent percentage oracle error
 export const expectPrice = async (
   assetAddr: string,
   avgPrice: BigNumber,
-  oracleError: BigNumber
+  oracleError: BigNumber,
+  near?: boolean
 ) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const [lowPrice, highPrice] = await asset.price()
-  const delta = avgPrice.mul(oracleError).div(fp('1'))
-  expect(lowPrice).to.equal(avgPrice.sub(delta))
-  expect(highPrice).to.equal(avgPrice.add(delta))
+  const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
+  const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
+
+  if (near) {
+    expect(lowPrice).to.be.closeTo(expectedLow, 100)
+    expect(highPrice).to.be.closeTo(expectedHigh, 100)
+  } else {
+    expect(lowPrice).to.equal(expectedLow)
+    expect(highPrice).to.equal(expectedHigh)
+  }
+}
+
+// Expects an unpriced asset with low = 0 and high = FIX_MAX
+export const expectUnpriced = async (assetAddr: string) => {
+  const asset = await ethers.getContractAt('Asset', assetAddr)
+  const [lowPrice, highPrice] = await asset.price()
+  expect(lowPrice).to.equal(0)
+  expect(highPrice).to.equal(MAX_UINT192)
 }
 
 // Use to set reference unit chainlink oracle for an asset, by address
