@@ -3,17 +3,27 @@ pragma solidity ^0.8.9;
 
 import "../assets/AbstractCollateral.sol";
 import "./IUniswapV3Wrapper.sol";
-import "hardhat/console.sol";
 
+/**
+    @title Uniswap V3 Collateral
+    @notice Collateral plugin for Uniswap V3 positions
+    @notice Requires Uniswap V3 Wrapper to be deployed first to wrap the position used
+    @author Gene A. Tsvigun
+    @author Vic G. Larson
+    @dev As discussed with Reserve team during office hours, UniswapV3 contracts are non-upgradeable and well tested,
+    @dev so we can rely on synthetic reference token amount staying the same and inherit the default `refPerTok`
+  */
 contract UniswapV3Collateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
+    uint8 public immutable underlyingERC20Decimals0;
+    uint8 public immutable underlyingERC20Decimals1;
 
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         AggregatorV3Interface chainlinkFeedSecondAsset_,
-        IUniswapV3Wrapper erc20_,
+        IUniswapV3Wrapper uniswapV3Wrapper_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -22,7 +32,7 @@ contract UniswapV3Collateral is Collateral {
         Collateral(
             fallbackPrice_,
             chainlinkFeed_,
-            IERC20Metadata(erc20_),
+            IERC20Metadata(uniswapV3Wrapper_),
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -31,52 +41,67 @@ contract UniswapV3Collateral is Collateral {
     {
         require(address(chainlinkFeedSecondAsset_) != address(0), "missing chainlink feed for second asset in pair");
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
+        address underlyingAsset0 = uniswapV3Wrapper_.token0();
+        address underlyingAsset1 = uniswapV3Wrapper_.token1();
+        underlyingERC20Decimals0 = IERC20Metadata(underlyingAsset0).decimals();
+        underlyingERC20Decimals1 = IERC20Metadata(underlyingAsset1).decimals();
     }
 
-    function _calculatePrice(
-        address token0,
-        address token1,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 liquidity
-    ) internal view returns (uint192) {
-        uint192 price0 = chainlinkFeed.price(oracleTimeout);
-        uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
-        //TODO liquidity can be 10 ** 18 for some assets.
-        //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**IERC20Metadata(token0).decimals();
-        uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**IERC20Metadata(token1).decimals();
-        return uint192(priceScaled0 + priceScaled1);
-    }
-
-    function strictPrice() external view override returns (uint192) {
-        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
-            .principal();
-        return _calculatePrice(token0, token1, amount0, amount1, IERC20(erc20).totalSupply());
-    }
-
-    function _fallbackPrice() public view returns (uint192) {
-        (address token0, address token1, uint256 amount0, uint256 amount1, uint128 liquidity) = IUniswapV3Wrapper(
-            address(erc20)
-        ).priceSimilarPosition();
-        console.log("amount0", "amount1", amount0, amount1);
-        return _calculatePrice(token0, token1, amount0, amount1, liquidity);
-    }
-
-    function price(bool allowFallback) public view override returns (bool isFallback, uint192) {
-        try this.strictPrice() returns (uint192 p) {
-            return (false, p);
-        } catch {
-            require(allowFallback, "price reverted without failover enabled");
-            return (true, _fallbackPrice());
-        }
-    }
-
-    //TODO RefPerTok() always equals 1 but we need to implement check
     function claimRewards() external override {
         (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
             .claimRewards(msg.sender);
         emit RewardsClaimed(IERC20(token0), amount0);
         emit RewardsClaimed(IERC20(token1), amount1);
+    }
+
+    function strictPrice() external view override returns (uint192) {
+        (uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20)).principal();
+        (uint192 price0, uint192 price1) = _priceFeeds();
+        return
+            _calculatePrice(
+                underlyingERC20Decimals0,
+                underlyingERC20Decimals1,
+                amount0,
+                amount1,
+                price0,
+                price1,
+                IERC20(erc20).totalSupply()
+            );
+    }
+
+    function _priceFeeds() internal view returns (uint192 price0, uint192 price1) {
+        price0 = chainlinkFeed.price(oracleTimeout);
+        price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
+    }
+
+    function _fallbackPrice() public view returns (uint192) {
+        (uint256 amount0, uint256 amount1, uint128 liquidity) = IUniswapV3Wrapper(address(erc20))
+            .priceSimilarPosition();
+        return
+            _calculatePrice(
+                underlyingERC20Decimals0,
+                underlyingERC20Decimals1,
+                amount0,
+                amount1,
+                FIX_ONE,
+                FIX_ONE,
+                liquidity
+            );
+    }
+
+    function _calculatePrice(
+        uint8 decimals0,
+        uint8 decimals1,
+        uint256 amount0,
+        uint256 amount1,
+        uint192 price0,
+        uint192 price1,
+        uint256 liquidity
+    ) internal pure returns (uint192) {
+        //TODO liquidity can be 10 ** 18 for some assets.
+        //Resulting price per one liquidity would have too bad precision. Need to check
+        uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**decimals0;
+        uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**decimals1;
+        return uint192(priceScaled0 + priceScaled1);
     }
 }

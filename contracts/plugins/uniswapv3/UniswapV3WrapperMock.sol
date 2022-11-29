@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
-import { UniswapV3Wrapper } from "./UniswapV3Wrapper.sol";
+import {UniswapV3Wrapper} from "./UniswapV3Wrapper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
 
@@ -53,11 +53,11 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
     }
 
     function unclaimedRewards0(address user) public view returns (uint256) {
-        return _unclaimedRewards[_rewardsTokens[0]][user];
+        return _unclaimedRewards[token0][user];
     }
 
     function unclaimedRewards1(address user) public view returns (uint256) {
-        return _unclaimedRewards[_rewardsTokens[1]][user];
+        return _unclaimedRewards[token1][user];
     }
 
     function setFees(uint256 feesAmount0, uint256 feesAmount1) public {
@@ -70,8 +70,8 @@ contract UniswapV3WrapperMock is UniswapV3Wrapper {
     }
 
     function _collectRewards() internal override returns (uint256[2] memory feesAmounts) {
-        TransferHelper.safeTransferFrom(_rewardsTokens[0], values.sender, address(this), values.feesAmount0);
-        TransferHelper.safeTransferFrom(_rewardsTokens[1], values.sender, address(this), values.feesAmount1);
+        TransferHelper.safeTransferFrom(token0, values.sender, address(this), values.feesAmount0);
+        TransferHelper.safeTransferFrom(token1, values.sender, address(this), values.feesAmount1);
         feesAmounts[0] = values.feesAmount0;
         feesAmounts[1] = values.feesAmount1;
         values.feesAmount0 = 0;

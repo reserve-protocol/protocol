@@ -13,6 +13,9 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
   */
 interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
     //TODO events
+    function token0() external view returns (address);
+
+    function token1() external view returns (address);
 
     function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
         external
@@ -35,22 +38,12 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
             uint256 amount1
         );
 
-    function principal()
-        external
-        view
-        returns (
-            address token0,
-            address token1,
-            uint256 amount0,
-            uint256 amount1
-        );
+    function principal() external view returns (uint256 amount0, uint256 amount1);
 
     function priceSimilarPosition()
         external
         view
         returns (
-            address token0,
-            address token1,
             uint256 amount0,
             uint256 amount1,
             uint128 liquidity

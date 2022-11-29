@@ -32,10 +32,7 @@ abstract contract RewardSplitter is ERC20 {
 
     function _claimRewardsShareTo(address recipient)
         internal
-        returns (
-            address[MAX_TOKENS] memory tokens,
-            uint256[MAX_TOKENS] memory amounts
-        )
+        returns (address[MAX_TOKENS] memory tokens, uint256[MAX_TOKENS] memory amounts)
     {
         _updateRewards();
         _updateUser(msg.sender);
@@ -53,10 +50,7 @@ abstract contract RewardSplitter is ERC20 {
         for (uint256 i; i < _length; i++) {
             amounts[i] = _unclaimedRewards[_rewardsTokens[i]][msg.sender];
         }
-        return (
-            _rewardsTokens,
-            amounts
-        );
+        return (_rewardsTokens, amounts);
     }
 
     /**
