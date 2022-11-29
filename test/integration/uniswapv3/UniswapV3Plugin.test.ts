@@ -9,7 +9,7 @@ import { ERC20Mock, MockV3Aggregator, UniswapV3Wrapper, UniswapV3WrapperMock, US
 import { whileImpersonating } from '../../utils/impersonation'
 import { waitForTx } from '../utils'
 import { expect } from 'chai'
-import { adjustedAmount, defaultMintParams, deployUniswapV3WrapperMock, logBalances, TMintParams } from './common'
+import { defaultMintParams, deployUniswapV3WrapperMock, logBalances, TMintParams } from './common'
 import { CollateralStatus, MAX_UINT256 } from '../../../common/constants'
 import { UniswapV3Collateral__factory } from '@typechain/factories/UniswapV3Collateral__factory'
 import { UniswapV3Collateral } from '@typechain/UniswapV3Collateral'
@@ -54,31 +54,51 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
         beforeEach(async () => {
             ;[owner, , addr1, addr2] = await ethers.getSigners()
+
             await loadFixture(defaultFixture)
             dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI!)
             await whileImpersonating(holderDAI, async (daiSigner) => {
-                await dai.connect(daiSigner).transfer(addr1.address, await adjustedAmount(dai, initialBal))
+                const decimals = await dai.decimals()
+                const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                await dai.connect(daiSigner).transfer(addr1.address, p(initialBal))
             })
             usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC!)
             await whileImpersonating(holderUSDC, async (usdcSigner) => {
-                await usdc.connect(usdcSigner).transfer(addr1.address, await adjustedAmount(usdc, initialBal))
+                const decimals = await usdc.decimals()
+                const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                await usdc.connect(usdcSigner).transfer(addr1.address, p(initialBal))
             })
             usdt = <USDCMock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDT || '')
             await whileImpersonating(holderUSDT, async (usdtSigner) => {
-                await usdt.connect(usdtSigner).transfer(addr1.address, await adjustedAmount(usdt, initialBal))
+                const decimals = await usdt.decimals()
+                const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                await usdt.connect(usdtSigner).transfer(addr1.address, p(initialBal))
             })
             dai = <ERC20Mock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI!)
             await whileImpersonating(holderDAI, async (daiSigner) => {
-                await dai.connect(daiSigner).transfer(owner.address, await adjustedAmount(dai, initialBal))
+                const decimals = await dai.decimals()
+                const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                await dai.connect(daiSigner).transfer(owner.address, p(initialBal))
             })
             usdc = <USDCMock>await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC!)
             await whileImpersonating(holderUSDC, async (usdcSigner) => {
-                await usdc.connect(usdcSigner).transfer(owner.address, await adjustedAmount(usdc, initialBal))
+                const decimals = await usdc.decimals()
+                const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                await usdc.connect(usdcSigner).transfer(owner.address, p(initialBal))
             })
         })
 
         it('U3W can be minted', async () => {
-            const mintParams: TMintParams = await defaultMintParams(dai, usdc)
+            const asset0 = dai
+            const asset1 = usdc
+
+            const decimals0 = await asset0.decimals()
+            const decimals1 = await asset1.decimals()
+
+            const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+            const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1, p0(100), p1(100))
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(
                 dai,
                 usdc,
@@ -92,13 +112,19 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const asset0 = dai
             const asset1 = usdc
 
+            const decimals0 = await asset0.decimals()
+            const decimals1 = await asset1.decimals()
+
+            const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+            const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+
             await logBalances('Balances before UniswapV3Wrapper mint:', [addr1], [asset0, asset1])
-            expect(await asset0.balanceOf(addr1.address)).to.be.eq(await adjustedAmount(asset0, initialBal))
+            expect(await asset0.balanceOf(addr1.address)).to.be.eq(p0(initialBal))
             expect(await asset0.balanceOf(addr2.address)).to.be.eq(bn('0'))
-            expect(await asset1.balanceOf(addr1.address)).to.be.eq(await adjustedAmount(asset1, initialBal))
+            expect(await asset1.balanceOf(addr1.address)).to.be.eq(p1(initialBal))
             expect(await asset1.balanceOf(addr2.address)).to.be.eq(bn('0'))
 
-            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1, p0(100), p1(100))
             const uniswapV3Wrapper: UniswapV3Wrapper = await deployUniswapV3WrapperMock(
                 asset0,
                 asset1,
@@ -110,13 +136,13 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await logBalances('Balances after UniswapV3Wrapper mint:', [addr1], [asset0, asset1, uniswapV3Wrapper])
 
             expect(await asset0.balanceOf(addr1.address)).to.be.closeTo(
-                await adjustedAmount(asset0, 19900),
-                await adjustedAmount(asset0, 1)
+                p0(19900),
+                p0(1)
             )
             expect(await asset0.balanceOf(addr2.address)).to.be.eq(bn('0'))
             expect(await asset1.balanceOf(addr1.address)).to.be.closeTo(
-                await adjustedAmount(asset1, 19900),
-                await adjustedAmount(asset1, 1)
+                p1(19900),
+                p1(1)
             )
 
             expect(await asset1.balanceOf(addr2.address)).to.be.eq(bn('0'))
@@ -138,13 +164,13 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV3Wrapper.balanceOf(addr1.address)).to.be.closeTo(liquidity.div(2), 10 ** 6)
 
             expect(await asset0.balanceOf(addr1.address)).to.be.closeTo(
-                await adjustedAmount(asset0, 19925),
-                await adjustedAmount(asset0, 1)
+                p0(19925),
+                p0(1)
             )
 
             expect(await asset1.balanceOf(addr1.address)).to.be.closeTo(
-                await adjustedAmount(asset1, 19925),
-                await adjustedAmount(asset1, 1)
+                p1(19925),
+                p1(1)
             )
 
             await waitForTx(await uniswapV3Wrapper.connect(addr2).decreaseLiquidity(liquidityToTransfer))
@@ -154,12 +180,12 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV3Wrapper.balanceOf(addr2.address)).to.be.eq(bn('0'))
 
             expect(await asset0.balanceOf(addr2.address)).to.be.closeTo(
-                await adjustedAmount(asset0, 25),
-                await adjustedAmount(asset0, 1)
+                p0(25),
+                p0(1)
             )
             expect(await asset1.balanceOf(addr2.address)).to.be.closeTo(
-                await adjustedAmount(asset1, 25),
-                await adjustedAmount(asset1, 1)
+                p1(25),
+                p1(1)
             )
         })
 
@@ -167,11 +193,17 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const asset0 = dai
             const asset1 = usdc
 
+            const decimals0 = await asset0.decimals()
+            const decimals1 = await asset1.decimals()
+
+            const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+            const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+
             const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
             const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
             const RTOKEN_MAX_TRADE_VALUE = fp('1e6')
 
-            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1, p0(100), p1(100))
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
                 asset0,
                 asset1,
@@ -336,7 +368,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             }
 
             //1. addr1 creates position and mints 200U3W
-            const mintParams: TMintParams = await defaultMintParams(asset0, asset1)
+            const mintParams: TMintParams = await defaultMintParams(asset0, asset1, p0(100), p1(100))
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
                 asset0,
                 asset1,
@@ -505,12 +537,12 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await whileImpersonating(holderDAI, async (daiSigner) => {
                 await asset0
                     .connect(daiSigner)
-                    .transfer(uniswapV3WrapperMock.address, await adjustedAmount(asset0, initialBal))
+                    .transfer(uniswapV3WrapperMock.address, p0(initialBal))
             })
             await whileImpersonating(holderUSDC, async (usdcSigner) => {
                 await asset1
                     .connect(usdcSigner)
-                    .transfer(uniswapV3WrapperMock.address, await adjustedAmount(asset1, initialBal))
+                    .transfer(uniswapV3WrapperMock.address, p1(initialBal))
             })
 
             await logBalances('Balances before claim:', [addr1, addr2], [asset0, asset1, uniswapV3WrapperMock])

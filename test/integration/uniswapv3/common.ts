@@ -3,7 +3,7 @@ import { ERC20Mock } from '@typechain/ERC20Mock'
 import { UniswapV3Wrapper } from '@typechain/UniswapV3Wrapper'
 import { UniswapV3WrapperMock } from '@typechain/UniswapV3WrapperMock'
 import { USDCMock } from '@typechain/USDCMock'
-import { BigNumber, BigNumberish } from 'ethers'
+import { BaseContract, BigNumber, BigNumberish } from 'ethers'
 import { ethers } from 'hardhat'
 const { getContractAddress } = require('@ethersproject/address')
 import { ITokens, networkConfig } from '../../../common/configuration'
@@ -30,15 +30,15 @@ export type TMintParams = {
 }
 
 export async function defaultMintParams(asset0: ERC20Mock | USDCMock,
-    asset1: ERC20Mock | USDCMock): Promise<TMintParams> {
+    asset1: ERC20Mock | USDCMock, amount0: BigNumberish, amount1:BigNumberish): Promise<TMintParams> {
     return {
         token0: asset0.address,
         token1: asset1.address,
         fee: 100,
         tickLower: MIN_TICK,
         tickUpper: MAX_TICK,
-        amount0Desired: await adjustedAmount(asset0, 100),
-        amount1Desired: await adjustedAmount(asset1, 100),
+        amount0Desired: amount0,
+        amount1Desired: amount1,
         amount0Min: 0, // TODO require(amount0 >= params.amount0Min && amount1 >= params.amount1Min, 'Price slippage check');
         amount1Min: 0,
         recipient: ZERO_ADDRESS,
@@ -78,15 +78,6 @@ export async function deployUniswapV3WrapperMock(
         )
     }
     return uniswapV3WrapperMock
-}
-
-export async function adjustedAmount(
-    asset: ERC20Mock | USDCMock | UniswapV3Wrapper,
-    amount: BigNumberish
-): Promise<BigNumber> {
-    return BigNumber.from(10)
-        .pow(await asset.decimals())
-        .mul(amount)
 }
 
 export async function logBalances(
