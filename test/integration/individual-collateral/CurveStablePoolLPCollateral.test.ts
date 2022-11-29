@@ -105,6 +105,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let curveLpToken: ERC20Mock
   let convexAsset: Asset
 
+  // Collateral config
+  let collateralConfig: ConvexConstructorConfig
+
   // Mocks
   let curvePoolMock: CurveStablePoolMock
 
@@ -232,7 +235,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       networkConfig[chainId].tokens.USDT as string,
     ]
 
-    const constructorConfig: ConvexConstructorConfig = {
+    const collateralConfig: ConvexConstructorConfig = {
       fallbackPrice_: fp('1'),
       chainlinkFeed_: networkConfig[chainId].chainlinkFeeds.BUSD_3CRV as string,
       erc20_: curveLpToken.address,
@@ -250,7 +253,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     }
 
     const curveStableCoinLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>(
-      await CurveStableCoinLPCollateralFactory.deploy(constructorConfig)
+      await CurveStableCoinLPCollateralFactory.deploy(collateralConfig)
     )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
@@ -449,485 +452,450 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
-      await curveLpToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await curveLpToken
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
-      // Validate constructor arguments
-      // Note: Adapt it to your plugin constructor validations
-      it('Should validate constructor arguments correctly', async () => {
-        const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
-          await ethers.getContractFactory('ConvexStakingWrapperFactory', {
+    // Validate constructor arguments
+    // Note: Adapt it to your plugin constructor validations
+    it('Should validate constructor arguments correctly', async () => {
+      const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
+        await ethers.getContractFactory('ConvexStakingWrapperFactory', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy()
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      const constructorConfig = {
+        fallbackPrice_: fp('1.022'),
+        chainlinkFeed_: NO_PRICE_DATA_FEED,
+        erc20_: curveLpToken.address,
+        rewardERC20_: ZERO_ADDRESS,
+        maxTradeVolume_: config.rTokenMaxTradeVolume,
+        oracleTimeout_: ORACLE_TIMEOUT,
+        targetName_: ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault_: delayUntilDefault,
+        defaultThreshold_: bn(0),
+        curveStablePool_: curvePoolMock.address,
+        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
+        convexWrappingContract_: convexStakingWrapper.address,
+        stableCoinChainLinkFeeds_: [],
+        stableCoinThresholds_: [],
+      }
+
+      // Default threshold
+      await expect(
+        await (
+          await ethers.getContractFactory('CurveStableCoinLPCollateral', {
             libraries: { OracleLib: oracleLib.address },
           })
-        ).deploy()
-  
-        const defaultThreshold = fp('0.05') // 5%
-        const delayUntilDefault = bn('86400') // 24h
-  
-        const constructorConfig = {
-          fallbackPrice_: fp('1.022'),
-          chainlinkFeed_: NO_PRICE_DATA_FEED,
-          erc20_: curveLpToken.address,
-          rewardERC20_: ZERO_ADDRESS,
-          maxTradeVolume_: config.rTokenMaxTradeVolume,
-          oracleTimeout_: ORACLE_TIMEOUT,
-          targetName_: ethers.utils.formatBytes32String('USD'),
-          delayUntilDefault_: delayUntilDefault,
-          defaultThreshold_: bn(0),
-          curveStablePool_: curvePoolMock.address,
-          referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
-          convexWrappingContract_: convexStakingWrapper.address,
-          stableCoinChainLinkFeeds_: [],
-          stableCoinThresholds_: [],
-        }
-  
-        // Default threshold
-        await expect(
-          await (
-            await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-              libraries: { OracleLib: oracleLib.address },
-            })
-          ).deploy(constructorConfig)
-        ).to.be.revertedWith('defaultThreshold zero')
+        ).deploy(constructorConfig)
+      ).to.be.revertedWith('defaultThreshold zero')
 
-        constructorConfig.defaultThreshold_ = defaultThreshold;
-        constructorConfig.delayUntilDefault_ = bn(0)
+      constructorConfig.defaultThreshold_ = defaultThreshold
+      constructorConfig.delayUntilDefault_ = bn(0)
 
-        // delayUntilDefault
-        await expect(
-          await (
-            await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-              libraries: { OracleLib: oracleLib.address },
-            })
-          ).deploy(constructorConfig)
-        ).to.be.revertedWith('delayUntilDefault zero')
-      })
+      // delayUntilDefault
+      await expect(
+        await (
+          await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+            libraries: { OracleLib: oracleLib.address },
+          })
+        ).deploy(constructorConfig)
+      ).to.be.revertedWith('delayUntilDefault zero')
+    })
+  })
+
+  describe('Issuance/Appreciation/Redemption', () => {
+    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+
+    // Issuance and redemption, making the collateral appreciate over time
+    it('Should issue, redeem, and handle appreciation rates correctly', async () => {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+
+      // Provide approvals for issuances
+      await curveLpToken
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Store Balances after issuance
+      const balanceAddr1cDai: BigNumber = await curveLpToken.balanceOf(addr1.address)
+
+      // Check rates and prices
+      const curveLPPrice1: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~ 0.022015 cents
+      const curveLPRefPerTok1: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~ 0.022015 cents
+
+      expect(curveLPPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(curveLPRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check total asset value
+      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+
+      // Advance time and blocks slightly, causing refPerTok() to increase
+      await advanceTime(10000)
+      await advanceBlocks(10000)
+
+      // Refresh cToken manually (required)
+      await curveStableCoinLPCollateral.refresh()
+      expect(await curveStableCoinLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check rates and prices - Have changed, slight inrease
+      const curveLPPrice2: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~0.022016
+      const curveLPRefPerTok2: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~0.022016
+
+      // Check rates and price increase
+      expect(curveLPPrice2).to.be.gt(curveLPPrice1)
+      expect(curveLPRefPerTok2).to.be.gt(curveLPRefPerTok1)
+
+      // Still close to the original values
+      expect(curveLPPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(curveLPRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+
+      // Check total asset value increased
+      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+
+      // Advance time and blocks slightly, causing refPerTok() to increase
+      await advanceTime(100000000)
+      await advanceBlocks(100000000)
+
+      // Refresh cToken manually (required)
+      await curveStableCoinLPCollateral.refresh()
+      expect(await curveStableCoinLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check rates and prices - Have changed significantly
+      const curveLPPrice3: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~0.03294
+      const curveLPRefPerTok3: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~0.03294
+
+      // Check rates and price increase
+      expect(curveLPPrice3).to.be.gt(curveLPPrice2)
+      expect(curveLPRefPerTok3).to.be.gt(curveLPRefPerTok2)
+
+      // Need to adjust ranges
+      expect(curveLPPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(curveLPRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+
+      // Check total asset value increased
+      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+
+      // Redeem Rtokens with the updated rates
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+      // Check funds were transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
+
+      // Check balances - Fewer cTokens should have been sent to the user
+      const newBalanceAddr1cDai: BigNumber = await curveLpToken.balanceOf(addr1.address)
+
+      // Check received tokens represent ~10K in value at current prices
+      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7'))
+      // ~0.03294 * 303571 ~= 10K (100% of basket)
+
+      // Check remainders in Backing Manager
+      expect(await curveLpToken.balanceOf(backingManager.address)).to.be.closeTo(
+        bn(150663e8),
+        bn('5e7')
+      ) // ~= 4962.8 usd in value
+
+      //  Check total asset value (remainder)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+        fp('4962.8'), // ~= 4962.8 usd (from above)
+        fp('0.5')
+      )
+    })
+  })
+
+  // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
+  // claiming calls throughout the protocol are handled correctly and do not revert.
+  describe('Rewards', () => {
+    it('Should call rewards from convexStaking wrapper', async function () {
+      const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
+        await ethers.getContractFactory('ConvexStakingWrapperFactory', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy()
+
+      const defaultThreshold = fp('0.05') // 5%
+      const delayUntilDefault = bn('86400') // 24h
+
+      const constructorConfig = {
+        fallbackPrice_: fp('1.022'),
+        chainlinkFeed_: NO_PRICE_DATA_FEED,
+        erc20_: curveLpToken.address,
+        rewardERC20_: ZERO_ADDRESS,
+        maxTradeVolume_: config.rTokenMaxTradeVolume,
+        oracleTimeout_: ORACLE_TIMEOUT,
+        targetName_: ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault_: delayUntilDefault,
+        defaultThreshold_: defaultThreshold,
+        curveStablePool_: curvePoolMock.address,
+        referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
+        convexWrappingContract_: convexStakingWrapper.address,
+        stableCoinChainLinkFeeds_: [],
+        stableCoinThresholds_: [],
+      }
+
+      const convexCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(constructorConfig)
+
+      const convexStakingWrapperGetRewardsABI = [
+        {
+          name: 'getReward',
+          inputs: [{ type: 'address' }],
+          outputs: [{ type: 'void' }],
+        },
+      ]
+
+      const getRewardsInterface = new ethers.utils.Interface(convexStakingWrapperGetRewardsABI)
+
+      expect(convexCollateral.functions.getClaimCalldata()).to.be.equal(
+        getRewardsInterface.encodeFunctionData('getReward', [convexStakingWrapper.address])
+      )
     })
 
-    describe('Issuance/Appreciation/Redemption', () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
-      // Issuance and redemption, making the collateral appreciate over time
-      it('Should issue, redeem, and handle appreciation rates correctly', async () => {
-        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+      // Try to claim rewards at this point - Nothing for Backing Manager
+      expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
 
-        // Provide approvals for issuances
-        await curveLpToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await expectEvents(backingManager.claimRewards(), [
+        {
+          contract: backingManager,
+          name: 'RewardsClaimed',
+          args: [curveLpToken.address, bn(0)],
+          emitted: true,
+        },
+      ])
 
-        // Issue rTokens
-        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      // No rewards so far
+      expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
 
-        // Check RTokens issued to user
-        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+      // Provide approvals for issuances
+      await curveLpToken
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
 
-        // Store Balances after issuance
-        const balanceAddr1cDai: BigNumber = await curveLpToken.balanceOf(addr1.address)
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-        // Check rates and prices
-        const curveLPPrice1: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~ 0.022015 cents
-        const curveLPRefPerTok1: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~ 0.022015 cents
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-        expect(curveLPPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
-        expect(curveLPRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      // Now we can claim rewards - check initial balance still 0
+      expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
 
-        // Check total asset value
-        const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
-          rToken.address
-        )
-        expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+      // Advance Time
+      await advanceTime(8000)
 
-        // Advance time and blocks slightly, causing refPerTok() to increase
-        await advanceTime(10000)
-        await advanceBlocks(10000)
+      // Claim rewards
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-        // Refresh cToken manually (required)
-        await curveStableCoinLPCollateral.refresh()
-        expect(await curveStableCoinLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+      // Check rewards both in COMP and stkAAVE
+      const rewardsCOMP1: BigNumber = await curveLpToken.balanceOf(backingManager.address)
 
-        // Check rates and prices - Have changed, slight inrease
-        const curveLPPrice2: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~0.022016
-        const curveLPRefPerTok2: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~0.022016
+      expect(rewardsCOMP1).to.be.gt(0)
 
-        // Check rates and price increase
-        expect(curveLPPrice2).to.be.gt(curveLPPrice1)
-        expect(curveLPRefPerTok2).to.be.gt(curveLPRefPerTok1)
+      // Keep moving time
+      await advanceTime(3600)
 
-        // Still close to the original values
-        expect(curveLPPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-        expect(curveLPRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      // Get additional rewards
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-        // Check total asset value increased
-        const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
-          rToken.address
-        )
-        expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+      const rewardsCOMP2: BigNumber = await curveLpToken.balanceOf(backingManager.address)
 
-        // Advance time and blocks slightly, causing refPerTok() to increase
-        await advanceTime(100000000)
-        await advanceBlocks(100000000)
+      expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
+    })
+  })
 
-        // Refresh cToken manually (required)
-        await curveStableCoinLPCollateral.refresh()
-        expect(await curveStableCoinLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+  describe('Price Handling', () => {
+    it('Should handle invalid/stale Price', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
 
-        // Check rates and prices - Have changed significantly
-        const curveLPPrice3: BigNumber = await curveStableCoinLPCollateral.strictPrice() // ~0.03294
-        const curveLPRefPerTok3: BigNumber = await curveStableCoinLPCollateral.refPerTok() // ~0.03294
+      // Compound
+      await expect(curveStableCoinLPCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-        // Check rates and price increase
-        expect(curveLPPrice3).to.be.gt(curveLPPrice2)
-        expect(curveLPRefPerTok3).to.be.gt(curveLPRefPerTok2)
+      // Fallback price is returned
+      const [isFallback, price] = await curveStableCoinLPCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('0.02'))
 
-        // Need to adjust ranges
-        expect(curveLPPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-        expect(curveLPRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      // Refresh should mark status IFFY
+      await curveStableCoinLPCollateral.refresh()
+      expect(await curveStableCoinLPCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-        // Check total asset value increased
-        const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
-          rToken.address
-        )
-        expect(totalAssetValue3).to.be.gt(totalAssetValue2)
+      collateralConfig.stableCoinChainLinkFeeds_[0] = NO_PRICE_DATA_FEED
 
-        // Redeem Rtokens with the updated rates
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+      // CTokens Collateral with no price
+      const nonpriceCurvetokenCollateral: CurveStableCoinLPCollateral = <
+        CurveStableCoinLPCollateral
+      >await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(collateralConfig)
 
-        // Check funds were transferred
-        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-        expect(await rToken.totalSupply()).to.equal(0)
+      // CTokens - Collateral with no price info should revert
+      await expect(nonpriceCurvetokenCollateral.strictPrice()).to.be.reverted
 
-        // Check balances - Fewer cTokens should have been sent to the user
-        const newBalanceAddr1cDai: BigNumber = await curveLpToken.balanceOf(addr1.address)
+      // Refresh should also revert - status is not modified
+      await expect(nonpriceCurvetokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceCurvetokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // Check received tokens represent ~10K in value at current prices
-        expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      collateralConfig.stableCoinChainLinkFeeds_[1] = mockChainlinkFeed.address
+      // Reverts with a feed with zero price
+      const invalidpriceCurvetokenCollateral: CurveStableCoinLPCollateral = <
+        CurveStableCoinLPCollateral
+      >await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(collateralConfig)
 
-        // Check remainders in Backing Manager
-        expect(await curveLpToken.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      await setOraclePrice(invalidpriceCurvetokenCollateral.address, bn(0))
 
-        //  Check total asset value (remainder)
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-          fp('4962.8'), // ~= 4962.8 usd (from above)
-          fp('0.5')
-        )
-      })
+      // Reverts with zero price
+      await expect(invalidpriceCurvetokenCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status IFFY
+      await invalidpriceCurvetokenCollateral.refresh()
+      expect(await invalidpriceCurvetokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+  })
+
+  // Note: Here the idea is to test all possible statuses and check all possible paths to default
+  // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
+  // hard default = SOUND -> DISABLED due to an invariant violation
+  // This may require to deploy some mocks to be able to force some of these situations
+  describe('Collateral Status', () => {
+    // Test for soft default
+    it('Updates status in case of soft default', async () => {
+      // Redeploy plugin using a Chainlink mock feed where we can change the price
+      collateralConfig.stableCoinChainLinkFeeds_[0] = mockChainlinkFeed.address
+      const newCurveStablePoolCollateral: CurveStableCoinLPCollateral = <
+        CurveStableCoinLPCollateral
+      >await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(collateralConfig)
+
+      // Check initial state
+      expect(await newCurveStablePoolCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newCurveStablePoolCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Depeg one of the underlying tokens - Reducing price 20%
+      await setOraclePrice(newCurveStablePoolCollateral.address, bn('8e7')) // -20%
+
+      // Force updates - Should update whenDefault and status
+      await expect(newCurveStablePoolCollateral.refresh())
+        .to.emit(newCurveStablePoolCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await newCurveStablePoolCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+        delayUntilDefault
+      )
+      expect(await newCurveStablePoolCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(delayUntilDefault))
+      expect(await newCurveStablePoolCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Nothing changes if attempt to refresh after default
+      // CToken
+      const prevWhenDefault: BigNumber = await newCurveStablePoolCollateral.whenDefault()
+      await expect(newCurveStablePoolCollateral.refresh()).to.not.emit(
+        newCurveStablePoolCollateral,
+        'DefaultStatusChanged'
+      )
+      expect(await newCurveStablePoolCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newCurveStablePoolCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
-    // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
-    // claiming calls throughout the protocol are handled correctly and do not revert.
-    describe('Rewards', () => {
-      it('Should be able to claim rewards (if applicable)', async () => {
-        const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a curveLPToken mock to be able to change the rate
+      // Set initial exchange rate to the new cDai Mock
+      await curvePoolMock.setVirtualPrice(fp('0.02'))
 
-        // Try to claim rewards at this point - Nothing for Backing Manager
-        expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
+      collateralConfig.curveStablePool_ = curvePoolMock.address
 
-        await expectEvents(backingManager.claimRewards(), [
-          {
-            contract: backingManager,
-            name: 'RewardsClaimed',
-            args: [curveLpToken.address, bn(0)],
-            emitted: true,
-          },
-        ])
+      // Redeploy plugin using the new cDai mock
+      const newCurveLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(collateralConfig)
 
-        // No rewards so far
-        expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
+      // Check initial state
+      expect(await newCurveLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newCurveLPCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-        // Provide approvals for issuances
-        await curveLpToken.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      // Decrease rate for cDAI, will disable collateral immediately
+      await curvePoolMock.setVirtualPrice(fp('0.19'))
 
-        // Issue rTokens
-        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      await expect(newCurveLPCollateral.refresh())
+        .to.emit(newCurveLPCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-        // Check RTokens issued to user
-        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-        // Now we can claim rewards - check initial balance still 0
-        expect(await curveLpToken.balanceOf(backingManager.address)).to.equal(0)
-
-        // Advance Time
-        await advanceTime(8000)
-
-        // Claim rewards
-        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-        // Check rewards both in COMP and stkAAVE
-        const rewardsCOMP1: BigNumber = await curveLpToken.balanceOf(backingManager.address)
-
-        expect(rewardsCOMP1).to.be.gt(0)
-
-        // Keep moving time
-        await advanceTime(3600)
-
-        // Get additional rewards
-        await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-        const rewardsCOMP2: BigNumber = await curveLpToken.balanceOf(backingManager.address)
-
-        expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
-      })
+      expect(await newCurveLPCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newCurveLPCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
-    // describe('Price Handling', () => {
-    //   it('Should handle invalid/stale Price', async () => {
-    //     // Reverts with stale price
-    //     await advanceTime(ORACLE_TIMEOUT.toString())
+    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
 
-    //     // Compound
-    //     await expect(cDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      collateralConfig.stableCoinChainLinkFeeds_[0] = invalidChainlinkFeed.address
+      const newCurveLPCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
+        await ethers.getContractFactory('CurveStableCoinLPCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(collateralConfig)
 
-    //     // Fallback price is returned
-    //     const [isFallback, price] = await cDaiCollateral.price(true)
-    //     expect(isFallback).to.equal(true)
-    //     expect(price).to.equal(fp('0.02'))
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(newCurveLPCollateral.refresh()).to.be.revertedWith('')
+      expect(await newCurveLPCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-    //     // Refresh should mark status IFFY
-    //     await cDaiCollateral.refresh()
-    //     expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-    //     // CTokens Collateral with no price
-    //     const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-    //       await ethers.getContractFactory('CTokenFiatCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('0.02'),
-    //       NO_PRICE_DATA_FEED,
-    //       cDai.address,
-    //       config.rTokenMaxTradeVolume,
-    //       ORACLE_TIMEOUT,
-    //       ethers.utils.formatBytes32String('USD'),
-    //       defaultThreshold,
-    //       delayUntilDefault,
-    //       await dai.decimals(),
-    //       comptroller.address
-    //     )
-
-    //     // CTokens - Collateral with no price info should revert
-    //     await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
-
-    //     // Refresh should also revert - status is not modified
-    //     await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-    //     expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-    //     // Reverts with a feed with zero price
-    //     const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-    //       await ethers.getContractFactory('CTokenFiatCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('0.02'),
-    //       mockChainlinkFeed.address,
-    //       cDai.address,
-    //       config.rTokenMaxTradeVolume,
-    //       ORACLE_TIMEOUT,
-    //       ethers.utils.formatBytes32String('USD'),
-    //       defaultThreshold,
-    //       delayUntilDefault,
-    //       await dai.decimals(),
-    //       comptroller.address
-    //     )
-
-    //     await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
-
-    //     // Reverts with zero price
-    //     await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
-    //       'PriceOutsideRange()'
-    //     )
-
-    //     // Refresh should mark status IFFY
-    //     await invalidpriceCtokenCollateral.refresh()
-    //     expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-    //   })
-    // })
-
-    // // Note: Here the idea is to test all possible statuses and check all possible paths to default
-    // // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
-    // // hard default = SOUND -> DISABLED due to an invariant violation
-    // // This may require to deploy some mocks to be able to force some of these situations
-    // describe('Collateral Status', () => {
-    //   // Test for soft default
-    //   it('Updates status in case of soft default', async () => {
-    //     // Redeploy plugin using a Chainlink mock feed where we can change the price
-    //     const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-    //       await ethers.getContractFactory('CTokenFiatCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('0.02'),
-    //       mockChainlinkFeed.address,
-    //       await cDaiCollateral.erc20(),
-    //       await cDaiCollateral.maxTradeVolume(),
-    //       await cDaiCollateral.oracleTimeout(),
-    //       await cDaiCollateral.targetName(),
-    //       await cDaiCollateral.defaultThreshold(),
-    //       await cDaiCollateral.delayUntilDefault(),
-    //       18,
-    //       comptroller.address
-    //     )
-
-    //     // Check initial state
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //     expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-    //     // Depeg one of the underlying tokens - Reducing price 20%
-    //     await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
-
-    //     // Force updates - Should update whenDefault and status
-    //     await expect(newCDaiCollateral.refresh())
-    //       .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
-    //       .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-    //     const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
-    //       delayUntilDefault
-    //     )
-    //     expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-    //     // Move time forward past delayUntilDefault
-    //     await advanceTime(Number(delayUntilDefault))
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-
-    //     // Nothing changes if attempt to refresh after default
-    //     // CToken
-    //     const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
-    //     await expect(newCDaiCollateral.refresh()).to.not.emit(
-    //       newCDaiCollateral,
-    //       'DefaultStatusChanged'
-    //     )
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-    //     expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
-    //   })
-
-    //   // Test for hard default
-    //   it('Updates status in case of hard default', async () => {
-    //     // Note: In this case requires to use a CToken mock to be able to change the rate
-    //     const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-    //     const symbol = await cDai.symbol()
-    //     const cDaiMock: CTokenMock = <CTokenMock>(
-    //       await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
-    //     )
-    //     // Set initial exchange rate to the new cDai Mock
-    //     await cDaiMock.setExchangeRate(fp('0.02'))
-
-    //     // Redeploy plugin using the new cDai mock
-    //     const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-    //       await ethers.getContractFactory('CTokenFiatCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('0.02'),
-    //       await cDaiCollateral.chainlinkFeed(),
-    //       cDaiMock.address,
-    //       await cDaiCollateral.maxTradeVolume(),
-    //       await cDaiCollateral.oracleTimeout(),
-    //       await cDaiCollateral.targetName(),
-    //       await cDaiCollateral.defaultThreshold(),
-    //       await cDaiCollateral.delayUntilDefault(),
-    //       18,
-    //       comptroller.address
-    //     )
-
-    //     // Check initial state
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //     expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-    //     // Decrease rate for cDAI, will disable collateral immediately
-    //     await cDaiMock.setExchangeRate(fp('0.019'))
-
-    //     // Force updates - Should update whenDefault and status for Atokens/CTokens
-    //     await expect(newCDaiCollateral.refresh())
-    //       .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
-    //       .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-    //     expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-    //     const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-    //     expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    //   })
-
-    //   it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
-    //     const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-    //       'InvalidMockV3Aggregator'
-    //     )
-    //     const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-    //       await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
-    //     )
-
-    //     const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-    //       await CTokenCollateralFactory.deploy(
-    //         fp('0.02'),
-    //         invalidChainlinkFeed.address,
-    //         await cDaiCollateral.erc20(),
-    //         await cDaiCollateral.maxTradeVolume(),
-    //         await cDaiCollateral.oracleTimeout(),
-    //         await cDaiCollateral.targetName(),
-    //         await cDaiCollateral.defaultThreshold(),
-    //         await cDaiCollateral.delayUntilDefault(),
-    //         18,
-    //         comptroller.address
-    //       )
-    //     )
-
-    //     // Reverting with no reason
-    //     await invalidChainlinkFeed.setSimplyRevert(true)
-    //     await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-    //     expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-    //     // Runnning out of gas (same error)
-    //     await invalidChainlinkFeed.setSimplyRevert(false)
-    //     await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-    //     expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //   })
-  // })
-
-  it('Should call rewards from convexStaking wrapper', async function () {
-    const convexStakingWrapper: ConvexStakingWrapper = <ConvexStakingWrapper>await (
-      await ethers.getContractFactory('ConvexStakingWrapperFactory', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy()
-
-    const defaultThreshold = fp('0.05') // 5%
-    const delayUntilDefault = bn('86400') // 24h
-
-    const constructorConfig = {
-      fallbackPrice_: fp('1.022'),
-      chainlinkFeed_: NO_PRICE_DATA_FEED,
-      erc20_: curveLpToken.address,
-      rewardERC20_: ZERO_ADDRESS,
-      maxTradeVolume_: config.rTokenMaxTradeVolume,
-      oracleTimeout_: ORACLE_TIMEOUT,
-      targetName_: ethers.utils.formatBytes32String('USD'),
-      delayUntilDefault_: delayUntilDefault,
-      defaultThreshold_: defaultThreshold,
-      curveStablePool_: curvePoolMock.address,
-      referenceERC20Decimals_: (await curveLpToken.decimals()).toString(),
-      convexWrappingContract_: convexStakingWrapper.address,
-      stableCoinChainLinkFeeds_: [],
-      stableCoinThresholds_: [],
-    }
-
-    const convexCollateral: CurveStableCoinLPCollateral = <CurveStableCoinLPCollateral>await (
-      await ethers.getContractFactory('CurveStableCoinLPCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(constructorConfig)
-
-    const convexStakingWrapperGetRewardsABI = [
-      {
-        name: 'getReward',
-        inputs: [{ type: 'address' }],
-        outputs: [{ type: 'void' }],
-      },
-    ]
-
-    const getRewardsInterface = new ethers.utils.Interface(convexStakingWrapperGetRewardsABI)
-
-    expect(convexCollateral.functions.getClaimCalldata()).to.be.equal(
-      getRewardsInterface.encodeFunctionData('getReward', [convexStakingWrapper.address])
-    )
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(newCurveLPCollateral.refresh()).to.be.revertedWith('')
+      expect(await newCurveLPCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
   })
 })

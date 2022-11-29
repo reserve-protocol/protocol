@@ -41,10 +41,9 @@ The implmentation of the collateral is present in `/contracts/plugins/assets/Cur
 
 ### Deployment
 
-1) Deploy `ConvexStakingWrapped.sol` and deposit all LP tokens using the staking wrapper. 
-2) The deployed wrapper should give you the erc20 required to deploy the contract. Deploy collateral token
-3) Initialize/set the base tokens for the stable coins and the collateral should be ready
+1) Deploy `ConvexStakingWrapped.sol` and deposit all LP tokens using the staking wrapper. The deployed wrapper should give you the erc20 required to deploy the contract.
+2) Deploy collateral
 
 Notes:
-1) As you may have guessed by reading the collateral `setChainlinkPriceFeedsForStableCoins()` should be present in the construtor but ethereum has this weird issue where you cannot pass too many params in to a function i.e construtor in this case. So we split the initiation to two different functions.
-2) This erc20 which reserve will need to create will not have a chainlink feed. So we'll need to use some dummy value instead. 
+1) This erc20 which reserve will need to create will not have a chainlink feed. So we'll need to use some dummy value instead. 
+2) The ConvexStakingWrapper is developed by the convex team itself. Deep testing is not done since the convex team has handled it. The collateral is tested to see if the rewards claim function is called or not. ( https://github.com/convex-eth/platform/blob/main/contracts/contracts/wrappers/ConvexStakingWrapper.sol )
