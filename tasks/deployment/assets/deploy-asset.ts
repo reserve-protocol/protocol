@@ -9,27 +9,24 @@ task('deploy-asset', 'Deploys an Asset')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max Oracle Timeout')
-  .addParam('oracleLib', 'Oracle library address')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
-    const asset = <Asset>await (
-      await hre.ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: params.oracleLib },
-      })
+    const asset = <Asset>(
+      await (await hre.ethers.getContractFactory('Asset'))
+        .connect(deployer)
+        .deploy(
+          params.fallbackPrice,
+          params.priceFeed,
+          params.oracleError,
+          params.tokenAddress,
+          params.maxTradeVolume,
+          params.oracleTimeout
+        )
     )
-      .connect(deployer)
-      .deploy(
-        params.fallbackPrice,
-        params.priceFeed,
-        params.oracleError,
-        params.tokenAddress,
-        params.maxTradeVolume,
-        params.oracleTimeout
-      )
     await asset.deployed()
 
     if (!params.noOutput) {

@@ -13,29 +13,26 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
   .addParam('comptroller', 'Comptroller address')
-  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
-    const CTokenCollateralFactory = await hre.ethers.getContractFactory('CTokenFiatCollateral', {
-      libraries: { OracleLib: params.oracleLib },
-    })
+    const CTokenCollateralFactory = await hre.ethers.getContractFactory('CTokenFiatCollateral')
 
-    const collateral = <CTokenFiatCollateral>(
-      await CTokenCollateralFactory.connect(deployer).deploy(
-        params.fallbackPrice,
-        params.priceFeed,
-        params.oracleError,
-        params.cToken,
-        params.maxTradeVolume,
-        params.oracleTimeout,
-        params.targetName,
-        params.defaultThreshold,
-        params.delayUntilDefault,
-        params.comptroller
-      )
+    const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.connect(deployer).deploy(
+      {
+        fallbackPrice: params.fallbackPrice,
+        chainlinkFeed: params.priceFeed,
+        oracleError: params.oracleError,
+        erc20: params.cToken,
+        maxTradeVolume: params.maxTradeVolume,
+        oracleTimeout: params.oracleTimeout,
+        targetName: params.targetName,
+        defaultThreshold: params.defaultThreshold,
+        delayUntilDefault: params.delayUntilDefault,
+      },
+      params.comptroller
     )
     await collateral.deployed()
 

@@ -1,7 +1,7 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
-import { Collateral } from '../../../typechain'
+import { EURFiatCollateral } from '../../../typechain'
 
 task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
@@ -15,32 +15,28 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
-  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
     const EURFiatCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'EURFiatCollateral',
-      {
-        libraries: { OracleLib: params.oracleLib },
-      }
+      'EURFiatCollateral'
     )
 
-    const collateral = <Collateral>(
-      await EURFiatCollateralFactory.connect(deployer).deploy(
-        params.fallbackPrice,
-        params.referenceUnitFeed,
-        params.targetUnitFeed,
-        params.combinedOracleError,
-        params.tokenAddress,
-        params.maxTradeVolume,
-        params.oracleTimeout,
-        params.targetName,
-        params.defaultThreshold,
-        params.delayUntilDefault
-      )
+    const collateral = <EURFiatCollateral>await EURFiatCollateralFactory.connect(deployer).deploy(
+      {
+        fallbackPrice: params.fallbackPrice,
+        chainlinkFeed: params.priceFeed,
+        oracleError: params.oracleError,
+        erc20: params.cToken,
+        maxTradeVolume: params.maxTradeVolume,
+        oracleTimeout: params.oracleTimeout,
+        targetName: params.targetName,
+        defaultThreshold: params.defaultThreshold,
+        delayUntilDefault: params.delayUntilDefault,
+      },
+      params.targetUnitFeed
     )
     await collateral.deployed()
 
