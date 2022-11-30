@@ -61,8 +61,9 @@ Some examples:
 
 Separate from these, a number in dimension `{BU}` ("basket units") is an amount of current baskets.
 
-Regarding `{UoA}` and `{target}`:
-While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement.  The `{UoA}` is a way to value the RToken in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`.  As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
+### Regarding `{UoA}` and `{target}`
+
+While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement.  The `{UoA}` is a way to value the RToken and its collateral in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`.  As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
 
 ## Basket Dynamics
 
