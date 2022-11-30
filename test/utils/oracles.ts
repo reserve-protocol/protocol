@@ -17,8 +17,9 @@ export const expectPrice = async (
   const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
 
   if (near) {
-    expect(lowPrice).to.be.closeTo(expectedLow, 100)
-    expect(highPrice).to.be.closeTo(expectedHigh, 100)
+    const tolerance = avgPrice.mul(fp('0.000001')) // 1 part in 1M
+    expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
+    expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   } else {
     expect(lowPrice).to.equal(expectedLow)
     expect(highPrice).to.equal(expectedHigh)
