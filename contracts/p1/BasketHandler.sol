@@ -313,6 +313,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             if (qty == 0) continue;
 
             (uint192 lowP, uint192 highP) = assetRegistry.toAsset(basket.erc20s[i]).price();
+
             low256 += quantityMulPrice(qty, lowP);
             high256 += quantityMulPrice(qty, highP);
         }

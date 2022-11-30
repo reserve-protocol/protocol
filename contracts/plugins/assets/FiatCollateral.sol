@@ -60,6 +60,7 @@ contract FiatCollateral is ICollateral, Asset {
     // does not become nonzero until after first refresh()
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
+    /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(
         CollateralConfig memory config
     )
@@ -99,11 +100,10 @@ contract FiatCollateral is ICollateral, Asset {
         override
         returns (uint192 low, uint192 high, uint192 pegPrice)
     {
-        pegPrice = chainlinkFeed.price(oracleTimeout);
-        uint192 pricePerTarget = chainlinkFeed.price(oracleTimeout); // {UoA/target}
+        pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
-        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target}
-        uint192 p = pegPrice.mul(refPerTok()).mul(pricePerTarget);
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
+        uint192 p = pegPrice.mul(refPerTok());
 
         // oracleError is on whatever the _true_ price is, not the one observed
         low = p.div(FIX_ONE.plus(oracleError));
