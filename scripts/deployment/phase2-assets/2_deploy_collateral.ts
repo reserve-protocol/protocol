@@ -57,7 +57,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -76,7 +75,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -95,7 +93,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -114,7 +111,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -133,7 +129,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.TUSD = tusdCollateral
@@ -150,7 +145,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -198,7 +192,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
@@ -245,7 +238,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.aUSDC = aUsdcCollateral
@@ -292,7 +284,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.aUSDT = aUsdtCollateral
@@ -338,7 +329,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
@@ -385,7 +375,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('USD'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.aUSDP = aUsdpCollateral
@@ -414,7 +403,6 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cDAI = cDaiCollateral
@@ -443,7 +431,6 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cUSDC = cUsdcCollateral
@@ -472,7 +459,6 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
@@ -502,7 +488,6 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cUSDP = cUsdpCollateral
@@ -536,7 +521,6 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
@@ -564,7 +548,6 @@ async function main() {
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.cETH = cETHCollateral
@@ -584,7 +567,6 @@ async function main() {
     targetName: ethers.utils.formatBytes32String('BTC'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.WBTC = wBTCCollateral
@@ -603,7 +585,6 @@ async function main() {
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.WETH = wETHCollateral
@@ -626,7 +607,6 @@ async function main() {
     targetName: ethers.utils.formatBytes32String('EURO'),
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.collateral.EURT = eurtCollateral

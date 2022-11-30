@@ -37,7 +37,6 @@ async function main() {
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
-    oracleLib: deployments.oracleLib,
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

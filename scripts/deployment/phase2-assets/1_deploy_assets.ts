@@ -46,7 +46,6 @@ async function main() {
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
@@ -60,7 +59,6 @@ async function main() {
     tokenAddress: networkConfig[chainId].tokens.COMP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
-    oracleLib: phase1Deployment.oracleLib,
   })
 
   assetCollDeployments.assets.COMP = compAsset
