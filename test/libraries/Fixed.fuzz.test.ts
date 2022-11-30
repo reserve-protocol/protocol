@@ -421,4 +421,14 @@ describe('FixLib Fuzzing', () => {
       })
     )
   })
+
+  it('shiftl_toFix regression', async () => {
+    const actual = await caller.shiftl_toFix_Rnd(6n * 10n ** 76n, 0n - 95n, ROUND)
+    expect(actual).to.equal(1n)
+  })
+
+  it('shiftl regression', async () => {
+    const actual = await caller.shiftlRnd(5n * 10n ** 57n, 0n - 58n, ROUND)
+    expect(actual).to.equal(1n)
+  })
 })
