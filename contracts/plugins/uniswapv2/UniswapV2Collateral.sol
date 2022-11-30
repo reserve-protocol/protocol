@@ -86,21 +86,25 @@ contract UniswapV2Collateral is Collateral {
         return strictPrice();
     }
 
-    // returns amounts can be obtained on burn liquidity
-    function sellPrice(uint256 liquidity) internal view returns (uint256 amount0, uint256 amount1) {
+    function _feeOn() internal view returns (bool) {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-        (uint112 _reserve0, uint112 _reserve1, ) = pair.getReserves();
+        address feeTo = IUniswapV2Factory(pair.factory()).feeTo();
+        return feeTo != address(0);
+    }
+    // returns amounts can be obtained on burn liquidity
+    function sellPrice(uint256 liquidity, bool feeOn) internal view returns (uint256 amount0, uint256 amount1) {
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
         address _token0 = pair.token0();
         address _token1 = pair.token1();
         uint256 balance0 = IERC20(_token0).balanceOf(address(pair));
         uint256 balance1 = IERC20(_token1).balanceOf(address(pair));
-        address feeTo = IUniswapV2Factory(pair.factory()).feeTo();
-        bool feeOn = feeTo != address(0);
+        
         uint256 _kLast = pair.kLast();
         uint256 liquidityFee = 0;
         uint256 _totalSupply = pair.totalSupply();
         if (feeOn) {
             if (_kLast != 0) {
+                (uint112 _reserve0, uint112 _reserve1, ) = pair.getReserves();
                 uint256 rootK = Math.sqrt(_reserve0 * _reserve1);
                 uint256 rootKLast = Math.sqrt(_kLast);
                 if (rootK > rootKLast) {
