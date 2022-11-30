@@ -14,6 +14,7 @@ import "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "./RewardSplitter.sol";
 
 /**
@@ -146,10 +147,6 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         return _tokenId;
     }
 
-    function max(uint8 a, uint8 b) internal pure returns (uint8) {
-        return a >= b ? a : b;
-    }
-
     function priceSimilarPosition()
         external
         view
@@ -159,7 +156,7 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             uint128 liquidity
         )
     {
-        liquidity = uint128(10**max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
+        liquidity = uint128(10**Math.max(IERC20Metadata(token0).decimals(), IERC20Metadata(token1).decimals()));
         (uint160 sqrtRatioX96, int24 tick, , , , , ) = pool.slot0();
         (, , , , , int24 tickLower, int24 tickUpper, , , , , ) = nonfungiblePositionManager.positions(_tokenId);
 
