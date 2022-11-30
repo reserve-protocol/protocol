@@ -209,7 +209,7 @@ Mainnet reasonable range: 1e12 to 1e18
 
 Dimension: `{1}`
 
-The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at.
+The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
 Anticipated value: `0.01e18` = 1%
 Mainnet reasonable range: 1e12 to 1e18

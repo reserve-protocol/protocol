@@ -94,7 +94,7 @@ interface ICollateral is IAsset {
   /// Refresh exchange rates and update default status.
   /// The Reserve protocol calls this at least once per transaction, before relying on
   /// this collateral's prices or default status.
-  function refresh() external;
+  function refresh() public;
 
   /// @return The canonical name of this collateral's target unit.
   function targetName() external view returns (bytes32);
@@ -343,7 +343,7 @@ The values returned by the following view methods should never change:
 
 ### refresh()
 
-`function refresh() external`
+`function refresh() public`
 
 Because `refresh()` is relied upon by so much of the protocol, it is important that it only reverts due to out-of-gas errors. So, wrap any risky external calls that might throw in a try-catch block like this one:
 
@@ -454,6 +454,6 @@ If implementing a demurrage-based collateral plugin, make sure your targetName f
 
 ## Practical Advice from Previous Work
 
-In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/AbstractCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin.
+In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/FiatCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.
