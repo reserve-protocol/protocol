@@ -128,13 +128,14 @@ Design intentions:
 
 ## System Auctions
 
-There are a few different types of trades that the Reserve Protocol makes, each with their own impetus and expected frequency.
-- collateral to collateral (basket is changed by governance, or collateral defaults) (**rare**)
-- collateral to RSR (reward / yield distribution to stRSR) (**daily/weekly**)
-- rsr to collateral (insurance provided by stRSR in the event of a collateral default) (**rare**)
-- reward tokens to collateral (token rewards turned into revenue) (**daily/weekly**)
+The Reserve Protocol makes a few different types of trades:
 
-Each of these trades takes place by way of auction.  There is currently only one auction method (Gnosis EasyAuction), but the Reserve Protocol supports the ability to expand to other methods.
+- from collateral to RSR or RToken, in order to distribute collateral yields. These happen often.
+- from reward tokens to RSR or RToken, in order to distribute tokens rewards from collateral. These also happen often.
+- collateral to collateral, in order to change the distribution of collateral due to a basket change. Basket changes should be rare, happening only when governance changes the basket, or when some collateral token defaults.
+- RSR to collateral, in order to recollateralize the protocol from stRSR insurance, after a basket change. These auctions should be even rarer, happening when there's a basket change and insufficient capital to achieve recollateralization without using insure.
+
+Each type of trade can currently happen in only one way; the protocol launches a Gnosis EasyAuction. The Reserve Protocol is designed to make it easy to add other trading methods, but none others are currently supported.
 
 A good explainer for how Gnosis auctions work can be found (on their github)[https://github.com/gnosis/ido-contracts].
 
