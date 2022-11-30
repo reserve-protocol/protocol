@@ -18,7 +18,6 @@ import {
   CTokenMock,
   ERC20Mock,
   FiatCollateral,
-  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -60,7 +59,6 @@ describe('Assets contracts #fast', () => {
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
   let backingManager: TestIBackingManager
-  let oracleLib: OracleLib
 
   // Factory
   let AssetFactory: ContractFactory
@@ -87,7 +85,6 @@ describe('Assets contracts #fast', () => {
       config,
       rToken,
       rTokenAsset,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Get collateral tokens
@@ -114,9 +111,7 @@ describe('Assets contracts #fast', () => {
     }
     await rToken.connect(wallet).issue(amt)
 
-    AssetFactory = await ethers.getContractFactory('Asset', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    AssetFactory = await ethers.getContractFactory('Asset')
     RTokenAssetFactory = await ethers.getContractFactory('RTokenAsset')
   })
 

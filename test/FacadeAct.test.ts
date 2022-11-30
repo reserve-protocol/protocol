@@ -91,7 +91,6 @@ describe('FacadeAct contract', () => {
   let gnosis: GnosisMock
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -126,7 +125,6 @@ describe('FacadeAct contract', () => {
       rTokenTrader,
       rsrTrader,
       gnosis,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Get assets and tokens
