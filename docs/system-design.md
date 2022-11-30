@@ -57,7 +57,7 @@ Some examples:
 
 - Let's say we're building a pure-stable USD basket, out of USDC, USDP, and DAI. The unit of account would surely be USD. Each collateral token would also be its own reference unit, and its target would be USD.
 
-- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies.  This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively.  The target units would then be ETH & BTC, while the `{UoA}` would be USD.  Thus, the *value* of the rToken would flucuate (according to its unit-of-account), but all other necessary properties could be maintained.
+- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies.  This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively.  The target units would then be ETH & BTC, while the `{UoA}` would be USD.  Thus, the *value* of the rToken would fluctuate (according to its unit-of-account), but all other necessary properties could be maintained.
 
 Separate from these, a number in dimension `{BU}` ("basket units") is an amount of current baskets.
 
