@@ -29,3 +29,5 @@ typechain/
 *.orig
 
 .idea
+
+.DS_Store

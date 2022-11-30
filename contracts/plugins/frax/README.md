@@ -138,3 +138,9 @@ int8 referenceERC20Decimals_ // decimals of underlying token - default
 The unit tests for these plugins are [FraxSwapCollateral.test.ts](../../../test/integration/individual-collateral/FraxSwapCollateral.test.ts) and [FTokenFiatCollateral.test.ts](../../../test/integration/individual-collateral/FTokenFiatCollateral.test.ts) are intented to be run on `MAINNET_BLOCK=15995569`,
 since Fraxlend and Fraxswap pools did not exist during the default testing block number.
 
+
+## 4.0 Addressing Slither Findings
+Slither was used to scan the plugin contracts for vulnerabilities, the reported findings for each contract are described below:
+
+- `FTokenFiatCollateral.sol`:
+  - `Possible reentrancy in refresh() initiated by the external call IFraxlendPair(address(erc20)).addInterest().  - L#68`. This external call does not create a reentrancy attack vector in this contract, and hence can be dismissed.
