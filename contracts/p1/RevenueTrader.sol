@@ -53,6 +53,8 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
+        // TODO require fullyCollateralized and SOUND, so that RToken price is always reliable
+
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
@@ -66,35 +68,29 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
 
         IAsset sell = assetRegistry.toAsset(erc20);
         IAsset buy = assetRegistry.toAsset(tokenToBuy);
+        (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
+        (, uint192 buyPrice) = buy.price(); // {UoA/tok}
+
+        require(buyPrice > 0, "buy asset has zero price");
 
         TradeInfo memory trade = TradeInfo({
             sell: sell,
             buy: buy,
             sellAmount: sell.bal(address(this)),
             buyAmount: 0,
-            sellPrice: sell.strictPrice(),
-            buyPrice: buy.strictPrice()
+            sellPrice: sellPrice,
+            buyPrice: buyPrice
         });
         TradingRules memory rules = TradingRules({
             minTradeVolume: minTradeVolume,
             maxTradeSlippage: maxTradeSlippage
         });
 
-        require(trade.buyPrice > 0, "buy asset has zero price");
-
         // If not dust, trade the non-target asset for the target asset
         // Any asset with a broken price feed will trigger a revert here
         (bool launch, TradeRequest memory req) = TradeLib.prepareTradeSell(trade, rules);
 
         if (launch) {
-            if (sell.isCollateral()) {
-                CollateralStatus status = ICollateral(address(sell)).status();
-
-                if (status == CollateralStatus.IFFY) return;
-                if (status == CollateralStatus.DISABLED) req.minBuyAmount = 0;
-            }
-
-            // == Interactions then return ==
             tryTrade(req);
         }
     }

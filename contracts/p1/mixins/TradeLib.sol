@@ -34,28 +34,35 @@ library TradeLib {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeSell(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
-        // assert(trade.sellPrice >= 0); not needed
+
+        uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellPrice, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
-        // {sellTok} - reads trade.sell.price(true)
-        uint192 s = fixMin(trade.sellAmount, maxTradeSize(trade.sell, trade.sellPrice));
+        // Calculate sell and buy amounts
+        uint192 s = trade.sellAmount; // {sellTok}
+        uint192 b; // {buyTok} initially 0
 
-        // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-        uint192 b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
-            trade.sellPrice,
-            trade.buyPrice,
-            CEIL
-        );
+        // Size trade if trade.sellPrice > 0
+        if (trade.sellPrice > 0) {
+            uint192 maxTradeSize_ = maxTradeSize(trade.sell, trade.sellPrice);
+            if (s > maxTradeSize_) s = maxTradeSize_;
+
+            // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
+            b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
+                trade.sellPrice,
+                trade.buyPrice,
+                CEIL
+            );
+        }
 
         req.sell = trade.sell;
         req.buy = trade.buy;
@@ -93,11 +100,10 @@ library TradeLib {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
-        internal
-        view
-        returns (bool notDust, TradeRequest memory req)
-    {
+    function prepareTradeToCoverDeficit(
+        TradeInfo memory trade,
+        TradingRules memory rules
+    ) internal view returns (bool notDust, TradeRequest memory req) {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.
@@ -120,22 +126,20 @@ library TradeLib {
         return prepareTradeSell(trade, rules);
     }
 
-    /// @param asset The asset in question
-    /// @param price {UoA/tok} The price to use
+    /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
-        uint192 price,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
-        // The Gnosis EasyAuction trading platform rounds defensively, meaning it is possible
-        // for it to keep 1 qTok for itself. Therefore we should not sell 1 qTok. This is
-        // likely to be true of all the trading platforms we integrate with.
         return
             amt.gte(minTradeSize(minTradeVolume, price)) &&
+            // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
     }

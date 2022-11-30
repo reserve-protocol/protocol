@@ -9,6 +9,8 @@ import "../interfaces/IRToken.sol";
 import "../interfaces/IStRSR.sol";
 import "../libraries/Fixed.sol";
 
+uint192 constant FIX_TWO = FIX_ONE * 2;
+
 /**
  * @title FacadeTest
  * @notice A facade that is useful for driving/querying the system during testing.
@@ -79,13 +81,12 @@ contract FacadeTest is IFacadeTest {
             if (erc20s[i] == rsr) continue;
 
             IAsset asset = reg.toAsset(erc20s[i]);
-            // Exclude collateral that has defaulted
-            if (
-                asset.isCollateral() &&
-                ICollateral(address(asset)).status() != CollateralStatus.DISABLED
-            ) {
-                total = total.plus(asset.bal(backingManager).mul(asset.strictPrice()));
-            }
+
+            // Use midpoint price, disregarding unpriced assets
+            (uint192 lowPrice, uint192 highPrice) = asset.price();
+            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(FIX_TWO) : 0;
+
+            total = total.plus(asset.bal(backingManager).mul(midPrice));
         }
     }
 }

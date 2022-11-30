@@ -14,17 +14,15 @@ import "./IRewardable.sol";
  * is eligible to be an asset.
  */
 interface IAsset is IRewardable {
-    /// Can return 0, can revert
-    /// Shortcut for price(false)
-    /// @return {UoA/tok} The current price(), without considering fallback prices
-    function strictPrice() external view returns (uint192);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() external view returns (uint192 low, uint192 high);
 
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return isFallback If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) external view returns (bool isFallback, uint192);
+    /// Should not revert
+    /// Should be nonzero when the asset might be worth selling
+    /// @return {UoA/tok} A fallback price to use for trade sizing when price().low is 0
+    function fallbackPrice() external view returns (uint192);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);
@@ -79,6 +77,8 @@ interface ICollateral is IAsset {
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
+    /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
+    /// refPerTok() has ever decreased since last call.
     function refresh() external;
 
     /// @return The canonical name of this collateral's target unit.

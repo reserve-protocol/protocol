@@ -32,11 +32,11 @@ async function main() {
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
     fallbackPrice: (await getCurrentPrice(deployments.prerequisites.RSR_FEED)).toString(),
     priceFeed: deployments.prerequisites.RSR_FEED,
+    oracleError: fp('0.02').toString(), // 2%
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
-    oracleLib: deployments.oracleLib,
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)

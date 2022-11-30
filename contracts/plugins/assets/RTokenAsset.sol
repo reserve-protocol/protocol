@@ -6,7 +6,7 @@ import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "../../p1/mixins/RecollateralizationLib.sol";
 
-/// Once an RToken gets large eonugh to get a price feed, replacing this asset with
+/// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
     using FixLib for uint192;
@@ -38,60 +38,57 @@ contract RTokenAsset is IAsset {
         maxTradeVolume = maxTradeVolume_;
     }
 
-    /// Can return 0 and revert
-    /// @return {UoA/tok} An estimate of the current RToken redemption price
-    function strictPrice() public view virtual returns (uint192) {
-        (bool isFallback, uint192 price_) = price(false);
-        require(!isFallback, "RTokenAsset: need fallback prices");
-        return price_;
-    }
-
-    /// Can return 0
-    /// Should not revert if `allowFallback` is true. Can revert if false.
-    /// @param allowFallback Whether to try the fallback price in case precise price reverts
-    /// @return If the price is a failover price
-    /// @return {UoA/tok} The current price(), or if it's reverting, a fallback price
-    function price(bool allowFallback) public view virtual returns (bool, uint192) {
-        // {UoA/BU}
-        (bool isFallback_, uint192 price_) = basketHandler.price(allowFallback);
+    /// Can revert, used by other contract functions in order to catch errors
+    /// @param low {UoA/tok} The low price estimate
+    /// @param high {UoA/tok} The high price estimate
+    function tryPrice() external view virtual returns (uint192 low, uint192 high) {
+        (uint192 lowBUPrice, uint192 highBUPrice) = basketHandler.price(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return (isFallback_, price_);
+        if (supply == 0) return (lowBUPrice, highBUPrice);
 
-        uint192 basketsBottom; // {BU}
-        if (basketHandler.fullyCollateralized()) {
-            basketsBottom = IRToken(address(erc20)).basketsNeeded();
-        } else {
-            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
-            // there is _some_ asset to represent the RToken itself when it is deployed, in
-            // the absence of an external price feed. Any RToken that gets reasonably big
-            // should switch over to an asset with a price feed.
-
-            IMain main = backingManager.main();
-            ComponentCache memory components = ComponentCache({
-                trader: backingManager,
-                bh: main.basketHandler(),
-                reg: main.assetRegistry(),
-                stRSR: main.stRSR(),
-                rsr: main.rsr(),
-                rToken: main.rToken()
-            });
-            TradingRules memory rules = TradingRules({
-                minTradeVolume: backingManager.minTradeVolume(),
-                maxTradeSlippage: backingManager.maxTradeSlippage()
-            });
-
-            // will exclude UoA value from RToken balances at BackingManager
-            RecollateralizationLibP1.BasketRange memory range = RecollateralizationLibP1
-                .basketRange(components, rules, assetRegistry.erc20s());
-            basketsBottom = range.bottom;
-        }
+        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return (isFallback_, basketsBottom.mulDiv(price_, supply));
+        low = range.bottom.mulDiv(lowBUPrice, supply);
+        high = range.top.mulDiv(highBUPrice, supply);
+    }
+
+    /// Should not revert
+    /// @return {UoA/tok} The lower end of the price estimate
+    /// @return {UoA/tok} The upper end of the price estimate
+    function price() public view virtual returns (uint192, uint192) {
+        try this.tryPrice() returns (uint192 low, uint192 high) {
+            return (low, high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (0, FIX_MAX);
+        }
+    }
+
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A fallback price to use for trade sizing
+    function fallbackPrice() external view returns (uint192) {
+        // This function can revert if of the math inside it reverts
+        // But we prefer reverting over returning a zero value for fallbackPrice()
+
+        uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
+
+        // Here we take advantage of the fact that we know RToken has 18 decimals
+        // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
+        uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
+
+        if (supply == 0) return buFallbackPrice;
+
+        RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
+
+        // {UoA/tok} = {BU} * {UoA/BU} / {tok}
+        return range.bottom.mulDiv(buFallbackPrice, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -113,4 +110,41 @@ contract RTokenAsset is IAsset {
     function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
+
+    // ==== Private ====
+
+    function basketRange()
+        private
+        view
+        returns (RecollateralizationLibP1.BasketRange memory range)
+    {
+        if (basketHandler.fullyCollateralized()) {
+            range.bottom = IRToken(address(erc20)).basketsNeeded();
+            range.top = range.bottom;
+        } else {
+            // Note: Extremely this is extremely wasteful in terms of gas. This only exists so
+            // there is _some_ asset to represent the RToken itself when it is deployed, in
+            // the absence of an external price feed. Any RToken that gets reasonably big
+            // should switch over to an asset with a price feed.
+
+            IMain main = backingManager.main();
+            ComponentCache memory components = ComponentCache({
+                trader: backingManager,
+                bh: main.basketHandler(),
+                reg: main.assetRegistry(),
+                stRSR: main.stRSR(),
+                rsr: main.rsr(),
+                rToken: main.rToken()
+            });
+            TradingRules memory rules = TradingRules({
+                minTradeVolume: backingManager.minTradeVolume(),
+                maxTradeSlippage: backingManager.maxTradeSlippage()
+            });
+
+            Registry memory reg = assetRegistry.getRegistry();
+
+            // will exclude UoA value from RToken balances at BackingManager
+            range = RecollateralizationLibP1.basketRange(components, rules, reg);
+        }
+    }
 }

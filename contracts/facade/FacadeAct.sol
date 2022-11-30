@@ -228,10 +228,12 @@ contract FacadeAct is IFacadeAct {
                         // forward RToken in isolation only, if it's large enough
                         {
                             IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
-                            (, uint192 p) = rTokenAsset.price(true);
+                            (uint192 lotPrice, ) = rTokenAsset.price();
+                            lotPrice = fixMax(lotPrice, rTokenAsset.fallbackPrice());
+
                             if (
                                 rTokenAsset.bal(address(cache.rTokenTrader)) >
-                                minTradeSize(cache.rTokenTrader.minTradeVolume(), p)
+                                minTradeSize(cache.rTokenTrader.minTradeVolume(), lotPrice)
                             ) {
                                 try cache.rTokenTrader.manageToken(IERC20(address(rToken))) {
                                     address[] memory oneERC20 = new address[](1);
@@ -250,10 +252,11 @@ contract FacadeAct is IFacadeAct {
                         // forward RSR in isolation only, if it's large enough
                         {
                             IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
-                            (, uint192 p) = rsrAsset.price(true);
+                            (uint192 lotPrice, ) = rsrAsset.price();
+                            lotPrice = fixMax(lotPrice, rsrAsset.fallbackPrice());
                             if (
                                 rsrAsset.bal(address(cache.rsrTrader)) >
-                                minTradeSize(cache.rsrTrader.minTradeVolume(), p)
+                                minTradeSize(cache.rsrTrader.minTradeVolume(), lotPrice)
                             ) {
                                 try cache.rsrTrader.manageToken(IERC20(address(cache.rsr))) {
                                     address[] memory oneERC20 = new address[](1);
@@ -313,10 +316,11 @@ contract FacadeAct is IFacadeAct {
             try cache.bm.claimRewards() {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
-                    // {tok}
-                    (, uint192 p) = cache.reg.toAsset(erc20s[i]).price(true);
+                    (uint192 lotPrice, ) = cache.reg.toAsset(erc20s[i]).price(); // {tok}
+                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).fallbackPrice());
+
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
-                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
+                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotPrice)) {
                         // It's large enough to trade! Return bm.claimRewards as next step.
                         return (
                             address(cache.bm),
@@ -330,10 +334,11 @@ contract FacadeAct is IFacadeAct {
             try this.claimAndSweepRewards(rToken) {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
-                    // {tok}
-                    (, uint192 p) = cache.reg.toAsset(erc20s[i]).price(true);
+                    (uint192 lotPrice, ) = cache.reg.toAsset(erc20s[i]).price(); // {tok}
+                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).fallbackPrice());
+
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
-                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, p)) {
+                    if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotPrice)) {
                         // It's large enough to trade! Return claimAndSweepRewards as next step.
                         return (
                             address(this),

@@ -1,37 +1,35 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
-import { Collateral } from '../../../typechain'
+import { FiatCollateral } from '../../../typechain'
 
 task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('delayUntilDefault', 'Seconds until default')
-  .addParam('oracleLib', 'Oracle library address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
-    const SelfReferentialCollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
-      'SelfReferentialCollateral'
-    )
+    const CollateralFactory: ContractFactory = await hre.ethers.getContractFactory('FiatCollateral')
 
-    const collateral = <Collateral>(
-      await SelfReferentialCollateralFactory.connect(deployer).deploy(
-        params.fallbackPrice,
-        params.priceFeed,
-        params.tokenAddress,
-        params.maxTradeVolume,
-        params.oracleTimeout,
-        params.targetName,
-        params.delayUntilDefault
-      )
-    )
+    const collateral = <FiatCollateral>await CollateralFactory.connect(deployer).deploy({
+      fallbackPrice: params.fallbackPrice,
+      chainlinkFeed: params.priceFeed,
+      oracleError: params.oracleError,
+      erc20: params.cToken,
+      maxTradeVolume: params.maxTradeVolume,
+      oracleTimeout: params.oracleTimeout,
+      targetName: params.targetName,
+      defaultThreshold: 0, // makes it self-referential
+      delayUntilDefault: params.delayUntilDefault,
+    })
     await collateral.deployed()
 
     if (!params.noOutput) {

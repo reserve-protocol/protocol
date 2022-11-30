@@ -144,7 +144,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    AssetFactory = await ethers.getContractFactory('Asset')
+    AssetFactory = await ethers.getContractFactory('Asset', {
+      libraries: { OracleLib: oracleLib.address },
+    })
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
@@ -1127,7 +1129,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+          libraries: { OracleLib: oracleLib.address },
+        })
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )

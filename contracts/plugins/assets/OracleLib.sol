@@ -12,11 +12,10 @@ library OracleLib {
     /// @dev Use for on-the-fly calculations that should revert
     /// @param timeout The number of seconds after which oracle values should be considered stale
     /// @return {UoA/tok}
-    function price(AggregatorV3Interface chainlinkFeed, uint48 timeout)
-        internal
-        view
-        returns (uint192)
-    {
+    function price(
+        AggregatorV3Interface chainlinkFeed,
+        uint48 timeout
+    ) internal view returns (uint192) {
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed
             .latestRoundData();
 
@@ -32,16 +31,5 @@ library OracleLib {
 
         if (scaledPrice == 0) revert PriceOutsideRange();
         return scaledPrice;
-    }
-
-    /// @dev Use when a try-catch is necessary
-    /// @param timeout The number of seconds after which oracle values should be considered stale
-    /// @return {UoA/tok}
-    function price_(AggregatorV3Interface chainlinkFeed, uint48 timeout)
-        external
-        view
-        returns (uint192)
-    {
-        return price(chainlinkFeed, timeout);
     }
 }

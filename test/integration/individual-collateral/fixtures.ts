@@ -111,7 +111,9 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const facadeWriteLib = await (await ethers.getContractFactory('FacadeWriteLib')).deploy()
 
   // Deploy RSR Asset
-  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+  const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+    libraries: { OracleLib: oracleLib.address },
+  })
   const rsrAsset: Asset = <Asset>await AssetFactory.deploy(
     fp('0.007'),
     networkConfig[chainId].chainlinkFeeds.RSR || '',

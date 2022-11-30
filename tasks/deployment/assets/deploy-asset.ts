@@ -5,10 +5,10 @@ import { Asset } from '../../../typechain'
 task('deploy-asset', 'Deploys an Asset')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
+  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max Oracle Timeout')
-  .addParam('oracleLib', 'Oracle library address')
   .addOptionalParam('noOutput', 'Suppress output', false, types.boolean)
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -21,6 +21,7 @@ task('deploy-asset', 'Deploys an Asset')
         .deploy(
           params.fallbackPrice,
           params.priceFeed,
+          params.oracleError,
           params.tokenAddress,
           params.maxTradeVolume,
           params.oracleTimeout

@@ -23,7 +23,7 @@ import {
   MAX_UINT192,
 } from '../common/constants'
 import { expectInIndirectReceipt, expectInReceipt, expectEvents } from '../common/events'
-import { setOraclePrice } from './utils/oracles'
+import { expectPrice, setOraclePrice } from './utils/oracles'
 import { bn, fp } from '../common/numbers'
 import {
   Asset,
@@ -53,7 +53,13 @@ import {
   USDCMock,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
-import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  Implementation,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+} from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
 import { useEnv } from '#/utils/env'
@@ -296,9 +302,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
 
       // Check BU price
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
     })
   })
 
@@ -1089,11 +1093,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           erc20s[5].address,
           config.rTokenMaxTradeVolume,
           1
@@ -1104,6 +1111,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           token0.address,
           config.rTokenMaxTradeVolume,
           1
@@ -1144,11 +1152,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to unregister asset if OWNER', async () => {
       // Setup new Asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           token0.address,
           config.rTokenMaxTradeVolume,
           1
@@ -1162,6 +1173,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           newToken.address,
           config.rTokenMaxTradeVolume,
           1
@@ -1208,11 +1220,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Should allow to swap Asset if OWNER', async () => {
       // Setup new Asset - Reusing token
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           token0.address,
           config.rTokenMaxTradeVolume,
           1
@@ -1224,6 +1239,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           erc20s[5].address,
           config.rTokenMaxTradeVolume,
           1
@@ -1519,12 +1535,10 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // expect(toks.length).to.equal(0)
     })
 
-    it('Should exclude defaulted collateral when checking price', async () => {
+    it('Should exclude defaulted collateral when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
 
       // Default one of the collaterals
       // Set Token1 to default - 50% price reduction
@@ -1541,17 +1555,34 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      const [isFallback2, price2] = await basketHandler.price(true)
-      expect(isFallback2).to.equal(false)
-      expect(price2).to.equal(fp('0.75')) // no insurance to buffer the price
+
+      // Check BU price
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
+
+      // Price should recover after basket change
+
+      // Set basket config
+      await expect(
+        basketHandler
+          .connect(owner)
+          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(1), [
+            token0.address,
+            token2.address,
+            token3.address,
+          ])
+      ).to.emit(basketHandler, 'BackupConfigSet')
+
+      // After basket refresh, price should increase
+      await basketHandler.refreshBasket()
+
+      // Check BU price
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
     })
 
     it('Should handle collateral wih price = 0 when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR)
 
       // Set fallback to 0 for one of the collaterals (swapping the collateral)
       const ZeroPriceATokenFiatCollateralFactory: ContractFactory = await ethers.getContractFactory(
@@ -1563,6 +1594,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newColl2 = <ATokenFiatCollateral>await ZeroPriceATokenFiatCollateralFactory.deploy(
         bn('1'), // Will not be used, 0 will be returned instead
         await collateral2.chainlinkFeed(),
+        ORACLE_ERROR,
         await collateral2.erc20(),
         await collateral2.maxTradeVolume(),
         await collateral2.oracleTimeout(),
@@ -1574,14 +1606,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap collateral
       await assetRegistry.connect(owner).swapRegistered(newColl2.address)
 
-      // Set price = 0
+      // Set price = 0, which hits 3 of our 4 collateral in the basket
       await setOraclePrice(newColl2.address, bn('0'))
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      const [isFallback2, price2] = await basketHandler.price(true)
-      expect(isFallback2).to.equal(true)
-      expect(price2).to.equal(fp('0.75'))
+      const [newLowPrice, newHighPrice] = await basketHandler.price()
+      expect(newLowPrice).to.equal(fp('0.25').sub(fp('0.25').mul(ORACLE_ERROR).div(fp('1'))))
+      expect(newHighPrice).to.equal(MAX_UINT192)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
@@ -1592,11 +1624,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Swap a token for a non-collateral asset
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           token1.address,
           config.rTokenMaxTradeVolume,
           1
@@ -1735,6 +1770,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.basketsHeldBy(addr1.address)).to.equal(0)
     })
 
+    // TODO I think we lost coverage here because the behavior changed
     it('Should return FIX_MAX as basket price in case of 1st overflow (for individual collateral)', async () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
 
@@ -1742,15 +1778,11 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await token2.setExchangeRate(fp('0'))
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
-      // Also set price of underlying to 0 so Fallback price is used
-      await setOraclePrice(collateral2.address, bn(0))
-
       // Check BU price
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(true)
-      expect(price).to.equal(MAX_UINT192)
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
     })
 
+    // TODO I think we lost coverage here because the behavior changed
     it('Should return FIX_MAX as basket price in case of 2nd overflow (for individual collateral)', async () => {
       expect(await basketHandler.quantity(token2.address)).to.equal(basketsNeededAmts[2])
 
@@ -1761,6 +1793,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy(
         fp('1.01'), // fallback price just above 1
         await collateral2.chainlinkFeed(),
+        ORACLE_ERROR,
         await collateral2.erc20(),
         config.rTokenMaxTradeVolume,
         await collateral2.oracleTimeout(),
@@ -1775,13 +1808,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await token2.setExchangeRate(fp('0'))
       expect(await basketHandler.quantity(token2.address)).to.equal(MAX_UINT192)
 
-      // Also set price of underlying to 0 so Fallback price is used
-      await setOraclePrice(collateral2.address, bn(0))
-
       // Check BU price
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(true)
-      expect(price).to.equal(MAX_UINT192)
+      await expectPrice(basketHandler.address, fp('0.75'), ORACLE_ERROR)
     })
 
     it('Should not put backup tokens with different targetName in the basket', async () => {
@@ -1792,6 +1820,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newColl = await CollFactory.deploy(
         fp('1'),
         await collateral0.chainlinkFeed(),
+        ORACLE_ERROR,
         token0.address,
         config.rTokenMaxTradeVolume,
         await collateral0.oracleTimeout(),
@@ -1839,11 +1868,14 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
     it('Asset Registry - Register Asset', async () => {
       // Setup new Assets
-      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
+      const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
+        libraries: { OracleLib: oracleLib.address },
+      })
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           erc20s[5].address,
           config.rTokenMaxTradeVolume,
           1
@@ -1853,6 +1885,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         await AssetFactory.deploy(
           fp('1'),
           ONE_ADDRESS,
+          ORACLE_ERROR,
           erc20s[6].address,
           config.rTokenMaxTradeVolume,
           1
