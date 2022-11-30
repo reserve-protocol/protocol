@@ -9,9 +9,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "hardhat/console.sol";
 
-//TODO Uniswap2 doesnt update some values until block changed
-//so we need some checks for blocks
-//ALSO Unsiwap uses 112 bits floating points math for price accumulators
+//TODO Unsiwap uses 112 bits floating points math for price accumulators
 contract UniswapV2Collateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
@@ -40,6 +38,14 @@ contract UniswapV2Collateral is Collateral {
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
     }
 
+    function refPerTok() public view override returns (uint192) {
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+        // Seems like can be safety replaced with sellPrice(feeOn)
+        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
+        uint256 rootK = Math.sqrt(reserve0 * reserve1);
+        return uint192((rootK * 10**18) / pair.totalSupply());
+    }
+
     function _calculatePrice(
         address token0,
         address token1,
@@ -56,34 +62,11 @@ contract UniswapV2Collateral is Collateral {
         return uint192(priceScaled0 + priceScaled1);
     }
 
+    // supply never zero on uniswap v2, so can revert only if feeds revert
     function strictPrice() external view override returns (uint192) {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         return _calculatePrice(pair.token0(), pair.token1(), reserve0, reserve1, IERC20(erc20).totalSupply());
-    }
-
-    // При инициализации мы создаём позицию на юнисвопе получаем некую ликвидити
-    // {tok} это erc20 токен который можно продавать
-    // {ref} это константа удерживаемая протоколом в качестве обеспечения
-    // если refPerTok - цена за которую можно продать наше количество токенов растёт,
-    // протокол продаёт избыток токенов и получает revenue
-    // amount0 * amount1 = k
-    // k может оставаться константой или расти
-    // totalSupply может убывать или расти, но убывает или растёт медленней чем k
-    // мы используем reserve0 и reserve1, а не балансы, хотя чтобы учитывать свопы,
-    // нужны балансы, но если учитывать балансы, то в момент включения, выключения
-    // фи ценность позиции, видимо, будет меняться
-    function refPerTok() public view override returns (uint192) {
-        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-        (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-        uint256 rootK = Math.sqrt(reserve0 * reserve1);
-        return uint192(rootK * 10 ** 18 / pair.totalSupply());
-    }
-
-    function _fallbackPrice() public view returns (uint192) {
-        //TODO or sellPrice
-        //TODO cant revert
-        return strictPrice();
     }
 
     function _feeOn() internal view returns (bool) {
@@ -91,18 +74,14 @@ contract UniswapV2Collateral is Collateral {
         address feeTo = IUniswapV2Factory(pair.factory()).feeTo();
         return feeTo != address(0);
     }
+
     // returns amounts can be obtained on burn liquidity
-    function sellPrice(uint256 liquidity, bool feeOn) internal view returns (uint256 amount0, uint256 amount1) {
+    function sellPrice(bool feeOn) internal view returns (uint256 liquidity, uint256 amount0, uint256 amount1) {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-        address _token0 = pair.token0();
-        address _token1 = pair.token1();
-        uint256 balance0 = IERC20(_token0).balanceOf(address(pair));
-        uint256 balance1 = IERC20(_token1).balanceOf(address(pair));
-        
-        uint256 _kLast = pair.kLast();
-        uint256 liquidityFee = 0;
         uint256 _totalSupply = pair.totalSupply();
         if (feeOn) {
+            uint256 _kLast = pair.kLast();
+            //is this check enough to depends on feeOn in refPerTok
             if (_kLast != 0) {
                 (uint112 _reserve0, uint112 _reserve1, ) = pair.getReserves();
                 uint256 rootK = Math.sqrt(_reserve0 * _reserve1);
@@ -110,27 +89,21 @@ contract UniswapV2Collateral is Collateral {
                 if (rootK > rootKLast) {
                     uint256 numerator = _totalSupply * (rootK - rootKLast);
                     uint256 denominator = (rootK * 5) + rootKLast;
-                    liquidityFee = numerator / denominator;
-                    _totalSupply += liquidityFee;
+                    _totalSupply += numerator / denominator;
                 }
             }
         }
-        amount0 = (liquidity * balance0) / _totalSupply;
-        amount1 = (liquidity * balance1) / _totalSupply;
+        address _token0 = pair.token0();
+        address _token1 = pair.token1();
+        amount0 = IERC20(_token0).balanceOf(address(pair));
+        amount1 = IERC20(_token1).balanceOf(address(pair));
+        liquidity = _totalSupply;
     }
 
-    function price(bool allowFallback) public view override returns (bool isFallback, uint192) {
-        try this.strictPrice() returns (uint192 p) {
-            return (false, p);
-        } catch {
-            require(allowFallback, "price reverted without failover enabled");
-            return (true, _fallbackPrice());
-        }
-    }
-
-    function claimRewards() external override {
-        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-        emit RewardsClaimed(IERC20(pair.token0()), 0);
-        emit RewardsClaimed(IERC20(pair.token1()), 0);
-    }
+    // TODO ask emtpy implementation without events is enough
+    // function claimRewards() external override {
+    //     IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+    //     emit RewardsClaimed(IERC20(pair.token0()), 0);
+    //     emit RewardsClaimed(IERC20(pair.token1()), 0);
+    // }
 }
