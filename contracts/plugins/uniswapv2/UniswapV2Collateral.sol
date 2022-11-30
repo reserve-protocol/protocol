@@ -77,7 +77,7 @@ contract UniswapV2Collateral is Collateral {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         uint256 rootK = Math.sqrt(reserve0 * reserve1);
-        return uint192(rootK / pair.totalSupply());
+        return uint192(rootK * 10 ** 18 / pair.totalSupply());
     }
 
     function _fallbackPrice() public view returns (uint192) {
