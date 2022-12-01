@@ -226,7 +226,6 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Check Collateral plugin
       // eUSDC (ETokenFiatCollateral)
-      // TODO: eUSDC to USDC Exchange rate as of testing block: 1023569
       expect(await eUsdcCollateral.isCollateral()).to.equal(true)
       expect(await eUsdcCollateral.referenceERC20Decimals()).to.equal(await usdc.decimals())
       expect(await eUsdcCollateral.erc20()).to.equal(eUsdc.address)
@@ -238,11 +237,10 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await eUsdcCollateral.prevReferencePrice()).to.equal(await eUsdcCollateral.refPerTok())
       expect(await eUsdcCollateral.strictPrice()).to.be.closeTo(fp('1.023'), fp('0.001')) // close to $1.023
 
-      // TODO: Check claim data?
-      // await expect(eUsdcCollateral.claimRewards())
-      //   .to.emit(eUsdcCollateral, 'RewardsClaimed')
-      //   .withArgs(compToken.address, 0)
-      // expect(await eUsdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      // claimRewards() should not actually claim any rewards for the user, 
+      // since there are no extra rewards for eToken holders
+      expect(await eUsdcCollateral.claimRewards()).to.not.emit(eUsdcCollateral, 'RewardsClaimed')
+      expect(await eUsdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -437,34 +435,11 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // claiming calls throughout the protocol are handled correctly and do not revert.
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
-      const MIN_ISSUANCE_PER_BLOCK = bn('1000e18')
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-
-      const eUsdcCollateralAddress = await assetRegistry.toAsset(eUsdc.address)
-      console.log("collateral plugin address:")
-      console.log(eUsdcCollateralAddress)
-      console.log(eUsdcCollateral.address)
-      // should not emit RewardsClaimed - since there are no rewareds to collect
-      await expect(backingManager.claimRewardsSingle(eUsdc.address)).to.be.revertedWith("rewards claim failed")
-
-      // Provide approvals for issuances
-      await eUsdc.connect(addr1).approve(rToken.address, issueAmount)
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-      // Advance Time
-      await advanceTime(8000)
-      console.log('second expect:')
-
-      // still should not be able to claim rewards
-      await expect(backingManager.claimRewardsSingle(eUsdc.address)).to.be.revertedWith("rewards claim failed")
+      // since there are no rewards to claim, we not check to see that it doesn't emit anything
+      await expectEvents(backingManager.claimRewards(), [])
     })
   })
+
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
