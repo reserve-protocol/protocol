@@ -3,7 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, defaultFixture, IMPLEMENTATION } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR } from '../fixtures'
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { IConfig, networkConfig } from '../../common/configuration'
@@ -13,6 +13,7 @@ import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '../utils/impersonation'
+import { expectPrice } from '../utils/oracles'
 import {
   EasyAuction,
   ERC20Mock,
@@ -122,8 +123,9 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
+       
       // Take backing
       await token0.connect(owner).burn(backingManager.address, issueAmount)
 
@@ -539,7 +541,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {

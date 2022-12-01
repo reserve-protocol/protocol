@@ -11,6 +11,7 @@ import {
   CTokenFiatCollateral,
   CTokenNonFiatCollateral,
   CTokenMock,
+  CTokenSelfReferentialCollateral,
   ERC20Mock,
   EURFiatCollateral,
   FacadeTest,
@@ -1390,7 +1391,7 @@ describe('Collateral contracts', () => {
   // Tests specific to SelfReferential use of CTokenFiatCollateral.sol contract, not used by default in fixture
   describe('CToken Self-Referential Collateral #fast', () => {
     let CTokenSelfReferentialFactory: ContractFactory
-    let cTokenSelfReferentialCollateral: CTokenFiatCollateral
+    let cTokenSelfReferentialCollateral: CTokenSelfReferentialCollateral
     let selfRefToken: WETH9
     let cSelfRefToken: CTokenMock
     let chainlinkFeed: MockV3Aggregator
@@ -1406,9 +1407,11 @@ describe('Collateral contracts', () => {
         await ethers.getContractFactory('CTokenMock')
       ).deploy('cETH Token', 'cETH', selfRefToken.address)
 
-      CTokenSelfReferentialFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+      CTokenSelfReferentialFactory = await ethers.getContractFactory(
+        'CTokenSelfReferentialCollateral'
+      )
 
-      cTokenSelfReferentialCollateral = <CTokenFiatCollateral>(
+      cTokenSelfReferentialCollateral = <CTokenSelfReferentialCollateral>(
         await CTokenSelfReferentialFactory.deploy(
           {
             fallbackPrice: fp('1'),
@@ -1421,6 +1424,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: 0,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
+          await selfRefToken.decimals(),
           compoundMock.address
         )
       )
@@ -1443,9 +1447,30 @@ describe('Collateral contracts', () => {
             defaultThreshold: DEFAULT_THRESHOLD,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
+          await selfRefToken.decimals(),
           ZERO_ADDRESS
         )
       ).to.be.revertedWith('comptroller missing')
+    })
+
+    it('Should not allow missing reference erc20 decimals', async () => {
+      await expect(
+        CTokenSelfReferentialFactory.deploy(
+          {
+            fallbackPrice: fp('1'),
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cSelfRefToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: DEFAULT_THRESHOLD,
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          0,
+          compoundMock.address
+        )
+      ).to.be.revertedWith('referenceERC20Decimals missing')
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1527,6 +1552,7 @@ describe('Collateral contracts', () => {
             defaultThreshold: 0,
             delayUntilDefault: DELAY_UNTIL_DEFAULT,
           },
+          await selfRefToken.decimals(),
           compoundMock.address
         )
       )

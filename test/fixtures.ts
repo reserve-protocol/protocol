@@ -145,7 +145,6 @@ interface CollateralFixture {
 async function collateralFixture(
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
-  compToken: ERC20Mock,
   config: IConfig
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
@@ -587,7 +586,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
     compoundMock,
     aaveToken,
-    compToken,
     config
   )
 
