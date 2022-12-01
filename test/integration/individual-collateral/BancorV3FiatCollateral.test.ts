@@ -38,7 +38,6 @@ import {
   TestIMain,
   TestIRToken,
   BancorV3FiatCollateral,
-  IBancorV3FiatCollateral,
 } from '../../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -46,7 +45,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 // Holder address in Mainnet
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 
-const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
+const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'S
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -56,7 +55,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
   // Tokens/Assets
   let usdc: ERC20Mock
-  let BancorV3Interface: IBancorV3FiatCollateral
   let BancorV3Collateral: BancorV3FiatCollateral
   let cDai: CTokenMock
   let compToken: ERC20Mock
@@ -211,6 +209,12 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+  })
+
+  describe('Deployment', () => {
+    it('Should setup RToken, Assets, and Collateral correctly', async () => {
+      expect(await BancorV3Collateral.refPerTok()).to.closeTo(fp('0.02'), fp('0.005')) // close to $1
+    })
   })
 
 })

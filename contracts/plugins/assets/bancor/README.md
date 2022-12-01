@@ -4,7 +4,7 @@
 
 For Fiat collateral plugin:
 
-`tok`: nUSDC  
+`tok`: bnUSDC  
 `ref`: USDC  
 `target`: USD  
 `UoA`: USD
