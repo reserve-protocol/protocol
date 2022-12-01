@@ -15,7 +15,13 @@ import {
   TestIRToken,
   USDCMock,
 } from '../typechain'
-import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import {
+  Collateral,
+  Implementation,
+  IMPLEMENTATION,
+  defaultFixture,
+  ORACLE_ERROR,
+} from './fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -124,7 +130,7 @@ describe('FacadeRead contract', () => {
       let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and no insurance
-      expect(backing).to.equal(fp('1'))
+      expect(backing).to.be.closeTo(fp('1'), 1)
       expect(insurance).to.equal(0)
 
       // Mint some RSR
@@ -137,16 +143,16 @@ describe('FacadeRead contract', () => {
       ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and fully insured
-      expect(backing).to.equal(fp('1'))
-      expect(insurance).to.equal(fp('0.5'))
+      expect(backing).to.be.closeTo(fp('1'), 1)
+      expect(insurance).to.be.closeTo(fp('0.5'), 2)
 
       // Stake more RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
       ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
-      expect(backing).to.equal(fp('1'))
-      expect(insurance).to.equal(fp('1'))
+      expect(backing).to.be.closeTo(fp('1'), 1)
+      expect(insurance).to.be.closeTo(fp('1'), 5)
 
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
@@ -169,10 +175,10 @@ describe('FacadeRead contract', () => {
       expect(erc20s[1]).to.equal(usdc.address)
       expect(erc20s[2]).to.equal(aToken.address)
       expect(erc20s[3]).to.equal(cToken.address)
-      expect(breakdown[0]).to.equal(fp('0.25'))
-      expect(breakdown[1]).to.equal(fp('0.25'))
-      expect(breakdown[2]).to.equal(fp('0.25'))
-      expect(breakdown[3]).to.equal(fp('0.25'))
+      expect(breakdown[0]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
+      expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
       expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -184,7 +190,12 @@ describe('FacadeRead contract', () => {
     })
 
     it('Should return RToken price correctly', async () => {
-      expect(await facade.price(rToken.address)).to.equal(fp('1'))
+      const avgPrice = fp('1')
+      const [lowPrice, highPrice] = await facade.price(rToken.address)
+      const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
+      const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(ORACLE_ERROR))
+      expect(lowPrice).to.be.closeTo(expectedLow, 11)
+      expect(highPrice).to.be.closeTo(expectedHigh, 11)
     })
 
     // P1 only

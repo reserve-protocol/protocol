@@ -21,7 +21,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIDistributor,
@@ -39,6 +38,8 @@ import {
   defaultFixture,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+
+const DEFAULT_THRESHOLD = fp('0.05') // 5%
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -502,25 +503,24 @@ describe('FacadeAct contract', () => {
 
       // Setup a new aToken with invalid claim data
       const ATokenCollateralFactory = await ethers.getContractFactory(
-        'InvalidATokenFiatCollateralMock',
-        { libraries: { OracleLib: oracleLib.address } }
+        'InvalidATokenFiatCollateralMock'
       )
       const chainlinkFeed = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
       const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        ((await ATokenCollateralFactory.deploy(
-          fp('1'),
-          chainlinkFeed.address,
-          ORACLE_ERROR,
-          aToken.address,
-          config.rTokenMaxTradeVolume,
-          await aTokenAsset.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          await aTokenAsset.defaultThreshold(),
-          await aTokenAsset.delayUntilDefault()
-        )) as unknown)
+        await ATokenCollateralFactory.deploy({
+          fallbackPrice: fp('1'),
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await aTokenAsset.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+        })
       )
 
       // Perform asset swap
@@ -548,27 +548,24 @@ describe('FacadeAct contract', () => {
 
     it('Revenues - Should handle multiple assets with same reward token', async () => {
       // Update Reward token for AToken to use same as CToken
-      const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
       const chainlinkFeed = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
       const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy(
-          fp('1'),
-          chainlinkFeed.address,
-          ORACLE_ERROR,
-          aToken.address,
-          config.rTokenMaxTradeVolume,
-          await aTokenAsset.oracleTimeout(),
-          ethers.utils.formatBytes32String('USD'),
-          await aTokenAsset.defaultThreshold(),
-          await aTokenAsset.delayUntilDefault()
-        )
+        await ATokenCollateralFactory.deploy({
+          fallbackPrice: fp('1'),
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: aToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: await aTokenAsset.oracleTimeout(),
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+        })
       )
-
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(newATokenCollateral.address)
 
@@ -796,9 +793,7 @@ describe('FacadeAct contract', () => {
       const m = await ethers.getContractAt('MainP1', await rToken.main())
       const assetRegistry = await ethers.getContractAt('AssetRegistryP1', await m.assetRegistry())
       const ERC20Factory = await ethers.getContractFactory('ERC20Mock')
-      const AssetFactory = await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      const AssetFactory = await ethers.getContractFactory('Asset')
       const feed = await tokenAsset.chainlinkFeed()
 
       // Get to numAssets registered assets
