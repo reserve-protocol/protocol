@@ -17,7 +17,7 @@ contract CTokenFiatCollateral is FiatCollateral {
 
     // All cTokens have 8 decimals, but their underlying may have 18 or 6 or something else.
 
-    uint8 public referenceERC20Decimals;
+    uint8 public immutable referenceERC20Decimals;
 
     IComptroller public immutable comptroller;
 
