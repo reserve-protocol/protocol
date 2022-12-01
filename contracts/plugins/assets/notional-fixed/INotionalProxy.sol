@@ -63,5 +63,8 @@ interface INotionalProxy {
         uint256 blockTime,
         bool riskAdjusted
     ) external view returns (int256 presentValue);
+
+    /** Initialize Markets Action */
+    function initializeMarkets(uint16 currencyId, bool isFirstInit) external;
 }
 

@@ -145,6 +145,22 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await wfCash.depositedBy(addr1.address)).to.equal(0)
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(0)
     })
+
+    it('Should manage multiple deposits correctly', async () => {
+      const amount = bn('100e6')
+      const markets = await wfCash.activeMarkets()
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
+
+      const balanceRwfCash = await wfCash.balanceOf(addr1.address)
+      const depositedAmount = await wfCash.depositedBy(addr1.address)
+
+      expect(depositedAmount).to.be.closeTo(amount.mul(2), bn('0.3e6'))
+      expect(balanceRwfCash).to.be.gt(amount.mul(2))
+    })
   })
 
   describe('Transfers', () => {
@@ -336,7 +352,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       await wfCash.connect(addr1).deposit(amount)
       let lastRefPerTok = await wfCash.refPerTok(addr1.address)
 
-      for (let i = 0; i < 50; i++) {
+      for (let i = 0; i < 10; i++) {
         await advanceTime(1000)
         await advanceBlocks(1000)
         const refPerTok = await wfCash.refPerTok(addr1.address)
@@ -346,7 +362,6 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
     })
   })
 
-  /*
   describe('Reinvest', () => {
     it('Should mature after a while', async () => {
       const amount = bn('100e6')
@@ -356,13 +371,12 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       expect(await wfCash.connect(addr1).hasMatured()).to.be.false
 
-      while (!(await wfCash.connect(addr1).hasMatured())) {
-        await advanceTime(100000)
-        await advanceBlocks(100000)
-      }
+      await advanceTime(3300000)
+      await advanceBlocks(3300000)
 
       expect(await wfCash.connect(addr1).hasMatured()).to.be.true
+
+      await wfCash.connect(addr1).reinvest()
     })
   })
-  */
 })
