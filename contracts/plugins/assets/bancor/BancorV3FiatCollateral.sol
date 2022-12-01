@@ -22,7 +22,6 @@ contract BancorV3FiatCollateral is Collateral {
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
@@ -32,7 +31,7 @@ contract BancorV3FiatCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
-        address bancorERC20_
+        address bnToken_
     )
         Collateral(
             fallbackPrice_,
@@ -41,13 +40,12 @@ contract BancorV3FiatCollateral is Collateral {
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
-            delayUntilDefault_,
-            bancorERC20_
+            delayUntilDefault_
         )
     {  
-        require(bancorERC20_ != address(0), "Bancor address missing");
+        require(bnToken_ != address(0), "Bancor address missing");
 
-        bnToken = IBnTokenERC20(address(bancorERC20_));
+        bnToken = IBnTokenERC20(address(bnToken_));
 
     }
 
@@ -65,7 +63,7 @@ contract BancorV3FiatCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        return bnToken.poolTokenToUnderlying(address(0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48),1e6);
+        return uint192(bnToken.poolTokenToUnderlying(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),1e6));
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
