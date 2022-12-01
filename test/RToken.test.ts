@@ -234,7 +234,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -973,14 +973,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount))
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
@@ -991,12 +991,11 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Should expect maxTradeSlippage + dust losses -- remember no insurance available
       // maxTradeSlippage + dust losses
       // Recall the shortfall is calculated against high prices
-      const [lowPrice] = await rTokenAsset.price()
       const [sellPrice, _] = await collateral0.price()
       const [__, buyPrice] = await collateral1.price()
       const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
       const expectedPrice = sellPrice.sub(buyPrice.div(100)).sub(dustPriceImpact.mul(2))
-      expect(lowPrice).to.equal(expectedPrice)
+      await expectPrice(rTokenAsset.address, expectedPrice, ORACLE_ERROR, true)
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 
