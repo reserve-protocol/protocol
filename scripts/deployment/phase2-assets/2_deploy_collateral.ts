@@ -9,7 +9,6 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   getDeploymentFilename,
-  IDeployments,
   fileExists,
 } from '../common'
 import { getCurrentPrice, getOracleTimeout } from '../utils'
@@ -37,8 +36,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
-
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
