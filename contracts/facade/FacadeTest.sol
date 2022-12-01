@@ -67,7 +67,7 @@ contract FacadeTest is IFacadeTest {
         rToken.sweepRewards();
     }
 
-    /// @return total {UoA} An estimate of the total value of all non-RSR assets at BackingManager
+    /// @return total {UoA} A low estimate of the total value of non-RSR assets at BackingManager
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
@@ -82,11 +82,9 @@ contract FacadeTest is IFacadeTest {
 
             IAsset asset = reg.toAsset(erc20s[i]);
 
-            // Use midpoint price, disregarding unpriced assets
-            (uint192 lowPrice, uint192 highPrice) = asset.price();
-            uint192 midPrice = lowPrice > 0 ? lowPrice.plus(highPrice).div(FIX_TWO) : 0;
+            (uint192 lowPrice, ) = asset.price();
 
-            total = total.plus(asset.bal(backingManager).mul(midPrice));
+            total = total.plus(asset.bal(backingManager).mul(lowPrice));
         }
     }
 }
