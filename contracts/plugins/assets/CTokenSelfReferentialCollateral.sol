@@ -28,6 +28,7 @@ contract CTokenSelfReferentialCollateral is FiatCollateral {
         uint8 referenceERC20Decimals_,
         IComptroller comptroller_
     ) FiatCollateral(config) {
+        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;
         comptroller = comptroller_;
