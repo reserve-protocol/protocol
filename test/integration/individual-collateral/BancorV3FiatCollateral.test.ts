@@ -45,7 +45,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 // Holder address in Mainnet
 const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 
-const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'S
+const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
