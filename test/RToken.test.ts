@@ -971,7 +971,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Set basket - Single token
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
-      const potentialDustLoss = config.minTradeVolume.mul(fp('1')).div(issueAmount).mul(2) // 2 assets
+      const potentialDustLoss = config.minTradeVolume.mul(2) // 2 assets
 
       // RToken price pre-issuance
       await expectRTokenPrice(
