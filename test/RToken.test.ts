@@ -7,7 +7,7 @@ import { getChainId } from '../common/blockchain-utils'
 import { IConfig, MAX_ISSUANCE_RATE } from '../common/configuration'
 import { BN_SCALE_FACTOR, CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { expectPrice, setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { bn, fp, shortString, toBNDecimals } from '../common/numbers'
 import {
   ATokenFiatCollateral,
@@ -234,7 +234,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
+      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -659,7 +659,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -971,16 +971,29 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Set basket - Single token
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
+      const potentialDustLoss = config.minTradeVolume.mul(fp('1')).div(issueAmount).mul(2) // 2 assets
 
       // RToken price pre-issuance
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        config.maxTradeSlippage,
+        potentialDustLoss
+      )
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount))
-      await expectPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR, true)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        config.maxTradeSlippage,
+        potentialDustLoss
+      )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Perform a basket switch
@@ -991,11 +1004,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Should expect maxTradeSlippage + dust losses -- remember no insurance available
       // maxTradeSlippage + dust losses
       // Recall the shortfall is calculated against high prices
-      const [sellPrice, _] = await collateral0.price()
-      const [__, buyPrice] = await collateral1.price()
-      const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
-      const expectedPrice = sellPrice.sub(buyPrice.div(100)).sub(dustPriceImpact.mul(2))
-      await expectPrice(rTokenAsset.address, expectedPrice, ORACLE_ERROR, true)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        config.maxTradeSlippage,
+        potentialDustLoss
+      )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
 

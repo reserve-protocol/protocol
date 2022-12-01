@@ -1,15 +1,18 @@
 import { BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
 import { expect } from 'chai'
-import { fp } from '../../common/numbers'
+import { fp, bn, divCeil } from '../../common/numbers'
 import { MAX_UINT192 } from '../../common/constants'
 
+const errorDivisor = bn('1e15') // 1 part in 1000 trillions
+
 // Expects a price around `avgPrice` assuming a consistent percentage oracle error
+// If near is truthy, allows a small error of 1 part in 1000 trillions
 export const expectPrice = async (
   assetAddr: string,
   avgPrice: BigNumber,
   oracleError: BigNumber,
-  near?: boolean
+  near: boolean
 ) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const [lowPrice, highPrice] = await asset.price()
@@ -17,12 +20,44 @@ export const expectPrice = async (
   const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
 
   if (near) {
-    const tolerance = avgPrice.mul(fp('1e-12')) // 1 part in 1 trillion
+    const tolerance = avgPrice.div(errorDivisor)
     expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
     expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   } else {
     expect(lowPrice).to.equal(expectedLow)
     expect(highPrice).to.equal(expectedHigh)
+  }
+}
+
+// Expects a price around `avgPrice` assuming a consistent percentage oracle error
+// If maxTradeSlippage is truthy, applies a % reduction to the expected lower price
+// If dustLoss is additionally truthy, applies a nominal reduction to the expected lower price
+export const expectRTokenPrice = async (
+  assetAddr: string,
+  avgPrice: BigNumber,
+  oracleError: BigNumber,
+  maxTradeSlippage?: BigNumber,
+  dustLoss?: BigNumber
+) => {
+  const asset = await ethers.getContractAt('Asset', assetAddr)
+  const [lowPrice, highPrice] = await asset.price()
+  const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
+  const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
+  const tolerance = avgPrice.div(bn('1e15')) // 1 part in 1000 trillions
+
+  if (maxTradeSlippage) {
+    // There can be any amount of shortfall, from zero to all the capital held by BackingManager
+    // Here we assume it is ALL shortfall, since it's hard to know at any given time the portion
+    const shortfallSlippage = divCeil(expectedHigh.mul(maxTradeSlippage), fp('1'))
+    const expectedLower = expectedLow.sub(shortfallSlippage)
+    const expectedLowest = dustLoss ? expectedLower.sub(dustLoss) : expectedLower
+
+    expect(lowPrice).to.be.gte(expectedLowest)
+    expect(lowPrice).to.be.lte(expectedLow)
+    expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
+  } else {
+    expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
+    expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   }
 }
 
