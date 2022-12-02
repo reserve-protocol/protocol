@@ -47,6 +47,14 @@ interface IFacadeRead {
     }
 
     /// @param account The account for the query
+    /// @return issuance the last pending issuance for the account
+    /// @custom:view
+    function lastPendingIssuance(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending memory);
+
+    /// @param account The account for the query
     /// @return All the pending RToken issuances for an account
     /// @custom:view
     function pendingIssuances(RTokenP1 rToken, address account)

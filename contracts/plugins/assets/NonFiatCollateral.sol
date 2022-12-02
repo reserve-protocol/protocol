@@ -2,18 +2,8 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-<<<<<<< HEAD
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "../../libraries/Fixed.sol";
-import "./AbstractCollateral.sol";
-||||||| 287e1921
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
-=======
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/FiatCollateral.sol";
->>>>>>> origin/pricing
 
 /**
  * @title NonFiatCollateral
@@ -28,10 +18,9 @@ contract NonFiatCollateral is FiatCollateral {
 
     /// @param config.chainlinkFeed Feed units: {target/ref}
     /// @param uoaPerTargetFeed_ Feed units: {UoA/target}
-    constructor(
-        CollateralConfig memory config,
-        AggregatorV3Interface uoaPerTargetFeed_
-    ) FiatCollateral(config) {
+    constructor(CollateralConfig memory config, AggregatorV3Interface uoaPerTargetFeed_)
+        FiatCollateral(config)
+    {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
@@ -44,7 +33,11 @@ contract NonFiatCollateral is FiatCollateral {
         external
         view
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
         uint192 pricePerTarget = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}

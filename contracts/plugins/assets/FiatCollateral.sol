@@ -3,13 +3,6 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-<<<<<<< HEAD
-import "../../libraries/Fixed.sol";
-import "./AbstractCollateral.sol";
-||||||| 287e1921
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
-=======
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
 import "./Asset.sol";
@@ -27,7 +20,6 @@ struct CollateralConfig {
     // set defaultThreshold to zero to create SelfReferentialCollateral
     uint256 delayUntilDefault; // {s} The number of seconds an oracle can mulfunction
 }
->>>>>>> origin/pricing
 
 /**
  * @title FiatCollateral
@@ -69,9 +61,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config
-    )
+    constructor(CollateralConfig memory config)
         Asset(
             config.fallbackPrice,
             config.chainlinkFeed,
@@ -106,7 +96,11 @@ contract FiatCollateral is ICollateral, Asset {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 

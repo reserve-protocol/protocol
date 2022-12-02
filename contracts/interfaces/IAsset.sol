@@ -7,6 +7,28 @@ import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
+interface IMarket {
+    function enter(
+        address fromToken,
+        uint256 amountIn,
+        address toToken,
+        uint256 minAmountOut,
+        address swapTarget,
+        bytes calldata swapCallData,
+        address receiver
+    ) external payable returns (uint256 amountOut);
+
+    function exit(
+        address fromToken,
+        uint256 amountIn,
+        address toToken,
+        uint256 minAmountOut,
+        address swapTarget,
+        bytes calldata swapCallData,
+        address receiver
+    ) external payable returns (uint256 amountOut);
+}
+
 /**
  * @title IAsset
  * @notice Supertype. Any token that interacts with our system must be wrapped in an asset,
@@ -38,6 +60,8 @@ interface IAsset is IRewardable {
 
     /// @param {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
+
+    function market() external view returns (IMarket);
 }
 
 interface TestIAsset is IAsset {

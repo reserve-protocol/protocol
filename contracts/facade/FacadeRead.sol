@@ -117,6 +117,26 @@ contract FacadeRead is IFacadeRead {
     }
 
     // === Views ===
+    /// @param account The account for the query
+    /// @return issuance the last pending issuance for the account
+    /// @custom:view
+    function lastPendingIssuance(RTokenP1 rToken, address account)
+        external
+        view
+        returns (Pending memory issuance)
+    {
+        (, uint256 left, uint256 right) = rToken.issueQueues(account);
+        if (left == right) {
+            return issuance;
+        }
+
+        RTokenP1.IssueItem memory latestIssueItem = rToken.issueItem(account, right - 1);
+        uint256 pendingIssuanceAmount = (left == right - 1)
+            ? latestIssueItem.amtRToken
+            : latestIssueItem.amtRToken - rToken.issueItem(account, right - 2).amtRToken;
+
+        issuance = Pending(right - 1, latestIssueItem.when, pendingIssuanceAmount);
+    }
 
     /// @param account The account for the query
     /// @return issuances All the pending RToken issuances for an account
@@ -209,7 +229,8 @@ contract FacadeRead is IFacadeRead {
         stTokenAddress = main.stRSR();
     }
 
-    /// @return backing {1} The worst-case collateralization % the protocol will have after done trading
+    /// @return backing {1} The worst-case collateralization % the protocol will have after
+    ///         done trading
     /// @return insurance {1} The insurance value relative to the fully-backed value as a %
     function backingOverview(IRToken rToken)
         external

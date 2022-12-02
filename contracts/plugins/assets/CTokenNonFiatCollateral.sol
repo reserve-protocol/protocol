@@ -1,24 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-<<<<<<< HEAD
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "./AbstractCollateral.sol";
-import "./ICToken.sol";
-import "./OracleLib.sol";
-import "../../libraries/Fixed.sol";
-||||||| 287e1921
-import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
-import "contracts/plugins/assets/ICToken.sol";
-import "contracts/plugins/assets/OracleLib.sol";
-import "contracts/libraries/Fixed.sol";
-=======
 import "contracts/plugins/assets/CTokenFiatCollateral.sol";
 import "contracts/plugins/assets/ICToken.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
->>>>>>> origin/pricing
 
 /**
  * @title CTokenNonFiatCollateral
@@ -54,7 +40,11 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         external
         view
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
         uint192 pricePerTarget = targetUnitChainlinkFeed.price(oracleTimeout); // {UoA/target}

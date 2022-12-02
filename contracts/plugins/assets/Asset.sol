@@ -3,14 +3,8 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-<<<<<<< HEAD
-import "../../interfaces/IAsset.sol";
-||||||| 287e1921
-import "contracts/interfaces/IAsset.sol";
-=======
 import "contracts/interfaces/IAsset.sol";
 import "contracts/libraries/Fixed.sol";
->>>>>>> origin/pricing
 import "./OracleLib.sol";
 
 contract Asset is IAsset {
@@ -63,7 +57,16 @@ contract Asset is IAsset {
     /// @dev The third (unused) variable is only here for compatibility with Collateral
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual returns (uint192 low, uint192 high, uint192) {
+    function tryPrice()
+        external
+        view
+        virtual
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192
+        )
+    {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
 
         // oracleError is on whatever the _true_ price is, not the one observed

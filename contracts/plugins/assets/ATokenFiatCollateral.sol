@@ -2,16 +2,8 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-<<<<<<< HEAD
-import "../../libraries/Fixed.sol";
-import "./AbstractCollateral.sol";
-||||||| 287e1921
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
-=======
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/FiatCollateral.sol";
->>>>>>> origin/pricing
 
 // This interface is redundant with the one from contracts/plugins/aave/IStaticAToken,
 // but it's compiled with a different solidity version.
