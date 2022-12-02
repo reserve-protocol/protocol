@@ -1563,40 +1563,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
         expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
 
-        // Set RSR Price to 0
-        await setOraclePrice(rsrAsset.address, bn(0))
+        // Set RSR price to 0
+        await setOraclePrice(rsrAsset.address, bn('0'))
 
         // Should revert
         await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
           'buy asset price unknown'
         )
 
-        // Funds still in Traders
+        // Funds still in Trader
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
-
-        // Set RToken price to 0 (Full haircut)
-        await token0
-          .connect(owner)
-          .burn(backingManager.address, await token0.balanceOf(backingManager.address))
-        await token1
-          .connect(owner)
-          .burn(backingManager.address, await token1.balanceOf(backingManager.address))
-        await token2
-          .connect(owner)
-          .burn(backingManager.address, await token2.balanceOf(backingManager.address))
-        await token3
-          .connect(owner)
-          .burn(backingManager.address, await token3.balanceOf(backingManager.address))
-
-        // Should revert
-        await expect(rTokenTrader.manageToken(compToken.address)).to.be.revertedWith(
-          'buy asset price unknown'
-        )
-
-        // Funds still in Traders
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader)
-        expect(await compToken.balanceOf(rTokenTrader.address)).to.equal(expectedToFurnace)
       })
 
       it('Should report violation when auction behaves incorrectly', async () => {
