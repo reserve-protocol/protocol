@@ -45,7 +45,7 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-
+const HOLDER_USDC = '0xf977814e90da44bfa03b6295a0616a897441acec'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -154,12 +154,24 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         bnToken.address,
       )
     )
+
+    initialBal = bn('2000000e18')
+    await whileImpersonating(HOLDER_USDC, async (UsdcSigner) => {
+      await usdc.connect(UsdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
+    })
+
   })
 
   describe('Deployment', () => {
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-      expect(await usdc.decimals()).to.equal(6)
-      expect(await BancorV3Collateral.refPerTok()).to.equal('1') // close to $1
+      expect(await BancorV3Collateral.isCollateral()).to.equal(true)
+      expect(await BancorV3Collateral.erc20Decimals()).to.equal(await usdc.decimals())
+      expect(await BancorV3Collateral.erc20()).to.equal(usdc.address)
+      expect(await BancorV3Collateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
+      expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      expect(await BancorV3Collateral.refPerTok()).to.equal(fp('1')) // close to $1
     })
   })
 
