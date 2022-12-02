@@ -42,27 +42,34 @@ export const expectRTokenPrice = async (
 ) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const [lowPrice, highPrice] = await asset.price()
-  const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
-  const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
+  let expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
+  let expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
   const tolerance = avgPrice.div(toleranceDivisor)
 
   if (maxTradeSlippage) {
+    // Apply two more oracleError discounts to account for the opposite basket price estimate
+    // being used to calculate range.top/bottom in RecollateralizationLib.basketRange
+    expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
+    expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
+    expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
+    expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
+
     // There can be any amount of shortfall, from zero to all the capital held by BackingManager
     // Here we assume it is ALL shortfall, since it's hard to know at any given time the portion
     const shortfallSlippage = divCeil(expectedHigh.mul(maxTradeSlippage), fp('1'))
-    const expectedLower = expectedLow.sub(shortfallSlippage)
+    expectedLow = expectedLow.sub(shortfallSlippage)
 
-    let expectedLowest = expectedLower
     if (dustLoss) {
       const rToken = await ethers.getContractAt('IRToken', await asset.erc20())
       const supply = await rToken.totalSupply()
       const dustLostFraction = supply.gt(0) ? dustLoss.mul(fp('1')).div(supply) : dustLoss
-      expectedLowest = expectedLower.sub(dustLostFraction)
+      expectedLow = expectedLow.sub(dustLostFraction)
     }
 
-    expect(lowPrice).to.be.gte(expectedLowest)
-    expect(lowPrice).to.be.lte(expectedLow)
-    expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
+    expect(lowPrice).to.be.gte(expectedLow)
+    expect(lowPrice).to.be.lte(avgPrice)
+    expect(highPrice).to.be.lte(expectedHigh)
+    expect(highPrice).to.be.gte(avgPrice)
   } else {
     expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
     expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
