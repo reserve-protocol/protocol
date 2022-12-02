@@ -4,11 +4,12 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { CollateralStatus, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
-import { bn, fp, toBNDecimals } from '../common/numbers'
+import { bn, fp, toBNDecimals, divCeil } from '../common/numbers'
 import { IConfig } from '../common/configuration'
 import { expectEvents } from '../common/events'
 import { makeDecayFn } from './utils/rewards'
 import { advanceTime } from './utils/time'
+import { withinQuad } from './utils/matchers'
 import {
   ATokenFiatCollateral,
   ComptrollerMock,
@@ -20,6 +21,7 @@ import {
   GnosisMock,
   IAssetRegistry,
   IBasketHandler,
+  InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
   StaticATokenMock,
   TestIBackingManager,
@@ -96,6 +98,28 @@ describe('FacadeAct contract', () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = async (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber
+  ): Promise<BigNumber> => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
+    const product = sellAmt
+      .mul(fp('1').sub(await rTokenTrader.maxTradeSlippage())) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -276,7 +300,7 @@ describe('FacadeAct contract', () => {
 
       // Trigger recollateralization
       const sellAmt: BigNumber = await token.balanceOf(backingManager.address)
-      const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // based on trade slippage 1%
+      const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
       // Run auction via Facade
       let [addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
@@ -290,7 +314,7 @@ describe('FacadeAct contract', () => {
         })
       )
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(anyValue, token.address, usdc.address, sellAmt, toBNDecimals(minBuyAmt, 6))
+        .withArgs(anyValue, token.address, usdc.address, sellAmt, toBNDecimals(minBuyAmt, 6).add(1))
 
       // Check state
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
@@ -344,10 +368,10 @@ describe('FacadeAct contract', () => {
       // Collect revenue
       // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
       const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-      const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+      const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
       const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-      const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+      const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
       // Via Facade get next call - will transfer RToken to Trader
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
@@ -373,7 +397,13 @@ describe('FacadeAct contract', () => {
         })
       )
         .to.emit(rTokenTrader, 'TradeStarted')
-        .withArgs(anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken)
+        .withArgs(
+          anyValue,
+          aaveToken.address,
+          rToken.address,
+          sellAmtRToken,
+          withinQuad(minBuyAmtRToken)
+        )
 
       // Via Facade get next call - will open RSR trade
       ;[addr, data] = await facadeAct.callStatic.getActCalldata(rToken.address)
@@ -482,6 +512,7 @@ describe('FacadeAct contract', () => {
       expect(data).to.not.equal('0x')
 
       // Manage tokens in RTokenTrader
+      const minBuyAmtAAVE = await toMinBuyAmt(rewardAmountAAVE, fp('1'), fp('1'))
       await expect(
         owner.sendTransaction({
           to: addr,
@@ -494,7 +525,7 @@ describe('FacadeAct contract', () => {
           aaveToken.address,
           rsr.address,
           rewardAmountAAVE,
-          rewardAmountAAVE.sub(rewardAmountAAVE.div(100))
+          withinQuad(minBuyAmtAAVE)
         )
     })
 
@@ -510,19 +541,19 @@ describe('FacadeAct contract', () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
 
-      const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
-          chainlinkFeed: chainlinkFeed.address,
-          oracleError: ORACLE_ERROR,
-          erc20: aToken.address,
-          maxTradeVolume: config.rTokenMaxTradeVolume,
-          oracleTimeout: await aTokenAsset.oracleTimeout(),
-          targetName: ethers.utils.formatBytes32String('USD'),
-          defaultThreshold: DEFAULT_THRESHOLD,
-          delayUntilDefault: await aTokenAsset.delayUntilDefault(),
-        })
-      )
+      const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
+        InvalidATokenFiatCollateralMock
+      >await ATokenCollateralFactory.deploy({
+        fallbackPrice: fp('1'),
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: aToken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: await aTokenAsset.oracleTimeout(),
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: await aTokenAsset.delayUntilDefault(),
+      })
 
       // Perform asset swap
       await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
