@@ -115,7 +115,7 @@ describe('FacadeAct contract', () => {
     const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
     const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
     const product = sellAmt
-      .mul(fp('1').sub(await rTokenTrader.maxTradeSlippage())) // (a)
+      .mul(fp('1').sub(await backingManager.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
