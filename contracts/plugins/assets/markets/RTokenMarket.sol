@@ -28,6 +28,8 @@ contract RTokenMarket is BaseMarket {
         require(amountIn > 0, "RTokenMarket: INSUFFICIENT_INPUT");
         if (fromToken == address(0)) {
             require(msg.value == amountIn, "RTokenMarket: INVALID_INPUT");
+            WETH.deposit{ value: amountIn }();
+            fromToken = address(WETH);
         } else {
             require(msg.value == 0, "RTokenMarket: NONZERO_MESSAGE_VALUE");
             IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amountIn);
@@ -51,29 +53,35 @@ contract RTokenMarket is BaseMarket {
         );
 
         uint256 requiredTokenCount = requiredTokens.length;
-        bytes[] memory swapCallDatas = abi.decode(swapCallData, (bytes[]));
-
-        require(requiredTokenCount == swapCallDatas.length, "RTokenMarket: INVALID_SWAP_CALL_DATA");
+        (uint256[] memory enterAmountIns, bytes[] memory swapCallDatas) = abi.decode(
+            swapCallData,
+            (uint256[], bytes[])
+        );
+        require(
+            requiredTokenCount == enterAmountIns && requiredTokenCount == swapCallDatas.length,
+            "RTokenMarket: INVALID_SWAP_CALL_DATA"
+        );
 
         for (uint256 i = 0; i < requiredTokenCount; ++i) {
             IERC20 requiredToken = IERC20(requiredTokens[i]);
-            uint256 requiredTokenAmount = requiredTokenAmounts[i];
 
             IMarket market = assetRegistry.toColl(requiredToken).market();
-            IERC20(fromToken).safeApprove(address(market), amountIn);
-            market.enter(
+            IERC20(fromToken).safeApprove(address(market), enterAmountIns[i]);
+            requiredTokenAmounts[i] = market.enter(
                 fromToken,
-                amountIn,
+                enterAmountIns[i],
                 address(requiredToken),
-                requiredTokenAmount,
+                requiredTokenAmounts[i],
                 swapTarget,
                 swapCallDatas[i],
                 address(this)
             );
             IERC20(fromToken).safeApprove(address(market), 0);
 
-            requiredToken.safeApprove(toRToken, requiredTokenAmount);
+            requiredToken.safeApprove(toRToken, requiredTokenAmounts[i]);
         }
+
+        rToken.issue(minAmountOut);
 
         IFacadeRead.Pending memory latestPending = facadeRead.lastPendingIssuance(
             rToken,
