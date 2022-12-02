@@ -234,7 +234,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
       await rToken.connect(addr1).issue(fp('1'))
-      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
     })
 
     it('Should setup the DomainSeparator for Permit correctly', async () => {
@@ -659,7 +665,13 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await basketHandler.connect(owner).refreshBasket()
 
       // RToken price pre-issuance
-      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
 
       // Provide approvals
       await token0.connect(addr1).approve(rToken.address, initialBal)
@@ -971,15 +983,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // Set basket - Single token
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
       await basketHandler.connect(owner).refreshBasket()
-      const potentialDustLoss = config.minTradeVolume.mul(2) // 2 assets
 
       // RToken price pre-issuance
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
         ORACLE_ERROR,
-        config.maxTradeSlippage,
-        potentialDustLoss
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
 
       // Provide approvals
@@ -991,8 +1002,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         rTokenAsset.address,
         fp('1'),
         ORACLE_ERROR,
-        config.maxTradeSlippage,
-        potentialDustLoss
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -1008,8 +1019,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
         rTokenAsset.address,
         fp('1'),
         ORACLE_ERROR,
-        config.maxTradeSlippage,
-        potentialDustLoss
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
       expect(await rTokenAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
     })
