@@ -38,14 +38,14 @@ import {
   TestIMain,
   TestIRToken,
   BancorV3FiatCollateral,
+  IBnTokenERC20,
+  IBnTokenERC20__factory,
 } from '../../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 
-const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -56,6 +56,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   // Tokens/Assets
   let usdc: ERC20Mock
   let BancorV3Collateral: BancorV3FiatCollateral
+  let bnToken: IBnTokenERC20
   let cDai: CTokenMock
   let compToken: ERC20Mock
   let compAsset: Asset
@@ -134,86 +135,31 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     usdc= <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC || '')
     )
-    
+
+    bnToken= <IBnTokenERC20>(
+      await ethers.getContractAt('IBnTokenERC20', networkConfig[chainId].BANCOR_PROXY || '')
+    )
+
     // Deploy BancorV3 collateral plugin
-    BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {})
     BancorV3Collateral = <BancorV3FiatCollateral>(
       await BancorV3CollateralFactory.deploy(
         fp('0.02'),
         networkConfig[chainId].chainlinkFeeds.USDC as string,
+        usdc.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
         delayUntilDefault,
-        (await usdc.decimals()).toString(),
+        bnToken.address,
       )
     )
-
-
-    // Set parameters
-    const rTokenConfig: IRTokenConfig = {
-      name: 'RTKN RToken',
-      symbol: 'RTKN',
-      mandate: 'mandate',
-      params: config,
-    }
-
-    // Set primary basket
-    const rTokenSetup: IRTokenSetup = {
-      assets: [compAsset.address],
-      primaryBasket: [BancorV3Collateral.address],
-      weights: [fp('1')],
-      backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
-    }
-
-    // Deploy RToken via FacadeWrite
-    const receipt = await (
-      await facadeWrite.connect(owner).deployRToken(rTokenConfig, rTokenSetup)
-    ).wait()
-
-    // Get Main
-    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
-    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-
-    // Get core contracts
-    assetRegistry = <IAssetRegistry>(
-      await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
-    )
-    backingManager = <TestIBackingManager>(
-      await ethers.getContractAt('TestIBackingManager', await main.backingManager())
-    )
-    basketHandler = <IBasketHandler>(
-      await ethers.getContractAt('IBasketHandler', await main.basketHandler())
-    )
-    rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
-    rTokenAsset = <RTokenAsset>(
-      await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
-    )
-
-    // Setup owner and unpause
-    await facadeWrite.connect(owner).setupGovernance(
-      rToken.address,
-      false, // do not deploy governance
-      true, // unpaused
-      govParams, // mock values, not relevant
-      owner.address, // owner
-      ZERO_ADDRESS, // no guardian
-      ZERO_ADDRESS // no pauser
-    )
-
-    // Setup mock chainlink feed for some of the tests (so we can change the value)
-    MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
   describe('Deployment', () => {
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-      expect(await BancorV3Collateral.refPerTok()).to.closeTo(fp('0.02'), fp('0.005')) // close to $1
+      expect(await usdc.decimals()).to.equal(6)
+      expect(await BancorV3Collateral.refPerTok()).to.equal('1') // close to $1
     })
   })
 

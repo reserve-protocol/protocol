@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/ICToken.sol";
 import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/bancor/IBancorV3FiatCollateral.sol";
+import "contracts/plugins/assets/bancor/IBnTokenERC20.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -43,8 +43,7 @@ contract BancorV3FiatCollateral is Collateral {
             delayUntilDefault_
         )
     {  
-        require(bnToken_ != address(0), "Bancor address missing");
-
+        require(address(bnToken_) != address(0), "missing erc20");
         bnToken = IBnTokenERC20(address(bnToken_));
 
     }
