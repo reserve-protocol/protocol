@@ -69,7 +69,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
         (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
-        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset has unknown price");
+        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
         TradeInfo memory trade = TradeInfo({
             sell: sell,

@@ -38,7 +38,8 @@ library TradeLib {
         TradeInfo memory trade,
         TradingRules memory rules
     ) internal view returns (bool notDust, TradeRequest memory req) {
-        assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
+        // checked for in RevenueTrader / CollateralizatlionLib
+        assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
@@ -47,7 +48,7 @@ library TradeLib {
             return (false, req);
         }
 
-        // Calculate sell and buy amounts
+        // Calculate sell and buy amount
         uint192 s = trade.sellAmount; // {sellTok}
         uint192 b; // {buyTok} initially 0
 
@@ -104,7 +105,12 @@ library TradeLib {
         TradeInfo memory trade,
         TradingRules memory rules
     ) internal view returns (bool notDust, TradeRequest memory req) {
-        assert(trade.sellPrice > 0 && trade.buyPrice > 0);
+        assert(
+            trade.sellPrice > 0 &&
+                trade.sellPrice < FIX_MAX &&
+                trade.buyPrice > 0 &&
+                trade.buyPrice < FIX_MAX
+        );
 
         // Don't buy dust.
         trade.buyAmount = fixMax(

@@ -76,6 +76,7 @@ library RecollateralizationLibP1 {
             minTradeVolume: trader.minTradeVolume(),
             maxTradeSlippage: trader.maxTradeSlippage()
         });
+
         Registry memory reg = components.reg.getRegistry();
 
         // ============================
@@ -182,7 +183,10 @@ library RecollateralizationLibP1 {
 
         // {UoA}, Total value of the slippage we'd see if we made `shortfall` trades with
         //     slippage `maxTradeSlippage()`
-        uint192 shortfallSlippage = rules.maxTradeSlippage.mul(shortfall);
+        uint192 shortfallSlippage = rules.maxTradeSlippage.mul(shortfall).div(
+            FIX_ONE.minus(rules.maxTradeSlippage),
+            CEIL
+        );
 
         // {UoA}, Pessimistic estimate of the value of our basket units at the end of this
         //   recapitalization process.
@@ -191,8 +195,8 @@ library RecollateralizationLibP1 {
             : 0;
 
         // {BU} = {UoA} / {BU/UoA}
-        range.top = basketTargetHigh.div(basketPriceHigh, CEIL);
-        range.bottom = basketTargetLow.div(basketPriceLow, CEIL);
+        range.top = basketTargetHigh.div(basketPriceLow, CEIL);
+        range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
     }
 
     // ===========================================================================================
@@ -390,8 +394,9 @@ library RecollateralizationLibP1 {
                 rsrAsset.bal(address(components.stRSR))
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
+            uint192 lotPrice = fixMax(rsrAsset.fallbackPrice(), lowPrice); // {UoA/tok}
 
-            if (TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, lowPrice, rules.minTradeVolume)) {
+            if (TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, lotPrice, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;
@@ -414,8 +419,6 @@ library RecollateralizationLibP1 {
         uint192 backingHigh,
         uint192 basketPriceHigh
     ) private view returns (uint192 shortfall) {
-        // TODO: do we really need the precision of not collapsing backingHigh / basketPriceHigh
-
         assert(basketPriceHigh > 0); // div by zero further down in function
 
         // accumulate shortfall

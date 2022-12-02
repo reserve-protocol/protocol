@@ -41,7 +41,7 @@ library TradingLibP0 {
         TradeInfo memory trade,
         TradingRules memory rules
     ) internal view returns (bool notDust, TradeRequest memory req) {
-        assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
+        assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
 
@@ -243,7 +243,10 @@ library TradingLibP0 {
 
         // {UoA}, Total value of the slippage we'd see if we made `shortfall` trades with
         //     slippage `maxTradeSlippage()`
-        uint192 shortfallSlippage = rules.maxTradeSlippage.mul(shortfall);
+        uint192 shortfallSlippage = rules.maxTradeSlippage.mul(shortfall).div(
+            FIX_ONE.minus(rules.maxTradeSlippage),
+            CEIL
+        );
 
         // {UoA}, Pessimistic estimate of the value of our basket units at the end of this
         //   recapitalization process.
@@ -252,8 +255,8 @@ library TradingLibP0 {
             : 0;
 
         // {BU} = {UoA} / {BU/UoA}
-        range.top = basketTargetHigh.div(basketPriceHigh, CEIL);
-        range.bottom = basketTargetLow.div(basketPriceLow, CEIL);
+        range.top = basketTargetHigh.div(basketPriceLow, CEIL);
+        range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
     }
 
     // ===========================================================================================
@@ -444,8 +447,9 @@ library TradingLibP0 {
                 rsrAsset.bal(address(components.stRSR))
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
+            uint192 lotPrice = fixMax(rsrAsset.fallbackPrice(), lowPrice); // {UoA/tok}
 
-            if (isEnoughToSell(rsrAsset, rsrAvailable, lowPrice, rules.minTradeVolume)) {
+            if (isEnoughToSell(rsrAsset, rsrAvailable, lotPrice, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;
@@ -468,8 +472,6 @@ library TradingLibP0 {
         uint192 backingHigh,
         uint192 basketPriceHigh
     ) private view returns (uint192 shortfall) {
-        // TODO: do we really need the precision of not collapsing backingHigh / basketPriceHigh
-
         assert(basketPriceHigh > 0); // div by zero further down in function
 
         // accumulate shortfall
@@ -549,7 +551,12 @@ library TradingLibP0 {
         TradeInfo memory trade,
         TradingRules memory rules
     ) internal view returns (bool notDust, TradeRequest memory req) {
-        assert(trade.sellPrice > 0 && trade.buyPrice > 0);
+        assert(
+            trade.sellPrice > 0 &&
+                trade.sellPrice < FIX_MAX &&
+                trade.buyPrice > 0 &&
+                trade.buyPrice < FIX_MAX
+        );
 
         // Don't buy dust.
         trade.buyAmount = fixMax(
