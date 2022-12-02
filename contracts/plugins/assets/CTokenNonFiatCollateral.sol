@@ -51,6 +51,6 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         // oracleError is on whatever the _true_ price is, not the one observed
         // this oracleError is already the combined total oracle error
         low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError));
+        high = p.div(FIX_ONE.minus(oracleError), CEIL);
     }
 }

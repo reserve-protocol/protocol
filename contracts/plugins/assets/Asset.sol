@@ -61,7 +61,7 @@ contract Asset is IAsset {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
 
         // oracleError is on whatever the _true_ price is, not the one observed
-        return (p.div(FIX_ONE.plus(oracleError)), p.div(FIX_ONE.minus(oracleError)), 0);
+        return (p.div(FIX_ONE.plus(oracleError)), p.div(FIX_ONE.minus(oracleError), CEIL), 0);
     }
 
     /// Should not revert

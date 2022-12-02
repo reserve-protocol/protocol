@@ -107,7 +107,7 @@ contract FiatCollateral is ICollateral, Asset {
 
         // oracleError is on whatever the _true_ price is, not the one observed
         low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError));
+        high = p.div(FIX_ONE.minus(oracleError), CEIL);
     }
 
     /// Should not revert

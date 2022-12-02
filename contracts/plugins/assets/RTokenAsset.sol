@@ -6,6 +6,8 @@ import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IRToken.sol";
 import "contracts/p1/mixins/RecollateralizationLib.sol";
 
+import "hardhat/console.sol";
+
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
@@ -50,17 +52,26 @@ contract RTokenAsset is IAsset {
 
         if (supply == 0) return (lowBUPrice, highBUPrice);
 
+        // The RToken's price is not symmetric like other assets!
+        // range.bottom is lower because of the slippage from the shortfall
         RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply);
         high = range.top.mulDiv(highBUPrice, supply);
+
+        console.log("RTokenAsset.tryPrice");
+        console.log("BU prices", lowBUPrice, highBUPrice);
+        console.log("BU ranges", range.bottom, range.top);
+        console.log("low high", low, high);
     }
 
     /// Should not revert
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
+        // The RToken price is not symmetric
+
         try this.tryPrice() returns (uint192 low, uint192 high) {
             return (low, high);
         } catch (bytes memory errData) {

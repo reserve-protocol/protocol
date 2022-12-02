@@ -86,12 +86,12 @@ contract FacadeTest is IFacadeTest {
             (uint192 lowPrice, uint192 highPrice) = asset.price();
 
             // back-solve for oracleError using system of equations
-            uint192 oracleError = highPrice.minus(lowPrice).div(lowPrice.plus(highPrice), CEIL);
+            uint192 oracleError = highPrice.minus(lowPrice).div(lowPrice.plus(highPrice));
 
             // extrapolate lowPrice to midPrice using oracleError
-            uint192 midPrice = lowPrice.mul(FIX_ONE.plus(oracleError), CEIL);
+            uint192 midPrice = lowPrice.mul(FIX_ONE.plus(oracleError));
 
-            total = total.plus(asset.bal(backingManager).mul(midPrice, CEIL));
+            total = total.plus(asset.bal(backingManager).mul(midPrice));
         }
     }
 }
