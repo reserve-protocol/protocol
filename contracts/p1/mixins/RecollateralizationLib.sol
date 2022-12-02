@@ -267,14 +267,16 @@ library RecollateralizationLibP1 {
 
             // here we need to avoid overflowing since highPrice might be near FIX_MAX
             // D18{UoA/tok} * D18{tok} / D18
-            try IBackingManager(address(this)).tryMulDiv256(highPrice, bal, FIX_ONE_256) returns (
-                uint256 val
-            ) {
+            try
+                IBackingManager(address(this)).tryMulDiv256Ceil(highPrice, bal, FIX_ONE_256)
+            returns (uint256 val) {
                 // {UoA}
 
                 if (assetsHigh + val >= FIX_MAX) assetsHigh = FIX_MAX;
                 else assetsHigh += _safeWrap(val);
-            } catch {
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 assetsHigh = FIX_MAX;
             }
 

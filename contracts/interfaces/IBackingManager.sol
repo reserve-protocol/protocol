@@ -46,7 +46,7 @@ interface IBackingManager is IComponent, ITrading {
     function manageTokensSortedOrder(IERC20[] memory erc20s) external;
 
     /// Light wrapper around Fixed's mulDiv256 to support try-catch
-    function tryMulDiv256(uint256 x, uint256 y, uint256 z) external pure returns (uint256);
+    function tryMulDiv256Ceil(uint256 x, uint256 y, uint256 z) external pure returns (uint256);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

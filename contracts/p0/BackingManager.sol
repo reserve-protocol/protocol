@@ -202,7 +202,7 @@ contract BackingManagerP0 is TradingP0, IBackingManager {
     // === Fixed Helper ===
 
     /// Light wrapper around Fixed's mulDiv256 to support try-catch
-    function tryMulDiv256(uint256 x, uint256 y, uint256 z) external pure returns (uint256) {
-        return mulDiv256(x, y, z); // TODO ceil?
+    function tryMulDiv256Ceil(uint256 x, uint256 y, uint256 z) external pure returns (uint256) {
+        return mulDiv256(x, y, z, CEIL);
     }
 }
