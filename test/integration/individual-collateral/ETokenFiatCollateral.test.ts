@@ -39,6 +39,7 @@ import {
   TestIRToken,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
+import forkBlockNumber from '../fork-block-numbers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -48,6 +49,8 @@ const holderEUSDC = '0xD8de4C018fADB5a0CCcACB3eBd6A3Fe916f224f6'
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
+
+const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 
 describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -120,6 +123,17 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
+
+    await hre.network.provider.request({
+      method: "hardhat_reset",
+      params: [{forking: {
+            jsonRpcUrl: MAINNET_RPC_URL,
+            blockNumber: forkBlockNumber['euler-plugins']
+          },},],
+      });
+
+    expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['euler-plugins'])
+
   })
 
   beforeEach(async () => {

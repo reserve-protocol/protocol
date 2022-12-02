@@ -3,13 +3,15 @@
 
 ## 1.0 Introduction - Overview of Euler Finance Lending Positions
 These plugins facilitate the usage of Euler Finance's eTokens as collateral. eTokens are minted and 
-burnt upon the supply and withdraw of lending assets (see [https://docs.euler.finance/getting-started/white-paper#lending-and-borrowing](https://docs.euler.finance/getting-started/white-paper#lending-and-borrowing)). They represent a lender's share of the total token  
-(which includes the yield generated from the borrowers of the underlying token) in their lending market, which eTokens can be redeemed for. eTokens which represent usd-pegged stablecoins and non-stablecoins are supported.
+burnt upon the supply and withdraw of lending assets (see [https://docs.euler.finance/getting-started/white-paper#lending-and-borrowing](https://docs.euler.finance/getting-started/white-paper#lending-and-borrowing)). 
+They represent a lender's share of the total tokens (which includes the yield generated from the borrowers of the 
+underlying token) in their lending market, which eTokens can be redeemed for. eTokens which represent usd-pegged [stablecoins](#20-usd-pegged-stablecoins), 
+[self-referential](#30-self-referential-tokens) tokens, and non-fiat tokens are supported.
 
 Refer to Euler Finance's [documentation](https://docs.euler.finance/getting-started/white-paper) for a more in-depth overview
 of the inner workings of Euler's lending system.
 
-## 2.0 USD-pegged Stablecoin Assets
+## 2.0 USD-pegged Stablecoins 
 Smart Contract: [ETokenFiatCollateral.sol](./ETokenFiatCollateral.sol) 
 
 ### 2.1 Units and Price Calculations
@@ -50,7 +52,7 @@ uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 int8 referenceERC20Decimals_ // decimals of reference token - default
 ```
 
-## 3.0 Self-Referential Assets
+## 3.0 Self-Referential Tokens
 <!-- TODO: write here after finishing `ETokenNonFiatCollateral.sol` -->
 Smart Contract: [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol)
 
