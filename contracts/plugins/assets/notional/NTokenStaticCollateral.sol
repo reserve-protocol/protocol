@@ -7,16 +7,16 @@ import "contracts/plugins/assets/notional/AbstractNTokenCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title NTokenPeggedCollateral
- * @notice Collateral plugin for a NToken of a pegged collateral
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ * @title NTokenStaticCollateral
+ * @notice Collateral plugin for a NToken of static collateral (native)
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract NTokenPeggedCollateral is NTokenCollateral {
+contract NTokenStaticCollateral is NTokenCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     /// @param _fallbackPrice {UoA} Price to be returned in worst case
-    /// @param _targetPerRefFeed Feed units: {target/ref}
+    /// @param _uoaPerRefFeed Feed units: {uoa/ref}
     /// @param _erc20Collateral Asset that the plugin manages
     /// @param _maxTradeVolume {UoA} The max trade volume, in UoA
     /// @param _oracleTimeout {s} The number of seconds until a oracle value becomes invalid
@@ -27,7 +27,7 @@ contract NTokenPeggedCollateral is NTokenCollateral {
     /// @param _defaultThreshold {%} A value like 0.05 that represents a deviation tolerance
     constructor(
         uint192 _fallbackPrice,
-        AggregatorV3Interface _targetPerRefFeed,
+        AggregatorV3Interface _uoaPerRefFeed,
         IERC20Metadata _erc20Collateral,
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
@@ -39,7 +39,7 @@ contract NTokenPeggedCollateral is NTokenCollateral {
     )
     NTokenCollateral(
         _fallbackPrice,
-        _targetPerRefFeed,
+        _uoaPerRefFeed,
         _erc20Collateral,
         _maxTradeVolume,
         _oracleTimeout,
@@ -52,29 +52,6 @@ contract NTokenPeggedCollateral is NTokenCollateral {
     {}
 
     function checkReferencePeg() internal override {
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 currentPrice) {
-            // the peg of our reference is always ONE target
-            uint192 peg = FIX_ONE;
-
-            // since peg is ONE we dont need to operate the threshold to get the delta
-            // therefore, defaultThreshold == delta
-
-            // If the price is below the default-threshold price, default eventually
-            // uint192(+/-) is the same as Fix.plus/minus
-            if (
-                currentPrice < peg - defaultThreshold ||
-                currentPrice > peg + defaultThreshold
-            ) {
-                markStatus(CollateralStatus.IFFY);
-            }
-            else {
-                markStatus(CollateralStatus.SOUND);
-            }
-        } catch (bytes memory errData) {
-            // see: docs/solidity-style.md#Catching-Empty-Data
-            if (errData.length == 0) revert();
-            // solhint-disable-line reason-string
-            markStatus(CollateralStatus.IFFY);
-        }
+        // pass
     }
 }

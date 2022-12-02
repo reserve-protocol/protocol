@@ -33,12 +33,11 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  NTokenFiatCollateral,
+  NTokenPeggedCollateral,
   NTokenERC20ProxyMock,
   INotionalProxy,
   InvalidMockV3Aggregator,
 } from '../../../typechain'
-import { NotionalProxy } from '@typechain/NotionalProxy'
 import forkBlockNumber from '../fork-block-numbers'
 import { setOraclePrice } from '../../utils/oracles'
 
@@ -50,14 +49,14 @@ const HOLDER_nUSDC = '0x02479bfc7dce53a02e26fe7baea45a0852cb0909'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let notionalProxy: NotionalProxy
+  let notionalProxy: INotionalProxy
   let nUsdc: NTokenERC20ProxyMock
-  let nUsdcCollateral: NTokenFiatCollateral
+  let nUsdcCollateral: NTokenPeggedCollateral
   let noteToken: ERC20Mock
   let noteAsset: Asset
   let rsr: ERC20Mock
@@ -112,7 +111,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   let chainId: number
 
-  let NTokenFiatCollateralFactory: ContractFactory
+  let NTokenPeggedCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
@@ -167,11 +166,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
 
       // Deploy nUsdc collateral plugin
-      NTokenFiatCollateralFactory = await ethers.getContractFactory('NTokenFiatCollateral', {
+      NTokenPeggedCollateralFactory = await ethers.getContractFactory('NTokenPeggedCollateral', {
         libraries: { OracleLib: oracleLib.address },
       })
-      nUsdcCollateral = <NTokenFiatCollateral>(
-        await NTokenFiatCollateralFactory.deploy(
+      nUsdcCollateral = <NTokenPeggedCollateral>(
+        await NTokenPeggedCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
           nUsdc.address,
@@ -333,7 +332,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       it('Should validate constructor arguments correctly', async () => {
         // Default threshold
         await expect(
-          NTokenFiatCollateralFactory.deploy(
+          NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -349,7 +348,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
         // Allowed refPerTok drop too high
         await expect(
-          NTokenFiatCollateralFactory.deploy(
+          NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -365,7 +364,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
         // Negative drop on refPerTok
         await expect(
-          NTokenFiatCollateralFactory.deploy(
+          NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             networkConfig[chainId].chainlinkFeeds.USDC as string,
             nUsdc.address,
@@ -570,8 +569,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         /** No price instance */
 
         // nTokens Collateral with no price
-        const nonPriceNUsdcCollateral = <NTokenFiatCollateral>(
-          await NTokenFiatCollateralFactory.deploy(
+        const nonPriceNUsdcCollateral = <NTokenPeggedCollateral>(
+          await NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             NO_PRICE_DATA_FEED,
             nUsdc.address,
@@ -595,8 +594,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         /** Invalid price instance */
 
         // Reverts with a feed with zero price
-        const invalidPriceNUsdcCollateral = <NTokenFiatCollateral>(
-          await NTokenFiatCollateralFactory.deploy(
+        const invalidPriceNUsdcCollateral = <NTokenPeggedCollateral>(
+          await NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             mockChainlinkFeed.address,
             nUsdc.address,
@@ -631,8 +630,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Test for soft default
       it('Updates status in case of soft default', async () => {
         // Redeploy plugin using a Chainlink mock feed where we can change the price
-        const newNUsdcCollateral = <NTokenFiatCollateral>(
-          await NTokenFiatCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenPeggedCollateral>(
+          await NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             mockChainlinkFeed.address,
             nUsdc.address,
@@ -690,7 +689,7 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await nToken.setUnderlyingValue(fp('1e8'))
 
         // Redeploy plugin using the new cDai mock
-        const newNUsdcCollateral = <NTokenFiatCollateral>await NTokenFiatCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenPeggedCollateral>await NTokenPeggedCollateralFactory.deploy(
           fp('1'),
           mockChainlinkFeed.address,
           nToken.address,
@@ -731,8 +730,8 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
           await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
         )
 
-        const newNUsdcCollateral = <NTokenFiatCollateral>(
-          await NTokenFiatCollateralFactory.deploy(
+        const newNUsdcCollateral = <NTokenPeggedCollateral>(
+          await NTokenPeggedCollateralFactory.deploy(
             fp('1'),
             invalidChainlinkFeed.address,
             nUsdc.address,
@@ -826,11 +825,11 @@ describeFork(`NTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       )
 
       // Deploy nUsdc collateral plugin
-      NTokenFiatCollateralFactory = await ethers.getContractFactory('NTokenFiatCollateral', {
+      NTokenPeggedCollateralFactory = await ethers.getContractFactory('NTokenPeggedCollateral', {
         libraries: { OracleLib: oracleLib.address },
       })
-      nUsdcCollateral = <NTokenFiatCollateral>(
-        await NTokenFiatCollateralFactory.deploy(
+      nUsdcCollateral = <NTokenPeggedCollateral>(
+        await NTokenPeggedCollateralFactory.deploy(
           fp('1'),
           networkConfig[chainId].chainlinkFeeds.USDC as string,
           nUsdc.address,
