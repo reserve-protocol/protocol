@@ -8,10 +8,10 @@ import "./IWrappedfCash.sol";
 import "./IWrappedfCashFactory.sol";
 import "./INotionalProxy.sol";
 import "contracts/libraries/Fixed.sol";
-import "hardhat/console.sol";
+import "./IReservefCashWrapper.sol";
 
 
-contract ReserveWrappedFCash is ERC20 {
+contract ReservefCashWrapper is ERC20, IReservefCashWrapper {
     using SafeERC20 for IERC20Metadata;
 
     INotionalProxy private immutable notionalProxy;

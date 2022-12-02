@@ -5,7 +5,7 @@ import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import { bn, toBNDecimals } from '../../../common/numbers'
-import { ERC20Mock, ReserveWrappedFCash } from '../../../typechain'
+import { ERC20Mock, ReservefCashWrapper } from '../../../typechain'
 import { whileImpersonating } from '../../utils/impersonation'
 import { networkConfig } from '../../../common/configuration'
 import { advanceBlocks, advanceTime } from '../../utils/time'
@@ -16,12 +16,12 @@ const describeFork = process.env.FORK ? describe : describe.skip
 
 const holderUSDC = '0x0A59649758aa4d66E25f08Dd01271e891fe52199'
 
-describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`ReservefCashWrapper - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
 
   let usdc: ERC20Mock
-  let wfCash: ReserveWrappedFCash
+  let wfCash: ReservefCashWrapper
 
   let chainId: number
   let initialBalance: BigNumber
@@ -37,8 +37,8 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
   beforeEach(async () => {
     ;[, addr1, addr2] = await ethers.getSigners()
 
-    WrappedFCashFactory = await ethers.getContractFactory('ReserveWrappedFCash')
-    wfCash = <ReserveWrappedFCash>await WrappedFCashFactory.deploy(
+    WrappedFCashFactory = await ethers.getContractFactory('ReservefCashWrapper')
+    wfCash = <ReservefCashWrapper>await WrappedFCashFactory.deploy(
       '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
       '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
       networkConfig[chainId].tokens.USDC || '',
