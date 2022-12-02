@@ -7,7 +7,7 @@ contract InvalidATokenFiatCollateralMock is ATokenFiatCollateral {
     constructor(CollateralConfig memory config) ATokenFiatCollateral(config) {}
 
     /// Reverting claimRewards function
-    function claimRewards() external override {
+    function claimRewards() external pure override {
         revert("claimRewards() error");
     }
 }

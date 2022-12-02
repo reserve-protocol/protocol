@@ -409,6 +409,8 @@ Should never revert.
 
 Should return a lower and upper estimate for the price of the token on secondary markets.
 
+Lower estimate must be <= upper estimate.
+
 Should return `(0, FIX_MAX)` if pricing data is unavailable or stale.
 
 Should be gas-efficient.
