@@ -264,10 +264,20 @@ library RecollateralizationLibP1 {
             // {UoA} = {UoA} + {UoA/tok} * {tok}
             assetsLow += lowPrice.mul(bal, FLOOR);
             // += is same as Fix.plus
+            // if this overflows it means something has gone terribly wrong
 
-            // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsHigh += highPrice.mul(bal, FLOOR);
-            // += is same as Fix.plus
+            // but here we need to avoid overflowing since highPrice might be near FIX_MAX
+            // D18{UoA} = D18{UoA/tok} * D18{tok} / D18
+            {
+                (uint256 hi, uint256 lo) = fullMul(highPrice, bal);
+                hi = hi / FIX_ONE_256; // rounds down
+                lo = lo / FIX_ONE_256;
+
+                // we've overflowed if there are still high bits around
+                if (hi > 0 || assetsHigh + lo >= FIX_MAX) assetsHigh = FIX_MAX;
+                else assetsHigh += _safeWrap(lo);
+                // += is same as Fix.plus
+            }
 
             // Accumulate potential losses to dust
             potentialDustLoss = potentialDustLoss.plus(rules.minTradeVolume);
