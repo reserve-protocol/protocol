@@ -496,5 +496,39 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       await evmRevert(snapshotId)
     })
+
+    it('Should lose a bit of value when reinvest due to entering market fee', async () => {
+      const amount = bn('100e6')
+      const snapshotId = await evmSnapshot()
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).deposit(amount)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+      const depositedAmount1 = await wfCash.depositedBy(addr1.address)
+      const refPerTok1 = await wfCash.refPerTok(addr1.address)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
+
+      await advanceTime(SPAN_UNTIL_MATURE)
+      await advanceBlocks(SPAN_UNTIL_MATURE)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.true
+      const refPerTok2 = await wfCash.refPerTok(addr1.address)
+
+      await wfCash.connect(addr1).reinvest()
+
+      const refPerTok3 = await wfCash.refPerTok(addr1.address)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
+      expect(await wfCash.depositedBy(addr1.address)).to.equal(depositedAmount1)
+      expect(await wfCash.balanceOf(addr1.address)).to.gt(balanceRwfCash1)
+      expect(refPerTok2).to.be.gt(refPerTok1)
+      expect(refPerTok3).to.be.lt(refPerTok2)
+      expect(refPerTok3).to.be.closeTo(refPerTok2, bn('0.03e8'))
+
+      await evmRevert(snapshotId)
+    })
   })
 })
