@@ -6,7 +6,7 @@ import { ethers, upgrades, waffle } from 'hardhat'
 import { IConfig } from '../common/configuration'
 import { BN_SCALE_FACTOR, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
 import { expectEvents } from '../common/events'
-import { bn, divCeil, divFloor, fp, near } from '../common/numbers'
+import { bn, divCeil, fp, near } from '../common/numbers'
 import {
   Asset,
   ATokenFiatCollateral,
@@ -20,7 +20,6 @@ import {
   IBasketHandler,
   InvalidATokenFiatCollateralMock,
   MockV3Aggregator,
-  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -31,21 +30,22 @@ import {
   TestIMain,
   TestIRToken,
   TestIStRSR,
-  TradingLibP0,
   USDCMock,
   FiatCollateral,
 } from '../typechain'
 import { whileImpersonating } from './utils/impersonation'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
+import { withinQuad } from './utils/matchers'
 import {
   Collateral,
   defaultFixture,
   Implementation,
   IMPLEMENTATION,
+  ORACLE_ERROR,
   ORACLE_TIMEOUT,
 } from './fixtures'
-import { setOraclePrice } from './utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
 import { useEnv } from '#/utils/env'
 
@@ -53,6 +53,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
   IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
+
+const DEFAULT_THRESHOLD = fp('0.05') // 5%
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
@@ -100,13 +102,34 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
-  let oracleLib: OracleLib
   let main: TestIMain
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
   let AssetFactory: ContractFactory
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = async (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber
+  ): Promise<BigNumber> => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
+    const product = sellAmt
+      .mul(fp('1').sub(await rTokenTrader.maxTradeSlippage())) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -139,14 +162,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       facadeTest,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
       main,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
-    AssetFactory = await ethers.getContractFactory('Asset', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    AssetFactory = await ethers.getContractFactory('Asset')
 
     // Set backingBuffer to 0 to make math easy
     await backingManager.connect(owner).setBackingBuffer(0)
@@ -189,14 +209,9 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
     it('Should perform validations on init', async () => {
       if (IMPLEMENTATION == Implementation.P0) {
-        // Deploy TradingLib external library
-        const TradingLibFactory: ContractFactory = await ethers.getContractFactory('TradingLibP0')
-        const tradingLib: TradingLibP0 = <TradingLibP0>await TradingLibFactory.deploy()
-
         // Create RevenueTrader Factory
         const RevenueTraderFactory: ContractFactory = await ethers.getContractFactory(
-          'RevenueTraderP0',
-          { libraries: { TradingLibP0: tradingLib.address } }
+          'RevenueTraderP0'
         )
 
         const newTrader = <TestIRevenueTrader>await RevenueTraderFactory.deploy()
@@ -385,25 +400,27 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
       })
 
-      it('Should not launch revenue auction if IFFY', async () => {
-        // Depeg one of the underlying tokens - Reducing price 20%
+      it('Should still launch revenue auction if IFFY', async () => {
+        // Depeg one of the underlying tokens - Reducing price 30%
         await setOraclePrice(collateral0.address, bn('7e7'))
         await collateral0.refresh()
 
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(token0.address)).to.not.emit(
-          rTokenTrader,
-          'TradeStarted'
-        )
+        const minBuyAmt = await toMinBuyAmt(issueAmount, fp('0.7'), fp('1'))
+        await expect(rTokenTrader.manageToken(token0.address))
+          .to.emit(rTokenTrader, 'TradeStarted')
+          .withArgs(anyValue, token0.address, rToken.address, issueAmount, withinQuad(minBuyAmt))
       })
 
       it('Should not launch revenue auction if UNPRICED', async () => {
         await advanceTime(ORACLE_TIMEOUT.toString())
         await rsr.connect(addr1).transfer(rTokenTrader.address, issueAmount)
-        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith('StalePrice()')
+        await expect(rTokenTrader.manageToken(rsr.address)).to.be.revertedWith(
+          'buy asset price unknown'
+        )
       })
 
-      it('Should launch revenue auction if DISABLED with minBuyAmount = 0', async () => {
+      it('Should launch revenue auction if DISABLED with nonzero minBuyAmount', async () => {
         await setOraclePrice(collateral0.address, bn('0.5e8'))
         await collateral0.refresh()
         await advanceTime((await collateral0.delayUntilDefault()).toString())
@@ -412,7 +429,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Trade should have near-zero price worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
-        expect(await trade.worstCasePrice()).to.be.lt(fp('0.0001'))
+        expect(await trade.worstCasePrice()).to.be.gte(fp('0.95'))
       })
 
       it('Should claim COMP and handle revenue auction correctly - small amount processed in single auction', async () => {
@@ -425,10 +442,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
@@ -453,13 +470,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              compToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
@@ -542,11 +565,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Check balances sent to corresponding destinations
+        // Check balances sent to corresponding destinations; won't be exact because distributor rounds
         // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt,
+          minBuyAmt.div(bn('1e15'))
+        )
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        expect(await rToken.balanceOf(furnace.address)).to.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e15'))
+        )
       })
 
       it('Should not auction 1qTok - Amount too small', async () => {
@@ -633,10 +662,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         // Can also claim through Facade
         await expectEvents(facadeTest.claimAndSweepRewards(rToken.address), [
@@ -663,13 +692,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
@@ -737,11 +772,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           },
         ])
 
-        // Check balances sent to corresponding destinations
+        // Check balances sent to corresponding destinations; won't be exact because distributor rounds
         // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt,
+          minBuyAmt.div(bn('1e15'))
+        )
         // Furnace
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e15'))
+        )
       })
 
       it('Should handle large auctions using maxTradeVolume with f=1 (RSR only)', async () => {
@@ -753,6 +794,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await AssetFactory.deploy(
             fp('1'),
             chainlinkFeed.address,
+            ORACLE_ERROR,
             compToken.address,
             fp('1'),
             ORACLE_TIMEOUT
@@ -782,16 +824,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           .withArgs(STRSR_DEST, bn(0), bn(1))
 
         // Set COMP tokens as reward
-        rewardAmountCOMP = bn('2e18')
+        rewardAmountCOMP = fp('2')
 
         // COMP Rewards
         await compoundMock.setRewards(backingManager.address, rewardAmountCOMP)
-
-        // Collect revenue - Called via poke
-        // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
-
         await expectEvents(backingManager.claimRewards(), [
           {
             contract: backingManager,
@@ -811,12 +847,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
+        // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
+        const sellAmt: BigNumber = fp('1').mul(101).div(100) // due to oracleError
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
+
         // Run auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -839,7 +879,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check funds in Market and Trader
         expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
-        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(sellAmt)
+        expect(await compToken.balanceOf(rsrTrader.address)).to.equal(rewardAmountCOMP.sub(sellAmt))
 
         // Another call will not create a new auction (we only allow only one at a time per pair)
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -867,6 +907,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await advanceTime(config.auctionLength.add(100).toString())
 
         // Run auctions
+        const remainderSellAmt = rewardAmountCOMP.sub(sellAmt)
+        const remainderMinBuyAmt = await toMinBuyAmt(remainderSellAmt, fp('1'), fp('1'))
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
@@ -877,7 +919,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [
+              anyValue,
+              compToken.address,
+              rsr.address,
+              remainderSellAmt,
+              withinQuad(remainderMinBuyAmt),
+            ],
             emitted: true,
           },
           {
@@ -897,15 +945,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         })
 
         // Check now all funds in Market
-        expect(await compToken.balanceOf(gnosis.address)).to.equal(sellAmt)
+        expect(await compToken.balanceOf(gnosis.address)).to.equal(remainderSellAmt)
         expect(await compToken.balanceOf(rsrTrader.address)).to.equal(0)
 
         // Perform Mock Bids for RSR (addr1 has balance)
-        await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
+        await rsr.connect(addr1).approve(gnosis.address, remainderMinBuyAmt)
         await gnosis.placeBid(1, {
           bidder: addr1.address,
-          sellAmount: sellAmt,
-          buyAmount: minBuyAmt,
+          sellAmount: remainderSellAmt,
+          buyAmount: remainderMinBuyAmt,
         })
 
         // Advance time till auction ended
@@ -916,7 +964,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeSettled',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, remainderSellAmt, remainderMinBuyAmt],
             emitted: true,
           },
           {
@@ -932,7 +980,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         //  Check balances sent to corresponding destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.mul(2))
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.add(remainderMinBuyAmt))
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
       })
 
@@ -945,6 +993,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await AssetFactory.deploy(
             fp('1'),
             chainlinkFeed.address,
+            ORACLE_ERROR,
             aaveToken.address,
             fp('1'),
             ORACLE_TIMEOUT
@@ -979,8 +1028,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = bn('1e18').mul(101).div(100) // due to max trade volume
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
@@ -1006,7 +1055,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rToken.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rToken.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
@@ -1062,7 +1111,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               aaveToken.address,
               rToken.address,
               sellAmtRemainder,
-              minBuyAmtRemainder,
+              withinQuad(minBuyAmtRemainder),
             ],
             emitted: true,
           },
@@ -1129,9 +1178,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle large auctions using maxTradeVolume with revenue split RSR/RToken', async () => {
         // Set max trade volume for asset
-        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
         )
@@ -1139,6 +1186,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await AssetFactory.deploy(
             fp('1'),
             chainlinkFeed.address,
+            ORACLE_ERROR,
             compToken.address,
             fp('1'),
             ORACLE_TIMEOUT
@@ -1174,11 +1222,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18') // due to max trade volume
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const sellAmt: BigNumber = bn('1e18').mul(101).div(100) // due to max trade volume
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
@@ -1204,13 +1252,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              compToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
@@ -1278,7 +1332,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmtRemainder, minBuyAmtRemainder],
+            args: [
+              anyValue,
+              compToken.address,
+              rsr.address,
+              sellAmtRemainder,
+              withinQuad(minBuyAmtRemainder),
+            ],
             emitted: true,
           },
           {
@@ -1508,7 +1568,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Should revert
         await expect(rsrTrader.manageToken(compToken.address)).to.be.revertedWith(
-          'PriceOutsideRange()'
+          'buy asset price unknown'
         )
 
         // Funds still in Traders
@@ -1531,7 +1591,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Should revert
         await expect(rTokenTrader.manageToken(compToken.address)).to.be.revertedWith(
-          'buy asset has zero price'
+          'buy asset price unknown'
         )
 
         // Funds still in Traders
@@ -1548,10 +1608,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         // Expected values based on Prices between AAVE and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountAAVE.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountAAVE.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         // Claim rewards
 
@@ -1579,13 +1639,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, aaveToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, aaveToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              aaveToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
@@ -1783,10 +1849,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
         const sellAmt: BigNumber = rewardAmountCOMP.mul(60).div(100) // due to f = 60%
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.sub(sellAmt) // Remainder
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.sub(sellAmtRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
           {
@@ -1814,13 +1880,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, compToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, compToken.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              compToken.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
@@ -1892,12 +1964,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check balances sent to corresponding destinations
         // StRSR - 50% to StRSR, 50% to other
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt.div(2))
-        expect(await rsr.balanceOf(other.address)).to.equal(minBuyAmt.div(2))
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt.div(2),
+          minBuyAmt.div(2).div(bn('1e15'))
+        )
+        expect(await rsr.balanceOf(other.address)).to.be.closeTo(
+          minBuyAmt.div(2),
+          minBuyAmt.div(2).div(bn('1e15'))
+        )
 
         // Furnace - 50% to Furnace, 50% to other
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken.div(2))
-        expect(await rToken.balanceOf(other.address)).to.equal(minBuyAmtRToken.div(2))
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken.div(2),
+          minBuyAmtRToken.div(2).div(bn('1e15'))
+        )
+        expect(await rToken.balanceOf(other.address)).to.be.closeTo(
+          minBuyAmtRToken.div(2),
+          minBuyAmtRToken.div(2).div(bn('1e15'))
+        )
       })
 
       it('Should claim but not sweep rewards to BackingManager from the Revenue Traders', async () => {
@@ -1982,8 +2066,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       it('Should revert on invalid claim logic', async () => {
         // Setup a new aToken with invalid claim data
         const ATokenCollateralFactory = await ethers.getContractFactory(
-          'InvalidATokenFiatCollateralMock',
-          { libraries: { OracleLib: oracleLib.address } }
+          'InvalidATokenFiatCollateralMock'
         )
         const chainlinkFeed = <MockV3Aggregator>(
           await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
@@ -1991,16 +2074,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
           InvalidATokenFiatCollateralMock
-        >((await ATokenCollateralFactory.deploy(
-          fp('1'),
-          chainlinkFeed.address,
-          token2.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          await collateral2.defaultThreshold(),
-          await collateral2.delayUntilDefault()
-        )) as unknown)
+        >((await ATokenCollateralFactory.deploy({
+          fallbackPrice: fp('1'),
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: token2.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: await collateral2.delayUntilDefault(),
+        })) as unknown)
 
         // Perform asset swap
         await assetRegistry.connect(owner).swapRegistered(invalidATokenCollateral.address)
@@ -2049,7 +2133,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should sell collateral as it appreciates and handle revenue auction correctly', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2059,7 +2143,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check Price (unchanged) and Assets value increment by 50%
         const excessValue: BigNumber = issueAmount.div(2)
         const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessValue)
         )
@@ -2075,28 +2159,34 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const expectedToFurnace = excessQuantity.sub(expectedToTrader)
 
         const sellAmt: BigNumber = expectedToTrader // everything is auctioned, below max auction
-        const minBuyAmt: BigNumber = sellAmt.mul(2).sub(sellAmt.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('2'), fp('1'))
         const sellAmtRToken: BigNumber = expectedToFurnace // everything is auctioned, below max auction
-        const minBuyAmtRToken: BigNumber = sellAmtRToken.mul(2).sub(sellAmtRToken.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('2'), fp('1'))
 
         // Run auctions - Will detect excess
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              token2.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
@@ -2174,13 +2264,19 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         // Check Price (unchanged) and Assets value (unchanged)
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
         // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
-        expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          minBuyAmt,
+          minBuyAmt.div(bn('1e15'))
+        )
+        expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
+          minBuyAmtRToken,
+          minBuyAmtRToken.div(bn('1e15'))
+        )
 
         // Check no more funds in Market and Traders
         expect(await token2.balanceOf(gnosis.address)).to.equal(0)
@@ -2190,7 +2286,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should handle slight increase in collateral correctly - full cycle', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2201,7 +2297,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
         const excessValue: BigNumber = issueAmount.mul(1).div(100)
         const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
-        expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessValue)
         )
@@ -2216,33 +2312,36 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100)).sub(60)
         const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)).sub(40) // excessQuantity.sub(expectedToTrader)
 
-        // Auction values - using divCeil for dealing with Rounding
         const sellAmt: BigNumber = expectedToTrader
-        const buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
-        const minBuyAmt: BigNumber = buyAmt.sub(divFloor(buyAmt, bn(100))) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1.02'), fp('1'))
 
         const sellAmtRToken: BigNumber = expectedToFurnace
-        const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
-        const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
+        const minBuyAmtRToken: BigNumber = await toMinBuyAmt(sellAmtRToken, fp('1.02'), fp('1'))
 
         // Run auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, token2.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
           {
             contract: rTokenTrader,
             name: 'TradeStarted',
-            args: [anyValue, token2.address, rToken.address, sellAmtRToken, minBuyAmtRToken],
+            args: [
+              anyValue,
+              token2.address,
+              rToken.address,
+              sellAmtRToken,
+              withinQuad(minBuyAmtRToken),
+            ],
             emitted: true,
           },
         ])
 
         // Check Price (unchanged) and Assets value (restored) - Supply remains constant
-        expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(
           near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
         ).to.equal(true)
@@ -2328,7 +2427,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ])
 
         //  Check Price (unchanged) and Assets value (unchanged)
-        expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(
           near(await facadeTest.callStatic.totalAssetValue(rToken.address), issueAmount, 100)
         ).to.equal(true)
@@ -2450,7 +2549,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
       it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2459,7 +2558,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token3.setExchangeRate(fp('2'))
 
         // Check Price (unchanged) and Assets value (now doubled)
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(2)
         )
@@ -2478,7 +2577,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const currentTotalSupply: BigNumber = await rToken.totalSupply()
         const newTotalSupply: BigNumber = currentTotalSupply.mul(2)
         const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max trade volume
-        const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
+        const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Collect revenue and mint new tokens - Will also launch auction
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2491,13 +2590,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, rToken.address, rsr.address, sellAmt, minBuyAmt],
+            args: [anyValue, rToken.address, rsr.address, sellAmt, withinQuad(minBuyAmt)],
             emitted: true,
           },
         ])
 
         // Check Price (unchanged) and Assets value - Supply has doubled
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(2)
         )
@@ -2552,7 +2651,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenAsset.strictPrice()).to.equal(updatedRTokenPrice)
+        await expectRTokenPrice(rTokenAsset.address, updatedRTokenPrice, ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.mul(2)
         )
@@ -2561,13 +2660,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
 
         // Check destinations after newly minted tokens
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 1000)
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
       })
 
       it('Should mint RTokens and handle remainder when collateral appreciates - Uneven quantity', async () => {
         // Check Price and Assets value
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
         expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -2577,7 +2676,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check Price (unchanged) and Assets value (now 80% higher)
         const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
-        expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessTotalValue)
         )
@@ -2605,15 +2704,23 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         //  Set expected auction values
         const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
         const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max trade volume of 50%
-        const minBuyAmtFromRToken: BigNumber = sellAmtFromRToken.sub(sellAmtFromRToken.div(100)) // due to trade slippage 1%
+        const minBuyAmtFromRToken: BigNumber = await toMinBuyAmt(
+          sellAmtFromRToken,
+          fp('1'),
+          fp('1')
+        )
         const sellAmtRSRFromCollateral: BigNumber = expectedToRSRTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
-        const minBuyAmtRSRFromCollateral: BigNumber = sellAmtRSRFromCollateral
-          .mul(2)
-          .sub(sellAmtRSRFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
+        const minBuyAmtRSRFromCollateral: BigNumber = await toMinBuyAmt(
+          sellAmtRSRFromCollateral,
+          fp('1'),
+          fp('1')
+        )
         const sellAmtRTokenFromCollateral: BigNumber = expectedToRTokenTraderFromCollateral // all will be processed at once, due to max trade volume of 50%
-        const minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
-          .mul(2)
-          .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
+        const minBuyAmtRTokenFromCollateral: BigNumber = await toMinBuyAmt(
+          sellAmtRTokenFromCollateral,
+          fp('1'),
+          fp('1')
+        )
 
         //  Collect revenue and mint new tokens - Will also launch auctions
         await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -2626,7 +2733,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           {
             contract: rsrTrader,
             name: 'TradeStarted',
-            args: [anyValue, rToken.address, rsr.address, sellAmtFromRToken, minBuyAmtFromRToken],
+            args: [
+              anyValue,
+              rToken.address,
+              rsr.address,
+              sellAmtFromRToken,
+              withinQuad(minBuyAmtFromRToken),
+            ],
             emitted: true,
           },
           {
@@ -2637,7 +2750,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rsr.address,
               sellAmtRSRFromCollateral,
-              minBuyAmtRSRFromCollateral,
+              withinQuad(minBuyAmtRSRFromCollateral),
             ],
             emitted: true,
           },
@@ -2649,14 +2762,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
               rToken.address,
               sellAmtRTokenFromCollateral,
-              minBuyAmtRTokenFromCollateral,
+              withinQuad(minBuyAmtRTokenFromCollateral),
             ],
             emitted: true,
           },
         ])
 
         // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
-        expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+        await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessRToken)
         )
@@ -2786,14 +2899,16 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const updatedRTokenPrice: BigNumber = newTotalSupply
           .mul(BN_SCALE_FACTOR)
           .div(await rToken.totalSupply())
-        expect(await rTokenAsset.strictPrice()).to.equal(updatedRTokenPrice)
+        await expectRTokenPrice(rTokenAsset.address, updatedRTokenPrice, ORACLE_ERROR)
         expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
           issueAmount.add(excessRToken)
         )
 
         //  Check destinations
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(
-          minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral)
+        const expectedRSR = minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+          expectedRSR,
+          expectedRSR.div(bn('1e15'))
         )
         expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
@@ -2864,6 +2979,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await AssetFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
+          ORACLE_ERROR,
           compToken.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT
