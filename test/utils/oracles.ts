@@ -40,40 +40,37 @@ export const expectRTokenPrice = async (
   maxTradeSlippage?: BigNumber,
   dustLoss?: BigNumber
 ) => {
-  const asset = await ethers.getContractAt('Asset', assetAddr)
-  const [lowPrice, highPrice] = await asset.price()
+  const rTokenAsset = await ethers.getContractAt('RTokenAsset', assetAddr)
+
+  // Apply two more oracleError discounts to account for the opposite basket price estimate
+  // being used to calculate range.top/bottom in RecollateralizationLib.basketRange
   let expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
+  expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
+  expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
+
   let expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
-  const tolerance = avgPrice.div(toleranceDivisor)
+  expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
+  expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
 
   if (maxTradeSlippage) {
-    // Apply two more oracleError discounts to account for the opposite basket price estimate
-    // being used to calculate range.top/bottom in RecollateralizationLib.basketRange
-    expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
-    expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
-    expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
-    expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
-
     // There can be any amount of shortfall, from zero to all the capital held by BackingManager
     // Here we assume it is ALL shortfall, since it's hard to know at any given time the portion
     const shortfallSlippage = divCeil(expectedHigh.mul(maxTradeSlippage), fp('1'))
     expectedLow = expectedLow.sub(shortfallSlippage)
 
     if (dustLoss) {
-      const rToken = await ethers.getContractAt('IRToken', await asset.erc20())
+      const rToken = await ethers.getContractAt('IRToken', await rTokenAsset.erc20())
       const supply = await rToken.totalSupply()
       const dustLostFraction = supply.gt(0) ? dustLoss.mul(fp('1')).div(supply) : dustLoss
       expectedLow = expectedLow.sub(dustLostFraction)
     }
-
-    expect(lowPrice).to.be.gte(expectedLow)
-    expect(lowPrice).to.be.lte(avgPrice)
-    expect(highPrice).to.be.lte(expectedHigh)
-    expect(highPrice).to.be.gte(avgPrice)
-  } else {
-    expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
-    expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   }
+
+  const [lowPrice, highPrice] = await rTokenAsset.price()
+  expect(lowPrice).to.be.gte(expectedLow)
+  expect(lowPrice).to.be.lte(avgPrice)
+  expect(highPrice).to.be.lte(expectedHigh)
+  expect(highPrice).to.be.gte(avgPrice)
 }
 
 // Expects an unpriced asset with low = 0 and high = FIX_MAX
