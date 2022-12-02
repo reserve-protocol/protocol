@@ -4,7 +4,8 @@ pragma solidity 0.8.9;
 import "../mock-uni-v2/interfaces/IUniswapV2MockRouter02.sol";
 import "../mock-uni-v2/interfaces/IUniswapV2MockFactory.sol";
 
-contract PoolMock {
+
+contract PairMock {
     address immutable tokenA;
     address immutable tokenB;
     address immutable router;
@@ -63,7 +64,7 @@ contract PoolMock {
         uint amountBMin,
         address to,
         uint deadline
-    ) internal returns (uint amountA, uint amountB, uint liquidity) {
+    ) internal returns (uint, uint, uint) {
         return
             IUniswapV2MockRouter02(router).addLiquidity(
                 tokenA,
@@ -84,7 +85,7 @@ contract PoolMock {
         uint amountBMin,
         address to,
         uint deadline
-    ) external returns (uint amountA, uint amountB) {
+    ) external returns (uint, uint) {
         return IUniswapV2MockRouter02(router).removeLiquidity(
             tokenA,
             tokenB,

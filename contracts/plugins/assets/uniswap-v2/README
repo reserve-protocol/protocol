@@ -1,0 +1,426 @@
+# Collateral Plugin - Uniswap V2
+- [Gitcoin issue 29517](https://gitcoin.co/issue/29517)
+- [Github issue 385](https://github.com/reserve-protocol/protocol/issues/385)
+
+# Plugin description
+
+## Economics
+
+__What is uniswapV2__
+
+Uniswap is a protocol suite of persistent, non-upgradable smart contracts that together create an automated market maker.
+This protocol aims to facilitate peer-to-peer market making and swapping of ERC-20 tokens on the Ethereum blockchain.
+
+Whenever a trade occurs, a 0.3% fee is charged to the transaction sender. This fee is distributed pro-rata to all Liquidity Providers (LPs) in the pool upon completion of the trade.
+
+In UniswapV2 protocol liquidity tokens are generated when a user adds liquidity
+to a pool that swaps tokenA/tokenB. This liquidity tokens are redeemable for 
+an amount of tokenA + tokenB proportional to the pool liquidity total amount 
+plus the proportional fee allocation.
+
+__How does it work?__
+
+UniswapV2 is an automated liquidity protocol powered by a constant product formula and implemented in a system of non-upgradeable smart contracts on the Ethereum blockchain. It obviates the need for trusted intermediaries, prioritizing decentralization, censorship resistance, and security. Uniswap is open-source software licensed under the GPL.
+
+![UniswapV2 diagram 1](../../../../docs/uniswapV2-diagram1.png)
+
+Each Uniswap smart contract, or pair, manages a liquidity pool made up of reserves of two ERC-20 tokens.
+
+Anyone can become a liquidity provider (LP) for a pool by depositing an equivalent value of each underlying token in return for pool tokens. These tokens track pro-rata LP shares of the total reserves, and can be redeemed for the underlying assets at any time.
+
+![UniswapV2 diagram 1](../../../../docs/uniswapV2-diagram3.png)
+
+Pairs act as automated market makers, standing ready to accept one token for the other as long as the “constant product” formula is preserved. This formula, most simply expressed as x * y = k, states that trades must not change the product (k) of a pair’s reserve balances (x and y). Because k remains unchanged from the reference frame of a trade, it is often referred to as the invariant. This formula has the desirable property that larger trades (relative to reserves) execute at exponentially worse rates than smaller ones.
+
+In practice, Uniswap applies a 0.25% fee to trades, which is added to reserves. As a result, each trade actually increases k. This functions as a payout to LPs, which is realized when they burn their pool tokens to withdraw their portion of total reserves. A 0.05% fee withheld as a protocol-wide charge can be applied.
+
+![UniswapV2 diagram 3](../../../../docs/uniswapV2-diagram3.png)
+
+Because the relative price of the two pair assets can only be changed through trading, divergences between the Uniswap price and external prices create arbitrage opportunities. This mechanism ensures that Uniswap prices always trend toward the market-clearing price.
+
+See [UniswapV2 documentation](https://docs.uniswap.org/contracts/v2/overview) for more details.
+
+## Implementation
+
+First we will explore some maths behind UniswapV2 protocol.
+[Uniswap v2 Core Whitepaper](https://docs.uniswap.org/whitepaper.pdf)
+gives us technical details for the core contract, as well as the factory contract.
+
+UniswapV2 uses a constant product formula to decide how much a swap will
+return. This means at any time you trade: 
+$$
+x \cdot y = k = constant 
+$$
+
+Where $x$ and $y$ are tokenA and tokenB reserves, respectively.
+
+__Example with no fees:__
+
+When a user trade $\Delta x$ for $\Delta y$ tokens, given $\alpha = \dfrac{\Delta x}{x_0}$ and $\beta = \dfrac{\Delta y}{y_0}$
+$$ x_1 = x_0 + \Delta x$$
+$$y_1 = y_0 - \Delta y$$
+Still 
+$$
+x_1 \cdot y_1 = (x_0 + \Delta x) \cdot (y_0 - \Delta y) = k
+$$
+
+Developing:
+
+$$
+ x_0 \cdot y_0 - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = k \\
+ \cancel{k} - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = \cancel{k} \\
+ \Delta y \cdot (x_0 + \Delta x) = \Delta x \cdot y_0
+$$
+then 
+$$
+\Delta y = \dfrac{\Delta x \cdot y_0}{x_0 + \Delta x} = \dfrac{ \frac{\Delta x}{x_0} y_0 }{1 + \frac{\Delta x}{x_0} } = \dfrac{\alpha}{1+\alpha} \cdot y_0
+$$
+and 
+$$
+\Delta x = \dfrac{\Delta y \cdot x_0}{y_0 - \Delta y} = \dfrac{ \frac{\Delta y}{y_0} x_0 }{1 - \frac{\Delta y}{y_0} } = \dfrac{\beta}{1-\beta} \cdot x_0
+$$
+
+Note:
+$$
+\beta = \dfrac{\alpha}{1+\alpha} 
+$$
+$$
+\alpha = \dfrac{\beta}{1-\beta}
+$$
+
+
+
+__Example with fees:__
+
+Now let's add a fee rate $ \eta = 0.3 \% $ in total and $\lambda  = 1 - \eta = 99.7 \%$
+$$
+\alpha' = \dfrac{\Delta x_{fee}}{x_0} =  \dfrac{\Delta x - \eta \cdot \Delta x} {x_0} = (1-\eta) \cdot \dfrac{\Delta x}{x_0} = (1-\eta) \cdot \alpha = \lambda \alpha 
+$$
+thus 
+$$
+\Delta y  = \dfrac{\alpha'}{1+\alpha'} \cdot y_0 = \dfrac{\lambda \alpha}{1+\lambda \alpha} \cdot y_0 
+$$
+$$
+\Delta x = \dfrac{\Delta x_{fee}}{\lambda} = \dfrac{1}{\lambda} \cdot \dfrac{\beta}{1-\beta} \cdot x_0
+$$
+
+Note:
+
+$$
+(x+\Delta x) \cdot (y - \Delta y) = k' = k + \alpha k - \beta k - \alpha \beta \\
+$$
+$$
+k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda})
+$$
+
+Since $\lambda < 1 \Rightarrow k' > k $ ie fees only increment the constant product over time.
+
+
+__how is constant $k$ fixed ?__
+
+Well liquidity is a token that represents 
+the proportion of the total x you participatted:
+
+$$
+L_{recv} = \dfrac{x_{deposited}}{x_{starting}} \cdot L_{starting}
+$$
+
+Initialy $ L_{starting} = \sqrt{x_{deposited} \cdot y_{desposited}} $
+So 
+$$
+k = L_{starting}^2
+$$
+
+Supose a LP deposits $dx$ of token A and dy of token B where $\frac{dy}{y} = \frac{dx}{x} = r > 0 $
+
+New state will be:
+$$
+x_1 = (1+r) x \\
+y_1 = (1+r) y \\
+l_1 = l_{rcv} + l = \dfrac{dx}{x} \cdot l + l =  r \cdot l + l = (1+r) \cdot l
+$$
+
+
+$$
+x_1 \cdot y_1 = (x + dx) \cdot (y + dy) = k' \\
+k' = (1+r)^2 \cdot x y \\
+k' = (1+r)^2 \cdot k
+$$
+
+Since it is a deposit $r>0$ then $ (1+r)^2 >1$ and $k' > k $
+
+But  
+
+$$
+\dfrac{k'}{k} = (1+r)^2 = \left( \frac{l_1}{l} \right)^2
+$$
+
+Removing liquidity works the same way but with $r<0$
+giving $k'<k$ but still 
+$$
+\dfrac{k'}{k} = \left( \frac{l_1}{l} \right)^2
+$$
+
+
+__Risks__
+
+Main risk is impermanent loss due to a price ratio change.
+
+Following this formula:
+
+$$
+loss = 2\cdot \dfrac{\sqrt{p_{ratio}}}{1+p_{ratio}} - 1
+$$
+
+See UniswapV2 doc [Understanding Returns](https://docs.uniswap.org/contracts/v2/concepts/advanced-topics/understanding-returns) for more details.
+
+
+
+## Files
+_Plugin contracts_
+
+- [UniV2Collateral.sol](./UniV2Collateral.sol)
+- [UnitV2Asset.sol](./UniV2Asset.sol)
+
+_Tests contracts_
+
+- [PoolMock.sol](../../mocks/uniswap-v2/pool-mock/poolMock.sol)
+- [Uniswapv2 mock](../../mocks/uniswap-v2/mock-uni-v2/)
+
+
+## Plugin Units
+
+ * __Collateral token `{tok}`__ is `UNI-V2` Liquidity Token for a pair tokenA/tokenB.
+ `UNI-V2` is an ERC20 compatible token that can be redeemed for a combination
+ of tokenA + tokenB
+   
+ * __Reference unit `{ref}`__ is `UNIV2SQRT-TA-TB` a synthetic reference unit equal to 
+ $ \sqrt{x y}$. This reference only increasing nature will be detailled in [`refPerTok()` function](#pluggin-functions) description. With 
+      * x = current tokenA reserves
+      * y = current tokenB reserves
+
+ * __Target unit `{target}`__ `USD` converting tokenA and tokenB to WETH via uniswap and then to USD from an oracle.
+   
+
+ * __Unit of Account `{UoA}`__ is `USD` will be impleted as WETH => USD since 
+ uniswapV2 uses WETH as unit. 
+
+
+ ## Pluggin Functions
+ 
+__`refPerTok()`__
+
+`{ref}` is a synthetic reference unit equal to 
+$$ \sqrt{x y}$$
+In [implementation](#implementation) we found that:
+$$
+\dfrac{k'}{k} = \left( \dfrac{l'}{l} \right)^2
+$$
+Whenever liquidity is added or removed from the poll. Thus
+$$
+\dfrac{x'y'}{xy} = \left( \dfrac{l'}{l} \right)^2 
+$$
+$$
+\dfrac{x'y'}{l'^2}=\dfrac{xy}{l^2} 
+$$
+Meaning that: 
+- This quantity doesn't change if liquidity is added or removed: it's constant
+- Can be calculated any time via a contract call to unswap pair
+-  When trading with without fees $k' = k$ . $\dfrac{\sqrt{x'y'}}{l}$ remains constant.
+- When trading with fees $k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda}) $
+  and $0<\lambda<1$ then $k' > k$ so $\dfrac{x'y'}{l^2}>\dfrac{xy}{l^2} $; since square root function is an increasing function $\sqrt{\dfrac{x'y'}{l^2}}>\sqrt{\dfrac{xy}{l^2}}$ demostrating 
+  this ref can only increase when a trade is made with fees.
+- initial value is equal to $\sqrt{\dfrac{xy}{l^2}}= \sqrt{\dfrac{xy}{(\sqrt{xy})^2}} = \sqrt{1} = 1$
+- It's a ref per token since {ref} = refPerToken() * {tok}
+
+TLDR; 
+- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok()` is nondecreasing over time.
+- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
+
+
+__`targetPerRef()`__ usd per sqrt(x*y)
+Since `{ref}` is `sqrt(x*y)` we take:
+- $p_x$ = tokenA/USD from oracle ~ 1 USD 
+- $p_y$ = tokenB/USD from oracle ~ 1 USD
+- x and y reserves from uniswap pair ~ 1:1 ratio
+- redeem L gives x token and y tokens with $x \approx y$ and a value in usd is $p_x x + p_y y \approx  1 \cdot x+ 1 \cdot y \approx 2x $ so tagetPerRef = $ \dfrac{2x}{\sqrt{xy}} \approx \dfrac{2x}{\sqrt{x^2}} \approx 2$
+
+Since `{ref}` is `sqrt(x*y)` we take:
+- $p_x$ = tokenA/USD from oracle ~ a USD
+- $p_y$ = tokenB/USD from oracle ~ b USD
+- x and y reserves from uniswap pair ~ b:a ratio
+- removing LP tokens gives x token and y tokens with $y \approx \frac{a}{b} x$ and value in usd is $a x + b y \approx  a x + b\frac{a}{b} x \approx 2ax $ so tagetPerRef = $ \dfrac{2a x }{\sqrt{xy}} \approx \dfrac{2ax}{\sqrt{\frac{a}{b}x^2}} \approx 2  \sqrt{ab}$
+
+For example consider a DAI/USDC pair:
+- $p_x$ = tokenA/USD from oracle ~ 1 USD 
+- $p_y$ = tokenB/USD from oracle ~ 1 USD
+- x and y reserves from uniswap pair ~ 1:1 ratio
+- redeem L gives x token and y tokens with $x \approx y$ and a value in usd is $p_x x + p_y y \approx  1 \cdot x+ 1 \cdot y \approx 2x $ so tagetPerRef = $ \dfrac{2x}{\sqrt{xy}} \approx \dfrac{2x}{\sqrt{x^2}} \approx 2$
+- tragetPerRef = $2  \sqrt{ab} \approx 2 \sqrt{1 \cdot 1} = 2$
+
+TLDR;
+- `targetPerRef() {target}` is a good price. 
+- `targetPerRef()` is _constant_ an equal to $2 \sqrt{ab}$.
+
+__`strictPrice()`__
+change
+Calculated via:
+- get Amount of x tokenA and y tokenB removing L liquidity Tokens
+- get oracle price for tokenA and tokenB
+
+strickPrice = $\dfrac{p_x x + p_y y}{L}$ in {UoA/tok}
+
+__`refresh()`__
+
+change 
+- Checks refPerTok() prices do not decreased (Disables plugin if it does)
+and updates status and price
+
+__`pricePerTarget()`__
+- {UoA/target} is FixOne since `{target} = {UoA} = USD`
+
+__`claimRewards()`__
+
+Claim rewards earned removing Liquidity tokens
+
+
+__`status()`, `isCollateral()` and `targetName()`__
+- Implemeted in `Abstract Collateral` Parent class
+
+__`price(bool)`, `bal(address)`, `erc20()`, `erc20Decimals()` and `maxTradeVolume()`__
+- Implemeted in `Asset` contract, inherited from `Abstract Collateral`
+
+## Tests
+
+Added cbEthCollateral test to [plugin tests](../../../test/plugins/Collateral.test.ts) and [fixture](../../../test/fixtures.ts)
+Added cbEthCollateral to [integrated tests](../../../test/integration/individual-collateral/CbEthCollateral.test.ts)
+
+### yarn slither
+warnings:
+
+```
+CbEthCollateral.refresh().errData (contracts/plugins/assets/CbEthCollateral.sol#72) is a local variable never initialized
+```
+
+```
+CbEthCollateral.refresh() (contracts/plugins/assets/CbEthCollateral.sol#58-85) ignores return value by chainlinkFeed.price_(oracleTimeout) (contracts/plugins/assets/CbEthCollateral.sol#70-76)
+```
+
+Can't be avoided. `chainlinkFeed.price_(oracleTimeout)` is only used to check 
+oracle avaibility. No use it's data nor `errData`.
+
+### yarn test:plugin
+
+cbEthCollateral contract added to [test/fixture.ts](../../../test/fixtures.ts) basket.
+Specific test in [test/plugins/Collateral.test.ts](../../../test/plugins/Collateral.test.ts)
+and [test/plugins/Asset.test.ts](../../../test/plugins/Asset.test.ts)
+
+- Result:
+```test
+  204 passing (4m)
+  3 pending
+```
+
+- Pendings:
+```
+  CbEth Collateral #fast
+    - Should not allow missing controller
+  Gas Reporting
+    - Force Updates - Soft Default
+    - Force Updates - Hard Default - ATokens/CTokens
+```
+
+### yarn test:integration
+Added [test/integration/individual-collateral/CbEthCollateral.test.ts](../../../test/integration/individual-collateral/CbEthCollateral.test.ts)
+
+- Result:
+
+```
+  57 passing (8m)
+  34 pending
+```
+
+- Pending (for cbEthCollateral), skipped since cbEth has no soft default condition.
+```
+Collateral Status
+  - No Updates status in case of soft default because there is no soft reset
+```
+
+
+### yarn test:fast
+Updated [test/Furnace.test.ts](../../../test/Furnace.test.ts)
+Updated [test/Main.test.ts](../../../test/Main.test.ts)
+Updated [test/RToken.test.ts](../../../test/RToken.test.ts)
+
+
+All tests pasing:
+```
+  231 passing (16m)
+  4 pending
+```
+
+See [yarn test:fast log file](../../../test-fast.log)
+
+## Deployement
+   
+1) Deploy [CbEthCollateral contract](./CbEthCollateral.sol) with params: 
+```ts
+    let fallbackPrice_: BigNumberish = fp('1')
+    let chainlinkFeed_: networkConfig[chainId].chainlinkFeeds.ETH as string
+    let erc20_: cbEth.address
+    let maxTradeVolume_: config.rTokenMaxTradeVolume
+    let oracleTimeout_: BigNumberish = ORACLE_TIMEOUT
+    let targetName_: BytesLike =ethers.utils.formatBytes32String('ETH')
+    let delayUntilDefault_: BigNumberish = delayUntilDefault
+
+    const cbEthCollateralFactory = await ethers.getContractFactory('CbEthCollateral', {
+      libraries: { OracleLib: oracleLib.address },
+    })
+
+    cbEthCollateral = <CbEthCollateral>(
+      await cbEthCollateralFactory.deploy(
+        fallbackPrice_,
+        chainlinkFeed_,
+        erc20_,
+        maxTradeVolume_,
+        oracleTimeout_,
+        targetName_,
+        delayUntilDefault_,
+      )
+    )   
+```
+Mainnet addresses for chainlink added in [config file](../../../common/configuration.ts).
+Don't forget coinbase oracle actualises cbEth exchange rate every 4H.
+
+2) Initialize/set the base tokens and the collateral should be ready.
+3) Creata Rtoken with cbEthCollateral
+4) As CbEth holder approve Rtoken adddress to transfer your cbEth (ERC20).
+5) test
+6) Follow [deployment](../../../docs/deployment.md).
+
+## Submission Requirements
+- [not aplicable] Twitter handle
+- [not aplicable] Telegram handle
+- [not aplicable] Discord handle
+- [x] Source code for your Collateral plugin or plugins
+- [x] An open source license
+- [x] Documentation (e.g, a README file), describing the following for each plugin:
+    - [x] What are the collateral token, reference unit, and target unit for this plugin?
+    - [x] How does one configure and deploy an instance of the plugin?
+    - [x] If the deployer should plug in price feeds, what units does your plugin expect those price feeds to be stated in?
+    - [x] Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
+    - [x] How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
+    - [x] Tests demonstrating the behaviors checked by our example Collateral plugin test, which we encourage you to use as a starting template for your own testing.Particular behaviors must include:
+        - [x] Deployment.
+        - [x] Issuance, appreciation, and redemption of an RToken with this Collateral in its basket.
+        - [x] Claiming rewards (or, if no rewards are available for this token, tests demonstrating that the claim-reward functions do nothing and don't revert)
+        - [x] Correct behavior for price() when any price sources return invalid values.
+        - [x] Correctly changing status() whenever that's needed in order to flag sudden or impending default.
+
+### Acceptance Criteria
+- [x] Fully implement the [ICollateral interface][icoll].
+- [x] Satisfy the correctness properties given in the Collateral plugin-writing howto.
+- [x] Be fully permissionless once deployed.
+- [x] Be documented with cogent explanations of its economics.
+- [x] Be deployable with USD as its Unit of Account.
+- [x] Not be prone to relatively simple economic attacks or cough cough “highly profitable trading strategies”​
