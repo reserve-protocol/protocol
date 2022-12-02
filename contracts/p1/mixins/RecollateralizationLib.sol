@@ -59,13 +59,13 @@ library RecollateralizationLibP1 {
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
     function prepareRecollateralizationTrade(
-        ITrading trader
+        IBackingManager bm
     ) external view returns (bool doTrade, TradeRequest memory req) {
         // === Prepare cached values ===
 
-        IMain main = trader.main();
+        IMain main = bm.main();
         ComponentCache memory components = ComponentCache({
-            trader: trader,
+            trader: bm,
             bh: main.basketHandler(),
             reg: main.assetRegistry(),
             stRSR: main.stRSR(),
@@ -73,8 +73,8 @@ library RecollateralizationLibP1 {
             rToken: main.rToken()
         });
         TradingRules memory rules = TradingRules({
-            minTradeVolume: trader.minTradeVolume(),
-            maxTradeSlippage: trader.maxTradeSlippage()
+            minTradeVolume: bm.minTradeVolume(),
+            maxTradeSlippage: bm.maxTradeSlippage()
         });
 
         Registry memory reg = components.reg.getRegistry();
@@ -264,19 +264,18 @@ library RecollateralizationLibP1 {
             // {UoA} = {UoA} + {UoA/tok} * {tok}
             assetsLow += lowPrice.mul(bal, FLOOR);
             // += is same as Fix.plus
-            // if this overflows it means something has gone terribly wrong
 
-            // but here we need to avoid overflowing since highPrice might be near FIX_MAX
-            // D18{UoA} = D18{UoA/tok} * D18{tok} / D18
-            {
-                (uint256 hi, uint256 lo) = fullMul(highPrice, bal);
-                hi = hi / FIX_ONE_256; // rounds down
-                lo = lo / FIX_ONE_256;
+            // here we need to avoid overflowing since highPrice might be near FIX_MAX
+            // D18{UoA/tok} * D18{tok} / D18
+            try IBackingManager(address(this)).tryMulDiv256(highPrice, bal, FIX_ONE_256) returns (
+                uint256 val
+            ) {
+                // {UoA}
 
-                // we've overflowed if there are still high bits around
-                if (hi > 0 || assetsHigh + lo >= FIX_MAX) assetsHigh = FIX_MAX;
-                else assetsHigh += _safeWrap(lo);
-                // += is same as Fix.plus
+                if (assetsHigh + val >= FIX_MAX) assetsHigh = FIX_MAX;
+                else assetsHigh += _safeWrap(val);
+            } catch {
+                assetsHigh = FIX_MAX;
             }
 
             // Accumulate potential losses to dust

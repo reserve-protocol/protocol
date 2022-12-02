@@ -34,16 +34,19 @@ interface IBackingManager is IComponent, ITrading {
     /// @custom:interaction
     function grantRTokenAllowance(IERC20) external;
 
-    /// Mointain the overall backing policy; handout assets otherwise
+    /// Maintain the overall backing policy; handout assets otherwise
     /// @dev Performs a uniqueness check on the erc20s list in O(n^2)
     /// @custom:interaction
     function manageTokens(IERC20[] memory erc20s) external;
 
-    /// Mointain the overall backing policy; handout assets otherwise
+    /// Maintain the overall backing policy; handout assets otherwise
     /// @dev Tokens must be in sorted order!
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction
     function manageTokensSortedOrder(IERC20[] memory erc20s) external;
+
+    /// Light wrapper around Fixed's mulDiv256 to support try-catch
+    function tryMulDiv256(uint256 x, uint256 y, uint256 z) external pure returns (uint256);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {
