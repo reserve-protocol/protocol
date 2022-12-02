@@ -1,5 +1,7 @@
 # Euler Finance Lending Plugins - Documentation
 ### Author: [Shr1ftyy](https://github.com/Shr1ftyy)
+Twitter: [https://twitter.com/shr1ftyy](https://twitter.com/shr1ftyy)
+Discord: Shr1ftyy#5402
 
 ## 1.0 Introduction - Overview of Euler Finance Lending Positions
 These plugins facilitate the usage of Euler Finance's eTokens as collateral. eTokens are minted and 
@@ -120,7 +122,7 @@ $$ \text{ where } \delta \text{ is the maximum exchange rate deviation with } \t
 
 ### 4.3 Deployment and Configuration
 
-Deploy [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol) with the following constructor args:
+Deploy [ETokenNonFiatCollateral.sol](./ETokenNonFiatCollateral.sol) with the following constructor args:
 ``` cpp
 uint192 fallbackPrice_, // fallback price
 AggregatorV3Interface refUnitChainlinkFeed_, // {uoa/ref} chainlink feed
@@ -134,11 +136,10 @@ int8 referenceERC20Decimals_ // decimals of reference token - default
 ```
 
 ## 4.0 Testing 
-TODO: write here after finishing `ETokenNonFiatCollateral.sol`
-
 The unit tests for these plugins are written in [ETokenFiatCollateral.sol](./ETokenFiatCollateral.sol), [ETokenNonFiatCollateral.sol](./ETokenNonFiatCollateral.sol),  and [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol). They are intented to 
 be run at block number `16081743` on an Ethereum Mainnet fork. This is done automatically in the `before()` block in the testing scripts.
 
 ## 4.0 Addressing Slither Findings
 Slither was used to scan the plugin contracts for vulnerabilities, the reported findings for each contract are described below:
 - `Possible reentrancy in refresh() initiated by the external call IEToken(address(erc20)).touch().  - present in all EToken plugin contracts`. This external call does not create a reentrancy attack vector in this contract, and hence can be dismissed.
+
