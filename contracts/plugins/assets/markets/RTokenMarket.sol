@@ -39,8 +39,11 @@ contract RTokenMarket is BaseMarket {
         IAssetRegistry assetRegistry = rToken.main().assetRegistry();
 
         // Grab the initial state to verify balance later
-        uint256 initialBalance = IERC20(rToken).balanceOf(address(this));
-        (uint256 initialIssuanceIndex, , ) = facadeRead.lastPendingIssuance(rToken, address(this));
+        uint256 initialBalance = rToken.balanceOf(address(this));
+        IFacadeRead.Pending memory initialPending = facadeRead.lastPendingIssuance(
+            rToken,
+            address(this)
+        );
 
         (address[] memory requiredTokens, uint256[] memory requiredTokenAmounts) = facadeRead.issue(
             rToken,
@@ -49,6 +52,7 @@ contract RTokenMarket is BaseMarket {
 
         uint256 requiredTokenCount = requiredTokens.length;
         bytes[] memory swapCallDatas = abi.decode(swapCallData, (bytes[]));
+
         require(requiredTokenCount == swapCallDatas.length, "RTokenMarket: INVALID_SWAP_CALL_DATA");
 
         for (uint256 i = 0; i < requiredTokenCount; ++i) {
@@ -60,7 +64,7 @@ contract RTokenMarket is BaseMarket {
             market.enter(
                 fromToken,
                 amountIn,
-                requiredToken,
+                address(requiredToken),
                 requiredTokenAmount,
                 swapTarget,
                 swapCallDatas[i],
@@ -71,15 +75,15 @@ contract RTokenMarket is BaseMarket {
             requiredToken.safeApprove(toRToken, requiredTokenAmount);
         }
 
-        (uint256 finalIssuanceIndex, , uint256 issuedAmount) = facadeRead.lastPendingIssuance(
+        IFacadeRead.Pending memory latestPending = facadeRead.lastPendingIssuance(
             rToken,
             address(this)
         );
 
         // Given an instant issuance, transfer the tokens to the receiver
-        if (initialIssuanceIndex == finalIssuanceIndex) {
-            issuedAmount = IERC20(rToken).balanceOf(address(this)) - initialBalance;
-            IERC20(rToken).safeTransfer(receiver, issuedAmount);
+        if (initialPending.index == latestPending.index) {
+            issuedAmount = rToken.balanceOf(address(this)) - initialBalance;
+            rToken.transfer(receiver, issuedAmount);
         }
 
         require(issuedAmount >= minAmountOut, "RTokenMarket: INSUFFICIENT_OUTPUT");
