@@ -34,10 +34,11 @@ library TradeLib {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
@@ -100,10 +101,11 @@ library TradeLib {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.

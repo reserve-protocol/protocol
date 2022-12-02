@@ -37,10 +37,11 @@ library TradingLibP0 {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(trade.buyPrice > 0); // checked for in RevenueTrader / CollateralizatlionLib
 
         uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
@@ -110,9 +111,11 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(
-        ITrading trader
-    ) external view returns (bool doTrade, TradeRequest memory req) {
+    function prepareRecollateralizationTrade(ITrading trader)
+        external
+        view
+        returns (bool doTrade, TradeRequest memory req)
+    {
         // === Prepare cached values ===
 
         IMain main = trader.main();
@@ -166,8 +169,8 @@ library TradingLibP0 {
         uint192 bottom; // {BU}
     }
 
-    // It's a precondition for all of these internal helpers that their `erc20s` argument contains at
-    // least all basket collateral, plus any registered assets for which the BackingManager has a
+    // It's a precondition for all of these internal helpers that their `erc20s` argument contains
+    // at least all basket collateral, plus any registered assets for which the BackingManager has a
     // nonzero balance. Any user of these functions should just pass in assetRegistry().erc20s(). We
     // would prefer to look it up from inside each function, and avoid the extra parameter to get
     // wrong, but the erc20s() call is pretty expensive.
@@ -545,10 +548,11 @@ library TradingLibP0 {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(trade.sellPrice > 0 && trade.buyPrice > 0);
 
         // Don't buy dust.
