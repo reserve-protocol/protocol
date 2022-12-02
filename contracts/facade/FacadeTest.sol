@@ -67,7 +67,7 @@ contract FacadeTest is IFacadeTest {
         rToken.sweepRewards();
     }
 
-    /// @return total {UoA} A low estimate of the total value of non-RSR assets at BackingManager
+    /// @return total {UoA} Point estimate of the value of all exogenous assets at BackingManager
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
         IMain main = rToken.main();
@@ -78,7 +78,8 @@ contract FacadeTest is IFacadeTest {
 
         IERC20[] memory erc20s = reg.erc20s();
         for (uint256 i = 0; i < erc20s.length; i++) {
-            if (erc20s[i] == rsr) continue;
+            // Skip RSR + RToken
+            if (erc20s[i] == rsr || erc20s[i] == IERC20(address(rToken))) continue;
 
             IAsset asset = reg.toAsset(erc20s[i]);
 
@@ -88,9 +89,9 @@ contract FacadeTest is IFacadeTest {
             uint192 oracleError = highPrice.minus(lowPrice).div(lowPrice.plus(highPrice), CEIL);
 
             // extrapolate lowPrice to midPrice using oracleError
-            uint192 midPrice = lowPrice.mul(FIX_ONE.plus(oracleError));
+            uint192 midPrice = lowPrice.mul(FIX_ONE.plus(oracleError), CEIL);
 
-            total = total.plus(asset.bal(backingManager).mul(midPrice));
+            total = total.plus(asset.bal(backingManager).mul(midPrice, CEIL));
         }
     }
 }

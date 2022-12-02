@@ -60,8 +60,6 @@ export const expectRTokenPrice = async (
       expectedLowest = expectedLower.sub(dustLostFraction)
     }
 
-    console.log('expectRTokenPrice.low', lowPrice, expectedLowest, expectedLow)
-    console.log('expectRTokenPrice.high', highPrice, expectedHigh)
     expect(lowPrice).to.be.gte(expectedLowest)
     expect(lowPrice).to.be.lte(expectedLow)
     expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
