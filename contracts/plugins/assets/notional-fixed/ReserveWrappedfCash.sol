@@ -101,18 +101,21 @@ contract ReserveWrappedFCash is ERC20 {
     /// @notice Checks every position the account is in, and if any of the markets
     ///   has matured, redeems the underlying assets and re-lends everything again
     function reinvest() external {
-        uint256[] memory currentMarkets = markets[_msgSender()];
+        uint256[] storage currentMarkets = markets[_msgSender()];
         if (currentMarkets.length == 0) return;
 
         IWrappedfCash wfCash;
         uint256 length = currentMarkets.length;
 
-        for (uint i; i < length; i++) {
+        for (uint i; i < length;) {
             wfCash = _getWfCash(currentMarkets[i]);
             if (wfCash.hasMatured()) {
                 notionalProxy.initializeMarkets(currencyId, false);
                 _reinvest(wfCash);
             }
+        unchecked {
+            i = i + 1;
+        }
         }
     }
 
@@ -174,7 +177,7 @@ contract ReserveWrappedFCash is ERC20 {
         uint256 percentageToWithdraw = amount * 1e18 / balance;
 
         // iterate over all the existing markets
-        for (uint i; i < marketsLength; i++) {
+        for (uint i; i < marketsLength;) {
             // get maturity of current market
             uint256 maturity = markets[_msgSender()][i];
             // withdraw percentage from this market
@@ -184,6 +187,9 @@ contract ReserveWrappedFCash is ERC20 {
                 delete accounts[_msgSender()][maturity];
                 delete activeMarket[_msgSender()][maturity];
             }
+        unchecked {
+            i = i + 1;
+        }
         }
 
         // burn the local tokens being withdrawn
@@ -205,19 +211,25 @@ contract ReserveWrappedFCash is ERC20 {
 
         _activeMarkets = new Market[](length);
 
-        for (uint i = 0; i < length; i++) {
+        for (uint i = 0; i < length;) {
             _activeMarkets[i] = Market(_markets[i].maturity, _getMonthsTenor(i));
+        unchecked {
+            i = i + 1;
+        }
         }
     }
 
     /// @notice Returns the amount of tokens deposited by `account`
     function depositedBy(address account) public view returns (uint256 amount) {
         uint256 length = markets[account].length;
-        for (uint i; i < length; i++) {
+        for (uint i; i < length;) {
             // get maturity of current market
             uint256 maturity = markets[account][i];
             // sum the deposited amount on this market
             amount = amount + accounts[account][maturity].deposited;
+        unchecked {
+            i = i + 1;
+        }
         }
     }
 
@@ -229,13 +241,16 @@ contract ReserveWrappedFCash is ERC20 {
     /// @notice Checks if any position in the market is already mature
     function hasMatured() external view returns (bool) {
         uint256 length = markets[_msgSender()].length;
-        for (uint i; i < length; i++) {
+        for (uint i; i < length;) {
             // get maturity of current market
             uint256 maturity = markets[_msgSender()][i];
             // sum the deposited amount on this market
             if (maturity <= block.timestamp) {
                 return true;
             }
+        unchecked {
+            i = i + 1;
+        }
         }
         return false;
     }
@@ -346,13 +361,11 @@ contract ReserveWrappedFCash is ERC20 {
             // create new market position
             _addMarketPosition(_msgSender(), Position(
                     newfCashAmount,
-                    0,
+                    existingPosition.deposited,
                     bestMarket.maturity,
                     bestMarket.monthsTenor
                 )
             );
-            // update deposited amount on new position
-            accounts[_msgSender()][bestMarket.maturity].deposited = existingPosition.deposited;
         }
 
         // mint wfCash
@@ -389,7 +402,7 @@ contract ReserveWrappedFCash is ERC20 {
 
         // iterate over all the existing markets to
         // transfer the correspondent percentage of each market
-        for (uint i; i < marketsLength; i++) {
+        for (uint i; i < marketsLength;) {
             // get maturity of current market
             maturity = markets[from][i];
 
@@ -412,7 +425,13 @@ contract ReserveWrappedFCash is ERC20 {
             }
 
             // check if receiver already has position on this market
-            if (!activeMarket[to][maturity]) {
+            if (activeMarket[to][maturity]) {
+                // increase amounts when it already exists
+                accounts[to][maturity].fCash = accounts[to][maturity].fCash + fCashToMove;
+                accounts[to][maturity].deposited = accounts[to][maturity].deposited + depositedToMove;
+            }
+            else {
+                // create position when it doesn't
                 _addMarketPosition(to, Position(
                         fCashToMove,
                         depositedToMove,
@@ -421,11 +440,9 @@ contract ReserveWrappedFCash is ERC20 {
                     )
                 );
             }
-            else {
-                // increase amounts when it already exists
-                accounts[to][maturity].fCash = accounts[to][maturity].fCash + fCashToMove;
-                accounts[to][maturity].deposited = accounts[to][maturity].deposited + depositedToMove;
-            }
+        unchecked {
+            i = i + 1;
+        }
         }
 
         // clean account data if fully gone
@@ -473,12 +490,15 @@ contract ReserveWrappedFCash is ERC20 {
 
         uint256 biggestRate;
 
-        for (uint i = 0; i < length; i++) {
+        for (uint i = 0; i < length;) {
             if (availableMarkets[i].oracleRate > biggestRate) {
                 biggestRate = availableMarkets[i].oracleRate;
                 selectedMarket.maturity = availableMarkets[i].maturity;
                 selectedMarket.monthsTenor = _getMonthsTenor(i);
             }
+        unchecked {
+            i = i + 1;
+        }
         }
     }
 
@@ -489,11 +509,14 @@ contract ReserveWrappedFCash is ERC20 {
         uint256 length = availableMarkets.length;
         require(length > 0, 'no available markets');
 
-        for (uint i = 0; i < length; i++) {
+        for (uint i = 0; i < length;) {
             if (availableMarkets[i].maturity == maturity) {
                 selectedMarket.maturity = availableMarkets[i].maturity;
                 selectedMarket.monthsTenor = _getMonthsTenor(i);
             }
+        unchecked {
+            i = i + 1;
+        }
         }
     }
 
