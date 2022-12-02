@@ -69,8 +69,10 @@ contract ETokenNonFiatCollateral is Collateral {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ref} * {ref/tok}
-        return chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target}
+        return chainlinkFeed.price(oracleTimeout)
+                            .mul(refPerTok())
+                            .mul(targetUnitChainlinkFeed.price(oracleTimeout));
     }
 
     /// Refresh exchange rates and update default status.

@@ -21,8 +21,8 @@ import { setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  ETokenSelfReferentialCollateral,
-  ETokenMock,
+  ETokenNonFiatCollateral,
+  ETokenMock, // TODO: make ETokenMock?
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -44,7 +44,7 @@ import forkBlockNumber from '../fork-block-numbers'
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet - an absolute giga-🐋
-const holderEWETH = '0xa29332b560103d52f758b978e0661420a9d40cb5'
+const holderEWBTC = '0xd275e5cb559d6dc236a5f8002a5f0b4c8e610703'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -52,14 +52,14 @@ const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 
-describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`ETokenNonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let weth: ERC20Mock
-  let eWeth: ETokenMock 
-  let eWethCollateral: ETokenSelfReferentialCollateral
+  let wbtc: ERC20Mock
+  let eWbtc: ETokenMock 
+  let eWbtcCollateral: ETokenNonFiatCollateral
   let rsr: ERC20Mock
   let rsrAsset: Asset
 
@@ -101,6 +101,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
+  const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
 
   let initialBal: BigNumber
@@ -122,7 +123,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
-    
+
     // Fork at designated block number - REQUIRED
     await hre.network.provider.request({
       method: "hardhat_reset",
@@ -133,6 +134,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       });
 
     expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['euler-plugins'])
+
   })
 
   beforeEach(async () => {
@@ -140,38 +142,40 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    // WETH token
-    weth = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.WETH || '')
+    // WBTC token
+    wbtc = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.WBTC || '')
     )
-    // eWETH token
-    eWeth = <ETokenMock>(
-      await ethers.getContractAt('ETokenMock', networkConfig[chainId].tokens.eWETH || '')
+    // eWBTC token
+    eWbtc = <ETokenMock>(
+      await ethers.getContractAt('ETokenMock', networkConfig[chainId].tokens.eWBTC || '')
     )
 
-    // Deploy eWeth collateral plugin
-    ETokenCollateralFactory = await ethers.getContractFactory('ETokenSelfReferentialCollateral', {
+    // Deploy eWbtc collateral plugin
+    ETokenCollateralFactory = await ethers.getContractFactory('ETokenNonFiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    eWethCollateral = <ETokenSelfReferentialCollateral>(
+    eWbtcCollateral = <ETokenNonFiatCollateral>(
       await ETokenCollateralFactory.deploy(
         fp('1'),
-        networkConfig[chainId].chainlinkFeeds.ETH as string,
-        eWeth.address,
+        networkConfig[chainId].chainlinkFeeds.WBTC as string,
+        networkConfig[chainId].chainlinkFeeds.BTC as string,
+        eWbtc.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('WETH'),
+        ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold,
         delayUntilDefault,
-        (await weth.decimals()).toString(),
+        (await wbtc.decimals()).toString(),
         {gasLimit: 5000000}
       )
     )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
-    // eWETH
-    initialBal = bn('500e18')
-    await whileImpersonating(holderEWETH, async (ewethSigner) => {
-      await eWeth.connect(ewethSigner).transfer(addr1.address, initialBal)
+    // eWBTC
+    initialBal = bn('20e18')
+    await whileImpersonating(holderEWBTC, async (ewbtcSigner) => {
+      await eWbtc.connect(ewbtcSigner).transfer(addr1.address, initialBal)
     })
 
     // Set parameters
@@ -185,7 +189,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
       assets: [],
-      primaryBasket: [eWethCollateral.address],
+      primaryBasket: [eWbtcCollateral.address],
       weights: [fp('1')],
       backups: [],
       beneficiaries: [],
@@ -236,25 +240,26 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
 
       // Check Collateral plugin
-      // eWETH (ETokenSelfReferentialCollateral)
-      expect(await eWethCollateral.isCollateral()).to.equal(true)
-      expect(await eWethCollateral.referenceERC20Decimals()).to.equal(await weth.decimals())
-      expect(await eWethCollateral.erc20()).to.equal(eWeth.address)
-      expect(await eWeth.decimals()).to.equal(18)
-      expect(await eWethCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('WETH'))
-      expect(await eWethCollateral.refPerTok()).to.be.closeTo(fp('1.01984'), fp('0.00001'))
-      expect(await eWethCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await eWethCollateral.pricePerTarget()).to.closeTo(fp('1272.5'), fp('0.1'))
+      // eWBTC (ETokenNonFiatCollateral)
+      expect(await eWbtcCollateral.isCollateral()).to.equal(true)
+      expect(await eWbtcCollateral.referenceERC20Decimals()).to.equal(await wbtc.decimals())
+      expect(await eWbtcCollateral.erc20()).to.equal(eWbtc.address)
+      expect(await eWbtc.decimals()).to.equal(18)
+      expect(await eWbtcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('BTC'))
+      expect(await eWbtcCollateral.refPerTok()).to.be.closeTo(fp('1.010816'), fp('0.000001'))
+      expect(await eWbtcCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await eWbtcCollateral.pricePerTarget()).to.closeTo(fp('16885'), fp('1')) // ~16.8k USD
+      // TODO: handle the assertion below differently?
       // the following assertion cannot always be true since Euler's eToken->underlying exchange rates do not need to be updated via 
       // a write function, and hence refPerTok() will be different from its last read in a long enough timeframe even if refresh() wasn't 
       // called to update prevReferencePrice. 
       // expect(await eWethCollateral.prevReferencePrice()).to.equal(await eWethCollateral.refPerTok())
-      expect(await eWethCollateral.strictPrice()).to.be.closeTo(fp('1297.8'), fp('0.1')) // close to $1.023
+      expect(await eWbtcCollateral.strictPrice()).to.be.closeTo(fp('17027'), fp('1')) // close to $17k
 
       // claimRewards() should not actually claim any rewards for the user, 
       // since there are no extra rewards for eToken holders
-      expect(await eWethCollateral.claimRewards()).to.not.emit(eWethCollateral, 'RewardsClaimed')
-      expect(await eWethCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      expect(await eWbtcCollateral.claimRewards()).to.not.emit(eWbtcCollateral, 'RewardsClaimed')
+      expect(await eWbtcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
@@ -266,16 +271,16 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(eWeth.address)
+      expect(ERC20s[2]).to.equal(eWbtc.address)
       expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(eWethCollateral.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(eWbtcCollateral.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(eWethCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(eWbtcCollateral.address)
     })
 
     // Check RToken basket
@@ -283,7 +288,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(eWeth.address)
+      expect(backing[0]).to.equal(eWbtc.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -293,28 +298,46 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1272.5'), fp('0.1'))
+      // TODO: is this supposed to be the same as pricePerTarget?
+      expect(price).to.be.closeTo(fp('16845'), fp('1'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('100e18')
-      await eWeth.connect(addr1).approve(rToken.address, issueAmount)
+      const issueAmount: BigNumber = bn('10e18')
+      await eWbtc.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1272.5'), fp('0.1'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('16845'), fp('1'))
     })
 
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
+      // Default threshold
+      await expect(
+        ETokenCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          eWbtc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('BTC'),
+          bn(0),
+          delayUntilDefault,
+          (await wbtc.decimals()).toString(),
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
 
       // ReferenceERC20Decimals
       await expect(
         ETokenCollateralFactory.deploy(
           fp('1'),
-          networkConfig[chainId].chainlinkFeeds.ETH as string,
-          eWeth.address,
+          networkConfig[chainId].chainlinkFeeds.WBTC as string,
+          networkConfig[chainId].chainlinkFeeds.BTC as string,
+          eWbtc.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('WETH'),
+          ethers.utils.formatBytes32String('BTC'),
+          defaultThreshold,
           delayUntilDefault,
           0,
         )
@@ -323,14 +346,14 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('100e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('10e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await eWeth.connect(addr1).approve(rToken.address, issueAmount)
+      await eWbtc.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -339,41 +362,40 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1eWeth: BigNumber = await eWeth.balanceOf(addr1.address)
+      const balanceAddr1eWbtc: BigNumber = await eWbtc.balanceOf(addr1.address)
 
       // Check rates and prices
-      const eWethPrice1: BigNumber = await eWethCollateral.strictPrice() // ~ 0.022015 cents
-      const eWethRefPerTok1: BigNumber = await eWethCollateral.refPerTok() // ~ 0.022015 cents
+      const eWbtcPrice1: BigNumber = await eWbtcCollateral.strictPrice() // ~ 0.022015 cents
+      const eWbtcRefPerTok1: BigNumber = await eWbtcCollateral.refPerTok() // ~ 0.022015 cents
 
-      expect(eWethPrice1).to.be.closeTo(fp('1297.8'), fp('0.1'))
-      expect(eWethRefPerTok1).to.be.closeTo(fp('1.0198'), fp('0.0001'))
+      expect(eWbtcPrice1).to.be.closeTo(fp('17027'), fp('1'))
+      expect(eWbtcRefPerTok1).to.be.closeTo(fp('1.010816'), fp('0.000001'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(fp('127256.5'), fp('0.1'))
+      expect(totalAssetValue1).to.be.closeTo(fp('168450'), fp('10')) // approx 10 rTokens in value (10 * $16,845 = $168450)
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
       await advanceBlocks(10000)
 
-      // Refresh EToken manually - not actually required to update the eToken->underlying exchange rate,
-      // but rather to ensure that the status of the eToken collateral is SOUND
-      await eWethCollateral.refresh()
-      expect(await eWethCollateral.status()).to.equal(CollateralStatus.SOUND)
+      // Refresh eToken manually (required)
+      await eWbtcCollateral.refresh()
+      expect(await eWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const eWethPrice2: BigNumber = await eWethCollateral.strictPrice() // ~$1.023
-      const eWethRefPerTok2: BigNumber = await eWethCollateral.refPerTok() // ~$1.023
+      const eWbtcPrice2: BigNumber = await eWbtcCollateral.strictPrice() // ~$1.023
+      const eWbtcRefPerTok2: BigNumber = await eWbtcCollateral.refPerTok() // ~$1.023
 
       // Check rates and price increase
-      expect(eWethPrice2).to.be.gt(eWethPrice1)
-      expect(eWethRefPerTok2).to.be.gt(eWethRefPerTok1)
+      expect(eWbtcPrice2).to.be.gt(eWbtcPrice1)
+      expect(eWbtcRefPerTok2).to.be.gt(eWbtcRefPerTok1)
 
       // Still close to the original values
-      expect(eWethPrice2).to.be.closeTo(fp('1297.8'), fp('0.1'))
-      expect(eWethRefPerTok2).to.be.closeTo(fp('1.0198'), fp('0.0001'))
+      expect(eWbtcPrice2).to.be.closeTo(fp('17028'), fp('1'))
+      expect(eWbtcRefPerTok2).to.be.closeTo(fp('1.01083'), fp('0.00001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -385,21 +407,21 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       await advanceTime(100000000)
       await advanceBlocks(100000000)
 
-      // Refresh EToken manually (required)
-      await eWethCollateral.refresh()
-      expect(await eWethCollateral.status()).to.equal(CollateralStatus.SOUND)
+      // Refresh eToken manually (required)
+      await eWbtcCollateral.refresh()
+      expect(await eWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const eWethPrice3: BigNumber = await eWethCollateral.strictPrice() // ~0.03294
-      const eWethRefPerTok3: BigNumber = await eWethCollateral.refPerTok() // ~0.03294
+      const eWbtcPrice3: BigNumber = await eWbtcCollateral.strictPrice() // ~0.03294
+      const eWbtcRefPerTok3: BigNumber = await eWbtcCollateral.refPerTok() // ~0.03294
 
       // Check rates and price increase
-      expect(eWethPrice3).to.be.gt(eWethPrice2)
-      expect(eWethRefPerTok3).to.be.gt(eWethRefPerTok2)
+      expect(eWbtcPrice3).to.be.gt(eWbtcPrice2)
+      expect(eWbtcRefPerTok3).to.be.gt(eWbtcRefPerTok2)
 
       // Need to adjust ranges
-      expect(eWethPrice3).to.be.closeTo(fp('1674.6'), fp('0.1'))
-      expect(eWethRefPerTok3).to.be.closeTo(fp('1.3158'), fp('0.001'))
+      expect(eWbtcPrice3).to.be.closeTo(fp('19764'), fp('1'))
+      expect(eWbtcRefPerTok3).to.be.closeTo(fp('1.173'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -414,20 +436,19 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer ETokens should have been sent to the user
-      const newBalanceAddr1eWeth: BigNumber = await eWeth.balanceOf(addr1.address)
+      // Check balances - Fewer eTokens should have been sent to the user
+      const newBalanceAddr1eWbtc: BigNumber = await eWbtc.balanceOf(addr1.address)
 
-      // ~0.07555743784 eWETH was deposited in the system for ~100 rTokens
-      // Check received tokens represent ~100 in value at current prices
-      expect(newBalanceAddr1eWeth.sub(balanceAddr1eWeth)).to.be.closeTo(bn('75.98e18'), bn('0.01e18')) // ~1.3158 * 75.98 ~= 100 (100% of basket)
+      // Check received tokens represent ~1K in value at current prices
+      expect(newBalanceAddr1eWbtc.sub(balanceAddr1eWbtc)).to.be.closeTo(bn('8.52e18'), bn('0.01e18')) // ~1.192 * 838 ~= 1K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await eWeth.balanceOf(backingManager.address)).to.be.closeTo(bn('22.07e18'), bn('0.01e18')) // ~= 36.9k usd in value
+      expect(await eWbtc.balanceOf(backingManager.address)).to.be.closeTo(bn('1.36e18'), bn('0.01e18')) // ~= 26k usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('36950'), // ~= 36.9k usd (from above)
-        fp('10')
+        fp('26870'), // ~= 26k usd (from above)
+        fp('1000')
       )
     })
   })
@@ -447,70 +468,74 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      await expect(eWethCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(eWbtcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Fallback price is returned
-      const [isFallback, price] = await eWethCollateral.price(true)
+      const [isFallback, price] = await eWbtcCollateral.price(true)
       expect(isFallback).to.equal(true)
       expect(price).to.equal(fp('1'))
 
       // Refresh should mark status IFFY
-      await eWethCollateral.refresh()
-      expect(await eWethCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await eWbtcCollateral.refresh()
+      expect(await eWbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // ETokens Collateral with no price
-      const nonpriceETokenCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>await (
-        await ethers.getContractFactory('ETokenSelfReferentialCollateral', {
+      const nonpriceEtokenCollateral: ETokenNonFiatCollateral = <ETokenNonFiatCollateral>await (
+        await ethers.getContractFactory('ETokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
         NO_PRICE_DATA_FEED,
-        eWeth.address,
+        NO_PRICE_DATA_FEED,
+        eWbtc.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('WETH'),
+        ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold,
         delayUntilDefault,
-        (await weth.decimals()).toString(),
+        await wbtc.decimals(),
       )
 
       // ETokens - Collateral with no price info should revert
-      await expect(nonpriceETokenCollateral.strictPrice()).to.be.reverted
+      await expect(nonpriceEtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
-      await expect(nonpriceETokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceETokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(nonpriceEtokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceEtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // go forward in time and blocks to get around gas limit error during deployment
       await advanceTime(1)
       await advanceBlocks(10)
 
       // Reverts with a feed with zero price
-      const invalidpriceETokenCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>await (
-        await ethers.getContractFactory('ETokenSelfReferentialCollateral', {
+      const invalidpriceEtokenCollateral: ETokenNonFiatCollateral = <ETokenNonFiatCollateral>await (
+        await ethers.getContractFactory('ETokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
         mockChainlinkFeed.address,
-        eWeth.address,
+        mockChainlinkFeed.address,
+        eWbtc.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('WETH'),
+        ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold,
         delayUntilDefault,
-        (await weth.decimals()).toString(),
+        await wbtc.decimals(),
       )
 
-      await setOraclePrice(invalidpriceETokenCollateral.address, bn(0))
+      await setOraclePrice(invalidpriceEtokenCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceETokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidpriceEtokenCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
-      await invalidpriceETokenCollateral.refresh()
-      expect(await invalidpriceETokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceEtokenCollateral.refresh()
+      expect(await invalidpriceEtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -522,98 +547,102 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newEWethCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>await (
-        await ethers.getContractFactory('ETokenSelfReferentialCollateral', {
+      const newEWbtcCollateral: ETokenNonFiatCollateral = <ETokenNonFiatCollateral>await (
+        await ethers.getContractFactory('ETokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
         mockChainlinkFeed.address,
-        await eWethCollateral.erc20(),
-        await eWethCollateral.maxTradeVolume(),
-        '86400', // seconds in one day
-        await eWethCollateral.targetName(),
-        await eWethCollateral.delayUntilDefault(),
-        await eWethCollateral.referenceERC20Decimals(),
+        mockChainlinkFeed.address,
+        await eWbtcCollateral.erc20(),
+        await eWbtcCollateral.maxTradeVolume(),
+        await eWbtcCollateral.oracleTimeout(),
+        await eWbtcCollateral.targetName(),
+        await eWbtcCollateral.defaultThreshold(),
+        await eWbtcCollateral.delayUntilDefault(),
+        18,
       )
 
       // Check initial state
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newEWethCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newEWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // wait 1 day (oracleTimeout) -> long enough for the price feed's data to be considered stale,
-      // and hence should trigger a soft default
-      await advanceTime(86400)
-      await advanceBlocks(69) // hehe
+      // Depeg one of the underlying tokens - Reducing price 20%
+      await setOraclePrice(newEWbtcCollateral.address, bn('8e7')) // -20%
+
       // Force updates - Should update whenDefault and status
-      await expect(newEWethCollateral.refresh())
-        .to.emit(newEWethCollateral, 'CollateralStatusChanged')
+      await expect(newEWbtcCollateral.refresh())
+        .to.emit(newEWbtcCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newEWethCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newEWbtcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // EToken
-      const prevWhenDefault: BigNumber = await newEWethCollateral.whenDefault()
-      await expect(newEWethCollateral.refresh()).to.not.emit(
-        newEWethCollateral,
+      const prevWhenDefault: BigNumber = await newEWbtcCollateral.whenDefault()
+      await expect(newEWbtcCollateral.refresh()).to.not.emit(
+        newEWbtcCollateral,
         'CollateralStatusChanged'
       )
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newEWethCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newEWbtcCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a EToken mock to be able to change the rate
       const ETokenMockFactory: ContractFactory = await ethers.getContractFactory('ETokenMock')
-      const symbol = await eWeth.symbol()
-      const eWethMock: ETokenMock = <ETokenMock>(
-        await ETokenMockFactory.deploy(symbol + ' Token', symbol, weth.address, {gasLimit: 2000000})
+      const symbol = await eWbtc.symbol()
+      const eWbtcMock: ETokenMock = <ETokenMock>(
+        await ETokenMockFactory.deploy(symbol + ' Token', symbol, wbtc.address, {gasLimit: 2000000})
       )
-      // Set initial exchange rate to the new eWeth Mock
-      await eWethMock.setExchangeRate(fp('1.1'))
+      // Set initial exchange rate to the new eWbtc Mock
+      await eWbtcMock.setExchangeRate(fp('1.1'))
 
-      // Redeploy plugin using the new eWeth mock
-      const newEWethCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>await (
-        await ethers.getContractFactory('ETokenSelfReferentialCollateral', {
+      // Redeploy plugin using the new eWbtc mock
+      const newEWbtcCollateral: ETokenNonFiatCollateral = <ETokenNonFiatCollateral>await (
+        await ethers.getContractFactory('ETokenNonFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('1'),
-        await eWethCollateral.chainlinkFeed(),
-        eWethMock.address,
-        await eWethCollateral.maxTradeVolume(),
-        await eWethCollateral.oracleTimeout(),
-        await eWethCollateral.targetName(),
-        await eWethCollateral.delayUntilDefault(),
-        await eWethCollateral.referenceERC20Decimals(),
+        await eWbtcCollateral.chainlinkFeed(),
+        eWbtcMock.address,
+        // TODO: sort out this mocking stuff later maybe
+        eWbtcMock.address,
+        await eWbtcCollateral.maxTradeVolume(),
+        await eWbtcCollateral.oracleTimeout(),
+        await eWbtcCollateral.targetName(),
+        await eWbtcCollateral.defaultThreshold(),
+        await eWbtcCollateral.delayUntilDefault(),
+        18,
         {gasLimit: 5000000}
       )
 
       // Check initial state
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newEWethCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newEWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for eWETH, will disable collateral immediately
-      await eWethMock.setExchangeRate(fp('1.09'))
+      // Decrease rate for eWBTC, will disable collateral immediately
+      await eWbtcMock.setExchangeRate(fp('1.09'))
 
       // Force updates - Should update whenDefault and status for Atokens/ETokens
-      await expect(newEWethCollateral.refresh())
-        .to.emit(newEWethCollateral, 'CollateralStatusChanged')
+      await expect(newEWbtcCollateral.refresh())
+        .to.emit(newEWbtcCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newEWethCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newEWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newEWethCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newEWbtcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -624,16 +653,18 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidETokenCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>(
+      const invalidETokenCollateral: ETokenNonFiatCollateral = <ETokenNonFiatCollateral>(
         await ETokenCollateralFactory.deploy(
           fp('1'),
           invalidChainlinkFeed.address,
-          await eWethCollateral.erc20(),
-          await eWethCollateral.maxTradeVolume(),
-          await eWethCollateral.oracleTimeout(),
-          await eWethCollateral.targetName(),
-          await eWethCollateral.delayUntilDefault(),
-          await eWethCollateral.referenceERC20Decimals(),
+          invalidChainlinkFeed.address,
+          await eWbtcCollateral.erc20(),
+          await eWbtcCollateral.maxTradeVolume(),
+          await eWbtcCollateral.oracleTimeout(),
+          await eWbtcCollateral.targetName(),
+          await eWbtcCollateral.defaultThreshold(),
+          await eWbtcCollateral.delayUntilDefault(),
+          18,
         )
       )
 

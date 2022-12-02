@@ -124,6 +124,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
 
+    // Fork at designated block number - REQUIRED
     await hre.network.provider.request({
       method: "hardhat_reset",
       params: [{forking: {
@@ -375,7 +376,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(10000)
       await advanceBlocks(10000)
 
-      // Refresh cToken manually (required)
+      // Refresh eToken manually (required)
       await eUsdcCollateral.refresh()
       expect(await eUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -401,7 +402,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceTime(100000000)
       await advanceBlocks(100000000)
 
-      // Refresh cToken manually (required)
+      // Refresh eToken manually (required)
       await eUsdcCollateral.refresh()
       expect(await eUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -430,7 +431,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances - Fewer eTokens should have been sent to the user
       const newBalanceAddr1eUsdc: BigNumber = await eUsdc.balanceOf(addr1.address)
 
       // Check received tokens represent ~1K in value at current prices
@@ -462,7 +463,6 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Compound
       await expect(eUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Fallback price is returned
@@ -474,8 +474,8 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await eUsdcCollateral.refresh()
       expect(await eUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: ETokenFiatCollateral = <ETokenFiatCollateral>await (
+      // ETokens Collateral with no price
+      const nonpriceEtokenCollateral: ETokenFiatCollateral = <ETokenFiatCollateral>await (
         await ethers.getContractFactory('ETokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -491,19 +491,19 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await usdc.decimals(),
       )
 
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
+      // ETokens - Collateral with no price info should revert
+      await expect(nonpriceEtokenCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(nonpriceEtokenCollateral.refresh()).to.be.reverted
+      expect(await nonpriceEtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // go forward in time and blocks to get around gas limit error during deployment
       await advanceTime(1)
       await advanceBlocks(10)
 
       // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: ETokenFiatCollateral = <ETokenFiatCollateral>await (
+      const invalidpriceEtokenCollateral: ETokenFiatCollateral = <ETokenFiatCollateral>await (
         await ethers.getContractFactory('ETokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -519,16 +519,16 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await usdc.decimals(),
       )
 
-      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+      await setOraclePrice(invalidpriceEtokenCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidpriceEtokenCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
-      await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceEtokenCollateral.refresh()
+      expect(await invalidpriceEtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -579,7 +579,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await newEUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // CToken
+      // EToken
       const prevWhenDefault: BigNumber = await newEUsdcCollateral.whenDefault()
       await expect(newEUsdcCollateral.refresh()).to.not.emit(
         newEUsdcCollateral,
@@ -591,7 +591,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
+      // Note: In this case requires to use a EToken mock to be able to change the rate
       const ETokenMockFactory: ContractFactory = await ethers.getContractFactory('ETokenMock')
       const symbol = await eUsdc.symbol()
       const eUsdcMock: ETokenMock = <ETokenMock>(
@@ -625,7 +625,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       // Decrease rate for eUSDC, will disable collateral immediately
       await eUsdcMock.setExchangeRate(fp('1.09'))
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      // Force updates - Should update whenDefault and status for Atokens/ETokens
       await expect(newEUsdcCollateral.refresh())
         .to.emit(newEUsdcCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)

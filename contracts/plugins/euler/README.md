@@ -75,7 +75,7 @@ is LINK, which is also its target unit).
 - **Hard default**: 
   - $\text{refPerTok} _t \lt \text{refPerTok} _{t-1}$
 
-### 2.3 Deployment and Configuration
+### 3.3 Deployment and Configuration
 
 Deploy [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol) with the following constructor args:
 ``` cpp
@@ -89,19 +89,56 @@ uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 int8 referenceERC20Decimals_ // decimals of reference token - default
 ```
 
+## 4.0 Non-Fiat Tokens
+<!-- TODO: write here after finishing `ETokenNonFiatCollateral.sol` -->
+Smart Contract: [ETokenNonFiatCollateral.sol](./ETokenNonFiatCollateral.sol)
+
+`ETokenNonFiatCollateral.sol` adds support for eTokens that represent shares of a lending pool
+that contain reference assets that have targets that are another token (i.e eWBTC represent shares
+of wBTC lending pool, which should be pegged to BTC).
+
+
+### 4.1 Units and Price Calculations
+
+| **Units**       | `tok`      | `ref`                                                   | `target` | `UoA` |
+|-----------------|------------|---------------------------------------------------------|----------|-------|
+| **Description** | the eToken | the eToken's <br>underlying asset <br>(i.e. wBTC) |   the reference token's target asset (i.e BTC)    | USD   |
+
+$$ P = \frac{\text{target}}{\text{ref}} \text{ is the intended peg rate between the underlying asset and it's target asset, and}$$
+
+$$ \delta = P \tau $$
+
+$$ \text{ where } \delta \text{ is the maximum exchange rate deviation with } \tau \text{ being the default threshold}$$
+
+### 4.2 Defaulting Conditions    
+
+- **Soft default**:
+  - The price retrieved from the price oracle for the reference token has not been updated in a while.
+  - $P' \notin [P - \delta, P + \delta], \text{where } P' \text{ is the actual price of one unit of the underlying asset}$
+- **Hard default**: 
+  - $\text{refPerTok} _t \lt \text{refPerTok} _{t-1}$
+
+### 4.3 Deployment and Configuration
+
+Deploy [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol) with the following constructor args:
+``` cpp
+uint192 fallbackPrice_, // fallback price
+AggregatorV3Interface refUnitChainlinkFeed_, // {uoa/ref} chainlink feed
+AggregatorV3Interface targetUnitUSDChainlinkFeed_, // {uoa/target} chainlink feed
+IERC20Metadata erc20_, // address of eToken (an EToken.sol contract (see https://docs.euler.finance/developers/getting-started/contract-reference#underlyingtoetoken))
+uint192 maxTradeVolume_, // max trade volume - default
+uint48 oracleTimeout_, // oracle price request timeout - default
+bytes32 targetName_, // name of the eToken's underlying token
+uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
+int8 referenceERC20Decimals_ // decimals of reference token - default
+```
+
 ## 4.0 Testing 
 TODO: write here after finishing `ETokenNonFiatCollateral.sol`
 
-<!---
-
-The unit tests for these plugins are [FraxSwapCollateral.test.ts](../../../test/integration/individual-collateral/FraxSwapCollateral.test.ts) and [FTokenFiatCollateral.test.ts](../../../test/integration/individual-collateral/FTokenFiatCollateral.test.ts) are intented to be run on `MAINNET_BLOCK=15995569`,
-since Fraxlend and Fraxswap pools did not exist during the default testing block number.
-
+The unit tests for these plugins are written in [ETokenFiatCollateral.sol](./ETokenFiatCollateral.sol), [ETokenNonFiatCollateral.sol](./ETokenNonFiatCollateral.sol),  and [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol). They are intented to 
+be run at block number `16081743` on an Ethereum Mainnet fork. This is done automatically in the `before()` block in the testing scripts.
 
 ## 4.0 Addressing Slither Findings
 Slither was used to scan the plugin contracts for vulnerabilities, the reported findings for each contract are described below:
-
-- `FTokenFiatCollateral.sol`:
-  - `Possible reentrancy in refresh() initiated by the external call IFraxlendPair(address(erc20)).addInterest().  - L#68`. This external call does not create a reentrancy attack vector in this contract, and hence can be dismissed.
-
--->
+- `Possible reentrancy in refresh() initiated by the external call IEToken(address(erc20)).touch().  - present in all EToken plugin contracts`. This external call does not create a reentrancy attack vector in this contract, and hence can be dismissed.
