@@ -9,7 +9,8 @@ burnt upon the supply and withdraw of lending assets (see [https://docs.euler.fi
 Refer to Euler Finance's [documentation](https://docs.euler.finance/getting-started/white-paper) for a more in-depth overview
 of the inner workings of Euler's lending system.
 
-## 2.0 Stablecoin Assets
+## 2.0 USD-pegged Stablecoin Assets
+Smart Contract: [ETokenFiatCollateral.sol](./ETokenFiatCollateral.sol) 
 
 ### 2.1 Units and Price Calculations
 
@@ -31,8 +32,8 @@ $$ \text{ where } \delta \text{ is the maximum price deviation with } \tau \text
 - **Hard default**: 
   - $\text{refPerTok} _t \lt \text{refPerTok} _{t-1}$
 
-Since eTokens represent a share of a lending pool which accrues yield from borrowers who pay interest, 
-unless the pool is exploited, $\text{refPerTok}$ should be non-decreasing.
+**Since eTokens represent a share of a lending pool which accrues yield from borrowers who pay interest, 
+unless the pool is exploited, $\text{refPerTok}$ should be non-decreasing.**
 
 ### 2.3 Deployment and Configuration
 
@@ -49,10 +50,44 @@ uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
 int8 referenceERC20Decimals_ // decimals of reference token - default
 ```
 
-## Non-Stablecoin Assets
-TODO: write here after finishing `ETokenNonFiatCollateral.sol`
+## 3.0 Self-Referential Assets
+<!-- TODO: write here after finishing `ETokenNonFiatCollateral.sol` -->
+Smart Contract: [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol)
 
-## 3.0 Testing 
+`ETokenSelfReferentialCollateral.sol` adds support for eTokens that represent shares of a lending pool
+that contain assets that do not need any price-fluctuation-related default checks on the reference
+asset, since the reference and target assets are the same (i.e the reference unit for the eToken eLINK 
+is LINK, which is also its target unit).
+
+
+### 3.1 Units and Price Calculations
+
+| **Units**       | `tok`      | `ref`                                                   | `target` | `UoA` |
+|-----------------|------------|---------------------------------------------------------|----------|-------|
+| **Description** | the eToken | the eToken's <br>underlying asset <br>(i.e. WETH) |   the eToken's <br>underlying asset <br>(i.e. WETH)    | USD   |
+
+### 3.2 Defaulting Conditions    
+
+- **Soft default**:
+  - The price retrieved from the price oracle for the reference token has not been updated in a while.
+- **Hard default**: 
+  - $\text{refPerTok} _t \lt \text{refPerTok} _{t-1}$
+
+### 2.3 Deployment and Configuration
+
+Deploy [ETokenSelfReferentialCollateral.sol](./ETokenSelfReferentialCollateral.sol) with the following constructor args:
+``` cpp
+uint192 fallbackPrice_, // fallback price
+AggregatorV3Interface chainlinkFeed_, // {uoa/ref} chainlink feed
+IERC20Metadata erc20_, // address of eToken (an EToken.sol contract (see https://docs.euler.finance/developers/getting-started/contract-reference#underlyingtoetoken))
+uint192 maxTradeVolume_, // max trade volume - default
+uint48 oracleTimeout_, // oracle price request timeout - default
+bytes32 targetName_, // name of the eToken's underlying token
+uint256 delayUntilDefault_, // time till status goes from IFFY to DISABLED
+int8 referenceERC20Decimals_ // decimals of reference token - default
+```
+
+## 4.0 Testing 
 TODO: write here after finishing `ETokenNonFiatCollateral.sol`
 
 <!---
