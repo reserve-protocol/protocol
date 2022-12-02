@@ -79,7 +79,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const balance1 = await usdc.balanceOf(addr1.address)
 
       expect(balanceRwfCash1).to.be.gt(toBNDecimals(amount, 8))
-      expect(depositedAmount1).to.equal('99936667')
+      expect(depositedAmount1).to.equal(amount)
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
 
       await wfCash.connect(addr1).withdraw(balanceRwfCash1)
@@ -105,7 +105,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const balance1 = await usdc.balanceOf(addr1.address)
 
       expect(balanceRwfCash1).to.be.gt(toBNDecimals(amount, 8))
-      expect(depositedAmount1).to.closeTo(bn('99.9366e6'), bn('1e2'))
+      expect(depositedAmount1).to.equal(amount)
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
 
       await wfCash.connect(addr1).withdraw(balanceRwfCash1.div(2))
@@ -114,7 +114,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const depositedAmount2 = await wfCash.depositedBy(addr1.address)
       const balance2 = await usdc.balanceOf(addr1.address)
 
-      expect(depositedAmount2).to.closeTo(bn('49.9683e6'), bn(1e2))
+      expect(depositedAmount2).to.equal(amount.div(2))
       expect(balanceRwfCash2).to.equal(balanceRwfCash1.div(2))
       expect(balance2.sub(balance1)).to.be.lt(amount) // due to premature redeeming is less
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
@@ -174,7 +174,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const depositedAmount1 = await wfCash.depositedBy(addr1.address)
 
       expect(balanceRwfCash1).to.closeTo(bn('100.56427e8'), bn('1e4'))
-      expect(depositedAmount1).to.closeTo(bn('99.9366e6'), bn('1e2'))
+      expect(depositedAmount1).to.equal(amount)
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
       expect((await wfCash.activeMarketsOf(addr2.address)).length).to.equal(0)
 
@@ -184,7 +184,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
       const depositedAmount2 = await wfCash.depositedBy(addr2.address)
 
       expect(balanceRwfCash2).to.closeTo(bn('50.2821e8'), bn('1e4'))
-      expect(depositedAmount2).to.closeTo(bn('49.9683e6'), bn('1e2'))
+      expect(depositedAmount2).to.equal(depositedAmount1.div(2))
       expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
       expect((await wfCash.activeMarketsOf(addr2.address)).length).to.equal(1)
     })

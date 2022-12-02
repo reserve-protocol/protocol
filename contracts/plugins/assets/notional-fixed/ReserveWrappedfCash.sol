@@ -274,8 +274,7 @@ contract ReserveWrappedFCash is ERC20 {
         );
 
         // update position
-        accounts[_msgSender()][maturity].deposited = accounts[_msgSender()][maturity].deposited +
-        amount - _costOfEnteringMarket(amount, maturity);
+        accounts[_msgSender()][maturity].deposited = accounts[_msgSender()][maturity].deposited + amount;
         accounts[_msgSender()][maturity].fCash = accounts[_msgSender()][maturity].fCash + fCashAmount;
 
         // mint wfCash
@@ -333,8 +332,7 @@ contract ReserveWrappedFCash is ERC20 {
             wfCash = _getWfCash(bestMarket.maturity);
             // include assets in existing position
             accounts[_msgSender()][bestMarket.maturity].deposited =
-            accounts[_msgSender()][bestMarket.maturity].deposited +
-            existingPosition.deposited - _costOfEnteringMarket(existingPosition.deposited, bestMarket.maturity);
+            accounts[_msgSender()][bestMarket.maturity].deposited + existingPosition.deposited;
 
             accounts[_msgSender()][bestMarket.maturity].fCash =
             accounts[_msgSender()][bestMarket.maturity].fCash + newfCashAmount;
@@ -354,8 +352,7 @@ contract ReserveWrappedFCash is ERC20 {
                 )
             );
             // update deposited amount on new position
-            accounts[_msgSender()][bestMarket.maturity].deposited =
-            existingPosition.deposited - _costOfEnteringMarket(existingPosition.deposited, bestMarket.maturity);
+            accounts[_msgSender()][bestMarket.maturity].deposited = existingPosition.deposited;
         }
 
         // mint wfCash
@@ -435,37 +432,6 @@ contract ReserveWrappedFCash is ERC20 {
         if (percentageToMove == 1e18) {
             delete markets[from];
         }
-    }
-
-    /// Compute the cost of depositing `amount` into the selected market
-    ///
-    /// Entering a market has a 0.3% annualized fee.
-    /// The fee is prorated on the days remaining for the market to mature.
-    ///
-    /// if we deposit on day one on a 1 year tenor market, the cost is 0.3%
-    /// if we deposit on day one on a 6 months tenor market, the cost is 0.15%
-    /// if we deposit after 3 months on a 6 months tenor market, the cost is 0.075%
-    ///
-    /// @param amount The amount to deposit
-    /// @param maturity Maturity of the market to enter
-    function _costOfEnteringMarket(uint256 amount, uint256 maturity) private view returns (uint256) {
-        uint32 daysUntilMaturity = _getDaysUntilMaturity(maturity);
-        uint32 months = accounts[_msgSender()][maturity].monthsTenor;
-        // compute the percentage fee to pay given the market we enter
-        // multipy by 100 to avoid decimals
-        uint32 marketRate = (months * 1e2) / 12;
-        // compute the percentage of fee to pay given the remaining time
-        // multipy by 100 to avoid decimals
-        uint32 lateEntryDiscount = (daysUntilMaturity * 1e5) / (months * 30);
-        // operate everything to obtain the final percentage fee to apply
-        uint64 feeBasisPoints = (30 * marketRate * lateEntryDiscount);
-
-        // operate, and then divide by 1e11:
-        // 2 to compensate the marketRate op
-        // 5 to compensate the lateEntryDiscount op
-        // 4 to compensate the basis points units
-        // delaying the division increases the precision
-        return (amount * feeBasisPoints) / 1e11;
     }
 
     /// Return the amount of days between now and the maturity time of the market
