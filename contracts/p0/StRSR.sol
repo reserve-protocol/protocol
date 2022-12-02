@@ -9,13 +9,13 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IStRSR.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/Permit.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../interfaces/IAsset.sol";
+import "../interfaces/IBasketHandler.sol";
+import "../interfaces/IStRSR.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/Permit.sol";
+import "./mixins/Component.sol";
 
 /*
  * @title StRSRP0

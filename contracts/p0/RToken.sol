@@ -7,14 +7,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/RedemptionBattery.sol";
-import "contracts/p0/mixins/Component.sol";
-import "contracts/p0/mixins/Rewardable.sol";
-import "contracts/vendor/ERC20PermitUpgradeable.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/IBasketHandler.sol";
+import "../interfaces/IRToken.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/RedemptionBattery.sol";
+import "./mixins/Component.sol";
+import "./mixins/Rewardable.sol";
+import "../vendor/ERC20PermitUpgradeable.sol";
 
 struct SlowIssuance {
     address issuer;

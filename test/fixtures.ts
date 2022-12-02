@@ -54,6 +54,7 @@ import {
   USDCMock,
   NonFiatCollateral,
 } from '../typechain'
+import { useEnv } from '#/utils/env'
 
 export enum Implementation {
   P0,
@@ -61,9 +62,9 @@ export enum Implementation {
 }
 
 export const IMPLEMENTATION: Implementation =
-  process.env.PROTO_IMPL == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
+  useEnv('PROTO_IMPL') == Implementation.P1.toString() ? Implementation.P1 : Implementation.P0
 
-export const SLOW = !!process.env.SLOW
+export const SLOW = !!useEnv('SLOW')
 
 export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
 
@@ -352,7 +353,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const { rsr } = await rsrFixture()
   const { weth, compToken, compoundMock, aaveToken } = await compAaveFixture()
   const { gnosis, easyAuction } = await gnosisFixture()
-  const gnosisAddr = process.env.FORK ? easyAuction.address : gnosis.address
+  const gnosisAddr = useEnv('FORK') ? easyAuction.address : gnosis.address
   const dist: IRevenueShare = {
     rTokenDist: bn(40), // 2/5 RToken
     rsrDist: bn(60), // 3/5 RSR

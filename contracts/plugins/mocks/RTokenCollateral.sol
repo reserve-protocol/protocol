@@ -3,9 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/RTokenAsset.sol";
+import "../../interfaces/IMain.sol";
+import "../../libraries/Fixed.sol";
+import "../assets/RTokenAsset.sol";
 
 /**
  * @title RTokenCollateral
@@ -62,7 +62,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 

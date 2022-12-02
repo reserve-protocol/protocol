@@ -49,9 +49,10 @@ import {
 } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
+import { useEnv } from '#/utils/env'
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 const createFixtureLoader = waffle.createFixtureLoader
 

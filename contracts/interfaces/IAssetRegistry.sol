@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
+import "./IAsset.sol";
 import "./IComponent.sol";
 
 /// A serialization of the AssetRegistry to be passed around in the P1 impl for gas optimization

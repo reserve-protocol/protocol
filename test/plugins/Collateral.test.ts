@@ -533,10 +533,10 @@ describe('Collateral contracts', () => {
       expect(await cTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Force updates (with no changes)
-      await expect(tokenCollateral.refresh()).to.not.emit(tokenCollateral, 'DefaultStatusChanged')
-      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'DefaultStatusChanged')
-      await expect(aTokenCollateral.refresh()).to.not.emit(aTokenCollateral, 'DefaultStatusChanged')
-      await expect(cTokenCollateral.refresh()).to.not.emit(cTokenCollateral, 'DefaultStatusChanged')
+      await expect(tokenCollateral.refresh()).to.not.emit(tokenCollateral, 'CollateralStatusChanged')
+      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
+      await expect(aTokenCollateral.refresh()).to.not.emit(aTokenCollateral, 'CollateralStatusChanged')
+      await expect(cTokenCollateral.refresh()).to.not.emit(cTokenCollateral, 'CollateralStatusChanged')
 
       // State remains the same
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -571,7 +571,7 @@ describe('Collateral contracts', () => {
       // Force updates - Should update whenDefault and status
       let expectedDefaultTimestamp: BigNumber
 
-      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'DefaultStatusChanged')
+      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
@@ -585,7 +585,7 @@ describe('Collateral contracts', () => {
           .add(delayUntilDefault)
 
         await expect(coll.refresh())
-          .to.emit(coll, 'DefaultStatusChanged')
+          .to.emit(coll, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
         expect(await coll.status()).to.equal(CollateralStatus.IFFY)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)
@@ -601,13 +601,13 @@ describe('Collateral contracts', () => {
       // Nothing changes if attempt to refresh after default for ATokens/CTokens
       // AToken
       let prevWhenDefault: BigNumber = await aTokenCollateral.whenDefault()
-      await expect(aTokenCollateral.refresh()).to.not.emit(aTokenCollateral, 'DefaultStatusChanged')
+      await expect(aTokenCollateral.refresh()).to.not.emit(aTokenCollateral, 'CollateralStatusChanged')
       expect(await aTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await aTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
 
       // CToken
       prevWhenDefault = await cTokenCollateral.whenDefault()
-      await expect(cTokenCollateral.refresh()).to.not.emit(cTokenCollateral, 'DefaultStatusChanged')
+      await expect(cTokenCollateral.refresh()).to.not.emit(cTokenCollateral, 'CollateralStatusChanged')
       expect(await cTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await cTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
@@ -629,11 +629,11 @@ describe('Collateral contracts', () => {
       await cToken.setExchangeRate(fp('0.95'))
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(tokenCollateral.refresh()).to.not.emit(tokenCollateral, 'DefaultStatusChanged')
+      await expect(tokenCollateral.refresh()).to.not.emit(tokenCollateral, 'CollateralStatusChanged')
       expect(await tokenCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await tokenCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'DefaultStatusChanged')
+      await expect(usdcCollateral.refresh()).to.not.emit(usdcCollateral, 'CollateralStatusChanged')
       expect(await usdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await usdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
@@ -644,7 +644,7 @@ describe('Collateral contracts', () => {
 
         const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(1)
         await expect(coll.refresh())
-          .to.emit(coll, 'DefaultStatusChanged')
+          .to.emit(coll, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
         expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
         expect(await coll.whenDefault()).to.equal(expectedDefaultTimestamp)

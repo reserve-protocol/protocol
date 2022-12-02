@@ -27,6 +27,7 @@ import {
   TestIRToken,
   TestIStRSR,
 } from '../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -34,7 +35,7 @@ let owner: SignerWithAddress
 let addr1: SignerWithAddress
 let addr2: SignerWithAddress
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function () {
   let config: IConfig

@@ -39,13 +39,14 @@ import {
 import snapshotGasCost from './utils/snapshotGasCost'
 import { expectTrade, getTrade } from './utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from './utils/oracles'
+import { useEnv } from '#/utils/env'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress

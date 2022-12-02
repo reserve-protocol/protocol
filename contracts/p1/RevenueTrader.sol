@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/p1/mixins/Trading.sol";
-import "contracts/p1/mixins/TradeLib.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/IAssetRegistry.sol";
+import "./mixins/Trading.sol";
+import "./mixins/TradeLib.sol";
 
 /// Trader Component that converts all asset balances at its address to a
 /// single target asset and sends this asset to the Distributor.

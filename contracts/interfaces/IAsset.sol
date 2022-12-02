@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/libraries/Fixed.sol";
+import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
 
@@ -69,7 +69,7 @@ interface ICollateral is IAsset {
     /// Emitted whenever the collateral status is changed
     /// @param newStatus The old CollateralStatus
     /// @param newStatus The updated CollateralStatus
-    event DefaultStatusChanged(
+    event CollateralStatusChanged(
         CollateralStatus indexed oldStatus,
         CollateralStatus indexed newStatus
     );

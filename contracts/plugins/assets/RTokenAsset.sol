@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/Asset.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/p1/mixins/RecollateralizationLib.sol";
+import "./Asset.sol";
+import "../../interfaces/IMain.sol";
+import "../../interfaces/IRToken.sol";
+import "../../p1/mixins/RecollateralizationLib.sol";
 
 import "hardhat/console.sol";
 
