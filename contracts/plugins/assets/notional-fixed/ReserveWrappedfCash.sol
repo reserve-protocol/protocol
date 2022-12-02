@@ -106,16 +106,37 @@ contract ReserveWrappedFCash is ERC20 {
 
         IWrappedfCash wfCash;
         uint256 length = currentMarkets.length;
+        uint256 maturity;
 
         for (uint i; i < length;) {
-            wfCash = _getWfCash(currentMarkets[i]);
+            maturity = currentMarkets[i];
+            wfCash = _getWfCash(maturity);
             if (wfCash.hasMatured()) {
+                // make sure Notional markets for this currency are initialized
                 notionalProxy.initializeMarkets(currencyId, false);
+                // reinvest assets on this market
                 _reinvest(wfCash);
+                // update account markets
+                delete accounts[_msgSender()][maturity];
+                delete activeMarket[_msgSender()][maturity];
+                // `_reinvest` may or may not add a market, depending on if it exists already,
+                // so in order to remove the matured market from the array, gotta check lengths
+                if (currentMarkets.length == length) {
+                    // reinvest occurred into an already existing market
+                    markets[_msgSender()][i] = currentMarkets[length - 1];
+                    length = length - 1;
+                }
+                else {
+                    // reinvest occurred to a new market
+                    markets[_msgSender()][i] = currentMarkets[currentMarkets.length - 1];
+                }
+                markets[_msgSender()].pop();
             }
-        unchecked {
-            i = i + 1;
-        }
+            else {
+            unchecked {
+                i = i + 1;
+            }
+            }
         }
     }
 

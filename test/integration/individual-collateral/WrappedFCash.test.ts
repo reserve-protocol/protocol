@@ -363,20 +363,95 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
   })
 
   describe('Reinvest', () => {
-    it('Should mature after a while', async () => {
+    const SPAN_UNTIL_MATURE = 3300000
+
+    it('Should reinvest position into a new market', async () => {
       const amount = bn('100e6')
+      const snapshotId = await evmSnapshot()
 
       await usdc.connect(addr1).approve(wfCash.address, amount)
       await wfCash.connect(addr1).deposit(amount)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+      const depositedAmount1 = await wfCash.depositedBy(addr1.address)
 
       expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
 
-      await advanceTime(3300000)
-      await advanceBlocks(3300000)
+      await advanceTime(SPAN_UNTIL_MATURE)
+      await advanceBlocks(SPAN_UNTIL_MATURE)
 
       expect(await wfCash.connect(addr1).hasMatured()).to.be.true
 
       await wfCash.connect(addr1).reinvest()
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
+      expect(await wfCash.depositedBy(addr1.address)).to.equal(depositedAmount1)
+      expect(await wfCash.balanceOf(addr1.address)).to.gt(balanceRwfCash1)
+
+      await evmRevert(snapshotId)
+    })
+
+    it('Should reinvest position into an existing market', async () => {
+      const amount = bn('100e6')
+      const markets = await wfCash.activeMarkets()
+      const snapshotId = await evmSnapshot()
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[1].maturity)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+      const depositedAmount1 = await wfCash.depositedBy(addr1.address)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(2)
+
+      await advanceTime(SPAN_UNTIL_MATURE)
+      await advanceBlocks(SPAN_UNTIL_MATURE)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.true
+
+      await wfCash.connect(addr1).reinvest()
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(1)
+      expect(await wfCash.depositedBy(addr1.address)).to.equal(depositedAmount1)
+      expect(await wfCash.balanceOf(addr1.address)).to.gt(balanceRwfCash1)
+
+      await evmRevert(snapshotId)
+    })
+
+    it('Should reinvest position into an existing market when multiple open', async () => {
+      const amount = bn('100e6')
+      const markets = await wfCash.activeMarkets()
+      const snapshotId = await evmSnapshot()
+
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[1].maturity)
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[2].maturity)
+      const balanceRwfCash1 = await wfCash.balanceOf(addr1.address)
+      const depositedAmount1 = await wfCash.depositedBy(addr1.address)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(3)
+
+      await advanceTime(SPAN_UNTIL_MATURE)
+      await advanceBlocks(SPAN_UNTIL_MATURE)
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.true
+
+      await wfCash.connect(addr1).reinvest()
+
+      expect(await wfCash.connect(addr1).hasMatured()).to.be.false
+      expect((await wfCash.activeMarketsOf(addr1.address)).length).to.equal(2)
+      expect(await wfCash.depositedBy(addr1.address)).to.equal(depositedAmount1)
+      expect(await wfCash.balanceOf(addr1.address)).to.gt(balanceRwfCash1)
+
+      await evmRevert(snapshotId)
     })
   })
 })
