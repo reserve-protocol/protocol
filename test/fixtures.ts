@@ -16,6 +16,7 @@ import {
   BrokerP1,
   ComptrollerMock,
   CTokenFiatCollateral,
+  CTokenSelfReferentialCollateral,
   CTokenMock,
   ERC20Mock,
   DeployerP0,
@@ -73,6 +74,7 @@ export type Collateral =
   | CTokenFiatCollateral
   | ATokenFiatCollateral
   | NonFiatCollateral
+  | CTokenSelfReferentialCollateral
 
 interface RSRFixture {
   rsr: ERC20Mock
