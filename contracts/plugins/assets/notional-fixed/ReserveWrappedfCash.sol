@@ -38,12 +38,17 @@ contract ReserveWrappedFCash is ERC20 {
     constructor(
         address _notionalProxy,
         address _wfCashFactory,
-        IERC20Metadata _underlyingAsset,
+        address _underlyingAsset,
         uint16 _currencyId
     ) ERC20("Reserve Wrapped fCash", "rwfCash") {
+        require(_notionalProxy != address(0), "missing notional proxy address");
+        require(_wfCashFactory != address(0), "missing wfCashFactory address");
+        require(_underlyingAsset != address(0), "missing underlying asset address");
+        require(_currencyId > 0, "invalid currencyId");
+
         notionalProxy = INotionalProxy(_notionalProxy);
         wfCashFactory = IWrappedfCashFactory(_wfCashFactory);
-        underlyingAsset = _underlyingAsset;
+        underlyingAsset = IERC20Metadata(_underlyingAsset);
         currencyId = _currencyId;
     }
 

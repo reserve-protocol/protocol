@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber } from 'ethers'
+import { BigNumber, ContractFactory } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
@@ -9,13 +9,14 @@ import { ERC20Mock, ReserveWrappedFCash } from '../../../typechain'
 import { whileImpersonating } from '../../utils/impersonation'
 import { networkConfig } from '../../../common/configuration'
 import { advanceBlocks, advanceTime } from '../../utils/time'
+import { evmRevert, evmSnapshot } from '../utils'
+import { ZERO_ADDRESS } from '../../../common/constants'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
 const holderUSDC = '0x0A59649758aa4d66E25f08Dd01271e891fe52199'
 
 describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, function () {
-  let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
 
@@ -24,6 +25,7 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
 
   let chainId: number
   let initialBalance: BigNumber
+  let WrappedFCashFactory: ContractFactory
 
   before(async () => {
     chainId = await getChainId(hre)
@@ -33,9 +35,9 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
   })
 
   beforeEach(async () => {
-    ;[owner, addr1, addr2] = await ethers.getSigners()
+    ;[, addr1, addr2] = await ethers.getSigners()
 
-    const WrappedFCashFactory = await ethers.getContractFactory('ReserveWrappedFCash')
+    WrappedFCashFactory = await ethers.getContractFactory('ReserveWrappedFCash')
     wfCash = <ReserveWrappedFCash>await WrappedFCashFactory.deploy(
       '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
       '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
@@ -64,6 +66,44 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       expect(markets.length).to.equal(3)
       expect(markets[0].maturity).to.equal('1664064000')
+    })
+
+    it('Should validate constructor arguments correctly', async () => {
+      await expect(
+        WrappedFCashFactory.deploy(
+          ZERO_ADDRESS,
+          '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
+          networkConfig[chainId].tokens.USDC || '',
+          3 // USDC
+        )
+      ).to.be.revertedWith('missing notional proxy address')
+
+      await expect(
+        WrappedFCashFactory.deploy(
+          '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
+          ZERO_ADDRESS,
+          networkConfig[chainId].tokens.USDC || '',
+          3 // USDC
+        )
+      ).to.be.revertedWith('missing wfCashFactory address')
+
+      await expect(
+        WrappedFCashFactory.deploy(
+          '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
+          '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
+          ZERO_ADDRESS,
+          3 // USDC
+        )
+      ).to.be.revertedWith('missing underlying asset address')
+
+      await expect(
+        WrappedFCashFactory.deploy(
+          '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
+          '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
+          networkConfig[chainId].tokens.USDC || '',
+          0
+        )
+      ).to.be.revertedWith('invalid currencyId')
     })
   })
 
@@ -333,12 +373,15 @@ describeFork(`ReserveWrappedfCash - Mainnet Forking P${IMPLEMENTATION}`, functio
     })
   })
 
-  describe('RefPerTok compute', () => {
+  describe('Underlying value', () => {
     it('Should return an initial refPerTok below 1', async () => {
       const amount = bn('100e6')
+      const markets = await wfCash.activeMarkets()
 
       await usdc.connect(addr1).approve(wfCash.address, amount)
-      await wfCash.connect(addr1).deposit(amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
+      await usdc.connect(addr1).approve(wfCash.address, amount)
+      await wfCash.connect(addr1).depositTo(amount, markets[0].maturity)
 
       const refPerTok1 = await wfCash.refPerTok(addr1.address)
 
