@@ -2,7 +2,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IMPLEMENTATION } from '../../fixtures'
+import { IMPLEMENTATION, ORACLE_ERROR } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
@@ -17,7 +17,7 @@ import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/con
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { setOraclePrice } from '../../utils/oracles'
+import { expectPrice, expectRTokenPrice, expectUnpriced, setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
@@ -31,7 +31,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   InvalidMockV3Aggregator,
-  OracleLib,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
@@ -151,35 +150,34 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     )
 
     // Create COMP asset
-    compAsset = <Asset>await (
-      await ethers.getContractFactory('Asset', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(
-      fp('1'),
-      networkConfig[chainId].chainlinkFeeds.COMP || '',
-      compToken.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT
+    compAsset = <Asset>(
+      await (
+        await ethers.getContractFactory('Asset')
+      ).deploy(
+        fp('1'),
+        networkConfig[chainId].chainlinkFeeds.COMP || '',
+        ORACLE_ERROR,
+        compToken.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT
+      )
     )
 
     // Deploy cDai collateral plugin
-    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
-    cDaiCollateral = <CTokenFiatCollateral>(
-      await CTokenCollateralFactory.deploy(
-        fp('0.02'),
-        networkConfig[chainId].chainlinkFeeds.DAI as string,
-        cDai.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+    CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
+    cDaiCollateral = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
+      {
+        fallbackPrice: fp('0.02'),
+        chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+        oracleError: ORACLE_ERROR,
+        erc20: cDai.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        (await dai.decimals()).toString(),
-        comptroller.address
-      )
+      },
+      comptroller.address
     )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
@@ -255,7 +253,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await compAsset.erc20()).to.equal(compToken.address)
       expect(await compAsset.erc20()).to.equal(networkConfig[chainId].tokens.COMP)
       expect(await compToken.decimals()).to.equal(18)
-      expect(await compAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
+      await expectPrice(compAsset.address, fp('58.28'), ORACLE_ERROR, true) // Close to $58 USD - June 2022
       await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -268,9 +266,8 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await cDaiCollateral.pricePerTarget()).to.equal(fp('1'))
       expect(await cDaiCollateral.prevReferencePrice()).to.equal(await cDaiCollateral.refPerTok())
-      expect(await cDaiCollateral.strictPrice()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
+      await expectPrice(cDaiCollateral.address, fp('0.022015105509346448'), ORACLE_ERROR, true) // close to $0.022 cents
 
       // Check claim data
       await expect(cDaiCollateral.claimRewards())
@@ -315,64 +312,38 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
     })
 
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
-      // Default threshold
-      await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          bn(0),
-          delayUntilDefault,
-          (await dai.decimals()).toString(),
-          comptroller.address
-        )
-      ).to.be.revertedWith('defaultThreshold zero')
-
-      // ReferemceERC20Decimals
-      await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          0,
-          comptroller.address
-        )
-      ).to.be.revertedWith('referenceERC20Decimals missing')
-
       // Comptroller
       await expect(
         CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          (await dai.decimals()).toString(),
+          {
+            fallbackPrice: fp('0.02'),
+            chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
+            oracleError: ORACLE_ERROR,
+            erc20: cDai.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('USD'),
+            defaultThreshold,
+            delayUntilDefault,
+          },
           ZERO_ADDRESS
         )
       ).to.be.revertedWith('comptroller missing')
@@ -399,10 +370,10 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
 
       // Check rates and prices
-      const cDaiPrice1: BigNumber = await cDaiCollateral.strictPrice() // ~ 0.022015 cents
+      const [cDaiPriceLow1, cDaiPriceHigh1] = await cDaiCollateral.price() // ~ 0.022015 cents
       const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
 
-      expect(cDaiPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      await expectPrice(cDaiCollateral.address, fp('0.022015105946267361'), ORACLE_ERROR, true)
       expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value
@@ -420,15 +391,16 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const cDaiPrice2: BigNumber = await cDaiCollateral.strictPrice() // ~0.022016
+      const [cDaiPriceLow2, cDaiPriceHigh2] = await cDaiCollateral.price() // ~0.022016
       const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
+      expect(cDaiPriceLow2).to.be.gt(cDaiPriceLow1)
+      expect(cDaiPriceHigh2).to.be.gt(cDaiPriceHigh1)
       expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
 
       // Still close to the original values
-      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      await expectPrice(cDaiCollateral.address, fp('0.022016198467092545'), ORACLE_ERROR, true)
       expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value increased
@@ -446,15 +418,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const cDaiPrice3: BigNumber = await cDaiCollateral.strictPrice() // ~0.03294
+      const [cDaiPriceLow3, cDaiPriceHigh3] = await cDaiCollateral.price() // ~0.03294
       const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
 
       // Check rates and price increase
-      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
+      expect(cDaiPriceLow3).to.be.gt(cDaiPriceLow2)
+      expect(cDaiPriceHigh3).to.be.gt(cDaiPriceHigh2)
       expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
 
-      // Need to adjust ranges
-      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      await expectPrice(cDaiCollateral.address, fp('0.032941254792840879'), ORACLE_ERROR, true)
       expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
 
       // Check total asset value increased
@@ -546,16 +518,11 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
-      // Reverts with stale price
+      // Does not revert with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
       // Compound
-      await expect(cDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
-
-      // Fallback price is returned
-      const [isFallback, price] = await cDaiCollateral.price(true)
-      expect(isFallback).to.equal(true)
-      expect(price).to.equal(fp('0.02'))
+      await expectUnpriced(cDaiCollateral.address)
 
       // Refresh should mark status IFFY
       await cDaiCollateral.refresh()
@@ -563,57 +530,55 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // CTokens Collateral with no price
       const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
-        fp('0.02'),
-        NO_PRICE_DATA_FEED,
-        cDai.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        await dai.decimals(),
+        {
+          fallbackPrice: fp('0.02'),
+          chainlinkFeed: NO_PRICE_DATA_FEED,
+          oracleError: ORACLE_ERROR,
+          erc20: cDai.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+        },
         comptroller.address
       )
 
       // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
+      await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('')
 
       // Refresh should also revert - status is not modified
       await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
       expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+      // Does not revert with zero price
+      const zeropriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
+        await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
-        fp('0.02'),
-        mockChainlinkFeed.address,
-        cDai.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        await dai.decimals(),
+        {
+          fallbackPrice: fp('0.02'),
+          chainlinkFeed: mockChainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: cDai.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+        },
         comptroller.address
       )
 
-      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+      await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
-      // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
-        'PriceOutsideRange()'
-      )
+      // Does not revert with zero price
+      await expectPrice(zeropriceCtokenCollateral.address, bn('0'), bn('0'), false)
 
       // Refresh should mark status IFFY
-      await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await zeropriceCtokenCollateral.refresh()
+      expect(await zeropriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -626,19 +591,19 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
       const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
-        fp('0.02'),
-        mockChainlinkFeed.address,
-        await cDaiCollateral.erc20(),
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
+        {
+          fallbackPrice: fp('0.02'),
+          chainlinkFeed: mockChainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: await cDaiCollateral.erc20(),
+          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+          oracleTimeout: await cDaiCollateral.oracleTimeout(),
+          targetName: await cDaiCollateral.targetName(),
+          defaultThreshold,
+          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+        },
         comptroller.address
       )
 
@@ -688,19 +653,19 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Redeploy plugin using the new cDai mock
       const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
+        await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
-        fp('0.02'),
-        await cDaiCollateral.chainlinkFeed(),
-        cDaiMock.address,
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
+        {
+          fallbackPrice: fp('0.02'),
+          chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
+          oracleError: ORACLE_ERROR,
+          erc20: cDaiMock.address,
+          maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+          oracleTimeout: await cDaiCollateral.oracleTimeout(),
+          targetName: await cDaiCollateral.targetName(),
+          defaultThreshold,
+          delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+        },
         comptroller.address
       )
 
@@ -731,15 +696,17 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          invalidChainlinkFeed.address,
-          await cDaiCollateral.erc20(),
-          await cDaiCollateral.maxTradeVolume(),
-          await cDaiCollateral.oracleTimeout(),
-          await cDaiCollateral.targetName(),
-          await cDaiCollateral.defaultThreshold(),
-          await cDaiCollateral.delayUntilDefault(),
-          18,
+          {
+            fallbackPrice: fp('0.02'),
+            chainlinkFeed: invalidChainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: await cDaiCollateral.erc20(),
+            maxTradeVolume: await cDaiCollateral.maxTradeVolume(),
+            oracleTimeout: await cDaiCollateral.oracleTimeout(),
+            targetName: await cDaiCollateral.targetName(),
+            defaultThreshold,
+            delayUntilDefault: await cDaiCollateral.delayUntilDefault(),
+          },
           comptroller.address
         )
       )
