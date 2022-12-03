@@ -5,6 +5,7 @@ import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, IImplementations, IRevenueShare, networkConfig } from '../../common/configuration'
 import { expectInReceipt } from '../../common/events'
 import { bn, fp } from '../../common/numbers'
+
 import {
   AaveLendingPoolMock,
   Asset,
@@ -39,6 +40,7 @@ import {
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
+  SelfReferentialCollateral,
   StaticATokenLM,
   StRSRP1Votes,
   TestIBackingManager,
@@ -159,7 +161,7 @@ async function collateralFixture(
 
   const CTokenNonFiatCollateralFactory = await ethers.getContractFactory('CTokenNonFiatCollateral')
 
-  const SelfRefCollateralFactory = await ethers.getContractFactory('FiatCollateral')
+  const SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
   const CTokenSelfReferentialCollateralFactory = await ethers.getContractFactory(
     'CTokenSelfReferentialCollateral'
@@ -302,9 +304,9 @@ async function collateralFixture(
     selfRefTokenAddress: string,
     chainlinkAddr: string,
     targetName: string
-  ): Promise<[IERC20Metadata, FiatCollateral]> => {
+  ): Promise<[IERC20Metadata, SelfReferentialCollateral]> => {
     const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', selfRefTokenAddress)
-    return [erc20, <FiatCollateral>await SelfRefCollateralFactory.deploy({
+    return [erc20, <SelfReferentialCollateral>await SelfRefCollateralFactory.deploy({
         fallbackPrice: fp('1'),
         chainlinkFeed: chainlinkAddr,
         oracleError: ORACLE_ERROR,
@@ -312,7 +314,7 @@ async function collateralFixture(
         maxTradeVolume: config.rTokenMaxTradeVolume,
         oracleTimeout: ORACLE_TIMEOUT,
         targetName: ethers.utils.formatBytes32String(targetName),
-        defaultThreshold,
+        defaultThreshold: bn(0),
         delayUntilDefault,
       })]
   }
@@ -337,7 +339,7 @@ async function collateralFixture(
           maxTradeVolume: config.rTokenMaxTradeVolume,
           oracleTimeout: ORACLE_TIMEOUT,
           targetName: ethers.utils.formatBytes32String(targetName),
-          defaultThreshold,
+          defaultThreshold: bn(0),
           delayUntilDefault,
         },
         referenceERC20Decimals,
