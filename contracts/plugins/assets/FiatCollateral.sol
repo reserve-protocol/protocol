@@ -75,7 +75,9 @@ contract FiatCollateral is ICollateral, Asset {
         )
     {
         require(config.targetName != bytes32(0), "targetName missing");
-        require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        if (config.defaultThreshold > 0) {
+            require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        }
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
