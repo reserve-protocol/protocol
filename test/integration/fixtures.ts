@@ -577,8 +577,8 @@ async function collateralFixture(
 
   const wstETH = await makeWstETHCollateral(
     networkConfig[chainId].tokens.wstETH as string,
-    networkConfig[chainId].chainlinkFeeds.ETH as string,
-    networkConfig[chainId].chainlinkFeeds.wstETH as string,
+    ETH_USD_PRICE_FEED as string,
+    STETH_USD_PRICE_FEED as string,
     'ETH'
   )
 
