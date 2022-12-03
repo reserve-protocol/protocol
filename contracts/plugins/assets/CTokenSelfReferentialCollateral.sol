@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./FiatCollateral.sol";
 import "./ICToken.sol";
+import "./SelfReferentialCollateral.sol";
 
 /**
  * @title CTokenSelfReferentialCollateral
- * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
+ * @notice Collateral plugin for a cToken of unpegged collateral, such as cETH.
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract CTokenSelfReferentialCollateral is FiatCollateral {
+contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -25,7 +25,7 @@ contract CTokenSelfReferentialCollateral is FiatCollateral {
         CollateralConfig memory config,
         uint8 referenceERC20Decimals_,
         IComptroller comptroller_
-    ) FiatCollateral(config) {
+    ) SelfReferentialCollateral(config) {
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;

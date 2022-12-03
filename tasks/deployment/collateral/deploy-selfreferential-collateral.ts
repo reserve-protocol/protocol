@@ -1,7 +1,7 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
-import { FiatCollateral } from '../../../typechain'
+import { SelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
@@ -17,9 +17,11 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
 
     const chainId = await getChainId(hre)
 
-    const CollateralFactory: ContractFactory = await hre.ethers.getContractFactory('FiatCollateral')
+    const CollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+      'SelfReferentialCollateral'
+    )
 
-    const collateral = <FiatCollateral>await CollateralFactory.connect(deployer).deploy({
+    const collateral = <SelfReferentialCollateral>await CollateralFactory.connect(deployer).deploy({
       fallbackPrice: params.fallbackPrice,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
@@ -27,7 +29,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
       maxTradeVolume: params.maxTradeVolume,
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,
-      defaultThreshold: 0, // makes it self-referential
+      defaultThreshold: 0,
       delayUntilDefault: params.delayUntilDefault,
     })
     await collateral.deployed()
