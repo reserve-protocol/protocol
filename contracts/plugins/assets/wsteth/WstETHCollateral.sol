@@ -6,16 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 import "../OracleLib.sol";
-
-/// External Interface for wstETH
-// See: https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#code
-interface IWstETH {
-    /**
-     * @notice Get amount of stETH for a one wstETH
-     * @return Amount of stETH for 1 wstETH
-     */
-    function stEthPerToken() external view returns (uint256);
-}
+import "./IWstETH.sol";
 
 /**
  * @title WstETHCollateral

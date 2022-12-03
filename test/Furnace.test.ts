@@ -14,7 +14,6 @@ import {
   TestIMain,
   TestIRToken,
   USDCMock,
-  WstETHMock,
 } from '../typechain'
 import { advanceBlocks, advanceTime } from './utils/time'
 import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
@@ -49,13 +48,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
   let token1: ERC20Mock
   let token2: StaticATokenMock
   let token3: CTokenMock
-  let wstETHToken: WstETHMock
 
   let collateral0: Collateral
   let collateral1: Collateral
   let collateral2: Collateral
   let collateral3: Collateral
-  let wstETHCollateral: Collateral
 
   let initialBal: BigNumber
 
@@ -92,7 +89,7 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
     initialBal = bn('100e18')
 
     // Get assets and tokens
-    ;[collateral0, collateral1, collateral2, collateral3, wstETHCollateral] = basket
+    ;[collateral0, collateral1, collateral2, collateral3] = basket
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
@@ -100,22 +97,17 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await ethers.getContractAt('StaticATokenMock', await collateral2.erc20())
     )
     token3 = <CTokenMock>await ethers.getContractAt('CTokenMock', await collateral3.erc20())
-    wstETHToken = <WstETHMock>(
-      await ethers.getContractAt('WstETHMock', await wstETHCollateral.erc20())
-    )
 
     // Mint Tokens
     await token0.connect(owner).mint(addr1.address, initialBal)
     await token1.connect(owner).mint(addr1.address, initialBal)
     await token2.connect(owner).mint(addr1.address, initialBal)
     await token3.connect(owner).mint(addr1.address, initialBal)
-    await wstETHToken.connect(owner).mint(addr1.address, initialBal)
 
     await token0.connect(owner).mint(addr2.address, initialBal)
     await token1.connect(owner).mint(addr2.address, initialBal)
     await token2.connect(owner).mint(addr2.address, initialBal)
     await token3.connect(owner).mint(addr2.address, initialBal)
-    await wstETHToken.connect(owner).mint(addr2.address, initialBal)
   })
 
   describe('Deployment #fast', () => {
@@ -196,13 +188,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
-      await wstETHToken.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
-      await wstETHToken.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
@@ -412,13 +402,10 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token1.connect(owner).mint(addr1.address, max256)
       await token2.connect(owner).mint(addr1.address, max256)
       await token3.connect(owner).mint(addr1.address, max256)
-      await wstETHToken.connect(owner).mint(addr1.address, max256)
-
       await token0.connect(addr1).approve(rToken.address, max256)
       await token1.connect(addr1).approve(rToken.address, max256)
       await token2.connect(addr1).approve(rToken.address, max256)
       await token3.connect(addr1).approve(rToken.address, max256)
-      await wstETHToken.connect(addr1).approve(rToken.address, max256)
 
       // Issue and send tokens to furnace
       if (bal.gt(bn('0'))) {
@@ -467,13 +454,11 @@ describe(`FurnaceP${IMPLEMENTATION} contract`, () => {
       await token1.connect(addr1).approve(rToken.address, initialBal)
       await token2.connect(addr1).approve(rToken.address, initialBal)
       await token3.connect(addr1).approve(rToken.address, initialBal)
-      await wstETHToken.connect(addr1).approve(rToken.address, initialBal)
 
       await token0.connect(addr2).approve(rToken.address, initialBal)
       await token1.connect(addr2).approve(rToken.address, initialBal)
       await token2.connect(addr2).approve(rToken.address, initialBal)
       await token3.connect(addr2).approve(rToken.address, initialBal)
-      await wstETHToken.connect(addr2).approve(rToken.address, initialBal)
 
       // Issue tokens
       const issueAmount: BigNumber = bn('100e18')
