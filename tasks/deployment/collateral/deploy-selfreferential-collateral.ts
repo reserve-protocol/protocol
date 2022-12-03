@@ -11,7 +11,6 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
-  .addParam('delayUntilDefault', 'Seconds until default')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -30,7 +29,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,
       defaultThreshold: 0,
-      delayUntilDefault: params.delayUntilDefault,
+      delayUntilDefault: 0,
     })
     await collateral.deployed()
 

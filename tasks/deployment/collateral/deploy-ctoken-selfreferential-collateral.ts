@@ -10,7 +10,6 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
-  .addParam('delayUntilDefault', 'Seconds until a default is recognized')
   .addParam('comptroller', 'Comptroller address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
@@ -32,7 +31,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
           oracleTimeout: params.oracleTimeout,
           targetName: params.targetName,
           defaultThreshold: 0,
-          delayUntilDefault: params.delayUntilDefault,
+          delayUntilDefault: 0,
         },
         18,
         params.comptroller
