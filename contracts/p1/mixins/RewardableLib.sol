@@ -12,7 +12,7 @@ import "../../interfaces/IBackingManager.sol";
  * @notice A library that allows a contract to claim rewards
  * @dev The caller must implement the IRewardable interface!
  */
-abstract contract RewardableLibP1 is IRewardable {
+library RewardableLibP1 {
     using Address for address;
     using SafeERC20 for IERC20;
 
@@ -20,7 +20,7 @@ abstract contract RewardableLibP1 is IRewardable {
     /// @custom:interaction mostly CEI but see comments
     // actions:
     //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()")) for asset in assets
-    function claimRewards(IAssetRegistry reg) external {
+    function claimRewards(IAssetRegistry reg) internal {
         (, IAsset[] memory assets) = reg.getRegistry();
         for (uint256 i = 0; i < assets.length; ++i) {
             // Claim rewards via delegatecall
@@ -35,7 +35,7 @@ abstract contract RewardableLibP1 is IRewardable {
     /// @custom:interaction mostly CEI but see comments
     // actions:
     //   do asset.delegatecall(abi.encodeWithSignature("claimRewards()"))
-    function claimRewardsSingle(IAsset asset) external {
+    function claimRewardsSingle(IAsset asset) internal {
         // Claim rewards via delegatecall
         address(asset).functionDelegateCall(
             abi.encodeWithSignature("claimRewards()"),
@@ -90,7 +90,7 @@ abstract contract RewardableLibP1 is IRewardable {
         IERC20 erc20,
         IAssetRegistry reg,
         IBackingManager bm
-    ) external {
+    ) internal {
         require(reg.isRegistered(erc20), "erc20 unregistered");
         uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
         if (amt > 0) {

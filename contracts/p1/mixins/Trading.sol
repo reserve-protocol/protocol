@@ -17,7 +17,6 @@ abstract contract TradingP1 is
     Multicall,
     ComponentP1,
     ReentrancyGuardUpgradeable,
-    RewardableLibP1,
     ITrading
 {
     using FixLib for uint192;

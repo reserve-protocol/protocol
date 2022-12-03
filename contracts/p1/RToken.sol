@@ -21,7 +21,7 @@ uint192 constant MAX_ISSUANCE_RATE = 1e18; // {1}
  * @title RTokenP1
  * An ERC20 with an elastic supply and governable exchange rate to basket units.
  */
-contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, RewardableLibP1, IRToken {
+contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     using RedemptionBatteryLib for RedemptionBatteryLib.Battery;
     using SafeERC20Upgradeable for IERC20Upgradeable;
 
