@@ -279,6 +279,7 @@ async function collateralFixture(
       await wstETHCollateralFactory.deploy(
         fp('0'),
         chainlinkFeed.address,
+        chainlinkFeed.address,
         erc20.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,

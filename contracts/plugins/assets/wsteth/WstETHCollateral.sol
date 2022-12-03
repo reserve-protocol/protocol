@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/libraries/Fixed.sol";
+import "../OracleLib.sol";
 
 /// External Interface for wstETH
 // See: https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#code
@@ -30,8 +31,11 @@ contract WstETHCollateral is Collateral {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     AggregatorV3Interface public immutable uoaPerRefFeed;
+    AggregatorV3Interface public immutable uoaPerStETHFeed;
 
+    /// @param fallbackPrice_ Fallbackprice {UoA/tok}
     /// @param uoaPerRefFeed_ Feed units: {UoA/ref}
+    /// @param uoaPerStETHFeed_ Feed units: {UoA/stETH}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     /// @param defaultThreshold_ {%} A value like 0.1 that represents a deviation tolerance
@@ -39,6 +43,7 @@ contract WstETHCollateral is Collateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface uoaPerRefFeed_,
+        AggregatorV3Interface uoaPerStETHFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -60,6 +65,7 @@ contract WstETHCollateral is Collateral {
 
         defaultThreshold = defaultThreshold_;
         uoaPerRefFeed = uoaPerRefFeed_;
+        uoaPerStETHFeed = uoaPerStETHFeed_;
         prevReferencePrice = refPerTok();
     }
 
@@ -77,16 +83,16 @@ contract WstETHCollateral is Collateral {
             markStatus(CollateralStatus.DISABLED);
         } else {
             try this.strictPrice() returns (uint192 tokPrice) {
-                try this.pricePerRef() returns (uint192 refPrice) {
+                try this.pricePerRef() returns (uint192 uoaPerRefPrice) {
                     // D18{ref/tok}
-                    uint192 p = tokPrice.mul(FIX_SCALE).div(refPrice);
+                    uint192 ratio = tokPrice.mul(FIX_SCALE).div(uoaPerRefPrice);
 
                     // D18{ref/tok} = D18{ref/tok} * D18{1} / D18
                     uint192 delta = (referencePrice * defaultThreshold) / FIX_ONE; // D18{ref/tok}
 
                     // If the price is below the default-threshold price, default eventually
                     // uint192(+/-) is the same as Fix.plus/minus
-                    if (p < referencePrice - delta || p > referencePrice + delta)
+                    if (ratio < referencePrice - delta || ratio > referencePrice + delta)
                         markStatus(CollateralStatus.IFFY);
                     else markStatus(CollateralStatus.SOUND);
                 } catch (bytes memory errData) {
@@ -94,7 +100,6 @@ contract WstETHCollateral is Collateral {
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
                     markStatus(CollateralStatus.IFFY);
                 }
-                markStatus(CollateralStatus.SOUND);
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -136,8 +141,8 @@ contract WstETHCollateral is Collateral {
     /// Since {USD/wstETH} chainlink feed does not exist, we use this calculation:
     /// {UoA/tok} = {stETH/wstETH} * {USD/stETH}
     function strictPrice() public view override returns (uint192) {
-        uint192 stEthPerWstEth = _safeWrap(IWstETH(address(erc20)).stEthPerToken());
-        uint192 uoaPerStEth = uoaPerRefFeed.price(oracleTimeout);
+        uint192 stEthPerWstEth = this.refPerTok();
+        uint192 uoaPerStEth = uoaPerStETHFeed.price(oracleTimeout);
         return (stEthPerWstEth * uoaPerStEth) / FIX_ONE;
     }
 }

@@ -39,6 +39,7 @@ import {
   WstETHCollateral,
   WstETHCollateral__factory,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -46,7 +47,7 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const holder = '0x10cd5fbe1b404b7e19ef964b63939907bdaf42e2'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -134,10 +135,11 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
     )
 
     // Deploy wstETH collateral plugin
-    wstEthCollateralFactory = await ethers.getContractFactory('WstETHCollateral', {})
+    wstEthCollateralFactory = await ethers.getContractFactory('WstETHCollateral')
     wstETHCollateral = <WstETHCollateral>(
       await wstEthCollateralFactory.deploy(
         fp('1'),
+        networkConfig[chainId].chainlinkFeeds.ETH as string,
         networkConfig[chainId].chainlinkFeeds.stETH as string,
         wstETH.address,
         config.rTokenMaxTradeVolume,
@@ -202,7 +204,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
 
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(18, bn('1800e18'))
 
     initialBal = fp('10')
     await whileImpersonating(holder, async (signer) => {
@@ -221,7 +223,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       expect(await wstETHCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('ETH'))
       expect(await wstETHCollateral.refPerTok()).to.be.closeTo(fp('1.07'), fp('0.1'))
       expect(await wstETHCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await wstETHCollateral.pricePerTarget()).to.equal(fp('1819.70237279')) // for pined block 14916729
+      expect(await wstETHCollateral.pricePerTarget()).to.equal(fp('1859.17')) // for pined block 14916729
       expect(await wstETHCollateral.prevReferencePrice()).to.be.closeTo(
         await wstETHCollateral.refPerTok(),
         fp('0.01')
@@ -276,107 +278,85 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1819'), fp('1'))
     })
 
-    // describe('Issuance/Appreciation/Redemption', () => {
-    //   const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    describe('Issuance/Appreciation/Redemption', () => {
+      const MIN_ISSUANCE_PER_BLOCK = bn('1e18')
 
-    //   // Issuance and redemption, making the collateral appreciate over time
-    //   it('Should issue, redeem, and handle appreciation rates correctly', async () => {
-    //     const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+      // Issuance and redemption, making the collateral appreciate over time
+      it('Should issue, redeem, and handle appreciation rates correctly', async () => {
+        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
-    //     // Provide approvals for issuances
-    //     await wstETH.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+        // Provide approvals for issuances
+        await wstETH.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
 
-    //     // Issue rTokens
-    //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+        // Issue rTokens
+        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-    //     // Check RTokens issued to user
-    //     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+        // Check RTokens issued to user
+        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-    //     // Store Balances after issuance
-    //     const balanceAddr1cbEth: BigNumber = await wstETH.balanceOf(addr1.address)
+        // Store Balances after issuance
+        const balanceAddr1WstEth: BigNumber = await wstETH.balanceOf(addr1.address)
 
-    //     // Check rates and prices
-    //     const cbEthPrice1: BigNumber = await WstETHCollateral.strictPrice() // ~ 1859.17 USD
-    //     const cbEthRefPerTok1: BigNumber = await WstETHCollateral.refPerTok() // ~ 1859.17 USD
+        // Check rates and prices
+        const wstEthPrice1: BigNumber = await wstETHCollateral.strictPrice() // ~ 1954 USD
+        const wstEthRefPerTok1: BigNumber = await wstETHCollateral.refPerTok() // ~ 1.07 USD
 
-    //     expect(cbEthPrice1).to.be.closeTo(fp('1859.17'), fp('100'))
-    //     expect(cbEthRefPerTok1).to.be.gt(fp('1'))
+        expect(wstEthPrice1).to.be.closeTo(fp('1954'), fp('10'))
+        expect(wstEthRefPerTok1).to.be.gt(fp('1'))
 
-    //     // Check total asset value
-    //     const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
-    //       rToken.address
-    //     )
-    //     expect(totalAssetValue1).to.be.closeTo(issueAmount.mul(1860), fp('10000')) // ~  approx 2000K in value
+        // Check total asset value
+        const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+          rToken.address
+        )
+        expect(totalAssetValue1).to.be.closeTo(issueAmount.mul(1819), fp('100')) // ~  approx 2k in value
 
-    //     // Advance time and blocks slightly, causing refPerTok() to increase
-    //     await advanceTime(10000)
-    //     await advanceBlocks(10000)
+        // Advance time and blocks slightly, causing refPerTok() to increase
+        await advanceTime(10_000)
+        await advanceBlocks(10_000)
 
-    //     // change exchange rate for this block
-    //     const oracle = await wstETH.oracle()
-    //     await whileImpersonating(oracle, async (oracle) => {
-    //       await wstETH.connect(oracle).updateExchangeRate(fp('1.037'))
-    //     })
+        // Refresh wstETHCollateral manually (required)
+        await wstETHCollateral.refresh()
+        expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-    //     // Refresh WstETHCollateral manually (required)
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // Check rates and prices - They should be the same as before
+        // Because oracle and stETH contract didn't change
+        const wstEthRefPerTok2: BigNumber = await wstETHCollateral.refPerTok()
+        const wstEthPrice2: BigNumber = await wstETHCollateral.strictPrice()
 
-    //     // Check rates and prices - Have changed, slight inrease
-    //     const cbEthPrice2: BigNumber = await WstETHCollateral.strictPrice() // ~1.0354 cents
-    //     const cbEthRefPerTok2: BigNumber = await WstETHCollateral.refPerTok() // ~1.0354 cents
+        // Check rates and price be same
+        expect(wstEthPrice2).to.be.eq(wstEthPrice1)
+        expect(wstEthRefPerTok2).to.be.eq(wstEthRefPerTok1)
 
-    //     // Advance time and blocks by 30 days, causing loan to go into WARNING
-    //     await advanceTime(2592000)
-    //     await advanceBlocks(2592000)
+        // Check total asset value increased
+        const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+          rToken.address
+        )
+        expect(totalAssetValue2).to.be.eq(totalAssetValue1)
 
-    //     // Refresh cpToken manually (required)
-    //     await WstETHCollateral.refresh()
-    //     // expect(await WstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Redeem Rtokens with the updated rates
+        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
 
-    //     // Check rates and increase
-    //     expect(cbEthRefPerTok2).to.be.gt(cbEthRefPerTok1)
+        // Check funds were transferred
+        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+        expect(await rToken.totalSupply()).to.equal(0)
 
-    //     // Still close to the original values
-    //     expect(cbEthPrice2).to.be.closeTo(fp('1928.82'), fp('10')) // 1860 * 1.037 = 1928.82 USD ~ 2k
-    //     expect(cbEthRefPerTok2).to.be.closeTo(fp('1.035'), fp('0.03'))
+        // Check balances - Fewer wstETH should have been sent to the user
+        const newbalanceAddr1WstEth: BigNumber = await wstETH.balanceOf(addr1.address)
 
-    //     // Check total asset value increased
-    //     const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
-    //       rToken.address
-    //     )
-    //     expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+        // Check received tokens represent ~1K in value at current prices
+        expect(newbalanceAddr1WstEth.sub(balanceAddr1WstEth)).to.be.closeTo(fp('1'), fp('0.1'))
 
-    //     // Refresh cpToken - everything should be fine now
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+        // Check remainders in Backing Manager
+        expect(await wstETH.balanceOf(backingManager.address)).to.be.eq(fp('0'))
 
-    //     // Redeem Rtokens with the updated rates
-    //     await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+        //  Check total asset value (remainder)
+        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.eq(fp('0'))
+      })
+    })
 
-    //     // Check funds were transferred
-    //     expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-    //     expect(await rToken.totalSupply()).to.equal(0)
-
-    //     // Check balances - Fewer cpTokens should have been sent to the user
-    //     const newBalanceAddr1cbEth: BigNumber = await wstETH.balanceOf(addr1.address)
-
-    //     // Check received tokens represent ~10K in value at current prices
-    //     expect(newBalanceAddr1cbEth.sub(balanceAddr1cbEth)).to.be.closeTo(fp('10000'), fp('1000')) // ~1.037 * 9.643 ~= 10K (100% of basket)
-
-    //     // Check remainders in Backing Manager
-    //     expect(await wstETH.balanceOf(backingManager.address)).to.be.closeTo(fp('320'), fp('1')) // ~=  320  ceth
-
-    //     //  Check total asset value (remainder)
-    //     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-    //       fp('617222'), // ~= 320 eth * usd/eth * wstETH /eth = 617222 USD
-    //       fp('1000')
-    //     )
-    //   })
-
-    //   it('Should mark collateral as DISABLED if the wstETH excahngeRate decreases', async () => {
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+    //   it('Should mark collateral as DISABLED if the wstETH exchangeRate decreases', async () => {
+    //     await wstETHCollateral.refresh()
+    //     expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
     //     // Advance time by another 100 days, causing loan to go into DEFAULT
 
     //     // manualy update exchange rate to a lower value
@@ -387,212 +367,262 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
     //     await advanceTime(8640000)
     //     await advanceBlocks(8640000)
 
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
+    //     await wstETHCollateral.refresh()
+    //     expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
     //   })
     // })
 
-    // // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
-    // // claiming calls throughout the protocol are handled correctly and do not revert.
-    // describe('Rewards', () => {
-    //   it('Should be able to claim rewards (if applicable)', async () => {
-    //     // Only checking to see that claim call does not revert
-    //     await expectEvents(backingManager.claimRewards(), [])
-    //   })
-    // })
+    // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
+    // claiming calls throughout the protocol are handled correctly and do not revert.
+    describe('Rewards', () => {
+      it('Should be able to claim rewards (if applicable)', async () => {
+        // Only checking to see that claim call does not revert
+        await expectEvents(backingManager.claimRewards(), [])
+      })
+    })
 
-    // describe('Price Handling', () => {
-    //   it('Should handle invalid/stale Price', async () => {
-    //     // Reverts with a feed with zero price
-    //     const invalidpriceCbEthCollateral: WstETHCollateral = <WstETHCollateral>await (
-    //       await ethers.getContractFactory('WstETHCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('1'),
-    //       mockChainlinkFeed.address,
-    //       wstETH.address,
-    //       config.rTokenMaxTradeVolume,
-    //       ORACLE_TIMEOUT,
-    //       ethers.utils.formatBytes32String('ETH'),
-    //       delayUntilDefault
-    //     )
-    //     await setOraclePrice(invalidpriceCbEthCollateral.address, bn(0))
+    describe('Price Handling', () => {
+      it('Should handle invalid/stale Price', async () => {
+        // Reverts with a feed with zero price
+        const invalidpriceCbEthCollateral: WstETHCollateral = <WstETHCollateral>(
+          await (
+            await ethers.getContractFactory('WstETHCollateral')
+          ).deploy(
+            fp('1'),
+            mockChainlinkFeed.address,
+            mockChainlinkFeed.address,
+            wstETH.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold,
+            delayUntilDefault
+          )
+        )
+        await setOraclePrice(invalidpriceCbEthCollateral.address, bn(0))
 
-    //     // Reverts with zero price
-    //     await expect(invalidpriceCbEthCollateral.strictPrice()).to.be.revertedWith(
-    //       'PriceOutsideRange()'
-    //     )
+        // Reverts with zero price
+        await expect(invalidpriceCbEthCollateral.strictPrice()).to.be.revertedWith(
+          'PriceOutsideRange()'
+        )
 
-    //     // Refresh should mark status IFFY
-    //     await invalidpriceCbEthCollateral.refresh()
-    //     expect(await invalidpriceCbEthCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Refresh should mark status IFFY
+        await invalidpriceCbEthCollateral.refresh()
+        expect(await invalidpriceCbEthCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-    //     // Reverts with stale price
-    //     await advanceTime(ORACLE_TIMEOUT.toString())
-    //     await expect(WstETHCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+        // Reverts with stale price
+        await advanceTime(ORACLE_TIMEOUT.toString())
+        await expect(wstETHCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
-    //     // Fallback price is returned
-    //     const [isFallback, price] = await WstETHCollateral.price(true)
-    //     expect(isFallback).to.equal(true)
-    //     expect(price).to.equal(fp('1'))
+        // Fallback price is returned
+        const [isFallback, price] = await wstETHCollateral.price(true)
+        expect(isFallback).to.equal(true)
+        expect(price).to.equal(fp('1'))
 
-    //     // Refresh should mark status DISABLED
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
-    //     await advanceBlocks(100000)
-    //     await WstETHCollateral.refresh()
-    //     expect(await WstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        // Refresh should mark status DISABLED
+        await wstETHCollateral.refresh()
+        expect(await wstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
+        await advanceBlocks(delayUntilDefault.mul(60))
+        await wstETHCollateral.refresh()
+        expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
-    //     const nonpriceCbEthCollateral: WstETHCollateral = <WstETHCollateral>await (
-    //       await ethers.getContractFactory('WstETHCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('1'),
-    //       NO_PRICE_DATA_FEED,
-    //       wstETH.address,
-    //       config.rTokenMaxTradeVolume,
-    //       ORACLE_TIMEOUT,
-    //       ethers.utils.formatBytes32String('ETH'),
-    //       delayUntilDefault
-    //     )
+        const nonpriceWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
+          await (
+            await ethers.getContractFactory('WstETHCollateral')
+          ).deploy(
+            fp('1'),
+            NO_PRICE_DATA_FEED,
+            NO_PRICE_DATA_FEED,
+            wstETH.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold,
+            delayUntilDefault
+          )
+        )
 
-    //     // Collateral with no price info should revert
-    //     await expect(nonpriceCbEthCollateral.strictPrice()).to.be.reverted
+        // Collateral with no price info should revert
+        await expect(nonpriceWstEthCollateral.strictPrice()).to.be.reverted
 
-    //     expect(await nonpriceCbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //   })
-    // })
+        expect(await nonpriceWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+    })
 
-    // // Note: Here the idea is to test all possible statuses and check all possible paths to default
-    // // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
-    // // hard default = SOUND -> DISABLED due to an invariant violation
-    // // This may require to deploy some mocks to be able to force some of these situations
-    // describe('Collateral Status', () => {
-    //   // Test for soft default
-    //   it.skip('No Updates status in case of soft default because there is no soft reset', async () => {
-    //     // Redeploy plugin using a Chainlink mock feed where we can change the price
-    //     const newcbEthCollateral: WstETHCollateral = <WstETHCollateral>await (
-    //       await ethers.getContractFactory('WstETHCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('1'),
-    //       mockChainlinkFeed.address,
-    //       await WstETHCollateral.erc20(),
-    //       await WstETHCollateral.maxTradeVolume(),
-    //       await WstETHCollateral.oracleTimeout(),
-    //       await WstETHCollateral.targetName(),
-    //       await WstETHCollateral.delayUntilDefault()
-    //     )
+    // Note: Here the idea is to test all possible statuses and check all possible paths to default
+    // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
+    // hard default = SOUND -> DISABLED due to an invariant violation
+    // This may require to deploy some mocks to be able to force some of these situations
+    describe('Collateral Status', () => {
+      // Test for soft default
+      it('No Updates status in case of soft default because there is no soft reset', async () => {
+        // Redeploy plugin using a Chainlink mock feed where we can change the price
+        let mockStETHChainlinkFeed: MockV3Aggregator
+        mockStETHChainlinkFeed = <MockV3Aggregator>(
+          await MockV3AggregatorFactory.deploy(18, fp('2000')) // wstETH price ~= 2140 = 2000 * 1.07
+        )
 
-    //     // Check initial state
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //     expect(await newcbEthCollateral.whenDefault()).to.equal(MAX_UINT256)
+        let mockETHChainlinkFeed: MockV3Aggregator
+        mockETHChainlinkFeed = <MockV3Aggregator>(
+          await MockV3AggregatorFactory.deploy(18, fp('2000'))
+        )
 
-    //     // Depeg one of the underlying tokens - Reducing price 20%
-    //     await setOraclePrice(newcbEthCollateral.address, fp('8e7')) // -20%
+        const newWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
+          await (
+            await ethers.getContractFactory('WstETHCollateral')
+          ).deploy(
+            fp('1'),
+            mockETHChainlinkFeed.address,
+            mockStETHChainlinkFeed.address,
+            await wstETHCollateral.erc20(),
+            await wstETHCollateral.maxTradeVolume(),
+            await wstETHCollateral.oracleTimeout(),
+            await wstETHCollateral.targetName(),
+            await wstETHCollateral.defaultThreshold(),
+            await wstETHCollateral.delayUntilDefault()
+          )
+        )
 
-    //     // Force updates - Should update whenDefault and status
-    //     await expect(newcbEthCollateral.refresh())
-    //       .to.emit(newcbEthCollateral, 'DefaultStatusChanged')
-    //       .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.IFFY)
+        // Check initial state
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newWstEthCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-    //     const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
-    //       delayUntilDefault
-    //     )
-    //     expect(await newcbEthCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+        // Reducing price of stETH less than 5%, should be sound
+        const v3Aggregator = await ethers.getContractAt(
+          'MockV3Aggregator',
+          mockStETHChainlinkFeed.address
+        )
+        await v3Aggregator.updateAnswer(fp('1901')) // 2000 * 0.95 + 1
 
-    //     // Move time forward past delayUntilDefault
-    //     await advanceTime(Number(delayUntilDefault))
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await newWstEthCollateral.refresh()).not.emit(
+          newWstEthCollateral,
+          'CollateralStatusChanged'
+        )
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newWstEthCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-    //     // Nothing changes if attempt to refresh after default
-    //     const prevWhenDefault: BigNumber = await newcbEthCollateral.whenDefault()
-    //     await expect(newcbEthCollateral.refresh()).to.not.emit(
-    //       newcbEthCollateral,
-    //       'DefaultStatusChanged'
-    //     )
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
-    //     expect(await newcbEthCollateral.whenDefault()).to.equal(prevWhenDefault)
-    //   })
+        // Reducing price of stETH more than 5%, should be iffy
+        await v3Aggregator.updateAnswer(fp('1899')) // 2000 * 0.95 - 1
+        // Force updates - Should update whenDefault and status
+        expect(await newWstEthCollateral.refresh())
+          .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
 
-    //   // Test for hard default
-    //   it('Updates status in case of hard default', async () => {
-    //     // Note: In this case requires to use a wstETH mock to be able to change the rate
-    //     // to hard default
-    //     const cbEthOracle = (await ethers.getSigners())[3]
-    //     const CbEthMockFactory = await ethers.getContractFactory('WstETHMock')
-    //     const WstETHMock: WstETHMock = <WstETHMock>(
-    //       await CbEthMockFactory.deploy(cbEthOracle.address, fp('1'))
-    //     )
-    //     // Set initial exchange rate to the new wstETH Mock
-    //     await WstETHMock.connect(cbEthOracle).updateExchangeRate(fp('1.02'))
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-    //     // Redeploy plugin using the new wstETH mock
-    //     const newcbEthCollateral: WstETHCollateral = <WstETHCollateral>await (
-    //       await ethers.getContractFactory('WstETHCollateral', {
-    //         libraries: { OracleLib: oracleLib.address },
-    //       })
-    //     ).deploy(
-    //       fp('1'),
-    //       await WstETHCollateral.chainlinkFeed(),
-    //       WstETHMock.address,
-    //       await WstETHCollateral.maxTradeVolume(),
-    //       await WstETHCollateral.oracleTimeout(),
-    //       await WstETHCollateral.targetName(),
-    //       await WstETHCollateral.delayUntilDefault()
-    //     )
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+          delayUntilDefault
+        )
+        expect(await newWstEthCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
-    //     // Check initial state
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //     expect(await newcbEthCollateral.whenDefault()).to.equal(MAX_UINT256)
+        // Increasing price of stETH back to normal range, should be sound
+        await v3Aggregator.updateAnswer(fp('2000'))
+        // Force updates - Should update whenDefault and status
+        expect(await newWstEthCollateral.refresh())
+          .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
 
-    //     // Decrease rate for wstETH, will disable collateral immediately
-    //     await WstETHMock.connect(cbEthOracle).updateExchangeRate(fp('1.01'))
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-    //     // Force updates - Should update whenDefault and status
-    //     await expect(newcbEthCollateral.refresh())
-    //       .to.emit(newcbEthCollateral, 'DefaultStatusChanged')
-    //       .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+        // Reducing price of stETH more than 5%, should be iffy
+        await v3Aggregator.updateAnswer(fp('1899')) // 2000 * 0.95 - 1
+        expect(await newWstEthCollateral.refresh())
+          .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
 
-    //     expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
-    //     const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-    //     expect(await newcbEthCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    //   })
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-    //   it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
-    //     const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-    //       'InvalidMockV3Aggregator'
-    //     )
-    //     const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-    //       await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
-    //     )
+        // Move time forward past delayUntilDefault
+        await advanceTime(Number(delayUntilDefault))
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
-    //     const invalidCbEthCollateral: WstETHCollateral = <WstETHCollateral>(
-    //       await wstEthCollateralFactory.deploy(
-    //         fp('1'),
-    //         invalidChainlinkFeed.address,
-    //         await WstETHCollateral.erc20(),
-    //         await WstETHCollateral.maxTradeVolume(),
-    //         await WstETHCollateral.oracleTimeout(),
-    //         await WstETHCollateral.targetName(),
-    //         await WstETHCollateral.delayUntilDefault()
-    //       )
-    //     )
+        // Nothing changes if attempt to refresh after default
+        const prevWhenDefault: BigNumber = await newWstEthCollateral.whenDefault()
+        await expect(newWstEthCollateral.refresh()).to.not.emit(
+          newWstEthCollateral,
+          'CollateralStatusChanged'
+        )
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        expect(await newWstEthCollateral.whenDefault()).to.equal(prevWhenDefault)
+      })
 
-    //     // Reverting with no reason
-    //     await invalidChainlinkFeed.setSimplyRevert(true)
-    //     await expect(invalidCbEthCollateral.refresh()).to.be.revertedWith('')
-    //     expect(await invalidCbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+      // Test for hard default
+      it('Updates status in case of hard default', async () => {
+        // Note: In this case requires to use a wstETH mock to be able to change the rate
+        // to hard default
+        const wstEthOracle = (await ethers.getSigners())[3]
+        const WstEthMockFactory = await ethers.getContractFactory('WstETHMock')
+        const wstETHMock: WstETHMock = <WstETHMock>await WstEthMockFactory.deploy()
 
-    //     // Runnning out of gas (same error)
-    //     await invalidChainlinkFeed.setSimplyRevert(false)
-    //     await expect(invalidCbEthCollateral.refresh()).to.be.revertedWith('')
-    //     expect(await invalidCbEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //   })
-    // })
+        // Set initial exchange rate to the new wstETH Mock
+        await wstETHMock.connect(wstEthOracle).setExchangeRate(fp('1'))
+
+        // Redeploy plugin using the new wstETH mock
+        const newWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
+          await (
+            await ethers.getContractFactory('WstETHCollateral')
+          ).deploy(
+            fp('1'),
+            await wstETHCollateral.chainlinkFeed(),
+            await wstETHCollateral.chainlinkFeed(),
+            wstETHMock.address,
+            await wstETHCollateral.maxTradeVolume(),
+            await wstETHCollateral.oracleTimeout(),
+            await wstETHCollateral.targetName(),
+            await wstETHCollateral.defaultThreshold(),
+            await wstETHCollateral.delayUntilDefault()
+          )
+        )
+
+        // Check initial state
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await newWstEthCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+        // Decrease rate for wstETH, will disable collateral immediately
+        await wstETHMock.connect(wstEthOracle).setExchangeRate(fp('0.9'))
+
+        // Force updates - Should update whenDefault and status
+        await expect(newWstEthCollateral.refresh())
+          .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
+          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+        expect(await newWstEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
+        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+        expect(await newWstEthCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      })
+
+      it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+        const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+          'InvalidMockV3Aggregator'
+        )
+        const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+          await InvalidMockV3AggregatorFactory.deploy(18, fp('1800'))
+        )
+
+        const invalidWstETHCollateral: WstETHCollateral = <WstETHCollateral>(
+          await wstEthCollateralFactory.deploy(
+            fp('1'),
+            invalidChainlinkFeed.address,
+            invalidChainlinkFeed.address,
+            await wstETHCollateral.erc20(),
+            await wstETHCollateral.maxTradeVolume(),
+            await wstETHCollateral.oracleTimeout(),
+            await wstETHCollateral.targetName(),
+            await wstETHCollateral.defaultThreshold(),
+            await wstETHCollateral.delayUntilDefault()
+          )
+        )
+
+        // Reverting with no reason
+        await invalidChainlinkFeed.setSimplyRevert(true)
+        await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
+        expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+        // Runnning out of gas (same error)
+        await invalidChainlinkFeed.setSimplyRevert(false)
+        await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
+        expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+      })
+    })
   })
 })
