@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IAsset.sol";
+import "./IAsset.sol";
 import "./IComponent.sol";
 
 /**
@@ -42,6 +42,10 @@ interface IAssetRegistry is IComponent {
 
     /// @return A list of all registered ERC20s
     function erc20s() external view returns (IERC20[] memory);
+
+    /// @return The list of registered ERC20s
+    /// @return The list of registered Assets, in the same order
+    function getRegistry() external view returns (IERC20[] memory, IAsset[] memory);
 
     function register(IAsset asset) external returns (bool);
 

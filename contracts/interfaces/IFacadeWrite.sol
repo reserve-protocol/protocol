@@ -28,6 +28,8 @@ struct SetupParams {
     uint192[] weights;
     // === Basket Backup ===
     BackupInfo[] backups;
+    // === Beneficiaries - Revenue Sharing ===
+    BeneficiaryInfo[] beneficiaries;
 }
 
 /**
@@ -38,6 +40,15 @@ struct BackupInfo {
     bytes32 backupUnit;
     uint256 diversityFactor;
     ICollateral[] backupCollateral;
+}
+
+/**
+ * @title BeneficiaryInfo
+ * @notice The set of params to define a beneficiary
+ */
+struct BeneficiaryInfo {
+    address beneficiary;
+    RevenueShare revShare;
 }
 
 /**

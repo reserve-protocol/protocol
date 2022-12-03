@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/interfaces/IAsset.sol";
+import "../../interfaces/IAsset.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
@@ -35,12 +35,11 @@ abstract contract Collateral is ICollateral, Asset {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_
-    ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, rewardERC20_, maxTradeVolume_, oracleTimeout_) {
+    ) Asset(fallbackPrice_, chainlinkFeed_, erc20_, maxTradeVolume_, oracleTimeout_) {
         require(targetName_ != bytes32(0), "targetName missing");
         require(delayUntilDefault_ > 0, "delayUntilDefault zero");
         targetName = targetName_;
@@ -66,7 +65,7 @@ abstract contract Collateral is ICollateral, Asset {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 

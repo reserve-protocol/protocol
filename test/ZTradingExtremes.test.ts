@@ -146,7 +146,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         fp('1'),
         chainlinkFeed.address,
         erc20.address,
-        aaveToken.address,
         MAX_UOA,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -180,7 +179,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         fp('0.02'),
         chainlinkFeed.address,
         erc20.address,
-        compToken.address,
         MAX_UOA,
         MAX_ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -228,7 +226,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         fp('1'),
         await rsrAsset.chainlinkFeed(),
         rsr.address,
-        ZERO_ADDRESS,
         MAX_UOA,
         MAX_ORACLE_TIMEOUT
       )
@@ -420,7 +417,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           fp('1'),
           await aaveAsset.chainlinkFeed(),
           aaveToken.address,
-          aaveToken.address,
           MAX_UOA,
           MAX_ORACLE_TIMEOUT
         )
@@ -429,7 +425,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
         await AssetFactory.deploy(
           fp('1'),
           await compAsset.chainlinkFeed(),
-          compToken.address,
           compToken.address,
           MAX_UOA,
           MAX_ORACLE_TIMEOUT
@@ -722,7 +717,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
             fp('1'),
             chainlinkFeed.address,
             erc20.address,
-            aaveToken.address,
             config.rTokenMaxTradeVolume,
             MAX_ORACLE_TIMEOUT,
             targetUnit,

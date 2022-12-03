@@ -2,8 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/libraries/Fixed.sol";
+import "../libraries/Fixed.sol";
 import "./IAsset.sol";
+import "./IComponent.sol";
 import "./ITrade.sol";
 import "./IRewardable.sol";
 
@@ -14,7 +15,7 @@ uint256 constant GNOSIS_MAX_TOKENS = 7e28;
  * @title ITrading
  * @notice Common events and refresher function for all Trading contracts
  */
-interface ITrading is IRewardable {
+interface ITrading is IComponent, IRewardableComponent {
     event MaxTradeSlippageSet(uint192 indexed oldVal, uint192 indexed newVal);
     event MinTradeVolumeSet(uint192 indexed oldVal, uint192 indexed newVal);
 

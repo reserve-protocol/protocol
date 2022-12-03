@@ -98,7 +98,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         fp('1'),
         chainlinkFeed.address,
         staticATokenERC20.address,
-        one.aaveToken.address,
         one.config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),

@@ -4,12 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/plugins/trading/GnosisTrade.sol";
-import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/ITrade.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../plugins/trading/GnosisTrade.sol";
+import "../interfaces/IBroker.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/ITrade.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Component.sol";
 
 /// A simple core contract that deploys disposable trading contracts for Traders
 contract BrokerP0 is ComponentP0, IBroker {

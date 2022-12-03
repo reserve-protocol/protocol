@@ -4,7 +4,7 @@ import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import {
   CTokenMock,
   CTokenSelfReferentialCollateral,
@@ -38,7 +38,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
 
   // Non-backing assets
   let compoundMock: ComptrollerMock
-  let compToken: ERC20Mock
 
   // Tokens and Assets
   let weth: WETH9
@@ -82,7 +81,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       rsr,
       stRSR,
       compoundMock,
-      compToken,
       erc20s,
       collateral,
       config,
@@ -109,7 +107,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       fp('1'),
       chainlinkFeed.address,
       weth.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH'),
@@ -127,7 +124,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       fp('1').div(50),
       chainlinkFeed.address,
       cETH.address,
-      compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('ETH'),

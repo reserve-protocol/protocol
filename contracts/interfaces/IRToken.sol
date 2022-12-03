@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-IERC20PermitUpgradeable.sol";
-import "contracts/libraries/Fixed.sol";
+import "../libraries/Fixed.sol";
 import "./IAsset.sol";
 import "./IComponent.sol";
 import "./IMain.sol";
@@ -15,7 +15,12 @@ import "./IRewardable.sol";
  * @notice An RToken is an ERC20 that is permissionlessly issuable/redeemable and tracks an
  *   exchange rate against a single unit: baskets, or {BU} in our type notation.
  */
-interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgradeable {
+interface IRToken is
+    IComponent,
+    IRewardableComponent,
+    IERC20MetadataUpgradeable,
+    IERC20PermitUpgradeable
+{
     /// Emitted when issuance is started, at the point collateral is taken in
     /// @param issuer The account performing the issuance
     /// @param index The index off the issuance in the issuer's queue
@@ -124,9 +129,14 @@ interface IRToken is IRewardable, IERC20MetadataUpgradeable, IERC20PermitUpgrade
     /// @custom:interaction
     function redeem(uint256 amount) external;
 
-    /// Sweep all reward tokens in excess of liabilities to the BackingManager
+    /// Sweep all ERC20 balances in excess of liabilities to the BackingManager
     /// @custom:interaction
     function sweepRewards() external;
+
+    /// Sweep a single ERC20 in excess of liabilities to the BackingManager
+    /// @param erc20 The ERC20 to sweep, must be registered
+    /// @custom:interaction
+    function sweepRewardsSingle(IERC20 erc20) external;
 
     /// Mints a quantity of RToken to the `recipient`, callable only by the BackingManager
     /// @param recipient The recipient of the newly minted RToken

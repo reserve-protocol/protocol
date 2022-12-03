@@ -1,10 +1,9 @@
 import { Fixture } from 'ethereum-waffle'
-import { ContractFactory } from 'ethers'
+import { ContractFactory, Contract } from 'ethers'
 import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { IImplementations, IGovParams, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { ZERO_ADDRESS } from '../../../common/constants'
 import { Implementation, IMPLEMENTATION } from '../../fixtures'
 import {
   Asset,
@@ -27,7 +26,6 @@ import {
   OracleLib,
   PermitLib,
   RevenueTraderP1,
-  RewardableLibP1,
   RTokenP1,
   StRSRP1Votes,
   TestIDeployer,
@@ -118,7 +116,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     fp('0.007'),
     networkConfig[chainId].chainlinkFeeds.RSR || '',
     rsr.address,
-    ZERO_ADDRESS,
     fp('1e6'), // max trade volume
     ORACLE_TIMEOUT
   )
@@ -138,7 +135,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    const rewardableLib: RewardableLibP1 = <RewardableLibP1>await RewardableLibFactory.deploy()
+    const rewardableLib: Contract = <Contract>await RewardableLibFactory.deploy()
 
     const AssetRegImplFactory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1')
     const assetRegImpl: AssetRegistryP1 = <AssetRegistryP1>await AssetRegImplFactory.deploy()

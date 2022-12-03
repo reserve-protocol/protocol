@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
+import "../../libraries/Fixed.sol";
+import "./AbstractCollateral.sol";
 
 /**
  * @title FiatCollateral
@@ -24,7 +24,6 @@ contract FiatCollateral is Collateral {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -35,7 +34,6 @@ contract FiatCollateral is Collateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -73,7 +71,7 @@ contract FiatCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 }

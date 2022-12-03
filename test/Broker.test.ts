@@ -21,11 +21,12 @@ import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fi
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime, getLatestBlockTimestamp } from './utils/time'
 import { ITradeRequest } from './utils/trades'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   let owner: SignerWithAddress

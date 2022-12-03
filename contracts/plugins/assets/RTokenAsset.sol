@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/Asset.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/p1/mixins/RecollateralizationLib.sol";
+import "./Asset.sol";
+import "../../interfaces/IMain.sol";
+import "../../interfaces/IRToken.sol";
+import "../../p1/mixins/RecollateralizationLib.sol";
 
 /// Once an RToken gets large eonugh to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
@@ -17,8 +17,6 @@ contract RTokenAsset is IAsset {
     IBackingManager public immutable backingManager;
 
     IERC20Metadata public immutable erc20;
-
-    IERC20 public immutable rewardERC20;
 
     uint8 public immutable erc20Decimals;
 
@@ -36,7 +34,6 @@ contract RTokenAsset is IAsset {
 
         erc20 = IERC20Metadata(address(erc20_));
         erc20Decimals = erc20_.decimals();
-        rewardERC20 = IERC20(address(0));
         maxTradeVolume = maxTradeVolume_;
     }
 
@@ -110,9 +107,9 @@ contract RTokenAsset is IAsset {
 
     // solhint-disable no-empty-blocks
 
-    /// (address, calldata) to call in order to claim rewards for holding this asset
-    /// @dev The default impl returns zero values, implying that no reward function exists.
-    function getClaimCalldata() external view virtual returns (address _to, bytes memory _cd) {}
+    /// Claim rewards earned by holding a balance of the ERC20 token
+    /// @dev Use delegatecall
+    function claimRewards() external virtual {}
 
     // solhint-enable no-empty-blocks
 }

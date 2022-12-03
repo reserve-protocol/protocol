@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/ATokenFiatCollateral.sol";
+import "../assets/ATokenFiatCollateral.sol";
 
 contract BadCollateralPlugin is ATokenFiatCollateral {
     bool public checkSoftDefault = true; // peg
@@ -14,8 +14,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
-        IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
+        IStaticAToken erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -26,7 +25,6 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,
@@ -74,7 +72,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 }

@@ -2,14 +2,11 @@ import hre, { ethers } from 'hardhat'
 
 import { getChainId } from '../../common/blockchain-utils'
 import { developmentChains, networkConfig } from '../../common/configuration'
-import { ZERO_ADDRESS } from '../../common/constants'
 import { fp, bn } from '../../common/numbers'
 import {
   getDeploymentFile,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  getDeploymentFilename,
-  IDeployments,
 } from '../deployment/common'
 import { getOracleTimeout, verifyContract } from '../deployment/utils'
 import { ATokenMock, ATokenFiatCollateral } from '../../typechain'
@@ -30,9 +27,6 @@ async function main() {
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   deployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
 
-  const deploymentFilename = getDeploymentFilename(chainId)
-  const stage1Deployments = <IDeployments>getDeploymentFile(deploymentFilename)
-
   let asset = await ethers.getContractAt('Asset', deployments.collateral.DAI as string)
   /********  Verify Fiat Collateral - DAI  **************************/
   await verifyContract(
@@ -42,7 +36,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       networkConfig[chainId].tokens.DAI,
-      ZERO_ADDRESS,
       fp('1e6').toString(),
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('USD'),
@@ -80,7 +73,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       await aTokenCollateral.erc20(),
-      networkConfig[chainId].tokens.stkAAVE,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('USD'),
@@ -98,7 +90,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.DAI,
       networkConfig[chainId].tokens.cDAI,
-      networkConfig[chainId].tokens.COMP,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('USD'),
@@ -119,7 +110,6 @@ async function main() {
       networkConfig[chainId].chainlinkFeeds.WBTC,
       networkConfig[chainId].chainlinkFeeds.BTC,
       networkConfig[chainId].tokens.cWBTC,
-      networkConfig[chainId].tokens.COMP,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('BTC'),
@@ -139,7 +129,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.ETH,
       networkConfig[chainId].tokens.cETH,
-      networkConfig[chainId].tokens.COMP,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('ETH'),
@@ -159,7 +148,6 @@ async function main() {
       networkConfig[chainId].chainlinkFeeds.WBTC,
       networkConfig[chainId].chainlinkFeeds.BTC,
       networkConfig[chainId].tokens.WBTC,
-      ZERO_ADDRESS,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       ethers.utils.formatBytes32String('BTC'),
@@ -177,7 +165,6 @@ async function main() {
       (await asset.fallbackPrice()).toString(),
       networkConfig[chainId].chainlinkFeeds.ETH,
       networkConfig[chainId].tokens.WETH,
-      ZERO_ADDRESS,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       hre.ethers.utils.formatBytes32String('ETH'),
@@ -196,7 +183,6 @@ async function main() {
       networkConfig[chainId].chainlinkFeeds.EURT,
       networkConfig[chainId].chainlinkFeeds.EUR,
       networkConfig[chainId].tokens.EURT,
-      ZERO_ADDRESS,
       fp('1e6').toString(), // $1m
       getOracleTimeout(chainId).toString(),
       ethers.utils.formatBytes32String('EURO'),

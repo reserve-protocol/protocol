@@ -5,14 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IBasket.sol";
-import "contracts/interfaces/IBasketHandler.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/p1/mixins/Component.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/Basket.sol";
-import "contracts/libraries/Array.sol";
+import "../interfaces/IAssetRegistry.sol";
+import "../interfaces/IBasketHandler.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Array.sol";
+import "../libraries/Basket.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Component.sol";
 
 /**
  * @title BasketHandler
@@ -511,8 +510,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
         }
 
         // Keep records, emit event
-        uint192[] memory refAmts = new uint192[](newBasketLength);
-        for (uint256 i = 0; i < newBasketLength; ++i) {
+        basketLength = basket.erc20s.length;
+        uint192[] memory refAmts = new uint192[](basketLength);
+        for (uint256 i = 0; i < basketLength; ++i) {
             refAmts[i] = basket.refAmts[basket.erc20s[i]];
         }
         emit BasketSet(nonce, basket.erc20s, refAmts, disabled);

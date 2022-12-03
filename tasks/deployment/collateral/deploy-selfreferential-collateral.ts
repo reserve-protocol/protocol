@@ -7,7 +7,6 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('tokenAddress', 'ERC20 token address')
-  .addParam('rewardToken', 'Reward token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
@@ -27,7 +26,6 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
         params.fallbackPrice,
         params.priceFeed,
         params.tokenAddress,
-        params.rewardToken,
         params.maxTradeVolume,
         params.oracleTimeout,
         params.targetName,

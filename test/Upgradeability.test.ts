@@ -1,6 +1,6 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { ContractFactory, Wallet } from 'ethers'
+import { ContractFactory, Contract, Wallet } from 'ethers'
 import { ethers, upgrades, waffle } from 'hardhat'
 import { IComponents, IConfig } from '../common/configuration'
 import { OWNER, SHORT_FREEZER, LONG_FREEZER, PAUSER } from '../common/constants'
@@ -77,7 +77,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
   let tradingLib: RecollateralizationLibP1
-  let rewardableLib: RewardableLibP1
+  let rewardableLib: Contract
   let permitLib: PermitLib
 
   // Factories
@@ -133,7 +133,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
 
     // Deploy RewardableLib external library
     const RewardableLibFactory: ContractFactory = await ethers.getContractFactory('RewardableLibP1')
-    rewardableLib = <RewardableLibP1>await RewardableLibFactory.deploy()
+    rewardableLib = <Contract>await RewardableLibFactory.deploy()
 
     // Setup factories
     MainFactory = await ethers.getContractFactory('MainP1')
@@ -352,7 +352,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         {
           initializer: 'init',
           kind: 'uups',
-          unsafeAllow: ['external-library-linking'],
+          unsafeAllow: ['external-library-linking', 'delegatecall'],
         }
       )
       await newRToken.deployed()
@@ -657,7 +657,7 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
         rToken.address,
         RTokenV2Factory,
         {
-          unsafeAllow: ['external-library-linking'],
+          unsafeAllow: ['external-library-linking', 'delegatecall'],
         }
       )
 

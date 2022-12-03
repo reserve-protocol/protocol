@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../interfaces/IMain.sol";
+import "./mixins/Component.sol";
 
 /// The AssetRegistry provides the mapping from ERC20 to Asset, allowing the rest of Main
 /// to think in terms of ERC20 tokens and target/ref units.
@@ -94,6 +94,24 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
         for (uint256 i = 0; i < _erc20s.length(); i++) {
             erc20s_[i] = IERC20(_erc20s.at(i));
         }
+    }
+
+    /// TODO decide whether to keep and use it in more places, or dump
+    function getRegistry()
+        external
+        view
+        returns (IERC20[] memory erc20s_, IAsset[] memory assets_)
+    {
+        uint256 length = _erc20s.length();
+        erc20s_ = new IERC20[](length);
+        assets_ = new IAsset[](length);
+        for (uint256 i = 0; i < length; ++i) {
+            erc20s_[i] = IERC20(_erc20s.at(i));
+            assets_[i] = assets[IERC20(_erc20s.at(i))];
+            assert(address(erc20s_[i]) != address(0));
+            assert(address(assets_[i]) != address(0));
+        }
+        assert(erc20s_.length == assets_.length);
     }
 
     //

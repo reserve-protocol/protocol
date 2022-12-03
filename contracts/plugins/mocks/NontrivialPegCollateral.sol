@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/FiatCollateral.sol";
+import "../assets/FiatCollateral.sol";
 
 contract NontrivialPegCollateral is FiatCollateral {
     uint192 private peg = FIX_ONE; // {target/ref}
@@ -14,7 +14,6 @@ contract NontrivialPegCollateral is FiatCollateral {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
@@ -25,7 +24,6 @@ contract NontrivialPegCollateral is FiatCollateral {
             fallbackPrice_,
             chainlinkFeed_,
             erc20_,
-            rewardERC20_,
             maxTradeVolume_,
             oracleTimeout_,
             targetName_,

@@ -3,14 +3,13 @@ pragma solidity 0.8.9;
 
 // solhint-disable-next-line max-line-length
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IRewardable.sol";
-import "contracts/interfaces/IRToken.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/libraries/RedemptionBattery.sol";
-import "contracts/p1/mixins/Component.sol";
-import "contracts/p1/mixins/RewardableLib.sol";
-import "contracts/vendor/ERC20PermitUpgradeable.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/IRToken.sol";
+import "../libraries/Fixed.sol";
+import "../libraries/RedemptionBattery.sol";
+import "./mixins/Component.sol";
+import "./mixins/RewardableLib.sol";
+import "../vendor/ERC20PermitUpgradeable.sol";
 
 // MIN_BLOCK_ISSUANCE_LIMIT: {rTok/block} 10k whole RTok
 uint192 constant MIN_BLOCK_ISSUANCE_LIMIT = 10_000 * FIX_ONE;
@@ -489,17 +488,37 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
         if (allZero) revert("Empty redemption");
     }
 
-    /// Claim rewards
+    // === Rewards ===
+
+    /// Claim rewards for all ERC20s
     /// @custom:interaction
-    function claimRewards() external notPausedOrFrozen {
+    function claimRewards() external {
+        requireNotPausedOrFrozen();
         RewardableLibP1.claimRewards(assetRegistry);
     }
 
-    /// Sweep all reward tokens in excess of liabilities to the BackingManager
+    /// Claim rewards for one ERC20
     /// @custom:interaction
-    function sweepRewards() external notPausedOrFrozen {
+    function claimRewardsSingle(IERC20 erc20) external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.claimRewardsSingle(assetRegistry.toAsset(erc20));
+    }
+
+    /// Sweep all token balances in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewards() external {
+        requireNotPausedOrFrozen();
         RewardableLibP1.sweepRewards(liabilities, assetRegistry, backingManager);
     }
+
+    /// Sweep an ERC20's rewards in excess of liabilities to the BackingManager
+    /// @custom:interaction
+    function sweepRewardsSingle(IERC20 erc20) external {
+        requireNotPausedOrFrozen();
+        RewardableLibP1.sweepRewardsSingle(liabilities, erc20, assetRegistry, backingManager);
+    }
+
+    // ====
 
     /// Mint a quantity of RToken to the `recipient`, decreasing the basket rate
     /// @param recipient The recipient of the newly minted RToken
@@ -509,7 +528,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     // effects:
     //   bal'[recipient] = bal[recipient] + amtRToken
     //   totalSupply' = totalSupply + amtRToken
-    function mint(address recipient, uint256 amtRToken) external notPausedOrFrozen {
+    function mint(address recipient, uint256 amtRToken) external {
+        requireNotPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         _mint(recipient, amtRToken);
         requireValidBUExchangeRate();
@@ -531,7 +551,8 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     /// @custom:protected
     // checks: unpaused; unfrozen; caller is backingManager
     // effects: basketsNeeded' = basketsNeeded_
-    function setBasketsNeeded(uint192 basketsNeeded_) external notPausedOrFrozen {
+    function setBasketsNeeded(uint192 basketsNeeded_) external {
+        requireNotPausedOrFrozen();
         require(_msgSender() == address(backingManager), "not backing manager");
         emit BasketsNeededChanged(basketsNeeded, basketsNeeded_);
         basketsNeeded = basketsNeeded_;
@@ -781,6 +802,10 @@ contract RTokenP1 is ComponentP1, IRewardable, ERC20PermitUpgradeable, Rewardabl
     ) internal virtual override {
         require(to != address(this), "RToken transfer to self");
     }
+
+    /// @dev Used in reward claim functions to save on contract size
+    // solhint-disable-next-line no-empty-blocks
+    function requireNotPausedOrFrozen() private notPausedOrFrozen {}
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

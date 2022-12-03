@@ -2,7 +2,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { IConfig, IGovParams, IRTokenConfig, IRTokenSetup } from '../common/configuration'
+import {
+  IConfig,
+  IGovParams,
+  IRevenueShare,
+  IRTokenConfig,
+  IRTokenSetup,
+} from '../common/configuration'
 import {
   CollateralStatus,
   SHORT_FREEZER,
@@ -43,17 +49,20 @@ import {
   USDCMock,
 } from '../typechain'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 describe('FacadeWrite contract', () => {
   let deployerUser: SignerWithAddress
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
   let addr2: SignerWithAddress
+  let beneficiary1: SignerWithAddress
+  let beneficiary2: SignerWithAddress
 
   // RSR
   let rsr: ERC20Mock
@@ -108,6 +117,9 @@ describe('FacadeWrite contract', () => {
   let rTokenSetup: IRTokenSetup
   let govParams: IGovParams
 
+  let revShare1: IRevenueShare
+  let revShare2: IRevenueShare
+
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -117,7 +129,7 @@ describe('FacadeWrite contract', () => {
   })
 
   beforeEach(async () => {
-    ;[deployerUser, owner, addr1, addr2] = await ethers.getSigners()
+    ;[deployerUser, owner, addr1, addr2, beneficiary1, beneficiary2] = await ethers.getSigners()
 
     // Deploy fixture
     ;({ rsr, compToken, compAsset, basket, config, facade, facadeTest, deployer } =
@@ -144,6 +156,13 @@ describe('FacadeWrite contract', () => {
     })
     facadeWrite = <FacadeWrite>await FacadeFactory.deploy(deployer.address)
 
+    revShare1 = { rTokenDist: bn('2'), rsrDist: bn('3') } // 0.5% for beneficiary1
+    revShare2 = { rTokenDist: bn('4'), rsrDist: bn('6') } // 1% for beneficiary2
+
+    // Decrease revenue splits for nicer rounding
+    config.dist.rTokenDist = bn('394')
+    config.dist.rsrDist = bn('591')
+
     // Set parameters
     rTokenConfig = {
       name: 'RTKN RToken',
@@ -162,6 +181,10 @@ describe('FacadeWrite contract', () => {
           diversityFactor: bn(1),
           backupCollateral: [cTokenAsset.address],
         },
+      ],
+      beneficiaries: [
+        { beneficiary: beneficiary1.address, revShare: revShare1 },
+        { beneficiary: beneficiary2.address, revShare: revShare2 },
       ],
     }
 
@@ -189,47 +212,37 @@ describe('FacadeWrite contract', () => {
   })
 
   it('Should perform validations', async () => {
-    // Set parameters
-    rTokenConfig = {
-      name: 'RTKN RToken',
-      symbol: 'RTKN',
-      mandate: 'mandate',
-      params: config,
-    }
+    // Should not accept zero addr beneficiary
+    rTokenSetup.beneficiaries = [{ beneficiary: ZERO_ADDRESS, revShare: revShare1 }]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('beneficiary revShare mismatch')
 
-    rTokenSetup = {
-      assets: [compAsset.address],
-      primaryBasket: [tokenAsset.address, usdcAsset.address],
-      weights: [fp('0.5'), fp('0.5')],
-      backups: [
-        {
-          backupUnit: ethers.utils.formatBytes32String('USD'),
-          diversityFactor: bn(1),
-          backupCollateral: [cTokenAsset.address],
-        },
-      ],
-    }
+    // Should not accept empty revShare
+    rTokenSetup.beneficiaries = [
+      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(0), rTokenDist: bn(0) } },
+    ]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('beneficiary revShare mismatch')
+
+    // Cannot deploy backup info with no collateral tokens
+    rTokenSetup.backups[0].backupCollateral = []
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('no backup collateral')
+
+    // Cannot deploy with invalid length in weights
+    rTokenSetup.weights = [fp('1')]
+    await expect(
+      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).to.be.revertedWith('invalid length')
 
     // Cannot deploy with no basket
     rTokenSetup.primaryBasket = []
     await expect(
       facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).to.be.revertedWith('no collateral')
-
-    // Cannot deploy with invalid length in weights
-    rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
-    rTokenSetup.weights = [fp('1')]
-    await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('invalid length')
-
-    // Cannot deploy backup info with no collateral tokens
-    rTokenSetup.primaryBasket = [tokenAsset.address, usdcAsset.address]
-    rTokenSetup.weights = [fp('0.5'), fp('0.5')]
-    rTokenSetup.backups[0].backupCollateral = []
-    await expect(
-      facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
-    ).to.be.revertedWith('no backup collateral')
   })
 
   describe('Deployment Process', () => {
@@ -349,6 +362,15 @@ describe('FacadeWrite contract', () => {
         expect(await stRSR.decimals()).to.equal(18)
         expect(await stRSR.totalSupply()).to.equal(0)
         expect(await stRSR.main()).to.equal(main.address)
+
+        // Distributor
+        const dist1 = await distributor.distribution(beneficiary1.address)
+        expect(dist1[0]).to.equal(rTokenSetup.beneficiaries[0].revShare.rTokenDist)
+        expect(dist1[1]).to.equal(rTokenSetup.beneficiaries[0].revShare.rsrDist)
+
+        const dist2 = await distributor.distribution(beneficiary2.address)
+        expect(dist2[0]).to.equal(rTokenSetup.beneficiaries[1].revShare.rTokenDist)
+        expect(dist2[1]).to.equal(rTokenSetup.beneficiaries[1].revShare.rsrDist)
       })
 
       it('Should register Assets/Collateral correctly', async () => {

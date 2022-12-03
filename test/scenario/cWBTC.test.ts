@@ -5,7 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { bn, fp } from '../../common/numbers'
 import { advanceTime } from '../utils/time'
 import { IConfig } from '../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus } from '../../common/constants'
 import {
   CTokenMock,
   CTokenNonFiatCollateral,
@@ -38,7 +38,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
 
   // Non-backing assets
   let compoundMock: ComptrollerMock
-  let compToken: ERC20Mock
 
   // Tokens and Assets
   let wbtc: ERC20Mock
@@ -85,7 +84,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       rsr,
       stRSR,
       compoundMock,
-      compToken,
       erc20s,
       collateral,
       config,
@@ -115,7 +113,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       referenceUnitOracle.address,
       targetUnitOracle.address,
       wbtc.address,
-      ZERO_ADDRESS,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),
@@ -134,7 +131,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       referenceUnitOracle.address,
       targetUnitOracle.address,
       cWBTC.address,
-      compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
       ethers.utils.formatBytes32String('BTC'),

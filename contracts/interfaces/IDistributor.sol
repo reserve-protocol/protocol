@@ -57,4 +57,8 @@ interface TestIDistributor is IDistributor {
 
     // solhint-disable-next-line func-name-mixedcase
     function ST_RSR() external view returns (address);
+
+    /// @return rTokenDist The RToken distribution for the address
+    /// @return rsrDist The RSR distribution for the address
+    function distribution(address) external view returns (uint16 rTokenDist, uint16 rsrDist);
 }

@@ -16,7 +16,6 @@ import {
   CTokenMock,
   ERC20Mock,
   FacadeAct,
-  FacadeTest,
   FiatCollateral,
   GnosisMock,
   IAssetRegistry,
@@ -34,11 +33,12 @@ import {
 } from '../typechain'
 import { Collateral, Implementation, IMPLEMENTATION, defaultFixture } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 const describeP1 = IMPLEMENTATION == Implementation.P1 ? describe : describe.skip
 
@@ -74,7 +74,6 @@ describe('FacadeAct contract', () => {
 
   // Facade
   let facadeAct: FacadeAct
-  let facadeTest: FacadeTest
 
   // Main
   let rToken: TestIRToken
@@ -116,7 +115,6 @@ describe('FacadeAct contract', () => {
       collateral,
       basket,
       facadeAct,
-      facadeTest,
       rToken,
       config,
       furnace,
@@ -509,17 +507,16 @@ describe('FacadeAct contract', () => {
       )
 
       const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-        await ATokenCollateralFactory.deploy(
+        ((await ATokenCollateralFactory.deploy(
           fp('1'),
           chainlinkFeed.address,
           aToken.address,
-          aaveToken.address,
           config.rTokenMaxTradeVolume,
           await aTokenAsset.oracleTimeout(),
           ethers.utils.formatBytes32String('USD'),
           await aTokenAsset.defaultThreshold(),
           await aTokenAsset.delayUntilDefault()
-        )
+        )) as unknown)
       )
 
       // Perform asset swap
@@ -559,7 +556,6 @@ describe('FacadeAct contract', () => {
           fp('1'),
           chainlinkFeed.address,
           aToken.address,
-          compToken.address, // Use same reward as CToken (for testing purposes)
           config.rTokenMaxTradeVolume,
           await aTokenAsset.oracleTimeout(),
           ethers.utils.formatBytes32String('USD'),
@@ -805,7 +801,6 @@ describe('FacadeAct contract', () => {
           fp('1'),
           feed,
           erc20.address,
-          ZERO_ADDRESS,
           config.rTokenMaxTradeVolume,
           bn(2).pow(47)
         )

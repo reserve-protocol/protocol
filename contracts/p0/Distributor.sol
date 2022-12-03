@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../interfaces/IMain.sol";
+import "./mixins/Component.sol";
 
 contract DistributorP0 is ComponentP0, IDistributor {
     using SafeERC20 for IERC20;
@@ -13,7 +13,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet internal destinations;
-    mapping(address => RevenueShare) internal distribution;
+    mapping(address => RevenueShare) public distribution;
     // invariant: distribution values are all nonnegative, and at least one is nonzero.
     // invariant: distribution[FURNACE].rsrDist == FIX_ZERO
     // invariant: distribution[ST_RSR].rTokenDist == FIX_ZERO
@@ -91,6 +91,7 @@ contract DistributorP0 is ComponentP0, IDistributor {
 
     /// Sets the distribution values - Internals
     function _setDistribution(address dest, RevenueShare memory share) internal {
+        require(dest != address(0), "dest cannot be zero");
         if (dest == FURNACE) require(share.rsrDist == 0, "Furnace must get 0% of RSR");
         if (dest == ST_RSR) require(share.rTokenDist == 0, "StRSR must get 0% of RToken");
         require(share.rsrDist <= 10000, "RSR distribution too high");
