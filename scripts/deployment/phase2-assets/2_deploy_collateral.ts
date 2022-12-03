@@ -543,7 +543,6 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
-    delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
 
@@ -581,7 +580,6 @@ async function main() {
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
-    delayUntilDefault: bn('86400').toString(), // 24h
   })
 
   assetCollDeployments.collateral.WETH = wETHCollateral
