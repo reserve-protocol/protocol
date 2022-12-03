@@ -978,7 +978,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should return fully discounted price after full basket refresh', async () => {
-      // Note: To get RToken price to 0, a full basket refresh needs to occur
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       // Set basket - Single token

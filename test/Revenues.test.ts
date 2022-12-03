@@ -427,7 +427,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await token0.connect(addr1).transfer(rTokenTrader.address, issueAmount)
         await expect(rTokenTrader.manageToken(token0.address)).to.emit(rTokenTrader, 'TradeStarted')
 
-        // Trade should have near-zero price worst-case price
+        // Trade should have extremely nonzero worst-case price
         const trade = await getTrade(rTokenTrader, token0.address)
         expect(await trade.worstCasePrice()).to.be.gte(fp('0.95'))
       })

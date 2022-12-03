@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../../interfaces/IAsset.sol";
 import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/IBackingManager.sol";
 import "../../interfaces/IMain.sol";
-import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
 
 /**
@@ -80,7 +80,7 @@ library TradingLibP0 {
     ///   2. Cache information such as component addresses + trading rules to save on gas
 
     struct ComponentCache {
-        ITrading trader;
+        IBackingManager bm;
         IBasketHandler bh;
         IAssetRegistry reg;
         IStRSR stRSR;
@@ -111,13 +111,13 @@ library TradingLibP0 {
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
     function prepareRecollateralizationTrade(
-        ITrading trader
+        IBackingManager bm
     ) external view returns (bool doTrade, TradeRequest memory req) {
         // === Prepare cached values ===
 
-        IMain main = trader.main();
+        IMain main = bm.main();
         ComponentCache memory components = ComponentCache({
-            trader: trader,
+            bm: bm,
             bh: main.basketHandler(),
             reg: main.assetRegistry(),
             stRSR: main.stRSR(),
@@ -125,8 +125,8 @@ library TradingLibP0 {
             rToken: main.rToken()
         });
         TradingRules memory rules = TradingRules({
-            minTradeVolume: trader.minTradeVolume(),
-            maxTradeSlippage: trader.maxTradeSlippage()
+            minTradeVolume: bm.minTradeVolume(),
+            maxTradeSlippage: bm.maxTradeSlippage()
         });
         IERC20[] memory erc20s = components.reg.erc20s();
 
@@ -194,7 +194,7 @@ library TradingLibP0 {
     //
     // range.top = min(rToken.basketsNeeded, totalAssetValue(erc20s).high / basket.price().high)
     //   because (totalAssetValue(erc20s).high / basket.price().high) is how many BUs we can hold
-    //   given "best plausible" prices, and we won't hold more than rToken(trader).basketsNeeded
+    //   given "best plausible" prices, and we won't hold more than rToken(bm).basketsNeeded
     //
     // range.bottom = max(0, min(lowBUs, range.top)), where:
     //   lowBUs = (assetsLow - maxTradeSlippage * buShortfall(range.top)) / basket.price().high
@@ -228,7 +228,7 @@ library TradingLibP0 {
 
         // {UoA}, Total value of collateral in shortfall of `basketTargetHigh`. Specifically:
         //   sum( shortfall(c, basketTargetHigh / basketPriceHigh) for each erc20 c in the basket)
-        //   where shortfall(c, BUs) == (BUs * bh.quantity(c) - c.bal(trader)) * c.price().high
+        //   where shortfall(c, BUs) == (BUs * bh.quantity(c) - c.bal(bm)) * c.price().high
         //         (that is, shortfall(c, BUs) is the market value of the c that `this` would
         //          need to be given in order to have enough of c to cover `BUs` BUs)
         // {UoA}
@@ -270,7 +270,7 @@ library TradingLibP0 {
     /// @return assetsHigh {UoA} The high estimate of the total value of assets under management
 
     // preconditions:
-    //   components.trader is backingManager
+    //   components.bm is backingManager
     //   erc20s has no duplicates
     // checks:
     //   for e in erc20s, e has a registered asset in the assetRegistry
@@ -302,7 +302,7 @@ library TradingLibP0 {
             if (erc20s[i] == IERC20(address(components.rToken))) continue;
 
             IAsset asset = components.reg.toAsset(erc20s[i]);
-            uint192 bal = asset.bal(address(components.trader)); // {tok}
+            uint192 bal = asset.bal(address(components.bm)); // {tok}
 
             // For RSR, include the staking balance
             if (erc20s[i] == components.rsr) bal = bal.plus(asset.bal(address(components.stRSR)));
@@ -322,9 +322,7 @@ library TradingLibP0 {
 
             // here we need to avoid overflowing since highPrice might be near FIX_MAX
             // D18{UoA/tok} * D18{tok} / D18
-            try
-                IBackingManager(address(this)).tryMulDiv256Ceil(highPrice, bal, FIX_ONE_256)
-            returns (uint256 val) {
+            try components.bm.tryMulDiv256Ceil(highPrice, bal, FIX_ONE_256) returns (uint256 val) {
                 // {UoA}
 
                 if (assetsHigh + val >= FIX_MAX) assetsHigh = FIX_MAX;
@@ -395,7 +393,7 @@ library TradingLibP0 {
 
             IAsset asset = components.reg.toAsset(erc20s[i]);
 
-            uint192 bal = asset.bal(address(components.trader)); // {tok}
+            uint192 bal = asset.bal(address(components.bm)); // {tok}
 
             // {tok} = {BU} * {tok/BU}
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
@@ -455,7 +453,7 @@ library TradingLibP0 {
         if (address(trade.sell) == address(0) && address(trade.buy) != address(0)) {
             IAsset rsrAsset = components.reg.toAsset(components.rsr);
 
-            uint192 rsrAvailable = rsrAsset.bal(address(components.trader)).plus(
+            uint192 rsrAvailable = rsrAsset.bal(address(components.bm)).plus(
                 rsrAsset.bal(address(components.stRSR))
             );
             (uint192 lowPrice, ) = rsrAsset.price(); // {UoA/tok}
@@ -498,8 +496,8 @@ library TradingLibP0 {
             // {tok} = {UoA} * {tok/BU} / {UoA/BU}
             // needed: quantity of erc20s[i] needed in basketPriceHigh's worth of baskets
             uint192 needed = backingHigh.mulDiv(quantity, basketPriceHigh, CEIL); // {tok}
-            // held: quantity of erc20s[i] owned by the trader (BackingManager)
-            uint192 held = coll.bal(address(components.trader)); // {tok}
+            // held: quantity of erc20s[i] owned by the bm (BackingManager)
+            uint192 held = coll.bal(address(components.bm)); // {tok}
 
             if (held.lt(needed)) {
                 (, uint192 priceHigh) = coll.price(); // {UoA/tok}

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./Asset.sol";
+import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
-import "../../p1/mixins/RecollateralizationLib.sol";
+import "./Asset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
@@ -63,8 +63,6 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
-        // The RToken price is not symmetric
-
         try this.tryPrice() returns (uint192 low, uint192 high) {
             return (low, high);
         } catch (bytes memory errData) {
@@ -78,7 +76,7 @@ contract RTokenAsset is IAsset {
     /// Should be nonzero
     /// @return {UoA/tok} A fallback price to use for trade sizing
     function fallbackPrice() external view returns (uint192) {
-        // This function can revert if of the math inside it reverts
+        // This function can revert if any of the math inside it reverts
         // But we prefer reverting over returning a zero value for fallbackPrice()
 
         uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
@@ -133,7 +131,7 @@ contract RTokenAsset is IAsset {
 
             IMain main = backingManager.main();
             ComponentCache memory components = ComponentCache({
-                trader: backingManager,
+                bm: backingManager,
                 bh: main.basketHandler(),
                 reg: main.assetRegistry(),
                 stRSR: main.stRSR(),
