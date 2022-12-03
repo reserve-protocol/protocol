@@ -19,6 +19,7 @@ contract AssetMock is OracleErrorMock, Asset {
     PriceModel public model;
 
     uint256 public rewardAmount;
+    IERC20Metadata public rewardERC20;
 
     constructor(
         IERC20Metadata erc20_,
@@ -30,13 +31,13 @@ contract AssetMock is OracleErrorMock, Asset {
             model_.curr,
             AggregatorV3Interface(address(1)), // stub out the expected chainlink oracle
             erc20_,
-            rewardERC20_, // no reward token
             maxTradeVolume_,
             1 // stub out oracleTimeout
         )
     {
         model = model_;
         rewardAmount = 1e18;
+        rewardERC20 = rewardERC20_;
         emit SetPrice(erc20.symbol(), model.price());
     }
 
@@ -54,13 +55,6 @@ contract AssetMock is OracleErrorMock, Asset {
     // ==== Rewards ====
     function updateRewardAmount(uint256 amount) public {
         rewardAmount = amount % 1e29;
-    }
-
-    function getClaimCalldata() public view virtual override returns (address to, bytes memory cd) {
-        if (address(rewardERC20) != address(0)) {
-            to = address(this);
-            cd = abi.encodeWithSignature("claimRewards(address)", msg.sender);
-        }
     }
 
     function claimRewards(address who) public {

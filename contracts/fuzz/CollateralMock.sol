@@ -28,6 +28,8 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
     uint192 public initialPeg; // peg value (for default detection)
 
+    IERC20Metadata public rewardERC20;
+
     constructor(
         // Collateral base-class arguments
         IERC20Metadata erc20_,
@@ -51,7 +53,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
             ),
             AggregatorV3Interface(address(1)), // Stub out expected Chainlink feed
             erc20_,
-            rewardERC20_, // no reward token
             maxTradeVolume_,
             1, // stub out oracleTimeout
             targetName_,
@@ -67,6 +68,8 @@ contract CollateralMock is OracleErrorMock, Collateral {
         defaultThreshold = defaultThreshold_;
 
         prevReferencePrice = refPerTok();
+
+        rewardERC20 = rewardERC20_;
 
         // Store peg value
         initialPeg = targetPerRef();
@@ -143,20 +146,13 @@ contract CollateralMock is OracleErrorMock, Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
     // ==== Rewards ====
     function updateRewardAmount(uint256 amount) public {
         rewardAmount = amount % 1e29;
-    }
-
-    function getClaimCalldata() public view virtual override returns (address to, bytes memory cd) {
-        if (address(rewardERC20) != address(0)) {
-            to = address(this);
-            cd = abi.encodeWithSignature("claimRewards(address)", msg.sender);
-        }
     }
 
     function claimRewards(address who) public {
