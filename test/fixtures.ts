@@ -168,9 +168,7 @@ async function collateralFixture(
   const CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
     libraries: { OracleLib: oracleLib.address },
   })
-  const wstETHCollateralFactory = await ethers.getContractFactory('WstETHCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const wstETHCollateralFactory = await ethers.getContractFactory('WstETHCollateral')
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
@@ -271,13 +269,13 @@ async function collateralFixture(
 
   const makeWstETHCollateral = async (): Promise<[WstETHMock, WstETHCollateral]> => {
     const signer = (await ethers.getSigners())[0]
-    const erc20: WstETHMock = <WstETHMock>await WSTETH.deploy(signer.address, fp(1))
+    const erc20: WstETHMock = <WstETHMock>await WSTETH.deploy()
     const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
-      await MockV3AggregatorFactory.deploy(18, bn('1e18'))
+      await MockV3AggregatorFactory.deploy(18, fp('1'))
     )
     const coll = <WstETHCollateral>(
       await wstETHCollateralFactory.deploy(
-        fp('0'),
+        fp('1'),
         chainlinkFeed.address,
         chainlinkFeed.address,
         erc20.address,
@@ -350,7 +348,7 @@ async function collateralFixture(
   ]
 
   // Create the initial basket
-  const basket = [dai[1], usdc[1], adai[1], cdai[1]]
+  const basket = [dai[1], usdc[1], adai[1], cdai[1], wstETH[1]]
   const basketsNeededAmts = [fp('0.25'), fp('0.25'), fp('0.25'), fp('0.25')]
 
   return {

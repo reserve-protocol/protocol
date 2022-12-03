@@ -3,9 +3,9 @@
 # cd to project root
 while [ ! -d .git -a `pwd` != "/" ]; do cd ..; done
 
-# # strictly solhint system code
-# git ls-files | egrep 'contracts/.*\.sol' | \
-#     xargs yarn exec solhint || exit $?
+# strictly solhint system code
+git ls-files | egrep 'contracts/.*\.sol' | \
+    xargs yarn exec solhint || exit $?
 
 
 # # # more-gently solhint test code

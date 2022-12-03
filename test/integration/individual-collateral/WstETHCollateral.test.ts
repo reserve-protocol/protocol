@@ -28,7 +28,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   InvalidMockV3Aggregator,
-  OracleLib,
   MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
@@ -72,7 +71,6 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
-  let oracleLib: OracleLib
   let govParams: IGovParams
 
   // RToken Configuration
@@ -125,8 +123,9 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
-      await loadFixture(defaultFixture))
+    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
+      defaultFixture
+    ))
 
     // Setup required token contracts
     // wstETH token
@@ -457,13 +456,11 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       // Test for soft default
       it('No Updates status in case of soft default because there is no soft reset', async () => {
         // Redeploy plugin using a Chainlink mock feed where we can change the price
-        let mockStETHChainlinkFeed: MockV3Aggregator
-        mockStETHChainlinkFeed = <MockV3Aggregator>(
+        const mockStETHChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
           await MockV3AggregatorFactory.deploy(18, fp('2000')) // wstETH price ~= 2140 = 2000 * 1.07
         )
 
-        let mockETHChainlinkFeed: MockV3Aggregator
-        mockETHChainlinkFeed = <MockV3Aggregator>(
+        const mockETHChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
           await MockV3AggregatorFactory.deploy(18, fp('2000'))
         )
 
@@ -494,7 +491,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         )
         await v3Aggregator.updateAnswer(fp('1901')) // 2000 * 0.95 + 1
 
-        expect(await newWstEthCollateral.refresh()).not.emit(
+        await expect(newWstEthCollateral.refresh()).not.emit(
           newWstEthCollateral,
           'CollateralStatusChanged'
         )
@@ -504,7 +501,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         // Reducing price of stETH more than 5%, should be iffy
         await v3Aggregator.updateAnswer(fp('1899')) // 2000 * 0.95 - 1
         // Force updates - Should update whenDefault and status
-        expect(await newWstEthCollateral.refresh())
+        await expect(newWstEthCollateral.refresh())
           .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
 
@@ -518,7 +515,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         // Increasing price of stETH back to normal range, should be sound
         await v3Aggregator.updateAnswer(fp('2000'))
         // Force updates - Should update whenDefault and status
-        expect(await newWstEthCollateral.refresh())
+        await expect(newWstEthCollateral.refresh())
           .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
 
@@ -526,7 +523,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
 
         // Reducing price of stETH more than 5%, should be iffy
         await v3Aggregator.updateAnswer(fp('1899')) // 2000 * 0.95 - 1
-        expect(await newWstEthCollateral.refresh())
+        await expect(newWstEthCollateral.refresh())
           .to.emit(newWstEthCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
 
