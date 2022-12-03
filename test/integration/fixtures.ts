@@ -52,6 +52,7 @@ import {
   TestIRToken,
   TestIStRSR,
   RecollateralizationLibP1,
+  WstETHCollateral,
 } from '../../typechain'
 
 import { Collateral, Implementation, IMPLEMENTATION } from '../fixtures'
@@ -182,6 +183,10 @@ async function collateralFixture(
   )
 
   const EURFiatCollateralFactory = await ethers.getContractFactory('EURFiatCollateral', {
+    libraries: { OracleLib: oracleLib.address },
+  })
+
+  const WstETHCollateralFactory = await ethers.getContractFactory('WstETHCollateral', {
     libraries: { OracleLib: oracleLib.address },
   })
 
@@ -429,6 +434,31 @@ async function collateralFixture(
     ]
   }
 
+  const makeWstETHCollateral = async (
+    wstTokenAddress: string,
+    referenceUnitOracleAddr: string,
+    stETHOracleAddr: string,
+    targetName: string
+  ): Promise<[IERC20Metadata, WstETHCollateral]> => {
+    const erc20: ERC20Mock = <ERC20Mock>await ethers.getContractAt('ERC20Mock', wstTokenAddress)
+
+    return [
+      erc20,
+      <WstETHCollateral>(
+        await WstETHCollateralFactory.deploy(
+          fp('0'),
+          referenceUnitOracleAddr,
+          stETHOracleAddr,
+          erc20.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String(targetName),
+          defaultThreshold,
+          delayUntilDefault
+        )
+      ),
+    ]
+  }
   // Create all possible collateral
   const DAI_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.DAI as string
   const USDC_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDC as string
@@ -436,6 +466,8 @@ async function collateralFixture(
   const BUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.BUSD as string
   const USDP_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDP as string
   const TUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.TUSD as string
+  const STETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.stETH as string
+  const ETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.ETH as string
 
   const dai = await makeVanillaCollateral(
     networkConfig[chainId].tokens.DAI as string,
@@ -543,6 +575,13 @@ async function collateralFixture(
     'EURO'
   )
 
+  const wstETH = await makeWstETHCollateral(
+    networkConfig[chainId].tokens.wstETH as string,
+    networkConfig[chainId].chainlinkFeeds.ETH as string,
+    networkConfig[chainId].chainlinkFeeds.wstETH as string,
+    'ETH'
+  )
+
   const erc20s = [
     dai[0],
     usdc[0],
@@ -564,6 +603,7 @@ async function collateralFixture(
     weth[0],
     cETH[0],
     eurt[0],
+    wstETH[0],
   ]
   const collateral = [
     dai[1],
@@ -586,6 +626,7 @@ async function collateralFixture(
     weth[1],
     cETH[1],
     eurt[1],
+    wstETH[1],
   ]
 
   // Create the initial basket

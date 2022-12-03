@@ -27,7 +27,6 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
-  WstETHCollateral,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
