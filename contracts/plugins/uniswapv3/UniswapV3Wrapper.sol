@@ -10,7 +10,7 @@ import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 
 import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
-import "@uniswap/v3-core/contracts/libraries/SqrtPriceMath.sol";
+import "@uniswap/v3-periphery/contracts/libraries/SqrtPriceMathPartial.sol";
 import "@uniswap/v3-periphery/contracts/libraries/LiquidityAmounts.sol";
 import "@uniswap/v3-periphery/contracts/libraries/PositionValue.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
@@ -164,29 +164,31 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             // current tick is below the passed range; liquidity can only become in range by crossing from left to
             // right, when we'll need _more_ token0 (it's becoming more valuable) so user must provide it
             amount0 = uint256(
-                SqrtPriceMath.getAmount0Delta(
+                SqrtPriceMathPartial.getAmount0Delta(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
-                    int128(liquidity)
+                    liquidity,
+                    true
                 )
             );
             amount1 = 0;
         } else if (tick < tickUpper) {
             amount0 = uint256(
-                SqrtPriceMath.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), int128(liquidity))
+                SqrtPriceMathPartial.getAmount0Delta(sqrtRatioX96, TickMath.getSqrtRatioAtTick(tickUpper), liquidity, true)
             );
             amount1 = uint256(
-                SqrtPriceMath.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, int128(liquidity))
+                SqrtPriceMathPartial.getAmount1Delta(TickMath.getSqrtRatioAtTick(tickLower), sqrtRatioX96, liquidity, true)
             );
         } else {
             // current tick is above the passed range; liquidity can only become in range by crossing from right to
             // left, when we'll need _more_ token1 (it's becoming more valuable) so user must provide it
             amount0 = 0;
             amount1 = uint256(
-                SqrtPriceMath.getAmount1Delta(
+                SqrtPriceMathPartial.getAmount1Delta(
                     TickMath.getSqrtRatioAtTick(tickLower),
                     TickMath.getSqrtRatioAtTick(tickUpper),
-                    int128(liquidity)
+                    liquidity,
+                    true
                 )
             );
         }
