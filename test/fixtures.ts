@@ -38,6 +38,7 @@ import {
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
+  SelfReferentialCollateral,
   StaticATokenMock,
   StRSRP1Votes,
   TestIBackingManager,
@@ -75,6 +76,7 @@ export type Collateral =
   | CTokenFiatCollateral
   | ATokenFiatCollateral
   | NonFiatCollateral
+  | SelfReferentialCollateral
   | CTokenSelfReferentialCollateral
 
 interface RSRFixture {

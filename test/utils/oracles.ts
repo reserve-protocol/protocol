@@ -12,7 +12,8 @@ export const expectPrice = async (
   assetAddr: string,
   avgPrice: BigNumber,
   oracleError: BigNumber,
-  near: boolean
+  near: boolean,
+  overrideToleranceDiv?: BigNumber
 ) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const [lowPrice, highPrice] = await asset.price()
@@ -20,7 +21,7 @@ export const expectPrice = async (
   const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
 
   if (near) {
-    const tolerance = avgPrice.div(toleranceDivisor)
+    const tolerance = avgPrice.div(overrideToleranceDiv || toleranceDivisor)
     expect(lowPrice).to.be.closeTo(expectedLow, tolerance)
     expect(highPrice).to.be.closeTo(expectedHigh, tolerance)
   } else {
