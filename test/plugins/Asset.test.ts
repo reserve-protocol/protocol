@@ -127,7 +127,7 @@ describe('Assets contracts #fast', () => {
       expect(await rsr.decimals()).to.equal(18)
       expect(await rsrAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await rsrAsset.bal(wallet.address)).to.equal(amt)
-      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
       await expect(rsrAsset.claimRewards()).to.not.emit(rsrAsset, 'RewardsClaimed')
 
       // COMP Asset
@@ -136,7 +136,7 @@ describe('Assets contracts #fast', () => {
       expect(await compToken.decimals()).to.equal(18)
       expect(await compAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await compAsset.bal(wallet.address)).to.equal(amt)
-      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, true)
       await expect(compAsset.claimRewards()).to.not.emit(compAsset, 'RewardsClaimed')
 
       // AAVE Asset
@@ -145,7 +145,7 @@ describe('Assets contracts #fast', () => {
       expect(await aaveToken.decimals()).to.equal(18)
       expect(await aaveAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await aaveAsset.bal(wallet.address)).to.equal(amt)
-      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, true)
       await expect(aaveAsset.claimRewards()).to.not.emit(aaveAsset, 'RewardsClaimed')
 
       // RToken Asset
@@ -168,9 +168,9 @@ describe('Assets contracts #fast', () => {
   describe('Prices', () => {
     it('Should calculate prices correctly', async () => {
       // Check initial prices
-      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, false)
-      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, false)
-      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, false)
+      await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
+      await expectPrice(compAsset.address, fp('1'), ORACLE_ERROR, true)
+      await expectPrice(aaveAsset.address, fp('1'), ORACLE_ERROR, true)
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -185,9 +185,9 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(rsrAsset.address, bn('1.2e8')) // 20%
 
       // Check new prices
-      await expectPrice(rsrAsset.address, fp('1.2'), ORACLE_ERROR, false)
-      await expectPrice(compAsset.address, fp('1.1'), ORACLE_ERROR, false)
-      await expectPrice(aaveAsset.address, fp('1.2'), ORACLE_ERROR, false)
+      await expectPrice(rsrAsset.address, fp('1.2'), ORACLE_ERROR, true)
+      await expectPrice(compAsset.address, fp('1.1'), ORACLE_ERROR, true)
+      await expectPrice(aaveAsset.address, fp('1.2'), ORACLE_ERROR, true)
       await expectRTokenPrice(
         rTokenAsset.address,
         fp('1'),
@@ -227,10 +227,10 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(aaveAsset.address, bn('0'))
       await setOraclePrice(rsrAsset.address, bn('0'))
 
-      // New prices should be (0, FIX_MAX)
-      await expectUnpriced(rsrAsset.address)
-      await expectUnpriced(compAsset.address)
-      await expectUnpriced(aaveAsset.address)
+      // New prices should be (0, 0)
+      await expectPrice(rsrAsset.address, bn('0'), bn('0'), false)
+      await expectPrice(compAsset.address, bn('0'), bn('0'), false)
+      await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
 
       // Fallback prices should be nonzero
       expect(await rsrAsset.fallbackPrice()).to.be.gt(0)
@@ -242,7 +242,13 @@ describe('Assets contracts #fast', () => {
       await setOraclePrice(collateral1.address, bn(0))
 
       // RTokenAsset should be unpriced now
-      await expectUnpriced(rTokenAsset.address)
+      await expectRTokenPrice(
+        rTokenAsset.address,
+        bn(0),
+        ORACLE_ERROR,
+        await backingManager.maxTradeSlippage(),
+        config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+      )
 
       // Should have nonzero fallback price
       expect(await rTokenAsset.fallbackPrice()).to.be.gt(0)
