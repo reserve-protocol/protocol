@@ -37,6 +37,16 @@ _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#what-is
 
 _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#wsteth)_
 
+### stETH/wstETH as Collateral
+
+> stETH/wstETH as DeFi collateral is beneficial for a number of reasons:
+>
+> - stETH/wstETH is almost as safe as ether, price-wise: barring catastrophic scenarios, its value tends to hold the ETH peg well;
+> - stETH/wstETH is a productive asset: earning rewards on collateral effectively lowers the cost of borrowing;
+> - stETH/wstETH is a very liquid asset with billions of liquidity locked in liquidity pools ([Curve](https://curve.fi/steth), [Balancer v2](https://app.balancer.fi/#/pool/0x32296969ef14eb0c6d29669c550d4a0449130230000200000000000000000080))
+
+_\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide#stethwsteth-as-collateral)_
+
 ## Economics
 
 Holding `stETH` and `wstETH` has a economic advantage over holding `ETH`, because **Staking Rewards** accumulates into the protocol and causes `wstETH` go up against `ETH`. The mechanism for the `stETH` and `wsETH` is different but because they are interchangeable, in this doc, we only will explain `wstETH`.
@@ -67,7 +77,26 @@ exchange-rate = totalPooledEther / totalShares
 
 - `beacon balance`: total amount of ether on validator accounts. This value reported by oracles and makes strongest impact to stETH total supply change.
 
-_\* from https://docs.lido.fi/contracts/lido#rebasing_
+_\*from [Lido docs](https://docs.lido.fi/contracts/lido#rebasing)_
+
+### Risks
+
+> 1.  Smart contract security.
+>     There is an inherent risk that Lido could contain a smart contract vulnerability or bug. The Lido code is open-sourced, audited and covered by an extensive bug bounty program to minimise this risk.
+>     To mitigate smart contract risks, all of the core Lido contracts are audited. Audit reports can be found [here](https://github.com/lidofinance/audits#lido-protocol-audits).
+>     Besides, Lido is covered with a massive [Immunefi bugbounty program](https://immunefi.com/bounty/lido/).
+> 2.  Beacon chain - Technical risk.
+>     Lido is built atop experimental technology under active development, and there is no guarantee that Beacon chain has been developed error-free. Any vulnerabilities inherent to Beacon chain brings with it slashing risk, as well as stETH balance fluctuation risk.
+> 3.  Beacon chain - Adoption risk.
+>     The value of stETH is built around the staking rewards associated with the Ethereum beacon chain. If Beacon chain fails to reach required levels of adoption we could experience significant fluctuations in the value of ETH and stETH.
+> 4.  Slashing risk.
+>     Beacon chain validators risk staking penalties, with up to 100% of staked funds at risk if validators fail. To minimise this risk, Lido stakes across multiple professional and reputable node operators with heterogeneous setups, with additional mitigation in the form of self-coverage.
+> 5.  stETH price risk.
+>     Users risk an exchange price of stETH which is lower than inherent value due to withdrawal restrictions on Lido, making arbitrage and risk-free market-making impossible. The Lido DAO is driven to mitigate above risks and eliminate them entirely to the extent possible. Despite this, they may still exist and, as such, it is our duty to communicate them.
+> 6.  DAO key management risk.
+>     On early stages of Lido, slightly more than 600k ether became held across multiple accounts backed by a multi-signature threshold scheme to minimize custody risk. If signatories across a certain threshold lose their key shares, get hacked or go rogue, Lido risks these funds (<13% of total stake as of October 2022) becoming locked.
+
+_\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide#risks)_
 
 ## Implementation
 
