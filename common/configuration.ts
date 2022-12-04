@@ -32,8 +32,8 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
-  stETH?: string
-  wstETH?: string
+  STETH?: string
+  WSTETH?: string
 }
 
 interface INetworkConfig {
@@ -83,8 +83,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
-      stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
-      wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
+      STETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
+      WSTETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -101,7 +101,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-      stETH: '0xcfe54b5cd566ab89272946f602d76ea879cab4a8',
+      STETH: '0xcfe54b5cd566ab89272946f602d76ea879cab4a8',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -146,8 +146,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
-      stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
-      wstETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
+      STETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
+      WSTETH: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -164,7 +164,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-      stETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
+      STETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
