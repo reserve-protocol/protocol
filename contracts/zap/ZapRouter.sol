@@ -48,6 +48,7 @@ contract ZapRouter is IZapRouter {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
         require(IERC20(_from).balanceOf(address(this)) == _amount, "!balance");
 
+        address source = _from;
         address target = _to;
         uint256 amount = _amount;
 
@@ -56,15 +57,16 @@ contract ZapRouter is IZapRouter {
         }
         if (isCompoundToken[_from]) {
             require(ICToken(_to).redeem(_amount) == 0, "!redeem");
-            amount = IERC20(_from).balanceOf(address(this));
+            source = ICToken(_from).underlying();
+            amount = IERC20(source).balanceOf(address(this));
         }
 
-        (address exchangePool, uint256 exchangeAmount) = curveExchangeProvider.get_best_rate(_from, target, amount);
+        (address exchangePool, uint256 exchangeAmount) = curveExchangeProvider.get_best_rate(source, target, amount);
         uint256 expectedAmount = exchangeAmount - (exchangeAmount * maxSlippage / MAX_BPS);
 
-        IERC20(_from).safeApprove(address(curveExchangeProvider), 0);
-        IERC20(_from).safeApprove(address(curveExchangeProvider), amount);
-        received = curveExchangeProvider.exchange(exchangePool, _from, target, amount, expectedAmount, address(this));
+        IERC20(source).safeApprove(address(curveExchangeProvider), 0);
+        IERC20(source).safeApprove(address(curveExchangeProvider), amount);
+        received = curveExchangeProvider.exchange(exchangePool, source, target, amount, expectedAmount, address(this));
 
         if (isCompoundToken[_to]) {
             IERC20(target).safeApprove(_to, 0);
@@ -73,7 +75,7 @@ contract ZapRouter is IZapRouter {
             received = IERC20(_to).balanceOf(address(this));
         }
 
-        console.log(_from, target, received, expectedAmount);
+        console.log(source, target, received, expectedAmount);
         IERC20(_to).safeTransfer(msg.sender, received);
     }
 }
