@@ -1572,7 +1572,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
     })
 
-    it('Should handle collateral wih price = 0 when checking basket price', async () => {
+    it('Should handle collateral with price = 0 when checking basket price', async () => {
       // Check status and price
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
@@ -1603,8 +1603,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
       const [newLowPrice, newHighPrice] = await basketHandler.price()
       const expectedLow = fp('0.25').mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
+      const expectedHigh = fp('0.25').mul(fp('1')).div(fp('1').sub(ORACLE_ERROR))
       expect(newLowPrice).to.be.closeTo(expectedLow, 10)
-      expect(newHighPrice).to.equal(MAX_UINT192)
+      expect(newHighPrice).to.be.closeTo(expectedHigh, 10)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
