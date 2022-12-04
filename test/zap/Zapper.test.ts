@@ -7,11 +7,9 @@ import { networkConfig } from '../../common/configuration'
 import { bn, toBNDecimals } from '../../common/numbers'
 import {
   Zapper,
-  ZapLogicCDai,
-  ZapLogicDai,
+  ZapRouter,
   TestIRToken,
   ERC20Mock,
-  TestIMain,
 } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 
@@ -39,25 +37,19 @@ describe(`RToken Zapper Test V1`, () => {
   })
 
   it(`Should zap in`, async () => {
-    // Deploy ZapLogic
-    const ZapLogicDaiFactory: ContractFactory = await ethers.getContractFactory('ZapLogicDai')
-    const zapLogicDai: ZapLogicDai = (await ZapLogicDaiFactory.deploy()) as ZapLogicDai
-    await zapLogicDai.deployed()
-
-    const ZapLogicCDaiFactory: ContractFactory = await ethers.getContractFactory('ZapLogicCDai')
-    const zapLogicCDai: ZapLogicCDai = (await ZapLogicCDaiFactory.deploy()) as ZapLogicCDai
-    await zapLogicCDai.deployed()
+    // Deploy ZapRouter
+    const ZapRouterFactory: ContractFactory = await ethers.getContractFactory('ZapRouter')
+    const zapRouterLogic: ZapRouter = (await ZapRouterFactory.deploy([
+      "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+      "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+      "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    ], 50)) as ZapRouter;
+    const router = await zapRouterLogic.deployed();
 
     // Deploy Zapper
     const ZapperFactory: ContractFactory = await ethers.getContractFactory('Zapper')
-    const zapper: Zapper = (await ZapperFactory.deploy()) as Zapper
+    const zapper: Zapper = (await ZapperFactory.deploy(router.address)) as Zapper
     await zapper.deployed()
-
-    // Register ZapLogic
-    await zapper.registerZapLogic(
-      [networkConfig[chainId].tokens.DAI!, networkConfig[chainId].tokens.cDAI!],
-      [zapLogicDai.address, zapLogicCDai.address]
-    )
 
     const zapAmount = bn('1000e18')
 
@@ -69,10 +61,11 @@ describe(`RToken Zapper Test V1`, () => {
 
     // Zap USDC into Frictionless Basket
     const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
-    console.log({ rTokenBalanceBefore })
+    const usdcBalanceBefore = await usdc.balanceOf(owner.address)
+    console.log({ rTokenBalanceBefore, usdcBalanceBefore })
 
     await usdc.connect(owner).approve(zapper.address, toBNDecimals(zapAmount, 6))
-    await zapper.connect(owner).zapIn(targetBasket, usdc.address, toBNDecimals(zapAmount, 6))
+    await zapper.connect(owner).zapIn(usdc.address, targetBasket, toBNDecimals(zapAmount, 6))
 
     const rTokenBalanceAfter = await rToken.balanceOf(owner.address)
 

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/zap/ZapLogicBase.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/p1/RToken.sol";
 
@@ -9,55 +8,63 @@ import "contracts/interfaces/IRToken.sol";
 import "contracts/interfaces/IMain.sol";
 import "contracts/interfaces/IFacadeRead.sol";
 
+import { IZap } from "./interfaces/IZap.sol";
+import { IZapRouter } from "./ZapRouter.sol";
+
+import "hardhat/console.sol";
+
 interface IRtokenP1 is IRToken {
     function mint(address _account, uint256 _amount) external;
 }
 
-contract Zapper {
+contract Zapper is IZap {
     using SafeERC20 for IERC20;
 
-    IFacadeRead private facade = IFacadeRead(0x3DAf5a7681a9cfB92fB38983EB3998dFC7963B28);
+    IFacadeRead private immutable facade = IFacadeRead(0x3DAf5a7681a9cfB92fB38983EB3998dFC7963B28);
+    IZapRouter public zapRouter;
 
-    mapping(address => address) public zapLogic; // erc20 => zapLogicContract
+    constructor(address _zapRouter) {
+        zapRouter = IZapRouter(_zapRouter);
+    }
 
     /// Zap an arbitrary token to target collateral tokens
     function zapIn(
-        IRToken _rtoken,
-        address _inputToken,
-        uint256 _inputAmount
-    ) external {
-        IERC20(_inputToken).safeTransferFrom(msg.sender, address(this), _inputAmount);
+        address _from,
+        address _to,
+        uint256 _amount
+    ) external returns (uint256 received) {
+        IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
-        zapToCollateralTokens(_rtoken, _inputToken, _inputAmount);
+        zapToCollateralTokens(_from, _to, _amount);
 
-        uint256 lowestIssueRatio = getLowestIssueRatio(_rtoken);
+        uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to));
+        console.log("lowestIssueRatio", lowestIssueRatio);
 
         // TODO THIS SEEMS WRONG
         // Account for rounding errors
-        _rtoken.issue((lowestIssueRatio * 9999) / 10000);
+        console.log("issueAttempt", (lowestIssueRatio * 9999) / 10000);
+        IRToken(_to).issue((lowestIssueRatio * 9999) / 10000);
 
-        IERC20(address(_rtoken)).safeTransfer(msg.sender, _rtoken.balanceOf(address(this)));
+        received = IERC20(_to).balanceOf(address(this));
+        IERC20(address(_to)).safeTransfer(msg.sender, received);
     }
 
-    /// TODO place access control on this
-    function registerZapLogic(address[] calldata _erc20s, address[] calldata _zapLogicContract)
-        external
-    {
-        require(_erc20s.length == _zapLogicContract.length, "Zapper: invalid length");
-        for (uint256 i = 0; i < _erc20s.length; i++) {
-            zapLogic[_erc20s[i]] = _zapLogicContract[i];
-        }
+    function zapOut(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) external returns (uint256 received) {
     }
 
     function zapToCollateralTokens(
-        IRToken _rtoken,
-        address _inputToken,
-        uint256 _inputAmount
+        address _from,
+        address _to,
+        uint256 _amount
     ) internal {
         // Get underlying assets and ratios
         // TODO this is a write call - check if it's safe
         (address[] memory erc20s, uint192[] memory uoaShares, ) = facade.basketBreakdown(
-            RTokenP1(address(_rtoken))
+            RTokenP1(address(_to))
         );
 
         // TODO SHOULD sum to 1e18 but have to verify
@@ -71,29 +78,18 @@ contract Zapper {
             address erc20 = erc20s[i];
             uint256 uoaShare = uoaShares[i];
 
-            // Get zap logic
-            address zapLogicContract = zapLogic[erc20];
-
-            // TODO handle case for no zap logic
-            if (zapLogicContract == address(0)) {
-                continue;
-            }
-
             // Zap
-            uint256 zapAmount = (_inputAmount * uoaShare) / totalSharesDenom;
+            uint256 zapAmount = (_amount * uoaShare) / totalSharesDenom;
 
-            IERC20(_inputToken).safeApprove(zapLogicContract, 0);
-            IERC20(_inputToken).safeApprove(zapLogicContract, zapAmount);
+            IERC20(_from).safeApprove(address(zapRouter), 0);
+            IERC20(_from).safeApprove(address(zapRouter), zapAmount);
 
             // TODO create interface files
-            uint256 erc20Amount = ZapLogicBase(zapLogicContract).zapToCollateral(
-                _inputToken,
-                zapAmount
-            );
+            uint256 erc20Amount = zapRouter.swap(_from, erc20, zapAmount);
 
             // Approve rToken spending
-            IERC20(erc20).safeApprove(address(_rtoken), 0);
-            IERC20(erc20).safeApprove(address(_rtoken), erc20Amount);
+            IERC20(erc20).safeApprove(address(_to), 0);
+            IERC20(erc20).safeApprove(address(_to), erc20Amount);
         }
     }
 
@@ -118,7 +114,9 @@ contract Zapper {
         for (uint256 i = 0; i < erc20s.length; i++) {
             uint256 ratio = (IERC20(erc20s[i]).balanceOf(address(this)) * FIX_SCALE) /
                 quantities[i];
-            if (ratio < lowestRatio || lowestRatio == 0) lowestRatio = ratio;
+            if (ratio < lowestRatio || lowestRatio == 0) {
+                lowestRatio = ratio;
+            }
         }
     }
 }
