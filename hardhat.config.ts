@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
       forking: useEnv('FORK')
         ? {
             url: MAINNET_RPC_URL,
-            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber['default'].toString())),
+            blockNumber: Number(useEnv('MAINNET_BLOCK', forkBlockNumber['euler-plugin-test'].toString())),
           }
         : undefined,
       gas: 0x1ffffffff,
