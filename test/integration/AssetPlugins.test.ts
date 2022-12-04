@@ -476,7 +476,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         cTokenCollateral: CTokenFiatCollateral
         pegPrice: BigNumber
         refPerTok: BigNumber
-        alreadyRefreshed: boolean
       }
 
       // Compound - cUSDC and cUSDT
@@ -489,7 +488,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cTokenCollateral: cDaiCollateral,
           pegPrice: fp('1'),
           refPerTok: fp('0.022015108677007985'),
-          alreadyRefreshed: true,
         },
         {
           token: usdc,
@@ -499,7 +497,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cTokenCollateral: cUsdcCollateral,
           pegPrice: fp('1.0003994'),
           refPerTok: fp('0.022611941829792900'),
-          alreadyRefreshed: false,
         },
         {
           token: usdt,
@@ -509,7 +506,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cTokenCollateral: cUsdtCollateral,
           pegPrice: fp('0.99934692'),
           refPerTok: fp('0.021859813029312800'),
-          alreadyRefreshed: false,
         },
         {
           token: usdp,
@@ -519,7 +515,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           cTokenCollateral: cUsdpCollateral,
           pegPrice: fp('0.99995491'),
           refPerTok: fp('0.020090037479321573'),
-          alreadyRefreshed: false,
         },
       ]
 
@@ -540,13 +535,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.001')
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        if (ctkInf.alreadyRefreshed) {
-          expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
-            await ctkInf.cTokenCollateral.refPerTok()
-          )
-        } else {
-          expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(bn(0))
-        }
+        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+          await ctkInf.cTokenCollateral.refPerTok()
+        )
 
         await expectPrice(
           ctkInf.cTokenCollateral.address,
@@ -575,7 +566,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         aTokenCollateral: ATokenFiatCollateral
         pegPrice: BigNumber
         refPerTok: BigNumber
-        alreadyRefreshed: boolean
       }
 
       // aUSDC, aUSDT, and aBUSD
@@ -589,7 +579,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aTokenCollateral: aDaiCollateral,
           pegPrice: fp('1'),
           refPerTok: fp('1.072871692909066736'),
-          alreadyRefreshed: true,
         },
         {
           token: usdc,
@@ -600,7 +589,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aTokenCollateral: aUsdcCollateral,
           pegPrice: fp('1.0003994'),
           refPerTok: fp('1.075820226287820705'),
-          alreadyRefreshed: false,
         },
         {
           token: usdt,
@@ -611,7 +599,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aTokenCollateral: aUsdtCollateral,
           pegPrice: fp('0.99934692'),
           refPerTok: fp('1.088178891886696259'),
-          alreadyRefreshed: false,
         },
         {
           token: busd,
@@ -622,7 +609,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aTokenCollateral: aBusdCollateral,
           pegPrice: fp('1.00030972'),
           refPerTok: fp('1.093996241277203301'),
-          alreadyRefreshed: false,
         },
         {
           token: usdp,
@@ -633,7 +619,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           aTokenCollateral: aUsdpCollateral,
           pegPrice: fp('0.99995491'),
           refPerTok: fp('1.019878722522085537'),
-          alreadyRefreshed: false,
         },
       ]
 
@@ -648,14 +633,10 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await atkInf.aTokenCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.095'))
 
         expect(await atkInf.aTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        if (atkInf.alreadyRefreshed) {
-          expect(await atkInf.aTokenCollateral.prevReferencePrice()).to.be.closeTo(
-            await atkInf.aTokenCollateral.refPerTok(),
-            fp('0.000005')
-          )
-        } else {
-          expect(await atkInf.aTokenCollateral.prevReferencePrice()).to.equal(bn(0))
-        }
+        expect(await atkInf.aTokenCollateral.prevReferencePrice()).to.be.closeTo(
+          await atkInf.aTokenCollateral.refPerTok(),
+          fp('0.000005')
+        )
 
         await expectPrice(
           atkInf.aTokenCollateral.address,
@@ -799,7 +780,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(bn(0))
+        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+          await ctkInf.cTokenCollateral.refPerTok()
+        )
 
         // close to $633 usd
         await expectPrice(
@@ -911,7 +894,9 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           fp('0.001')
         )
         expect(await ctkInf.cTokenCollateral.targetPerRef()).to.equal(fp('1'))
-        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(bn(0))
+        expect(await ctkInf.cTokenCollateral.prevReferencePrice()).to.equal(
+          await ctkInf.cTokenCollateral.refPerTok()
+        )
 
         await expectPrice(
           ctkInf.cTokenCollateral.address,

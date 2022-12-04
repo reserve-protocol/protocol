@@ -37,7 +37,9 @@ contract ATokenFiatCollateral is FiatCollateral {
 
     // solhint-disable no-empty-blocks
 
-    constructor(CollateralConfig memory config) FiatCollateral(config) {}
+    constructor(CollateralConfig memory config) FiatCollateral(config) {
+        prevReferencePrice = refPerTok();
+    }
 
     // solhint-enable no-empty-blocks
 

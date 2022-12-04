@@ -30,6 +30,7 @@ contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
         require(address(comptroller_) != address(0), "comptroller missing");
         referenceERC20Decimals = referenceERC20Decimals_;
         comptroller = comptroller_;
+        prevReferencePrice = refPerTok();
     }
 
     /// Refresh exchange rates and update default status.

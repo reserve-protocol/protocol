@@ -40,9 +40,14 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         external
         view
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
+
         uint192 pricePerTarget = targetUnitChainlinkFeed.price(oracleTimeout); // {UoA/target}
 
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
