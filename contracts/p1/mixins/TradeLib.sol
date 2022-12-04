@@ -43,7 +43,8 @@ library TradeLib {
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
         // Calculate a lotPrice for trade-sizing purposes only
-        uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/sellTok}
+        // {UoA/sellTok}
+        uint192 lotPrice = trade.sellPrice > 0 ? trade.sellPrice : trade.sell.fallbackPrice();
 
         // Don't sell dust
         if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
