@@ -7,6 +7,8 @@ interface IGoldfinchSeniorPool {
     function sharePrice() external view returns (uint256);
 
     function config() external view returns (IGoldfinchConfig);
+
+    function redeem(uint256 _tokenId) external;
 }
 
 interface IGoldfinchConfig {

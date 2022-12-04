@@ -2,9 +2,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IMPLEMENTATION } from '../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
-import { getChainId } from '../../common/blockchain-utils'
+import { IMPLEMENTATION } from '../../fixtures'
+import { defaultFixture, ORACLE_TIMEOUT } from '../individual-collateral/fixtures'
+import { getChainId } from '../../../common/blockchain-utils'
 import {
   IConfig,
   IGovParams,
@@ -12,17 +12,18 @@ import {
   IRTokenConfig,
   IRTokenSetup,
   networkConfig,
-} from '../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../common/events'
-import { bn, fp, toBNDecimals } from '../../common/numbers'
-import { whileImpersonating } from '../utils/impersonation'
-import { setOraclePrice } from '../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../utils/time'
+} from '../../../common/configuration'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
+import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
+import { bn, fp, toBNDecimals } from '../../../common/numbers'
+import { whileImpersonating } from '../../utils/impersonation'
+import { setOraclePrice } from '../../utils/oracles'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
   GoldfinchSeniorPoolCollateral,
   IGoldfinchSeniorPool,
+  GolfinchSeniorPoolMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
@@ -38,22 +39,22 @@ import {
   TestIMain,
   TestIRToken,
   IGoldfinchLegacyConfig,
-} from '../../typechain'
+} from '../../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
-// Holder address in Mainnet
+// Holder addresses in Mainnet
 const gspHolder = '0xb45b74eb35790d20e5f4225b0ac49d5bb074696e'
+const usdcHolder = '0xcffad3200574698b78f32232aa9d63eabd290703'
 
 const legacyGoldfinchList = '0x4eb844Ff521B4A964011ac8ecd42d500725C95CC'
 
 const goldfinchAdmin = '0xa083880f7a5df37bf00a25380c3eb9af9cd92d8f'
-
-const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
-
+const goldfinchTranchedPool = '0xc9bdd0d3b80cc6efe79a82d850f44ec9b55387ae'
+const goldfinchPoolAdmin = '0xd3207620a6c8c2dd2799b34833d6fa04444a40c7'
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -114,8 +115,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let chainId: number
 
   let GoldfinchSeniorPoolCollateralFactory: ContractFactory
-  let MockV3AggregatorFactory: ContractFactory
-  let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -151,7 +150,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
     // Deploy Goldfinch SP collateral plugin
     GoldfinchSeniorPoolCollateralFactory = await ethers.getContractFactory(
-      'GoldfinchSeniorPoolCollateralFactory',
+      'GoldfinchSeniorPoolCollateral',
       {
         libraries: { OracleLib: oracleLib.address },
       }
@@ -184,6 +183,10 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     initialBal = bn('20000e18')
     await whileImpersonating(gspHolder, async (gspSigner) => {
       await gsp.connect(gspSigner).transfer(addr1.address, toBNDecimals(initialBal, 18))
+    })
+
+    await whileImpersonating(usdcHolder, async (usdcSigner) => {
+      await usdc.connect(usdcSigner).transfer(goldfinchTranchedPool, toBNDecimals(initialBal, 6))
     })
 
     // Set parameters
@@ -238,10 +241,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       ZERO_ADDRESS, // no guardian
       ZERO_ADDRESS // no pauser
     )
-
-    // Setup mock chainlink feed for some of the tests (so we can change the value)
-    MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
   describe('Deployment', () => {
@@ -253,11 +252,11 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await gspCollateral.erc20()).to.equal(gsp.address)
       expect(await gsp.decimals()).to.equal(18)
       expect(await gspCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await gspCollateral.actualRefPerTok()).to.be.closeTo(fp('1.0674'), fp('0.001'))
-      expect(await gspCollateral.refPerTok()).to.be.closeTo(fp('1.0461'), fp('0.001')) // 2% revenue hiding
+      expect(await gspCollateral.actualRefPerTok()).to.be.closeTo(fp('1.062'), fp('0.01'))
+      expect(await gspCollateral.refPerTok()).to.be.closeTo(fp('1.04076'), fp('0.01')) // 2% revenue hiding
       expect(await gspCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await gspCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await gspCollateral.strictPrice()).to.be.closeTo(fp('1.0674'), fp('0.001')) // close to $1.067
+      expect(await gspCollateral.strictPrice()).to.be.closeTo(fp('1.062'), fp('0.001')) // close to $1.062
 
       expect(await gspCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -297,14 +296,15 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
+      console.log({ price })
       expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(price).to.be.closeTo(fp('1.0208'), fp('0.015'))
 
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await gsp.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1.0208'), fp('0.015'))
     })
 
     // Validate constructor arguments
@@ -360,7 +360,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
   })
 
-  describe('Issuance/Appreciation/Redemption', () => {
+  describe.only('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
@@ -369,10 +369,14 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Provide approvals for issuances
       await gsp.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+      console.log('user gsp before: ', await gsp.balanceOf(addr1.address))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
+      console.log('user rToken Balance: ', await rToken.balanceOf(addr1.address))
+
+      console.log('user gsp after: ', await gsp.balanceOf(addr1.address))
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -383,27 +387,50 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+      expect(totalAssetValue1).to.be.closeTo(bn('10208e18'), fp('150')) // approx $10208 in value
+
+      // Check rates and prices
+      const gspPrice1: BigNumber = await gspCollateral.strictPrice() // ~1.062 cents
+      const gspRefPerTok1: BigNumber = await gspCollateral.refPerTok() // ~1.0408 cents
+
+      expect(gspPrice1).to.be.closeTo(fp('1.062'), fp('0.001'))
+      expect(gspRefPerTok1).to.be.closeTo(fp('1.0408'), fp('0.001'))
+
+      console.log("goldfinch borrower's balance: ", await usdc.balanceOf(goldfinchTranchedPool))
+      // Repay portion of loan so that sharePrice increases
+
+      await whileImpersonating(usdcHolder, async (usdcSigner) => {
+        await usdc.connect(usdcSigner).transfer(goldfinchTranchedPool, toBNDecimals(initialBal, 6))
+      })
+
+      await whileImpersonating(goldfinchPoolAdmin, async (poolAdminSigner) => {
+        await goldfinch.connect(poolAdminSigner).redeem(179)
+      })
+
+      console.log(
+        "goldfinch borrower's balance after: ",
+        await usdc.balanceOf(goldfinchTranchedPool)
+      )
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
       await advanceBlocks(10000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await gspCollateral.refresh()
+      expect(await gspCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Check rates and prices - Have changed, slight inrease
-      const cDaiPrice2: BigNumber = await cDaiCollateral.strictPrice() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
+      // Check rates and prices - Have changed, slight inreaseq
+      const gspPrice2: BigNumber = await gspCollateral.strictPrice()
+      const gspRefPerTok2: BigNumber = await gspCollateral.refPerTok()
 
       // Check rates and price increase
-      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+      expect(gspPrice2).to.be.gt(gspPrice1)
+      expect(gspRefPerTok2).to.be.gt(gspRefPerTok1)
 
       // Still close to the original values
-      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(gspPrice2).to.be.closeTo(fp('1.062'), fp('0.001'))
+      expect(gspRefPerTok2).to.be.closeTo(fp('1.0408'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -416,20 +443,20 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await advanceBlocks(100000000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await gspCollateral.refresh()
+      expect(await gspCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const cDaiPrice3: BigNumber = await cDaiCollateral.strictPrice() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
+      const gspPrice3: BigNumber = await gspCollateral.strictPrice() // ~0.03294
+      const gspRefPerTok3: BigNumber = await gspCollateral.refPerTok() // ~0.03294
 
       // Check rates and price increase
-      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+      expect(gspPrice3).to.be.gt(gspPrice2)
+      expect(gspRefPerTok3).to.be.gt(gspRefPerTok2)
 
       // Need to adjust ranges
-      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(gspPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(gspRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -445,13 +472,13 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+      const newBalanceAddr1Gsp: BigNumber = await gsp.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1Gsp.sub(balanceAddr1Gsp)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await gsp.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
@@ -474,138 +501,61 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
-  describe('Collateral Status', () => {
-    // Test for soft default
-    it('Updates status in case of soft default', async () => {
-      // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        fp('0.02'),
-        mockChainlinkFeed.address,
-        await cDaiCollateral.erc20(),
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
-        comptroller.address
-      )
-
-      // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-      // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
-
-      // Force updates - Should update whenDefault and status
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
-        delayUntilDefault
-      )
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Move time forward past delayUntilDefault
-      await advanceTime(Number(delayUntilDefault))
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-
-      // Nothing changes if attempt to refresh after default
-      // CToken
-      const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
-      await expect(newCDaiCollateral.refresh()).to.not.emit(
-        newCDaiCollateral,
-        'DefaultStatusChanged'
-      )
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
-    })
+  describe.skip('Collateral Status', () => {
+    // No test for soft default b/c we rely on same Chainlink logic as ATokens and CTokens, both already thoroughly tested
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-      const symbol = await cDai.symbol()
-      const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+      const GolfinchMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const symbol = await gsp.symbol()
+      const goldfinchMock: GolfinchSeniorPoolMock = <GolfinchSeniorPoolMock>(
+        await GolfinchMockFactory.deploy(symbol + ' Token', symbol)
       )
-      // Set initial exchange rate to the new cDai Mock
-      await cDaiMock.setExchangeRate(fp('0.02'))
+      // Set initial exchange rate to the new gsp mock
+      await goldfinchMock.setSharePrice(fp('1.062'))
 
-      // Redeploy plugin using the new cDai mock
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      // Redeploy plugin using the new gsp mock
+      const newGspCollateral: GoldfinchSeniorPoolCollateral = <GoldfinchSeniorPoolCollateral>await (
+        await ethers.getContractFactory('GoldfinchSeniorPoolCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
-        await cDaiCollateral.chainlinkFeed(),
-        cDaiMock.address,
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
-        comptroller.address
+        fp('1'),
+        await gspCollateral.chainlinkFeed(),
+        goldfinchMock.address,
+        await gspCollateral.maxTradeVolume(),
+        await gspCollateral.oracleTimeout(),
+        await gspCollateral.targetName(),
+        await gspCollateral.defaultThreshold(),
+        await gspCollateral.delayUntilDefault(),
+        goldfinch.address,
+        200
       )
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newGspCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newGspCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for cDAI, will disable collateral immediately
-      await cDaiMock.setExchangeRate(fp('0.019'))
+      // Decrease rate for Goldfinch Senior Pool token by 1.5%
+      // still within allowable revenue hiding limit
+      await goldfinchMock.setSharePrice(fp('1.04607'))
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
+      // Force updates - no default yet
+      await expect(newGspCollateral.refresh()).to.not.emit(newGspCollateral, 'DefaultStatusChanged')
+
+      // Decrease rate for Goldfinch Senior Pool token by 2.5%
+      // now expecting a default
+      await goldfinchMock.setSharePrice(fp('1.02'))
+
+      // Force updates
+      await expect(newGspCollateral.refresh())
+        .to.emit(newGspCollateral, 'DefaultStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newGspCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    })
-
-    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
-      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-        'InvalidMockV3Aggregator'
-      )
-      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
-      )
-
-      const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          invalidChainlinkFeed.address,
-          await cDaiCollateral.erc20(),
-          await cDaiCollateral.maxTradeVolume(),
-          await cDaiCollateral.oracleTimeout(),
-          await cDaiCollateral.targetName(),
-          await cDaiCollateral.defaultThreshold(),
-          await cDaiCollateral.delayUntilDefault(),
-          18,
-          comptroller.address
-        )
-      )
-
-      // Reverting with no reason
-      await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Runnning out of gas (same error)
-      await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newGspCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
   })
 })

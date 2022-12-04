@@ -34,8 +34,8 @@ contract GoldfinchSeniorPoolCollateral is RevenueHiding {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
-        uint256 delayUntilDefault_,
         uint192 defaultThreshold_,
+        uint256 delayUntilDefault_,
         IGoldfinchSeniorPool goldfinch_,
         uint192 allowedDropBasisPoints_
     )
@@ -58,11 +58,11 @@ contract GoldfinchSeniorPoolCollateral is RevenueHiding {
         goldfinch = goldfinch_;
         goldfinchConfig = goldfinch.config();
 
-        maxRefPerTok = actualRefPerTok();
-
         withdrawalFeeDenominator = uint192(
             goldfinchConfig.getNumber(uint256(ConfigOptions.Numbers.WithdrawFeeDenominator))
         ); // SHOULD remain at 200 (0.5% withdrawal fee)
+
+        maxRefPerTok = actualRefPerTok();
     }
 
     /// @dev Manual update to Goldfinch's withdrawal fee
@@ -92,6 +92,7 @@ contract GoldfinchSeniorPoolCollateral is RevenueHiding {
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
+
             if (p < peg - delta || p > peg + delta) markStatus(CollateralStatus.IFFY);
             else markStatus(CollateralStatus.SOUND);
         } catch (bytes memory errData) {
