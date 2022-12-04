@@ -360,7 +360,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
     })
   })
 
-  describe.only('Issuance/Appreciation/Redemption', () => {
+  describe('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
