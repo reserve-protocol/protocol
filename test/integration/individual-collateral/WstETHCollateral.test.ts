@@ -353,24 +353,6 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       })
     })
 
-    //   it('Should mark collateral as DISABLED if the wstETH exchangeRate decreases', async () => {
-    //     await wstETHCollateral.refresh()
-    //     expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
-    //     // Advance time by another 100 days, causing loan to go into DEFAULT
-
-    //     // manualy update exchange rate to a lower value
-    //     const oracle = await wstETH.oracle()
-    //     await whileImpersonating(oracle, async (oracle) => {
-    //       await wstETH.connect(oracle).updateExchangeRate(fp('1'))
-    //     })
-    //     await advanceTime(8640000)
-    //     await advanceBlocks(8640000)
-
-    //     await wstETHCollateral.refresh()
-    //     expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
-    //   })
-    // })
-
     // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
     // claiming calls throughout the protocol are handled correctly and do not revert.
     describe('Rewards', () => {
