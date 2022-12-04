@@ -135,9 +135,8 @@ Does nothing.
 
 ## Deployment
 
-- Added to collateral deployment script [2_deploy_collateral.ts](../../../../scripts/deployment/phase2-assets/2_deploy_collateral.ts#610), run with `yarn deploy`
-
 - Added Deployment [task](../../../../tasks/deployment/collateral/deploy-wsteth-collateral.ts): `yarn hardhat deploy-wsteth-collateral`
+
   - Params:
     - `fallbackPrice`: A fallback price (in UoA)
     - `ethPriceFeed`: ETH Price Feed address
@@ -149,19 +148,22 @@ Does nothing.
     - `defaultThreshold`: Default Threshold
     - `delayUntilDefault`: Delay until default
 
-Example:
+  Example:
 
-```sh
-yarn hardhat deploy-wsteth-collateral \
-  --fallback-price 1200000000000000000000 \
-  --eth-price-feed 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 \
-  --steth-price-feed 0xcfe54b5cd566ab89272946f602d76ea879cab4a8 \
-  --wsteth 0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0 \
-  --max-trade-volume 1000000 \
-  --oracle-timeout 86400 \
-  --target-name 0x4554480000000000000000000000000000000000000000000000000000000000  --default-threshold 50000000000000000 \
-  --delay-until-default 86400
-```
+  ```sh
+  yarn hardhat deploy-wsteth-collateral \
+    --fallback-price 1200000000000000000000 `# 1200$ * 10**18` \
+    --eth-price-feed 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 \
+    --steth-price-feed 0xcfe54b5cd566ab89272946f602d76ea879cab4a8 \
+    --wsteth 0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0 \
+    --max-trade-volume 1000000 `# 1M$` \
+    --oracle-timeout 86400 `# 24H` \
+    --target-name 0x4554480000000000000000000000000000000000000000000000000000000000 `# ETH as byte32` \
+    --default-threshold 50000000000000000 `# 5% = 0.05 * 10**18` \
+    --delay-until-default 86400 # 24H
+  ```
+
+- Added to collateral deployment script [2_deploy_collateral.ts](../../../../scripts/deployment/phase2-assets/2_deploy_collateral.ts#610), run with `yarn deploy`
 
 ## Testing
 
