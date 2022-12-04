@@ -1,26 +1,33 @@
 # stETH Collateral Plugin
 
-## 1. Summury
+## Summary
 
-This pluging allows `wstETH` and `stETH` holders use their tokens as collateral in the Reverse Protocol.
+This plugin allows `wstETH` holders use their tokens as collateral in the Reverse Protocol.
 
-As descriebed in the [Lido Site](https://help.coinbase.com/en/coinbase/trading-and-funding/staking-rewards/cbeth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
+As described in the [Lido Site](https://help.coinbase.com/en/coinbase/trading-and-funding/staking-rewards/cbeth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
 
-`wstETH` will accure revenue from **staking rewards** into itself by **incerasing** the exchange rate of the `wstETH` per `ETH`.
+`wstETH` will accrue revenue from **staking rewards** into itself by **increasing** the exchange rate of the `wstETH` per `stETH`.
 
-You can get exchange rate from [Coinbase API](https://docs.cloud.coinbase.com/exchange/reference/exchangerestapi_getwrappedassetconversionrate) or [directly on chain](https://etherscan.io/token/0xbe9895146f7af43049ca1c1ae358b0541ea49704#readProxyContract#F12).
+You can get exchange rate from [`wstETH.stEthPerToken()`](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) method of wstETH contract.
 
-`cbETH` contract: https://etherscan.io/token/0xbe9895146f7af43049ca1c1ae358b0541ea49704
+`wstETH` contract: <https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#code>
+`stETH` contract: <https://etherscan.io/token/0xae7ab96520de3a18e5e111b5eaab095312d7fe84#code>
 
-## 2. stETH Intro
+As described, `stETH` is a rebasing token which means token balances is not fixed. Due to that, it can not be used directly in the Reverse Protocol. The solution for that is using `wstETH` instead which is not a rebasing coin and behaves like `rETH` and `cbETH`.
+
+`wstETH` and `stETH` can be always swapped at any time to each other without any risk (Except Smart contract risk) like `wETH` and `ETH`.
+
+Wrap & Unwrap app can be found here: <https://stake.lido.fi/wrap>
+
+### stETH Intro
 
 ```
-stETH is a ERC20 token that represents ether staked with Lido. Unlike staked ether, it is liquid and can be transferred, traded, or used in DeFi applications. Total supply of stETH reflects amount of ether deposited into protocol combined with staking rewards, minus potential validator penalties. stETH tokens are minted upon ether deposit at 1:1 ratio. When withdrawals from the Beacon chain will be introduced, it will also be possible to redeem ether by burning stETH at the same 1:1 ratio.
+stETH is a ERC20 token that represents ether staked with Lido. Unlike staked ether, it is liquid and can be transferred, traded, or used in DeFi applications. Total supply of stETH reflects amount of ether deposited into protocol combined with staking rewards, minus potential validator penalties. stETH tokens are minted upon ether deposit at **1:1** ratio. When withdrawals from the Beacon chain will be introduced, it will also be possible to redeem ether by burning stETH at the same **1:1** ratio.
 ```
 
 _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#what-is-steth)_
 
-## 3. wstETH Intro
+### wstETH Intro
 
 ```
 Due to the rebasing nature of stETH, the stETH balance on holder's address is not constant, it changes daily as oracle report comes in. Although rebasable tokens are becoming a common thing in DeFi recently, many dApps do not support rebasing. For example, Maker, UniSwap, and SushiSwap are not designed for rebasable tokens. Listing stETH on these apps can result in holders not receiving their daily staking rewards which effectively defeats the benefits of liquid staking. To integrate with such dApps, there's another form of Lido stTokens called wstETH (wrapped staked ether).
@@ -33,27 +40,64 @@ When you unwrap your wstETH, you receive 101 stETH.
 
 _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#wsteth)_
 
-## 3. Implementation
+## Economics
 
-### 3.1 Units
+Holding `stETH` and `wstETH` has a economic advantage over holding `ETH` because of the **Staking Rewards** accumulates into the protocol. The mechanism for the `stETH` and `wsETH` is different but because they are interchangeable, in this doc, we only will explain `wstETH`.
 
-| tok    | ref   | target | UoA |
-| ------ | ----- | ------ | --- |
-| wstETH | stETH | ETH    | USD |
+Rewards for holding `wstETH` is calculated by an exchange rate:
 
-### 3.2 Functions
+`1 wstETH = exchange-rate * stETH`
+
+And because 1 `stETH` = 1 `ETH`, then:
+
+`1 wstETH = exchange-rate * stETH`
+
+**Exchange rate is non-decreasing over time, so this rate is a good candidate for `{ref/tok}`.**
+
+### How Exchange rate calculated
+
+```
+exchange-rate = totalPooledEther / totalShares
+```
+
+`totalShares`: Sum of shares of all account in shares map
+
+`totalPooledEther`: Sum of three types of ether owned by protocol:
+
+- `buffered balance`: ether stored on contract and haven't deposited to official Deposit contract yet.
+
+- `transient balance`: ether submitted to the official Deposit contract but not yet visible in the beacon state.
+
+- `beacon balance`: total amount of ether on validator accounts. This value reported by oracles and makes strongest impact to stETH total supply change.
+
+_\* from https://docs.lido.fi/contracts/lido#rebasing_
+
+## Implementation
+
+### Units
+
+| tok    | ref | target | UoA |
+| ------ | --- | ------ | --- |
+| wstETH | ETH | ETH    | USD |
+
+### Functions
 
 #### refPerTok {ref/tok}
 
-This function calculates rate of `ETH/cbETH` using `price()` function for `cbETH/USD` and [`ETH/USD` chainlink feed](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd) for `ETH/USD`.
+This function returns rate of `ETH/wstETH`, getting from [stEthPerToken](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
 
-#### price() {UoA/tok}
-
-Using [`cbETH` chainlink feed](https://data.chain.link/ethereum/mainnet/crypto-usd/cbeth-usd) to get the price.
+`stEthPerToken` function returns `stETH/wstETH` rate, and by knowing 1:1 ratio between `stETH` and `ETH`, we are getting `ETH/wstETH`.
 
 #### strictPrice() {UoA/tok}
 
-same as `price()`, except it will revert if pricing data is unavailable.
+Calculating {USD/wstETH} as follow:
+
+```
+{USD/wstETH} = {stETH/wstETH} * {USD/stETH}
+```
+
+- `stETH/wstETH`: From `refPerTok()`
+- `USD/stETH`: From [stETH chainlink feed](https://data.chain.link/ethereum/mainnet/crypto-usd/steth-usd)
 
 #### targetPerRef() {target/ref}
 
@@ -61,10 +105,72 @@ Always returns `1` since `target` and `ref` are both `ETH`.
 
 #### refresh
 
+This function will check the conditions and update status if needed. Conditions are as below:
+
+- Reference price decrease: This will `default` collateral **immediately** and status became `DISABLED`
+- Price of {USD/wstETH} fall below/over the reference price +/- `defaultThreshold%`: In this condition collateral status become `IFFY`, if it remain in this state for `delayUntilDefault`, status will change to `DISABLED`
+- `refPerToken` reverts: Collateral status becomes `DISABLED`
+- `strictPrice` reverts: Collateral status becomes `IFFY`
+- `pricePerRef` reverts: Collateral status becomes `IFFY`
+
+#### pricePerRef() {UoA/ref}
+
+From `USD/ETH` [chainlink feed](https://data.chain.link/ethereum/mainnet/crypto-usd/eth-usd).
+
+#### pricePerTarget() {UoA/target}
+
+Same as `pricePerRef()`
+
 #### targetName()
 
-returns `USD`
+returns `ETH`
 
-## 4 Deployment
+#### isCollateral()
 
-TODO
+returns True.
+
+### claimRewards()
+
+Does nothing.
+
+## Deployment
+
+- Added to collateral deployment script [2_deploy_collateral.ts](../../../../scripts/deployment/phase2-assets/2_deploy_collateral.ts#610), run with `yarn deploy`
+
+- Added Deployment [task](../../../../tasks/deployment/collateral/deploy-wsteth-collateral.ts): `yarn hardhat deploy-wsteth-collateral`
+  - Params:
+    - `fallbackPrice`: A fallback price (in UoA)
+    - `ethPriceFeed`: ETH Price Feed address
+    - `stethPriceFeed`: StETH Price Feed address
+    - `wsteth`: wstETH address
+    - `maxTradeVolume`: Max Trade Volume (in UoA)
+    - `oracleTimeout`: Max oracle timeout
+    - `targetName`: Target Name
+    - `defaultThreshold`: Default Threshold
+    - `delayUntilDefault`: Delay until default
+
+Example:
+
+```sh
+yarn hardhat deploy-wsteth-collateral \
+  --fallback-price 1200000000000000000000 \
+  --eth-price-feed 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419 \
+  --steth-price-feed 0xcfe54b5cd566ab89272946f602d76ea879cab4a8 \
+  --wsteth 0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0 \
+  --max-trade-volume 1000000 \
+  --oracle-timeout 86400 \
+  --target-name 0x4554480000000000000000000000000000000000000000000000000000000000  --default-threshold 50000000000000000 \
+  --delay-until-default 86400
+```
+
+## Testing
+
+- Integration Test:
+
+  - File: [test/integration/individual-collateral/WstETHCollateral.test.ts](../../../../test/integration/individual-collateral/WstETHCollateral.test.ts)
+  - Run: `yarn test:integration`
+
+- Collateral Test:
+
+  - File: [test/plugins/Collateral.test.ts](../../../../test/plugins/Collateral.test.ts)
+  - Run: `yarn test:fast`

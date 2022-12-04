@@ -1,6 +1,6 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
-import { WstETHCollateral, ERC20Mock } from '../../../typechain'
+import { WstETHCollateral } from '../../../typechain'
 
 task('deploy-wsteth-collateral', 'Deploys a wstETH Collateral')
   .addParam('fallbackPrice', 'A fallback price (in UoA)')
@@ -16,9 +16,6 @@ task('deploy-wsteth-collateral', 'Deploys a wstETH Collateral')
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
-
-    // Get Underlying
-    const erc20: ERC20Mock = <ERC20Mock>await hre.ethers.getContractAt('ERC20Mock', params.wsteth)
 
     const WstETHCollateralFactory = await hre.ethers.getContractFactory('WstETHCollateral')
 
