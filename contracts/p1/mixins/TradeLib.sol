@@ -18,6 +18,7 @@ import "./RecollateralizationLib.sol";
 library TradeLib {
     using FixLib for uint192;
 
+    /// @dev Caller must be ITrading
     /// Prepare a trade to sell `trade.sellAmount` that guarantees a reasonable closing price,
     /// without explicitly aiming at a particular quantity to purchase.
     /// @param trade:
@@ -41,35 +42,32 @@ library TradeLib {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
-        uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/tok}
+        // Calculate a lotPrice for trade-sizing purposes only
+        uint192 lotPrice = fixMax(trade.sell.fallbackPrice(), trade.sellPrice); // {UoA/sellTok}
 
         // Don't sell dust
         if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
             return (false, req);
         }
 
-        // Calculate sell and buy amount
-        uint192 s = trade.sellAmount; // {sellTok}
-        uint192 b; // {buyTok} initially 0
+        // Cap sell amount
+        uint192 maxSell = maxTradeSize(trade.sell, lotPrice); // {sellTok}
+        uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
-        // Size trade if trade.sellPrice > 0
-        if (trade.sellPrice > 0) {
-            uint192 maxTradeSize_ = maxTradeSize(trade.sell, trade.sellPrice);
-            if (s > maxTradeSize_) s = maxTradeSize_;
+        // Calculate equivalent buyAmount within [0, FIX_MAX]
+        // {buyTok} = {sellTok} * {1} * {UoA/sellTok} / {UoA/buyTok}
+        uint192 b = safeMulDivCeil(
+            ITrading(address(this)),
+            s.mul(FIX_ONE.minus(rules.maxTradeSlippage)),
+            trade.sellPrice, // {UoA/sellTok}
+            trade.buyPrice // {UoA/buyTok}
+        );
 
-            // {buyTok} = {sellTok} * {UoA/sellTok} / {UoA/buyTok}
-            b = s.mul(FIX_ONE.minus(rules.maxTradeSlippage)).mulDiv(
-                trade.sellPrice,
-                trade.buyPrice,
-                CEIL
-            );
-        }
-
-        req.sell = trade.sell;
-        req.buy = trade.buy;
+        // {*tok} => {q*Tok}
         req.sellAmount = s.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR);
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
-
+        req.sell = trade.sell;
+        req.buy = trade.buy;
         return (true, req);
     }
 
@@ -148,6 +146,22 @@ library TradeLib {
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
+    }
+
+    /// @return The result of FixLib.mulDiv bounded from above by FIX_MAX in the case of overflow
+    function safeMulDivCeil(
+        ITrading trader,
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) internal pure returns (uint192) {
+        try trader.mulDivCeil(x, y, z) returns (uint192 result) {
+            return result;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return FIX_MAX;
+        }
     }
 
     // === Private ===

@@ -44,9 +44,6 @@ interface IBackingManager is IComponent, ITrading {
     /// @dev Performs a uniqueness check on the erc20s list in O(n)
     /// @custom:interaction
     function manageTokensSortedOrder(IERC20[] memory erc20s) external;
-
-    /// Light wrapper around Fixed's mulDiv256 to support try-catch
-    function tryMulDiv256Ceil(uint256 x, uint256 y, uint256 z) external pure returns (uint256);
 }
 
 interface TestIBackingManager is IBackingManager, TestITrading {

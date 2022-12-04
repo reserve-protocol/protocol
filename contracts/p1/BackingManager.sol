@@ -264,13 +264,6 @@ contract BackingManagerP1 is TradingP1, IBackingManager {
         backingBuffer = val;
     }
 
-    // === Fixed Helper ===
-
-    /// Light wrapper around Fixed's mulDiv256 to support try-catch
-    function tryMulDiv256Ceil(uint256 x, uint256 y, uint256 z) external pure returns (uint256) {
-        return mulDiv256(x, y, z, CEIL);
-    }
-
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
