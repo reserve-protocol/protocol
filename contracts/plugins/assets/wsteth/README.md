@@ -11,38 +11,35 @@ As described in the [Lido Site](https://help.coinbase.com/en/coinbase/trading-an
 You can get exchange rate from [`wstETH.stEthPerToken()`](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) method of wstETH contract.
 
 `wstETH` contract: <https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#code>
+
 `stETH` contract: <https://etherscan.io/token/0xae7ab96520de3a18e5e111b5eaab095312d7fe84#code>
 
-As described, `stETH` is a rebasing token which means token balances is not fixed. Due to that, it can not be used directly in the Reverse Protocol. The solution for that is using `wstETH` instead which is not a rebasing coin and behaves like `rETH` and `cbETH`.
+As described on `stETH Intro`, `stETH` is a rebasing token which means token balances is not fixed. Due to that, it can not be used directly as collateral the Reverse Protocol. The solution for that is using `wstETH` instead which is not a rebasing token and behaves like `rETH` and `cbETH`.
 
-`wstETH` and `stETH` can be always swapped at any time to each other without any risk (Except Smart contract risk) like `wETH` and `ETH`.
+`wstETH` and `stETH` can be always swapped at any time to each other without any risk and limitation (Except smart contract risk), like `wETH` and `ETH`.
 
 Wrap & Unwrap app can be found here: <https://stake.lido.fi/wrap>
 
 ### stETH Intro
 
-```
-stETH is a ERC20 token that represents ether staked with Lido. Unlike staked ether, it is liquid and can be transferred, traded, or used in DeFi applications. Total supply of stETH reflects amount of ether deposited into protocol combined with staking rewards, minus potential validator penalties. stETH tokens are minted upon ether deposit at **1:1** ratio. When withdrawals from the Beacon chain will be introduced, it will also be possible to redeem ether by burning stETH at the same **1:1** ratio.
-```
+> stETH is a ERC20 token that represents ether staked with Lido. Unlike staked ether, it is liquid and can be transferred, traded, or used in DeFi applications. Total supply of stETH reflects amount of ether deposited into protocol combined with staking rewards, minus potential validator penalties. stETH tokens are minted upon ether deposit at **1:1** ratio. When withdrawals from the Beacon chain will be introduced, it will also be possible to redeem ether by burning stETH at the same **1:1** ratio.
 
 _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#what-is-steth)_
 
 ### wstETH Intro
 
-```
-Due to the rebasing nature of stETH, the stETH balance on holder's address is not constant, it changes daily as oracle report comes in. Although rebasable tokens are becoming a common thing in DeFi recently, many dApps do not support rebasing. For example, Maker, UniSwap, and SushiSwap are not designed for rebasable tokens. Listing stETH on these apps can result in holders not receiving their daily staking rewards which effectively defeats the benefits of liquid staking. To integrate with such dApps, there's another form of Lido stTokens called wstETH (wrapped staked ether).
+> Due to the rebasing nature of stETH, the stETH balance on holder's address is not constant, it changes daily as oracle report comes in. Although rebasable tokens are becoming a common thing in DeFi recently, many dApps do not support rebasing. For example, Maker, UniSwap, and SushiSwap are not designed for rebasable tokens. Listing stETH on these apps can result in holders not receiving their daily staking rewards which effectively defeats the benefits of liquid staking. To integrate with such dApps, there's another form of Lido stTokens called wstETH (wrapped staked ether).
 
-Example:
-You wrap 100 stETH to 99.87 wstETH.
-You continue to earn rewards on your wstETH.
-When you unwrap your wstETH, you receive 101 stETH.
-```
+> Example:
+> You wrap 100 stETH to 99.87 wstETH.
+> You continue to earn rewards on your wstETH.
+> When you unwrap your wstETH, you receive 101 stETH.
 
 _\*from [Lido docs](https://docs.lido.fi/guides/steth-integration-guide/#wsteth)_
 
 ## Economics
 
-Holding `stETH` and `wstETH` has a economic advantage over holding `ETH` because of the **Staking Rewards** accumulates into the protocol. The mechanism for the `stETH` and `wsETH` is different but because they are interchangeable, in this doc, we only will explain `wstETH`.
+Holding `stETH` and `wstETH` has a economic advantage over holding `ETH`, because **Staking Rewards** accumulates into the protocol and causes `wstETH` go up against `ETH`. The mechanism for the `stETH` and `wsETH` is different but because they are interchangeable, in this doc, we only will explain `wstETH`.
 
 Rewards for holding `wstETH` is calculated by an exchange rate:
 
@@ -84,13 +81,13 @@ _\* from https://docs.lido.fi/contracts/lido#rebasing_
 
 #### refPerTok {ref/tok}
 
-This function returns rate of `ETH/wstETH`, getting from [stEthPerToken](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
+This function returns rate of `ETH/wstETH`, getting from [stEthPerToken()](https://etherscan.io/token/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0#readContract#F10) function in wstETH contract.
 
-`stEthPerToken` function returns `stETH/wstETH` rate, and by knowing 1:1 ratio between `stETH` and `ETH`, we are getting `ETH/wstETH`.
+`stEthPerToken` function returns `stETH/wstETH` rate, and by knowing 1:1 ratio between `stETH` and `ETH`, we can get `ETH/wstETH`.
 
 #### strictPrice() {UoA/tok}
 
-Calculating {USD/wstETH} as follow:
+Calculating `{USD/wstETH}` as follow:
 
 ```
 {USD/wstETH} = {stETH/wstETH} * {USD/stETH}
@@ -103,13 +100,12 @@ Calculating {USD/wstETH} as follow:
 
 Always returns `1` since `target` and `ref` are both `ETH`.
 
-#### refresh
+#### refresh()
 
 This function will check the conditions and update status if needed. Conditions are as below:
 
 - Reference price decrease: This will `default` collateral **immediately** and status became `DISABLED`
-- Price of {USD/wstETH} fall below/over the reference price +/- `defaultThreshold%`: In this condition collateral status become `IFFY`, if it remain in this state for `delayUntilDefault`, status will change to `DISABLED`
-- `refPerToken` reverts: Collateral status becomes `DISABLED`
+- Price of `{USD/wstETH}` falls below/over the reference price +/- `defaultThreshold`: In this condition collateral status become `IFFY`, if status remain in this state for `delayUntilDefault` time, status will change to `DISABLED`
 - `strictPrice` reverts: Collateral status becomes `IFFY`
 - `pricePerRef` reverts: Collateral status becomes `IFFY`
 
@@ -135,7 +131,7 @@ Does nothing.
 
 ## Deployment
 
-- Added Deployment [task](../../../../tasks/deployment/collateral/deploy-wsteth-collateral.ts): `yarn hardhat deploy-wsteth-collateral`
+- Deployment [task](../../../../tasks/deployment/collateral/deploy-wsteth-collateral.ts): `yarn hardhat deploy-wsteth-collateral`
 
   - Params:
     - `fallbackPrice`: A fallback price (in UoA)
@@ -163,7 +159,7 @@ Does nothing.
     --delay-until-default 86400 # 24H
   ```
 
-- Added to collateral deployment script [2_deploy_collateral.ts](../../../../scripts/deployment/phase2-assets/2_deploy_collateral.ts#610), run with `yarn deploy`
+- Added to collateral deployment script [2_deploy_collateral.ts](../../../../scripts/deployment/phase2-assets/2_deploy_collateral.ts#610), run with `yarn deploy`.
 
 ## Testing
 
