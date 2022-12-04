@@ -41,6 +41,7 @@ import {
   IBnTokenERC20,
   IBnTokenERC20__factory,
 } from '../../../typechain'
+import { equal } from 'assert'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -164,6 +165,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
   describe('Deployment', () => {
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
+      expect(await bnToken.address).to.equal(networkConfig[chainId].BANCOR_PROXY)
       expect(await BancorV3Collateral.isCollateral()).to.equal(true)
       expect(await BancorV3Collateral.erc20Decimals()).to.equal(await usdc.decimals())
       expect(await BancorV3Collateral.erc20()).to.equal(usdc.address)
@@ -171,7 +173,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      expect(await BancorV3Collateral.refPerTok()).to.equal(fp('1')) // close to $1
+      expect(await BancorV3Collateral.refPerTok()).to.equal(1003759) // close to $1
     })
   })
 

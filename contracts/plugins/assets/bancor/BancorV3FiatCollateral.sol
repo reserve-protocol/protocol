@@ -7,6 +7,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/ICToken.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/bancor/IBnTokenERC20.sol";
+import "hardhat/console.sol";
 
 /**
  * @title CTokenFiatCollateral
@@ -45,7 +46,6 @@ contract BancorV3FiatCollateral is Collateral {
     {  
         require(address(bnToken_) != address(0), "missing erc20");
         bnToken = IBnTokenERC20(address(bnToken_));
-
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
