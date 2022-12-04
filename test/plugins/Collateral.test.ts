@@ -27,6 +27,9 @@ import {
   TestIRToken,
   USDCMock,
   WETH9,
+  WstETHCollateral__factory,
+  WstETHCollateral,
+  WstETHMock,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp, setNextBlockTimestamp } from '../utils/time'
 import snapshotGasCost from '../utils/snapshotGasCost'
@@ -1777,6 +1780,276 @@ describe('Collateral contracts', () => {
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidEURFiatCollateral.refresh()).to.be.revertedWith('')
       expect(await invalidEURFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+  })
+
+  // Tests specific to wsEthCollateral.sol contract, not used by default in fixture
+  describe('wstETH Collateral #fast', () => {
+    let wstEthCollateralFactory: WstETHCollateral__factory
+    let wstETHCollateral: WstETHCollateral
+    let wstEth: WstETHMock
+    let ethChainlinkFeed: MockV3Aggregator
+    let stethChainlinkFeed: MockV3Aggregator
+
+    beforeEach(async () => {
+      ethChainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(18, fp('1000'))
+      )
+      stethChainlinkFeed = <MockV3Aggregator>(
+        await (await ethers.getContractFactory('MockV3Aggregator')).deploy(18, fp('1000'))
+      )
+
+      // wstEth
+      wstEth = await (await ethers.getContractFactory('WstETHMock')).deploy()
+
+      wstEthCollateralFactory = await ethers.getContractFactory('WstETHCollateral', {})
+
+      wstETHCollateral = <WstETHCollateral>(
+        await wstEthCollateralFactory.deploy(
+          fp('1000'),
+          ethChainlinkFeed.address,
+          stethChainlinkFeed.address,
+          wstEth.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('ETH'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      )
+      // Mint some tokens
+      await wstEth.connect(owner).mint(owner.address, amt)
+
+      // Set initial rate
+      await wstEth.setExchangeRate(fp('1.05'))
+    })
+
+    it('Should not allow zero fallback price', async () => {
+      await expect(
+        wstEthCollateralFactory.deploy(
+          fp('0'),
+          ethChainlinkFeed.address,
+          stethChainlinkFeed.address,
+          wstEth.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('ETH'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      ).to.be.revertedWith('fallback price zero')
+    })
+
+    it('Should not allow zero default threshold', async () => {
+      await expect(
+        wstEthCollateralFactory.deploy(
+          fp('1'),
+          ethChainlinkFeed.address,
+          stethChainlinkFeed.address,
+          wstEth.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('ETH'),
+          fp('0'),
+          DELAY_UNTIL_DEFAULT
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+    })
+
+    it('Should not allow missing stEth chainlink feed', async () => {
+      await expect(
+        wstEthCollateralFactory.deploy(
+          fp('1'),
+          ethChainlinkFeed.address,
+          ZERO_ADDRESS,
+          wstEth.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('ETH'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      ).to.be.revertedWith('missing stEth chainlink feed')
+    })
+
+    it('Should not allow missing Eth chainlink feed', async () => {
+      await expect(
+        wstEthCollateralFactory.deploy(
+          fp('1'),
+          ZERO_ADDRESS,
+          stethChainlinkFeed.address,
+          wstEth.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('ETH'),
+          DEFAULT_THRESHOLD,
+          DELAY_UNTIL_DEFAULT
+        )
+      ).to.be.revertedWith('missing chainlink feed')
+    })
+
+    it('Should setup collateral correctly', async function () {
+      // WstETH Collateral
+      expect(await wstETHCollateral.isCollateral()).to.equal(true)
+      expect(await wstETHCollateral.uoaPerRefFeed()).to.equal(ethChainlinkFeed.address)
+      expect(await wstETHCollateral.uoaPerStETHFeed()).to.equal(stethChainlinkFeed.address)
+      expect(await wstETHCollateral.erc20()).to.equal(wstEth.address)
+      expect(await wstEth.decimals()).to.equal(18)
+      expect(await wstETHCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('ETH'))
+
+      // Get priceable info
+      await wstETHCollateral.refresh()
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await wstETHCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await wstETHCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      expect(await wstETHCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+      expect(await wstETHCollateral.bal(owner.address)).to.equal(amt)
+      expect(await wstETHCollateral.refPerTok()).to.equal(fp('1.05'))
+      expect(await wstETHCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await wstETHCollateral.pricePerTarget()).to.equal(fp('1000'))
+      expect(await wstETHCollateral.prevReferencePrice()).to.equal(
+        await wstETHCollateral.refPerTok()
+      )
+
+      expect(await wstETHCollateral.strictPrice()).to.equal(fp('1050')) // 1000 * 1.05
+      await expect(wstETHCollateral.claimRewards()).to.not.emit(wstETHCollateral, 'RewardsClaimed')
+    })
+
+    it('Should calculate prices correctly', async function () {
+      expect(await wstETHCollateral.strictPrice()).to.equal(fp('1050'))
+
+      // Check refPerTok initial values
+      expect(await wstETHCollateral.refPerTok()).to.equal(fp('1.05'))
+
+      // Increase rate to 1.1
+      await wstEth.setExchangeRate(fp('1.1'))
+
+      // Check price doubled
+      expect(await wstETHCollateral.strictPrice()).to.equal(fp('1100'))
+
+      // RefPerTok
+      expect(await wstETHCollateral.refPerTok()).to.equal(fp('1.1'))
+
+      // Update values in Oracle increase by 10%
+      const v3Aggregator = await ethers.getContractAt(
+        'MockV3Aggregator',
+        stethChainlinkFeed.address
+      )
+      await v3Aggregator.updateAnswer(fp('1100'))
+
+      // Check new prices
+      expect(await wstETHCollateral.strictPrice()).to.equal(fp('1210')) // 1100 * 1.1
+
+      // Revert if price is zero - Update Oracles and check prices
+      await v3Aggregator.updateAnswer(fp('0'))
+      await expect(wstETHCollateral.strictPrice()).to.be.revertedWith('PriceOutsideRange()')
+
+      // When refreshed, sets status to Unpriced
+      await wstETHCollateral.refresh()
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Reverts if Chainlink feeds reverts or runs out of gas, maintains status', async () => {
+      const stEthInvalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(18, bn('1e18'))
+      )
+      const ethInvalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(18, bn('1e18'))
+      )
+
+      const invalidWstEthCollateral: WstETHCollateral = await wstEthCollateralFactory.deploy(
+        fp('1000'),
+        ethInvalidChainlinkFeed.address,
+        stEthInvalidChainlinkFeed.address,
+        wstEth.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        DEFAULT_THRESHOLD,
+        DELAY_UNTIL_DEFAULT
+      )
+
+      // Reverting with no reason
+      await stEthInvalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidWstEthCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      await stEthInvalidChainlinkFeed.setSimplyRevert(false)
+      await ethInvalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidWstEthCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await stEthInvalidChainlinkFeed.setSimplyRevert(false)
+      await ethInvalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidWstEthCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      await stEthInvalidChainlinkFeed.setSimplyRevert(true)
+      await ethInvalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidWstEthCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+
+    it('Should triggers in an immediate default if refPerTok decreaces, add must stay defaulted', async () => {
+      await wstETHCollateral.refresh()
+
+      // Check initial values
+      expect(await wstETHCollateral.strictPrice()).to.equal(fp('1050'))
+      expect(await wstETHCollateral.refPerTok()).to.equal(fp('1.05'))
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Decrease disables token
+      await wstEth.setExchangeRate(fp('1.04'))
+      await wstETHCollateral.refresh()
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Reincrease doesnt change status
+      await wstEth.setExchangeRate(fp('1000'))
+      await wstETHCollateral.refresh()
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('Should become iffy if price cross the threshold', async () => {
+      stethChainlinkFeed.updateAnswer(fp('949')) // 1000 * 0.95 -1
+
+      await expect(wstETHCollateral.refresh())
+        .to.emit(wstETHCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Change price back to normal range
+      stethChainlinkFeed.updateAnswer(fp('1000'))
+
+      await expect(wstETHCollateral.refresh())
+        .to.emit(wstETHCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await wstETHCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Change price cross the threshold
+      stethChainlinkFeed.updateAnswer(fp('940'))
+
+      await expect(wstETHCollateral.refresh())
+        .to.emit(wstETHCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+        DELAY_UNTIL_DEFAULT
+      )
+      expect(await wstETHCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(DELAY_UNTIL_DEFAULT))
+      expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
+    it('Should claim reward do nothing', async () => {
+      await expect(await wstETHCollateral.claimRewards()).to.not.emit(
+        wstETHCollateral,
+        'RewardsClaimed'
+      )
     })
   })
 

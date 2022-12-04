@@ -186,9 +186,7 @@ async function collateralFixture(
     libraries: { OracleLib: oracleLib.address },
   })
 
-  const WstETHCollateralFactory = await ethers.getContractFactory('WstETHCollateral', {
-    libraries: { OracleLib: oracleLib.address },
-  })
+  const WstETHCollateralFactory = await ethers.getContractFactory('WstETHCollateral')
 
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
@@ -446,7 +444,7 @@ async function collateralFixture(
       erc20,
       <WstETHCollateral>(
         await WstETHCollateralFactory.deploy(
-          fp('0'),
+          fp('1'),
           referenceUnitOracleAddr,
           stETHOracleAddr,
           erc20.address,
@@ -466,7 +464,7 @@ async function collateralFixture(
   const BUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.BUSD as string
   const USDP_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.USDP as string
   const TUSD_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.TUSD as string
-  const STETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.stETH as string
+  const STETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.STETH as string
   const ETH_USD_PRICE_FEED = networkConfig[chainId].chainlinkFeeds.ETH as string
 
   const dai = await makeVanillaCollateral(
@@ -576,7 +574,7 @@ async function collateralFixture(
   )
 
   const wstETH = await makeWstETHCollateral(
-    networkConfig[chainId].tokens.wstETH as string,
+    networkConfig[chainId].tokens.WSTETH as string,
     ETH_USD_PRICE_FEED as string,
     STETH_USD_PRICE_FEED as string,
     'ETH'

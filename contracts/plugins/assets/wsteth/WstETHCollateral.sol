@@ -53,6 +53,7 @@ contract WstETHCollateral is Collateral {
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(address(uoaPerStETHFeed_) != address(0), "missing stEth chainlink feed");
 
         defaultThreshold = defaultThreshold_;
         uoaPerRefFeed = uoaPerRefFeed_;

@@ -130,7 +130,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
     // Setup required token contracts
     // wstETH token
     wstETH = <WstETHMock>(
-      await ethers.getContractAt('WstETHMock', networkConfig[chainId].tokens.wstETH || '')
+      await ethers.getContractAt('WstETHMock', networkConfig[chainId].tokens.WSTETH || '')
     )
 
     // Deploy wstETH collateral plugin
@@ -139,7 +139,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       await wstEthCollateralFactory.deploy(
         fp('1'),
         networkConfig[chainId].chainlinkFeeds.ETH as string,
-        networkConfig[chainId].chainlinkFeeds.stETH as string,
+        networkConfig[chainId].chainlinkFeeds.STETH as string,
         wstETH.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
