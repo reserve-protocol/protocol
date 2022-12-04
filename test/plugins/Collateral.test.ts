@@ -2011,7 +2011,7 @@ describe('Collateral contracts', () => {
     })
 
     it('Should become iffy if price cross the threshold', async () => {
-      stethChainlinkFeed.updateAnswer(fp('949')) // 1000 * 0.95 -1
+      await stethChainlinkFeed.updateAnswer(fp('949')) // 1000 * 0.95 -1
 
       await expect(wstETHCollateral.refresh())
         .to.emit(wstETHCollateral, 'CollateralStatusChanged')
@@ -2019,7 +2019,7 @@ describe('Collateral contracts', () => {
       expect(await wstETHCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // Change price back to normal range
-      stethChainlinkFeed.updateAnswer(fp('1000'))
+      await stethChainlinkFeed.updateAnswer(fp('1000'))
 
       await expect(wstETHCollateral.refresh())
         .to.emit(wstETHCollateral, 'CollateralStatusChanged')
@@ -2028,7 +2028,7 @@ describe('Collateral contracts', () => {
       expect(await wstETHCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Change price cross the threshold
-      stethChainlinkFeed.updateAnswer(fp('940'))
+      await stethChainlinkFeed.updateAnswer(fp('940'))
 
       await expect(wstETHCollateral.refresh())
         .to.emit(wstETHCollateral, 'CollateralStatusChanged')
