@@ -4,8 +4,6 @@
 
 This plugin can be deployed four times to cover all types of assets that Notional accepts.
 
-For Fiat collateral plugin:
-
 `tok`: nUSDC  
 `ref`: USDC  
 `target`: USD  
@@ -15,8 +13,6 @@ For Fiat collateral plugin:
 `ref`: DAI  
 `target`: USD  
 `UoA`: USD
-
-For Non-Fiat collateral plugin:
 
 `tok`: nETH  
 `ref`: ETH  

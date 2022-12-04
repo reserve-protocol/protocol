@@ -4,7 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "contracts/plugins/assets/notional/AbstractNTokenCollateral.sol";
-import "contracts/libraries/Fixed.sol";
 
 /**
  * @title NTokenStaticCollateral
@@ -13,7 +12,6 @@ import "contracts/libraries/Fixed.sol";
  */
 contract NTokenStaticCollateral is NTokenCollateral {
     using OracleLib for AggregatorV3Interface;
-    using FixLib for uint192;
 
     /// @param _fallbackPrice {UoA} Price to be returned in worst case
     /// @param _uoaPerRefFeed Feed units: {uoa/ref}

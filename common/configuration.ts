@@ -26,6 +26,7 @@ export interface ITokens {
   cETH?: string
   cWBTC?: string
   nUSDC?: string
+  nETH?: string
   AAVE?: string
   stkAAVE?: string
   COMP?: string
@@ -80,6 +81,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
       nUSDC: '0x18b0Fc5A233acF1586Da7C199Ca9E3f486305A29',
+      nETH: '0xabc07BF91469C5450D6941dD0770E6E6761B90d6',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
@@ -147,6 +149,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cETH: '0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5',
       cWBTC: '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
       nUSDC: '0x18b0Fc5A233acF1586Da7C199Ca9E3f486305A29',
+      nETH: '0xabc07BF91469C5450D6941dD0770E6E6761B90d6',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',

@@ -531,7 +531,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         // Claim rewards
         await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-        // Check rewards both in COMP and stkAAVE
+        // Check rewards in NOTE
         const rewardsNOTE1: BigNumber = await noteToken.balanceOf(backingManager.address)
 
         expect(rewardsNOTE1).to.be.gt(0)
@@ -584,7 +584,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           )
         )
 
-        // CTokens - Collateral with no price info should revert
+        // Collateral with no price info should revert
         await expect(nonPriceNUsdcCollateral.strictPrice()).to.be.reverted
 
         // Refresh should also revert - status is not modified
@@ -689,17 +689,19 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         await nToken.setUnderlyingValue(fp('1e8'))
 
         // Redeploy plugin using the new cDai mock
-        const newNUsdcCollateral = <NTokenPeggedCollateral>await NTokenPeggedCollateralFactory.deploy(
-          fp('1'),
-          mockChainlinkFeed.address,
-          nToken.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          100, // 1%
-          ethers.utils.formatBytes32String('USD'),
-          delayUntilDefault,
-          notionalProxy.address,
-          defaultThreshold
+        const newNUsdcCollateral = <NTokenPeggedCollateral>(
+          await NTokenPeggedCollateralFactory.deploy(
+            fp('1'),
+            mockChainlinkFeed.address,
+            nToken.address,
+            config.rTokenMaxTradeVolume,
+            ORACLE_TIMEOUT,
+            100, // 1%
+            ethers.utils.formatBytes32String('USD'),
+            delayUntilDefault,
+            notionalProxy.address,
+            defaultThreshold
+          )
         )
 
         // Initialize internal state of max redPerTok
