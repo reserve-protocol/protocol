@@ -15,7 +15,7 @@ abstract contract RevenueHiding is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
-    uint192 private immutable marginRatio; // max drop allowed // D18
+    uint192 private immutable marginRatio; // max drop allowed
     uint192 private maxRefPerTok; // max rate previously seen {ref/tok} // D18
 
     constructor(
@@ -90,6 +90,6 @@ abstract contract RevenueHiding is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     /// @dev This amount has a {margin} space discounted to allow a certain drop on value
     function refPerTok() public view override returns (uint192) {
-        return maxRefPerTok.mul(marginRatio).div(10000);
+        return _safeWrap(maxRefPerTok * marginRatio / 10000);
     }
 }

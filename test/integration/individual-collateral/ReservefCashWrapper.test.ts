@@ -402,7 +402,7 @@ describeFork(`ReservefCashWrapper - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       const refPerTok1 = await wfCash.refPerTok(addr1.address)
 
-      expect(refPerTok1).to.be.lt(bn('1e8')) // because of entry market fee
+      expect(refPerTok1).to.be.lt(bn('1e18')) // because of entry market fee
     })
 
     it('Should have an increasing refPerTok', async () => {
@@ -543,7 +543,7 @@ describeFork(`ReservefCashWrapper - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await wfCash.balanceOf(addr1.address)).to.gt(balanceRwfCash1)
       expect(refPerTok2).to.be.gt(refPerTok1)
       expect(refPerTok3).to.be.lt(refPerTok2)
-      expect(refPerTok3).to.be.closeTo(refPerTok2, bn('0.03e8'))
+      expect(refPerTok3).to.be.closeTo(refPerTok2, bn('0.03e18'))
 
       await evmRevert(snapshotId)
     })

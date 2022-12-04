@@ -56,16 +56,15 @@ contract ReservefCashWrapper is ERC20, IReservefCashWrapper {
     /// @return rate The ratio of value of a deposited token to what it's currently worth
     /// @dev This rate might decrease when re-investing because of the fee to enter a market
     function refPerTok(address account) public view returns (uint256 rate) {
-        uint256 depositedAmount = depositedBy(account);
+        uint256 length = markets[account].length;
 
-        if (depositedAmount == 0) {
-            rate = 0;
+        if (length == 0) {
+            rate = 1e18;
         }
         else {
-            uint256 length = markets[account].length;
-            uint256 coefficient = 10 ** underlyingAsset.decimals();
             uint256 maturity;
             uint256 underlyingValue;
+            uint256 coefficient = 10 ** underlyingAsset.decimals();
             Position storage position;
             IWrappedfCash wfCash;
 
@@ -99,7 +98,7 @@ contract ReservefCashWrapper is ERC20, IReservefCashWrapper {
             }
 
             // average
-            rate = rate / length;
+            rate = shiftl_toFix(rate / length, 18 - int8(decimals()) - 18);
         }
     }
 
