@@ -130,7 +130,7 @@ describe('FacadeRead contract', () => {
       let [backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and no insurance
-      expect(backing).to.be.closeTo(fp('1'), 1)
+      expect(backing).to.be.closeTo(fp('1'), 10)
       expect(insurance).to.equal(0)
 
       // Mint some RSR
@@ -143,16 +143,16 @@ describe('FacadeRead contract', () => {
       ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
       // Check values - Fully capitalized and fully insured
-      expect(backing).to.be.closeTo(fp('1'), 1)
-      expect(insurance).to.be.closeTo(fp('0.5'), 2)
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.be.closeTo(fp('0.5'), 10)
 
       // Stake more RSR
       await rsr.connect(addr1).approve(stRSR.address, stakeAmount)
       await stRSR.connect(addr1).stake(stakeAmount)
       ;[backing, insurance] = await facade.callStatic.backingOverview(rToken.address)
 
-      expect(backing).to.be.closeTo(fp('1'), 1)
-      expect(insurance).to.be.closeTo(fp('1'), 5)
+      expect(backing).to.be.closeTo(fp('1'), 10)
+      expect(insurance).to.be.closeTo(fp('1'), 10)
 
       // Redeem all RTokens
       await rToken.connect(addr1).redeem(issueAmount)
@@ -194,8 +194,8 @@ describe('FacadeRead contract', () => {
       const [lowPrice, highPrice] = await facade.price(rToken.address)
       const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
       const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(ORACLE_ERROR))
-      expect(lowPrice).to.be.closeTo(expectedLow, 11)
-      expect(highPrice).to.be.closeTo(expectedHigh, 11)
+      expect(lowPrice).to.be.closeTo(expectedLow, 15)
+      expect(highPrice).to.be.closeTo(expectedHigh, 15)
     })
 
     // P1 only
