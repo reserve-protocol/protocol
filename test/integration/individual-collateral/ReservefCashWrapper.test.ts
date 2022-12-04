@@ -11,6 +11,7 @@ import { networkConfig } from '../../../common/configuration'
 import { advanceBlocks, advanceTime } from '../../utils/time'
 import { evmRevert, evmSnapshot } from '../utils'
 import { ZERO_ADDRESS } from '../../../common/constants'
+import forkBlockNumber from '../fork-block-numbers'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -27,7 +28,23 @@ describeFork(`ReservefCashWrapper - Mainnet Forking P${IMPLEMENTATION}`, functio
   let initialBalance: BigNumber
   let WrappedFCashFactory: ContractFactory
 
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: process.env.MAINNET_RPC_URL,
+            blockNumber: blockNumber,
+          },
+        },
+      ],
+    })
+  }
+
   before(async () => {
+    await setup(forkBlockNumber['notional-fixed-rate'])
     chainId = await getChainId(hre)
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
