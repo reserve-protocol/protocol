@@ -147,7 +147,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       oracleTimeout: MAX_ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD,
-      delayUtilDefault: DELAY_UNTIL_DEFAULT,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
     })
 
     await assetRegistry.connect(owner).register(collateral.address)
