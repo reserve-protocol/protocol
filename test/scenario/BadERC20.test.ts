@@ -21,7 +21,13 @@ import {
 import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+} from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -57,7 +63,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
-  
+
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -94,7 +100,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     )
     collateral0 = await (
       await ethers.getContractFactory('FiatCollateral')
-    ).deploy( {
+    ).deploy({
       fallbackPrice: fp('1'),
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
@@ -103,9 +109,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       oracleTimeout: ORACLE_TIMEOUT,
       targetName: ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD,
-      delayUntilDefault: DELAY_UNTIL_DEFAULT
-    }
-    )
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     // Backup
     backupToken = erc20s[2] // USDT
