@@ -1,9 +1,9 @@
 {
-    "printWidth": 120,
+    "printWidth": 100,
     "tabWidth": 4,
     "semi": false,
     "singleQuote": false,
-    "bracketSpacing": false,
+    "bracketSpacing": true,
     "useTabs": false,
     "overrides": [
         {

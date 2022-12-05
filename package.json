@@ -48,6 +48,7 @@
   "devDependencies": {
     "@aave/protocol-v2": "^1.0.1",
     "@chainlink/contracts": "^0.4.1",
+    "@gearbox-protocol/integrations-v2": "^1.5.0",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
     "@nomiclabs/hardhat-ethers": "^2.0.3",
     "@nomiclabs/hardhat-etherscan": "^3.1.0",
