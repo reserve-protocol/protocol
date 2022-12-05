@@ -3,8 +3,8 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
+import "../../libraries/Fixed.sol";
+import "./AbstractCollateral.sol";
 
 /**
  * @title FiatCollateral
@@ -73,7 +73,7 @@ contract FiatCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 }

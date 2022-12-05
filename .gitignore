@@ -10,6 +10,7 @@ flatten/
 node_modules/
 reports
 typechain/
+scripts/addresses/31337*
 
 .openzeppelin
 .env

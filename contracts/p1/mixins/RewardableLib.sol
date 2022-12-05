@@ -4,8 +4,8 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "contracts/interfaces/IAssetRegistry.sol";
-import "contracts/interfaces/IBackingManager.sol";
+import "../../interfaces/IAssetRegistry.sol";
+import "../../interfaces/IBackingManager.sol";
 
 /**
  * @title RewardableLibP1
@@ -90,8 +90,10 @@ library RewardableLibP1 {
     function sweepRewardsSingle(
         mapping(IERC20 => uint256) storage liabilities,
         IERC20 erc20,
+        IAssetRegistry reg,
         IBackingManager bm
     ) external {
+        require(reg.isRegistered(erc20), "erc20 unregistered");
         uint256 amt = erc20.balanceOf(address(this)) - liabilities[erc20];
         if (amt > 0) {
             erc20.safeTransfer(address(bm), amt);

@@ -9,7 +9,7 @@ async function main() {
   // ==== Read Configuration ====
   const chainId = await getChainId(hre)
 
-  console.log(`c Deployment file for network ${hre.network.name} (${chainId})`)
+  console.log(`Creating Deployment file for network ${hre.network.name} (${chainId})`)
 
   if (!networkConfig[chainId]) {
     throw new Error(`Missing network configuration for ${hre.network.name}`)
@@ -17,9 +17,11 @@ async function main() {
 
   // Check if deployment file already exists for this chainId
   const deploymentFilename = getDeploymentFilename(chainId)
-  if (fileExists(deploymentFilename)) {
+  if (chainId != '31337' && fileExists(deploymentFilename)) {
     throw new Error(`${deploymentFilename} exists; I won't overwrite it.`)
   }
+
+  console.log('!!!!', networkConfig[chainId])
 
   // Get RSR Address
   const rsrAddr = networkConfig[chainId].tokens.RSR

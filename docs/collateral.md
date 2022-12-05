@@ -189,9 +189,18 @@ For more about our approach for handling decimal-fixed-point, see our [docs on t
 
 ## Synthetic Units
 
-Some collateral positions require a synthetic reference unit. This can be tricky to reason through, so here we'll provide a few examples.
+Some collateral positions require a synthetic reference unit. Here are 3 ways one might do this (more are probably possible):
 
-### Using Uniswap V2 LP Tokens
+1. [Defi Protocol Invariant](#defi-protocol-invariant)
+   Good for: bespoke LP tokens
+2. [Demurrage Collateral](#demurrage-collateral)
+   Good for: tokens without obvious revenue mechanisms on their own
+3. [Revenue Hiding](#revenue-hiding)
+   Good for: tokens that _almost_ have a nondecreasing exchange rate but not quite
+
+In general these approaches can be combined, though we don't recommend it!
+
+### Defi Protocol Invariant
 
 Consider the Uniswap V2 LP token, **UNI-V2**, for the USDC/USDT pair. (The following discussion assumes that you, reader, are familiar with the basic design of Uniswap V2. Their [documentation][univ2] is an excellent refresher.) Such a Collateral position might aim to earn revenue from liquidity fees, while maintaining a fully redeemable position in the two underlying fiatcoins.
 
@@ -223,9 +232,7 @@ And even then, it would be somewhat dangerous for an RToken designer to use this
 
 If the collateral token does not have a reference unit it is nondecreasing against except for itself, a revenue stream can be created by composing a synthetic reference unit that refers to a falling quantity of the collateral token. This causes the reference unit to become inflationary with respect to the collateral unit, resulting in a monotonically increasing `refPerTok()` and allowing the protocol to recognize revenue.
 
-Consider `wstETH`, the wrapped version of Lido's `stETH` token. While the `wstETH/stETH` exchange rate should generally increase, there may be times when Lido node operators go offline and the exchange rate temporarily falls. This is very different than a case like `cWETH`, where even a small decrease in `refPerTok()` would be sufficient to justify defaulting the collateral on the grounds that the protocol itself is failing. _Large_ decreases may be sufficient to justify default, but small decreases may be acceptable/expected.
-
-Plan: To ensure `refPerTok()` is nondecreasing, the reference unit is defined as a falling quantity of the collateral unit. As the reference unit "gets smaller", `refPerTok()` increases. This is viewed by the protocol as appreciation, allowing it to decrease how much `wstETH` (or more generally: collateral token) is required per basket unit.
+Plan: To ensure `refPerTok()` is nondecreasing, the reference unit is defined as a falling quantity of the collateral unit. As the reference unit "gets smaller", `refPerTok()` increases. This is viewed by the protocol as appreciation, allowing it to decrease how much `tok` is required per basket unit (`BU`).
 
 **Reference Unit**
 
@@ -254,13 +261,13 @@ The target unit must be named in a way that distinguishes it from the non-demurr
 
 The `DMR` prefix is short for demurrage; the `annual_demurrage_in_basis_points` is a number such as 100 for 1% annually; the `token_symbol` is the symbol the collateral.
 
-Collateral can only be automatically substituted in the basket with collateral that share the same target unit. This unfortunately means that a standard WETH collateral would not be able to be in the same class as our demurrage wstETH collateral, unless the WETH collateral were also demurrage-based, and at the same rate.
+Downside: Collateral can only be automatically substituted in the basket with collateral that share the same target unit.
 
 ### Revenue Hiding
 
-An alternative to demurrage is to hide revenue from the protocol via a discounted `refPerTok()` function. `refPerTok()` should return X% less than the largest _actual_ refPerTok exchange rate that has been observed in the underlying Defi protocol. When the actual observed rate falls below this value, the collateral should be marked defaulted via the `refresh()` function.
+An alternative to demurrage is to hide revenue from the protocol via a discounted `refPerTok()` function. `refPerTok()` should return X% less than the largest _actual_ refPerTok exchange rate that has been observed in the underlying Defi protocol. When the actual rate falls below this value, the collateral should be marked defaulted via the `refresh()` function.
 
-The side-effect of this approach is that the RToken's price on markets becomes more variable. If the RToken's price need be predictable/precise, then demurrage is the superior approach. If the token's natural appreciation is too unpredictable to apply a constant per-unit-time management fee to, then revenue-hiding may be a better fit.
+When implementing Revenue Hiding, the `price()/strictPrice()` functions should NOT hide revenue; they should use the current underlying exchange rate to calculate a best-effort estimate of what the collateral will trade at on secondary markets. A side-effect of this approach is that the RToken's price on markets becomes more variable. As such, it's best if the amount of hiding necessary is small. If the token will only rarely decrease in exchange rate---and only then a little---then revenue-hiding may be a good fit.
 
 ## Important Properties for Collateral Plugins
 

@@ -47,11 +47,12 @@ import {
 } from './fixtures'
 import { setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 describe(`Revenues - P${IMPLEMENTATION}`, () => {
   let owner: SignerWithAddress
