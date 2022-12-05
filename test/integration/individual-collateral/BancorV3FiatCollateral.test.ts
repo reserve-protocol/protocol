@@ -142,7 +142,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     )
 
     // Deploy BancorV3 collateral plugin
-    BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {})
+    BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {
+      libraries: { OracleLib: oracleLib.address },
+    })
     BancorV3Collateral = <BancorV3FiatCollateral>(
       await BancorV3CollateralFactory.deploy(
         fp('0.02'),
@@ -151,6 +153,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
         delayUntilDefault,
         (await usdc.decimals()).toString(),
         bnToken.address,
@@ -174,7 +177,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      expect(await BancorV3Collateral.refPerTok()).to.equal(1003759) // close to $1
+      expect(await BancorV3Collateral.refPerTok()).to.equal(fp('1.003759')) // close to $1
+      expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('2.2'), fp('0.1')) // close to $0.022 cents
+
     })
   })
 
