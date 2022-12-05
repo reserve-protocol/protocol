@@ -39,7 +39,10 @@ contract UniswapV3Collateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(address(chainlinkFeedSecondAsset_) != address(0), "missing chainlink feed for second asset in pair");
+        require(
+            address(chainlinkFeedSecondAsset_) != address(0),
+            "missing chainlink feed for second asset in pair"
+        );
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
         address underlyingAsset0 = uniswapV3Wrapper_.token0();
         address underlyingAsset1 = uniswapV3Wrapper_.token1();
@@ -48,8 +51,9 @@ contract UniswapV3Collateral is Collateral {
     }
 
     function claimRewards() external override {
-        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20))
-            .claimRewards(msg.sender);
+        (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(
+            address(erc20)
+        ).claimRewards(msg.sender);
         emit RewardsClaimed(IERC20(token0), amount0);
         emit RewardsClaimed(IERC20(token1), amount1);
     }

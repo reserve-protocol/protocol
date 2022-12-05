@@ -12,7 +12,36 @@ import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.s
     @author Vic G. Larson
   */
 interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
-    //TODO events
+    /** 
+        @notice Emitted when liquidity is increased for a wrapped position NFT
+        @dev Also emitted when the wrapper contract is deployed
+        @param tokenId The ID of the token for which liquidity was increased
+        @param liquidity The amount by which liquidity for the wrapped NFT position was increased
+        @param amount0 The amount of token0 that was paid for the increase in liquidity
+        @param amount1 The amount of token1 that was paid for the increase in liquidity
+     */
+    event IncreaseWrappedLiquidity(
+        uint256 indexed tokenId,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1
+    );
+    /**
+        @notice Emitted when liquidity is decreased for a wrapped position NFT
+        @param tokenId The ID of the token for which liquidity was decreased
+        @param liquidity The amount by which liquidity for the wrapped NFT position was decreased
+        @param amount0 The amount of token0 that was accounted for the decrease in liquidity
+        @param amount1 The amount of token1 that was accounted for the decrease in liquidity
+     */
+    event DecreaseWrappedLiquidity(
+        uint256 indexed tokenId,
+        uint128 liquidity,
+        uint256 amount0,
+        uint256 amount1
+    );
+
+    function tokenId() external view returns (uint256);
+
     function token0() external view returns (address);
 
     function token1() external view returns (address);
@@ -25,9 +54,9 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
             uint256 amount1
         );
 
-    function decreaseLiquidity(uint128 liquidity) external returns (uint256 amount0, uint256 amount1);
-
-    function positionId() external view returns (uint256);
+    function decreaseLiquidity(uint128 liquidity)
+        external
+        returns (uint256 amount0, uint256 amount1);
 
     function claimRewards(address recipient)
         external

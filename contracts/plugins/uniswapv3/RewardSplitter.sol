@@ -24,7 +24,7 @@ abstract contract RewardSplitter is ERC20 {
     mapping(address => mapping(address => uint256)) internal _userSnapshotRewardsPerToken;
 
     /**
-     * @notice Splits rewards to all liquidity holders 
+     * @notice Splits rewards to all liquidity holders
      * @param token0 The address of token0
      * @param token1 The address of token1. Can be zero for rewards in one currency.
      */
@@ -33,9 +33,9 @@ abstract contract RewardSplitter is ERC20 {
         uint256 length = 1;
         if (token1 != address(0)) {
             _rewardsTokens[1] = token1;
-            length = 2; 
-        } 
-        _length = length;     
+            length = 2;
+        }
+        _length = length;
     }
 
     function _claimRewardsShareTo(address recipient)
@@ -45,13 +45,20 @@ abstract contract RewardSplitter is ERC20 {
         _updateRewards();
         _updateUser(msg.sender);
         for (uint256 i; i < _length; i++) {
-            if (_unclaimedRewards[_rewardsTokens[i]][msg.sender] > IERC20(_rewardsTokens[i]).balanceOf(address(this))) {
+            if (
+                _unclaimedRewards[_rewardsTokens[i]][msg.sender] >
+                IERC20(_rewardsTokens[i]).balanceOf(address(this))
+            ) {
                 _claimRewardsFromUnderlying();
                 break;
             }
         }
         for (uint256 i; i < _length; i++) {
-            TransferHelper.safeTransfer(_rewardsTokens[i], recipient, _unclaimedRewards[_rewardsTokens[i]][msg.sender]);
+            TransferHelper.safeTransfer(
+                _rewardsTokens[i],
+                recipient,
+                _unclaimedRewards[_rewardsTokens[i]][msg.sender]
+            );
             _unclaimedRewards[_rewardsTokens[i]][msg.sender] = 0;
         }
         //rearrange _unclaimedRewards
@@ -131,7 +138,11 @@ abstract contract RewardSplitter is ERC20 {
         }
     }
 
-    function userSnapshotRewardsPerToken(uint256 index, address user) internal view returns (uint256) {
+    function userSnapshotRewardsPerToken(uint256 index, address user)
+        internal
+        view
+        returns (uint256)
+    {
         address token = _rewardsTokens[index];
         return _userSnapshotRewardsPerToken[token][user];
     }
@@ -154,7 +165,11 @@ abstract contract RewardSplitter is ERC20 {
         }
     }
 
-    function _freshRewards() internal view virtual returns (uint256[MAX_TOKENS] memory freshRewards);
+    function _freshRewards()
+        internal
+        view
+        virtual
+        returns (uint256[MAX_TOKENS] memory freshRewards);
 
     /**
      * @notice Collect rewards from the contract paying them, like a Uniswap V3 position
