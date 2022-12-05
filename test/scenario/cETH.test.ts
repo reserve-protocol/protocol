@@ -13,7 +13,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   SelfReferentialCollateral,
   TestIBackingManager,
   TestIStRSR,
@@ -23,7 +22,7 @@ import {
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR, ORACLE_TIMEOUT } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -62,8 +61,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let oracleLib: OracleLib
-
+  
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -92,7 +90,6 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       basketHandler,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -106,14 +103,17 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     )
     wethCollateral = await (
       await ethers.getContractFactory('SelfReferentialCollateral')
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      weth.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH'),
-      DELAY_UNTIL_DEFAULT
+    ).deploy({
+      fallbackPrice: fp('1'),
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: weth.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('ETH'),
+      defaultThreshold: bn(0),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT
+    }
     )
 
     // cETH
@@ -122,17 +122,18 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     ).deploy('cETH Token', 'cETH', weth.address)
 
     cETHCollateral = await (
-      await ethers.getContractFactory('CTokenSelfReferentialCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(
-      fp('1').div(50),
-      chainlinkFeed.address,
-      cETH.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH'),
-      DELAY_UNTIL_DEFAULT,
+      await ethers.getContractFactory('CTokenSelfReferentialCollateral')
+    ).deploy({
+      fallbackPrice: fp('1').div(50),
+      chainlinkFeed:chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: cETH.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('ETH'),
+      defaultThreshold: bn(0),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
       await weth.decimals(),
       compoundMock.address
     )
