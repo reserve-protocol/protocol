@@ -69,7 +69,8 @@ contract ZapRouter is IZapRouter {
         if (source == target) {
             received = IERC20(source).balanceOf(address(this));
         } else {
-            /// @notice Only supports stable coin swap look ups, need to investigate how to query for tricrypto based routing
+            /// @notice Only supports stable coin swap look ups,
+            /// need to investigate how to query for tricrypto based routing
             (address exchangePool, uint256 exchangeAmount) = curveExchangeProvider.get_best_rate(
                 source,
                 target,
