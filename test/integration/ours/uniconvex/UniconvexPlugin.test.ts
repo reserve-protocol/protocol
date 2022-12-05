@@ -5,7 +5,13 @@ import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10 } from "../../../../common/numbers"
-import { ERC20Mock, MockV3Aggregator, USDCMock, IBooster } from "../../../../typechain"
+import {
+    ERC20Mock,
+    MockV3Aggregator,
+    USDCMock,
+    IBooster,
+    UniconvexCollateral3__factory,
+} from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
@@ -213,42 +219,42 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 bn("1e8")
             )
 
-            const uniconvexCollateralContractFactory: UniconvexCollateral__factory =
-                await ethers.getContractFactory("UniconvexCollateral")
+            const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
+                "UniconvexCollateral3"
+            )
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("USD")
-            const uniconvexCollateral: UniconvexCollateral = <UniconvexCollateral>(
-                await uniconvexCollateralContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        stableSwap3Pool,
-                        fallbackPrice,
-                        [
-                            mockChainlinkFeed0.address,
-                            mockChainlinkFeed1.address,
-                            mockChainlinkFeed2.address,
-                        ],
-                        convexLpToken,
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DELAY_UNTIL_DEFAULT
-                    )
-            )
+            const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
+                .connect(addr1)
+                .deploy(
+                    matchedPools[0].poolInfo.crvRewards,
+                    stableSwap3Pool.address,
+                    fallbackPrice,
+                    [
+                        mockChainlinkFeed0.address,
+                        mockChainlinkFeed1.address,
+                        mockChainlinkFeed2.address,
+                    ],
+                    convexLpToken.address,
+                    RTOKEN_MAX_TRADE_VALUE,
+                    ORACLE_TIMEOUT,
+                    targetName,
+                    DELAY_UNTIL_DEFAULT
+                )
 
-            expect(await uniconvexCollateral.isCollateral()).to.equal(true)
-            expect(await uniconvexCollateral.erc20()).to.equal(convexLpToken)
-            expect(await uniconvexCollateral.erc20Decimals()).to.equal(18)
-            expect(await uniconvexCollateral.targetName()).to.equal(
+            expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
+            expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
+            expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
+            expect(await uniconvexCollateral3.targetName()).to.equal(
                 ethers.utils.formatBytes32String("USD")
             )
-            expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
+            expect(await uniconvexCollateral3.status()).to.equal(CollateralStatus.SOUND)
+            expect(await uniconvexCollateral3.whenDefault()).to.equal(MAX_UINT256)
             //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-            expect(await uniconvexCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-            expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-            expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+            expect(await uniconvexCollateral3.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+            expect(await uniconvexCollateral3.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+            expect(await uniconvexCollateral3.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
             // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
             // const {reserve0, reserve1} = await pair.getReserves()
@@ -260,6 +266,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
             //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
             //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
+            expect(await uniconvexCollateral3.strictPrice()).to.equal(fp("1"))
             //TODO
             //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
             // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(

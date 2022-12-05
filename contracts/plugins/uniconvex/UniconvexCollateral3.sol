@@ -4,15 +4,20 @@ pragma solidity ^0.8.9;
 import "../assets/AbstractCollateral.sol";
 import "hardhat/console.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool_3.sol";
-
+import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBaseRewardPool.sol";
+import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IRewards.sol";
 
 contract UniconvexCollateral3 is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface[N_COINS] public chainlinkFeeds;
-    ICurvePool public immutable curvePool;
+    ICurvePool3Assets public immutable curvePool;
+    IBaseRewardPool baseRewardPool;
 
+    //TODO dont like curvePool not depends on erc20 token
     constructor(
-        ICurvePool _curvePool,
+        //perhaps replace wiht poolId/poolInfo
+        IBaseRewardPool baseRewardPool_,
+        ICurvePool3Assets curvePool_,
         uint192 fallbackPrice_,
         AggregatorV3Interface[N_COINS] memory chainlinkFeeds_,
         IERC20Metadata erc20_,
@@ -31,11 +36,13 @@ contract UniconvexCollateral3 is Collateral {
             delayUntilDefault_
         )
     {
-        require(address(_curvePool) != address(0), "missing curvePool");
-        curvePool = _curvePool;
-        for (uint i = 1; i < N_COINS; i++) {
-            require(address(chainlinkFeeds[i]) != address(0), "missing chainlink feed for second asset in pair");    
+        require(address(curvePool_) != address(0), "missing curvePool");
+        for (uint256 i = 1; i < N_COINS; i++) {
+            require(address(chainlinkFeeds_[i]) != address(0), "missing chainlink feed");
         }
+        require(address(baseRewardPool_) != address(0), "missing baseRewardPool");
+        baseRewardPool = baseRewardPool_;
+        curvePool = curvePool_;
         chainlinkFeeds = chainlinkFeeds_;
     }
 
@@ -47,28 +54,80 @@ contract UniconvexCollateral3 is Collateral {
     //     return uint192((rootK * 10**18) / pair.totalSupply());
     // }
 
-    // function _calculatePrice(
-    //     address token0,
-    //     address token1,
-    //     uint256 amount0,
-    //     uint256 amount1,
-    //     uint256 liquidity
-    // ) internal view returns (uint192) {
-    //     uint192 price0 = chainlinkFeed.price(oracleTimeout);
-    //     uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
-    //     //TODO liquidity can be 10 ** 18 for some assets.
-    //     //Resulting price per one liquidity would have too bad precision. Need to check
-    //     uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**IERC20Metadata(token0).decimals();
-    //     uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**IERC20Metadata(token1).decimals();
-    //     return uint192(priceScaled0 + priceScaled1);
-    // }
+    // Can be used to define chainlink oracles order by caller
+    function coins(uint256 i) external view returns (address) {
+        return curvePool.coins(i);
+    }
 
-    // // supply never zero on uniswap v2, so can revert only if feeds revert
-    // function strictPrice() external view override returns (uint192) {
-    //     IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-    //     (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-    //     return _calculatePrice(pair.token0(), pair.token1(), reserve0, reserve1, IERC20(erc20).totalSupply());
-    // }
+    function underlying_coins(uint256 i) external view returns (address) {
+        return curvePool.underlying_coins(i);
+    }
 
-    
+    function balances(uint256 i) external view returns (uint256) {
+        return curvePool.balances(i);
+    }
+
+    function _calculatePrice(uint256 liquidity) internal view returns (uint192) {
+        uint256 priceScaled;
+        for (uint256 i = 0; i < N_COINS; i++) {
+            uint192 price0 = chainlinkFeeds[i].price(oracleTimeout);
+            console.log("balance", this.balances(i));
+            console.log("coin", this.coins(i)); //underlying_coins not always implemented
+            uint256 priceScaled0 = (price0 * this.balances(i)) /
+                10 ** IERC20Metadata(this.coins(i)).decimals();
+            console.log("priceScaled0", priceScaled0);
+            priceScaled += priceScaled0;
+        }
+        return uint192(priceScaled / liquidity);
+    }
+
+    //explanation https://dev.gearbox.fi/docs/documentation/oracle/curve-pricefeed/
+    function strictPrice() external view override returns (uint192) {
+        //The current price of the pool LP token relative to the underlying pool assets.
+        // Given as an integer with 1e18 precision.
+        uint192 virtualPrice = uint192(curvePool.get_virtual_price());
+        uint192 minPrice;
+        for (uint256 i = 0; i < N_COINS; i++) {
+            uint192 feedPrice = chainlinkFeeds[i].price(oracleTimeout);
+            if (feedPrice > minPrice) {
+                minPrice = feedPrice;
+            }
+        }
+        console.log("virtualPrice", virtualPrice);
+        console.log("minPrice", minPrice);
+        //TODO what is collateral? i forget? mb totalSupply of this? or balance :)
+        uint256 totalSupply = erc20.totalSupply();
+        console.log("_calculatePrice", _calculatePrice(totalSupply));
+        // feedPrice is fp 10e18
+        return (minPrice * virtualPrice) / 10 ** 18;
+    }
+
+    function getBaseRewards() internal returns (IERC20 token, uint256 amount) {
+        token = baseRewardPool.rewardToken();
+        uint256 before = token.balanceOf(address(this));
+        baseRewardPool.getReward(address(this), false);
+        amount = token.balanceOf(address(this)) - before;
+    }
+
+    function getExtraRewards(uint256 i) internal returns (IERC20 token, uint256 amount) {
+        IRewards rewardPool = IRewards(baseRewardPool.extraRewards(i));
+        token = IERC20(rewardPool.rewardToken());
+        uint256 before = token.balanceOf(address(this));
+        rewardPool.getReward(address(this));
+        amount = token.balanceOf(address(this)) - before;
+    }
+
+    function claimRewards() external override {
+        (IERC20 token, uint256 amount) = getBaseRewards();
+        if (amount > 0) {
+            emit RewardsClaimed(token, amount);
+        }
+
+        for (uint256 i = 0; i < baseRewardPool.extraRewardsLength(); i++) {
+            (IERC20 tokenExtra, uint256 amountExtra) = getExtraRewards(i);
+            if (amountExtra > 0) {
+                emit RewardsClaimed(tokenExtra, amountExtra);
+            }
+        }
+    }
 }
