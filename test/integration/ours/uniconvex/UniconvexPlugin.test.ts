@@ -1,6 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import { BigNumberish, ContractTransaction, Wallet } from "ethers"
 import hre, { ethers, waffle } from "hardhat"
+import { BigNumberish, ContractTransaction, Wallet } from "ethers"
 import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
@@ -10,11 +10,11 @@ import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
 import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
-import { UniconvexCollateral__factory } from "@typechain/factories/UniconvexCollateral__factory"
 import { UniconvexCollateral } from "@typechain/UniconvexCollateral"
+import { UniconvexCollateral__factory } from "@typechain/factories/UniconvexCollateral__factory"
 import { getLatestBlockTimestamp } from "../../../utils/time"
-import { logBalances, sqrt } from "../common"
 import { ICurvePool3Assets } from "@typechain/ICurvePool3Assets"
+import { logBalances, sqrt } from "../common"
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -23,7 +23,6 @@ const holderDAI = "0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186"
 const holderUSDT = "0xf977814e90da44bfa03b6295a0616a897441acec"
 const holderUSDC = "0x0a59649758aa4d66e25f08dd01271e891fe52199"
 
-const UniconvexRouter02address = "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D"
 
 const describeFork = process.env.FORK ? describe : describe.skip
 describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
@@ -99,7 +98,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             })
         })
 
-        it("U2C can be deployed", async () => {
+        it("Convex Collateral can be deployed", async () => {
 
             const asset0 = dai
             const asset1 = usdc
@@ -114,23 +113,21 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
             
             //curve view
-            //NOTE it's amm contract too
-            //StableSwap3Pool for dai usdc and usdt
+            //NOTE it's one of AMM contracts
+            //StableSwap3Pool for DAI, USDC, and USDT
 
+            // https://curve.readthedocs.io/ref-addresses.html
             const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
             // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
             const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-            const stableSwap3Pool: ICurvePool3Assets = <ICurvePool3Assets>(
-                await ethers.getContractAt("ICurvePool3Assets", stableSwap3PoolAddress)
-            )
+            const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt("ICurvePool3Assets", stableSwap3PoolAddress)
 
             // token not always public or implemented
             // const lpTokenAddress = await stableSwap3Pool.token();
-            const lpTokenAddress =curveContractV2;
+            const lpTokenAddress = curveContractV2;
 
-            const lpToken = <ERC20Mock>(
-                await ethers.getContractAt("ERC20Mock", lpTokenAddress)
-            )
+            const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
+            
 
             await waitForTx(await asset0.connect(addr1).approve(stableSwap3Pool.address, p0(100)))
             await waitForTx(await asset1.connect(addr1).approve(stableSwap3Pool.address, p1(100)))
