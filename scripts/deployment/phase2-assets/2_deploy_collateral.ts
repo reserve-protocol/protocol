@@ -544,6 +544,7 @@ async function main() {
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
     comptroller: networkConfig[chainId].COMPTROLLER,
+    referenceERC20Decimals: '18',
   })
 
   assetCollDeployments.collateral.cETH = cETHCollateral
@@ -595,7 +596,7 @@ async function main() {
     fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
-    oracleError: combinedError(eurtError, eurError).toString(), // 2%
+    combinedOracleError: combinedError(eurtError, eurError).toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),

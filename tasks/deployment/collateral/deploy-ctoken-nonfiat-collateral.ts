@@ -13,6 +13,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
   .addParam('targetName', 'Target Name')
   .addParam('defaultThreshold', 'Default Threshold')
   .addParam('delayUntilDefault', 'Delay until default')
+  .addParam('comptroller', 'Comptroller address')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -27,8 +28,8 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
     ).deploy(
       {
         fallbackPrice: params.fallbackPrice,
-        chainlinkFeed: params.priceFeed,
-        oracleError: params.oracleError,
+        chainlinkFeed: params.referenceUnitFeed,
+        oracleError: params.combinedOracleError,
         erc20: params.cToken,
         maxTradeVolume: params.maxTradeVolume,
         oracleTimeout: params.oracleTimeout,

@@ -11,6 +11,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
   .addParam('comptroller', 'Comptroller address')
+  .addParam('referenceERC20Decimals', 'Decimals in the reference token')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
@@ -33,7 +34,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
           defaultThreshold: 0,
           delayUntilDefault: 0,
         },
-        18,
+        params.referenceERC20Decimals,
         params.comptroller
       )
     )

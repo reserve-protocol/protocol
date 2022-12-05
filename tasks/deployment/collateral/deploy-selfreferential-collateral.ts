@@ -24,7 +24,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
       fallbackPrice: params.fallbackPrice,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
-      erc20: params.cToken,
+      erc20: params.tokenAddress,
       maxTradeVolume: params.maxTradeVolume,
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,

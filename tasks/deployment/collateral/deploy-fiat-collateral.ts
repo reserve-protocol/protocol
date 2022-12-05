@@ -26,7 +26,7 @@ task('deploy-fiat-collateral', 'Deploys a Fiat Collateral')
       fallbackPrice: params.fallbackPrice,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
-      erc20: params.cToken,
+      erc20: params.tokenAddress,
       maxTradeVolume: params.maxTradeVolume,
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,

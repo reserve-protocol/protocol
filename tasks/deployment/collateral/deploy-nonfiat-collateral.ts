@@ -26,9 +26,9 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
     const collateral = <NonFiatCollateral>await NonFiatCollateralFactory.connect(deployer).deploy(
       {
         fallbackPrice: params.fallbackPrice,
-        chainlinkFeed: params.priceFeed,
-        oracleError: params.oracleError,
-        erc20: params.cToken,
+        chainlinkFeed: params.referenceUnitFeed,
+        oracleError: params.combinedOracleError,
+        erc20: params.tokenAddress,
         maxTradeVolume: params.maxTradeVolume,
         oracleTimeout: params.oracleTimeout,
         targetName: params.targetName,

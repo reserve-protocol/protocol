@@ -8,7 +8,6 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('combinedOracleError', 'The combined % error from both oracle sources')
-  .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
@@ -27,9 +26,9 @@ task('deploy-eurfiat-collateral', 'Deploys an EURO fiat Collateral')
     const collateral = <EURFiatCollateral>await EURFiatCollateralFactory.connect(deployer).deploy(
       {
         fallbackPrice: params.fallbackPrice,
-        chainlinkFeed: params.priceFeed,
-        oracleError: params.oracleError,
-        erc20: params.cToken,
+        chainlinkFeed: params.referenceUnitFeed,
+        oracleError: params.combinedOracleError,
+        erc20: params.tokenAddress,
         maxTradeVolume: params.maxTradeVolume,
         oracleTimeout: params.oracleTimeout,
         targetName: params.targetName,
