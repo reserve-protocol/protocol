@@ -38,12 +38,9 @@ contract Zapper is IZap {
         zapToCollateralTokens(_from, _to, _amount);
 
         uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to));
-        console.log("lowestIssueRatio", lowestIssueRatio);
-
-        // TODO THIS SEEMS WRONG
-        // Account for rounding errors
-        console.log("issueAttempt", (lowestIssueRatio * 9999) / 10000);
-        IRToken(_to).issue((lowestIssueRatio * 9999) / 10000);
+        // TOOD: this somehow fucks up and we can't mint, gives weird errors
+        // console.log(lowestIssueRatio * 9950 / 10_000);
+        IRToken(_to).issue(lowestIssueRatio * 9950 / 10_000);
 
         received = IERC20(_to).balanceOf(address(this));
         IERC20(address(_to)).safeTransfer(msg.sender, received);
@@ -80,11 +77,8 @@ contract Zapper is IZap {
 
             // Zap
             uint256 zapAmount = (_amount * uoaShare) / totalSharesDenom;
-
             IERC20(_from).safeApprove(address(zapRouter), 0);
             IERC20(_from).safeApprove(address(zapRouter), zapAmount);
-
-            // TODO create interface files
             uint256 erc20Amount = zapRouter.swap(_from, erc20, zapAmount);
 
             // Approve rToken spending
