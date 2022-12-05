@@ -67,6 +67,8 @@ contract FacadeTest is IFacadeTest {
         rToken.sweepRewards();
     }
 
+    /// Unlike Recollateralizationlib.totalAssetValue, this function _should_ yield a decreasing
+    /// quantity through the rebalancing process due to slippage accruing during each trade.
     /// @return total {UoA} Point estimate of the value of all exogenous assets at BackingManager
     /// @custom:static-call
     function totalAssetValue(IRToken rToken) external returns (uint192 total) {
