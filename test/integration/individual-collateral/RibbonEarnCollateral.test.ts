@@ -48,6 +48,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 // Holder address in Mainnet
 // const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderUSDC = '0xBcf5AB858CB0C003adb5226BdbFecd0bfd7b6D9f'
+const holder_rEarn = '0x9674126ff31e5ece36de0cf03a49351a7c814587'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -63,7 +64,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
   // let dai: ERC20Mock
   // let cDai: CTokenMock
   // let cDaiCollateral: CTokenFiatCollateral
-  let rEARNusdcCollateral: RibbonEarnUsdcCollateral
+  let rEarnUsdcCollateral: RibbonEarnUsdcCollateral
   // let compToken: ERC20Mock
   // let compAsset: Asset
   // let comptroller: ComptrollerMock
@@ -134,12 +135,9 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
   })
 
   beforeEach(async () => {
-    console.log(1)
     ;[owner, addr1] = await ethers.getSigners()
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
-
-      console.log(2)
 
     // Get required contracts for rEARN
     // usdc
@@ -147,12 +145,11 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC || '')
     )
 
-    console.log(3)
-
     // rEARN
     rEARN = <REarnMock>(
       await ethers.getContractAt('REarnMock', networkConfig[chainId].tokens.rEARN || '')
     )
+    // await rEARN.deploy();
     // COMP token
     // compToken = <ERC20Mock>(
     //   await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
@@ -189,17 +186,11 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
     //   libraries: { OracleLib: oracleLib.address },
     // })
 
-    console.log(4)
-
-
     RibbonEarnCollateralFactory = await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
-      // libraries: { OracleLib: oracleLib.address },
+      libraries: { OracleLib: oracleLib.address },
     })
 
-    console.log(rEARN.address)
-
-
-    rEARNusdcCollateral = <RibbonEarnUsdcCollateral>(
+    rEarnUsdcCollateral = <RibbonEarnUsdcCollateral>(
       await RibbonEarnCollateralFactory.deploy(
         fp('1.0'),
         networkConfig[chainId].chainlinkFeeds.USDC as string,
@@ -211,16 +202,17 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
         defaultThreshold,
       )
   )
-    
-
-    console.log(6)
-
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // usdc
     initialBal = bn('2000000e18')
     await whileImpersonating(holderUSDC, async (usdcSigner) => {
       await usdc.connect(usdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
+    })
+
+    // initialBal = bn('100000e18')
+    await whileImpersonating(holder_rEarn, async (rearnSigner) => {
+      await rEARN.connect(rearnSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
     })
 
     // Set parameters
@@ -233,14 +225,12 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
 
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
-      assets: [rEARN.address],
-      primaryBasket: [rEARNusdcCollateral.address],
+      assets: [],
+      primaryBasket: [rEarnUsdcCollateral.address],
       weights: [fp('1')],
       backups: [],
       beneficiaries: [],
     }
-
-    console.log(7)
 
     // Deploy RToken via FacadeWrite
     const receipt = await (
@@ -255,12 +245,15 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
     assetRegistry = <IAssetRegistry>(
       await ethers.getContractAt('IAssetRegistry', await main.assetRegistry())
     )
+  
     backingManager = <TestIBackingManager>(
       await ethers.getContractAt('TestIBackingManager', await main.backingManager())
     )
+
     basketHandler = <IBasketHandler>(
       await ethers.getContractAt('IBasketHandler', await main.basketHandler())
     )
+
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', await main.rToken())
     rTokenAsset = <RTokenAsset>(
       await ethers.getContractAt('RTokenAsset', await assetRegistry.toAsset(rToken.address))
@@ -279,70 +272,52 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
 
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
+    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e8'))
   })
 
   describe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-      // Check Rewards assets (if applies)
-      // COMP Asset
-      // expect(await rEARN.isCollateral()).to.equal(false)
-      // expect(await rEARN.erc20()).to.equal(rEARN.address)
-      // expect(await rEARN.erc20()).to.equal(networkConfig[chainId].tokens.rEARN)
-      // expect(await rEARN.decimals()).to.equal(6)
-      // expect(await rEARN.strictPrice()).to.be.closeTo(fp('1.1'), fp('0.5')) // Close to $58 USD - June 2022
-      // await expect(rEARN.claimRewards()).to.not.emit(rEARN, 'RewardsClaimed')
-      // expect(await rEARN.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-      // Check Collateral plugin
-      // cDAI (CTokenFiatCollateral)
-      expect(await rEARNusdcCollateral.isCollateral()).to.equal(true)
-      expect(await rEARNusdcCollateral.erc20()).to.equal(rEARN.address)
+      // rEARN (rEarnUsdcCollateral)
+      expect(await rEarnUsdcCollateral.isCollateral()).to.equal(true)
+      expect(await rEarnUsdcCollateral.erc20()).to.equal(rEARN.address)
       expect(await usdc.decimals()).to.equal(6)
-      expect(await rEARNusdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await rEARNusdcCollateral.refPerTok()).to.be.closeTo(fp('1.1'), fp('0.001'))
-      expect(await rEARNusdcCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await rEARNusdcCollateral.pricePerTarget()).to.equal(fp('1'))
-      expect(await rEARNusdcCollateral.prevReferencePrice()).to.equal(await rEARNusdcCollateral.refPerTok())
-      expect(await rEARNusdcCollateral.strictPrice()).to.be.closeTo(fp('1.1'), fp('0.001')) // close to $0.022 cents
+      expect(await rEARN.decimals()).to.equal(6)
+      expect(await rEarnUsdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(await rEarnUsdcCollateral.refPerTok()).to.be.closeTo(fp('1.016'), fp('0.001'))
+      expect(await rEarnUsdcCollateral.targetPerRef()).to.equal(fp('1'))
+      expect(await rEarnUsdcCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await rEarnUsdcCollateral.prevReferencePrice()).to.equal(await rEarnUsdcCollateral.refPerTok())
+      expect(await rEarnUsdcCollateral.strictPrice()).to.be.closeTo(fp('1.016'), fp('0.001')) // close to $1.016 usdc
 
-      // // Check claim data
-      // await expect(cDaiCollateral.claimRewards())
-      //   .to.emit(cDaiCollateral, 'RewardsClaimed')
-      //   .withArgs(compToken.address, 0)
-      // expect(await cDaiCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
+      // Should setup contracts
+      expect(main.address).to.not.equal(ZERO_ADDRESS)
+    })
 
-    //   // Should setup contracts
-    //   expect(main.address).to.not.equal(ZERO_ADDRESS)
-    // })
+    // Check assets/collaterals in the Asset Registry
+    it('Should register ERC20s and Assets/Collateral correctly', async () => {
+      // Check assets/collateral
+      const ERC20s = await assetRegistry.erc20s()
+      expect(ERC20s[0]).to.equal(rToken.address)
+      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[2]).to.equal(rEARN.address)
+      expect(ERC20s.length).to.eql(3)
 
-    // // Check assets/collaterals in the Asset Registry
-    // it('Should register ERC20s and Assets/Collateral correctly', async () => {
-    //   // Check assets/collateral
-    //   const ERC20s = await assetRegistry.erc20s()
-    //   expect(ERC20s[0]).to.equal(rToken.address)
-    //   expect(ERC20s[1]).to.equal(rsr.address)
-    //   expect(ERC20s[2]).to.equal(compToken.address)
-    //   expect(ERC20s[3]).to.equal(cDai.address)
-    //   expect(ERC20s.length).to.eql(4)
+      // Assets
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(rEarnUsdcCollateral.address)
 
-    //   // Assets
-    //   expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-    //   expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-    //   expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
-    //   expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(cDaiCollateral.address)
-
-    //   // Collaterals
-    //   expect(await assetRegistry.toColl(ERC20s[3])).to.equal(cDaiCollateral.address)
+      // Collaterals
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(rEarnUsdcCollateral.address)
     })
 
     // Check RToken basket
-    xit('Should register Basket correctly', async () => {
+    it('Should register Basket correctly', async () => {
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(cDai.address)
+      expect(backing[0]).to.equal(rEARN.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -355,66 +330,32 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      const issueAmount: BigNumber = bn('100e18')
+      await rEARN.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 6).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
-    xit('Should validate constructor arguments correctly', async () => {
+    it('Should validate constructor arguments correctly', async () => {
       // Default threshold
       await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          bn(0),
-          delayUntilDefault,
-          (await dai.decimals()).toString(),
-          comptroller.address
+        RibbonEarnCollateralFactory.deploy(
+          fp('1.0'),
+        networkConfig[chainId].chainlinkFeeds.USDC as string,
+        rEARN.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        bn(0),
         )
       ).to.be.revertedWith('defaultThreshold zero')
-
-      // ReferemceERC20Decimals
-      await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          0,
-          comptroller.address
-        )
-      ).to.be.revertedWith('referenceERC20Decimals missing')
-
-      // Comptroller
-      await expect(
-        CTokenCollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          cDai.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          (await dai.decimals()).toString(),
-          ZERO_ADDRESS
-        )
-      ).to.be.revertedWith('comptroller missing')
     })
   })
 
-  xdescribe('Issuance/Appreciation/Redemption', () => {
+  describe('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
@@ -422,7 +363,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await rEARN.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 6).mul(100))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -431,14 +372,14 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+      const balanceAddr1rEARN: BigNumber = await rEARN.balanceOf(addr1.address)
 
       // Check rates and prices
-      const cDaiPrice1: BigNumber = await cDaiCollateral.strictPrice() // ~ 0.022015 cents
-      const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
+      const rEARNPrice1: BigNumber = await rEarnUsdcCollateral.strictPrice() // ~1.016252
+      const rEARNRefPerTok1: BigNumber = await rEarnUsdcCollateral.refPerTok() // ~1.016252
 
-      expect(cDaiPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(rEARNPrice1).to.be.closeTo(fp('1.016'), fp('0.001'))
+      expect(rEARNRefPerTok1).to.be.closeTo(fp('1.016'), fp('0.001'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -451,20 +392,20 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       await advanceBlocks(10000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await rEarnUsdcCollateral.refresh()
+      expect(await rEarnUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const cDaiPrice2: BigNumber = await cDaiCollateral.strictPrice() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await cDaiCollateral.refPerTok() // ~0.022016
+      const rEARNPrice2: BigNumber = await rEarnUsdcCollateral.strictPrice() // ~1.016277
+      const rEARNRefPerTok2: BigNumber = await rEarnUsdcCollateral.refPerTok() // ~1.016277
 
       // Check rates and price increase
-      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+      expect(rEARNPrice2).to.be.gt(rEARNPrice1)
+      expect(rEARNRefPerTok2).to.be.gt(rEARNRefPerTok1)
 
       // Still close to the original values
-      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(rEARNPrice2).to.be.closeTo(fp('1.016'), fp('0.001'))
+      expect(rEARNRefPerTok2).to.be.closeTo(fp('1.016'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -477,25 +418,26 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       await advanceBlocks(100000000)
 
       // Refresh cToken manually (required)
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await rEarnUsdcCollateral.refresh()
+      expect(await rEarnUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const cDaiPrice3: BigNumber = await cDaiCollateral.strictPrice() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await cDaiCollateral.refPerTok() // ~0.03294
+      const rEARNPrice3: BigNumber = await rEarnUsdcCollateral.strictPrice() // ~1.274317
+      const rEARNRefPerTok3: BigNumber = await rEarnUsdcCollateral.refPerTok() // ~1.274317
 
       // Check rates and price increase
-      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+      expect(rEARNPrice3).to.be.gt(rEARNPrice2)
+      expect(rEARNRefPerTok3).to.be.gt(rEARNRefPerTok2)
 
       // Need to adjust ranges
-      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(rEARNPrice3).to.be.closeTo(fp('1.274'), fp('0.001'))
+      expect(rEARNRefPerTok3).to.be.closeTo(fp('1.274'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
+
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the updated rates
@@ -506,25 +448,28 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1cDai: BigNumber = await cDai.balanceOf(addr1.address)
+      const newBalanceAddr1rEARN: BigNumber = await rEARN.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1rEARN.sub(balanceAddr1rEARN)).to.be.closeTo(bn('7847e6'), bn('8e5')) 
 
       // Check remainders in Backing Manager
-      expect(await cDai.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await rEARN.balanceOf(backingManager.address)).to.be.closeTo(bn('1992e6'), bn('8e5')) // ~= 2539 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('4962.8'), // ~= 4962.8 usd (from above)
+        fp('2539'), // ~= 2539 usd (from above)
         fp('0.5')
       )
+
+      console.log(20)
+
     })
   })
 
   // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
   // claiming calls throughout the protocol are handled correctly and do not revert.
-  xdescribe('Rewards', () => {
+  describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
