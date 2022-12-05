@@ -14,7 +14,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   SelfReferentialCollateral,
   TestIBackingManager,
   TestIStRSR,
@@ -22,7 +21,14 @@ import {
   TestIRToken,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+} from '../fixtures'
+import { expectPrice } from '../utils/oracles'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -65,7 +71,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
   let basketHandler: IBasketHandler
   let rsrTrader: TestIRevenueTrader
   let rTokenTrader: TestIRevenueTrader
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -95,7 +100,6 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       basketHandler,
       rsrTrader,
       rTokenTrader,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Main ERC20
@@ -110,19 +114,20 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8')) // 1 WBTC/BTC
     )
     wBTCCollateral = await (
-      await ethers.getContractFactory('NonFiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('NonFiatCollateral')
     ).deploy(
-      fp('20000'),
-      referenceUnitOracle.address,
-      targetUnitOracle.address,
-      wbtc.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('BTC'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT
+      {
+        fallbackPrice: fp('20000'),
+        chainlinkFeed: referenceUnitOracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: wbtc.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      targetUnitOracle.address
     )
 
     // cWBTC
@@ -130,20 +135,20 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await ethers.getContractFactory('CTokenMock')
     ).deploy('cWBTC Token', 'cWBTC', wbtc.address)
     cWBTCCollateral = await (
-      await ethers.getContractFactory('CTokenNonFiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
+      await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
-      fp('20000').div(50),
-      referenceUnitOracle.address,
+      {
+        fallbackPrice: fp('20000').div(50),
+        chainlinkFeed: referenceUnitOracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: cWBTC.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
       targetUnitOracle.address,
-      cWBTC.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('BTC'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT,
-      await wbtc.decimals(),
       compoundMock.address
     )
 
@@ -255,7 +260,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
-      expect(await cWBTCCollateral.strictPrice()).to.equal(fp('95000').mul(3).div(2).div(50))
+      await expectPrice(
+        cWBTCCollateral.address,
+        fp('95000').mul(3).div(2).div(50),
+        ORACLE_ERROR,
+        true
+      )
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {
