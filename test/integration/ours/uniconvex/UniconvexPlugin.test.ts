@@ -23,7 +23,6 @@ const holderDAI = "0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186"
 const holderUSDT = "0xf977814e90da44bfa03b6295a0616a897441acec"
 const holderUSDC = "0x0a59649758aa4d66e25f08dd01271e891fe52199"
 
-
 const describeFork = process.env.FORK ? describe : describe.skip
 describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
     const initialBal = 20000
@@ -99,7 +98,6 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         })
 
         it("Convex Collateral can be deployed", async () => {
-
             const asset0 = dai
             const asset1 = usdc
             const asset2 = usdt
@@ -111,7 +109,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
             const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
             const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
-            
+
             //curve view
             //NOTE it's one of AMM contracts
             //StableSwap3Pool for DAI, USDC, and USDT
@@ -120,14 +118,16 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
             // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
             const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-            const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt("ICurvePool3Assets", stableSwap3PoolAddress)
+            const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
+                "ICurvePool3Assets",
+                stableSwap3PoolAddress
+            )
 
             // token not always public or implemented
             // const lpTokenAddress = await stableSwap3Pool.token();
-            const lpTokenAddress = curveContractV2;
+            const lpTokenAddress = curveContractV2
 
             const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
-            
 
             await waitForTx(await asset0.connect(addr1).approve(stableSwap3Pool.address, p0(100)))
             await waitForTx(await asset1.connect(addr1).approve(stableSwap3Pool.address, p1(100)))
@@ -138,45 +138,50 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             // TODO: need we always raising on mint invariant?
             // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
 
-            const receipt = await waitForTx( await stableSwap3Pool.connect(addr1).add_liquidity(
-                [p0(100),
-                p1(100),
-                p2(100)],
-                0 //min_mint_amount
-            ))
+            const receipt = await waitForTx(
+                await stableSwap3Pool.connect(addr1).add_liquidity(
+                    [p0(100), p1(100), p2(100)],
+                    0 //min_mint_amount
+                )
+            )
 
-            
+            await logBalances(
+                "after minting Curve LP",
+                [owner, addr1],
+                [asset0, asset1, asset2, lpToken]
+            )
 
-            await logBalances("af", [owner, addr1], [asset0, asset1, asset2, lpToken])
-
-            //convex view
+            // convex view
+            // https://docs.convexfinance.com/convexfinance/faq/contract-addresses
             const boosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
             const booster: IBooster = <IBooster>(
                 await ethers.getContractAt("IBooster", boosterAddress)
             )
 
             // just to investigate api
-            // on deploy need to use real address
+            // on deploy need to use constant address
             const poolLenght = await booster.connect(owner).poolLength()
-            const allPools = [];
-            const matchedPools = [];
+            const allPools = []
+            const matchedPools = []
             for (let index = 0; index < poolLenght.toNumber(); index++) {
                 const poolInfo = await booster.poolInfo(index)
-                allPools.push({index, poolInfo})
+                allPools.push({ index, poolInfo })
                 if (poolInfo.lptoken == lpTokenAddress) {
-                    matchedPools.push({index, poolInfo})
+                    matchedPools.push({ index, poolInfo })
                     console.log(matchedPools)
                 }
             }
 
-           const lpTokenBalance1 =  await lpToken.connect(addr1).balanceOf(addr1.address);
+            const lpTokenBalance1 = await lpToken.connect(addr1).balanceOf(addr1.address)
 
-            await waitForTx(await lpToken.connect(addr1).approve(booster.address, lpTokenBalance1));
+            await waitForTx(await lpToken.connect(addr1).approve(booster.address, lpTokenBalance1))
 
-            await waitForTx(await booster.connect(addr1).depositAll(
-                matchedPools[0].index,
-                false
-            ))
+            await waitForTx(
+                await booster.connect(addr1).depositAll(
+                    matchedPools[0].index,
+                    false //don't stake on deposit
+                )
+            )
 
             const convexLpTokenAddress = matchedPools[0].poolInfo.token
 
@@ -184,7 +189,11 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await ethers.getContractAt("ERC20Mock", convexLpTokenAddress)
             )
 
-            await logBalances("du", [addr1], [asset0, asset1, asset2, lpToken, convexLpToken])
+            await logBalances(
+                "after minting Convex LP",
+                [addr1],
+                [asset0, asset1, asset2, lpToken, convexLpToken]
+            )
 
             await asset0.connect(addr1).transfer(owner.address, p0(100))
             await asset1.connect(addr1).transfer(owner.address, p1(100))
