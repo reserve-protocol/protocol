@@ -66,7 +66,8 @@ contract RethCollateral is Collateral {
             markStatus(CollateralStatus.DISABLED);
         } else {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192) {
-                markStatus(CollateralStatus.SOUND);
+                // Common path is status is already sound, if so avoid the 100 gas new_val == current_val SSTORE
+                if (oldStatus != CollateralStatus.SOUND) markStatus(CollateralStatus.SOUND);
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
