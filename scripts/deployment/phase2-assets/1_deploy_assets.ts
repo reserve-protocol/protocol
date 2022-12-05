@@ -1,5 +1,5 @@
 import fs from 'fs'
-import hre from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { networkConfig } from '../../../common/configuration'
 import { fp } from '../../../common/numbers'
@@ -8,10 +8,10 @@ import {
   getDeploymentFilename,
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
-  IDeployments,
   fileExists,
 } from '../../deployment/common'
-import { getCurrentPrice, getOracleTimeout } from '../../deployment/utils'
+import { priceTimeout, getOracleTimeout } from '../../deployment/utils'
+import { Asset } from '../../../typechain'
 
 async function main() {
   // ==== Read Configuration ====
@@ -30,8 +30,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
-
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -40,26 +38,28 @@ async function main() {
 
   /********  Deploy StkAAVE Asset **************************/
   const { asset: stkAAVEAsset } = await hre.run('deploy-asset', {
-    lotPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.AAVE)).toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.AAVE,
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.stkAAVE,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
   })
+  await (<Asset>await ethers.getContractAt('Asset', stkAAVEAsset)).refresh()
 
   assetCollDeployments.assets.stkAAVE = stkAAVEAsset
   deployedAssets.push(stkAAVEAsset.toString())
 
   /********  Deploy Comp Asset **************************/
   const { asset: compAsset } = await hre.run('deploy-asset', {
-    lotPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.COMP)).toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.COMP,
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.COMP,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
   })
+  await (<Asset>await ethers.getContractAt('Asset', compAsset)).refresh()
 
   assetCollDeployments.assets.COMP = compAsset
   deployedAssets.push(compAsset.toString())

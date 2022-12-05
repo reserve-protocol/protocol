@@ -3,7 +3,7 @@ import { task } from 'hardhat/config'
 import { CTokenNonFiatCollateral } from '../../../typechain'
 
 task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
-  .addParam('lotPrice', 'A lot price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('combinedOracleError', 'The combined % error from both oracle sources')
@@ -27,7 +27,7 @@ task('deploy-ctoken-nonfiat-collateral', 'Deploys a CToken Non-Fiat Collateral')
       deployer
     ).deploy(
       {
-        lotPrice: params.lotPrice,
+        priceTimeout: params.priceTimeout,
         chainlinkFeed: params.referenceUnitFeed,
         oracleError: params.combinedOracleError,
         erc20: params.cToken,

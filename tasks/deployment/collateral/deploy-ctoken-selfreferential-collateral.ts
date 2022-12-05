@@ -3,7 +3,7 @@ import { task } from 'hardhat/config'
 import { CTokenSelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referential Collateral')
-  .addParam('lotPrice', 'A lot price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('cToken', 'CToken address')
@@ -24,7 +24,7 @@ task('deploy-ctoken-selfreferential-collateral', 'Deploys a CToken Self-referent
     const collateral = <CTokenSelfReferentialCollateral>(
       await CTokenSelfReferentialCollateralFactory.connect(deployer).deploy(
         {
-          lotPrice: params.lotPrice,
+          priceTimeout: params.priceTimeout,
           chainlinkFeed: params.priceFeed,
           oracleError: params.oracleError,
           erc20: params.cToken,
