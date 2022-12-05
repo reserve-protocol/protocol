@@ -31,14 +31,12 @@ contract Asset is IAsset {
     uint48 internal lastTimestamp; // {s} The timestamp when `lastPrice` was last saved
 
     /// @param priceTimeout_ {s} The number of seconds over which lastPrice decays to 0
-    /// @param initialPrice {UoA/tok} The initial price at deployment
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         uint48 priceTimeout_,
-        uint192 initialPrice,
         AggregatorV3Interface chainlinkFeed_,
         uint192 oracleError_,
         IERC20Metadata erc20_,
@@ -46,15 +44,12 @@ contract Asset is IAsset {
         uint48 oracleTimeout_
     ) {
         require(priceTimeout_ > 0, "price timeout zero");
-        require(initialPrice > 0, "initial price zero");
         require(address(chainlinkFeed_) != address(0), "missing chainlink feed");
         require(oracleError_ > 0 && oracleError_ < FIX_ONE, "oracle error out of range");
         require(address(erc20_) != address(0), "missing erc20");
         require(maxTradeVolume_ > 0, "invalid max trade volume");
         require(oracleTimeout_ > 0, "oracleTimeout zero");
         priceTimeout = priceTimeout_;
-        lastPrice = initialPrice;
-        lastTimestamp = uint48(block.timestamp);
         chainlinkFeed = chainlinkFeed_;
         oracleError = oracleError_;
         erc20 = erc20_;

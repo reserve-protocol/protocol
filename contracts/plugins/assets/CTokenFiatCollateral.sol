@@ -27,7 +27,6 @@ contract CTokenFiatCollateral is FiatCollateral {
         ICToken erc20 = ICToken(address(config.erc20));
         referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
         comptroller = comptroller_;
-        prevReferencePrice = refPerTok();
     }
 
     /// Refresh exchange rates and update default status.

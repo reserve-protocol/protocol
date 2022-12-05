@@ -17,6 +17,7 @@ interface IAsset is IRewardable {
     /// Refresh last price
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// the Asset's other functions.
+    /// @dev Called immediately after deployment, before use
     function refresh() external;
 
     /// Should not revert

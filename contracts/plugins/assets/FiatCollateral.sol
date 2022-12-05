@@ -11,7 +11,6 @@ import "./OracleLib.sol";
 
 struct CollateralConfig {
     uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
-    uint192 initialPrice; // {UoA/tok} The initial price at deployment
     AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
     uint192 oracleError; // {1} The % the oracle feed can be off by
     IERC20Metadata erc20; // The ERC20 of the collateral token
@@ -68,7 +67,6 @@ contract FiatCollateral is ICollateral, Asset {
     )
         Asset(
             config.priceTimeout,
-            config.initialPrice,
             config.chainlinkFeed,
             config.oracleError,
             config.erc20,
