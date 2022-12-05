@@ -37,7 +37,8 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
                 if (low == 0 || pegPrice < pegBottom || pegPrice > pegTop) {
                     markStatus(CollateralStatus.IFFY);
                 } else {
-                    fallbackPrice = low;
+                    lastPrice = low;
+                    lastTimestamp = uint48(block.timestamp);
                     markStatus(CollateralStatus.SOUND);
                 }
             } catch (bytes memory errData) {

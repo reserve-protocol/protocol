@@ -8,6 +8,8 @@ import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
 import "./RecollateralizationLib.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title TradeLib
  * @notice An internal lib for preparing individual trades on particular asset pairs
@@ -42,17 +44,13 @@ library TradeLib {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
-        // Calculate a lotPrice for trade-sizing purposes only
-        // {UoA/sellTok}
-        uint192 lotPrice = trade.sellPrice > 0 ? trade.sellPrice : trade.sell.fallbackPrice();
-
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, rules.minTradeVolume)) {
             return (false, req);
         }
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, lotPrice); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.sell.lotPrice()); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -63,6 +61,9 @@ library TradeLib {
             trade.sellPrice, // {UoA/sellTok}
             trade.buyPrice // {UoA/buyTok}
         );
+
+        console.log("prepareTradeSell");
+        console.log(s, b, trade.sellPrice, trade.buyPrice);
 
         // {*tok} => {q*Tok}
         req.sellAmount = s.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR);
@@ -133,17 +134,15 @@ library TradeLib {
 
     /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
-    /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
-        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
         return
-            amt.gte(minTradeSize(minTradeVolume, price)) &&
+            amt.gte(minTradeSize(minTradeVolume, asset.lotPrice())) &&
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;

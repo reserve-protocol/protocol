@@ -49,11 +49,7 @@ interface IBasketHandler is IComponent {
     ///            Required range: 1-255
     /// @param erc20s A list of ordered backup collateral tokens
     /// @custom:governance
-    function setBackupConfig(
-        bytes32 targetName,
-        uint256 max,
-        IERC20[] calldata erc20s
-    ) external;
+    function setBackupConfig(bytes32 targetName, uint256 max, IERC20[] calldata erc20s) external;
 
     /// Default the basket in order to schedule a basket refresh
     /// @custom:protected
@@ -79,10 +75,10 @@ interface IBasketHandler is IComponent {
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(uint192 amount, RoundingMode rounding)
-        external
-        view
-        returns (address[] memory erc20s, uint256[] memory quantities);
+    function quote(
+        uint192 amount,
+        RoundingMode rounding
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (uint192 baskets);
@@ -94,8 +90,8 @@ interface IBasketHandler is IComponent {
 
     /// Should not revert
     /// Should be nonzero
-    /// @return {UoA/tok} A fallback price to use for trade sizing
-    function fallbackPrice() external view returns (uint192);
+    /// @return {UoA/tok} A lot price to use for trade sizing
+    function lotPrice() external view returns (uint192);
 
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);

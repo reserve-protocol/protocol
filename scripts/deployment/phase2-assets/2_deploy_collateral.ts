@@ -45,7 +45,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - DAI  **************************/
   const { collateral: daiCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.DAI,
@@ -63,7 +63,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDC  **************************/
   const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDC,
@@ -81,7 +81,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDT  **************************/
   const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDT,
@@ -99,7 +99,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDP  **************************/
   const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.USDP,
@@ -117,7 +117,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - TUSD  **************************/
   const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.TUSD,
     oracleError: fp('0.003').toString(), // 0.3%
     tokenAddress: networkConfig[chainId].tokens.TUSD,
@@ -133,7 +133,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - BUSD  **************************/
   const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    lotPrice: fp('1').toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.BUSD,
@@ -175,12 +175,12 @@ async function main() {
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
   )
 
-  let fallbackPrice = fp('1')
+  let lotPrice = fp('1')
     .mul(await adaiStaticToken.rate())
     .div(bn('1e27'))
 
   const { collateral: aDaiCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: adaiStaticToken.address,
@@ -221,12 +221,12 @@ async function main() {
     `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await ausdcStaticToken.rate())
     .div(bn('1e27'))
 
   const { collateral: aUsdcCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdcStaticToken.address,
@@ -267,12 +267,12 @@ async function main() {
     `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await ausdtStaticToken.rate())
     .div(bn('1e27'))
 
   const { collateral: aUsdtCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdtStaticToken.address,
@@ -312,12 +312,12 @@ async function main() {
     `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await abusdStaticToken.rate())
     .div(bn('1e27'))
 
   const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     oracleError: fp('0.005').toString(), // 0.5%
     staticAToken: abusdStaticToken.address,
@@ -358,12 +358,12 @@ async function main() {
     `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await ausdpStaticToken.rate())
     .div(bn('1e27'))
 
   const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     staticAToken: ausdpStaticToken.address,
@@ -385,12 +385,12 @@ async function main() {
     'CTokenMock',
     networkConfig[chainId].tokens.cDAI as string
   )
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e28'))
 
   const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cDAI,
@@ -413,12 +413,12 @@ async function main() {
     'CTokenMock',
     networkConfig[chainId].tokens.cUSDC as string
   )
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e16'))
 
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDC,
@@ -441,12 +441,12 @@ async function main() {
     'CTokenMock',
     networkConfig[chainId].tokens.cUSDT as string
   )
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e16'))
 
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDT,
@@ -470,12 +470,12 @@ async function main() {
     networkConfig[chainId].tokens.cUSDP as string
   )
 
-  fallbackPrice = fp('1')
+  lotPrice = fp('1')
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e28'))
 
   const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     cToken: networkConfig[chainId].tokens.cUSDP,
@@ -498,7 +498,7 @@ async function main() {
     'CTokenMock',
     networkConfig[chainId].tokens.cWBTC as string
   )
-  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC))
+  lotPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC))
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e18'))
 
@@ -507,7 +507,7 @@ async function main() {
   const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     combinedOracleError: combinedBTCWBTCError.toString(),
@@ -531,12 +531,12 @@ async function main() {
     'CTokenMock',
     networkConfig[chainId].tokens.cETH as string
   )
-  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH))
+  lotPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH))
     .mul(await cToken.exchangeRateStored())
     .div(bn('1e28'))
 
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    lotPrice: lotPrice.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     oracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cETH,
@@ -554,7 +554,7 @@ async function main() {
 
   /********  Deploy Non-Fiat Collateral  - wBTC **************************/
   const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC)).toString(),
+    lotPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     combinedOracleError: combinedBTCWBTCError.toString(),
@@ -574,7 +574,7 @@ async function main() {
   /********  Deploy Self Referential Collateral - wETH  **************************/
 
   const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH)).toString(),
+    lotPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH)).toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WETH,
@@ -593,7 +593,7 @@ async function main() {
   const eurError = fp('0.0015') // 0.15%
 
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
+    lotPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
     combinedOracleError: combinedError(eurtError, eurError).toString(), // 2%

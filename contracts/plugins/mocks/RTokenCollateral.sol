@@ -49,11 +49,11 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     /// Should not revert
     /// @return low {UoA/tok} The lower end of the price estimate
     /// @return high {UoA/tok} The upper end of the price estimate
-    function price() public view override(IAsset, RTokenAsset) returns (uint192 low, uint192 high) {
+    function price() public view override(RTokenAsset, IAsset) returns (uint192 low, uint192 high) {
         return super.price();
     }
 
-    function refresh() public virtual override {
+    function refresh() public virtual override(RTokenAsset, IAsset) {
         if (whenDefault <= block.timestamp) return;
         CollateralStatus oldStatus = status();
 

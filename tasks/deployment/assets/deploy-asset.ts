@@ -3,7 +3,7 @@ import { task, types } from 'hardhat/config'
 import { Asset } from '../../../typechain'
 
 task('deploy-asset', 'Deploys an Asset')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('lotPrice', 'A lot price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
@@ -19,7 +19,7 @@ task('deploy-asset', 'Deploys an Asset')
       await (await hre.ethers.getContractFactory('Asset'))
         .connect(deployer)
         .deploy(
-          params.fallbackPrice,
+          params.lotPrice,
           params.priceFeed,
           params.oracleError,
           params.tokenAddress,

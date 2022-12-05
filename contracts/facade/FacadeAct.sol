@@ -229,7 +229,7 @@ contract FacadeAct is IFacadeAct {
                         {
                             IAsset rTokenAsset = cache.reg.toAsset(IERC20(address(rToken)));
                             (uint192 lotPrice, ) = rTokenAsset.price();
-                            lotPrice = fixMax(lotPrice, rTokenAsset.fallbackPrice());
+                            lotPrice = fixMax(lotPrice, rTokenAsset.lotPrice());
 
                             if (
                                 rTokenAsset.bal(address(cache.rTokenTrader)) >
@@ -253,7 +253,7 @@ contract FacadeAct is IFacadeAct {
                         {
                             IAsset rsrAsset = cache.reg.toAsset(cache.rsr);
                             (uint192 lotPrice, ) = rsrAsset.price();
-                            lotPrice = fixMax(lotPrice, rsrAsset.fallbackPrice());
+                            lotPrice = fixMax(lotPrice, rsrAsset.lotPrice());
                             if (
                                 rsrAsset.bal(address(cache.rsrTrader)) >
                                 minTradeSize(cache.rsrTrader.minTradeVolume(), lotPrice)
@@ -317,7 +317,7 @@ contract FacadeAct is IFacadeAct {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
                     (uint192 lotPrice, ) = cache.reg.toAsset(erc20s[i]).price(); // {tok}
-                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).fallbackPrice());
+                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).lotPrice());
 
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotPrice)) {
@@ -335,7 +335,7 @@ contract FacadeAct is IFacadeAct {
                 // See if any token bals grew sufficiently
                 for (uint256 i = 0; i < erc20s.length; ++i) {
                     (uint192 lotPrice, ) = cache.reg.toAsset(erc20s[i]).price(); // {tok}
-                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).fallbackPrice());
+                    lotPrice = fixMax(lotPrice, cache.reg.toAsset(erc20s[i]).lotPrice());
 
                     uint256 bal = erc20s[i].balanceOf(address(cache.bm));
                     if (bal - initialBals[i] > minTradeSize(minTradeVolume, lotPrice)) {

@@ -324,9 +324,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
 
     /// Should not revert
     /// Should be nonzero
-    /// @return p {UoA/tok} A fallback price to use for trade sizing when price().low is 0
-    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function fallbackPrice() external view returns (uint192 p) {
+    /// @return p {UoA/tok} A lot price to use for trade sizing
+    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
+    function lotPrice() external view returns (uint192 p) {
         uint256 p256;
 
         uint256 length = basket.erc20s.length;
@@ -334,7 +334,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
             uint192 qty = quantity(basket.erc20s[i]);
             if (qty == 0) continue;
 
-            uint192 fbPrice = assetRegistry.toAsset(basket.erc20s[i]).fallbackPrice();
+            uint192 fbPrice = assetRegistry.toAsset(basket.erc20s[i]).lotPrice();
             p256 += quantityMulPrice(qty, fbPrice);
         }
 

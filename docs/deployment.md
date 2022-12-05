@@ -218,7 +218,7 @@ yarn confirm --network mainnet
 
 This checks that:
 
-- For each asset, confirm `fallbackPrice()` and `price()` are close.
+- For each asset, confirm `lotPrice()` and `price()` are close.
 - `main.paused()` is true
 - `timelockController.minDelay()` is > 1e12
 

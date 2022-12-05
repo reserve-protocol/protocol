@@ -6,6 +6,8 @@ import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "./Asset.sol";
 
+import "hardhat/console.sol";
+
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
@@ -57,6 +59,15 @@ contract RTokenAsset is IAsset {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply);
         high = range.top.mulDiv(highBUPrice, supply);
+
+        console.log("RTokenAsset.tryPrice");
+        console.log("BU prices", lowBUPrice, highBUPrice);
+        console.log("BU ranges", range.bottom, range.top);
+        console.log("low high", low, high);
+    }
+
+    function refresh() public virtual override {
+        // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
     }
 
     /// Should not revert
@@ -64,6 +75,7 @@ contract RTokenAsset is IAsset {
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high) {
+            assert(low <= high); // TODO remove?
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -73,24 +85,24 @@ contract RTokenAsset is IAsset {
     }
 
     /// Should not revert
-    /// Should be nonzero
-    /// @return {UoA/tok} A fallback price to use for trade sizing
-    function fallbackPrice() external view returns (uint192) {
+    /// Should be nonzero when the asset might be worth selling
+    /// @return {UoA/tok} A lot price to use for trade sizing
+    function lotPrice() external view returns (uint192) {
         // This function can revert if any of the math inside it reverts
-        // But we prefer reverting over returning a zero value for fallbackPrice()
+        // But we prefer reverting over returning a zero value for lotPrice()
 
-        uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
+        uint192 buLotPrice = basketHandler.lotPrice(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return buFallbackPrice;
+        if (supply == 0) return buLotPrice;
 
         RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return range.bottom.mulDiv(buFallbackPrice, supply);
+        return range.bottom.mulDiv(buLotPrice, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

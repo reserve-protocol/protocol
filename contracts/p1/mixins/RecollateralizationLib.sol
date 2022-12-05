@@ -8,6 +8,8 @@ import "../../interfaces/IBackingManager.sol";
 import "../../libraries/Fixed.sol";
 import "./TradeLib.sol";
 
+import "hardhat/console.sol";
+
 /// Struct purposes:
 ///   1. Stay under stack limit with fewer vars
 ///   2. Cache information such as component addresses + trading rules to save on gas
@@ -197,6 +199,12 @@ library RecollateralizationLibP1 {
         // {BU} = {UoA} / {BU/UoA}
         range.top = basketTargetHigh.div(basketPriceLow, CEIL);
         range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
+
+        console.log("basketRange");
+        console.log("shortfall", shortfall, shortfallSlippage);
+        console.log("assets", assetsLow, assetsHigh);
+        console.log("basket targets", basketTargetLow, basketTargetHigh);
+        console.log("basket prices", basketPriceLow, basketPriceHigh);
     }
 
     // ===========================================================================================
@@ -250,16 +258,11 @@ library RecollateralizationLibP1 {
 
             (uint192 lowPrice, uint192 highPrice) = reg.assets[i].price(); // {UoA/tok}
 
-            // {UoA/sellTok}
-            uint192 lotPrice = lowPrice > 0 ? lowPrice : reg.assets[i].fallbackPrice();
-
             uint192 qty = components.bh.quantity(reg.erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (
-                qty == 0 &&
-                !TradeLib.isEnoughToSell(reg.assets[i], bal, lotPrice, rules.minTradeVolume)
-            ) continue;
+            if (qty == 0 && !TradeLib.isEnoughToSell(reg.assets[i], bal, rules.minTradeVolume))
+                continue;
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
@@ -337,16 +340,10 @@ library RecollateralizationLibP1 {
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
             uint192 needed = range.top.mul(components.bh.quantity(reg.erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                uint192 lowPrice; // {UoA/sellTok} Price to use in trade
+                (uint192 lowPrice, uint192 highPrice) = reg.assets[i].price(); // {UoA/sellTok}
 
-                // This block is only here for stack limit reasons
-                {
-                    (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/sellTok}
-
-                    // Skip worthless assets
-                    if (high == 0) continue;
-                    lowPrice = low;
-                }
+                // Skip worthless assets
+                if (highPrice == 0) continue;
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
                 uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
@@ -361,12 +358,7 @@ library RecollateralizationLibP1 {
                 // as defined by a (status, surplusAmt) ordering
                 if (
                     isBetterSurplus(maxes, status, delta) &&
-                    TradeLib.isEnoughToSell(
-                        reg.assets[i],
-                        bal.minus(needed),
-                        lowPrice > 0 ? lowPrice : reg.assets[i].fallbackPrice(),
-                        rules.minTradeVolume
-                    )
+                    TradeLib.isEnoughToSell(reg.assets[i], bal.minus(needed), rules.minTradeVolume)
                 ) {
                     trade.sell = reg.assets[i];
                     trade.sellAmount = bal.minus(needed);
@@ -408,12 +400,7 @@ library RecollateralizationLibP1 {
 
             if (
                 highPrice > 0 &&
-                TradeLib.isEnoughToSell(
-                    rsrAsset,
-                    rsrAvailable,
-                    lowPrice > 0 ? lowPrice : rsrAsset.fallbackPrice(),
-                    rules.minTradeVolume
-                )
+                TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)
             ) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;

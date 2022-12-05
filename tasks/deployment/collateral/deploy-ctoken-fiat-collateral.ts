@@ -3,7 +3,7 @@ import { task } from 'hardhat/config'
 import { CTokenFiatCollateral } from '../../../typechain'
 
 task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('lotPrice', 'A lot price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('cToken', 'CToken address')
@@ -22,7 +22,7 @@ task('deploy-ctoken-fiat-collateral', 'Deploys a CToken Fiat Collateral')
 
     const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.connect(deployer).deploy(
       {
-        fallbackPrice: params.fallbackPrice,
+        lotPrice: params.lotPrice,
         chainlinkFeed: params.priceFeed,
         oracleError: params.oracleError,
         erc20: params.cToken,

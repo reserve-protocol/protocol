@@ -12,7 +12,7 @@ import { useEnv } from '#/utils/env'
 export const getCurrentPrice = async (chainlinkAddr?: string): Promise<BigNumber> => {
   if (!chainlinkAddr) throw new Error('Missing chainlink addr')
 
-  // Calculate fallbackPrice
+  // Calculate lotPrice
   const chainlinkFeed = await hre.ethers.getContractAt('MockV3Aggregator', chainlinkAddr)
   const answer = await chainlinkFeed.latestAnswer()
   return fp(answer).div(bn(10).pow(await chainlinkFeed.decimals()))

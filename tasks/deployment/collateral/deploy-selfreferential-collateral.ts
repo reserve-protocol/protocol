@@ -4,7 +4,7 @@ import { ContractFactory } from 'ethers'
 import { SelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('lotPrice', 'A lot price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
@@ -21,7 +21,7 @@ task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral
     )
 
     const collateral = <SelfReferentialCollateral>await CollateralFactory.connect(deployer).deploy({
-      fallbackPrice: params.fallbackPrice,
+      lotPrice: params.lotPrice,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
       erc20: params.tokenAddress,

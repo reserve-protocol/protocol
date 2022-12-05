@@ -10,7 +10,8 @@ import "./Asset.sol";
 import "./OracleLib.sol";
 
 struct CollateralConfig {
-    uint192 fallbackPrice; // {UoA/tok} A fallback price to use for lot sizing when oracles fail
+    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
+    uint192 initialPrice; // {UoA/tok} The initial price at deployment
     AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
     uint192 oracleError; // {1} The % the oracle feed can be off by
     IERC20Metadata erc20; // The ERC20 of the collateral token
@@ -62,9 +63,12 @@ contract FiatCollateral is ICollateral, Asset {
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(CollateralConfig memory config)
+    constructor(
+        CollateralConfig memory config
+    )
         Asset(
-            config.fallbackPrice,
+            config.priceTimeout,
+            config.initialPrice,
             config.chainlinkFeed,
             config.oracleError,
             config.erc20,
@@ -99,11 +103,7 @@ contract FiatCollateral is ICollateral, Asset {
         view
         virtual
         override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
+        returns (uint192 low, uint192 high, uint192 pegPrice)
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 
@@ -118,11 +118,11 @@ contract FiatCollateral is ICollateral, Asset {
     /// Should not revert
     /// Refresh exchange rates and update default status.
     /// @dev Should be general enough to not need to be overridden
-    function refresh() public virtual override {
+    function refresh() public virtual override(Asset, IAsset) {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // Check for soft default + save fallbackPrice
+        // Check for soft default + save lotPrice
         try this.tryPrice() returns (uint192 low, uint192, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
 
@@ -131,7 +131,8 @@ contract FiatCollateral is ICollateral, Asset {
             if (low == 0 || pegPrice < pegBottom || pegPrice > pegTop) {
                 markStatus(CollateralStatus.IFFY);
             } else {
-                fallbackPrice = low;
+                lastPrice = low;
+                lastTimestamp = uint48(block.timestamp);
                 markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {

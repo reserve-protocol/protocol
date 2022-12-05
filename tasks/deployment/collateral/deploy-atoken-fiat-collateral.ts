@@ -4,7 +4,7 @@ import { ContractFactory } from 'ethers'
 import { ATokenFiatCollateral } from '../../../typechain'
 
 task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('lotPrice', 'A lot price (in UoA)')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('staticAToken', 'Static AToken address')
@@ -24,7 +24,7 @@ task('deploy-atoken-fiat-collateral', 'Deploys an AToken Fiat Collateral')
 
     const collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.connect(deployer).deploy(
       {
-        fallbackPrice: params.fallbackPrice,
+        lotPrice: params.lotPrice,
         chainlinkFeed: params.priceFeed,
         oracleError: params.oracleError,
         erc20: params.staticAToken,

@@ -45,17 +45,13 @@ library TradingLibP0 {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
-        // Calculate a lotPrice for trade-sizing purposes only
-        // {UoA/sellTok}
-        uint192 lotPrice = trade.sellPrice > 0 ? trade.sellPrice : trade.sell.fallbackPrice();
-
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotPrice, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, rules.minTradeVolume)) {
             return (false, req);
         }
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, lotPrice); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, trade.sell.lotPrice()); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -309,13 +305,10 @@ library TradingLibP0 {
 
             (uint192 lowPrice, uint192 highPrice) = asset.price(); // {UoA/tok}
 
-            // {UoA/sellTok}
-            uint192 lotPrice = lowPrice > 0 ? lowPrice : asset.fallbackPrice();
-
             uint192 qty = components.bh.quantity(erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !isEnoughToSell(asset, bal, lotPrice, rules.minTradeVolume)) continue;
+            if (qty == 0 && !isEnoughToSell(asset, bal, rules.minTradeVolume)) continue;
 
             // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
@@ -407,21 +400,16 @@ library TradingLibP0 {
                 // {UoA} = {sellTok} * {UoA/sellTok}
                 uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
 
-                // Is the excess enough to sell?
-                bool enoughToSell = isEnoughToSell(
-                    asset,
-                    bal.minus(needed),
-                    lowPrice > 0 ? lowPrice : asset.fallbackPrice(),
-                    rules.minTradeVolume
-                );
-
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
                 if (asset.isCollateral()) status = ICollateral(address(asset)).status();
 
                 // Select the most-in-surplus "best" asset still enough to sell,
                 // as defined by a (status, surplusAmt) ordering
-                if (isBetterSurplus(maxes, status, delta) && enoughToSell) {
+                if (
+                    isBetterSurplus(maxes, status, delta) &&
+                    isEnoughToSell(asset, bal.minus(needed), rules.minTradeVolume)
+                ) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
                     trade.sellPrice = lowPrice;
@@ -460,15 +448,7 @@ library TradingLibP0 {
             );
             (uint192 lowPrice, uint192 highPrice) = rsrAsset.price(); // {UoA/tok}
 
-            if (
-                highPrice > 0 &&
-                isEnoughToSell(
-                    rsrAsset,
-                    rsrAvailable,
-                    lowPrice > 0 ? lowPrice : rsrAsset.fallbackPrice(),
-                    rules.minTradeVolume
-                )
-            ) {
+            if (highPrice > 0 && isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
                 trade.sellPrice = lowPrice;
@@ -599,17 +579,15 @@ library TradingLibP0 {
 
     /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
-    /// @param price {UoA/tok} The price to use
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
-        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
         return
-            amt.gte(minTradeSize(minTradeVolume, price)) &&
+            amt.gte(minTradeSize(minTradeVolume, asset.lotPrice())) &&
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;

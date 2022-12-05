@@ -30,7 +30,7 @@ async function main() {
 
   // ******************** Deploy RSR Asset ****************************************/
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
-    fallbackPrice: (await getCurrentPrice(deployments.prerequisites.RSR_FEED)).toString(),
+    lotPrice: (await getCurrentPrice(deployments.prerequisites.RSR_FEED)).toString(),
     priceFeed: deployments.prerequisites.RSR_FEED,
     oracleError: fp('0.02').toString(), // 2%
     tokenAddress: deployments.prerequisites.RSR,

@@ -27,18 +27,18 @@ async function main() {
   const assets = Object.values(assetsColls.assets)
   const collateral = Object.values(assetsColls.collateral)
 
-  // Confirm each non-collateral asset's price is near the fallback price
+  // Confirm each non-collateral asset's price is near the lot price
   for (const a of assets) {
     console.log(`confirming asset ${a}`)
     const asset = await hre.ethers.getContractAt('Asset', a)
-    const fallbackPrice = await asset.fallbackPrice()
+    const lotPrice = await asset.lotPrice()
     const [isFallback, currentPrice] = await asset.price(true)
     if (isFallback) throw new Error('misconfigured oracle')
 
     const lower = currentPrice.sub(currentPrice.div(20))
     const upper = currentPrice.add(currentPrice.div(20))
-    if (fallbackPrice.lt(lower) || fallbackPrice.gt(upper)) {
-      throw new Error('fallback price >5% off')
+    if (lotPrice.lt(lower) || lotPrice.gt(upper)) {
+      throw new Error('lot price >5% off')
     }
   }
 
@@ -64,9 +64,9 @@ async function main() {
       throw new Error('a peg is more than 1% off?')
     }
 
-    const fallbackPrice = await coll.fallbackPrice() // {UoA/tok}
-    if (fallbackPrice.lt(lower) || fallbackPrice.gt(upper)) {
-      throw new Error('a fallback price is >1% off')
+    const lotPrice = await coll.lotPrice() // {UoA/tok}
+    if (lotPrice.lt(lower) || lotPrice.gt(upper)) {
+      throw new Error('a lot price is >1% off')
     }
   }
 }
