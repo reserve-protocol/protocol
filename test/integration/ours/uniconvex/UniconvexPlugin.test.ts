@@ -195,29 +195,6 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 [asset0, asset1, asset2, lpToken, convexLpToken]
             )
 
-            await asset0.connect(addr1).transfer(owner.address, p0(100))
-            await asset1.connect(addr1).transfer(owner.address, p1(100))
-
-            // const pairAddress = await factory.getPair(asset0.address, asset1.address)
-
-            // await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
-            // await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
-
-            // await waitForTx(
-            //     await router
-            //         .connect(owner)
-            //         .addLiquidity(
-            //             asset0.address,
-            //             asset1.address,
-            //             p0(100),
-            //             p1(100),
-            //             0,
-            //             0,
-            //             addr1.address,
-            //             (await getLatestBlockTimestamp()) + 60
-            //         )
-            // )
-
             const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
             const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
             const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
@@ -235,31 +212,33 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("USD")
-            // const uniconvexCollateral: UniconvexCollateral = <UniconvexCollateral>(
-            //     await uniconvexCollateralContractFactory
-            //         .connect(addr1)
-            //         .deploy(
-            //             fallbackPrice,
-            //             mockChainlinkFeed0.address,
-            //             mockChainlinkFeed1.address,
-            //             pairAddress,
-            //             RTOKEN_MAX_TRADE_VALUE,
-            //             ORACLE_TIMEOUT,
-            //             targetName,
-            //             DELAY_UNTIL_DEFAULT
-            //         )
-            // )
+            const uniconvexCollateral: UniconvexCollateral = <UniconvexCollateral>(
+                await uniconvexCollateralContractFactory
+                    .connect(addr1)
+                    .deploy(
+                        fallbackPrice,
+                        mockChainlinkFeed0.address,
+                        mockChainlinkFeed1.address,
+                        convexLpToken,
+                        RTOKEN_MAX_TRADE_VALUE,
+                        ORACLE_TIMEOUT,
+                        targetName,
+                        DELAY_UNTIL_DEFAULT
+                    )
+            )
 
-            // expect(await uniconvexCollateral.isCollateral()).to.equal(true)
-            // expect(await uniconvexCollateral.erc20()).to.equal(pairAddress)
-            // expect(await uniconvexCollateral.erc20Decimals()).to.equal(18)
-            // expect(await uniconvexCollateral.targetName()).to.equal(ethers.utils.formatBytes32String("USD"))
-            // expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
-            // expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
-            // //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-            // expect(await uniconvexCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-            // expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-            // expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+            expect(await uniconvexCollateral.isCollateral()).to.equal(true)
+            expect(await uniconvexCollateral.erc20()).to.equal(convexLpToken)
+            expect(await uniconvexCollateral.erc20Decimals()).to.equal(18)
+            expect(await uniconvexCollateral.targetName()).to.equal(
+                ethers.utils.formatBytes32String("USD")
+            )
+            expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
+            //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+            expect(await uniconvexCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+            expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+            expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
             // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
             // const {reserve0, reserve1} = await pair.getReserves()
@@ -269,13 +248,13 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             // expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
             // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
-            // //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-            // //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
-            // //TODO
-            // //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
-            // //   await adjustedAmout(uniconvexWrapper, 100)
-            // // )
+            //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
+            //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
+            //TODO
+            //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+            // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
+            //   await adjustedAmout(uniconvexWrapper, 100)
+            // )
         })
     })
 })

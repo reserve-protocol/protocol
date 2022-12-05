@@ -5,15 +5,20 @@ pragma solidity ^0.8.9;
 
 import "../assets/AbstractCollateral.sol";
 import "hardhat/console.sol";
+import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool_3.sol";
+import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool.sol";
 
-contract UniconvexCollateral is Collateral {
+uint256 constant N_COINS = 3;
+
+contract UniconvexCollateral3 is Collateral {
     using OracleLib for AggregatorV3Interface;
-    AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
+    AggregatorV3Interface[N_COINS] public immutable chainlinkFeeds;
+    ICurvePool public immutable curvePool;
 
     constructor(
+        ICurvePool curvePool,
         uint192 fallbackPrice_,
-        AggregatorV3Interface chainlinkFeed_,
-        AggregatorV3Interface chainlinkFeedSecondAsset_,
+        AggregatorV3Interface chainlinkFeeds[N_COINS],
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -22,7 +27,7 @@ contract UniconvexCollateral is Collateral {
     )
         Collateral(
             fallbackPrice_,
-            chainlinkFeed_,
+            chainlinkFeeds[0],
             IERC20Metadata(address(erc20_)),
             maxTradeVolume_,
             oracleTimeout_,
@@ -30,7 +35,10 @@ contract UniconvexCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(address(chainlinkFeedSecondAsset_) != address(0), "missing chainlink feed for second asset in pair");
+        require(address(curvePool) != address(0), "missing chainlink feed for second asset in pair");
+        for (uint i = 1; i < array.length; i++) {
+            require(address(chainlinkFeeds[i]) != address(0), "missing chainlink feed for second asset in pair");    
+        }
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
     }
 
@@ -42,21 +50,21 @@ contract UniconvexCollateral is Collateral {
     //     return uint192((rootK * 10**18) / pair.totalSupply());
     // }
 
-    function _calculatePrice(
-        address token0,
-        address token1,
-        uint256 amount0,
-        uint256 amount1,
-        uint256 liquidity
-    ) internal view returns (uint192) {
-        uint192 price0 = chainlinkFeed.price(oracleTimeout);
-        uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
-        //TODO liquidity can be 10 ** 18 for some assets.
-        //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**IERC20Metadata(token0).decimals();
-        uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**IERC20Metadata(token1).decimals();
-        return uint192(priceScaled0 + priceScaled1);
-    }
+    // function _calculatePrice(
+    //     address token0,
+    //     address token1,
+    //     uint256 amount0,
+    //     uint256 amount1,
+    //     uint256 liquidity
+    // ) internal view returns (uint192) {
+    //     uint192 price0 = chainlinkFeed.price(oracleTimeout);
+    //     uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
+    //     //TODO liquidity can be 10 ** 18 for some assets.
+    //     //Resulting price per one liquidity would have too bad precision. Need to check
+    //     uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**IERC20Metadata(token0).decimals();
+    //     uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**IERC20Metadata(token1).decimals();
+    //     return uint192(priceScaled0 + priceScaled1);
+    // }
 
     // // supply never zero on uniswap v2, so can revert only if feeds revert
     // function strictPrice() external view override returns (uint192) {
