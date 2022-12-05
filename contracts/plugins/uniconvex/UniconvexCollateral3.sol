@@ -86,10 +86,10 @@ contract UniconvexCollateral3 is Collateral {
         //The current price of the pool LP token relative to the underlying pool assets.
         // Given as an integer with 1e18 precision.
         uint192 virtualPrice = uint192(curvePool.get_virtual_price());
-        uint192 minPrice;
+        uint192 minPrice = type(uint192).max;
         for (uint256 i = 0; i < N_COINS; i++) {
             uint192 feedPrice = chainlinkFeeds[i].price(oracleTimeout);
-            if (feedPrice > minPrice) {
+            if (feedPrice < minPrice) {
                 minPrice = feedPrice;
             }
         }
