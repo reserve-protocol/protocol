@@ -18,6 +18,7 @@ contract BancorV3FiatCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+     int8 public immutable ERC20Decimals;
     IBnTokenERC20 public immutable bnToken;
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
@@ -32,6 +33,7 @@ contract BancorV3FiatCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
+        int8 ERC20Decimals_,
         address bnToken_
     )
         Collateral(
@@ -46,6 +48,7 @@ contract BancorV3FiatCollateral is Collateral {
     {  
         require(address(bnToken_) != address(0), "missing erc20");
         bnToken = IBnTokenERC20(address(bnToken_));
+        ERC20Decimals = ERC20Decimals_;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -62,7 +65,8 @@ contract BancorV3FiatCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        return uint192(bnToken.poolTokenToUnderlying(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),1e6));
+        uint192 rate = uint192(bnToken.poolTokenToUnderlying(address(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48),1e6));
+        return rate;
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token

@@ -152,6 +152,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
         delayUntilDefault,
+        (await usdc.decimals()).toString(),
         bnToken.address,
       )
     )
