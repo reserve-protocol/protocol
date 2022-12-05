@@ -45,6 +45,8 @@ interface INetworkConfig {
   COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  ROCKET_NETWORK_BALANCES?: string
+  ROCKET_STORAGE?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -106,6 +108,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    ROCKET_NETWORK_BALANCES: '0x138313f102cE9a0662F826fCA977E3ab4D6e5539',
+    ROCKET_STORAGE: '0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46',
   },
   '3': {
     name: 'ropsten',
@@ -164,6 +168,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
+    ROCKET_NETWORK_BALANCES: '0x138313f102cE9a0662F826fCA977E3ab4D6e5539',
+    ROCKET_STORAGE: '0x1d8f8f00cfa6758d7bE78336684788Fb0ee0Fa46',
   },
   '5': {
     name: 'goerli',
