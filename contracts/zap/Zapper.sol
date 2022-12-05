@@ -35,34 +35,47 @@ contract Zapper is IZap {
     ) external returns (uint256 received) {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
-        zapToCollateralTokens(_from, _to, _amount);
+        (address[] memory erc20s, uint256[] memory zappedAmounts) = zapToCollateralTokens(
+            _from,
+            _to,
+            _amount
+        );
 
-        uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to));
+        uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to), zappedAmounts);
         // TOOD: this somehow fucks up and we can't mint, gives weird errors
         // console.log(lowestIssueRatio * 9950 / 10_000);
-        IRToken(_to).issue(lowestIssueRatio * 9950 / 10_000);
+        IRToken(_to).issue((lowestIssueRatio * 9950) / 10_000);
 
         received = IERC20(_to).balanceOf(address(this));
         IERC20(address(_to)).safeTransfer(msg.sender, received);
+
+        // Refund unused amounts
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            uint256 refundAmount = IERC20(erc20s[i]).balanceOf(address(this));
+            if (refundAmount > 0) {
+                IERC20(erc20s[i]).safeTransfer(msg.sender, refundAmount);
+            }
+        }
     }
 
     function zapOut(
         address _from,
         address _to,
         uint256 _amount
-    ) external returns (uint256 received) {
-    }
+    ) external returns (uint256 received) {}
 
     function zapToCollateralTokens(
         address _from,
         address _to,
         uint256 _amount
-    ) internal {
+    ) internal returns (address[] memory, uint256[] memory) {
         // Get underlying assets and ratios
         // TODO this is a write call - check if it's safe
         (address[] memory erc20s, uint192[] memory uoaShares, ) = facade.basketBreakdown(
             RTokenP1(address(_to))
         );
+
+        uint256[] memory amounts = new uint256[](erc20s.length);
 
         // TODO SHOULD sum to 1e18 but have to verify
         uint256 totalSharesDenom;
@@ -80,15 +93,21 @@ contract Zapper is IZap {
             IERC20(_from).safeApprove(address(zapRouter), 0);
             IERC20(_from).safeApprove(address(zapRouter), zapAmount);
             uint256 erc20Amount = zapRouter.swap(_from, erc20, zapAmount);
-
+            amounts[i] = erc20Amount;
             // Approve rToken spending
             IERC20(erc20).safeApprove(address(_to), 0);
             IERC20(erc20).safeApprove(address(_to), erc20Amount);
         }
+
+        return (erc20s, amounts);
     }
 
     /// Get the lowest ratio of collateral asset to determine issue amount
-    function getLowestIssueRatio(IRToken _rtoken) internal view returns (uint256 lowestRatio) {
+    function getLowestIssueRatio(IRToken _rtoken, uint256[] memory _zappedAmounts)
+        internal
+        view
+        returns (uint256 lowestRatio)
+    {
         IMain main = IMain(_rtoken.main());
         IBasketHandler basketHandler = IBasketHandler(main.basketHandler());
 
@@ -106,8 +125,7 @@ contract Zapper is IZap {
         );
 
         for (uint256 i = 0; i < erc20s.length; i++) {
-            uint256 ratio = (IERC20(erc20s[i]).balanceOf(address(this)) * FIX_SCALE) /
-                quantities[i];
+            uint256 ratio = (_zappedAmounts[i] * FIX_SCALE) / quantities[i];
             if (ratio < lowestRatio || lowestRatio == 0) {
                 lowestRatio = ratio;
             }
