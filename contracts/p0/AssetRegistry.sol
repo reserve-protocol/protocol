@@ -30,8 +30,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         for (uint256 i = 0; i < _erc20s.length(); i++) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+            assets[IERC20(_erc20s.at(i))].refresh();
         }
     }
 

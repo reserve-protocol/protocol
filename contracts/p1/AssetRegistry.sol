@@ -47,8 +47,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+            assets[IERC20(_erc20s.at(i))].refresh();
         }
     }
 
