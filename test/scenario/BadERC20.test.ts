@@ -12,17 +12,16 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
-  OracleLib,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
-import { setOraclePrice } from '../utils/oracles'
+import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR, ORACLE_TIMEOUT } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -58,8 +57,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
-
+  
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -84,7 +82,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
       rTokenTrader,
       rsrTrader,
       rTokenAsset,
@@ -96,18 +93,18 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     collateral0 = await (
-      await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      token0.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('USD'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT
+      await ethers.getContractFactory('FiatCollateral')
+    ).deploy( {
+      fallbackPrice: fp('1'),
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: token0.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: DEFAULT_THRESHOLD,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT
+    }
     )
 
     // Backup
@@ -201,9 +198,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.strictPrice()
+      await collateral0.price()
       await collateral0.targetPerRef()
-      await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
     })
 
@@ -302,9 +298,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.strictPrice()
+      await collateral0.price()
       await collateral0.targetPerRef()
-      await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
     })
 
@@ -326,7 +321,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still have price', async () => {
-      await rTokenAsset.strictPrice()
+      await rTokenAsset.price()
     })
 
     it('should still melt', async () => {
@@ -349,7 +344,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.buy()).to.equal(backupToken.address)
     })
 
-    it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
+    it.skip('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
       await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
       await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
       await expect(rTokenTrader.manageToken(rToken.address))
