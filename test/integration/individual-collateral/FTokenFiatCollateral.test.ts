@@ -239,11 +239,11 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await fTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await fTokenCollateral.pricePerTarget()).to.be.closeTo(fp('1'), fp('0.01'))
       expect(await fTokenCollateral.prevReferencePrice()).to.equal(await fTokenCollateral.refPerTok())
-      expect(await fTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('1')) // close to $1
+      expect(await fTokenCollateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.015')) // close to $1
 
-      // TODO: Check claim data 
-      // await expect(fTokenCollateral.claimRewards())
-      //   .to.emit(undefined);
+      // Check claim data
+      await expect(fTokenCollateral.claimRewards())
+        .to.not.emit(fTokenCollateral, "RewardsClaimed");
       expect(await fTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -437,63 +437,13 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
   })
 
-  // TODO: check for rewards
   // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
   // claiming calls throughout the protocol are handled correctly and do not revert.
-  // describe('Rewards', () => {
-  //   it('Should be able to claim rewards (if applicable)', async () => {
-  //     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-  //     const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-  //     // Try to claim rewards at this point - Nothing for Backing Manager
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     await expectEvents(backingManager.claimRewards(), [
-  //       {
-  //         contract: backingManager,
-  //         name: 'RewardsClaimed',
-  //         args: [compToken.address, bn(0)],
-  //         emitted: true,
-  //       },
-  //     ])
-
-  //     // No rewards so far
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     // Provide approvals for issuances
-  //     await fFraxCrv.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-
-  //     // Issue rTokens
-  //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-  //     // Check RTokens issued to user
-  //     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-  //     // Now we can claim rewards - check initial balance still 0
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     // Advance Time
-  //     await advanceTime(8000)
-
-  //     // Claim rewards
-  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-  //     // Check rewards both in COMP and stkAAVE
-  //     const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
-
-  //     expect(rewardsCOMP1).to.be.gt(0)
-
-  //     // Keep moving time
-  //     await advanceTime(3600)
-
-  //     // Get additional rewards
-  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-  //     const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
-
-  //     expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
-  //   })
-  // })
+  describe('Rewards', () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
+      await expectEvents(backingManager.claimRewards(), [])
+    })
+  })
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
