@@ -185,9 +185,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const convexLpTokenAddress = matchedPools[0].poolInfo.token
 
-            const convexLpToken = <ERC20Mock>(
-                await ethers.getContractAt("ERC20Mock", convexLpTokenAddress)
-            )
+            const convexLpToken = await ethers.getContractAt("ERC20Mock", convexLpTokenAddress)
 
             await logBalances(
                 "after minting Convex LP",
@@ -200,11 +198,19 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
 
             const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
-            const mockChainlinkFeed0 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
+            const mockChainlinkFeed0 = await MockV3AggregatorFactory.connect(addr1).deploy(
+                8,
+                bn("1e8")
             )
-            const mockChainlinkFeed1 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
+
+            const mockChainlinkFeed1 = await MockV3AggregatorFactory.connect(addr1).deploy(
+                8,
+                bn("1e8")
+            )
+
+            const mockChainlinkFeed2 = await MockV3AggregatorFactory.connect(addr1).deploy(
+                8,
+                bn("1e8")
             )
 
             const uniconvexCollateralContractFactory: UniconvexCollateral__factory =
@@ -216,9 +222,13 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await uniconvexCollateralContractFactory
                     .connect(addr1)
                     .deploy(
+                        stableSwap3Pool,
                         fallbackPrice,
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
+                        [
+                            mockChainlinkFeed0.address,
+                            mockChainlinkFeed1.address,
+                            mockChainlinkFeed2.address,
+                        ],
                         convexLpToken,
                         RTOKEN_MAX_TRADE_VALUE,
                         ORACLE_TIMEOUT,

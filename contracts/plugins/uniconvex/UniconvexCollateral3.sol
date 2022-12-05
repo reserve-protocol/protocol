@@ -1,24 +1,20 @@
 // SPDX-License-Identifier: agpl-3.0
-
-// done as part of a reserver-protocol hackathon
 pragma solidity ^0.8.9;
 
 import "../assets/AbstractCollateral.sol";
 import "hardhat/console.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool_3.sol";
-import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool.sol";
 
-uint256 constant N_COINS = 3;
 
 contract UniconvexCollateral3 is Collateral {
     using OracleLib for AggregatorV3Interface;
-    AggregatorV3Interface[N_COINS] public immutable chainlinkFeeds;
+    AggregatorV3Interface[N_COINS] public chainlinkFeeds;
     ICurvePool public immutable curvePool;
 
     constructor(
-        ICurvePool curvePool,
+        ICurvePool _curvePool,
         uint192 fallbackPrice_,
-        AggregatorV3Interface chainlinkFeeds[N_COINS],
+        AggregatorV3Interface[N_COINS] memory chainlinkFeeds_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -27,7 +23,7 @@ contract UniconvexCollateral3 is Collateral {
     )
         Collateral(
             fallbackPrice_,
-            chainlinkFeeds[0],
+            chainlinkFeeds_[0],
             IERC20Metadata(address(erc20_)),
             maxTradeVolume_,
             oracleTimeout_,
@@ -35,11 +31,12 @@ contract UniconvexCollateral3 is Collateral {
             delayUntilDefault_
         )
     {
-        require(address(curvePool) != address(0), "missing chainlink feed for second asset in pair");
-        for (uint i = 1; i < array.length; i++) {
+        require(address(_curvePool) != address(0), "missing curvePool");
+        curvePool = _curvePool;
+        for (uint i = 1; i < N_COINS; i++) {
             require(address(chainlinkFeeds[i]) != address(0), "missing chainlink feed for second asset in pair");    
         }
-        chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
+        chainlinkFeeds = chainlinkFeeds_;
     }
 
     // function refPerTok() public view override returns (uint192) {

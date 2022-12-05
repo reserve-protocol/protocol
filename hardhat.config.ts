@@ -77,17 +77,6 @@ const config: any = {
   solidity: {
     compilers: [
       {
-        version: '0.8.10',
-        settings,
-        debug: {
-          // How to treat revert (and require) reason strings.
-          // "default" does not inject compiler-generated revert strings and keeps user-supplied ones
-          // "strip" removes all revert strings (if literals are used) keeping side-effects
-          // "debug" injects strings for compiler-generated internal reverts
-          revertStrings: 'default',
-        },
-      },
-      {
         version: '0.8.9',
         settings,
         debug: {
