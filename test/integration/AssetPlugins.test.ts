@@ -1602,9 +1602,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       expect(backing[0]).to.equal(dai.address)
       expect(backing[1]).to.equal(stataDai.address)
       expect(backing[2]).to.equal(cDai.address)
-
       expect(backing.length).to.equal(3)
-
       // Check other values
       expect(await basketHandler.nonce()).to.be.gt(bn(0))
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
@@ -1613,15 +1611,31 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
-
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await dai.connect(addr1).approve(rToken.address, issueAmount)
       await stataDai.connect(addr1).approve(rToken.address, issueAmount)
       await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+    })
+
+    it('Should register simple Basket - non-fiat collateral', async () => {
+      await assetRegistry.connect(owner).register(cETHCollateral.address)
+      await basketHandler.setPrimeBasket([cETH.address], [fp('1')])
+      await basketHandler.refreshBasket()
+
+      const issue = bn('100e18')
+      await cETH.connect(addr1).approve(rToken.address, ethers.constants.MaxUint256)
+      await expect(rToken.connect(addr1).issue(issue)).to.emit(rToken, 'Issuance')
+      expect(await basketHandler.fullyCollateralized()).to.equal(true)
+      const backing1 = await facade.basketTokens(rToken.address)
+      expect(backing1[0]).to.equal(cETH.address)
+      expect(backing1.length).to.equal(1)
+
+      const collateralPrice = await cETHCollateral.strictPrice()
+      expect(await rTokenAsset.strictPrice()).to.eq(collateralPrice)
     })
 
     it('Should issue/reedem correctly with simple basket ', async function () {
