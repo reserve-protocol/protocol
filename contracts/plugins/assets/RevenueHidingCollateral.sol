@@ -156,7 +156,7 @@ abstract contract RevenueHidingCollateral is ICollateral {
 
     // ==== Exchange Rates ====
 
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    /// @return {ref/tok} Quantity of whole reference units (hidden) per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         return actualRefPerTok().mul(revenueVisibleAmount);
     }
@@ -166,6 +166,7 @@ abstract contract RevenueHidingCollateral is ICollateral {
         return FIX_ONE;
     }
 
+    /// @return {ref/tok} Quantity of whole reference units (actual) per whole collateral tokens
     function actualRefPerTok() public view virtual returns (uint192);
 
     function _checkAndUpdateDefaultStatus() internal virtual returns (bool isSound);

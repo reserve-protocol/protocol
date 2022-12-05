@@ -44,12 +44,14 @@ abstract contract AbstractDMYTokenCollateral is DemurrageCollateral {
     // solhint-disable-next-line no-empty-blocks
     function claimRewards() external virtual override {}
 
+    /// @return {uTok/tok} Quantity of whole underlying token units per whole collateral tokens
     function uTokPerTok() internal view virtual override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
         uint256 pps = vault.pricePerShare();
         return shiftl_toFix(pps, -int8(vault.decimals()));
     }
 
+    /// @return {UoA/uTok} The current price of the underlying token
     function pricePerUTok() internal view virtual override returns (uint192) {
         return chainlinkFeed.price(oracleTimeout);
     }

@@ -34,19 +34,22 @@ contract YTokenGenericCollateral is RevenueHidingCollateral {
     // solhint-disable-next-line no-empty-blocks
     function claimRewards() external override {}
 
+    /// @return {ref/tok} Quantity of whole reference units (actual) per whole collateral tokens
     function actualRefPerTok() public view override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
         uint256 pps = vault.pricePerShare();
         return shiftl_toFix(pps, -int8(vault.decimals()));
     }
 
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
     function strictPrice() public view override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
         return
             shiftl_toFix(
                 priceProvider.price(address(vault.token())),
                 -int8(priceProvider.decimals())
-            ).mul(refPerTok());
+            ).mul(actualRefPerTok());
     }
 
     // solhint-disable-next-line no-empty-blocks

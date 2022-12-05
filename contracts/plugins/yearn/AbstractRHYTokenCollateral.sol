@@ -42,10 +42,13 @@ abstract contract AbstractRHYTokenCollateral is RevenueHidingCollateral {
         oracleTimeout = oracleTimeout_;
     }
 
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
     function strictPrice() public view virtual override returns (uint192) {
         return chainlinkFeed.price(oracleTimeout).mul(actualRefPerTok());
     }
 
+    /// @return {ref/tok} Quantity of whole reference units (actual) per whole collateral tokens
     function actualRefPerTok() public view virtual override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
         uint256 pps = vault.pricePerShare();

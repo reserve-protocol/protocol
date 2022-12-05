@@ -162,7 +162,7 @@ abstract contract DemurrageCollateral is ICollateral {
         return FIX_ONE.div(tokPerRef());
     }
 
-    // TODO: calculate the value of [k] in constructor from basis points specified
+    /// @return {tok/ref} Quantity of whole collateral token units left per whole collateral tokens
     function tokPerRef() public view returns (uint192) {
         if (block.timestamp == lastTokPerRefTime) return lastTokPerRef;
 
@@ -183,8 +183,10 @@ abstract contract DemurrageCollateral is ICollateral {
         return FIX_ONE;
     }
 
+    /// @return {uTok/tok} Quantity of whole underlying token units per whole collateral tokens
     function uTokPerTok() internal view virtual returns (uint192);
 
+    /// @return {UoA/uTok} The current price of the underlying token
     function pricePerUTok() internal view virtual returns (uint192);
 
     function _checkAndUpdateDefaultStatus() internal virtual returns (bool isSound);

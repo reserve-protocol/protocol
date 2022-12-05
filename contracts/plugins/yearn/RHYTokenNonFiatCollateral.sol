@@ -38,12 +38,14 @@ contract YTokenNonFiatCollateral is AbstractRHYTokenCollateral {
         underlyingTargetToRefFeed = underlyingTargetToRefFeed_;
     }
 
+    /// Can return 0, can revert
+    /// @return {UoA/tok} The current price()
     function strictPrice() public view virtual override returns (uint192) {
         return
             chainlinkFeed
                 .price(oracleTimeout)
                 .mul(underlyingTargetToRefFeed.price(oracleTimeout))
-                .mul(refPerTok());
+                .mul(actualRefPerTok());
     }
 
     function _checkAndUpdateDefaultStatus() internal override returns (bool isSound) {
