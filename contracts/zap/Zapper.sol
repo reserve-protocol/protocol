@@ -62,7 +62,28 @@ contract Zapper is IZap {
         address _from,
         address _to,
         uint256 _amount
-    ) external returns (uint256 received) {}
+    ) external returns (uint256 received) {
+        IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
+
+        IRToken(_from).redeem(_amount);
+        (address[] memory erc20s,,) = facade.basketBreakdown(
+            RTokenP1(address(_from))
+        );
+
+        for (uint256 i = 0; i < erc20s.length; i++) {
+            address token = erc20s[i];
+            if (token == _to) {
+                continue;
+            }
+            uint256 swapAmount = IERC20(token).balanceOf(address(this));
+            IERC20(token).safeApprove(address(zapRouter), 0);
+            IERC20(token).safeApprove(address(zapRouter), swapAmount);
+            zapRouter.swap(token, _to, swapAmount);
+        }
+
+        received = IERC20(_to).balanceOf(address(this));
+        IERC20(_to).safeTransfer(msg.sender, received);
+    }
 
     function zapToCollateralTokens(
         address _from,
@@ -71,7 +92,7 @@ contract Zapper is IZap {
     ) internal returns (address[] memory, uint256[] memory) {
         // Get underlying assets and ratios
         // TODO this is a write call - check if it's safe
-        (address[] memory erc20s, uint192[] memory uoaShares, ) = facade.basketBreakdown(
+        (address[] memory erc20s, uint192[] memory uoaShares,) = facade.basketBreakdown(
             RTokenP1(address(_to))
         );
 

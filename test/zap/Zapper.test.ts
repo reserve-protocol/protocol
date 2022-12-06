@@ -118,7 +118,6 @@ describe(`RToken Zapper Test V1`, () => {
           address,
           whale,
           amountOverride || acquireAmount,
-          amountOverride || spendAmount,
           targetBasket
         )
       }
@@ -129,14 +128,18 @@ describe(`RToken Zapper Test V1`, () => {
     purchaseToken: string,
     whale: string,
     acquireAmount: BigNumber,
-    spendAmount: BigNumber,
-    targetBasket: string
+    targetBasket: string,
   ) {
     const token = (await ethers.getContractAt('ERC20Mock', purchaseToken)) as ERC20Mock
     const [decimals, tokenName] = await Promise.all([token.decimals(), token.name()])
     await whileImpersonating(whale, async (signer) => {
       await token.connect(signer).transfer(owner.address, toBNDecimals(acquireAmount, decimals))
     })
+    await token.connect(owner).approve(zapper.address, ethers.constants.MaxUint256);
+
+    rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', targetBasket)
+    const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
+    const convertedSpend = toBNDecimals(acquireAmount, decimals)
     const convertedSpend = toBNDecimals(spendAmount, decimals)
     await token.connect(owner).approve(zapper.address, convertedSpend)
 
@@ -144,17 +147,29 @@ describe(`RToken Zapper Test V1`, () => {
     const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
     const basketName = await rToken.name()
     console.log(`Attempt mint of ${basketName} with ${tokenName}`)
-    await zapper.connect(owner).zapIn(purchaseToken, targetBasket, convertedSpend)
+    await zapper.connect(owner).zapIn(purchaseToken, targetBasket, convertedSpend);
     const rTokenBalanceAfter = await rToken.balanceOf(owner.address)
     expect(rTokenBalanceAfter).to.be.gt(rTokenBalanceBefore)
 
+    const rTokenDisplayBalance = Number(ethers.utils.formatEther(rTokenBalanceAfter.toString())).toFixed(
+      2
+    );
+    const displayBalance = Number(
+      ethers.utils.formatUnits(convertedSpend.toString(), decimals)
+    ).toFixed(2);
     console.log(
-      `Minted ${Number(ethers.utils.formatEther(rTokenBalanceAfter.toString())).toFixed(
-        2
-      )} ${basketName} with ${Number(
-        ethers.utils.formatUnits(convertedSpend.toString(), decimals)
-      ).toFixed(2)} ${tokenName}`
+      `Minted ${rTokenDisplayBalance} ${basketName} with ${displayBalance} ${tokenName}`
     )
-    await rToken.connect(owner).transfer(other.address, rTokenBalanceAfter)
+
+    await rToken.connect(owner).approve(zapper.address, ethers.constants.MaxUint256);
+    console.log(`Attempt redeem ${rTokenDisplayBalance} ${basketName} to to ${tokenName}`);
+    await zapper.connect(owner).zapOut(targetBasket, purchaseToken, rTokenBalanceAfter);
+    const balanceOfAfter = await token.balanceOf(owner.address);
+    const displayBalanceAfter = Number(
+      ethers.utils.formatUnits(balanceOfAfter.toString(), decimals)
+    ).toFixed(2);
+    console.log(`Before: ${displayBalance} ${tokenName}, After: ${displayBalanceAfter} ${tokenName}`);
+    const effeciency = Number(ethers.utils.formatUnits(balanceOfAfter, decimals)) / Number(ethers.utils.formatUnits(convertedSpend, decimals));
+    console.log(`Effeciency: ${(effeciency * 100).toFixed(2)}%`);
   }
 })
