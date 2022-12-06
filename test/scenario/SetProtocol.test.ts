@@ -19,7 +19,13 @@ import {
   TestIRToken,
   WETH9,
 } from '../../typechain'
-import { defaultFixture, IMPLEMENTATION, ORACLE_ERROR, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -87,7 +93,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token0 = await (await ethers.getContractFactory('WETH9')).deploy()
     let chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('1e8'))
     collateral0 = await SelfReferentialFactory.deploy({
-      fallbackPrice: fp('1'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: token0.address,
@@ -102,7 +108,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token1 = await (await ethers.getContractFactory('ERC20Mock')).deploy('MKR Token', 'MKR')
     chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('2e8'))
     collateral1 = await SelfReferentialFactory.deploy({
-      fallbackPrice: fp('2'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: token1.address,
@@ -117,7 +123,7 @@ describe(`Linear combination of self-referential collateral - P${IMPLEMENTATION}
     token2 = await (await ethers.getContractFactory('ERC20Mock')).deploy('COMP Token', 'COMP')
     chainlinkFeed = <MockV3Aggregator>await ChainlinkFeedFactory.deploy(8, bn('4e8'))
     collateral2 = await SelfReferentialFactory.deploy({
-      fallbackPrice: fp('4'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: token2.address,

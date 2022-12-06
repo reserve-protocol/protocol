@@ -26,6 +26,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
@@ -104,7 +105,7 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
     collateral0 = await (
       await ethers.getContractFactory('BadCollateralPlugin')
     ).deploy({
-      fallbackPrice: fp('1'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: token0.address,

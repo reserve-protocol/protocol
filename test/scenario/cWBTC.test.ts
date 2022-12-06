@@ -27,6 +27,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
 
@@ -117,7 +118,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await ethers.getContractFactory('NonFiatCollateral')
     ).deploy(
       {
-        fallbackPrice: fp('20000'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracle.address,
         oracleError: ORACLE_ERROR,
         erc20: wbtc.address,
@@ -138,7 +139,7 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
       {
-        fallbackPrice: fp('20000').div(50),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracle.address,
         oracleError: ORACLE_ERROR,
         erc20: cWBTC.address,

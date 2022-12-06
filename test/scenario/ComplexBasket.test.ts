@@ -28,7 +28,13 @@ import {
   TestIDistributor,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
@@ -172,8 +178,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     const newRSRAsset: Asset = <Asset>(
       await AssetFactory.deploy(
-        fp('1'),
+        PRICE_TIMEOUT,
         await rsrAsset.chainlinkFeed(),
+        ORACLE_TIMEOUT,
         rsr.address,
         MAX_TRADE_VOLUME,
         ORACLE_TIMEOUT
@@ -202,7 +209,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
     const { collateral: fiatUSD } = await hre.run('deploy-fiat-collateral', {
-      fallbackPrice: fp('1').toString(),
+      priceTimeout: PRICE_TIMEOUT,
       priceFeed: usdFeed.address,
       tokenAddress: usdToken.address, // DAI Token
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
@@ -225,7 +232,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const eurRefUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
 
     const { collateral: fiatEUR } = await hre.run('deploy-eurfiat-collateral', {
-      fallbackPrice: fp('1').toString(),
+      priceTimeout: PRICE_TIMEOUT,
       referenceUnitFeed: eurRefUnitFeed.address,
       targetUnitFeed: eurTargetUnitFeed.address,
       tokenAddress: eurToken.address,
@@ -246,7 +253,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 3. CTokenFiatCollateral against USD
     cUSDToken = <CTokenMock>erc20s[4] // cDAI Token
     const { collateral: cUSDCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-      fallbackPrice: fp('1').div(50).toString(),
+      priceTimeout: PRICE_TIMEOUT,
       priceFeed: usdFeed.address,
       cToken: cUSDToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
@@ -267,7 +274,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 4. ATokenFiatCollateral against USD
     aUSDToken = <StaticATokenMock>erc20s[7] // aDAI Token
     const { collateral: aUSDCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-      fallbackPrice: fp('1').toString(),
+      priceTimeout: PRICE_TIMEOUT,
       priceFeed: usdFeed.address,
       staticAToken: aUSDToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
@@ -289,7 +296,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const targetUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('20000e8')) // $20k
     const referenceUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8')) // 1 WBTC/BTC
     const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
-      fallbackPrice: fp('20000').toString(),
+      priceTimeout: PRICE_TIMEOUT,
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       tokenAddress: wbtc.address,
@@ -310,7 +317,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 6. CTokenNonFiatCollateral cWBTC against BTC
     cWBTC = <CTokenMock>await CToken.deploy('cWBTC Token', 'cWBTC', wbtc.address)
     const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-      fallbackPrice: fp('20000').div(50).toString(),
+      priceTimeout: PRICE_TIMEOUT,
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
       cToken: cWBTC.address,
@@ -334,7 +341,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     weth = <WETH9>await WETH.deploy()
     const ethFeed = await MockV3AggregatorFactory.deploy(8, bn('1200e8'))
     const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
-      fallbackPrice: fp('1200').toString(),
+      priceTimeout: PRICE_TIMEOUT,
       priceFeed: ethFeed.address,
       tokenAddress: weth.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
@@ -356,7 +363,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const { collateral: cETHCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
       {
-        fallbackPrice: fp('1200').div(50).toString(),
+        priceTimeout: PRICE_TIMEOUT,
         priceFeed: ethFeed.address,
         cToken: cETH.address,
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),

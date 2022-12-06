@@ -28,6 +28,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -110,7 +111,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     wethCollateral = await (
       await ethers.getContractFactory('SelfReferentialCollateral')
     ).deploy({
-      fallbackPrice: fp('1'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: weth.address,
@@ -130,7 +131,7 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
       await ethers.getContractFactory('CTokenSelfReferentialCollateral')
     ).deploy(
       {
-        fallbackPrice: fp('1').div(50),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: cETH.address,

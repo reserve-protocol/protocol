@@ -25,6 +25,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from '../fixtures'
 import { expectPrice } from '../utils/oracles'
 
@@ -108,7 +109,7 @@ describe(`EUR fiatcoins (eg EURT) - P${IMPLEMENTATION}`, () => {
       await ethers.getContractFactory('EURFiatCollateral')
     ).deploy(
       {
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: referenceUnitOracle.address,
         oracleError: ORACLE_ERROR,
         erc20: eurt.address,
