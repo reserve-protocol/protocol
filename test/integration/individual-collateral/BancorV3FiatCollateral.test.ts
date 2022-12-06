@@ -153,7 +153,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     )
 
     autoProcessRewardsProxy = <IAutoCompoundingRewards>(
-      await ethers.getContractAt('IAutoCompoundingRewards', networkConfig[chainId].BANCOR_REWARDS_PROXY || '')
+      await ethers.getContractAt('IAutoCompoundingRewards', networkConfig[chainId].BANCOR_PROCESSING_PROXY || '')
     )
 
     bancorToken = <ERC20Mock>(
@@ -190,7 +190,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         (await bnUsdc.decimals()).toString(),
         bnToken.address,
         rewardsProxy.address,
-        autoProcessRewardsProxy.address
+        autoProcessRewardsProxy.address,
+        addr1.address
       )
     )
 
@@ -346,7 +347,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           (await bnUsdc.decimals()).toString(),
           bnToken.address,
           rewardsProxy.address,
-          autoProcessRewardsProxy.address
+          autoProcessRewardsProxy.address,
+          addr1.address
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
@@ -364,7 +366,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           0,
           bnToken.address,
           rewardsProxy.address,
-          autoProcessRewardsProxy.address
+          autoProcessRewardsProxy.address,
+          addr1.address
 
         )
       ).to.be.revertedWith('ERC20Decimals missing')
@@ -383,7 +386,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           (await bnUsdc.decimals()).toString(),
           bnToken.address,
           ZERO_ADDRESS,
-          autoProcessRewardsProxy.address
+          autoProcessRewardsProxy.address,
+          addr1.address
 
         )
       ).to.be.revertedWith('standardRewards missing')
@@ -435,8 +439,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const bnUsdcRefPerTok2: BigNumber = await BancorV3Collateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(bnUsdcPrice2).to.be.eq(bnUsdcPrice1)
-      expect(bnUsdcRefPerTok2).to.be.eq(bnUsdcRefPerTok1)
+      expect(bnUsdcPrice2).to.be.gt(bnUsdcPrice1)
+      expect(bnUsdcRefPerTok2).to.be.gt(bnUsdcRefPerTok1)
 
       // Still close to the original values
       expect(bnUsdcPrice2).to.be.closeTo(fp('1'), fp('0.5'))
@@ -446,7 +450,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue2).to.be.eq(totalAssetValue1)
+      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(100000000)
