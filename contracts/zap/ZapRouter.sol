@@ -107,10 +107,8 @@ contract ZapRouter is IZapRouter {
                 // can attempt curveRegistry.get_coin_indices() to get the indices
                 // but not always congruent with recommended pool from get_best_rate
                 swapParams[0] = buildSwapParams(exchangePoolHopOne, source, USDT);
-                swapParams[0][2] = 3; // tricrypto swap type
 
                 swapParams[1] = buildSwapParams(exchangePoolHopTwo, USDT, target);
-                swapParams[1][2] = 1; // stable swap type
 
                 received = curveExchangeProvider.exchange_multiple(
                     swapRoute,
@@ -147,20 +145,38 @@ contract ZapRouter is IZapRouter {
         address _to
     ) private view returns (uint256[3] memory) {
         uint256[3] memory swapParams;
-        bool foundIdx0;
-        bool foundIdx1;
-        for (uint256 i = 0; i <= 4; i++) {
-            if (foundIdx0 && foundIdx1) break;
 
-            address coinAtIdx = ICurvePool(_pool).coins(i);
-            if (coinAtIdx == _from) {
-                swapParams[0] = i;
-                foundIdx0 = true;
+        try curveRegistry.get_coin_indices(_pool, _from, _to) returns (
+            int256 fromIdx,
+            int256 toIdx,
+            bool isUnderlying
+        ) {
+            swapParams[0] = uint256(fromIdx);
+            swapParams[1] = uint256(toIdx);
+
+            swapParams[2] = isUnderlying ? 2 : 1;
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+
+            bool foundIdx0;
+            bool foundIdx1;
+            for (uint256 i = 0; i < 4; i++) {
+                if (foundIdx0 && foundIdx1) break;
+
+                address coinAtIdx = ICurvePool(_pool).coins(i);
+
+                if (coinAtIdx == _from) {
+                    swapParams[0] = i;
+                    foundIdx0 = true;
+                }
+                if (coinAtIdx == _to) {
+                    swapParams[1] = i;
+                    foundIdx1 = true;
+                }
             }
-            if (coinAtIdx == _to) {
-                swapParams[1] = i;
-                foundIdx1 = true;
-            }
+
+            swapParams[2] = 3; // tricrypto swap type
         }
 
         return swapParams;
