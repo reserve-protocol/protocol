@@ -316,7 +316,60 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
-    
+    // Validate constructor arguments
+    // Note: Adapt it to your plugin constructor validations
+    it('Should validate constructor arguments correctly', async () => {
+      // Default threshold
+      await expect(
+        BancorV3CollateralFactory.deploy(
+          fp('0.02'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          usdc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          bn(0),
+          delayUntilDefault,
+          (await usdc.decimals()).toString(),
+          bnToken.address,
+          rewardsProxy.address,
+        )
+      ).to.be.revertedWith('defaultThreshold zero')
+
+      // ReferemceERC20Decimals
+      await expect(
+        BancorV3CollateralFactory.deploy(
+          fp('0.02'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          usdc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          0,
+          bnToken.address,
+          rewardsProxy.address,
+        )
+      ).to.be.revertedWith('ERC20Decimals missing')
+
+      // Comptroller
+      await expect(
+        BancorV3CollateralFactory.deploy(
+          fp('0.02'),
+          networkConfig[chainId].chainlinkFeeds.USDC as string,
+          usdc.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          (await usdc.decimals()).toString(),
+          bnToken.address,
+          ZERO_ADDRESS,
+        )
+      ).to.be.revertedWith('standardRewards missing')
+    })
   })
 
 })

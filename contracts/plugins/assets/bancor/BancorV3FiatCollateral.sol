@@ -58,7 +58,9 @@ contract BancorV3FiatCollateral is Collateral {
         )
     {  
         require(address(bnToken_) != address(0), "missing erc20");
+        require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(ERC20Decimals_ > 0, "ERC20Decimals missing");
+        require(address(standardRewards_) != address(0), "standardRewards missing");
         bnToken = IBnTokenERC20(address(bnToken_));
         ERC20Decimals = ERC20Decimals_;
         defaultThreshold = defaultThreshold_;
