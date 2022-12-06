@@ -75,9 +75,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         uint192 quantity = basketHandler.quantity(asset.erc20());
 
-        swapped = _registerIgnoringCollisions(asset);
-
         if (quantity > 0) basketHandler.disableBasket();
+
+        swapped = _registerIgnoringCollisions(asset);
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -160,9 +160,6 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
     // effects: assets' = assets.set(asset.erc20(), asset)
     // returns: assets[asset.erc20()] != asset
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
-        // Refresh to ensure it does not revert, and to save a recent lastPrice
-        asset.refresh();
-
         IERC20Metadata erc20 = asset.erc20();
         if (_erc20s.contains(address(erc20))) {
             if (assets[erc20] == asset) return false;
@@ -173,6 +170,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
+
+        // Refresh to ensure it does not revert, and to save a recent lastPrice
+        asset.refresh();
         return true;
     }
 

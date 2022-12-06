@@ -264,7 +264,7 @@ library RecollateralizationLibP1 {
             // assetsHigh += highPrice.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
             // {UoA} = {UoA/tok} * {tok}
             uint192 val = TradeLib.safeMulDivCeil(components.bm, highPrice, bal, FIX_ONE);
-            if (assetsHigh + val >= FIX_MAX) assetsHigh = FIX_MAX;
+            if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
             else assetsHigh += val;
             // += is same as Fix.plus
 

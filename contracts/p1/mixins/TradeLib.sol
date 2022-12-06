@@ -152,19 +152,12 @@ library TradeLib {
     ) internal pure returns (uint192) {
         try trader.mulDivCeil(x, y, z) returns (uint192 result) {
             return result;
-        } catch Error(string memory reason) {
-            // The only expected error is FixLib.UIntOutOfBounds
-            assert(
-                keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("UIntOutOfBounds()"))
-            );
         } catch Panic(uint errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
             assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch {
-            // It should not be possible to reach this line
-            assert(false);
+        } catch (bytes memory reason) {
+            assert(keccak256(reason) == UIntOutofBoundsHash);
         }
         return FIX_MAX;
     }
