@@ -280,6 +280,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.refPerTok()).to.be.closeTo(fp('1.003759'), fp('0.5')) // close to $1
       expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.5')) // close to $0.022 cents
       
+      await expect(BancorV3Collateral.claimRewards())
+        .to.emit(BancorV3Collateral, 'RewardsClaimed')
+        .withArgs(bancorToken.address, 0)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)

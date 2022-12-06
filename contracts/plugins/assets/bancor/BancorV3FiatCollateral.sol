@@ -82,9 +82,10 @@ contract BancorV3FiatCollateral is Collateral {
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
+        autoCompoundingRewards.autoProcessRewards();
+
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
-        autoCompoundingRewards.autoProcessRewards();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
@@ -129,6 +130,11 @@ contract BancorV3FiatCollateral is Collateral {
     /// @dev delegatecall
     function claimRewards() external virtual override {
         uint192 programId = uint192(standardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
-        standardRewards.claimRewards(uint256(programId));
+        console.log(programId);
+        uint256 claimed = standardRewards.claimRewards(uint256(programId));
+        console.log(standardRewards.claimRewards(uint256(programId)));
+        IERC20 bnt = IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C);
+        emit RewardsClaimed(bnt, claimed);
+        
     }
 }
