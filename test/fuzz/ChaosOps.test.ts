@@ -493,6 +493,11 @@ describe('The Chaos Operations scenario', () => {
 
       await scenario.updateRewards(0, 2n * exa) // set C0 rewards to 2exa R0
 
+      // Check that the expected reward amount was actually updated...
+      const assetAddr = await comp.assetRegistry.toAsset(c0.address)
+      const asset = await ConAt('AssetMock', assetAddr)
+      expect(await asset.rewardAmount()).to.equal(2n * exa)
+
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
         const bal0 = await r0.balanceOf(rewardables[i])

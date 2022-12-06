@@ -18,12 +18,8 @@ contract AssetMock is OracleErrorMock, Asset {
     event SetPrice(string symbol, uint192 price);
     PriceModel public model;
 
-    uint256 public rewardAmount;
-    IERC20Metadata public rewardERC20;
-
     constructor(
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         PriceModel memory model_
     )
@@ -36,8 +32,6 @@ contract AssetMock is OracleErrorMock, Asset {
         )
     {
         model = model_;
-        rewardAmount = 1e18;
-        rewardERC20 = rewardERC20_;
         emit SetPrice(erc20.symbol(), model.price());
     }
 
@@ -53,16 +47,8 @@ contract AssetMock is OracleErrorMock, Asset {
     }
 
     // ==== Rewards ====
-    function updateRewardAmount(uint256 amount) public {
-        rewardAmount = amount % 1e29;
-    }
-
-    function claimRewards(address who) public {
-        if (address(rewardERC20) == address(0)) return; // no rewards if no reward token
-        if (erc20.balanceOf(who) == 0) return; // no rewards to non-holders
-        if (rewardAmount == 0) return; // no rewards if rewards are zero
-
-        ERC20Fuzz(address(rewardERC20)).mint(who, rewardAmount);
-        require(rewardERC20.totalSupply() <= 1e29, "Exceeded reasonable maximum of reward tokens");
+    // expects delegatecall; claimer and rewardee is `this`
+    function claimRewards() override public {
+        ERC20Fuzz(address(erc20)).payRewards(address(this));
     }
 }

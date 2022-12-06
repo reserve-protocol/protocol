@@ -219,7 +219,6 @@ contract MainP1Fuzz is IMainFuzz, MainP1 {
         IAsset[] memory assets = new IAsset[](2);
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
-            IERC20Metadata(address(0)),
             params.rTokenMaxTradeVolume,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );

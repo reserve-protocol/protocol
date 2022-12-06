@@ -208,7 +208,7 @@ describe('The Differential Testing scenario', () => {
       // is empty
       await expect(scenario.priceModels(0)).to.be.reverted
     })
-    it('createToken, createColl, and createRewardAsset work as expected', async () => {
+    it('createToken works as expected', async () => {
       const targetName = ethers.utils.formatBytes32String('Tgt')
       const gloTokID = await p0.numTokens()
       expect(await p0.numTokens()).to.equal(await p1.numTokens())
@@ -225,50 +225,15 @@ describe('The Differential Testing scenario', () => {
       expect(await p1Token.name()).to.equal('GlobTgt ' + gloTokID.toString())
       expect(await p0Token.symbol()).to.equal('GLOTgt' + gloTokID.toString())
       expect(await p1Token.symbol()).to.equal('GLOTgt' + gloTokID.toString())
-
-      // reward = createRewardAsset
-      const rewardTokID = await p0.numTokens()
-      await scenario.createRewardAsset(targetName)
-      const p0RewardToken = await ConAt('IERC20Metadata', await p0.tokens(rewardTokID))
-      expect(await p0RewardToken.name()).to.equal('RewardTgt ' + rewardTokID.toString())
-      expect(await p0RewardToken.symbol()).to.equal('RTgt' + rewardTokID.toString())
-      const p0RewardAsset = await ConAt(
-        'AssetMock',
-        await comp0.assetRegistry.toAsset(p0RewardToken.address)
-      )
-      expect(await p0RewardAsset.erc20()).to.equal(p0RewardToken.address)
-      expect(await p0RewardAsset.isCollateral()).to.equal(false)
-
-      const p1RewardToken = await ConAt('IERC20Metadata', await p1.tokens(rewardTokID))
-      expect(await p1RewardToken.name()).to.equal('RewardTgt ' + rewardTokID.toString())
-      expect(await p1RewardToken.symbol()).to.equal('RTgt' + rewardTokID.toString())
-      const p1RewardAsset = await ConAt(
-        'AssetMock',
-        await comp1.assetRegistry.toAsset(p1RewardToken.address)
-      )
-      expect(await p1RewardAsset.erc20()).to.equal(p1RewardToken.address)
-      expect(await p1RewardAsset.isCollateral()).to.equal(false)
-
-      // coll = createColl(token, reward)
-      await scenario.createColl(p0Token.address, p0RewardToken.address, true, exa, exa, targetName)
-      const newColl = await ConAt('CollateralMock', await scenario.lastCreatedColl())
-      expect(await newColl.isCollateral()).to.equal(true)
     })
 
     it('registerAsset works as expected', async () => {
-      // OK, the "choice Seed" thing is obviously insance, but getting random configuration in
-      // through fuzzing would be even worse. Digit by digit, 310000 means:
-      // 3: use reward token with token index 3
-      // 1: use target name with index 1
-      // 0: do set a reward
-      // 0: do configure as Collateral, not Asset
-      // 0: do configure the Collateral as a stable+ token
-      // 0: create a new token, don't actually use the token given at input.
       const initNumTokens0 = await p0.numTokens()
       const initNumTokens1 = await p1.numTokens()
       expect(initNumTokens0).to.equal(initNumTokens1)
 
-      await scenario.registerAsset(0, exa, exa, 310000n)
+      await scenario.createToken(ethers.utils.formatBytes32String('Tgt'), 'Fnord', 'K')
+      await scenario.registerAsset(initNumTokens0, 1, exa, exa, true, true)
 
       expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
       expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
@@ -276,44 +241,37 @@ describe('The Differential Testing scenario', () => {
       for (const main of [p0, p1]) {
         const tokID = (await main.numTokens()).sub(1)
         const tok = await main.tokens(tokID)
-        const rewardTok = await main.tokens(3)
 
         const comp = main == p0 ? comp0 : comp1
         const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(tok))
 
         expect(await coll.isCollateral()).to.be.true
         expect(await coll.erc20()).to.equal(tok)
-        expect(await coll.rewardERC20()).to.equal(rewardTok)
         expect(await coll.targetName()).to.equal(await scenario.targetNames(1))
       }
     })
     it('swapRegisteredAsset works as expected', async () => {
-      // pretty much the same as above...
-      // 3: use reward token with token index 3
-      // 1: use target name with index 1
-      // 0: do set a reward
-      // 0: do configure as Collateral, not Asset
-      // 0: do configure the Collateral as a stable+ token
       const initNumTokens0 = await p0.numTokens()
       const initNumTokens1 = await p1.numTokens()
       expect(initNumTokens0).to.equal(initNumTokens1)
 
+      await scenario.createToken(ethers.utils.formatBytes32String('Tgt'), 'Fnord', 'K')
+      await scenario.registerAsset(initNumTokens0, 1, exa, exa, true, true)
+
       // swap out registeredAsset 7 so that it's an Asset, rather than a Collateral,
       // so we can check that things (targetName + isCollateral) have changed
-      await scenario.swapRegisteredAsset(7, exa, exa, 31000n)
-      expect(await p0.numTokens()).to.equal(initNumTokens0)
-      expect(await p1.numTokens()).to.equal(initNumTokens1)
+      await scenario.swapRegisteredAsset(initNumTokens0, 1, exa, exa, true, true)
+      expect(await p0.numTokens()).to.equal(initNumTokens0.add(1))
+      expect(await p1.numTokens()).to.equal(initNumTokens1.add(1))
 
       for (const main of [p0, p1]) {
-        const tok = await main.tokens(7) // from first parameter to swapRegisteredAsset
-        const rewardTok = await main.tokens(3)
+        const tok = await main.tokens(initNumTokens0) // from first parameter to swapRegisteredAsset
 
         const comp = main == p0 ? comp0 : comp1
         const coll = await ConAt('CollateralMock', await comp.assetRegistry.toColl(tok))
 
         expect(await coll.isCollateral()).to.be.true
         expect(await coll.erc20()).to.equal(tok)
-        expect(await coll.rewardERC20()).to.equal(rewardTok)
         expect(await coll.targetName()).to.equal(await scenario.someTargetName(1))
       }
     })

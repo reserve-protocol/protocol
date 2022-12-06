@@ -11,6 +11,8 @@ import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/OracleErrorMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 
+import "hardhat/console.sol";
+
 contract CollateralMock is OracleErrorMock, Collateral {
     using FixLib for uint192;
     using PriceModelLib for PriceModel;
@@ -20,20 +22,15 @@ contract CollateralMock is OracleErrorMock, Collateral {
     PriceModel public uoaPerTargetModel;
     PriceModel public deviationModel;
 
-    uint256 public rewardAmount;
-
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     uint192 public initialPeg; // peg value (for default detection)
 
-    IERC20Metadata public rewardERC20;
-
     constructor(
         // Collateral base-class arguments
         IERC20Metadata erc20_,
-        IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
@@ -59,7 +56,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
             delayUntilDefault_
         )
     {
-        rewardAmount = 1e18;
         refPerTokModel = refPerTokModel_;
         targetPerRefModel = targetPerRefModel_;
         uoaPerTargetModel = uoaPerTargetModel_;
@@ -68,8 +64,6 @@ contract CollateralMock is OracleErrorMock, Collateral {
         defaultThreshold = defaultThreshold_;
 
         prevReferencePrice = refPerTok();
-
-        rewardERC20 = rewardERC20_;
 
         // Store peg value
         initialPeg = targetPerRef();
@@ -151,16 +145,8 @@ contract CollateralMock is OracleErrorMock, Collateral {
     }
 
     // ==== Rewards ====
-    function updateRewardAmount(uint256 amount) public {
-        rewardAmount = amount % 1e29;
-    }
-
-    function claimRewards(address who) public {
-        if (address(rewardERC20) == address(0)) return; // no rewards if no reward token
-        if (erc20.balanceOf(who) == 0) return; // no rewards to non-holders
-        if (rewardAmount == 0) return; // no rewards if rewards are zero
-
-        ERC20Fuzz(address(rewardERC20)).mint(who, rewardAmount);
-        require(rewardERC20.totalSupply() <= 1e29, "Exceeded reasonable maximum of reward tokens");
+    // expects delegatecall; claimer and rewardee is `this`
+    function claimRewards() override public {
+        ERC20Fuzz(address(erc20)).payRewards(address(this));
     }
 }
