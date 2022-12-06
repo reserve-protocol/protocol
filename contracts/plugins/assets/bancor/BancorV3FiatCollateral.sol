@@ -7,6 +7,7 @@ import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/ICToken.sol";
 import "contracts/libraries/Fixed.sol";
 import "contracts/plugins/assets/bancor/IBnTokenERC20.sol";
+import "contracts/plugins/assets/bancor/IStandardRewards.sol";
 import "hardhat/console.sol";
 
 /**
@@ -23,6 +24,8 @@ contract BancorV3FiatCollateral is Collateral {
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     IBnTokenERC20 public immutable bnToken;
+
+    IStandardRewards public immutable StandardRewards;
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
@@ -41,7 +44,8 @@ contract BancorV3FiatCollateral is Collateral {
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 ERC20Decimals_,
-        address bnToken_
+        address bnToken_,
+        address StandardRewards_
     )
         Collateral(
             fallbackPrice_,
@@ -58,6 +62,7 @@ contract BancorV3FiatCollateral is Collateral {
         bnToken = IBnTokenERC20(address(bnToken_));
         ERC20Decimals = ERC20Decimals_;
         defaultThreshold = defaultThreshold_;
+        StandardRewards = IStandardRewards(address(StandardRewards_));
 
         prevReferencePrice = refPerTok();
     }
@@ -116,6 +121,7 @@ contract BancorV3FiatCollateral is Collateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
     function claimRewards() external virtual override {
-
+        uint192 programId = StandardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48);
+        StandardRewards.claimRewards(programId);
     }
 }
