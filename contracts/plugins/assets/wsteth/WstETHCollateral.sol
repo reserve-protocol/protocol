@@ -77,10 +77,10 @@ contract WstETHCollateral is Collateral {
             try this.strictPrice() returns (uint192 tokPrice) {
                 try this.pricePerRef() returns (uint192 uoaPerRefPrice) {
                     // D18{ref/tok}
-                    uint192 ratio = tokPrice.mul(FIX_SCALE).div(uoaPerRefPrice);
+                    uint192 ratio = tokPrice.div(uoaPerRefPrice);
 
-                    // D18{ref/tok} = D18{ref/tok} * D18{1} / D18
-                    uint192 delta = (referencePrice * defaultThreshold) / FIX_ONE; // D18{ref/tok}
+                    // D18{ref/tok} = D18{ref/tok} * D18{1}
+                    uint192 delta = referencePrice.mul(defaultThreshold); // D18{ref/tok}
 
                     // If the price is below the default-threshold price, default eventually
                     // uint192(+/-) is the same as Fix.plus/minus
@@ -135,6 +135,6 @@ contract WstETHCollateral is Collateral {
     function strictPrice() public view override returns (uint192) {
         uint192 stEthPerWstEth = this.refPerTok();
         uint192 uoaPerStEth = uoaPerStETHFeed.price(oracleTimeout);
-        return (stEthPerWstEth * uoaPerStEth) / FIX_ONE;
+        return stEthPerWstEth.mul(uoaPerStEth);
     }
 }
