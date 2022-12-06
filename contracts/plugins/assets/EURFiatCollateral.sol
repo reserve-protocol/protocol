@@ -5,8 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
 import "./FiatCollateral.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title EURFiatCollateral
  * @notice Collateral plugin for a EURO fiatcoin collateral, like EURT
@@ -20,9 +18,10 @@ contract EURFiatCollateral is FiatCollateral {
 
     /// @param config.chainlinkFeed Feed units:{UoA/ref}
     /// @param uoaPerTargetFeed_ Feed units: {UoA/target}
-    constructor(CollateralConfig memory config, AggregatorV3Interface uoaPerTargetFeed_)
-        FiatCollateral(config)
-    {
+    constructor(
+        CollateralConfig memory config,
+        AggregatorV3Interface uoaPerTargetFeed_
+    ) FiatCollateral(config) {
         require(address(uoaPerTargetFeed_) != address(0), "missing uoaPerTarget feed");
         uoaPerTargetFeed = uoaPerTargetFeed_;
     }
@@ -35,11 +34,7 @@ contract EURFiatCollateral is FiatCollateral {
         external
         view
         override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
+        returns (uint192 low, uint192 high, uint192 pegPrice)
     {
         uint192 refPrice = chainlinkFeed.price(oracleTimeout); // {UoA/ref}
         uint192 targetPrice = uoaPerTargetFeed.price(oracleTimeout); // {UoA/target}

@@ -6,8 +6,6 @@ import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
 import "./Asset.sol";
 
-import "hardhat/console.sol";
-
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
 contract RTokenAsset is IAsset {
@@ -59,11 +57,6 @@ contract RTokenAsset is IAsset {
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
         low = range.bottom.mulDiv(lowBUPrice, supply);
         high = range.top.mulDiv(highBUPrice, supply);
-
-        console.log("RTokenAsset.tryPrice");
-        console.log("BU prices", lowBUPrice, highBUPrice);
-        console.log("BU ranges", range.bottom, range.top);
-        console.log("low high", low, high);
     }
 
     function refresh() public virtual override {

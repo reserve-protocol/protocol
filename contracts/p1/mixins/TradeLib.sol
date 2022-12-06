@@ -8,8 +8,6 @@ import "../../interfaces/ITrading.sol";
 import "../../libraries/Fixed.sol";
 import "./RecollateralizationLib.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title TradeLib
  * @notice An internal lib for preparing individual trades on particular asset pairs
@@ -61,9 +59,6 @@ library TradeLib {
             trade.sellPrice, // {UoA/sellTok}
             trade.buyPrice // {UoA/buyTok}
         );
-
-        console.log("prepareTradeSell");
-        console.log(s, b, trade.sellPrice, trade.buyPrice);
 
         // {*tok} => {q*Tok}
         req.sellAmount = s.shiftl_toUint(int8(trade.sell.erc20Decimals()), FLOOR);
