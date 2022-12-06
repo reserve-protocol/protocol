@@ -13,23 +13,19 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
+import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
+import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { setOraclePrice } from '../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
+import { advanceBlocks, advanceTime } from '../../utils/time'
 import {
   Asset,
-  ComptrollerMock,
-  CTokenMock,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
   IBasketHandler,
-  InvalidMockV3Aggregator,
   OracleLib,
   MockV3Aggregator,
   RTokenAsset,
@@ -39,11 +35,9 @@ import {
   TestIRToken,
   BancorV3FiatCollateral,
   IBnTokenERC20,
-  IBnTokenERC20__factory,
   IStandardRewards,
-  IAutoCompoundingRewards
+  IAutoCompoundingRewards,
 } from '../../../typechain'
-import { equal } from 'assert'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -57,10 +51,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let usdc: ERC20Mock
   let bnUsdc: ERC20Mock
   let BancorV3Collateral: BancorV3FiatCollateral
-  let bnToken: IBnTokenERC20
+  let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
   let autoProcessRewardsProxy: IAutoCompoundingRewards
   let bancorToken: ERC20Mock
@@ -109,8 +102,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   const defaultThreshold = fp('0.05') // 5%
   const delayUntilDefault = bn('86400') // 24h
 
-  let initialBal: BigNumber
-
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
 
@@ -135,25 +126,26 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    // usdc token
-    usdc= <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.USDC || '')
-    )
-
-    bnToken= <IBnTokenERC20>(
-      await ethers.getContractAt('IBnTokenERC20', networkConfig[chainId].BANCOR_PROXY || '')
-    )
-
     bnUsdc = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnUSDC || '')
     )
 
+    bancorProxy = <IBnTokenERC20>(
+      await ethers.getContractAt('IBnTokenERC20', networkConfig[chainId].BANCOR_PROXY || '')
+    )
+
     rewardsProxy = <IStandardRewards>(
-      await ethers.getContractAt('IStandardRewards', networkConfig[chainId].BANCOR_REWARDS_PROXY || '')
+      await ethers.getContractAt(
+        'IStandardRewards',
+        networkConfig[chainId].BANCOR_REWARDS_PROXY || ''
+      )
     )
 
     autoProcessRewardsProxy = <IAutoCompoundingRewards>(
-      await ethers.getContractAt('IAutoCompoundingRewards', networkConfig[chainId].BANCOR_PROCESSING_PROXY || '')
+      await ethers.getContractAt(
+        'IAutoCompoundingRewards',
+        networkConfig[chainId].BANCOR_PROCESSING_PROXY || ''
+      )
     )
 
     bancorToken = <ERC20Mock>(
@@ -172,7 +164,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       )
     )
 
-
     // Deploy BancorV3 collateral plugin
     BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
@@ -187,20 +178,19 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        (await bnUsdc.decimals()).toString(),
-        bnToken.address,
+        bancorProxy.address,
         rewardsProxy.address,
-        autoProcessRewardsProxy.address,      )
+        autoProcessRewardsProxy.address
+      )
     )
 
-       // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
-      await whileImpersonating(HOLDER_USDC, async (bnUsdcSigner) => {
-        await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000e8'))
-      })
-  
+    // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
+    await whileImpersonating(HOLDER_USDC, async (bnUsdcSigner) => {
+      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000e8'))
+    })
 
-     // Set parameters
-     const rTokenConfig: IRTokenConfig = {
+    // Set parameters
+    const rTokenConfig: IRTokenConfig = {
       name: 'RTKN RToken',
       symbol: 'RTKN',
       mandate: 'mandate',
@@ -255,12 +245,11 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
-
   })
 
   describe('Deployment', () => {
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-            // COMP Asset
+      // COMP Asset
       expect(await bancorAsset.isCollateral()).to.equal(false)
       expect(await bancorAsset.erc20()).to.equal(bancorToken.address)
       expect(await bancorAsset.erc20()).to.equal(networkConfig[chainId].tokens.BNT)
@@ -269,17 +258,19 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(bancorAsset.claimRewards()).to.not.emit(bancorAsset, 'RewardsClaimed')
       expect(await bancorAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
-      expect(await bnToken.address).to.equal(networkConfig[chainId].BANCOR_PROXY)
+      expect(await bancorProxy.address).to.equal(networkConfig[chainId].BANCOR_PROXY)
       expect(await BancorV3Collateral.isCollateral()).to.equal(true)
       expect(await BancorV3Collateral.erc20Decimals()).to.equal(await bnUsdc.decimals())
       expect(await BancorV3Collateral.erc20()).to.equal(bnUsdc.address)
-      expect(await BancorV3Collateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(await BancorV3Collateral.targetName()).to.equal(
+        ethers.utils.formatBytes32String('USD')
+      )
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
       expect(await BancorV3Collateral.refPerTok()).to.be.closeTo(fp('1.003759'), fp('0.5')) // close to $1
       expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.5')) // close to $0.022 cents
-      
+
       await expect(BancorV3Collateral.claimRewards())
         .to.emit(BancorV3Collateral, 'RewardsClaimed')
         .withArgs(bancorToken.address, 0)
@@ -345,31 +336,11 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           ethers.utils.formatBytes32String('USD'),
           bn(0),
           delayUntilDefault,
-          (await bnUsdc.decimals()).toString(),
-          bnToken.address,
+          bancorProxy.address,
           rewardsProxy.address,
-          autoProcessRewardsProxy.address,
+          autoProcessRewardsProxy.address
         )
       ).to.be.revertedWith('defaultThreshold zero')
-
-      // ReferemceERC20Decimals
-      await expect(
-        BancorV3CollateralFactory.deploy(
-          fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.USDC as string,
-          bnUsdc.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          0,
-          bnToken.address,
-          rewardsProxy.address,
-          autoProcessRewardsProxy.address,
-
-        )
-      ).to.be.revertedWith('ERC20Decimals missing')
 
       // Comptroller
       await expect(
@@ -382,11 +353,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           ethers.utils.formatBytes32String('USD'),
           defaultThreshold,
           delayUntilDefault,
-          (await bnUsdc.decimals()).toString(),
-          bnToken.address,
+          bancorProxy.address,
           ZERO_ADDRESS,
-          autoProcessRewardsProxy.address,
-
+          autoProcessRewardsProxy.address
         )
       ).to.be.revertedWith('standardRewards missing')
     })
@@ -437,8 +406,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const bnUsdcRefPerTok2: BigNumber = await BancorV3Collateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(bnUsdcPrice2).to.be.gt(bnUsdcPrice1)
-      expect(bnUsdcRefPerTok2).to.be.gt(bnUsdcRefPerTok1)
+      expect(bnUsdcPrice2).to.be.gte(bnUsdcPrice1)
+      expect(bnUsdcRefPerTok2).to.be.gte(bnUsdcRefPerTok1)
 
       // Still close to the original values
       expect(bnUsdcPrice2).to.be.closeTo(fp('1'), fp('0.5'))
@@ -448,11 +417,11 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+      expect(totalAssetValue2).to.be.gte(totalAssetValue1)
 
       // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
+      await advanceTime(1000000)
+      await advanceBlocks(1000000)
 
       // Refresh cToken manually (required)
       await BancorV3Collateral.refresh()
@@ -498,7 +467,5 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         fp('0.5')
       )
     })
-
   })
-
 })
