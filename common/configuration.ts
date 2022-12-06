@@ -32,6 +32,7 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  rETH?: string
 }
 
 interface INetworkConfig {
@@ -81,6 +82,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -141,6 +143,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
+      rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -190,6 +193,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x528FdEd7CC39209ed67B4edA11937A9ABe1f6249',
       EURT: '0xD6da5A7ADE2a906d9992612752A339E3485dB508',
       RSR: '0xB58b5530332D2E9e15bfd1f2525E6fD84e830307',
+      rETH: '0xae78736Cd615f374D3085123A210448E74Fc6393',
     },
     chainlinkFeeds: {
       ETH: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e', // canonical chainlink
