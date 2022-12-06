@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IMPLEMENTATION, ORACLE_ERROR } from '../../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
+import { defaultFixture, ORACLE_TIMEOUT, PRICE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
   IConfig,
@@ -127,8 +127,9 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
-      await loadFixture(defaultFixture))
+    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
+      defaultFixture
+    ))
 
     // Get required contracts for cDAI
     // COMP token
@@ -167,7 +168,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral')
     cDaiCollateral = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
-        fallbackPrice: fp('0.02'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
         oracleError: ORACLE_ERROR,
         erc20: cDai.address,
@@ -334,7 +335,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(
         CTokenCollateralFactory.deploy(
           {
-            fallbackPrice: fp('0.02'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI as string,
             oracleError: ORACLE_ERROR,
             erc20: cDai.address,
@@ -533,7 +534,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('0.02'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
@@ -558,7 +559,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('0.02'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
@@ -594,7 +595,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('0.02'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: await cDaiCollateral.erc20(),
@@ -656,7 +657,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('0.02'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await cDaiCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
           erc20: cDaiMock.address,
@@ -697,7 +698,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
         await CTokenCollateralFactory.deploy(
           {
-            fallbackPrice: fp('0.02'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: await cDaiCollateral.erc20(),

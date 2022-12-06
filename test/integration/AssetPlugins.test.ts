@@ -2,7 +2,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, IMPLEMENTATION, ORACLE_ERROR, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 import { defaultFixture } from './fixtures'
 import { getChainId } from '../../common/blockchain-utils'
 import { IConfig, MAX_ORACLE_TIMEOUT, networkConfig } from '../../common/configuration'
@@ -979,7 +985,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await (
           await ethers.getContractFactory('Asset')
         ).deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           NO_PRICE_DATA_FEED,
           ORACLE_ERROR,
           networkConfig[chainId].tokens.stkAAVE || '',
@@ -995,7 +1001,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await (
           await ethers.getContractFactory('Asset')
         ).deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           mockChainlinkFeed.address,
           ORACLE_ERROR,
           networkConfig[chainId].tokens.stkAAVE || '',
@@ -1042,7 +1048,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const nonPriceCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: NO_PRICE_DATA_FEED,
         oracleError: ORACLE_ERROR,
         erc20: dai.address,
@@ -1064,7 +1070,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const zeroFiatCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: mockChainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: dai.address,
@@ -1074,6 +1080,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         defaultThreshold,
         delayUntilDefault,
       })
+      await zeroFiatCollateral.refresh()
 
       await setOraclePrice(zeroFiatCollateral.address, bn(0))
 
@@ -1110,7 +1117,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
@@ -1122,7 +1129,6 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         },
         compoundMock.address
       )
-
       // CTokens - Collateral with no price info should revert
       await expect(nonpriceCtokenCollateral.price()).to.be.revertedWith('')
 
@@ -1135,7 +1141,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('CTokenFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: cDai.address,
@@ -1147,6 +1153,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         },
         compoundMock.address
       )
+      await zeropriceCtokenCollateral.refresh()
 
       await setOraclePrice(zeropriceCtokenCollateral.address, bn(0))
 
@@ -1185,7 +1192,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const nonpriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: NO_PRICE_DATA_FEED,
         oracleError: ORACLE_ERROR,
         erc20: stataDai.address,
@@ -1207,7 +1214,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const zeroPriceAtokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>await (
         await ethers.getContractFactory('ATokenFiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: mockChainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: stataDai.address,
@@ -1217,6 +1224,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         defaultThreshold,
         delayUntilDefault,
       })
+      await zeroPriceAtokenCollateral.refresh()
 
       await setOraclePrice(zeroPriceAtokenCollateral.address, bn(0))
 
@@ -1246,7 +1254,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('NonFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
           erc20: wbtc.address,
@@ -1271,7 +1279,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('NonFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: wbtc.address,
@@ -1283,6 +1291,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         },
         mockChainlinkFeed.address
       )
+      await zeroPriceNonFiatCollateral.refresh()
 
       // Set price = 0
       const chainlinkFeedAddr = await zeroPriceNonFiatCollateral.chainlinkFeed()
@@ -1317,7 +1326,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await ethers.getContractFactory('CTokenNonFiatCollateral')
         ).deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: NO_PRICE_DATA_FEED,
             oracleError: ORACLE_ERROR,
             erc20: cWBTC.address,
@@ -1345,7 +1354,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           await ethers.getContractFactory('CTokenNonFiatCollateral')
         ).deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: mockChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cWBTC.address,
@@ -1360,6 +1369,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           compoundMock.address
         )
       )
+      await zeropriceCtokenNonFiatCollateral.refresh()
 
       // Set price = 0
       const chainlinkFeedAddr = await zeropriceCtokenNonFiatCollateral.targetUnitChainlinkFeed()
@@ -1390,7 +1400,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const nonpriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: NO_PRICE_DATA_FEED,
         oracleError: ORACLE_ERROR,
         erc20: weth.address,
@@ -1412,7 +1422,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
       const zeroPriceSelfReferentialCollateral: FiatCollateral = <FiatCollateral>await (
         await ethers.getContractFactory('FiatCollateral')
       ).deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: mockChainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: weth.address,
@@ -1422,6 +1432,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         defaultThreshold: bn('0'),
         delayUntilDefault,
       })
+      await zeroPriceSelfReferentialCollateral.refresh()
 
       // Set price = 0
       await setOraclePrice(zeroPriceSelfReferentialCollateral.address, bn(0))
@@ -1454,7 +1465,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('CTokenSelfReferentialCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
           erc20: cETH.address,
@@ -1484,7 +1495,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('CTokenSelfReferentialCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: cETH.address,
@@ -1497,6 +1508,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await weth.decimals(),
         compoundMock.address
       )
+      await zeroPriceCtokenSelfReferentialCollateral.refresh()
 
       // Set price = 0
       await setOraclePrice(zeroPriceCtokenSelfReferentialCollateral.address, bn(0))
@@ -1528,7 +1540,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('EURFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: NO_PRICE_DATA_FEED,
           oracleError: ORACLE_ERROR,
           erc20: eurt.address,
@@ -1553,7 +1565,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         await ethers.getContractFactory('EURFiatCollateral')
       ).deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: mockChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: eurt.address,
@@ -1565,6 +1577,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         },
         mockChainlinkFeed.address
       )
+      await invalidPriceEURCollateral.refresh()
 
       // Set price = 0
       const chainlinkFeedAddr = await invalidPriceEURCollateral.uoaPerTargetFeed()

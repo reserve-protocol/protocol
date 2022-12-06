@@ -4,7 +4,7 @@ import hre, { ethers } from 'hardhat'
 import { getChainId } from '../../../common/blockchain-utils'
 import { IImplementations, IGovParams, networkConfig } from '../../../common/configuration'
 import { bn, fp } from '../../../common/numbers'
-import { Implementation, IMPLEMENTATION, ORACLE_ERROR } from '../../fixtures'
+import { Implementation, IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
 import {
   Asset,
   AssetRegistryP1,
@@ -107,7 +107,7 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   // Deploy RSR Asset
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>await AssetFactory.deploy(
-    fp('0.007'),
+    PRICE_TIMEOUT,
     networkConfig[chainId].chainlinkFeeds.RSR || '',
     ORACLE_ERROR,
     rsr.address,
