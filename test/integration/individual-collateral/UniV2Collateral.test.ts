@@ -250,8 +250,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       primaryBasket: [UniV2Collateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -918,7 +917,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -936,7 +935,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const prevWhenDefault: BigNumber = await newUniV2Collateral.whenDefault()
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newUniV2Collateral.whenDefault()).to.equal(prevWhenDefault)
@@ -971,7 +970,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -989,7 +988,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const prevWhenDefault: BigNumber = await newUniV2Collateral.whenDefault()
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newUniV2Collateral.whenDefault()).to.equal(prevWhenDefault)
@@ -1027,7 +1026,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       }) // -20% dai +20% usdc
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1045,7 +1044,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const prevWhenDefault: BigNumber = await newUniV2Collateral.whenDefault()
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newUniV2Collateral.whenDefault()).to.equal(prevWhenDefault)
@@ -1089,7 +1088,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Force updates - Should not update whenDefault and status
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -1098,7 +1097,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1116,7 +1115,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       const prevWhenDefault: BigNumber = await newUniV2Collateral.whenDefault()
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newUniV2Collateral.whenDefault()).to.equal(prevWhenDefault)
@@ -1151,7 +1150,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1167,7 +1166,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await setOraclePriceUniV2({ univ2Addr: newUniV2Collateral.address, priceA: bn('1e18') }) // back to normal
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newUniV2Collateral.whenDefault()).to.equal(MAX_UINT256)
@@ -1202,7 +1201,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1218,7 +1217,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await setOraclePriceUniV2({ univ2Addr: newUniV2Collateral.address, priceB: bn('1e6') }) // back to normal
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newUniV2Collateral.whenDefault()).to.equal(MAX_UINT256)
@@ -1256,7 +1255,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       }) // -20% dai +20% usdc
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1276,7 +1275,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       }) // back to normal
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newUniV2Collateral.whenDefault()).to.equal(MAX_UINT256)
@@ -1320,7 +1319,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Force updates - Should not update whenDefault and status
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -1329,7 +1328,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -1345,7 +1344,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await InvalidPairV2.setReserves(bn('1e18'), bn('1e6'), bn('9e17')) // back to normal adapt L for price increase
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.IFFY, CollateralStatus.SOUND)
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newUniV2Collateral.whenDefault()).to.equal(MAX_UINT256)
@@ -1383,7 +1382,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
       // Force updates - Should update whenDefault and status
       await expect(newUniV2Collateral.refresh())
-        .to.emit(newUniV2Collateral, 'DefaultStatusChanged')
+        .to.emit(newUniV2Collateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
@@ -1394,7 +1393,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await InvalidPairV2.setReserves(bn('2e18'), bn('2e6'), bn('1e18'))
       await expect(newUniV2Collateral.refresh()).to.not.emit(
         newUniV2Collateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
 
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)

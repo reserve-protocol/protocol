@@ -181,7 +181,7 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
 
         // No interactions beyond the initial refresher
