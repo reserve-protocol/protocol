@@ -109,7 +109,7 @@ contract ATokenFiatCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
