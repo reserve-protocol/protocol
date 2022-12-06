@@ -103,7 +103,10 @@ contract aPoolCollateral is Collateral {
         // rewards themselves, the claimer gets the harvest fee.
         // If users of RToken don't do it, someone will still do it,
         // and they will keep the fee
+        uint256 previousBalance = erc20.balanceOf(address(this));
         IaPool(address(erc20)).harvest(address(this), 0);
-        // we are not emitting an event because no external rewards come from this
+        // since by harvesting ourselves we might be rewarded some more _aTokens_
+        // we keep track of the potential increase on value and fire the event
+        emit RewardsClaimed(address(erc20), erc20.balanceOf(address(this)) - previousBalance);
     }
 }
