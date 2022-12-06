@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, fp } from '../../common/numbers'
+import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   ATokenFiatCollateral,
   ComptrollerMock,
@@ -72,6 +72,30 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber,
+    oracleError: BigNumber,
+    maxTradeSlippage: BigNumber
+  ): BigNumber => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const product = sellAmt
+      .mul(fp('1').sub(maxTradeSlippage)) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   const setBasket = async (
     maxBasketSize: number,
@@ -377,13 +401,19 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       const firstDefaultedToken = await ethers.getContractAt('ERC20Mock', backing[1])
 
       const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
-
+      const minBuyAmt: BigNumber = toMinBuyAmt(
+        sellAmt,
+        fp('0.5'),
+        fp('1'),
+        ORACLE_ERROR,
+        config.maxTradeSlippage
+      )
       if (REPORT_GAS) {
         await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
+          .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, minBuyAmt)
       }
       const auctionTimestamp = await getLatestBlockTimestamp()
 
@@ -494,14 +524,32 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
         'ERC20Mock',
         backing[maxBasketSize - tokensToDefault]
       )
-      const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
+      //const sellAmt: BigNumber = await firstDefaultedToken.balanceOf(backingManager.address)
+      const sellAmt: BigNumber = (await firstDefaultedToken.balanceOf(backingManager.address)).mul(
+        pow10(10)
+      ) // convert to 18 decimals for simplification
+
+      // CToken sell price: 0.02, reduced 0.8 rate -> 0.016
+      const minBuyAmt: BigNumber = toMinBuyAmt(
+        sellAmt,
+        fp('0.016'),
+        fp('1'),
+        ORACLE_ERROR,
+        config.maxTradeSlippage
+      )
 
       if (REPORT_GAS) {
         await snapshotGasCost(facadeTest.runAuctionsForAllTraders(rToken.address))
       } else {
         await expect(facadeTest.runAuctionsForAllTraders(rToken.address))
           .to.emit(backingManager, 'TradeStarted')
-          .withArgs(anyValue, firstDefaultedToken.address, backing[0], sellAmt, bn('0'))
+          .withArgs(
+            anyValue,
+            firstDefaultedToken.address,
+            backing[0],
+            toBNDecimals(sellAmt, 8),
+            minBuyAmt
+          )
       }
       const auctionTimestamp = await getLatestBlockTimestamp()
 
