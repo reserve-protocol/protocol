@@ -130,9 +130,8 @@ contract BancorV3FiatCollateral is Collateral {
     /// @dev delegatecall
     function claimRewards() external virtual override {
         uint192 programId = uint192(standardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
-        console.log(programId);
+        console.log("%s",programId);
         uint256 claimed = standardRewards.claimRewards(uint256(programId));
-        console.log(standardRewards.claimRewards(uint256(programId)));
         IERC20 bnt = IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C);
         emit RewardsClaimed(bnt, claimed);
         
