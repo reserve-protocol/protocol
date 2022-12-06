@@ -37,7 +37,13 @@ import {
   setInvalidOracleTimestamp,
   setOraclePrice,
 } from '../utils/oracles'
-import { Collateral, defaultFixture, ORACLE_TIMEOUT, ORACLE_ERROR } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  ORACLE_TIMEOUT,
+  ORACLE_ERROR,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -239,7 +245,7 @@ describe('Collateral contracts', () => {
     it('Should validate targetName correctly', async () => {
       await expect(
         FiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
           erc20: token.address,
@@ -255,7 +261,7 @@ describe('Collateral contracts', () => {
     it('Should not allow missing delayUntilDefault', async () => {
       await expect(
         FiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
           erc20: token.address,
@@ -270,7 +276,7 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: ORACLE_ERROR,
           erc20: aToken.address,
@@ -286,7 +292,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
@@ -305,7 +311,7 @@ describe('Collateral contracts', () => {
       // === Begin zero oracle error checks ===
       await expect(
         FiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: bn('0'),
           erc20: token.address,
@@ -320,7 +326,7 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: bn('0'),
           erc20: aToken.address,
@@ -336,7 +342,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: bn('0'),
             erc20: cToken.address,
@@ -355,7 +361,7 @@ describe('Collateral contracts', () => {
       // FiatCollateral
       await expect(
         FiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: fp('1'),
           erc20: token.address,
@@ -370,7 +376,7 @@ describe('Collateral contracts', () => {
       // ATokenFiatCollateral
       await expect(
         ATokenFiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: await tokenCollateral.chainlinkFeed(),
           oracleError: fp('1'),
           erc20: aToken.address,
@@ -386,7 +392,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await tokenCollateral.chainlinkFeed(),
             oracleError: fp('1'),
             erc20: cToken.address,
@@ -406,7 +412,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: await cTokenCollateral.chainlinkFeed(),
             oracleError: ORACLE_ERROR,
             erc20: cToken.address,
@@ -501,7 +507,7 @@ describe('Collateral contracts', () => {
       await expectPrice(tokenCollateral.address, bn('0'), bn('0'), false)
 
       // Fallback price should be nonzero
-      expect(await tokenCollateral.fallbackPrice()).to.be.gt(0)
+      expect(await tokenCollateral.lotPrice()).to.be.gt(0)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
@@ -699,7 +705,7 @@ describe('Collateral contracts', () => {
 
       const invalidTokenCollateral: FiatCollateral = <FiatCollateral>(
         await FiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: invalidChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: await tokenCollateral.erc20(),
@@ -729,7 +735,7 @@ describe('Collateral contracts', () => {
 
       const invalidATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
         await ATokenFiatCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: invalidChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: await aTokenCollateral.erc20(),
@@ -760,7 +766,7 @@ describe('Collateral contracts', () => {
       const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
         await CTokenFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: await cTokenCollateral.erc20(),
@@ -849,7 +855,7 @@ describe('Collateral contracts', () => {
 
       nonFiatCollateral = <NonFiatCollateral>await NonFiatCollFactory.deploy(
         {
-          fallbackPrice: fp('20000'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: nonFiatToken.address,
@@ -861,6 +867,7 @@ describe('Collateral contracts', () => {
         },
         targetUnitOracle.address
       )
+      await nonFiatCollateral.refresh()
 
       // Mint some tokens
       await nonFiatToken.connect(owner).mint(owner.address, amt)
@@ -870,7 +877,7 @@ describe('Collateral contracts', () => {
       await expect(
         NonFiatCollFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
@@ -889,7 +896,7 @@ describe('Collateral contracts', () => {
       await expect(
         NonFiatCollFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
@@ -908,7 +915,7 @@ describe('Collateral contracts', () => {
       await expect(
         NonFiatCollFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: ZERO_ADDRESS,
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
@@ -990,7 +997,7 @@ describe('Collateral contracts', () => {
       let invalidNonFiatCollateral: NonFiatCollateral = <NonFiatCollateral>(
         await NonFiatCollFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: nonFiatToken.address,
@@ -1017,7 +1024,7 @@ describe('Collateral contracts', () => {
       // Check with the other feed
       invalidNonFiatCollateral = <NonFiatCollateral>await NonFiatCollFactory.deploy(
         {
-          fallbackPrice: fp('20000'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: nonFiatToken.address,
@@ -1071,7 +1078,7 @@ describe('Collateral contracts', () => {
 
       cTokenNonFiatCollateral = <CTokenNonFiatCollateral>await CTokenNonFiatFactory.deploy(
         {
-          fallbackPrice: fp('20000'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: cNonFiatToken.address,
@@ -1084,6 +1091,7 @@ describe('Collateral contracts', () => {
         targetUnitOracle.address,
         compoundMock.address
       )
+      await cTokenNonFiatCollateral.refresh()
 
       // Mint some tokens
       await cNonFiatToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
@@ -1093,7 +1101,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenNonFiatFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
@@ -1113,7 +1121,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenNonFiatFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: ZERO_ADDRESS,
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
@@ -1133,7 +1141,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenNonFiatFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
@@ -1153,7 +1161,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenNonFiatFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
@@ -1256,7 +1264,7 @@ describe('Collateral contracts', () => {
       let invalidCTokenNonFiatCollateral: CTokenNonFiatCollateral = <CTokenNonFiatCollateral>(
         await CTokenNonFiatFactory.deploy(
           {
-            fallbackPrice: fp('20000'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cNonFiatToken.address,
@@ -1284,7 +1292,7 @@ describe('Collateral contracts', () => {
       // With the second oracle
       invalidCTokenNonFiatCollateral = <CTokenNonFiatCollateral>await CTokenNonFiatFactory.deploy(
         {
-          fallbackPrice: fp('20000'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: cNonFiatToken.address,
@@ -1325,7 +1333,7 @@ describe('Collateral contracts', () => {
       SelfRefCollateralFactory = await ethers.getContractFactory('SelfReferentialCollateral')
 
       selfReferentialCollateral = <SelfReferentialCollateral>await SelfRefCollateralFactory.deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: selfRefToken.address,
@@ -1335,6 +1343,7 @@ describe('Collateral contracts', () => {
         defaultThreshold: 0,
         delayUntilDefault: DELAY_UNTIL_DEFAULT,
       })
+      await selfReferentialCollateral.refresh()
     })
 
     it('Should setup collateral correctly', async function () {
@@ -1399,7 +1408,7 @@ describe('Collateral contracts', () => {
 
       const invalidSelfRefCollateral: SelfReferentialCollateral = <SelfReferentialCollateral>(
         await SelfRefCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: invalidChainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: selfRefToken.address,
@@ -1449,7 +1458,7 @@ describe('Collateral contracts', () => {
       cTokenSelfReferentialCollateral = <CTokenSelfReferentialCollateral>(
         await CTokenSelfReferentialFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
@@ -1463,6 +1472,7 @@ describe('Collateral contracts', () => {
           compoundMock.address
         )
       )
+      await cTokenSelfReferentialCollateral.refresh()
 
       // Mint some tokens
       await cSelfRefToken.connect(owner).mint(owner.address, amt.div(bn('1e10')))
@@ -1472,7 +1482,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
@@ -1492,7 +1502,7 @@ describe('Collateral contracts', () => {
       await expect(
         CTokenSelfReferentialFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: chainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
@@ -1577,7 +1587,7 @@ describe('Collateral contracts', () => {
       const invalidCTokenSelfRefCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
         await CTokenSelfReferentialFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: cSelfRefToken.address,
@@ -1627,7 +1637,7 @@ describe('Collateral contracts', () => {
 
       eurFiatCollateral = <EURFiatCollateral>await EURFiatCollateralFactory.deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: eurFiatToken.address,
@@ -1639,6 +1649,7 @@ describe('Collateral contracts', () => {
         },
         targetUnitOracle.address
       )
+      await eurFiatCollateral.refresh()
 
       // Mint some tokens
       await eurFiatToken.connect(owner).mint(owner.address, amt)
@@ -1648,7 +1659,7 @@ describe('Collateral contracts', () => {
       await expect(
         EURFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
@@ -1667,7 +1678,7 @@ describe('Collateral contracts', () => {
       await expect(
         EURFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: referenceUnitOracle.address,
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
@@ -1686,7 +1697,7 @@ describe('Collateral contracts', () => {
       await expect(
         EURFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: ZERO_ADDRESS,
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
@@ -1774,7 +1785,7 @@ describe('Collateral contracts', () => {
       let invalidEURFiatCollateral: EURFiatCollateral = <EURFiatCollateral>(
         await EURFiatCollateralFactory.deploy(
           {
-            fallbackPrice: fp('1'),
+            priceTimeout: PRICE_TIMEOUT,
             chainlinkFeed: invalidChainlinkFeed.address,
             oracleError: ORACLE_ERROR,
             erc20: eurFiatToken.address,
@@ -1801,7 +1812,7 @@ describe('Collateral contracts', () => {
       // With the second oracle
       invalidEURFiatCollateral = <EURFiatCollateral>await EURFiatCollateralFactory.deploy(
         {
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: referenceUnitOracle.address,
           oracleError: ORACLE_ERROR,
           erc20: eurFiatToken.address,

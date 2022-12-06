@@ -44,6 +44,7 @@ import {
   IMPLEMENTATION,
   ORACLE_ERROR,
   ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import { expectRTokenPrice, setOraclePrice } from './utils/oracles'
 import { expectTrade, getTrade } from './utils/trades'
@@ -792,7 +793,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         const newAsset: Asset = <Asset>(
           await AssetFactory.deploy(
-            fp('1'),
+            PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
             compToken.address,
@@ -991,7 +992,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         const newAsset: Asset = <Asset>(
           await AssetFactory.deploy(
-            fp('1'),
+            PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
             aaveToken.address,
@@ -1184,7 +1185,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         )
         const newAsset: Asset = <Asset>(
           await AssetFactory.deploy(
-            fp('1'),
+            PRICE_TIMEOUT,
             chainlinkFeed.address,
             ORACLE_ERROR,
             compToken.address,
@@ -2051,7 +2052,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
           InvalidATokenFiatCollateralMock
         >((await ATokenCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: token2.address,
@@ -2953,7 +2954,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       )
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           chainlinkFeed.address,
           ORACLE_ERROR,
           compToken.address,

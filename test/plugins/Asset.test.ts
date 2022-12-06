@@ -233,9 +233,9 @@ describe('Assets contracts #fast', () => {
       await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
 
       // Fallback prices should be nonzero
-      expect(await rsrAsset.fallbackPrice()).to.be.gt(0)
-      expect(await compAsset.fallbackPrice()).to.be.gt(0)
-      expect(await aaveAsset.fallbackPrice()).to.be.gt(0)
+      expect(await rsrAsset.lotPrice()).to.be.gt(0)
+      expect(await compAsset.lotPrice()).to.be.gt(0)
+      expect(await aaveAsset.lotPrice()).to.be.gt(0)
 
       // Update values of underlying tokens of RToken to 0
       await setOraclePrice(collateral0.address, bn(0))
@@ -250,8 +250,8 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
 
-      // Should have nonzero fallback price
-      expect(await rTokenAsset.fallbackPrice()).to.be.gt(0)
+      // Should have nonzero lot price
+      expect(await rTokenAsset.lotPrice()).to.be.gt(0)
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {
@@ -329,10 +329,10 @@ describe('Assets contracts #fast', () => {
   })
 
   describe('Constructor validation', () => {
-    it('Should not allow fallback price to be zero', async () => {
+    it('Should not allow price timeout to be zero', async () => {
       await expect(
         AssetFactory.deploy(0, ONE_ADDRESS, 0, ONE_ADDRESS, config.rTokenMaxTradeVolume, 0)
-      ).to.be.revertedWith('fallback price zero')
+      ).to.be.revertedWith('price timeout zero')
     })
     it('Should not allow missing chainlink feed', async () => {
       await expect(

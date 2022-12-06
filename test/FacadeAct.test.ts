@@ -37,6 +37,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  PRICE_TIMEOUT,
   defaultFixture,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
@@ -544,7 +545,7 @@ describe('FacadeAct contract', () => {
       const invalidATokenCollateral: InvalidATokenFiatCollateralMock = <
         InvalidATokenFiatCollateralMock
       >await ATokenCollateralFactory.deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: aToken.address,
@@ -587,7 +588,7 @@ describe('FacadeAct contract', () => {
 
       const newATokenCollateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
         await ATokenCollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: aToken.address,
@@ -832,7 +833,7 @@ describe('FacadeAct contract', () => {
       for (let i = 0; i < numAssets; i++) {
         const erc20 = await ERC20Factory.deploy('Name', 'Symbol')
         const asset = await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           feed,
           ORACLE_ERROR,
           erc20.address,

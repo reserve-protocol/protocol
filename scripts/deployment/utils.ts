@@ -8,7 +8,7 @@ import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
 
-export const priceTimeout = bn('86400') // 1 week
+export const priceTimeout = bn('604800') // 1 week
 
 export const getOracleTimeout = (chainId: number): BigNumber => {
   return bn(chainId == 1 ? '86400' : '4294967296') // long timeout on testnets

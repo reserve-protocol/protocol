@@ -28,7 +28,7 @@ import {
   StaticATokenMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { defaultFixture, ORACLE_ERROR, SLOW } from './fixtures'
+import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
 import { setOraclePrice } from './utils/oracles'
@@ -139,7 +139,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     const collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-      fallbackPrice: fp('1'),
+      priceTimeout: PRICE_TIMEOUT,
       chainlinkFeed: chainlinkFeed.address,
       oracleError: ORACLE_ERROR,
       erc20: erc20.address,
@@ -172,7 +172,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     )
     const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
       {
-        fallbackPrice: fp('0.02'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: chainlinkFeed.address,
         oracleError: ORACLE_ERROR,
         erc20: erc20.address,
@@ -219,7 +219,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, MAX_UOA)
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
-        fp('1'),
+        PRICE_TIMEOUT,
         await rsrAsset.chainlinkFeed(),
         ORACLE_ERROR,
         rsr.address,
@@ -411,7 +411,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAaveAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           await aaveAsset.chainlinkFeed(),
           ORACLE_ERROR,
           aaveToken.address,
@@ -422,7 +422,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
 
       const newCompAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           await compAsset.chainlinkFeed(),
           ORACLE_ERROR,
           compToken.address,
@@ -713,7 +713,7 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
           ).deploy(8, toBNDecimals(targetPerRef, 8))
         )
         const collateral: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
-          fallbackPrice: fp('1'),
+          priceTimeout: PRICE_TIMEOUT,
           chainlinkFeed: chainlinkFeed.address,
           oracleError: ORACLE_ERROR,
           erc20: erc20.address,

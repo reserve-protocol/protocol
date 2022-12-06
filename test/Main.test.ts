@@ -58,6 +58,7 @@ import {
   Implementation,
   IMPLEMENTATION,
   ORACLE_ERROR,
+  PRICE_TIMEOUT,
 } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
@@ -1093,20 +1094,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should allow to register Asset if OWNER', async () => {
       // Setup new Asset
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
-      const newAsset: Asset = <Asset>(
-        await AssetFactory.deploy(
-          fp('1'),
-          ONE_ADDRESS,
-          ORACLE_ERROR,
-          erc20s[5].address,
-          config.rTokenMaxTradeVolume,
-          1
-        )
+      const newAsset: Asset = <Asset>await AssetFactory.deploy(
+        PRICE_TIMEOUT,
+        await collateral0.chainlinkFeed(), // any feed will do
+        ORACLE_ERROR,
+        erc20s[5].address,
+        config.rTokenMaxTradeVolume,
+        1
       )
 
       const duplicateAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           token0.address,
@@ -1152,7 +1151,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           token0.address,
@@ -1166,7 +1165,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const newToken: ERC20Mock = <ERC20Mock>await ERC20Factory.deploy('NewTKN Token', 'NewTKN')
       const newTokenAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           newToken.address,
@@ -1218,8 +1217,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
-          ONE_ADDRESS,
+          PRICE_TIMEOUT,
+          await collateral0.chainlinkFeed(),
           ORACLE_ERROR,
           token0.address,
           config.rTokenMaxTradeVolume,
@@ -1230,7 +1229,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Setup another one with new token (cannot be used in swap)
       const invalidAssetForSwap: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           erc20s[5].address,
@@ -1582,7 +1581,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         'InvalidATokenFiatCollateralMock'
       )
       const newColl2 = <ATokenFiatCollateral>await ZeroPriceATokenFiatCollateralFactory.deploy({
-        fallbackPrice: bn('1'), // Will not be used, 0 will be returned instead
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: await collateral2.chainlinkFeed(),
         oracleError: ORACLE_ERROR,
         erc20: await collateral2.erc20(),
@@ -1619,8 +1618,8 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
-          ONE_ADDRESS,
+          PRICE_TIMEOUT,
+          await collateral1.chainlinkFeed(),
           ORACLE_ERROR,
           token1.address,
           config.rTokenMaxTradeVolume,
@@ -1777,7 +1776,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap out collateral plugin for one that can return a 0 price without raising FIX_MAX
       const ATokenCollateralFactory = await ethers.getContractFactory('ATokenFiatCollateral')
       const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
-        fallbackPrice: fp('1.01'), // fallback price just above 1
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: await collateral2.chainlinkFeed(),
         oracleError: ORACLE_ERROR,
         erc20: await collateral2.erc20(),
@@ -1803,7 +1802,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       // Swap out collateral for bad target name
       const CollFactory = await ethers.getContractFactory('FiatCollateral')
       const newColl = await CollFactory.deploy({
-        fallbackPrice: fp('1'),
+        priceTimeout: PRICE_TIMEOUT,
         chainlinkFeed: await collateral0.chainlinkFeed(),
         oracleError: ORACLE_ERROR,
         erc20: token0.address,
@@ -1857,7 +1856,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           erc20s[5].address,
@@ -1867,7 +1866,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       )
       const newAsset2: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           ONE_ADDRESS,
           ORACLE_ERROR,
           erc20s[6].address,
