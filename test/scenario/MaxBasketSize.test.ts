@@ -18,17 +18,22 @@ import {
   IBasketHandler,
   TestIStRSR,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIRToken,
 } from '../../typechain'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
-import { defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 import { CollateralStatus } from '../../common/constants'
 import snapshotGasCost from '../utils/snapshotGasCost'
 import { expectTrade } from '../utils/trades'
-import { setOraclePrice } from '../utils/oracles'
+import { expectPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 import { useEnv } from '#/utils/env'
 
@@ -64,7 +69,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -120,9 +124,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
 
   const makeToken = async (tokenName: string): Promise<ERC20Mock> => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-    const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    const CollateralFactory: ContractFactory = await ethers.getContractFactory('FiatCollateral')
 
     const erc20: ERC20Mock = <ERC20Mock>(
       await ERC20MockFactory.deploy(tokenName, `${tokenName} symbol`)
@@ -130,18 +132,17 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
-    const collateral: FiatCollateral = <FiatCollateral>(
-      await CollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT
-      )
-    )
+    const collateral: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: DEFAULT_THRESHOLD,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     await assetRegistry.register(collateral.address)
     return erc20
@@ -151,10 +152,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const ATokenMockFactory: ContractFactory = await ethers.getContractFactory('StaticATokenMock')
     const ATokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'ATokenFiatCollateral',
-      {
-        libraries: { OracleLib: oracleLib.address },
-      }
+      'ATokenFiatCollateral'
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -173,16 +171,17 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     const collateral: ATokenFiatCollateral = <ATokenFiatCollateral>(
-      await ATokenCollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        atoken.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT
-      )
+      await ATokenCollateralFactory.deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: atoken.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      })
     )
 
     await assetRegistry.register(collateral.address)
@@ -193,10 +192,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     const ERC20MockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
     const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
     const CTokenCollateralFactory: ContractFactory = await ethers.getContractFactory(
-      'CTokenFiatCollateral',
-      {
-        libraries: { OracleLib: oracleLib.address },
-      }
+      'CTokenFiatCollateral'
     )
 
     const erc20: ERC20Mock = <ERC20Mock>(
@@ -212,15 +208,17 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
     )
     const collateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
       await CTokenCollateralFactory.deploy(
-        fp('1').div(50),
-        chainlinkFeed.address,
-        ctoken.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT,
-        await erc20.decimals(),
+        {
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: ctoken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('USD'),
+          defaultThreshold: DEFAULT_THRESHOLD,
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        },
         compoundMock.address
       )
     )
@@ -263,7 +261,6 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       basketHandler,
       facade,
       facadeTest,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     // Mint initial balances
@@ -292,9 +289,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
 
       // Mint and approve initial balances
       await prepareBacking(backing)
@@ -423,9 +418,7 @@ describe(`Max Basket Size - P${IMPLEMENTATION}`, () => {
       expect(await basketHandler.timestamp()).to.be.gt(bn(0))
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-      const [isFallback, price] = await basketHandler.price(true)
-      expect(isFallback).to.equal(false)
-      expect(price).to.equal(fp('1'))
+      await expectPrice(basketHandler.address, fp('1'), ORACLE_ERROR, true)
 
       // Mint and approve initial balances
       await prepareBacking(backing)

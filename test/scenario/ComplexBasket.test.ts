@@ -16,7 +16,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   RTokenAsset,
   StaticATokenMock,
   TestIBackingManager,
@@ -32,12 +31,13 @@ import {
   Collateral,
   defaultFixture,
   IMPLEMENTATION,
+  ORACLE_ERROR,
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
 import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
-import { setOraclePrice } from '../utils/oracles'
+import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
@@ -103,7 +103,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -149,7 +148,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       rTokenTrader,
       rsrTrader,
       gnosis,
-      oracleLib,
       rTokenAsset,
     } = await loadFixture(defaultFixture))
 
@@ -172,15 +170,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Replace RSRAsset
 
-    const AssetFactory = await ethers.getContractFactory('Asset', {
-      libraries: { OracleLib: oracleLib.address },
-    })
+    const AssetFactory = await ethers.getContractFactory('Asset')
 
     const newRSRAsset: Asset = <Asset>(
       await AssetFactory.deploy(
         PRICE_TIMEOUT,
         await rsrAsset.chainlinkFeed(),
-        ORACLE_TIMEOUT,
+        ORACLE_ERROR,
         rsr.address,
         MAX_TRADE_VOLUME,
         ORACLE_TIMEOUT
@@ -209,22 +205,22 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
     const { collateral: fiatUSD } = await hre.run('deploy-fiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: usdFeed.address,
+      oracleError: ORACLE_ERROR.toString(),
       tokenAddress: usdToken.address, // DAI Token
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.swapRegistered(fiatUSD)
     primeBasketERC20s.push(usdToken.address)
     targetPricesInUoA.push(fp('1')) // USD Target
-    collateral.push(await ethers.getContractAt('Collateral', fiatUSD))
+    collateral.push(<Collateral>await ethers.getContractAt('FiatCollateral', fiatUSD))
 
     // 2. FiatCollateral against EUR
     eurToken = <ERC20Mock>await ERC20.deploy('EUR Token', 'EUR')
@@ -232,29 +228,30 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const eurRefUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8'))
 
     const { collateral: fiatEUR } = await hre.run('deploy-eurfiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       referenceUnitFeed: eurRefUnitFeed.address,
       targetUnitFeed: eurTargetUnitFeed.address,
+      combinedOracleError: ORACLE_ERROR.toString(),
       tokenAddress: eurToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('EURO'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.register(fiatEUR)
     primeBasketERC20s.push(eurToken.address)
     targetPricesInUoA.push(fp('1')) // EUR = USD Target
-    collateral.push(await ethers.getContractAt('Collateral', fiatEUR))
+    collateral.push(<Collateral>await ethers.getContractAt('EURFiatCollateral', fiatEUR))
 
     // 3. CTokenFiatCollateral against USD
     cUSDToken = <CTokenMock>erc20s[4] // cDAI Token
     const { collateral: cUSDCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: usdFeed.address,
+      oracleError: ORACLE_ERROR.toString(),
       cToken: cUSDToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
@@ -262,64 +259,64 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.swapRegistered(cUSDCollateral)
     primeBasketERC20s.push(cUSDToken.address)
     targetPricesInUoA.push(fp('1')) // USD Target
-    collateral.push(await ethers.getContractAt('Collateral', cUSDCollateral))
+    collateral.push(<Collateral>await ethers.getContractAt('CTokenFiatCollateral', cUSDCollateral))
 
     // 4. ATokenFiatCollateral against USD
     aUSDToken = <StaticATokenMock>erc20s[7] // aDAI Token
     const { collateral: aUSDCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: usdFeed.address,
+      oracleError: ORACLE_ERROR.toString(),
       staticAToken: aUSDToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('USD'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.swapRegistered(aUSDCollateral)
     primeBasketERC20s.push(aUSDToken.address)
     targetPricesInUoA.push(fp('1')) // USD Target
-    collateral.push(await ethers.getContractAt('Collateral', aUSDCollateral))
+    collateral.push(<Collateral>await ethers.getContractAt('ATokenFiatCollateral', aUSDCollateral))
 
     // 5. NonFiatCollateral WBTC against BTC
     wbtc = <ERC20Mock>await ERC20.deploy('WBTC Token', 'WBTC')
     const targetUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('20000e8')) // $20k
     const referenceUnitFeed = await MockV3AggregatorFactory.deploy(8, bn('1e8')) // 1 WBTC/BTC
     const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
+      combinedOracleError: ORACLE_ERROR.toString(),
       tokenAddress: wbtc.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: ethers.utils.formatBytes32String('BTC'),
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.register(wBTCCollateral)
     primeBasketERC20s.push(wbtc.address)
     targetPricesInUoA.push(fp('20000')) // BTC Target
-    collateral.push(await ethers.getContractAt('Collateral', wBTCCollateral))
+    collateral.push(<Collateral>await ethers.getContractAt('NonFiatCollateral', wBTCCollateral))
 
     // 6. CTokenNonFiatCollateral cWBTC against BTC
     cWBTC = <CTokenMock>await CToken.deploy('cWBTC Token', 'cWBTC', wbtc.address)
     const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       referenceUnitFeed: referenceUnitFeed.address,
       targetUnitFeed: targetUnitFeed.address,
+      combinedOracleError: ORACLE_ERROR.toString(),
       cToken: cWBTC.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
@@ -327,35 +324,37 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       defaultThreshold: DEFAULT_THRESHOLD.toString(),
       delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
       comptroller: compoundMock.address,
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.register(cWBTCCollateral)
     primeBasketERC20s.push(cWBTC.address)
     targetPricesInUoA.push(fp('20000')) // BTC Target
-    collateral.push(await ethers.getContractAt('Collateral', cWBTCCollateral))
+    collateral.push(
+      <Collateral>await ethers.getContractAt('CTokenNonFiatCollateral', cWBTCCollateral)
+    )
 
     // 7. SelfReferentialCollateral WETH against ETH
     // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
     weth = <WETH9>await WETH.deploy()
     const ethFeed = await MockV3AggregatorFactory.deploy(8, bn('1200e8'))
     const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
-      priceTimeout: PRICE_TIMEOUT,
+      priceTimeout: PRICE_TIMEOUT.toString(),
       priceFeed: ethFeed.address,
+      oracleError: ORACLE_ERROR.toString(),
       tokenAddress: weth.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),
       targetName: hre.ethers.utils.formatBytes32String('ETH'),
-      delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-      oracleLib: oracleLib.address,
       noOutput: true,
     })
 
     await assetRegistry.register(wETHCollateral)
     primeBasketERC20s.push(weth.address)
     targetPricesInUoA.push(fp('1200')) // ETH Target
-    collateral.push(await ethers.getContractAt('Collateral', wETHCollateral))
+    collateral.push(
+      <Collateral>await ethers.getContractAt('SelfReferentialCollateral', wETHCollateral)
+    )
 
     // 8. CTokenSelfReferentialCollateral cETH against ETH
     // Give higher maxTradeVolume: MAX_TRADE_VOLUME.toString(),
@@ -363,23 +362,24 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     const { collateral: cETHCollateral } = await hre.run(
       'deploy-ctoken-selfreferential-collateral',
       {
-        priceTimeout: PRICE_TIMEOUT,
+        priceTimeout: PRICE_TIMEOUT.toString(),
         priceFeed: ethFeed.address,
+        oracleError: ORACLE_ERROR.toString(),
         cToken: cETH.address,
         maxTradeVolume: MAX_TRADE_VOLUME.toString(),
         oracleTimeout: ORACLE_TIMEOUT.toString(),
         targetName: hre.ethers.utils.formatBytes32String('ETH'),
-        delayUntilDefault: DELAY_UNTIL_DEFAULT.toString(),
-        decimals: bn(18).toString(),
         comptroller: compoundMock.address,
-        oracleLib: oracleLib.address,
+        referenceERC20Decimals: bn(18).toString(),
         noOutput: true,
       }
     )
     await assetRegistry.register(cETHCollateral)
     primeBasketERC20s.push(cETH.address)
     targetPricesInUoA.push(fp('1200')) // ETH Target
-    collateral.push(await ethers.getContractAt('Collateral', cETHCollateral))
+    collateral.push(
+      <Collateral>await ethers.getContractAt('CTokenSelfReferentialCollateral', cETHCollateral)
+    )
 
     targetAmts = []
     totalPriceUSD = bn(0)
@@ -414,9 +414,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await basketHandler.timestamp()).to.be.gt(bn(0))
     expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
-    const [isFallback, price] = await basketHandler.price(true)
-    expect(isFallback).to.equal(false)
-    expect(price).to.equal(totalPriceUSD)
+    await expectPrice(basketHandler.address, totalPriceUSD, ORACLE_ERROR, true)
 
     const issueAmt = bn('10e18')
 
@@ -427,13 +425,12 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await rToken.connect(addr1).issue(issueAmt)
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmt)
     expect(await rToken.totalSupply()).to.equal(issueAmt)
-    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
-      issueAmt.mul(totalPriceUSD.div(BN_SCALE_FACTOR))
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      issueAmt.mul(totalPriceUSD.div(BN_SCALE_FACTOR)),
+      fp('0.5')
     )
 
-    const [isFallback2, price2] = await basketHandler.price(true)
-    expect(isFallback2).to.equal(false)
-    expect(price2).to.equal(totalPriceUSD)
+    await expectPrice(basketHandler.address, totalPriceUSD, ORACLE_ERROR, true)
 
     // Set expected quotes
     const expectedTkn0: BigNumber = issueAmt.mul(targetAmts[0]).div(await collateral[0].refPerTok())
@@ -669,8 +666,17 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     await rToken.connect(addr1).issue(issueAmount)
 
     const origAssetValue = issueAmount.mul(totalPriceUSD).div(BN_SCALE_FACTOR)
-    expect(await rTokenAsset.strictPrice()).to.equal(totalPriceUSD)
-    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(origAssetValue)
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
+      origAssetValue,
+      fp('0.5')
+    )
     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
     expect(await rToken.totalSupply()).to.equal(issueAmount)
 
@@ -736,7 +742,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(excessQuantity7).to.be.closeTo(fp('304.7619'), point5Pct(fp('304.7619')))
     expect(excessValue7).to.be.closeTo(fp('7679.999'), point5Pct(fp('7679.999')))
 
-    expect(await rTokenAsset.strictPrice()).to.be.closeTo(totalPriceUSD, fp('0.1'))
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
     const excessTotal = excessValue2.add(excessValue5).add(excessValue7)
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue.add(excessTotal),
@@ -1252,7 +1264,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       {
         contract: backingManager,
         name: 'TradeStarted',
-        args: [anyValue, cWBTC.address, wbtc.address, sellAmt, bn('0')],
+        args: [anyValue, cWBTC.address, wbtc.address, sellAmt, bn(0)],
         emitted: true,
       },
     ])
