@@ -45,6 +45,7 @@ interface INetworkConfig {
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
   BANCOR_PROXY?: string
+  BANCOR_REWARDS_PROXY?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -106,6 +107,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
     BANCOR_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
+    BANCOR_REWARDS_PROXY:'0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372',
   },
   '3': {
     name: 'ropsten',
@@ -164,6 +166,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     BANCOR_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
+    BANCOR_REWARDS_PROXY: '0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372',
   },
   '5': {
     name: 'goerli',

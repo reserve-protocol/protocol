@@ -40,6 +40,7 @@ import {
   BancorV3FiatCollateral,
   IBnTokenERC20,
   IBnTokenERC20__factory,
+  IStandardRewards
 } from '../../../typechain'
 import { equal } from 'assert'
 
@@ -58,6 +59,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let usdc: ERC20Mock
   let BancorV3Collateral: BancorV3FiatCollateral
   let bnToken: IBnTokenERC20
+  let rewardsProxy: IStandardRewards
   let cDai: CTokenMock
   let compToken: ERC20Mock
   let compAsset: Asset
@@ -141,6 +143,10 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt('IBnTokenERC20', networkConfig[chainId].BANCOR_PROXY || '')
     )
 
+    rewardsProxy = <IStandardRewards>(
+      await ethers.getContractAt('IStandardRewards', networkConfig[chainId].BANCOR_REWARDS_PROXY || '')
+    )
+
     // Deploy BancorV3 collateral plugin
     BancorV3CollateralFactory = await ethers.getContractFactory('BancorV3FiatCollateral', {
       libraries: { OracleLib: oracleLib.address },
@@ -157,6 +163,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         delayUntilDefault,
         (await usdc.decimals()).toString(),
         bnToken.address,
+        rewardsProxy.address,
       )
     )
 
