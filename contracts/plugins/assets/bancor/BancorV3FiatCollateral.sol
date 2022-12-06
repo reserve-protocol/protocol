@@ -32,7 +32,6 @@ contract BancorV3FiatCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    address public immutable provider;
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -49,8 +48,7 @@ contract BancorV3FiatCollateral is Collateral {
         int8 ERC20Decimals_,
         address bnToken_,
         address standardRewards_,
-        address autoCompoundingRewards_,
-        address provider_
+        address autoCompoundingRewards_
     )
         Collateral(
             fallbackPrice_,
@@ -71,7 +69,6 @@ contract BancorV3FiatCollateral is Collateral {
         defaultThreshold = defaultThreshold_;
         standardRewards = IStandardRewards(address(standardRewards_));
         autoCompoundingRewards = IAutoCompoundingRewards(address(autoCompoundingRewards_));
-        provider = provider_;
 
         prevReferencePrice = refPerTok();
     }
@@ -132,7 +129,6 @@ contract BancorV3FiatCollateral is Collateral {
     /// @dev delegatecall
     function claimRewards() external virtual override {
         uint192 programId = uint192(standardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
-        console.log(standardRewards.pendingRewards(provider, programId));
         standardRewards.claimRewards(uint256(programId));
     }
 }

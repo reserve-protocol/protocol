@@ -190,9 +190,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         (await bnUsdc.decimals()).toString(),
         bnToken.address,
         rewardsProxy.address,
-        autoProcessRewardsProxy.address,
-        addr1.address
-      )
+        autoProcessRewardsProxy.address,      )
     )
 
        // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
@@ -348,7 +346,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           bnToken.address,
           rewardsProxy.address,
           autoProcessRewardsProxy.address,
-          addr1.address
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
@@ -367,7 +364,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           bnToken.address,
           rewardsProxy.address,
           autoProcessRewardsProxy.address,
-          addr1.address
 
         )
       ).to.be.revertedWith('ERC20Decimals missing')
@@ -387,7 +383,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           bnToken.address,
           ZERO_ADDRESS,
           autoProcessRewardsProxy.address,
-          addr1.address
 
         )
       ).to.be.revertedWith('standardRewards missing')
