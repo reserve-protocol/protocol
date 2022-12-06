@@ -462,7 +462,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         expect(await tkInf.tokenCollateral.refPerTok()).to.equal(fp('1'))
         expect(await tkInf.tokenCollateral.targetPerRef()).to.equal(fp('1'))
 
-        await expectPrice(tkInf.tokenCollateral.address, tkInf.price, ORACLE_ERROR, true, bn('1e8'))
+        await expectPrice(tkInf.tokenCollateral.address, tkInf.price, ORACLE_ERROR, true, bn('1e5'))
 
         await expect(tkInf.tokenCollateral.claimRewards()).to.not.emit(
           tkInf.tokenCollateral,
@@ -550,7 +550,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           ctkInf.pegPrice.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
           ORACLE_ERROR,
           true,
-          bn('1e8')
+          bn('1e4')
         )
 
         await expect(ctkInf.cTokenCollateral.claimRewards())
@@ -649,7 +649,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           atkInf.pegPrice.mul(atkInf.refPerTok).div(BN_SCALE_FACTOR),
           ORACLE_ERROR,
           true,
-          bn('1e8')
+          bn('1e5')
         )
 
         await expect(atkInf.aTokenCollateral.claimRewards())
@@ -909,7 +909,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
           ctkInf.price.mul(ctkInf.refPerTok).div(BN_SCALE_FACTOR),
           ORACLE_ERROR,
           true,
-          bn('1e10')
+          bn('1e5')
         )
 
         await expect(ctkInf.cTokenCollateral.claimRewards())
@@ -1773,7 +1773,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1.072871695141967225'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(aDaiRefPerTok1).to.be.closeTo(fp('1'), fp('0.095'))
 
@@ -1782,7 +1782,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.022015110752383443'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
 
@@ -1819,7 +1819,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1.072882861877314264'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(aDaiRefPerTok2).to.be.closeTo(fp('1'), fp('0.095'))
 
@@ -1828,7 +1828,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.022016203274102888'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
@@ -1864,7 +1864,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('1.184527887459258141'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(aDaiRefPerTok3).to.be.closeTo(fp('1.1'), fp('0.095'))
       await expectPrice(
@@ -1872,7 +1872,7 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         fp('0.032941268543431921'),
         ORACLE_ERROR,
         true,
-        bn('1e8')
+        bn('1e5')
       )
       expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
 
@@ -2001,26 +2001,26 @@ describeFork(`Asset Plugins - Integration - Mainnet Forking P${IMPLEMENTATION}`,
         const btcTargetPrice = fp('31311.5') // June 6, 2022
         const wbtcRefPrice = fp('1.00062735') // approx price wbtc-btc
         const btcPrice = btcTargetPrice.mul(wbtcRefPrice).div(BN_SCALE_FACTOR)
-        await expectPrice(wbtcCollateral.address, btcPrice, ORACLE_ERROR, true, bn('1e10'))
+        await expectPrice(wbtcCollateral.address, btcPrice, ORACLE_ERROR, true, bn('1e8'))
 
         // cWBTC
         const cWBTCPrice = btcTargetPrice
           .mul(wbtcRefPrice)
           .mul(fp('0.020204487859796421'))
           .div(BN_SCALE_FACTOR.pow(2))
-        await expectPrice(cWBTCCollateral.address, cWBTCPrice, ORACLE_ERROR, true, bn('1e10')) // close to $633 usd
+        await expectPrice(cWBTCCollateral.address, cWBTCPrice, ORACLE_ERROR, true, bn('1e8')) // close to $633 usd
 
         // WETH
         const ethTargetPrice = fp('1859.17') //approx price June 2022
-        await expectPrice(wethCollateral.address, ethTargetPrice, ORACLE_ERROR, true, bn('1e10'))
+        await expectPrice(wethCollateral.address, ethTargetPrice, ORACLE_ERROR, true, bn('1e8'))
 
         // cETH
         const cETHPrice = ethTargetPrice.mul(fp('0.020064225660680504')).div(BN_SCALE_FACTOR)
-        await expectPrice(cETHCollateral.address, cETHPrice, ORACLE_ERROR, true, bn('1e10'))
+        await expectPrice(cETHCollateral.address, cETHPrice, ORACLE_ERROR, true, bn('1e5'))
 
         // EURT
         const eurPrice = fp('1.073') // approx price EUR-USD June 6, 2022
-        await expectPrice(eurtCollateral.address, eurPrice, ORACLE_ERROR, true, bn('1e10')) // ref price approx 1.07
+        await expectPrice(eurtCollateral.address, eurPrice, ORACLE_ERROR, true, bn('1e5')) // ref price approx 1.07
 
         // Aproximate total price of Basket in USD
         const totalPriceUSD = btcPrice.mul(2).add(ethTargetPrice.mul(2)).add(eurPrice.mul(1000))
