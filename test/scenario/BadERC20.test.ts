@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, fp } from '../../common/numbers'
+import { bn, divCeil, fp } from '../../common/numbers'
 import {
   BadERC20,
   ERC20Mock,
@@ -67,6 +67,30 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber,
+    oracleError: BigNumber,
+    maxTradeSlippage: BigNumber
+  ): BigNumber => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const product = sellAmt
+      .mul(fp('1').sub(maxTradeSlippage)) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -363,7 +387,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
           rToken.address,
           rsr.address,
           issueAmt.div(2),
-          issueAmt.div(2).mul(99).div(100)
+          toMinBuyAmt(issueAmt.div(2), fp('1'), fp('1'), ORACLE_ERROR, config.maxTradeSlippage)
         )
     })
   })
