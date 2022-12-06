@@ -40,7 +40,8 @@ import {
   BancorV3FiatCollateral,
   IBnTokenERC20,
   IBnTokenERC20__factory,
-  IStandardRewards
+  IStandardRewards,
+  IAutoCompoundingRewards
 } from '../../../typechain'
 import { equal } from 'assert'
 
@@ -61,6 +62,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let BancorV3Collateral: BancorV3FiatCollateral
   let bnToken: IBnTokenERC20
   let rewardsProxy: IStandardRewards
+  let autoProcessRewardsProxy: IAutoCompoundingRewards
   let bancorToken: ERC20Mock
   let bancorAsset: Asset
   let rsr: ERC20Mock
@@ -150,6 +152,10 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt('IStandardRewards', networkConfig[chainId].BANCOR_REWARDS_PROXY || '')
     )
 
+    autoProcessRewardsProxy = <IAutoCompoundingRewards>(
+      await ethers.getContractAt('IAutoCompoundingRewards', networkConfig[chainId].BANCOR_REWARDS_PROXY || '')
+    )
+
     bancorToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.BNT || '')
     )
@@ -184,6 +190,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         (await bnUsdc.decimals()).toString(),
         bnToken.address,
         rewardsProxy.address,
+        autoProcessRewardsProxy.address
       )
     )
 
@@ -271,7 +278,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      expect(await BancorV3Collateral.refPerTok()).to.equal(fp('1.003759')) // close to $1
+      expect(await BancorV3Collateral.refPerTok()).to.be.closeTo(fp('1.003759'), fp('0.5')) // close to $1
       expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.5')) // close to $0.022 cents
       
 
@@ -339,6 +346,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           (await bnUsdc.decimals()).toString(),
           bnToken.address,
           rewardsProxy.address,
+          autoProcessRewardsProxy.address
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
@@ -356,6 +364,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           0,
           bnToken.address,
           rewardsProxy.address,
+          autoProcessRewardsProxy.address
+
         )
       ).to.be.revertedWith('ERC20Decimals missing')
 
@@ -373,6 +383,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           (await bnUsdc.decimals()).toString(),
           bnToken.address,
           ZERO_ADDRESS,
+          autoProcessRewardsProxy.address
+
         )
       ).to.be.revertedWith('standardRewards missing')
     })
@@ -423,18 +435,18 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const bnUsdcRefPerTok2: BigNumber = await BancorV3Collateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(bnUsdcPrice2).to.be.gt(bnUsdcPrice1)
-      expect(bnUsdcRefPerTok2).to.be.gt(bnUsdcRefPerTok1)
+      expect(bnUsdcPrice2).to.be.eq(bnUsdcPrice1)
+      expect(bnUsdcRefPerTok2).to.be.eq(bnUsdcRefPerTok1)
 
       // Still close to the original values
-      expect(bnUsdcPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(bnUsdcRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(bnUsdcPrice2).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnUsdcRefPerTok2).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue2).to.be.gt(totalAssetValue1)
+      expect(totalAssetValue2).to.be.eq(totalAssetValue1)
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(100000000)
