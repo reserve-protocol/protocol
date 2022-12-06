@@ -61,26 +61,23 @@ contract NormalOpsScenario {
             ERC20Fuzz token = new ERC20Fuzz(concat("Collateral ", num), concat("C", num), main);
             main.addToken(token);
 
-            IERC20Metadata reward;
+            ERC20Fuzz reward;
             if (i < 2) {
                 reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
                 main.addToken(reward);
                 main.assetRegistry().register(
                     new AssetMock(
                         IERC20Metadata(address(reward)),
-                        IERC20Metadata(address(0)), // no recursive reward
                         maxTradeVolume,
                         volatile
                     )
                 );
-            } else {
-                reward = IERC20Metadata(address(0));
+                token.setRewardToken(reward);
             }
 
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    reward,
                     maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
@@ -104,7 +101,6 @@ contract NormalOpsScenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    IERC20Metadata(address(0)), // no reward
                     maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
@@ -381,9 +377,8 @@ contract NormalOpsScenario {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
-        AssetMock asset = AssetMock(address(reg.toAsset(erc20)));
-        asset.updateRewardAmount(a);
-        // same signature on CollateralMock. Could define a whole interface, but eh
+
+        ERC20Fuzz(address(erc20)).setRewardAmount(a);
     }
 
     function claimRewards(uint8 which) public {
