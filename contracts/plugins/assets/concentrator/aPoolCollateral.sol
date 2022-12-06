@@ -5,17 +5,20 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/libraries/Fixed.sol";
-import "./IaFXS.sol";
+import "contracts/plugins/assets/concentrator/IaV1.sol";
+import "contracts/plugins/assets/concentrator/IaV2.sol";
+import "contracts/plugins/assets/concentrator/IaPool.sol";
 
 /**
- * @title aFXSCollateral
- * @notice Collateral plugin for a aFXS collateral from Concentrator
+ * @title aPoolCollateral
+ * @notice Collateral plugin for aPool assets from Concentrator. aCRV, aFXS
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract aFXSCollateral is Collateral {
+contract aPoolCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
+    uint8 private immutable version; // version of the pool's interface
     uint192 private prevReferencePrice; // previous rate, {collateral/reference}
 
     /// @param _fallbackPrice {UoA} Price to be returned in worst case
@@ -32,7 +35,8 @@ contract aFXSCollateral is Collateral {
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
         bytes32 _targetName,
-        uint256 _delayUntilDefault
+        uint256 _delayUntilDefault,
+        uint8 _version
     )
     Collateral(
         _fallbackPrice,
@@ -43,7 +47,11 @@ contract aFXSCollateral is Collateral {
         _targetName,
         _delayUntilDefault
     )
-    {}
+    {
+        require(_version > 0 && _version <= 2, "invalid version number");
+
+        version = _version;
+    }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view override returns (uint192) {
@@ -68,16 +76,23 @@ contract aFXSCollateral is Collateral {
         if (oldStatus != newStatus) {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
-
-        // No interactions beyond the initial refresher
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        IaFXS aFXS = IaFXS(address(erc20));
-        uint256 totalSupply = aFXS.totalSupply();
-        uint256 underlyingValue = aFXS.totalAssets();
-        return _safeWrap(underlyingValue * FIX_ONE / totalSupply);
+        return _safeWrap(getRate());
+    }
+
+    /// Computes the {ref/tok} depending on which version of the pool is being used
+    function getRate() private view returns (uint256) {
+        if (version == 1) {
+            IaV1 pool = IaV1(address(erc20));
+            return pool.totalUnderlying() * FIX_ONE / pool.totalSupply();
+        }
+        else {
+            IaV2 pool = IaV2(address(erc20));
+            return pool.totalAssets() * FIX_ONE / pool.totalSupply();
+        }
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
@@ -88,7 +103,7 @@ contract aFXSCollateral is Collateral {
         // rewards themselves, the claimer gets the harvest fee.
         // If users of RToken don't do it, someone will still do it,
         // and they will keep the fee
-        IaFXS(address(erc20)).harvest(address(this), 0);
+        IaPool(address(erc20)).harvest(address(this), 0);
         // we are not emitting an event because no external rewards come from this
     }
 }

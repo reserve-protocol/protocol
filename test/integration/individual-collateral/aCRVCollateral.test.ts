@@ -27,16 +27,14 @@ import {
   FacadeWrite,
   IAssetRegistry,
   IBasketHandler,
-  OracleLib,
-  MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  ACRVCollateral,
-  IaCRV,
-  ACRVMock,
+  IaV1,
+  APoolCollateral,
+  AV1Mock,
 } from '#/typechain'
 import { useEnv } from '#/utils/env'
 
@@ -52,8 +50,8 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let aCrv: IaCRV
-  let aCrvCollateral: ACRVCollateral
+  let aCrv: IaV1
+  let aCrvCollateral: APoolCollateral
   let rsr: ERC20Mock
   let rsrAsset: Asset
 
@@ -69,7 +67,6 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
-  let oracleLib: OracleLib
   let govParams: IGovParams
 
   // RToken Configuration
@@ -105,8 +102,6 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   let chainId: number
 
   let aCRVCollateralFactory: ContractFactory
-  let MockV3AggregatorFactory: ContractFactory
-  let mockChainlinkFeed: MockV3Aggregator
 
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -120,15 +115,15 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
+    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } =
       await loadFixture(defaultFixture))
 
     // Get required contracts
     // aCRV token
-    aCrv = <IaCRV>await ethers.getContractAt('IaCRV', networkConfig[chainId].tokens.aCRV || '')
+    aCrv = <IaV1>await ethers.getContractAt('IaV1', networkConfig[chainId].tokens.aCRV || '')
 
     // Deploy cDai collateral plugin
-    aCRVCollateralFactory = await ethers.getContractFactory('aCRVCollateral')
+    aCRVCollateralFactory = await ethers.getContractFactory('aPoolCollateral')
     aCrvCollateral = <CTokenFiatCollateral>(
       await aCRVCollateralFactory.deploy(
         fp('0.02'),
@@ -137,7 +132,8 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('CRV'),
-        delayUntilDefault
+        delayUntilDefault,
+        1
       )
     )
 
@@ -198,10 +194,6 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       ZERO_ADDRESS, // no guardian
       ZERO_ADDRESS // no pauser
     )
-
-    // Setup mock chainlink feed for some of the tests (so we can change the value)
-    MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
   describe('Deployment', () => {
@@ -265,6 +257,36 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       await aCrv.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1.27'), fp('0.01'))
+    })
+
+    it('Should validate constructor arguments correctly', async () => {
+      // no version
+      await expect(
+        aCRVCollateralFactory.deploy(
+          fp('0.02'),
+          networkConfig[chainId].chainlinkFeeds.CRV as string,
+          aCrv.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('CRV'),
+          delayUntilDefault,
+          0
+        )
+      ).to.be.revertedWith('invalid version number')
+
+      // high version
+      await expect(
+        aCRVCollateralFactory.deploy(
+          fp('0.02'),
+          networkConfig[chainId].chainlinkFeeds.CRV as string,
+          aCrv.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('CRV'),
+          delayUntilDefault,
+          3
+        )
+      ).to.be.revertedWith('invalid version number')
     })
   })
 
@@ -418,18 +440,18 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   describe('Collateral Status', () => {
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const aCRVMockFactory: ContractFactory = await ethers.getContractFactory('aCRVMock')
+      const aCRVMockFactory: ContractFactory = await ethers.getContractFactory('aV1Mock')
       const symbol = await aCrv.symbol()
-      const aCrvMock: ACRVMock = <ACRVMock>await aCRVMockFactory.deploy(symbol + ' Token', symbol)
+      const aCrvMock: AV1Mock = <AV1Mock>await aCRVMockFactory.deploy(symbol + ' Token', symbol)
 
       // Set initial exchange rate to the new cDai Mock
       await aCrvMock.mint(addr1.address, fp('100'))
       await aCrvMock.setUnderlying(fp('100'))
 
       // Redeploy plugin using the new aCrv mock
-      const newACrvCollateral: ACRVCollateral = <ACRVCollateral>(
+      const newACrvCollateral: APoolCollateral = <APoolCollateral>(
         await (
-          await ethers.getContractFactory('aCRVCollateral')
+          await ethers.getContractFactory('aPoolCollateral')
         ).deploy(
           fp('0.02'),
           networkConfig[chainId].chainlinkFeeds.CRV as string,
@@ -437,7 +459,8 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('CRV'),
-          delayUntilDefault
+          delayUntilDefault,
+          1
         )
       )
 

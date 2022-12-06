@@ -19,23 +19,22 @@ import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
+  APoolCollateral,
   Asset,
+  AV1Mock,
   CTokenFiatCollateral,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
   IAssetRegistry,
+  IaV2,
   IBasketHandler,
-  OracleLib,
   RTokenAsset,
   TestIBackingManager,
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  AFXSCollateral,
-  IaFXS,
-  AFXSMock,
 } from '#/typechain'
 import { useEnv } from '#/utils/env'
 import forkBlockNumber from '#/test/integration/fork-block-numbers'
@@ -52,8 +51,8 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let aFxs: IaFXS
-  let aFxsCollateral: AFXSCollateral
+  let aFxs: IaV2
+  let aFxsCollateral: APoolCollateral
   let rsr: ERC20Mock
   let rsrAsset: Asset
 
@@ -133,15 +132,16 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } =
-      await loadFixture(defaultFixture))
+    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, govParams } = await loadFixture(
+      defaultFixture
+    ))
 
     // Get required contracts
     // aCRV token
-    aFxs = <IaFXS>await ethers.getContractAt('IaFXS', networkConfig[chainId].tokens.aFXS || '')
+    aFxs = <IaV2>await ethers.getContractAt('IaV2', networkConfig[chainId].tokens.aFXS || '')
 
     // Deploy cDai collateral plugin
-    aFXSCollateralFactory = await ethers.getContractFactory('aFXSCollateral')
+    aFXSCollateralFactory = await ethers.getContractFactory('aPoolCollateral')
     aFxsCollateral = <CTokenFiatCollateral>(
       await aFXSCollateralFactory.deploy(
         fp('0.02'),
@@ -150,7 +150,8 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('FXS'),
-        delayUntilDefault
+        delayUntilDefault,
+        2
       )
     )
 
@@ -304,8 +305,6 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      //expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('300')) // approx 1K in value
-
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
@@ -317,7 +316,7 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       await aFxsCollateral.refresh()
       expect(await aFxsCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Check rates and prices - Have changed, slight inrease
+      // Check rates and prices - Have changed, slight increase
       const aCrvPrice2: BigNumber = await aFxsCollateral.strictPrice()
       const aCrvRefPerTok2: BigNumber = await aFxsCollateral.refPerTok()
 
@@ -427,26 +426,27 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   describe('Collateral Status', () => {
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const aFXSMockFactory: ContractFactory = await ethers.getContractFactory('aFXSMock')
+      const aFXSMockFactory: ContractFactory = await ethers.getContractFactory('aV2Mock')
       const symbol = await aFxs.symbol()
-      const aFxsMock: AFXSMock = <AFXSMock>await aFXSMockFactory.deploy(symbol + ' Token', symbol)
+      const aFxsMock: AV1Mock = <AV1Mock>await aFXSMockFactory.deploy(symbol + ' Token', symbol)
 
       // Set initial exchange rate to the new cDai Mock
       await aFxsMock.mint(addr1.address, fp('100'))
       await aFxsMock.setUnderlying(fp('100'))
 
       // Redeploy plugin using the new aFxs mock
-      const newACrvCollateral: AFXSCollateral = <AFXSCollateral>(
+      const newACrvCollateral: APoolCollateral = <APoolCollateral>(
         await (
-          await ethers.getContractFactory('aFXSCollateral')
+          await ethers.getContractFactory('aPoolCollateral')
         ).deploy(
           fp('0.02'),
           networkConfig[chainId].chainlinkFeeds.CRV as string,
           aFxsMock.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('CRV'),
-          delayUntilDefault
+          ethers.utils.formatBytes32String('FXS'),
+          delayUntilDefault,
+          2
         )
       )
 
