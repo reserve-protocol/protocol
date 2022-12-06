@@ -6,7 +6,7 @@ import { Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
 import { bn, fp } from '../../common/numbers'
-import { setOraclePrice } from '../utils/oracles'
+import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
 import { expectEvents } from '../../common/events'
 import {
@@ -15,7 +15,14 @@ import {
   StaticATokenMock,
   RTokenCollateral,
 } from '../../typechain'
-import { defaultFixture, DefaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  defaultFixture,
+  DefaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -73,7 +80,6 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
     expect(one.assetRegistry.address).to.not.equal(two.assetRegistry.address)
     expect(one.backingManager.address).to.not.equal(two.backingManager.address)
     expect(one.basketHandler.address).to.not.equal(two.basketHandler.address)
-    expect(one.oracleLib.address).to.not.equal(two.oracleLib.address)
     expect(one.rsrTrader.address).to.not.equal(two.rsrTrader.address)
     expect(one.rTokenTrader.address).to.not.equal(two.rTokenTrader.address)
   })
@@ -91,19 +97,18 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
       aTokenCollateral = await (
-        await ethers.getContractFactory('ATokenFiatCollateral', {
-          libraries: { OracleLib: one.oracleLib.address },
-        })
-      ).deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        staticATokenERC20.address,
-        one.config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT
-      )
+        await ethers.getContractFactory('ATokenFiatCollateral')
+      ).deploy({
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: staticATokenERC20.address,
+        maxTradeVolume: one.config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      })
       const RTokenCollateralFactory = await ethers.getContractFactory('RTokenCollateral')
       rTokenCollateral = await RTokenCollateralFactory.deploy(
         one.rToken.address,
@@ -211,8 +216,23 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       )
 
       // Prices should be aware
-      expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
-      expect(await rTokenCollateral.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
+      //expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
+      await expectRTokenPrice(
+        one.rTokenAsset.address,
+        fp('0.99'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
+
+      // expect(await rTokenCollateral.strictPrice()).to.be.closeTo(fp('0.99'), fp('0.001'))
+      await expectRTokenPrice(
+        rTokenCollateral.address,
+        fp('0.99'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
     })
 
     it("should view donations of the other's RToken as revenue", async () => {
@@ -266,13 +286,42 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       expect(await two.basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await one.rToken.totalSupply()).to.equal(issueAmt.mul(2))
       expect(await two.rToken.totalSupply()).to.equal(issueAmt.mul(3).div(2))
-      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
-      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
+
+      //expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        one.rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
+      //expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenCollateral.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
     })
 
     it('should propagate appreciation of the inner-most collateral to price', async () => {
-      expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
-      expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
+      // expect(await one.rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        one.rTokenAsset.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
+      //  expect(await rTokenCollateral.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(
+        rTokenCollateral.address,
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
 
       // Cause appreciation
       await staticATokenERC20.setExchangeRate(fp('1.5'))
@@ -321,8 +370,23 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Appreciation should be passed through to both tokens
       await setOraclePrice(aTokenCollateral.address, bn('1e8'))
       const expectedPrice = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
-      expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
-      expect(await rTokenCollateral.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
+
+      // expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
+      await expectRTokenPrice(
+        one.rTokenAsset.address,
+        expectedPrice,
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
+      //  expect(await rTokenCollateral.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05')
+      await expectRTokenPrice(
+        rTokenCollateral.address,
+        expectedPrice,
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage(),
+        one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
+      )
     })
   })
 })

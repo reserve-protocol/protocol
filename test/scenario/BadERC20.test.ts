@@ -18,7 +18,7 @@ import {
   TestIRevenueTrader,
   TestIRToken,
 } from '../../typechain'
-import { expectPrice, setOraclePrice } from '../utils/oracles'
+import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
 import {
@@ -350,7 +350,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       expect(await trade.buy()).to.equal(backupToken.address)
     })
 
-    it.skip('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
+    it('should be able to process any uncensored assets already accumulated at RevenueTraders', async () => {
       await rToken.connect(addr1).transfer(rTokenTrader.address, issueAmt.div(2))
       await rToken.connect(addr1).transfer(rsrTrader.address, issueAmt.div(2))
       await expect(rTokenTrader.manageToken(rToken.address))
