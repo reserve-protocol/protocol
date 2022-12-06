@@ -317,7 +317,7 @@ library TradingLibP0 {
             // assetsHigh += highPrice.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
             // {UoA} = {UoA/tok} * {tok}
             uint192 val = safeMulDivCeil(components.bm, highPrice, bal, FIX_ONE);
-            if (assetsHigh.plus(val).gte(FIX_MAX)) assetsHigh = FIX_MAX;
+            if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
             else assetsHigh = assetsHigh.plus(val);
 
             // Accumulate potential losses to dust
@@ -602,19 +602,12 @@ library TradingLibP0 {
     ) internal pure returns (uint192) {
         try trader.mulDivCeil(x, y, z) returns (uint192 result) {
             return result;
-        } catch Error(string memory reason) {
-            // The only expected error is FixLib.UIntOutOfBounds
-            assert(
-                keccak256(abi.encodePacked(reason)) ==
-                    keccak256(abi.encodePacked("UIntOutOfBounds()"))
-            );
         } catch Panic(uint errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
             assert(errorCode == 0x11 || errorCode == 0x12);
-        } catch {
-            // It should not be possible to reach this line
-            assert(false);
+        } catch (bytes memory reason) {
+            assert(keccak256(reason) == UIntOutofBoundsHash);
         }
         return FIX_MAX;
     }

@@ -7,7 +7,7 @@ import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR } from '../fix
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { IConfig, networkConfig } from '../../common/configuration'
-import { CollateralStatus, QUEUE_START } from '../../common/constants'
+import { CollateralStatus, QUEUE_START, MAX_UINT256 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
@@ -551,7 +551,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
       // Set collateral0 to unpriced
-      await setOraclePrice(collateral0.address, bn('0')) // depeg
+      await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // depeg
       await collateral0.refresh()
       await advanceTime((await collateral0.delayUntilDefault()).toString())
       await basketHandler.refreshBasket()
