@@ -1020,6 +1020,36 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@gearbox-protocol/core-v2@npm:^1.0.8":
+  version: 1.7.1
+  resolution: "@gearbox-protocol/core-v2@npm:1.7.1"
+  checksum: 05c905041d22126f43f8eb56bbf06bb793e1498ec0988f233c6adf8b2e2cca063eda0c3f86a11aaf26447aef50448e3f984f194933ba24340fe52eaa2d6f5664
+  languageName: node
+  linkType: hard
+
+"@gearbox-protocol/integrations-v2@github:chainhackers/integrations-v2":
+  version: 1.0.0
+  resolution: "@gearbox-protocol/integrations-v2@https://github.com/chainhackers/integrations-v2.git#commit=58f3c832e311c08c609db6105e7e09f562ed9935"
+  dependencies:
+    "@gearbox-protocol/core-v2": ^1.0.8
+    "@gearbox-protocol/sdk": ^1.15.6
+    axios: ^1.1.3
+  checksum: 2e2c553f7ca9ab1c768313a1b2ac45d2b9f45f33a8f7757bfa28c654c05b950db2c2898d22c6f06e78ccccb7b130e1f65c41acbc3109d96e592a351f187546b0
+  languageName: node
+  linkType: hard
+
+"@gearbox-protocol/sdk@npm:^1.15.6":
+  version: 1.18.0
+  resolution: "@gearbox-protocol/sdk@npm:1.18.0"
+  dependencies:
+    "@types/deep-eql": ^4.0.0
+    decimal.js-light: ^2.5.1
+    deep-eql: ^4.1.0
+    moment: ^2.29.4
+  checksum: 0349da531a7e63deac5ca93bfce71a13058b6bf281b491a3a77d4a4bc72bcd45f08b990d95a8011b5eef68b449ecd6b8d53c2e26264a3bfd0122eccbd18c9968
+  languageName: node
+  linkType: hard
+
 "@humanwhocodes/config-array@npm:^0.9.2":
   version: 0.9.5
   resolution: "@humanwhocodes/config-array@npm:0.9.5"
@@ -1761,6 +1791,13 @@ __metadata:
   dependencies:
     "@types/node": "*"
   checksum: 7d211e74331affd3578b5469244f5cef84a93775f38332adb3ef12413559a23862bc682c6873d0a404b01c9d5d5f7d3ae091fe835b435b633eb420e3055b3e56
+  languageName: node
+  linkType: hard
+
+"@types/deep-eql@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "@types/deep-eql@npm:4.0.0"
+  checksum: 1640128ed9127cf83e588056ddccf009bc91cb8d9f041171d6b7016880efb8e5bdc9f488963f6bb69f8ce106d5585140843cae5b30b1e2b632c400a7d2ae5763
   languageName: node
   linkType: hard
 
@@ -2896,6 +2933,17 @@ __metadata:
   dependencies:
     follow-redirects: ^1.14.4
   checksum: 468cf496c08a6aadfb7e699bebdac02851e3043d4e7d282350804ea8900e30d368daa6e3cd4ab83b8ddb5a3b1e17a5a21ada13fc9cebd27b74828f47a4236316
+  languageName: node
+  linkType: hard
+
+"axios@npm:^1.1.3":
+  version: 1.2.0
+  resolution: "axios@npm:1.2.0"
+  dependencies:
+    follow-redirects: ^1.15.0
+    form-data: ^4.0.0
+    proxy-from-env: ^1.1.0
+  checksum: f08ce214e957dfde45b837f8d3c7861424608fb7df32faa638835e338782a9f4c0b05074e92e0e8dcca3a1e6250112fbbe1b15a6b21104da633d84745bbb79cc
   languageName: node
   linkType: hard
 
@@ -4946,6 +4994,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"decimal.js-light@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "decimal.js-light@npm:2.5.1"
+  checksum: f5a2c7eac1c4541c8ab8a5c8abea64fc1761cefc7794bd5f8afd57a8a78d1b51785e0c4e4f85f4895a043eaa90ddca1edc3981d1263eb6ddce60f32bf5fe66c9
+  languageName: node
+  linkType: hard
+
 "decode-uri-component@npm:^0.2.0":
   version: 0.2.0
   resolution: "decode-uri-component@npm:0.2.0"
@@ -4977,6 +5032,15 @@ __metadata:
   dependencies:
     type-detect: ^4.0.0
   checksum: 2fccd527df9a70a92a1dfa8c771d139753625938e137b09fc946af8577d22360ef28d3c74f0e9c5aaa399bab20542d0899da1529c71db76f280a30147cd2a110
+  languageName: node
+  linkType: hard
+
+"deep-eql@npm:^4.1.0":
+  version: 4.1.3
+  resolution: "deep-eql@npm:4.1.3"
+  dependencies:
+    type-detect: ^4.0.0
+  checksum: 7f6d30cb41c713973dc07eaadded848b2ab0b835e518a88b91bea72f34e08c4c71d167a722a6f302d3a6108f05afd8e6d7650689a84d5d29ec7fe6220420397f
   languageName: node
   linkType: hard
 
@@ -6999,6 +7063,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"follow-redirects@npm:^1.15.0":
+  version: 1.15.2
+  resolution: "follow-redirects@npm:1.15.2"
+  peerDependenciesMeta:
+    debug:
+      optional: true
+  checksum: faa66059b66358ba65c234c2f2a37fcec029dc22775f35d9ad6abac56003268baf41e55f9ee645957b32c7d9f62baf1f0b906e68267276f54ec4b4c597c2b190
+  languageName: node
+  linkType: hard
+
 "for-each@npm:^0.3.3, for-each@npm:~0.3.3":
   version: 0.3.3
   resolution: "for-each@npm:0.3.3"
@@ -7041,6 +7115,17 @@ __metadata:
     combined-stream: ^1.0.8
     mime-types: ^2.1.12
   checksum: b019e8d35c8afc14a2bd8a7a92fa4f525a4726b6d5a9740e8d2623c30e308fbb58dc8469f90415a856698933c8479b01646a9dff33c87cc4e76d72aedbbf860d
+  languageName: node
+  linkType: hard
+
+"form-data@npm:^4.0.0":
+  version: 4.0.0
+  resolution: "form-data@npm:4.0.0"
+  dependencies:
+    asynckit: ^0.4.0
+    combined-stream: ^1.0.8
+    mime-types: ^2.1.12
+  checksum: 01135bf8675f9d5c61ff18e2e2932f719ca4de964e3be90ef4c36aacfc7b9cb2fceb5eca0b7e0190e3383fe51c5b37f4cb80b62ca06a99aaabfcfd6ac7c9328c
   languageName: node
   linkType: hard
 
@@ -10431,6 +10516,13 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
+"moment@npm:^2.29.4":
+  version: 2.29.4
+  resolution: "moment@npm:2.29.4"
+  checksum: 0ec3f9c2bcba38dc2451b1daed5daded747f17610b92427bebe1d08d48d8b7bdd8d9197500b072d14e326dd0ccf3e326b9e3d07c5895d3d49e39b6803b76e80e
+  languageName: node
+  linkType: hard
+
 "ms@npm:2.0.0":
   version: 2.0.0
   resolution: "ms@npm:2.0.0"
@@ -11611,6 +11703,13 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
+"proxy-from-env@npm:^1.1.0":
+  version: 1.1.0
+  resolution: "proxy-from-env@npm:1.1.0"
+  checksum: ed7fcc2ba0a33404958e34d95d18638249a68c430e30fcb6c478497d72739ba64ce9810a24f53a7d921d0c065e5b78e3822759800698167256b04659366ca4d4
+  languageName: node
+  linkType: hard
+
 "prr@npm:~1.0.1":
   version: 1.0.1
   resolution: "prr@npm:1.0.1"
@@ -12183,6 +12282,7 @@ fsevents@~2.1.1:
   dependencies:
     "@aave/protocol-v2": ^1.0.1
     "@chainlink/contracts": ^0.4.1
+    "@gearbox-protocol/integrations-v2": "github:chainhackers/integrations-v2"
     "@nomicfoundation/hardhat-chai-matchers": ^1.0.3
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-etherscan": ^3.1.0
