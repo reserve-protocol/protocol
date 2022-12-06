@@ -3,6 +3,8 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2ERC20.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import "./UniV2Asset.sol";
 import "../OracleLib.sol";
@@ -39,25 +41,25 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
     uint192 public immutable pegA;
     uint192 public immutable pegB;
-    uint192 public immutable defaultThresholdA;
-    uint192 public immutable defaultThresholdB;
     uint192 public immutable defaultThreshold;
+
+    uint256 public immutable liqTimeOut = 12 hours;
 
     /// constructor
     /// @param pairV2_ UniswapV2 pair address
+    /// @param router_ UniswapV2 router
     /// @param fallbackPrice_ fallback price for LP tokens
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA = USD
     /// @param delayUntilDefault_ delay until default from IFFY status
-    /// @param pegA_ pegged price for tokenA
-    /// @param pegB_ pegged price for tokenB
+    /// @param pegA_ pegged price for tokenA with 18 decimals
+    /// @param pegB_ pegged price for tokenB with 18 decimals
     /// @param chainlinkFeedA_ Feed units: {UoA/tokA}
     /// @param chainlinkFeedB_ Feed units: {UoA/tokB}
-    /// @param defaultThresholdA_ threshold for tokenA
-    /// @param defaultThresholdB_ threshold for tokenB
     /// @param defaultThreshold_ threshold for pool ratio
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         address pairV2_,
+        address router_,
         uint192 fallbackPrice_,
         uint192 maxTradeVolume_,
         uint256 delayUntilDefault_,
@@ -65,13 +67,12 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         AggregatorV3Interface chainlinkFeedB_,
         uint192 pegA_,
         uint192 pegB_,
-        uint192 defaultThresholdA_,
-        uint192 defaultThresholdB_,
         uint192 defaultThreshold_,
         uint48 oracleTimeout_
     )
         UniV2Asset(
             pairV2_,
+            router_,
             fallbackPrice_,
             maxTradeVolume_,
             delayUntilDefault_,
@@ -80,14 +81,11 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
             oracleTimeout_
         )
     {
+        require(defaultThreshold_ > 0, "[UNIV2COL DEPLOY ERROR]: defaultThreshold zero");
         pegA = pegA_;
         pegB = pegB_;
-        defaultThresholdA = defaultThresholdA_;
-        defaultThresholdB = defaultThresholdB_;
         defaultThreshold = defaultThreshold_;
-        uint L = pairV2.totalSupply();
-        (uint112 x, uint112 y, ) = pairV2.getReserves();
-        prevReferencePrice = uint192(UniV2Math.sqrt(x * y) / L);
+        prevReferencePrice = refPerTok();
     }
 
     /// @return The collateral's status
@@ -101,21 +99,29 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         }
     }
 
-    /// @dev refPerTok = sqrt(xy)/L (cte when liq added or removed, increases on trades due to fees.)
+    /// @dev refPerTok = sqrt(xy)/L
+    /// constant when liq added or removed, increases on trades due to fees.
     /// @dev see README for details
     function refPerTok() public view override returns (uint192) {
         // get x and y
         (uint112 x, uint112 y, ) = pairV2.getReserves();
-        uint L = pairV2.totalSupply();
-        uint192 rate = uint192(UniV2Math.sqrt(x * y) / L);
-        // TODO check units range
-        return rate;
+        uint256 liq = pairV2.totalSupply();
+        uint192 xs = uint192(x * 10**(18 - decA));
+        uint192 ys = uint192(y * 10**(18 - decB));
+        // rpt 18 decimals
+        uint192 rpt = (UniV2Math.sqrt(xs.mulu(ys)) * 10**18).divu(liq);
+        return rpt;
     }
 
-    /// targetPerRef {target/ref} = USD/sqrt(xy) = 2 sqrt(pegA*pegB)
+    /// targetPerRef {target/ref} = USD/sqrt(xy) ~ 2 sqrt(pegA*pegB)
     /// @dev see README for details
     function targetPerRef() public view override returns (uint192) {
         return 2 * uint192(UniV2Math.sqrt(pegA * pegB));
+    }
+
+    /// @return {UoA/target} The price of a target unit in UoA
+    function pricePerTarget() public view virtual returns (uint192) {
+        return FIX_ONE;
     }
 
     /// @return If the asset is an instance of ICollateral or not
@@ -136,32 +142,38 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
             markStatus(CollateralStatus.DISABLED);
         } else {
             // tokenA soft default
-            try chainlinkFeedA.price_(oracleTimeout) returns (uint192 p) {
-                uint192 deltaA = (pegA * defaultThresholdA) / FIX_ONE;
-                if (p < pegA - deltaA || p > pegA + deltaA) markStatus(CollateralStatus.IFFY);
-                else markStatus(CollateralStatus.SOUND);
+            try chainlinkFeedA.price_(oracleTimeout) returns (uint192 pA) {
+                uint192 deltaA = (pegA * defaultThreshold) / FIX_ONE;
+                if (pA < pegA - deltaA || pA > pegA + deltaA) {
+                    markStatus(CollateralStatus.IFFY);
+                } else {
+                    //markStatus(CollateralStatus.SOUND);
+                    // tokenB soft default
+                    try chainlinkFeedB.price_(oracleTimeout) returns (uint192 pB) {
+                        uint192 deltaB = (pegB * defaultThreshold) / FIX_ONE;
+                        if (pB < pegB - deltaB || pB > pegB + deltaB) {
+                            markStatus(CollateralStatus.IFFY);
+                        } else {
+                            // prices from A/B gives not IFFY
+                            // check ratio in range
+                            (uint112 x, uint112 y, ) = pairV2.getReserves();
+                            uint192 ratio = uint192((y * 10**(18 - decB))).div(
+                                uint192(x * 10**(18 - decA))
+                            );
+                            uint192 deltaR = (pegA.div(pegB).mul(defaultThreshold));
+                            if (ratio < pegA.div(pegB) - deltaR || ratio > pegA.div(pegB) + deltaR)
+                                markStatus(CollateralStatus.IFFY);
+                            else markStatus(CollateralStatus.SOUND);
+                        }
+                    } catch (bytes memory errData) {
+                        if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                        markStatus(CollateralStatus.IFFY);
+                    }
+                }
             } catch (bytes memory errData) {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
                 markStatus(CollateralStatus.IFFY);
             }
-
-            // tokenB soft default
-            try chainlinkFeedB.price_(oracleTimeout) returns (uint192 p) {
-                uint192 deltaB = (pegB * defaultThresholdB) / FIX_ONE;
-                if (p < pegB - deltaB || p > pegB + deltaB) markStatus(CollateralStatus.IFFY);
-                else markStatus(CollateralStatus.SOUND);
-            } catch (bytes memory errData) {
-                if (errData.length == 0) revert(); // solhint-disable-line reason-string
-                markStatus(CollateralStatus.IFFY);
-            }
-
-            // check liquidity pool ratio
-            (uint112 x, uint112 y, ) = pairV2.getReserves();
-            uint192 ratio = y / x;
-            uint192 deltaR = ((pegA / pegB) * defaultThreshold) / FIX_ONE;
-            if (ratio < pegA / pegB - deltaR || ratio > pegA / pegB + deltaR)
-                markStatus(CollateralStatus.IFFY);
-            else markStatus(CollateralStatus.SOUND);
         }
 
         // update prev price
@@ -177,7 +189,9 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
-    function claimRewards() external override(IRewardable, UniV2Asset) {}
+    function claimRewards() external override(IRewardable, UniV2Asset) {
+        emit RewardsClaimed(erc20, pairV2.balanceOf(address(this)));
+    }
 
     // === Helpers ===
 

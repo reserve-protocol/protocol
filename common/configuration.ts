@@ -32,6 +32,7 @@ export interface ITokens {
   WBTC?: string
   EURT?: string
   RSR?: string
+  UNIV2_DAI_USDC?: string
 }
 
 interface INetworkConfig {
@@ -44,6 +45,8 @@ interface INetworkConfig {
   COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  UNISWAP_V2_ROUTE02?: string
+  UNISWAP_V2_FACTORY?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -81,6 +84,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
+      UNIV2_DAI_USDC: '0xae461ca67b15dc8dc81ce7615e0320da1a9ab8d5'
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -104,6 +108,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    UNISWAP_V2_ROUTE02: '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+    UNISWAP_V2_FACTORY: '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f'
   },
   '3': {
     name: 'ropsten',

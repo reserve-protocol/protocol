@@ -3,10 +3,10 @@ pragma solidity 0.8.9;
 
 library UniV2Math {
     /// sqrt babylonian algo
-    function sqrt(uint y) internal pure returns (uint z) {
+    function sqrt(uint192 y) internal pure returns (uint192 z) {
         if (y > 3) {
             z = y;
-            uint x = y / 2 + 1;
+            uint192 x = y / 2 + 1;
             while (x < z) {
                 z = x;
                 x = (y / x + x) / 2;

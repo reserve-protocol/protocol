@@ -5,6 +5,8 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+import "@uniswap/v2-core/contracts/interfaces/IUniswapV2ERC20.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../../../interfaces/IAsset.sol";
@@ -19,11 +21,15 @@ contract UniV2Asset is IAsset {
     using FixLib for uint192;
 
     IUniswapV2Pair public immutable pairV2;
+    IUniswapV2Router02 public immutable router;
     IERC20Metadata public immutable erc20;
     uint8 public immutable erc20Decimals;
 
     AggregatorV3Interface public immutable chainlinkFeedA;
     AggregatorV3Interface public immutable chainlinkFeedB;
+
+    uint8 public decA;
+    uint8 public decB;
 
     uint192 public immutable override maxTradeVolume; // {UoA}
     uint192 public immutable fallbackPrice; // {UoA/Tok}
@@ -32,6 +38,7 @@ contract UniV2Asset is IAsset {
 
     /// constructor
     /// @param pairV2_ UniswapV2 pair address
+    /// @param router_ UniswapV2 router
     /// @param fallbackPrice_ fallback price for LP tokens
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA = USD
     /// @param delayUntilDefault_ delay until default from IFFY status
@@ -40,6 +47,7 @@ contract UniV2Asset is IAsset {
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         address pairV2_,
+        address router_,
         uint192 fallbackPrice_,
         uint192 maxTradeVolume_,
         uint256 delayUntilDefault_,
@@ -47,19 +55,29 @@ contract UniV2Asset is IAsset {
         AggregatorV3Interface chainlinkFeedB_,
         uint48 oracleTimeout_
     ) {
-        require(fallbackPrice_ > 0, "fallback price zero");
-        require(address(pairV2_) != address(0), "missing pair");
-        require(address(chainlinkFeedA_) != address(0), "missing chainlink feed for token A");
-        require(address(chainlinkFeedB_) != address(0), "missing chainlink feed for token B");
-        require(maxTradeVolume_ > 0, "invalid max trade volume");
-        require(delayUntilDefault_ > 0, "delayUntilDefault zero");
-        require(oracleTimeout_ > 0, "oracleTimeout zero");
+        require(fallbackPrice_ > 0, "[UNIV2A DEPLOY ERROR]: fallback price zero");
+        require(address(pairV2_) != address(0), "[UNIV2A DEPLOY ERROR]: missing PairV2");
+        require(address(router_) != address(0), "[UNIV2A DEPLOY ERROR]: missing router");
+        require(
+            address(chainlinkFeedA_) != address(0),
+            "[UNIV2A DEPLOY ERROR]: missing chainlink feed for token A"
+        );
+        require(
+            address(chainlinkFeedB_) != address(0),
+            "[UNIV2A DEPLOY ERROR]: missing chainlink feed for token B"
+        );
+        require(maxTradeVolume_ > 0, "[UNIV2A DEPLOY ERROR]: invalid max trade volume");
+        require(delayUntilDefault_ > 0, "[UNIV2A DEPLOY ERROR]: delayUntilDefault zero");
+        require(oracleTimeout_ > 0, "[UNIV2A DEPLOY ERROR]: oracleTimeout zero");
         fallbackPrice = fallbackPrice_;
         maxTradeVolume = maxTradeVolume_;
         delayUntilDefault = delayUntilDefault_;
         chainlinkFeedA = chainlinkFeedA_;
         chainlinkFeedB = chainlinkFeedB_;
         pairV2 = IUniswapV2Pair(pairV2_);
+        router = IUniswapV2Router02(router_);
+        decA = IUniswapV2ERC20(pairV2.token0()).decimals();
+        decB = IUniswapV2ERC20(pairV2.token1()).decimals();
         erc20 = IERC20Metadata(pairV2_);
         erc20Decimals = pairV2.decimals();
         oracleTimeout = oracleTimeout_;
@@ -70,9 +88,12 @@ contract UniV2Asset is IAsset {
     function strictPrice() external view override returns (uint192) {
         uint192 pA = chainlinkFeedA.price(oracleTimeout);
         uint192 pB = chainlinkFeedB.price(oracleTimeout);
-        (uint112 reserveA, uint112 reserveB, ) = pairV2.getReserves();
-        uint totalSupply = pairV2.totalSupply();
-        return uint192((reserveA * pA + reserveB * pB) / totalSupply);
+        (uint112 x, uint112 y, ) = pairV2.getReserves();
+        // reserves to 18 decimals
+        uint192 reserveA = uint192(x * 10**(18 - decA));
+        uint192 reserveB = uint192(y * 10**(18 - decB));
+        uint256 totalSupply = pairV2.totalSupply();
+        return (reserveA.mulu(pA) + reserveB.mulu(pB)).divu(totalSupply, ROUND);
     }
 
     /// Can return 0
