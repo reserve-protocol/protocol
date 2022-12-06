@@ -16,17 +16,17 @@ interface TestTokenParams {
 const testTokens: TestTokenParams[] = [
   // Does not support cyptos yet sadly, registry only paths stables it seems
   // WBTC
-  // {
-  //   address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
-  //   whale: '0x218b95be3ed99141b0144dba6ce88807c4ad7c09',
-  //   amountOverride: bn('1e18'),
-  // },
+  {
+    address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+    whale: '0x218b95be3ed99141b0144dba6ce88807c4ad7c09',
+    amountOverride: bn('5e17'),
+  },
   // WETH
-  // {
-  //   address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-  //   whale: '0xf584F8728B874a6a5c7A8d4d387C9aae9172D621',
-  //   amountOverride: bn('1e18'),
-  // },
+  {
+    address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    whale: '0xf584F8728B874a6a5c7A8d4d387C9aae9172D621',
+    amountOverride: bn('1e18'),
+  },
   // USDC
   {
     address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
@@ -73,9 +73,9 @@ const testBaskets = [
   // Frictionless Auction Token
   '0xc3ac2836FadAD8076bfB583150447a8629658591',
   // Bogota Test
-  // '0xcEC59484A59e0EE908B25Ae6C9e2FeC43c012bbD',
+  '0xcEC59484A59e0EE908B25Ae6C9e2FeC43c012bbD',
   // RUSD
-  // '0xe2822bbB0c962aAce905773b15adf50706258A8A',
+  '0xe2822bbB0c962aAce905773b15adf50706258A8A',
   // Stabilized BTC
   // '0xD14B53b114064159184e7Da58a50bFb25a56a28E',
 ]
@@ -140,6 +140,11 @@ describe(`RToken Zapper Test V1`, () => {
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', targetBasket)
     const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
     const convertedSpend = toBNDecimals(acquireAmount, decimals)
+    const convertedSpend = toBNDecimals(spendAmount, decimals)
+    await token.connect(owner).approve(zapper.address, convertedSpend)
+
+    rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', targetBasket)
+    const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
     const basketName = await rToken.name()
     console.log(`Attempt mint of ${basketName} with ${tokenName}`)
     await zapper.connect(owner).zapIn(purchaseToken, targetBasket, convertedSpend);

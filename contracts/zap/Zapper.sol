@@ -42,8 +42,8 @@ contract Zapper is IZap {
         );
 
         uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to), zappedAmounts);
+
         // TOOD: this somehow fucks up and we can't mint, gives weird errors
-        // console.log(lowestIssueRatio * 9950 / 10_000);
         IRToken(_to).issue((lowestIssueRatio * 9950) / 10_000);
 
         received = IERC20(_to).balanceOf(address(this));
