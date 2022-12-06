@@ -75,116 +75,56 @@ contract ChaosOpsScenario {
             bytes32 targetName = targetNames[i];
             string memory targetNameStr = bytes32ToString(targetName);
 
-            // Coll #1 - CToken-like, stable, with reward
-            ERC20Fuzz token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 0"),
-                concat(concat("C", targetNameStr), "0"),
-                main
-            );
-            main.addToken(token);
-            IERC20Metadata reward = new ERC20Fuzz(
-                concat(concat("Reward", targetNameStr), " 0"),
-                concat(concat("R", targetNameStr), "0"),
-                main
-            );
-            main.addToken(reward);
-            main.assetRegistry().register(
-                new AssetMock(
-                    IERC20Metadata(address(reward)),
-                    IERC20Metadata(address(0)), // no recursive reward
-                    maxTradeVolume,
-                    volatile
-                )
-            );
+            // Three initial collateral tokens per target name:
+            // Coll #0 - CToken-like, stable, with reward
+            // Coll #1 - CToken-like, volatile, may depeg With reward
+            // Coll #2 - CToken-like, volatile, may hard default, no reward
+            for (uint256 k = 0; k < 3; k++) {
+                string memory num = Strings.toString(k);
 
-            // Register Collateral
-            main.assetRegistry().register(
-                new CollateralMock(
-                    IERC20Metadata(address(token)),
-                    reward,
-                    maxTradeVolume,
-                    5e16, // defaultThreshold
-                    86400, // delayUntilDefault
-                    IERC20Metadata(address(0)),
-                    targetName,
-                    growing,
-                    justOne,
-                    justOne,
-                    stable
-                )
-            );
-            collateralTokens.push(IERC20(token));
+                ERC20Fuzz token = new ERC20Fuzz(
+                    concat(concat(concat("Collateral", targetNameStr), " "), num),
+                    concat(concat("C", targetNameStr), num),
+                    main
+                    );
+                main.addToken(token);
 
-            // Coll #2 - CToken-like, volatile, may depeg With reward
-            token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 1"),
-                concat(concat("C", targetNameStr), "1"),
-                main
-            );
-            main.addToken(token);
+                if (k < 2) {
+                    ERC20Fuzz reward = new ERC20Fuzz(
+                        concat(concat(concat("Reward", targetNameStr), " "), num),
+                        concat(concat("R", targetNameStr), num),
+                        main
+                        );
+                    main.addToken(reward);
+                    token.setRewardToken(reward);
+                    main.assetRegistry().register(
+                        new AssetMock(reward, maxTradeVolume, volatile)
+                    );
+                }
 
-            reward = new ERC20Fuzz(
-                concat(concat("Reward", targetNameStr), " 1"),
-                concat(concat("R", targetNameStr), "1"),
-                main
-            );
-            main.addToken(reward);
-            main.assetRegistry().register(
-                new AssetMock(
-                    IERC20Metadata(address(reward)),
-                    IERC20Metadata(address(0)), // no recursive reward
-                    maxTradeVolume,
-                    volatile
-                )
-            );
 
-            // Register Collateral
-            main.assetRegistry().register(
-                new CollateralMock(
-                    IERC20Metadata(address(token)),
-                    reward,
-                    maxTradeVolume,
-                    5e16, // defaultThreshold
-                    86400, // delayUntilDefault
-                    IERC20Metadata(address(0)),
-                    targetName,
-                    growing,
-                    mayDepeg,
-                    justOne,
-                    volatile
-                )
-            );
-            collateralTokens.push(IERC20(token));
-
-            // Coll #3 - CToken-like, volatile, may hard default, no reward
-            token = new ERC20Fuzz(
-                concat(concat("Collateral", targetNameStr), " 2"),
-                concat(concat("C", targetNameStr), "2"),
-                main
-            );
-            main.addToken(token);
-
-            main.assetRegistry().register(
-                new CollateralMock(
-                    IERC20Metadata(address(token)),
-                    IERC20Metadata(address(0)),
-                    maxTradeVolume,
-                    5e16, // defaultThreshold
-                    86400, // delayUntilDefault
-                    IERC20Metadata(address(0)),
-                    targetName,
-                    mayHardDefault,
-                    justOne,
-                    justOne,
-                    volatile
-                )
-            );
-            collateralTokens.push(IERC20(token));
+                // Register Collateral
+                main.assetRegistry().register(
+                    new CollateralMock(
+                        IERC20Metadata(address(token)),
+                        maxTradeVolume,
+                        5e16, // defaultThreshold
+                        86400, // delayUntilDefault
+                        IERC20Metadata(address(0)),
+                        targetName,
+                        [growing, growing, mayHardDefault][k],
+                        [justOne, mayDepeg, justOne][k],
+                        [justOne, justOne, justOne][k],
+                        [stable, volatile, volatile][k]
+                        )
+                    );
+                collateralTokens.push(IERC20(token));
+            }
 
             // Create three stable backup tokens for each target name
             for (uint256 j = 0; j < 3; j++) {
                 string memory num = Strings.toString(j);
-                token = new ERC20Fuzz(
+                ERC20Fuzz token = new ERC20Fuzz(
                     concat(concat("Stable", targetNameStr), num),
                     concat(concat("S", targetNameStr), num),
                     main
@@ -193,11 +133,10 @@ contract ChaosOpsScenario {
                 main.assetRegistry().register(
                     new CollateralMock(
                         IERC20Metadata(address(token)),
-                        IERC20Metadata(address(0)), // no reward
                         maxTradeVolume,
                         5e16, // defaultThreshold
                         86400, // delayUntilDefault
-                        IERC20Metadata(address(0)),
+                        IERC20Metadata(address(token)),
                         targetName,
                         justOne,
                         stable,
@@ -331,54 +270,25 @@ contract ChaosOpsScenario {
         uint8 targetNameID,
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
-        uint256 createNewTokenSeed,
-        uint256 stableOrRandomSeed
+        bool isColl,
+        bool isStable
     ) public {
         bytes32 targetName = someTargetName(targetNameID);
         IAssetRegistry reg = main.assetRegistry();
+        IERC20 erc20 = main.someToken(tokenID);
 
-        IERC20 erc20;
-        // One out of ten times ignore provided token and create new one
-        if (createNewTokenSeed % 10 == 0) {
-            erc20 = IERC20(address(createAndRegisterNewToken(targetName, "Collateral", "C")));
+        if (isColl) {
+            reg.register(createColl(
+                erc20,
+                isStable,
+                defaultThresholdSeed,
+                delayUntilDefaultSeed,
+                targetName));
         } else {
-            // Use provied token
-            erc20 = main.someToken(tokenID);
-            if (reg.isRegistered(erc20)) return;
-        }
-
-        string memory firstChar = getFirstChar(IERC20Metadata(address(erc20)).symbol());
-
-        if (strEqual(firstChar, "C") || strEqual(firstChar, "S")) {
-            CollateralMock newColl;
-
-            // One out of 3 create a stable+ asset
-            bool createStable = (stableOrRandomSeed % 3) == 0;
-
-            if (createStable) {
-                newColl = createNewStableColl(
-                    erc20,
-                    defaultThresholdSeed,
-                    delayUntilDefaultSeed,
-                    targetName
-                );
-            } else {
-                newColl = createNewRandomColl(
-                    erc20,
-                    defaultThresholdSeed,
-                    delayUntilDefaultSeed,
-                    targetName
-                );
-            }
-            reg.register(newColl);
-        } else {
-            AssetMock newAsset = new AssetMock(
+            reg.register(new AssetMock(
                 IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenMaxTradeVolume,
-                getNextPriceModel()
-            );
-            reg.register(newAsset);
+                getNextPriceModel()));
         }
     }
 
@@ -402,27 +312,17 @@ contract ChaosOpsScenario {
         bool createStable = (stableOrRandomSeed % 3) == 0;
 
         if (createAsColl) {
-            CollateralMock newColl;
-            if (createStable) {
-                newColl = createNewStableColl(
-                    erc20,
-                    defaultThresholdSeed,
-                    delayUntilDefaultSeed,
-                    CollateralMock(address(asset)).targetName()
-                );
-            } else {
-                newColl = createNewRandomColl(
-                    erc20,
-                    defaultThresholdSeed,
-                    delayUntilDefaultSeed,
-                    CollateralMock(address(asset)).targetName()
-                );
-            }
+            CollateralMock newColl = createColl(
+                erc20,
+                createStable,
+                defaultThresholdSeed,
+                delayUntilDefaultSeed,
+                CollateralMock(address(asset)).targetName()
+            );
             reg.swapRegistered(newColl);
         } else {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             );
@@ -632,14 +532,18 @@ contract ChaosOpsScenario {
         }
     }
 
+    function setRewardToken(uint256 tokenID, uint256 rewardTokenID) public {
+        ERC20Fuzz erc20 = ERC20Fuzz(address(main.someToken(tokenID)));
+        erc20.setRewardToken(ERC20Fuzz(address(main.someToken(rewardTokenID))));
+    }
+
     // update reward amount
     function updateRewards(uint256 seedID, uint256 a) public {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
-        AssetMock asset = AssetMock(address(reg.toAsset(erc20)));
-        asset.updateRewardAmount(a);
-        // same signature on CollateralMock. Could define a whole interface, but eh
+
+        ERC20Fuzz(address(erc20)).setRewardAmount(a);
     }
 
     function claimRewards(uint8 which) public {
@@ -945,79 +849,41 @@ contract ChaosOpsScenario {
         return targetNames[id];
     }
 
-    function createAndRegisterNewToken(
-        bytes32 targetName,
+    // @return the new token address
+    function createToken(
+        uint8 targetNameID,
         string memory namePrefix,
         string memory symbolPrefix
-    ) internal returns (ERC20Fuzz) {
-        string memory targetNameStr = bytes32ToString(targetName);
-        string memory id = Strings.toString(tokenIdNonce);
+    ) public returns (ERC20Fuzz) {
+        string memory targetStr = bytes32ToString(someTargetName(targetNameID));
+        string memory idStr = Strings.toString(main.numTokens());
+
         ERC20Fuzz token = new ERC20Fuzz(
-            concat(concat(concat(namePrefix, targetNameStr), " "), id),
-            concat(concat(symbolPrefix, targetNameStr), id),
-            main
-        );
+            concat(namePrefix, targetStr, " ", idStr),
+            concat(symbolPrefix, targetStr, idStr),
+            main);
         main.addToken(token);
-        tokenIdNonce++;
         return token;
     }
 
-    function createAndRegisterNewRewardAsset(bytes32 targetName) internal returns (ERC20Fuzz) {
-        ERC20Fuzz reward = createAndRegisterNewToken(targetName, "Reward", "R");
-        main.assetRegistry().register(
-            new AssetMock(
-                IERC20Metadata(address(reward)),
-                IERC20Metadata(address(0)), // no recursive reward
-                defaultParams().rTokenMaxTradeVolume,
-                getNextPriceModel()
-            )
-        );
-        return reward;
-    }
-
-    function createNewStableColl(
+    function createColl(
         IERC20 erc20,
+        bool isStable,
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
-    ) internal returns (CollateralMock) {
-        ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
+    ) public returns (CollateralMock) {
         CollateralMock newColl = new CollateralMock(
             IERC20Metadata(address(erc20)),
-            IERC20Metadata(address(reward)),
             defaultParams().rTokenMaxTradeVolume,
             uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
             between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
             IERC20Metadata(address(0)),
             targetName,
-            growing,
-            justOne,
-            justOne,
-            stable
-        );
-
-        return newColl;
-    }
-
-    function createNewRandomColl(
-        IERC20 erc20,
-        uint256 defaultThresholdSeed,
-        uint256 delayUntilDefaultSeed,
-        bytes32 targetName
-    ) internal returns (CollateralMock) {
-        ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
-        CollateralMock newColl = new CollateralMock(
-            IERC20Metadata(address(erc20)),
-            IERC20Metadata(address(reward)),
-            defaultParams().rTokenMaxTradeVolume,
-            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
-            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
-            IERC20Metadata(address(0)),
-            targetName,
-            getNextPriceModel(),
-            getNextPriceModel(),
-            getNextPriceModel(),
-            getNextPriceModel()
+            isStable ? growing : getNextPriceModel(),
+            isStable ? justOne : getNextPriceModel(),
+            isStable ? justOne : getNextPriceModel(),
+            isStable ? stable : getNextPriceModel()
         );
 
         return newColl;

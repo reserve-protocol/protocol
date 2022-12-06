@@ -4,8 +4,6 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
-import "hardhat/console.sol";
-
 import "contracts/interfaces/IAsset.sol";
 import "contracts/interfaces/IDistributor.sol";
 import "contracts/libraries/Fixed.sol";

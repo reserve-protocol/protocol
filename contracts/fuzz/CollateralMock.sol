@@ -11,8 +11,6 @@ import "contracts/fuzz/PriceModel.sol";
 import "contracts/fuzz/OracleErrorMock.sol";
 import "contracts/fuzz/ERC20Fuzz.sol";
 
-import "hardhat/console.sol";
-
 contract CollateralMock is OracleErrorMock, Collateral {
     using FixLib for uint192;
     using PriceModelLib for PriceModel;

@@ -100,7 +100,6 @@ contract RebalancingScenario {
             main.assetRegistry().register(
                 new AssetMock(
                     IERC20Metadata(address(reward)),
-                    IERC20Metadata(address(0)), // no recursive reward
                     maxTradeVolume,
                     volatile
                 )
@@ -141,7 +140,6 @@ contract RebalancingScenario {
             main.assetRegistry().register(
                 new AssetMock(
                     IERC20Metadata(address(reward)),
-                    IERC20Metadata(address(0)), // no recursive reward
                     maxTradeVolume,
                     volatile
                 )
@@ -151,7 +149,6 @@ contract RebalancingScenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    reward,
                     maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
@@ -176,7 +173,6 @@ contract RebalancingScenario {
             main.assetRegistry().register(
                 new CollateralMock(
                     IERC20Metadata(address(token)),
-                    IERC20Metadata(address(0)),
                     maxTradeVolume,
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
@@ -202,7 +198,6 @@ contract RebalancingScenario {
                 main.assetRegistry().register(
                     new CollateralMock(
                         IERC20Metadata(address(token)),
-                        IERC20Metadata(address(0)), // no reward
                         maxTradeVolume,
                         5e16, // defaultThreshold
                         86400, // delayUntilDefault
@@ -400,7 +395,6 @@ contract RebalancingScenario {
         } else {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             );
@@ -449,7 +443,6 @@ contract RebalancingScenario {
         } else {
             AssetMock newAsset = new AssetMock(
                 IERC20Metadata(address(erc20)),
-                IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             );
@@ -675,9 +668,8 @@ contract RebalancingScenario {
         IERC20 erc20 = main.someToken(seedID);
         IAssetRegistry reg = main.assetRegistry();
         if (!reg.isRegistered(erc20)) return;
-        AssetMock asset = AssetMock(address(reg.toAsset(erc20)));
-        asset.updateRewardAmount(a);
-        // same signature on CollateralMock. Could define a whole interface, but eh
+
+        ERC20Fuzz(address(erc20)).setRewardAmount(a);
     }
 
     function claimRewards(uint8 which) public {
@@ -1033,7 +1025,6 @@ contract RebalancingScenario {
         main.assetRegistry().register(
             new AssetMock(
                 IERC20Metadata(address(reward)),
-                IERC20Metadata(address(0)), // no recursive reward
                 defaultParams().rTokenMaxTradeVolume,
                 getNextPriceModel()
             )
@@ -1050,7 +1041,6 @@ contract RebalancingScenario {
         ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
         CollateralMock newColl = new CollateralMock(
             IERC20Metadata(address(erc20)),
-            IERC20Metadata(address(reward)),
             defaultParams().rTokenMaxTradeVolume,
             uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
             between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
@@ -1071,10 +1061,8 @@ contract RebalancingScenario {
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
     ) internal returns (CollateralMock) {
-        ERC20Fuzz reward = createAndRegisterNewRewardAsset(targetName);
         CollateralMock newColl = new CollateralMock(
             IERC20Metadata(address(erc20)),
-            IERC20Metadata(address(reward)),
             defaultParams().rTokenMaxTradeVolume,
             uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
             between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default

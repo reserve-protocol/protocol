@@ -11,8 +11,6 @@ import "../../libraries/Fixed.sol";
 import "./Component.sol";
 import "./RewardableLib.sol";
 
-import "hardhat/console.sol";
-
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 /// @dev See docs/security for discussion of Multicall safety
 abstract contract TradingP1 is
@@ -81,9 +79,7 @@ abstract contract TradingP1 is
     /// Collective Action
     /// @custom:interaction CEI
     function claimRewards() external notPausedOrFrozen {
-        console.log("enter TradingP1.claimRewards()");
         RewardableLibP1.claimRewards(main.assetRegistry());
-        console.log("exit TradingP1.claimRewards()");
     }
 
     /// Claim rewards for a single asset

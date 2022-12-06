@@ -494,9 +494,7 @@ describe('The Chaos Operations scenario', () => {
       await scenario.updateRewards(0, 2n * exa) // set C0 rewards to 2exa R0
 
       // Check that the expected reward amount was actually updated...
-      const assetAddr = await comp.assetRegistry.toAsset(c0.address)
-      const asset = await ConAt('AssetMock', assetAddr)
-      expect(await asset.rewardAmount()).to.equal(2n * exa)
+      expect(await c0.rewardAmt()).to.equal(2n * exa)
 
       // claim rewards for each rewardable contract, assert balance changes
       for (let i = 0; i < 4; i++) {
@@ -768,20 +766,19 @@ describe('The Chaos Operations scenario', () => {
     it('can register/unregister/swap assets', async () => {
       // assets and collateral
       const erc20s = await comp.assetRegistry.erc20s()
-      expect(erc20s.length).to.equal(26) // includes RSR and RToken
 
       // Unregister a collateral from backup config - SA2
       await scenario.unregisterAsset(7)
 
       let updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(25)
+      expect(updatedErc20s.length).to.equal(erc20s.length - 1)
 
       // Register collateral again for target A, avoid creating a new token
       // Will create an additional reward token
       await scenario.registerAsset(7, 0, exa, exa, 1, exa)
 
       updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(27)
+      expect(updatedErc20s.length).to.equal(erc20s.length)
 
       // Swap collateral in main basket - CA2 - for same type
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
@@ -799,17 +796,19 @@ describe('The Chaos Operations scenario', () => {
     })
 
     it('can create stable+ collateral with reward', async () => {
+      const erc20s = await comp.assetRegistry.erc20s()
+
       // Unregister a collateral from backup config - SA2
       await scenario.unregisterAsset(7)
       let updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(25)
+      expect(updatedErc20s.length).to.equal(erc20s.length - 1)
 
       // Register STABLE collateral for target A, avoid creating a new token
-      await scenario.registerAsset(7, 0, exa, exa, 1, 0)
+      await scenario.registerAsset(7, 0, exa, exa, true, false)
 
       // Registered the new collateral and the reward asset
       updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(27)
+      expect(updatedErc20s.length).to.equal(erc20s.length)
 
       // Check collateral values
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA2'))
@@ -820,20 +819,14 @@ describe('The Chaos Operations scenario', () => {
       expect(await newColl.targetPerRef()).equal(fp(1))
       expect(await newColl.pricePerTarget()).equal(fp(1))
 
-      // Check reward asset
-      const rewardToken = await ConAt('ERC20Fuzz', await newColl.rewardERC20())
-      const rewardAsset = await ConAt(
-        'AssetMock',
-        await comp.assetRegistry.toAsset(rewardToken.address)
-      )
-      expect(await rewardToken.name()).to.equal('RewardA 3')
-      expect(await rewardToken.symbol()).to.equal('RA3')
-      expect(await rewardAsset.strictPrice()).to.equal(fp('1'))
+      // Set reward asset
+      await scenario.setRewardToken(7, 6)
+      const rewardToken = await ConAt('ERC20Fuzz', await token.rewardToken())
+      expect(await rewardToken.symbol()).to.equal('SA1')
     })
 
     it('can create random collateral with new token and reward', async () => {
-      let updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(26)
+      const erc20s = await comp.assetRegistry.erc20s()
 
       // Push some price models, by default uses STABLE Price Model
       // Note: Will use STABLE for the remaining price models
@@ -843,34 +836,24 @@ describe('The Chaos Operations scenario', () => {
       await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for uoa per target
       await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for deviation
 
-      // Register a new  RANDOM collateral from a new token (with reward)
-      await scenario.registerAsset(0, 0, exa, exa, 0, 1)
+      // Register a new non-stable collateral from a new token
+      const tokenID = await main.numTokens()
+      await scenario.createToken(3, 'Fnord', 'F')
 
-      // Check 2 new tokens registered
-      updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(28)
+      // Register another new token to be the new collateral's reward
+      const rewardID = await main.numTokens()
+      await scenario.createToken(3, 'FnordReward', 'frfr')
+      await scenario.registerAsset(tokenID, 3, exa, exa, true, false)
+      await scenario.registerAsset(rewardID, 3, exa, exa, false, false)
+      await scenario.setRewardToken(tokenID, rewardID)
+
+      // Check new tokens registered
+      const updatedErc20s = await comp.assetRegistry.erc20s()
+      expect(updatedErc20s.length).to.equal(erc20s.length + 2)
 
       // Check collateral values - RANDOM - Created with symbol CA3 (next index available)
-      const newToken = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA3'))
-      const newRandomColl = await ConAt(
-        'CollateralMock',
-        await comp.assetRegistry.toColl(newToken.address)
-      )
-
-      expect(await newRandomColl.strictPrice()).to.equal(fp(2))
-      expect(await newRandomColl.refPerTok()).to.equal(fp(1))
-      expect(await newRandomColl.targetPerRef()).to.equal(fp(2))
-      expect(await newRandomColl.pricePerTarget()).to.equal(fp(1))
-
-      // Check reward asset
-      const rewardToken = await ConAt('ERC20Fuzz', await newRandomColl.rewardERC20())
-      const rewardAsset = await ConAt(
-        'AssetMock',
-        await comp.assetRegistry.toAsset(rewardToken.address)
-      )
-      expect(await rewardToken.name()).to.equal('RewardA 4')
-      expect(await rewardToken.symbol()).to.equal('RA4')
-      expect(await rewardAsset.strictPrice()).to.equal(fp('5'))
+      const newToken = await ConAt('ERC20Fuzz', await main.someToken(tokenID))
+      await ConAt('CollateralMock', await comp.assetRegistry.toColl(newToken.address))
     })
 
     it('can set prime basket and refresh', async () => {
