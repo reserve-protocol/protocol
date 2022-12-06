@@ -25,7 +25,7 @@ contract BancorV3FiatCollateral is Collateral {
 
     IBnTokenERC20 public immutable bnToken;
 
-    IStandardRewards public immutable StandardRewards;
+    IStandardRewards public immutable standardRewards;
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
@@ -45,7 +45,7 @@ contract BancorV3FiatCollateral is Collateral {
         uint256 delayUntilDefault_,
         int8 ERC20Decimals_,
         address bnToken_,
-        address StandardRewards_
+        address standardRewards_
     )
         Collateral(
             fallbackPrice_,
@@ -62,7 +62,7 @@ contract BancorV3FiatCollateral is Collateral {
         bnToken = IBnTokenERC20(address(bnToken_));
         ERC20Decimals = ERC20Decimals_;
         defaultThreshold = defaultThreshold_;
-        StandardRewards = IStandardRewards(address(StandardRewards_));
+        standardRewards = IStandardRewards(address(standardRewards_));
 
         prevReferencePrice = refPerTok();
     }
@@ -121,7 +121,7 @@ contract BancorV3FiatCollateral is Collateral {
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
     function claimRewards() external virtual override {
-        uint192 programId = uint192(StandardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
-        StandardRewards.claimRewards(uint256(programId));
+        uint192 programId = uint192(standardRewards.latestProgramId(0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48));
+        standardRewards.claimRewards(uint256(programId));
     }
 }
