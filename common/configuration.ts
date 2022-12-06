@@ -33,7 +33,9 @@ export interface ITokens {
   EURT?: string
   RSR?: string
   CRV?: string
+  FXS?: string
   aCRV?: string
+  aFXS?: string
 }
 
 interface INetworkConfig {
@@ -84,6 +86,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
       aCRV: '0x2b95A1Dcc3D405535f9ed33c219ab38E8d7e0884',
+      aFXS: '0xDAF03D70Fe637b91bA6E521A32E1Fb39256d3EC9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -101,6 +104,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
       CRV: '0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f',
+      FXS: '0x6Ebc52C8C1089be9eB3945C4350B68B8E4C2233f',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     AAVE_INCENTIVES: '0xd784927Ff2f95ba542BfC824c8a8a98F3495f6b5',
@@ -146,6 +150,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8e4ff03373931769a31fc52a4e78b5d70',
       aCRV: '0x2b95A1Dcc3D405535f9ed33c219ab38E8d7e0884',
+      aFXS: '0xDAF03D70Fe637b91bA6E521A32E1Fb39256d3EC9',
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
@@ -163,6 +168,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
       CRV: '0xCd627aA160A6fA45Eb793D19Ef54f5062F20f33f',
+      FXS: '0x6Ebc52C8C1089be9eB3945C4350B68B8E4C2233f',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
