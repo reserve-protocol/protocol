@@ -86,7 +86,7 @@ contract ChaosOpsScenario {
                     concat(concat(concat("Collateral", targetNameStr), " "), num),
                     concat(concat("C", targetNameStr), num),
                     main
-                    );
+                );
                 main.addToken(token);
 
                 if (k < 2) {
@@ -94,14 +94,11 @@ contract ChaosOpsScenario {
                         concat(concat(concat("Reward", targetNameStr), " "), num),
                         concat(concat("R", targetNameStr), num),
                         main
-                        );
+                    );
                     main.addToken(reward);
                     token.setRewardToken(reward);
-                    main.assetRegistry().register(
-                        new AssetMock(reward, maxTradeVolume, volatile)
-                    );
+                    main.assetRegistry().register(new AssetMock(reward, maxTradeVolume, volatile));
                 }
-
 
                 // Register Collateral
                 main.assetRegistry().register(
@@ -116,8 +113,8 @@ contract ChaosOpsScenario {
                         [justOne, mayDepeg, justOne][k],
                         [justOne, justOne, justOne][k],
                         [stable, volatile, volatile][k]
-                        )
-                    );
+                    )
+                );
                 collateralTokens.push(IERC20(token));
             }
 
@@ -276,19 +273,20 @@ contract ChaosOpsScenario {
         bytes32 targetName = someTargetName(targetNameID);
         IAssetRegistry reg = main.assetRegistry();
         IERC20 erc20 = main.someToken(tokenID);
+        require(!reg.isRegistered(erc20), "token already registered");
 
         if (isColl) {
-            reg.register(createColl(
-                erc20,
-                isStable,
-                defaultThresholdSeed,
-                delayUntilDefaultSeed,
-                targetName));
+            reg.register(
+                createColl(erc20, isStable, defaultThresholdSeed, delayUntilDefaultSeed, targetName)
+            );
         } else {
-            reg.register(new AssetMock(
-                IERC20Metadata(address(erc20)),
-                defaultParams().rTokenMaxTradeVolume,
-                getNextPriceModel()));
+            reg.register(
+                new AssetMock(
+                    IERC20Metadata(address(erc20)),
+                    defaultParams().rTokenMaxTradeVolume,
+                    getNextPriceModel()
+                )
+            );
         }
     }
 
@@ -861,7 +859,8 @@ contract ChaosOpsScenario {
         ERC20Fuzz token = new ERC20Fuzz(
             concat(namePrefix, targetStr, " ", idStr),
             concat(symbolPrefix, targetStr, idStr),
-            main);
+            main
+        );
         main.addToken(token);
         return token;
     }

@@ -23,8 +23,14 @@ contract ERC20Fuzz is ERC20Mock {
         main = _main;
     }
 
-    function setRewardToken(ERC20Fuzz token) public { rewardToken = token; }
-    function setRewardAmount(uint256 amount) public { rewardAmt = amount % 1e29; }
+    function setRewardToken(ERC20Fuzz token) public {
+        rewardToken = token;
+    }
+
+    function setRewardAmount(uint256 amount) public {
+        rewardAmt = amount % 1e29;
+    }
+
     function payRewards(address who) public {
         if (address(rewardToken) == address(0)) return;
         if (rewardAmt == 0) return;

@@ -66,11 +66,7 @@ contract NormalOpsScenario {
                 reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
                 main.addToken(reward);
                 main.assetRegistry().register(
-                    new AssetMock(
-                        IERC20Metadata(address(reward)),
-                        maxTradeVolume,
-                        volatile
-                    )
+                    new AssetMock(IERC20Metadata(address(reward)), maxTradeVolume, volatile)
                 );
                 token.setRewardToken(reward);
             }

@@ -5,12 +5,12 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../utils/impersonation'
-import { CollateralStatus, RoundingMode, TradeStatus, ZERO_ADDRESS } from '../../common/constants'
+import { CollateralStatus, RoundingMode, TradeStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
 
-import { addr, CONFIG, PriceModelKind, RebalancingScenarioStatus } from './common'
+import { addr, PriceModelKind, RebalancingScenarioStatus } from './common'
 
 const user = (i: number) => addr((i + 1) * 0x10000)
 const ConAt = ethers.getContractAt
@@ -500,7 +500,7 @@ describe('The Rebalancing scenario', () => {
       }
 
       const bal2 = await r0.balanceOf(comp.backingManager.address)
-      scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
+      await scenario.sweepRewards() // sweep will sweep only the rewards at rtoken.
       const bal3 = await r0.balanceOf(comp.backingManager.address)
       expect(bal3.sub(bal2)).to.equal(2n * exa)
     })
@@ -768,12 +768,14 @@ describe('The Rebalancing scenario', () => {
       let updatedErc20s = await comp.assetRegistry.erc20s()
       expect(updatedErc20s.length).to.equal(25)
 
-      // Register collateral again for target A, avoid creating a new token
-      // Will create an additional reward token
-      await scenario.registerAsset(7, 0, exa, exa, 1, exa)
+      // Create additional reward token
+      await scenario.createToken(2, 'Fnord', 'FFF')
+
+      // Register collateral again for target A
+      await scenario.registerAsset(7, 0, exa, exa, true, false)
 
       updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(27)
+      expect(updatedErc20s.length).to.equal(26)
 
       // Swap collateral in main basket - CA2 - for same type
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA2'))
@@ -782,7 +784,7 @@ describe('The Rebalancing scenario', () => {
         await comp.assetRegistry.toColl(token.address)
       )
 
-      await scenario.swapRegisteredAsset(4, exa, exa, 2, 0)
+      await scenario.swapRegisteredAsset(4, 0, exa, exa, true, true)
 
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
@@ -791,17 +793,15 @@ describe('The Rebalancing scenario', () => {
     })
 
     it('can create stable+ collateral with reward', async () => {
+      expect((await comp.assetRegistry.erc20s()).length).to.equal(26)
+
       // Unregister a collateral from backup config - SA2
       await scenario.unregisterAsset(7)
-      let updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(25)
+      expect((await comp.assetRegistry.erc20s()).length).to.equal(25)
 
-      // Register STABLE collateral for target A, avoid creating a new token
-      await scenario.registerAsset(7, 0, exa, exa, 1, 0)
-
-      // Registered the new collateral and the reward asset
-      updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(27)
+      // Register STABLE collateral for target A
+      await scenario.registerAsset(7, 0, exa, exa, true, true)
+      expect((await comp.assetRegistry.erc20s()).length).to.equal(26)
 
       // Check collateral values
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA2'))
@@ -811,16 +811,6 @@ describe('The Rebalancing scenario', () => {
       expect(await newColl.refPerTok()).equal(fp(1))
       expect(await newColl.targetPerRef()).equal(fp(1))
       expect(await newColl.pricePerTarget()).equal(fp(1))
-
-      // Check reward asset
-      const rewardToken = await ConAt('ERC20Fuzz', await newColl.rewardERC20())
-      const rewardAsset = await ConAt(
-        'AssetMock',
-        await comp.assetRegistry.toAsset(rewardToken.address)
-      )
-      expect(await rewardToken.name()).to.equal('RewardA 3')
-      expect(await rewardToken.symbol()).to.equal('RA3')
-      expect(await rewardAsset.strictPrice()).to.equal(fp('1'))
     })
 
     it('can create random collateral with new token and reward', async () => {
@@ -829,21 +819,22 @@ describe('The Rebalancing scenario', () => {
 
       // Push some price models, by default uses STABLE Price Model
       // Note: Will use STABLE for the remaining price models
-      await scenario.pushPriceModel(0, fp('5'), 0, 0) // for Reward asset - Constant
       await scenario.pushPriceModel(3, fp('1'), fp('1'), fp('1.5')) // for ref per tok in collateral- Walk
       await scenario.pushPriceModel(1, fp('2'), fp('2'), fp('2')) // for target per ref in collateral- Manual
       await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for uoa per target
       await scenario.pushPriceModel(2, fp('1'), fp('0.9'), fp('1.1')) // stable for deviation
 
-      // Register a new  RANDOM collateral from a new token (with reward)
-      await scenario.registerAsset(0, 0, exa, exa, 0, 1)
+      // Register a new RANDOM collateral from a new token
+      const tokenID = await main.numTokens()
+      await scenario.createToken(0, 'Fnord', 'fr')
+      await scenario.registerAsset(tokenID, 0, exa, exa, true, false)
 
-      // Check 2 new tokens registered
+      // Check 1 new tokens registered
       updatedErc20s = await comp.assetRegistry.erc20s()
-      expect(updatedErc20s.length).to.equal(28)
+      expect(updatedErc20s.length).to.equal(27)
 
-      // Check collateral values - RANDOM - Created with symbol CA3 (next index available)
-      const newToken = await ConAt('ERC20Fuzz', await main.tokenBySymbol('CA3'))
+      // Check collateral values - RANDOM
+      const newToken = await ConAt('ERC20Fuzz', await main.tokens(tokenID))
       const newRandomColl = await ConAt(
         'CollateralMock',
         await comp.assetRegistry.toColl(newToken.address)
@@ -853,16 +844,6 @@ describe('The Rebalancing scenario', () => {
       expect(await newRandomColl.refPerTok()).to.equal(fp(1))
       expect(await newRandomColl.targetPerRef()).to.equal(fp(2))
       expect(await newRandomColl.pricePerTarget()).to.equal(fp(1))
-
-      // Check reward asset
-      const rewardToken = await ConAt('ERC20Fuzz', await newRandomColl.rewardERC20())
-      const rewardAsset = await ConAt(
-        'AssetMock',
-        await comp.assetRegistry.toAsset(rewardToken.address)
-      )
-      expect(await rewardToken.name()).to.equal('RewardA 4')
-      expect(await rewardToken.symbol()).to.equal('RA4')
-      expect(await rewardAsset.strictPrice()).to.equal(fp('5'))
     })
 
     it('can set prime basket and refresh', async () => {
@@ -1396,10 +1377,10 @@ describe('The Rebalancing scenario', () => {
       'Not valid for current state'
     )
     await expect(scenario.unregisterAsset(7)).to.be.revertedWith('Not valid for current state')
-    await expect(scenario.registerAsset(7, 0, exa, exa, 1, exa)).to.be.revertedWith(
+    await expect(scenario.registerAsset(7, 0, exa, exa, true, true)).to.be.revertedWith(
       'Not valid for current state'
     )
-    await expect(scenario.swapRegisteredAsset(4, exa, exa, 2, 0)).to.be.revertedWith(
+    await expect(scenario.swapRegisteredAsset(4, 0, exa, exa, true, true)).to.be.revertedWith(
       'Not valid for current state'
     )
 

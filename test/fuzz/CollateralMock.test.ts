@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { fp } from '../../common/numbers'
 import { CollateralStatus } from '../../common/constants'
 import { advanceTime } from '../utils/time'
-import { PriceModelKind, PriceModel, addr } from './common'
+import { PriceModelKind, PriceModel } from './common'
 import * as sc from '../../typechain' // All smart contract types
 
 describe('CollateralMock', () => {
