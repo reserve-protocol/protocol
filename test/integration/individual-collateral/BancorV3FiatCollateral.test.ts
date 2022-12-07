@@ -42,7 +42,7 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const HOLDER_USDC = '0xb494096548aa049c066289a083204e923cbf4413'
+const HOLDER_USDC = '0xc32e1289b5765b2c4d8a6aa925cbd2a29d35cc22'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -186,7 +186,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
     // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
     await whileImpersonating(HOLDER_USDC, async (bnUsdcSigner) => {
-      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000e8'))
+      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000000e8'))
     })
 
     // Set parameters
@@ -318,6 +318,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Check RToken price
       const issueAmount: BigNumber = bn('10000e18')
       await bnUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await console.log(bnUsdc.allowance(addr1.address,rToken.address))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
