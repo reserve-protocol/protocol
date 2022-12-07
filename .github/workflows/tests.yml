@@ -44,6 +44,7 @@ jobs:
       - run: yarn compile
       - run: yarn hardhat test ./test/integration/ours/uniswapv3/UniswapV3Plugin.test.ts
       - run: yarn hardhat test ./test/integration/ours/uniswapv2/UniswapV2Plugin.test.ts
+      - run: yarn hardhat test ./test/integration/ours/uniconvex/UniconvexPlugin.test.ts
         env:
           TS_NODE_SKIP_IGNORE: true
           MAINNET_RPC_URL: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_MAINNET_KEY }}
