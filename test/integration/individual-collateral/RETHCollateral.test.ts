@@ -228,12 +228,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await rethCollateral.prevReferencePrice()).to.equal(await rethCollateral.refPerTok())
       expect(await rethCollateral.strictPrice()).to.be.closeTo(fp('1000'), fp('5000'))
 
-      // Check claim data
-      // await expect(rethCollateral.claimRewards())
-      //   .to.emit(rethCollateral, 'RewardsClaimed')
-      //   .withArgs(compToken.address, 0)
-      // expect(await rethCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
     })
@@ -241,21 +235,19 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
     // Check assets/collaterals in the Asset Registry
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
       // Check assets/collateral
-      // const ERC20s = await assetRegistry.erc20s()
-      // expect(ERC20s[0]).to.equal(rToken.address)
-      // expect(ERC20s[1]).to.equal(rsr.address)
-      // expect(ERC20s[2]).to.equal(compToken.address)
-      // expect(ERC20s[3]).to.equal(cDai.address)
-      // expect(ERC20s.length).to.eql(4)
-      //
-      // // Assets
-      // expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
-      // expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      // expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(compAsset.address)
-      // expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(rethCollateral.address)
-      //
-      // // Collaterals
-      // expect(await assetRegistry.toColl(ERC20s[3])).to.equal(rethCollateral.address)
+      const ERC20s = await assetRegistry.erc20s()
+      expect(ERC20s[0]).to.equal(rToken.address)
+      expect(ERC20s[1]).to.equal(rsr.address)
+      expect(ERC20s[2]).to.equal(reth.address)
+      expect(ERC20s.length).to.eql(3)
+
+      // Assets
+      expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(rethCollateral.address)
+
+      // Collaterals
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(rethCollateral.address)
     })
 
     // Check RToken basket
@@ -309,7 +301,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await reth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await reth.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -321,11 +313,11 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const balanceAddr1cDai: BigNumber = await reth.balanceOf(addr1.address)
 
       // Check rates and prices
-      const cDaiPrice1: BigNumber = await rethCollateral.strictPrice() // ~ 0.022015 cents
-      const cDaiRefPerTok1: BigNumber = await rethCollateral.refPerTok() // ~ 0.022015 cents
+      const rethPrice1: BigNumber = await rethCollateral.strictPrice() // reth in UoA
+      const rethRefPerTok1: BigNumber = await rethCollateral.refPerTok() // reth in ref
 
-      expect(cDaiPrice1).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(rethPrice1).to.be.closeTo(fp('2000'), fp('1000'))
+      expect(rethRefPerTok1).to.be.closeTo(fp('1.080'), fp('1.000'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -342,16 +334,16 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await rethCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const cDaiPrice2: BigNumber = await rethCollateral.strictPrice() // ~0.022016
-      const cDaiRefPerTok2: BigNumber = await rethCollateral.refPerTok() // ~0.022016
+      const rethPrice2: BigNumber = await rethCollateral.strictPrice() // reth in UoA
+      const rethRefPerTok2: BigNumber = await rethCollateral.refPerTok() // reth in ref
 
       // Check rates and price increase
-      expect(cDaiPrice2).to.be.gt(cDaiPrice1)
-      expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
+      expect(rethPrice2).to.be.gt(rethPrice1)
+      expect(rethRefPerTok2).to.be.gt(rethRefPerTok1)
 
       // Still close to the original values
-      expect(cDaiPrice2).to.be.closeTo(fp('0.022'), fp('0.001'))
-      expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(rethPrice2).to.be.closeTo(fp('2000'), fp('1000'))
+      expect(rethRefPerTok2).to.be.closeTo(fp('1.080'), fp('1.000'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -413,23 +405,23 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   // claiming calls throughout the protocol are handled correctly and do not revert.
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
-      const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+      const MIN_ISSUANCE_PER_BLOCK = bn('5000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       // Try to claim rewards at this point - Nothing for Backing Manager
       // expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
 
-      await expectEvents(backingManager.claimRewards(), [
-        {
-          contract: backingManager,
-          name: 'RewardsClaimed',
-          args: [ZERO_ADDRESS, bn(0)],
-          emitted: true,
-        },
-      ])
+      // await expectEvents(backingManager.claimRewards(), [
+      //   {
+      //     contract: backingManager,
+      //     name: 'RewardsClaimed',
+      //     args: [ZERO_ADDRESS, bn(0)],
+      //     emitted: true,
+      //   },
+      // ])
 
       // Provide approvals for issuances
-      await reth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await reth.connect(addr1).approve(rToken.address, issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -441,13 +433,13 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.not.reverted
 
       // Keep moving time
       await advanceTime(3600)
 
       // Get additional rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.not.reverted
     })
   })
 
