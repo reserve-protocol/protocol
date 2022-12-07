@@ -3,7 +3,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
-import { CollateralStatus, FURNACE_DEST, STRSR_DEST, ZERO_ADDRESS } from '../common/constants'
+import {
+  CollateralStatus,
+  FURNACE_DEST,
+  STRSR_DEST,
+  ZERO_ADDRESS,
+  BN_SCALE_FACTOR,
+} from '../common/constants'
 import { bn, fp, toBNDecimals, divCeil } from '../common/numbers'
 import { IConfig } from '../common/configuration'
 import { expectEvents } from '../common/events'
@@ -113,8 +119,8 @@ describe('FacadeAct contract', () => {
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
 
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
     const product = sellAmt
       .mul(fp('1').sub(await backingManager.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)

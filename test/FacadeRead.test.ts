@@ -192,10 +192,11 @@ describe('FacadeRead contract', () => {
     it('Should return RToken price correctly', async () => {
       const avgPrice = fp('1')
       const [lowPrice, highPrice] = await facade.price(rToken.address)
-      const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
-      const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(ORACLE_ERROR))
-      expect(lowPrice).to.be.closeTo(expectedLow, 15)
-      expect(highPrice).to.be.closeTo(expectedHigh, 15)
+      const delta = avgPrice.mul(ORACLE_ERROR).div(fp('1'))
+      const expectedLow = avgPrice.sub(delta)
+      const expectedHigh = avgPrice.add(delta)
+      expect(lowPrice).to.equal(expectedLow)
+      expect(highPrice).to.equal(expectedHigh)
     })
 
     // P1 only

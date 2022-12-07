@@ -44,10 +44,10 @@ contract EURFiatCollateral is FiatCollateral {
             return (0, FIX_MAX, 0);
         }
 
-        // oracleError is on whatever the _true_ price is, not the one observed
-        // this oracleError is already the combined total oracle error
-        low = refPrice.div(FIX_ONE.plus(oracleError));
-        high = refPrice.div(FIX_ONE.minus(oracleError), CEIL);
+        // this oracleError is already the combined oracle error
+        uint192 delta = refPrice.mul(oracleError);
+        low = refPrice - delta;
+        high = refPrice + delta;
 
         // {target/ref} = {UoA/ref} / {UoA/target}
         pegPrice = refPrice.div(targetPrice);

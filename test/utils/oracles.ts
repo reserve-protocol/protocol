@@ -17,8 +17,9 @@ export const expectPrice = async (
 ) => {
   const asset = await ethers.getContractAt('Asset', assetAddr)
   const [lowPrice, highPrice] = await asset.price()
-  const expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
-  const expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
+  const delta = avgPrice.mul(oracleError).div(fp('1'))
+  const expectedLow = avgPrice.sub(delta)
+  const expectedHigh = avgPrice.add(delta)
 
   if (near) {
     const tolerance = avgPrice.div(overrideToleranceDiv || toleranceDivisor)
@@ -42,16 +43,17 @@ export const expectRTokenPrice = async (
   dustLoss?: BigNumber
 ) => {
   const rTokenAsset = await ethers.getContractAt('RTokenAsset', assetAddr)
+  const delta = avgPrice.mul(oracleError).div(fp('1'))
 
   // Apply two more oracleError discounts to account for the opposite basket price estimate
   // being used to calculate range.top/bottom in RecollateralizationLib.basketRange
-  let expectedLow = avgPrice.mul(fp('1')).div(fp('1').add(oracleError))
-  expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
-  expectedLow = expectedLow.mul(fp('1')).div(fp('1').add(oracleError))
+  let expectedLow = avgPrice.sub(delta)
+  expectedLow = expectedLow.sub(expectedLow.mul(oracleError).div(fp('1')))
+  expectedLow = expectedLow.sub(expectedLow.mul(oracleError).div(fp('1')))
 
-  let expectedHigh = avgPrice.mul(fp('1')).div(fp('1').sub(oracleError))
-  expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
-  expectedHigh = expectedHigh.mul(fp('1')).div(fp('1').sub(oracleError))
+  let expectedHigh = avgPrice.add(delta)
+  expectedHigh = expectedHigh.add(expectedHigh.mul(oracleError).div(fp('1')))
+  expectedHigh = expectedHigh.mul(fp('1')).div(avgPrice.sub(delta))
 
   if (maxTradeSlippage) {
     // There can be any amount of shortfall, from zero to all the capital held by BackingManager

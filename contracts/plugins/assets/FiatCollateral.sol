@@ -107,10 +107,10 @@ contract FiatCollateral is ICollateral, Asset {
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
         uint192 p = pegPrice.mul(refPerTok());
+        uint192 delta = p.mul(oracleError);
 
-        // oracleError is on whatever the _true_ price is, not the one observed
-        low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError), CEIL);
+        low = p - delta;
+        high = p + delta;
     }
 
     /// Should not revert

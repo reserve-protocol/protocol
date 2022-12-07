@@ -1600,11 +1600,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
 
       // Check status and price again
       expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-      const [newLowPrice, newHighPrice] = await basketHandler.price()
-      const expectedLow = fp('0.25').mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
-      const expectedHigh = fp('0.25').mul(fp('1')).div(fp('1').sub(ORACLE_ERROR))
-      expect(newLowPrice).to.be.closeTo(expectedLow, 10)
-      expect(newHighPrice).to.be.closeTo(expectedHigh, 10)
+      await expectPrice(basketHandler.address, fp('0.25'), ORACLE_ERROR, true)
     })
 
     it('Should disable basket on asset deregistration + return quantities correctly', async () => {
