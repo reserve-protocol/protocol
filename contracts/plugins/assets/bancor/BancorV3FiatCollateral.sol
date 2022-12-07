@@ -131,6 +131,8 @@ contract BancorV3FiatCollateral is Collateral {
         uint256[] memory ids = new uint256[](1);
         ids[0] = standardRewards.latestProgramId(bnToken.reserveToken());
         console.log("%s", ids[0]);
+        bool isActive = standardRewards.isProgramActive(ids[0]);
+        console.log("%s", isActive);
         uint256 claimed = standardRewards.claimRewards(ids);
         IERC20 bnt = IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C);
         emit RewardsClaimed(bnt, 0);

@@ -9,4 +9,6 @@ interface IStandardRewards is IERC20{
     function claimRewards(uint256[] memory ids) external returns (uint256);
 
     function pendingRewards(address provider, uint256 ids) external view returns (uint256);
+    
+    function isProgramActive(uint256 id) external view returns (bool);
 }
