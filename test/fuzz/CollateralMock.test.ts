@@ -26,7 +26,6 @@ describe('CollateralMock', () => {
     const f: sc.CollateralMock__factory = await ethers.getContractFactory('CollateralMock')
     return await f.deploy(
       token.address,
-      addr(0), // null reward token
       fp(1e6), // maxTradeVolume
       fp(0.05),
       86400,
