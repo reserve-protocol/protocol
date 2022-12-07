@@ -1,26 +1,21 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
 import hre, { ethers, network, waffle } from "hardhat"
-import { BigNumber, BigNumberish, ContractTransaction, Wallet } from "ethers"
+import { BigNumber, BigNumberish, Wallet } from "ethers"
 import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10, ZERO } from "../../../../common/numbers"
 import {
     ERC20Mock,
-    MockV3Aggregator,
     USDCMock,
     IBooster,
-    UniconvexCollateral3__factory,
 } from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
 import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
-import { UniconvexCollateral } from "@typechain/UniconvexCollateral"
-import { UniconvexCollateral__factory } from "@typechain/factories/UniconvexCollateral__factory"
-import { getLatestBlockTimestamp } from "../../../utils/time"
 import { ICurvePool3Assets } from "@typechain/ICurvePool3Assets"
-import { logBalances, sqrt } from "../common"
+import { logBalances } from "../common"
 import forkBlockNumber from "../../fork-block-numbers"
 
 const createFixtureLoader = waffle.createFixtureLoader
