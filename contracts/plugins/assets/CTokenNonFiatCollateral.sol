@@ -12,6 +12,7 @@ import "./OracleLib.sol";
  * like cWBTC. Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
 contract CTokenNonFiatCollateral is CTokenFiatCollateral {
+    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     AggregatorV3Interface public immutable targetUnitChainlinkFeed; // {UoA/target}

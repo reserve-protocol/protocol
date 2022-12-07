@@ -38,6 +38,7 @@ struct CollateralConfig {
  * Can intentionally disable default checks by setting config.defaultThreshold to 0
  */
 contract FiatCollateral is ICollateral, Asset {
+    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     // Default Status:

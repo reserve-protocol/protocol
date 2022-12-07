@@ -3,13 +3,13 @@ pragma solidity 0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import "contracts/interfaces/IAsset.sol";
-import "contracts/plugins/assets/Asset.sol";
-import "contracts/fuzz/Utils.sol";
-import "contracts/libraries/Fixed.sol";
+import "contracts/fuzz/ERC20Fuzz.sol";
 import "contracts/fuzz/OracleErrorMock.sol";
 import "contracts/fuzz/PriceModel.sol";
-import "contracts/fuzz/ERC20Fuzz.sol";
+import "contracts/fuzz/Utils.sol";
+import "contracts/interfaces/IAsset.sol";
+import "contracts/libraries/Fixed.sol";
+import "contracts/plugins/assets/Asset.sol";
 
 contract AssetMock is OracleErrorMock, Asset {
     using FixLib for uint192;
@@ -21,11 +21,14 @@ contract AssetMock is OracleErrorMock, Asset {
     constructor(
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
+        uint48 priceTimeout_,
+        uint192 oracleError_,
         PriceModel memory model_
     )
         Asset(
-            model_.curr,
+            priceTimeout_, // priceTimeout of 1 week
             AggregatorV3Interface(address(1)), // stub out the expected chainlink oracle
+            oracleError_,
             erc20_,
             maxTradeVolume_,
             1 // stub out oracleTimeout
@@ -35,13 +38,26 @@ contract AssetMock is OracleErrorMock, Asset {
         emit SetPrice(erc20.symbol(), model.price());
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
-    function price(AggregatorV3Interface, uint48) internal view virtual override returns (uint192) {
+    /// Our best guess at the market price of 1 whole token in UoA
+    /// @return low {UoA/tok} The bottom of the plausible price range
+    /// @return high {UoA/tok} The top of the plausible price range
+    /// @return fnord {UoA/tok} Unusued; here for compatibility with Collateral
+    function tryPrice()
+        external
+        view
+        virtual
+        override
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 fnord
+        )
+    {
         maybeFail();
-        return model.price();
+        (low, high) = errRange(model.price(), oracleError);
     }
 
-    function update(uint256 seed) public {
+    function update(uint256 seed) public virtual {
         model.update(uint192(seed));
         emit SetPrice(erc20.symbol(), model.price());
     }

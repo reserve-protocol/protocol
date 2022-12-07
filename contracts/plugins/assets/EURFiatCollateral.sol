@@ -11,6 +11,7 @@ import "./FiatCollateral.sol";
  * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} != {UoA}
  */
 contract EURFiatCollateral is FiatCollateral {
+    using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
     AggregatorV3Interface public immutable uoaPerTargetFeed; // {UoA/target}

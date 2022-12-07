@@ -59,6 +59,10 @@ function concat(
     return string(abi.encodePacked(a, b, c, d));
 }
 
+function errRange(uint192 price, uint192 error) pure returns (uint192 low, uint192 high) {
+    return (FixLib.div(price, FIX_ONE + error), FixLib.div(price, FIX_ONE - error, CEIL));
+}
+
 function getFirstChar(string memory originString) pure returns (string memory firstChar) {
     bytes memory firstCharByte = new bytes(1);
     firstCharByte[0] = bytes(originString)[0];

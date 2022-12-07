@@ -216,6 +216,8 @@ contract MainP0Fuzz is IMainFuzz, MainP0 {
         assets[0] = new AssetMock(
             IERC20Metadata(address(rsr)),
             params.rTokenMaxTradeVolume,
+            604800, // 1 week
+            0.005e18,
             PriceModel({ kind: Kind.Walk, curr: 1e18, low: 0.5e18, high: 2e18 })
         );
         assets[1] = new RTokenAsset(IRToken(address(rToken)), params.rTokenMaxTradeVolume);

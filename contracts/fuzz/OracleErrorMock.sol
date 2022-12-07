@@ -3,6 +3,8 @@ pragma solidity 0.8.9;
 
 import "contracts/plugins/assets/OracleLib.sol";
 
+error PriceOutsideRange();
+
 // A tiny mock that enables mock Assets and Collateral to fail like a real Oracle.
 abstract contract OracleErrorMock {
     // Oracle errors

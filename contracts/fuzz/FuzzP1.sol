@@ -127,7 +127,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
 
     function saveSurplusAndDeficitTokens() external {
         ComponentCache memory components = ComponentCache({
-            trader: ITrading(address(this)),
+            bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             reg: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
@@ -147,7 +147,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             if (erc20s[i] == components.rsr) continue;
 
             IAsset asset = components.reg.toAsset(erc20s[i]);
-            uint192 bal = asset.bal(address(components.trader)); // {tok}
+            uint192 bal = asset.bal(address(components.bm)); // {tok}
             uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
                 surplusTokens.push(asset.erc20());
@@ -190,7 +190,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         returns (RecollateralizationLibP1.BasketRange memory)
     {
         ComponentCache memory components = ComponentCache({
-            trader: ITrading(address(this)),
+            bm: IBackingManager(address(this)),
             bh: IMainFuzz(address(main)).basketHandler(),
             reg: IMainFuzz(address(main)).assetRegistry(),
             stRSR: IMainFuzz(address(main)).stRSR(),
@@ -203,7 +203,7 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
         });
         IERC20[] memory erc20s = components.reg.erc20s();
 
-        return RecollateralizationLibP1.basketRange(components, rules, erc20s);
+        return RecollateralizationLibP1.basketRange(components, rules, components.reg.getRegistry());
     }
 
     function _msgSender() internal view virtual override returns (address) {

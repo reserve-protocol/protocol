@@ -152,7 +152,7 @@ library RecollateralizationLibP1 {
         ComponentCache memory components,
         TradingRules memory rules,
         Registry memory reg
-    ) internal view returns (BasketRange memory range) {
+    ) public view returns (BasketRange memory range) {
         // basketPrice: The current UoA value of one basket.
         (uint192 basketPriceLow, uint192 basketPriceHigh) = components.bh.price();
 

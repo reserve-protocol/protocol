@@ -7,7 +7,7 @@ import "../../libraries/Fixed.sol";
 error StalePrice();
 
 /// Used by asset plugins to price their collateral
-abstract contract OracleLib {
+library OracleLib {
     /// External fn available for try-catch
 
     /// @dev Use for on-the-fly calculations that should revert
@@ -16,7 +16,6 @@ abstract contract OracleLib {
     function price(AggregatorV3Interface chainlinkFeed, uint48 timeout)
         internal
         view
-        virtual
         returns (uint192)
     {
         (uint80 roundId, int256 p, , uint256 updateTime, uint80 answeredInRound) = chainlinkFeed
