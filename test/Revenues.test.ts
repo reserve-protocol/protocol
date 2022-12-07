@@ -373,6 +373,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         await expect(rTokenTrader.claimRewards()).to.be.revertedWith('paused or frozen')
       })
 
+      it('Should not claim single rewards if paused', async () => {
+        await main.connect(owner).pause()
+        await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('Should not claim single rewards if frozen', async () => {
+        await main.connect(owner).freezeShort()
+        await expect(rTokenTrader.claimRewardsSingle(token2.address)).to.be.revertedWith('paused or frozen')
+      })
+
+      it('should claim a single reward', async () => {
+        const rewardAmt = bn('100e18')
+        await token2.setRewards(rTokenTrader.address, rewardAmt)
+        await rTokenTrader.claimRewardsSingle(token2.address)
+        const balAfter = await aaveToken.balanceOf(rTokenTrader.address);
+        expect(balAfter).to.equal(rewardAmt)
+      })
+
       it('Should not settle trade if paused', async () => {
         await main.connect(owner).pause()
         await expect(rTokenTrader.settleTrade(ZERO_ADDRESS)).to.be.revertedWith('paused or frozen')
