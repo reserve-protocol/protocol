@@ -22,8 +22,6 @@ import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils
 import {
   Asset,
   RibbonEarnUsdcCollateral,
-  CTokenFiatCollateral,
-  // CTokenMock,
   REarnMock,
   ERC20Mock,
   FacadeRead,
@@ -227,7 +225,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
 
     // Setup mock chainlink feed for some of the tests (so we can change the value)
     MockV3AggregatorFactory = await ethers.getContractFactory('MockV3Aggregator')
-    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(6, bn('1e8'))
+    mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
   describe('Deployment', () => {
@@ -544,7 +542,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(await newREarnCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newREarnCollateral.address, bn('8e5')) // -20%
+      await setOraclePrice(newREarnCollateral.address, bn('8e7')) // -20%
 
       // Force updates - Should update whenDefault and status
       await expect(newREarnCollateral.refresh())
@@ -621,7 +619,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
         'InvalidMockV3Aggregator'
       )
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-        await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
       const invalidREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>(

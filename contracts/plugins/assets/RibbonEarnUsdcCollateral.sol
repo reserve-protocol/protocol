@@ -2,11 +2,9 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../../libraries/Fixed.sol";
 import "./AbstractCollateral.sol";
 import "./IrEARN.sol";
-import "../../p1/mixins/RewardableLib.sol";
 
 /**
  * @title RibbonEarnUsdcCollateral
@@ -31,7 +29,6 @@ contract RibbonEarnUsdcCollateral is Collateral {
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
-        // IERC20Metadata rewardERC20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
