@@ -9,6 +9,8 @@ contract REarnMock is ERC20Mock {
     using FixLib for uint192;
     address internal _underlyingToken;
 
+    uint256 pps = 1018922;
+
     constructor(
         string memory name,
         string memory symbol,
@@ -21,36 +23,15 @@ contract REarnMock is ERC20Mock {
         return 6;
     }
 
-    function pricePerShare() public pure returns (uint256) {
-        return 1018922;
+    function pricePerShare() public view returns (uint256) {
+        return pps;
     }
     
     function maxRedeem() public pure {
         0;
     }
 
-    // function exchangeRateCurrent() external returns (uint256) {
-    //     _exchangeRate = _exchangeRate; // just to avoid sol warning
-    //     return _exchangeRate;
-    // }
-
-    // function exchangeRateStored() external view returns (uint256) {
-    //     return _exchangeRate;
-    // }
-
-    // /// @param fiatcoinRedemptionRate {fiatTok/tok}
-    // function setExchangeRate(uint192 fiatcoinRedemptionRate) external {
-    //     _exchangeRate = _toExchangeRate(fiatcoinRedemptionRate);
-    // }
-
-    // function underlying() external view returns (address) {
-    //     return _underlyingToken;
-    // }
-
-    // function _toExchangeRate(uint192 fiatcoinRedemptionRate) internal view returns (uint256) {
-    //     /// From Compound Docs: The current exchange rate, scaled by 10^(18 - 8 + Underlying Token Decimals).
-    //     uint192 start = shiftl_toFix(2, -2); // 0.02
-    //     int8 leftShift = 18 - int8(decimals()) + int8(IERC20Metadata(_underlyingToken).decimals());
-    //     return fiatcoinRedemptionRate.shiftl(leftShift).mul_toUint(start);
-    // }
+    function setPricePerShare(uint256 _pps) public {
+        pps = _pps;
+    }
 }

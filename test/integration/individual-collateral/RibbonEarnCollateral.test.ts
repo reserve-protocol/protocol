@@ -14,14 +14,13 @@ import {
   networkConfig,
 } from '../../../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
+import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  ComptrollerMock,
   RibbonEarnUsdcCollateral,
   CTokenFiatCollateral,
   // CTokenMock,
@@ -46,7 +45,6 @@ import { useEnv } from '#/utils/env'
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-// const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 const holderUSDC = '0xBcf5AB858CB0C003adb5226BdbFecd0bfd7b6D9f'
 const holder_rEarn = '0x9674126ff31e5ece36de0cf03a49351a7c814587'
 
@@ -61,13 +59,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
   // Tokens/Assets
   let usdc: ERC20Mock
   let rEARN: REarnMock
-  // let dai: ERC20Mock
-  // let cDai: CTokenMock
-  // let cDaiCollateral: CTokenFiatCollateral
   let rEarnUsdcCollateral: RibbonEarnUsdcCollateral
-  // let compToken: ERC20Mock
-  // let compAsset: Asset
-  // let comptroller: ComptrollerMock
   let rsr: ERC20Mock
   let rsrAsset: Asset
 
@@ -119,7 +111,6 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
 
   let chainId: number
 
-  // let CTokenCollateralFactory: ContractFactory
   let RibbonEarnCollateralFactory: ContractFactory
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
@@ -149,43 +140,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
     rEARN = <REarnMock>(
       await ethers.getContractAt('REarnMock', networkConfig[chainId].tokens.rEARN || '')
     )
-    // await rEARN.deploy();
-    // COMP token
-    // compToken = <ERC20Mock>(
-    //   await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.COMP || '')
-    // )
-    // // Compound Comptroller
-    // comptroller = await ethers.getContractAt(
-    //   'ComptrollerMock',
-    //   networkConfig[chainId].COMPTROLLER || ''
-    // )
-    // DAI token
-    // dai = <ERC20Mock>(
-    //   await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
-    // )
-    // cDAI token
-    // cDai = <CTokenMock>(
-    //   await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
-    // )
-
-    // Create COMP asset
-    // compAsset = <Asset>(
-    //   await (
-    //     await ethers.getContractFactory('Asset')
-    //   ).deploy(
-    //     fp('1'),
-    //     networkConfig[chainId].chainlinkFeeds.COMP || '',
-    //     compToken.address,
-    //     config.rTokenMaxTradeVolume,
-    //     ORACLE_TIMEOUT
-    //   )
-    // )
-
-    // Deploy cDai collateral plugin
-    // CTokenCollateralFactory = await ethers.getContractFactory('CTokenFiatCollateral', {
-    //   libraries: { OracleLib: oracleLib.address },
-    // })
-
+   
     RibbonEarnCollateralFactory = await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
@@ -201,7 +156,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
         delayUntilDefault,
         defaultThreshold,
       )
-  )
+    )
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // usdc
@@ -210,7 +165,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       await usdc.connect(usdcSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
     })
 
-    // initialBal = bn('100000e18')
+    // rEARN
     await whileImpersonating(holder_rEarn, async (rearnSigner) => {
       await rEARN.connect(rearnSigner).transfer(addr1.address, toBNDecimals(initialBal, 6))
     })
@@ -385,6 +340,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
+
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
 
       // Advance time and blocks slightly, causing refPerTok() to increase
@@ -413,11 +369,11 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
-      // Advance time and blocks slightly, causing refPerTok() to increase
+      // Advance time and blocks significantly, causing refPerTok() to increase
       await advanceTime(100000000)
       await advanceBlocks(100000000)
 
-      // Refresh cToken manually (required)
+      // Refresh collateral manually (required)
       await rEarnUsdcCollateral.refresh()
       expect(await rEarnUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -447,7 +403,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances - Fewer rEARN tokens should have been sent to the user
       const newBalanceAddr1rEARN: BigNumber = await rEARN.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
@@ -461,9 +417,6 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
         fp('2539'), // ~= 2539 usd (from above)
         fp('0.5')
       )
-
-      console.log(20)
-
     })
   })
 
@@ -474,23 +427,8 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
-      // Try to claim rewards at this point - Nothing for Backing Manager
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-      await expectEvents(backingManager.claimRewards(), [
-        {
-          contract: backingManager,
-          name: 'RewardsClaimed',
-          args: [compToken.address, bn(0)],
-          emitted: true,
-        },
-      ])
-
-      // No rewards so far
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
       // Provide approvals for issuances
-      await cDai.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await rEARN.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 6).mul(100))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -498,102 +436,83 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-      // Now we can claim rewards - check initial balance still 0
-      expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
       // Advance Time
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
+      expect(await backingManager.claimRewards()).to.not.throw
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
-      // Check rewards both in COMP and stkAAVE
-      const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
-
-      expect(rewardsCOMP1).to.be.gt(0)
-
-      // Keep moving time
-      await advanceTime(3600)
-
-      // Get additional rewards
-      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-      const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
-
-      expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
     })
   })
 
-  xdescribe('Price Handling', () => {
+  describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Compound
-      await expect(cDaiCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+      await expect(rEarnUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Fallback price is returned
-      const [isFallback, price] = await cDaiCollateral.price(true)
+      const [isFallback, price] = await rEarnUsdcCollateral.price(true)
       expect(isFallback).to.equal(true)
-      expect(price).to.equal(fp('0.02'))
+
+      expect(price).to.be.closeTo(fp('1.360'), fp('0.005'))
 
       // Refresh should mark status IFFY
-      await cDaiCollateral.refresh()
-      expect(await cDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await rEarnUsdcCollateral.refresh()
+      expect(await rEarnUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      // Ribbon Earn Collateral with no price
+      const nonpriceREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>await (
+        await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         NO_PRICE_DATA_FEED,
-        cDai.address,
+        rEARN.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
         delayUntilDefault,
-        await dai.decimals(),
-        comptroller.address
+        defaultThreshold,
       )
 
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
+      // Ribbon Earn - Collateral with no price info should revert
+      await expect(nonpriceREarnCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(nonpriceREarnCollateral.refresh()).to.be.reverted
+      expect(await nonpriceREarnCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      const invalidpriceREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>await (
+        await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         mockChainlinkFeed.address,
-        cDai.address,
+        rEARN.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
         delayUntilDefault,
-        await dai.decimals(),
-        comptroller.address
+        defaultThreshold,
       )
 
-      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+      await setOraclePrice(invalidpriceREarnCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidpriceREarnCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
-      await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceREarnCollateral.refresh()
+      expect(await invalidpriceREarnCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -601,104 +520,100 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
   // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
-  xdescribe('Collateral Status', () => {
+  describe('Collateral Status', () => {
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      const newREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>await (
+        await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         mockChainlinkFeed.address,
-        await cDaiCollateral.erc20(),
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
-        comptroller.address
+        await rEarnUsdcCollateral.erc20(),
+        await rEarnUsdcCollateral.maxTradeVolume(),
+        await rEarnUsdcCollateral.oracleTimeout(),
+        await rEarnUsdcCollateral.targetName(),
+        await rEarnUsdcCollateral.delayUntilDefault(),
+        await rEarnUsdcCollateral.defaultThreshold(),
       )
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newREarnCollateral.whenDefault()).to.equal(MAX_UINT256)
 
       // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newCDaiCollateral.address, bn('8e7')) // -20%
+      await setOraclePrice(newREarnCollateral.address, bn('8e5')) // -20%
 
       // Force updates - Should update whenDefault and status
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      await expect(newREarnCollateral.refresh())
+        .to.emit(newREarnCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
         delayUntilDefault
       )
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newREarnCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
 
       // Move time forward past delayUntilDefault
       await advanceTime(Number(delayUntilDefault))
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
       // CToken
-      const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
-      await expect(newCDaiCollateral.refresh()).to.not.emit(
-        newCDaiCollateral,
+      const prevWhenDefault: BigNumber = await newREarnCollateral.whenDefault()
+      await expect(newREarnCollateral.refresh()).to.not.emit(
+        newREarnCollateral,
         'CollateralStatusChanged'
       )
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newREarnCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
-      const CTokenMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
-      const symbol = await cDai.symbol()
-      const cDaiMock: CTokenMock = <CTokenMock>(
-        await CTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+      // Note: In this case requires to use a REarnMock to be able to change the rate
+      const REarnMockFactory: ContractFactory = await ethers.getContractFactory('REarnMock')
+      const symbol = await rEARN.symbol()
+      const rEarnMock: REarnMock = <REarnMock>(
+        await REarnMockFactory.deploy(symbol + ' Token', symbol, usdc.address)
       )
-      // Set initial exchange rate to the new cDai Mock
-      await cDaiMock.setExchangeRate(fp('0.02'))
 
       // Redeploy plugin using the new cDai mock
-      const newCDaiCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>await (
-        await ethers.getContractFactory('CTokenFiatCollateral', {
+      const newREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>await (
+        await ethers.getContractFactory('RibbonEarnUsdcCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
-        await cDaiCollateral.chainlinkFeed(),
-        cDaiMock.address,
-        await cDaiCollateral.maxTradeVolume(),
-        await cDaiCollateral.oracleTimeout(),
-        await cDaiCollateral.targetName(),
-        await cDaiCollateral.defaultThreshold(),
-        await cDaiCollateral.delayUntilDefault(),
-        18,
-        comptroller.address
+        fp('1'),
+        await rEarnUsdcCollateral.chainlinkFeed(),
+        rEarnMock.address,
+        await rEarnUsdcCollateral.maxTradeVolume(),
+        await rEarnUsdcCollateral.oracleTimeout(),
+        await rEarnUsdcCollateral.targetName(),
+        await rEarnUsdcCollateral.delayUntilDefault(),
+        await rEarnUsdcCollateral.defaultThreshold(),
       )
 
       // Check initial state
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newCDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newREarnCollateral.whenDefault()).to.equal(MAX_UINT256)
+      await newREarnCollateral.refresh();
+      expect(await newREarnCollateral.prevReferencePrice()).to.be.closeTo(fp('1.016'), fp('0.005'))
 
-      // Decrease rate for cDAI, will disable collateral immediately
-      await cDaiMock.setExchangeRate(fp('0.019'))
+      // Decrease price per share, will disable collateral immediately
+      await rEarnMock.setPricePerShare(bn('918922'))
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
+      // Force updates - Should update whenDefault and status
+      await expect(newREarnCollateral.refresh())
+        .to.emit(newREarnCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
-      expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newREarnCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newCDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+      expect(await newREarnCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -706,33 +621,31 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
         'InvalidMockV3Aggregator'
       )
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+        await InvalidMockV3AggregatorFactory.deploy(6, bn('1e6'))
       )
 
-      const invalidCTokenCollateral: CTokenFiatCollateral = <CTokenFiatCollateral>(
-        await CTokenCollateralFactory.deploy(
-          fp('0.02'),
+      const invalidREarnCollateral: RibbonEarnUsdcCollateral = <RibbonEarnUsdcCollateral>(
+        await RibbonEarnCollateralFactory.deploy(
+          fp('1'),
           invalidChainlinkFeed.address,
-          await cDaiCollateral.erc20(),
-          await cDaiCollateral.maxTradeVolume(),
-          await cDaiCollateral.oracleTimeout(),
-          await cDaiCollateral.targetName(),
-          await cDaiCollateral.defaultThreshold(),
-          await cDaiCollateral.delayUntilDefault(),
-          18,
-          comptroller.address
+          await rEarnUsdcCollateral.erc20(),
+          await rEarnUsdcCollateral.maxTradeVolume(),
+          await rEarnUsdcCollateral.oracleTimeout(),
+          await rEarnUsdcCollateral.targetName(),
+          await rEarnUsdcCollateral.delayUntilDefault(),
+          await rEarnUsdcCollateral.defaultThreshold(),
         )
       )
 
       // Reverting with no reason
       await invalidChainlinkFeed.setSimplyRevert(true)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidREarnCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidREarnCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Runnning out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
-      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
-      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(invalidREarnCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidREarnCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })

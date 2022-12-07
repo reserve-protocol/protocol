@@ -110,9 +110,9 @@ contract RibbonEarnUsdcCollateral is Collateral {
 
     /// Can return 0, can revert
     /// @return {UoA/tok} The current price()
-    /// we canc ancel out ref to get {UoA/tok}
+    /// we cancel out ref to get {UoA/tok}
     function strictPrice() public view override returns (uint192) {
-        uint192 refPerUoa = chainlinkFeed.price_(oracleTimeout); // usdc/usd
+        uint192 refPerUoa = chainlinkFeed.price(oracleTimeout); // usdc/usd
         return refPerUoa.mul(refPerTok());
     }
 
@@ -126,7 +126,7 @@ contract RibbonEarnUsdcCollateral is Collateral {
             return (false, p);
         } catch {
             require(allowFallback, "price reverted without failover enabled");
-            return (true, refPerTok());
+            return (true, fallbackPrice.mul(refPerTok()));
         }
     }
 }
