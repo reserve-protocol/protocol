@@ -2,8 +2,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { IMPLEMENTATION, ORACLE_ERROR } from '../../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT, PRICE_TIMEOUT } from './fixtures'
+import { IMPLEMENTATION, ORACLE_ERROR, PRICE_TIMEOUT } from '../../fixtures'
+import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
   IConfig,
@@ -75,7 +75,6 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let facadeWrite: FacadeWrite
-  let oracleLib: OracleLib
   let govParams: IGovParams
 
   // RToken Configuration
@@ -155,7 +154,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await (
         await ethers.getContractFactory('Asset')
       ).deploy(
-        fp('1'),
+        PRICE_TIMEOUT,
         networkConfig[chainId].chainlinkFeeds.COMP || '',
         ORACLE_ERROR,
         compToken.address,
