@@ -1343,9 +1343,9 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     })
 
     it('Should not allow to set prime Basket with an empty basket', async () => {
-      await expect(
-        basketHandler.connect(owner).setPrimeBasket([], [])
-      ).to.be.revertedWith('cannot empty basket')
+      await expect(basketHandler.connect(owner).setPrimeBasket([], [])).to.be.revertedWith(
+        'cannot empty basket'
+      )
     })
 
     it('Should not allow to set prime Basket with a zero amount', async () => {
@@ -1376,7 +1376,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should have a status of DISABLED if the basket is empty', async () => {
       // run a fresh deployment specifically for this test
       const receipt = await (
-        await deployer.deploy('RTKN RToken (empty basket)', 'RTKN (empty basket)', 'mandate (empty basket)', owner.address, config)
+        await deployer.deploy(
+          'RTKN RToken (empty basket)',
+          'RTKN (empty basket)',
+          'mandate (empty basket)',
+          owner.address,
+          config
+        )
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
       const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
@@ -1389,7 +1395,13 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
     it('Should return FIX_ZERO for basketsHeldBy(<any account>) if the basket is empty', async () => {
       // run a fresh deployment specifically for this test
       const receipt = await (
-        await deployer.deploy('RTKN RToken (empty basket)', 'RTKN (empty basket)', 'mandate (empty basket)', owner.address, config)
+        await deployer.deploy(
+          'RTKN RToken (empty basket)',
+          'RTKN (empty basket)',
+          'mandate (empty basket)',
+          owner.address,
+          config
+        )
       ).wait()
       const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
       const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)

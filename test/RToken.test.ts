@@ -2087,7 +2087,6 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
   describe('Reward Claiming #fast', () => {
     const issueAmt = bn('10000000e18')
-    const amt = fp('2')
 
     beforeEach(async () => {
       await token0.connect(owner).mint(addr1.address, issueAmt)
@@ -2118,7 +2117,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       const rewardAmt = bn('100e18')
       await token2.setRewards(rToken.address, rewardAmt)
       await rToken.claimRewardsSingle(token2.address)
-      const balAfter = await aaveToken.balanceOf(rToken.address);
+      const balAfter = await aaveToken.balanceOf(rToken.address)
       expect(balAfter).to.equal(rewardAmt)
     })
   })
