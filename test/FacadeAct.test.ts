@@ -21,7 +21,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   StaticATokenMock,
   TestIBackingManager,
   TestIDistributor,

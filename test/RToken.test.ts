@@ -993,8 +993,8 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       // maxTradeSlippage + dust losses
       // Recall the shortfall is calculated against high prices
       const [lowPrice] = await rTokenAsset.price()
-      const [sellPrice, _] = await collateral0.price()
-      const [__, buyPrice] = await collateral1.price()
+      const [sellPrice] = await collateral0.price()
+      const [, buyPrice] = await collateral1.price()
       const dustPriceImpact = fp('1').mul(config.minTradeVolume).div(issueAmount)
       const expectedPrice = sellPrice.sub(buyPrice.div(100)).sub(dustPriceImpact.mul(2))
       expect(lowPrice).to.equal(expectedPrice)
