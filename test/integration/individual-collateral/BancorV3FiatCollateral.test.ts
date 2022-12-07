@@ -42,7 +42,7 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const HOLDER_USDC = '0xa0f75491720835b36edc92d06ddc468d201e9b73'
+const HOLDER_USDC = '0xb494096548aa049c066289a083204e923cbf4413'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 

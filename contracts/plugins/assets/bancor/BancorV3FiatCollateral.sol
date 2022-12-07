@@ -119,7 +119,7 @@ contract BancorV3FiatCollateral is Collateral {
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint192 rate = _safeWrap(
-            bancorProxy.poolTokenToUnderlying(bnToken.reserveToken(), 1e6)
+            bancorProxy.poolTokenToUnderlying(bnToken.reserveToken(), 1e18)
         );
         int8 shiftLeft = 8 - ERC20Decimals - 8;
         return shiftl_toFix(rate, shiftLeft);
