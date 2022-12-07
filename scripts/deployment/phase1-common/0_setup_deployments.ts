@@ -56,7 +56,6 @@ async function main() {
     rewardableLib: '',
     tradingLib: '',
     permitLib: '',
-    oracleLib: '',
     facadeRead: '',
     facadeAct: '',
     facadeWriteLib: '',

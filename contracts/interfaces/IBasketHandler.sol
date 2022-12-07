@@ -50,11 +50,7 @@ interface IBasketHandler is IComponent {
     ///            Required range: 1-255
     /// @param erc20s A list of ordered backup collateral tokens
     /// @custom:governance
-    function setBackupConfig(
-        bytes32 targetName,
-        uint256 max,
-        IERC20[] calldata erc20s
-    ) external;
+    function setBackupConfig(bytes32 targetName, uint256 max, IERC20[] calldata erc20s) external;
 
     /// Default the basket in order to schedule a basket refresh
     /// @custom:protected
@@ -80,18 +76,23 @@ interface IBasketHandler is IComponent {
     /// @param amount {BU}
     /// @return erc20s The addresses of the ERC20 tokens in the reference basket
     /// @return quantities {qTok} The quantity of each ERC20 token to issue `amount` baskets
-    function quote(uint192 amount, RoundingMode rounding)
-        external
-        view
-        returns (address[] memory erc20s, uint256[] memory quantities);
+    function quote(
+        uint192 amount,
+        RoundingMode rounding
+    ) external view returns (address[] memory erc20s, uint256[] memory quantities);
 
     /// @return baskets {BU} The quantity of complete baskets at an address. A balance for BUs
     function basketsHeldBy(address account) external view returns (uint192 baskets);
 
-    /// @param allowFallback Whether to fail over to the fallback price or not
-    /// @return isFallback If any fallback prices were used
-    /// @return p {UoA/BU} The protocol's best guess at what a BU would be priced at in UoA
-    function price(bool allowFallback) external view returns (bool isFallback, uint192 p);
+    /// Should not revert
+    /// @return low {UoA/tok} The lower end of the price estimate
+    /// @return high {UoA/tok} The upper end of the price estimate
+    function price() external view returns (uint192 low, uint192 high);
+
+    /// Should not revert
+    /// Should be nonzero
+    /// @return {UoA/tok} A lot price to use for trade sizing
+    function lotPrice() external view returns (uint192);
 
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);

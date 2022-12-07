@@ -3,16 +3,18 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
-import { Collateral, defaultFixture, IMPLEMENTATION } from '../fixtures'
+import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_ERROR } from '../fixtures'
 import { bn, fp } from '../../common/numbers'
 import { expectEvents } from '../../common/events'
 import { IConfig, networkConfig } from '../../common/configuration'
-import { CollateralStatus, QUEUE_START } from '../../common/constants'
+import { CollateralStatus, QUEUE_START, MAX_UINT256 } from '../../common/constants'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
 import { expectTrade, getAuctionId, getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
 import { getChainId } from '../../common/blockchain-utils'
 import { whileImpersonating } from '../utils/impersonation'
+import { expectRTokenPrice } from '../utils/oracles'
+import { withinQuad } from '../utils/matchers'
 import {
   EasyAuction,
   ERC20Mock,
@@ -99,9 +101,8 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
 
     // Set up an auction of 10_000e18 RSR for token0
     beforeEach(async function () {
-      issueAmount = bn('10000e18')
-      sellAmt = issueAmount.mul(100).div(99).add(1)
-      buyAmt = issueAmount.add(1)
+      issueAmount = fp('10000')
+      buyAmt = issueAmount.add(2) // from prepareTradeToCoverDeficit rounding
 
       // Set prime basket
       await basketHandler.connect(owner).setPrimeBasket([token0.address], [fp('1')])
@@ -123,7 +124,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
 
       // Take backing
       await token0.connect(owner).burn(backingManager.address, issueAmount)
@@ -136,7 +137,10 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // Create auction
       await expect(backingManager.manageTokens([]))
         .to.emit(backingManager, 'TradeStarted')
-        .withArgs(anyValue, rsr.address, token0.address, sellAmt, buyAmt)
+        .withArgs(anyValue, rsr.address, token0.address, anyValue, withinQuad(buyAmt))
+
+      const t = await getTrade(backingManager, rsr.address)
+      sellAmt = await t.initBal()
 
       const auctionTimestamp: number = await getLatestBlockTimestamp()
       auctionId = await getAuctionId(backingManager, rsr.address)
@@ -229,7 +233,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [anyValue, rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
+          args: [anyValue, rsr.address, token0.address, sellAmt.div(2).add(1), bidAmt.sub(1)],
           emitted: true,
         },
       ])
@@ -265,7 +269,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [anyValue, rsr.address, token0.address, sellAmt.div(2), bidAmt.sub(1)],
+          args: [anyValue, rsr.address, token0.address, sellAmt.div(2).add(1), bidAmt.sub(1)],
           emitted: true,
         },
       ])
@@ -354,7 +358,7 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
         {
           contract: backingManager,
           name: 'TradeSettled',
-          args: [anyValue, rsr.address, token0.address, sellAmt.mul(2), bidAmt],
+          args: [anyValue, rsr.address, token0.address, sellAmt.mul(2).add(1), bidAmt],
           emitted: true,
         },
       ])
@@ -424,19 +428,21 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       // sellAmt = BigNumber.from(config.rTokenMaxTradeVolume)
 
       // Fix backing in a single auction, since it all fits inside the $1M maxTradeVolume
-      const rsrPriceFix = rsrPrice.mul(bn('1e10'))
-      buyAmt = issueAmount.add(1)
-      sellAmt = issueAmount.mul(fp('1')).div(rsrPriceFix).mul(100).div(99).add(2)
+      buyAmt = issueAmount.add(1) // rounding up from prepareTradeToCoverDeficit
 
       // Start next auction
       await expectEvents(backingManager.manageTokens([]), [
         {
           contract: backingManager,
           name: 'TradeStarted',
-          args: [anyValue, rsr.address, token0.address, sellAmt, buyAmt],
+          args: [anyValue, rsr.address, token0.address, anyValue, buyAmt],
           emitted: true,
         },
       ])
+
+      const t = await getTrade(backingManager, rsr.address)
+      sellAmt = await t.initBal()
+      expect(sellAmt).to.be.closeTo(fp('1.472e6'), fp('0.001e6'))
 
       const bidAmt = buyAmt.add(1)
       await token0.connect(addr1).approve(easyAuction.address, bidAmt)
@@ -540,15 +546,17 @@ describeFork(`Gnosis EasyAuction Mainnet Forking - P${IMPLEMENTATION}`, function
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
       expect(await token0.balanceOf(backingManager.address)).to.equal(issueAmount)
       expect(await rToken.totalSupply()).to.equal(issueAmount)
-      expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
+      await expectRTokenPrice(rTokenAsset.address, fp('1'), ORACLE_ERROR)
     })
 
     it('should be able to scoop entire auction cheaply when minBuyAmount = 0', async () => {
-      // Default collateral0
-      await setOraclePrice(collateral0.address, bn('0.5e8')) // depeg
+      // Set collateral0 to unpriced
+      await setOraclePrice(collateral0.address, MAX_UINT256.div(2)) // depeg
       await collateral0.refresh()
       await advanceTime((await collateral0.delayUntilDefault()).toString())
       await basketHandler.refreshBasket()
+      expect(await collateral0.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
 
       // Should launch auction for token1
       await expect(backingManager.manageTokens([])).to.emit(backingManager, 'TradeStarted')

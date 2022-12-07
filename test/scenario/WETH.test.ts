@@ -20,7 +20,14 @@ import {
 } from '../../typechain'
 import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -95,15 +102,17 @@ describe(`Self-referential collateral (eg ETH via WETH) - P${IMPLEMENTATION}`, (
     )
     wethCollateral = await (
       await ethers.getContractFactory('SelfReferentialCollateral')
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      weth.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH'),
-      DELAY_UNTIL_DEFAULT
-    )
+    ).deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: weth.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('ETH'),
+      defaultThreshold: bn(0),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     // Backup
     backupToken = erc20s[2] // USDT

@@ -16,6 +16,7 @@ import {
   BrokerP1,
   ComptrollerMock,
   CTokenFiatCollateral,
+  CTokenSelfReferentialCollateral,
   CTokenMock,
   ERC20Mock,
   DeployerP0,
@@ -24,18 +25,19 @@ import {
   FacadeAct,
   FacadeTest,
   DistributorP1,
+  FiatCollateral,
   FurnaceP1,
   EasyAuction,
   GnosisMock,
   GnosisTrade,
   IAssetRegistry,
   IBasketHandler,
-  FiatCollateral,
   MainP1,
   MockV3Aggregator,
   RevenueTraderP1,
   RTokenAsset,
   RTokenP1,
+  SelfReferentialCollateral,
   StaticATokenMock,
   StRSRP1Votes,
   TestIBackingManager,
@@ -49,7 +51,6 @@ import {
   TestIStRSR,
   USDCMock,
   NonFiatCollateral,
-  SelfReferentialCollateral,
 } from '../typechain'
 import { useEnv } from '#/utils/env'
 
@@ -63,7 +64,11 @@ export const IMPLEMENTATION: Implementation =
 
 export const SLOW = !!useEnv('SLOW')
 
+export const PRICE_TIMEOUT = bn('604800') // 1 week
+
 export const ORACLE_TIMEOUT = bn('281474976710655').div(2) // type(uint48).max / 2
+
+export const ORACLE_ERROR = fp('0.01') // 1% oracle error
 
 export type Collateral =
   | FiatCollateral
@@ -71,6 +76,7 @@ export type Collateral =
   | ATokenFiatCollateral
   | NonFiatCollateral
   | SelfReferentialCollateral
+  | CTokenSelfReferentialCollateral
 
 interface RSRFixture {
   rsr: ERC20Mock
@@ -141,10 +147,8 @@ interface CollateralFixture {
 }
 
 async function collateralFixture(
-  // oracleLib: OracleLib,
   comptroller: ComptrollerMock,
   aaveToken: ERC20Mock,
-  compToken: ERC20Mock,
   config: IConfig
 ): Promise<CollateralFixture> {
   const ERC20: ContractFactory = await ethers.getContractFactory('ERC20Mock')
@@ -167,18 +171,18 @@ async function collateralFixture(
     const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
-    const coll = <FiatCollateral>(
-      await FiatCollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-    )
+    const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: defaultThreshold,
+      delayUntilDefault: delayUntilDefault,
+    })
+    await coll.refresh()
     return [erc20, coll]
   }
   const makeSixDecimalCollateral = async (symbol: string): Promise<[USDCMock, Collateral]> => {
@@ -187,18 +191,18 @@ async function collateralFixture(
       await MockV3AggregatorFactory.deploy(8, bn('1e8'))
     )
 
-    const coll = <FiatCollateral>(
-      await FiatCollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-    )
+    const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: defaultThreshold,
+      delayUntilDefault: delayUntilDefault,
+    })
+    await coll.refresh()
     return [erc20, coll]
   }
   const makeCTokenCollateral = async (
@@ -209,20 +213,21 @@ async function collateralFixture(
     const erc20: CTokenMock = <CTokenMock>(
       await CTokenMockFactory.deploy(symbol + ' Token', symbol, referenceERC20.address)
     )
-    const coll = <CTokenFiatCollateral>(
-      await CTokenCollateralFactory.deploy(
-        fp('1').div(50),
-        chainlinkAddr,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        (await referenceERC20.decimals()).toString(),
-        comptroller.address
-      )
+    const coll = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkAddr,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: defaultThreshold,
+        delayUntilDefault: delayUntilDefault,
+      },
+      comptroller.address
     )
+    await coll.refresh()
     return [erc20, coll]
   }
   const makeATokenCollateral = async (
@@ -236,18 +241,18 @@ async function collateralFixture(
     )
     await erc20.setAaveToken(aaveToken.address)
 
-    const coll = <ATokenFiatCollateral>(
-      await ATokenCollateralFactory.deploy(
-        fp('1'),
-        chainlinkAddr,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-    )
+    const coll = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkAddr,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: defaultThreshold,
+      delayUntilDefault: delayUntilDefault,
+    })
+    await coll.refresh()
     return [erc20, coll]
   }
 
@@ -344,7 +349,6 @@ export interface DefaultFixture extends RSRAndCompAaveAndCollateralAndModuleFixt
   broker: TestIBroker
   rsrTrader: TestIRevenueTrader
   rTokenTrader: TestIRevenueTrader
-  oracleLib: OracleLib
   permitLib: PermitLib
 }
 
@@ -387,10 +391,6 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const PermitLibFactory: ContractFactory = await ethers.getContractFactory('PermitLib')
   const permitLib: PermitLib = <PermitLib>await PermitLibFactory.deploy()
 
-  // Deploy OracleLib external library
-  const OracleLibFactory: ContractFactory = await ethers.getContractFactory('OracleLib')
-  const oracleLib: OracleLib = <OracleLib>await OracleLibFactory.deploy()
-
   // Deploy FacadeRead
   const FacadeReadFactory: ContractFactory = await ethers.getContractFactory('FacadeRead')
   const facade = <FacadeRead>await FacadeReadFactory.deploy()
@@ -415,13 +415,15 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
   const rsrAsset: Asset = <Asset>(
     await AssetFactory.deploy(
-      fp('1'),
+      PRICE_TIMEOUT,
       rsrChainlinkFeed.address,
+      ORACLE_ERROR,
       rsr.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
+  await rsrAsset.refresh()
 
   // Create Deployer
   const DeployerFactory: ContractFactory = await ethers.getContractFactory('DeployerP0', {
@@ -521,26 +523,30 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
   )
   const aaveAsset: Asset = <Asset>(
     await AssetFactory.deploy(
-      fp('1'),
+      PRICE_TIMEOUT,
       aaveChainlinkFeed.address,
+      ORACLE_ERROR,
       aaveToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
+  await aaveAsset.refresh()
 
   const compChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
     await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   )
   const compAsset: Asset = <Asset>(
     await AssetFactory.deploy(
-      fp('1'),
+      PRICE_TIMEOUT,
       compChainlinkFeed.address,
+      ORACLE_ERROR,
       compToken.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT
     )
   )
+  await compAsset.refresh()
 
   // Register reward tokens
   await assetRegistry.connect(owner).register(aaveAsset.address)
@@ -564,10 +570,8 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
 
   // Deploy collateral for Main
   const { erc20s, collateral, basket, basketsNeededAmts } = await collateralFixture(
-    // oracleLib,
     compoundMock,
     aaveToken,
-    compToken,
     config
   )
 
@@ -630,7 +634,5 @@ export const defaultFixture: Fixture<DefaultFixture> = async function ([
     facadeTest,
     rsrTrader,
     rTokenTrader,
-    // oracleLib,
-    // permitLib,
   }
 }

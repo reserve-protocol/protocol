@@ -22,7 +22,14 @@ import {
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
 import { setOraclePrice } from '../utils/oracles'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -103,15 +110,17 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     )
     wethCollateral = await (
       await ethers.getContractFactory('SelfReferentialCollateral')
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      weth.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH'),
-      DELAY_UNTIL_DEFAULT
-    )
+    ).deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: weth.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('ETH'),
+      defaultThreshold: bn(0),
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     // cETH
     cETH = await (
@@ -121,13 +130,17 @@ describe(`CToken of self-referential collateral (eg cETH) - P${IMPLEMENTATION}`,
     cETHCollateral = await (
       await ethers.getContractFactory('CTokenSelfReferentialCollateral')
     ).deploy(
-      fp('1').div(50),
-      chainlinkFeed.address,
-      cETH.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('ETH'),
-      DELAY_UNTIL_DEFAULT,
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: cETH.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('ETH'),
+        defaultThreshold: bn(0),
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
       await weth.decimals(),
       compoundMock.address
     )

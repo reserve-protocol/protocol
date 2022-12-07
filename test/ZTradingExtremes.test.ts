@@ -20,7 +20,6 @@ import {
   IAssetRegistry,
   IBasketHandler,
   MockV3Aggregator,
-  OracleLib,
   TestIBackingManager,
   TestIDistributor,
   TestIStRSR,
@@ -29,7 +28,7 @@ import {
   StaticATokenMock,
 } from '../typechain'
 import { advanceTime } from './utils/time'
-import { defaultFixture, SLOW } from './fixtures'
+import { defaultFixture, ORACLE_ERROR, PRICE_TIMEOUT, SLOW } from './fixtures'
 import { cartesianProduct } from './utils/cases'
 import { issueMany } from './utils/issue'
 import { setOraclePrice } from './utils/oracles'
@@ -66,7 +65,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
   let backingManager: TestIBackingManager
   let basketHandler: IBasketHandler
   let distributor: TestIDistributor
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -109,7 +107,6 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       rsrAsset,
       aaveAsset,
       compAsset,
-      oracleLib,
     } = await loadFixture(defaultFixture))
 
     ERC20Mock = await ethers.getContractFactory('ERC20Mock')
@@ -141,18 +138,17 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
-    const collateral = <ATokenFiatCollateral>(
-      await ATokenCollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        erc20.address,
-        MAX_UOA,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT
-      )
-    )
+    const collateral = <ATokenFiatCollateral>await ATokenCollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: MAX_UOA,
+      oracleTimeout: MAX_ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: DEFAULT_THRESHOLD,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     await assetRegistry.connect(owner).register(collateral.address)
     return erc20
@@ -174,19 +170,19 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const chainlinkFeed = <MockV3Aggregator>(
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
-    const collateral = <CTokenFiatCollateral>(
-      await CTokenCollateralFactory.deploy(
-        fp('0.02'),
-        chainlinkFeed.address,
-        erc20.address,
-        MAX_UOA,
-        MAX_ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        DEFAULT_THRESHOLD,
-        DELAY_UNTIL_DEFAULT,
-        await underlying.decimals(),
-        compoundMock.address
-      )
+    const collateral = <CTokenFiatCollateral>await CTokenCollateralFactory.deploy(
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: chainlinkFeed.address,
+        oracleError: ORACLE_ERROR,
+        erc20: erc20.address,
+        maxTradeVolume: MAX_UOA,
+        oracleTimeout: MAX_ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('USD'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      compoundMock.address
     )
     await assetRegistry.connect(owner).register(collateral.address)
     return erc20
@@ -223,8 +219,9 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
     const newRTokenAsset: Asset = <Asset>await RTokenAssetFactory.deploy(rToken.address, MAX_UOA)
     const newRSRAsset: Asset = <Asset>(
       await RSRAssetFactory.deploy(
-        fp('1'),
+        PRICE_TIMEOUT,
         await rsrAsset.chainlinkFeed(),
+        ORACLE_ERROR,
         rsr.address,
         MAX_UOA,
         MAX_ORACLE_TIMEOUT
@@ -414,17 +411,20 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
       const AssetFactory: ContractFactory = await ethers.getContractFactory('Asset')
       const newAaveAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           await aaveAsset.chainlinkFeed(),
+          ORACLE_ERROR,
           aaveToken.address,
           MAX_UOA,
           MAX_ORACLE_TIMEOUT
         )
       )
+
       const newCompAsset: Asset = <Asset>(
         await AssetFactory.deploy(
-          fp('1'),
+          PRICE_TIMEOUT,
           await compAsset.chainlinkFeed(),
+          ORACLE_ERROR,
           compToken.address,
           MAX_UOA,
           MAX_ORACLE_TIMEOUT
@@ -712,19 +712,17 @@ describe(`Extreme Values (${SLOW ? 'slow mode' : 'fast mode'})`, () => {
             await ethers.getContractFactory('MockV3Aggregator')
           ).deploy(8, toBNDecimals(targetPerRef, 8))
         )
-        const collateral: FiatCollateral = <FiatCollateral>(
-          await CollateralFactory.deploy(
-            fp('1'),
-            chainlinkFeed.address,
-            erc20.address,
-            config.rTokenMaxTradeVolume,
-            MAX_ORACLE_TIMEOUT,
-            targetUnit,
-            fp('0.05'),
-            bn('86400')
-          )
-        )
-
+        const collateral: FiatCollateral = <FiatCollateral>await CollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: erc20.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: MAX_ORACLE_TIMEOUT,
+          targetName: targetUnit,
+          defaultThreshold: fp('0.05'),
+          delayUntilDefault: bn('86400'),
+        })
         if (firstCollateral === undefined) firstCollateral = collateral
         await assetRegistry.register(collateral.address)
         return erc20

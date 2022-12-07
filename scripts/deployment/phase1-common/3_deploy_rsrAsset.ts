@@ -6,7 +6,7 @@ import { networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
 import { fp } from '../../../common/numbers'
 import { getDeploymentFile, getDeploymentFilename, IDeployments } from '../../deployment/common'
-import { getCurrentPrice, getOracleTimeout, validateImplementations } from '../../deployment/utils'
+import { priceTimeout, getOracleTimeout, validateImplementations } from '../../deployment/utils'
 import { Asset } from '../../../typechain'
 
 let rsrAsset: Asset
@@ -30,16 +30,17 @@ async function main() {
 
   // ******************** Deploy RSR Asset ****************************************/
   const { asset: rsrAssetAddr } = await hre.run('deploy-asset', {
-    fallbackPrice: (await getCurrentPrice(deployments.prerequisites.RSR_FEED)).toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: deployments.prerequisites.RSR_FEED,
+    oracleError: fp('0.02').toString(), // 2%
     tokenAddress: deployments.prerequisites.RSR,
     rewardToken: ZERO_ADDRESS,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
-    oracleLib: deployments.oracleLib,
   })
 
   rsrAsset = <Asset>await ethers.getContractAt('Asset', rsrAssetAddr)
+  await rsrAsset.refresh()
 
   // Write temporary deployments file
   deployments.rsrAsset = rsrAsset.address

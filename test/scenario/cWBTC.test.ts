@@ -21,7 +21,15 @@ import {
   TestIRToken,
 } from '../../typechain'
 import { getTrade } from '../utils/trades'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
+import { expectPrice } from '../utils/oracles'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -109,15 +117,18 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     wBTCCollateral = await (
       await ethers.getContractFactory('NonFiatCollateral')
     ).deploy(
-      fp('20000'),
-      referenceUnitOracle.address,
-      targetUnitOracle.address,
-      wbtc.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('BTC'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: referenceUnitOracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: wbtc.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
+      targetUnitOracle.address
     )
 
     // cWBTC
@@ -127,16 +138,18 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
     cWBTCCollateral = await (
       await ethers.getContractFactory('CTokenNonFiatCollateral')
     ).deploy(
-      fp('20000').div(50),
-      referenceUnitOracle.address,
+      {
+        priceTimeout: PRICE_TIMEOUT,
+        chainlinkFeed: referenceUnitOracle.address,
+        oracleError: ORACLE_ERROR,
+        erc20: cWBTC.address,
+        maxTradeVolume: config.rTokenMaxTradeVolume,
+        oracleTimeout: ORACLE_TIMEOUT,
+        targetName: ethers.utils.formatBytes32String('BTC'),
+        defaultThreshold: DEFAULT_THRESHOLD,
+        delayUntilDefault: DELAY_UNTIL_DEFAULT,
+      },
       targetUnitOracle.address,
-      cWBTC.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('BTC'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT,
-      await wbtc.decimals(),
       compoundMock.address
     )
 
@@ -248,7 +261,12 @@ describe(`CToken of non-fiat collateral (eg cWBTC) - P${IMPLEMENTATION}`, () => 
       await targetUnitOracle.updateAnswer(bn('100000e8')) // $100k
       await cWBTC.setExchangeRate(fp('1.5')) // 150% redemption rate
       // Recall cTokens are much inflated relative to underlying. Redemption rate starts at 0.02
-      expect(await cWBTCCollateral.strictPrice()).to.equal(fp('95000').mul(3).div(2).div(50))
+      await expectPrice(
+        cWBTCCollateral.address,
+        fp('95000').mul(3).div(2).div(50),
+        ORACLE_ERROR,
+        true
+      )
     })
 
     it('should redeem after BTC price increase for same quantities', async () => {

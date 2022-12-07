@@ -29,7 +29,7 @@ async function main() {
   }
   // Check if deployment file already exists for this chainId
   const deploymentFilename = getAssetCollDeploymentFilename(chainId)
-  if (fileExists(deploymentFilename)) {
+  if (chainId != '31337' && fileExists(deploymentFilename)) {
     throw new Error(`${deploymentFilename} exists; I won't overwrite it.`)
   }
 

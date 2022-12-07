@@ -5,7 +5,6 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "../../libraries/Fixed.sol";
 
 error StalePrice();
-error PriceOutsideRange();
 
 /// Used by asset plugins to price their collateral
 abstract contract OracleLib {
@@ -31,20 +30,6 @@ abstract contract OracleLib {
         if (secondsSince > timeout) revert StalePrice();
 
         // {UoA/tok}
-        uint192 scaledPrice = shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));
-
-        if (scaledPrice == 0) revert PriceOutsideRange();
-        return scaledPrice;
-    }
-
-    /// @dev Use when a try-catch is necessary
-    /// @param timeout The number of seconds after which oracle values should be considered stale
-    /// @return {UoA/tok}
-    function price_(AggregatorV3Interface chainlinkFeed, uint48 timeout)
-        external
-        view
-        returns (uint192)
-    {
-        return price(chainlinkFeed, timeout);
+        return shiftl_toFix(uint256(p), -int8(chainlinkFeed.decimals()));
     }
 }
