@@ -5,7 +5,7 @@ import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
 import { expectEvents } from '../../common/events'
 import { CollateralStatus } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn, fp, divCeil } from '../../common/numbers'
 import {
   BadCollateralPlugin,
   ERC20Mock,
@@ -200,7 +200,12 @@ describe(`Bad Collateral Plugin - P${IMPLEMENTATION}`, () => {
       expect(await trade.sell()).to.equal(rsr.address)
       expect(await trade.buy()).to.equal(token0.address)
       expect(await trade.initBal()).to.be.gt(initialBal.div(10))
-      expect(await trade.worstCasePrice()).to.equal(fp('1.1').sub(1))
+
+      const unslippedPrice = fp('1.1')
+      const lowSellPrice = fp('1').sub(fp('1').mul(ORACLE_ERROR).div(fp('1')))
+      const highBuyPrice = fp('1').add(fp('1').mul(ORACLE_ERROR).div(fp('1')))
+      const worstCasePrice = divCeil(unslippedPrice.mul(lowSellPrice), highBuyPrice).sub(1)
+      expect(await trade.worstCasePrice()).to.equal(worstCasePrice)
     })
   })
 

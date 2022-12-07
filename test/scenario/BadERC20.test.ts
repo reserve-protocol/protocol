@@ -83,8 +83,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
 
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
     const product = sellAmt
       .mul(fp('1').sub(maxTradeSlippage)) // (a)
       .mul(lowSellPrice) // (b)

@@ -129,8 +129,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     oracleError: BigNumber,
     maxTradeSlippage: BigNumber
   ): BigNumber => {
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
     const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
 
     return divCeil(divCeil(product, lowSellPrice), fp('1'))
@@ -274,7 +274,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       priceTimeout: PRICE_TIMEOUT.toString(),
       referenceUnitFeed: eurRefUnitFeed.address,
       targetUnitFeed: eurTargetUnitFeed.address,
-      combinedOracleError: ORACLE_ERROR.toString(),
+      oracleError: ORACLE_ERROR.toString(),
       tokenAddress: eurToken.address,
       maxTradeVolume: MAX_TRADE_VOLUME.toString(),
       oracleTimeout: ORACLE_TIMEOUT.toString(),

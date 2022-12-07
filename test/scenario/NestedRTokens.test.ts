@@ -71,8 +71,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
     oracleError: BigNumber,
     maxTradeSlippage: BigNumber
   ): BigNumber => {
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
     const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
 
     return divCeil(divCeil(product, lowSellPrice), fp('1'))
@@ -93,8 +93,8 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
 
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
     const product = sellAmt
       .mul(fp('1').sub(maxTradeSlippage)) // (a)
       .mul(lowSellPrice) // (b)
@@ -389,7 +389,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         fp('1'),
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage()
-      )
+      ).add(1)
       expect(await staticATokenERC20.balanceOf(one.backingManager.address)).to.equal(issueAmt)
 
       // Note the inner RToken mints internally since it has excess backing
@@ -429,12 +429,20 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
       // Appreciation should be passed through to both tokens
       await setOraclePrice(aTokenCollateral.address, bn('1e8'))
-      const expectedPrice = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
+      const expectedPriceBeforeDiscount = issueAmt.add(rTokSellAmt).mul(fp('1')).div(issueAmt)
+      // Apply 3 sets of discounts
+      const expectedPriceAfterDiscount = toMinBuyAmt(
+        expectedPriceBeforeDiscount,
+        fp('1'),
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage()
+      )
 
       // expect(await one.rTokenAsset.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05'))
       await expectRTokenPrice(
         one.rTokenAsset.address,
-        expectedPrice,
+        expectedPriceAfterDiscount,
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage(),
         one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
@@ -442,7 +450,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       //  expect(await rTokenCollateral.strictPrice()).to.be.closeTo(expectedPrice, fp('0.05')
       await expectRTokenPrice(
         rTokenCollateral.address,
-        expectedPrice,
+        expectedPriceAfterDiscount,
         ORACLE_ERROR,
         await one.backingManager.maxTradeSlippage(),
         one.config.minTradeVolume.mul((await one.assetRegistry.erc20s()).length)
