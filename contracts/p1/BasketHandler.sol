@@ -622,6 +622,9 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// Good collateral is registered, collateral, not DISABLED, has the expected targetName,
     /// has nonzero targetPerRef() and refPerTok(), and is not a system token or 0 addr
     function goodCollateral(bytes32 targetName, IERC20 erc20) private view returns (bool) {
+        // untestable: All calls to goodCollateral pass an erc20 from the config or the backup.
+        //      Only Collaterals registered in the AssetRegistry can make it into config or backup.
+        //      AssetRegistry prevents Assets from being registered if their erc20 is address(0).
         if (erc20 == IERC20(address(0))) return false;
         if (erc20 == rsr) return false;
         if (erc20 == IERC20(address(rToken))) return false;
