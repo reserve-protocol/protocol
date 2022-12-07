@@ -1349,6 +1349,20 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
       })
 
+      it('Should not distribute if paused or frozen', async () => {
+        const distAmount: BigNumber = bn('100e18')
+
+        await main.connect(owner).pause()
+
+        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount)).to.be.revertedWith('paused or frozen')
+
+        await main.connect(owner).unpause()
+
+        await main.connect(owner).freezeShort()
+
+        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount)).to.be.revertedWith('paused or frozen')
+      })
+
       it('Should allow anyone to call distribute', async () => {
         const distAmount: BigNumber = bn('100e18')
 
