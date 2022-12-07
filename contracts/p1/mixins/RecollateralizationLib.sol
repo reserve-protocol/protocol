@@ -8,6 +8,8 @@ import "../../interfaces/IBackingManager.sol";
 import "../../libraries/Fixed.sol";
 import "./TradeLib.sol";
 
+import "hardhat/console.sol";
+
 /// Struct purposes:
 ///   1. Stay under stack limit with fewer vars
 ///   2. Cache information such as component addresses + trading rules to save on gas
@@ -197,6 +199,12 @@ library RecollateralizationLibP1 {
         // {BU} = {UoA} / {BU/UoA}
         range.top = basketTargetHigh.div(basketPriceLow, CEIL);
         range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
+
+        console.log("basketRange");
+        console.log("shortfall", shortfall, shortfallSlippage);
+        console.log("assets", assetsLow, assetsHigh);
+        console.log("basket targets", basketTargetLow, basketTargetHigh);
+        console.log("basket prices", basketPriceLow, basketPriceHigh);
     }
 
     // ===========================================================================================
