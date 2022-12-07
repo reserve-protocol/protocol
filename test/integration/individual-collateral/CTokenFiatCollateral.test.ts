@@ -668,6 +668,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
         },
         comptroller.address
       )
+      await newCDaiCollateral.refresh()
 
       // Check initial state
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
