@@ -39,7 +39,8 @@ import {
   TestIMain,
   TestIRToken,
 } from '../../../typechain'
-import { getEtherscanBaseURL } from '../../../scripts/deployment/utils'
+import { useEnv } from '#/utils/env'
+import forkBlockNumber from '../fork-block-numbers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -51,7 +52,10 @@ const fraxswapRouter = '0xC14d550632db8592D1243Edc8B95b0Ad06703867'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+// const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
+
+const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 
 describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -127,6 +131,18 @@ describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
+
+      // Fork at designated block number - REQUIRED
+    await hre.network.provider.request({
+      method: "hardhat_reset",
+      params: [{forking: {
+            jsonRpcUrl: MAINNET_RPC_URL,
+            blockNumber: forkBlockNumber['frax-plugins']
+          },},],
+      });
+
+    expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['frax-plugins'])
+  
   })
 
   beforeEach(async () => {
@@ -191,8 +207,7 @@ describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function
       primaryBasket: [fraxSwapCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries:[],
     }
 
     // Deploy RToken via FacadeWrite
@@ -624,7 +639,7 @@ describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function
 
       // Force updates - Should update whenDefault and status
       await expect(newFraxSwapCollateral.refresh())
-        .to.emit(newFraxSwapCollateral, 'DefaultStatusChanged')
+        .to.emit(newFraxSwapCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -642,7 +657,7 @@ describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function
       const prevWhenDefault: BigNumber = await newFraxSwapCollateral.whenDefault()
       await expect(newFraxSwapCollateral.refresh()).to.not.emit(
         newFraxSwapCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newFraxSwapCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -695,7 +710,7 @@ describeFork(`FraxSwapCollateral - Mainnet Forking P${IMPLEMENTATION}`, function
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newFraxSwapCollateral.refresh())
-        .to.emit(newFraxSwapCollateral, 'DefaultStatusChanged')
+        .to.emit(newFraxSwapCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newFraxSwapCollateral.status()).to.equal(CollateralStatus.DISABLED)

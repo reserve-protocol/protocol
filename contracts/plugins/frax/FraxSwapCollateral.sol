@@ -127,12 +127,12 @@ contract FraxSwapCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
     function _checkPriceDeviation(uint192 p0, uint192 p1) internal {
-        uint192 peg = 1 ether;
+        uint192 peg = FIX_ONE;
 
         // If prices are below their default-threshold price, default eventually
         uint192 pegDelta = (peg * defaultThreshold) / peg;

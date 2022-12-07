@@ -38,6 +38,8 @@ import {
   TestIMain,
   TestIRToken,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
+import forkBlockNumber from '../fork-block-numbers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -46,7 +48,8 @@ const holderFFRAXCRV = '0xfcf7c8fb47855e04a1bee503d1091b65359c6009'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
+const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
 
 describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -121,6 +124,18 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
+
+    // Fork at designated block number - REQUIRED
+    await hre.network.provider.request({
+      method: "hardhat_reset",
+      params: [{forking: {
+            jsonRpcUrl: MAINNET_RPC_URL,
+            blockNumber: forkBlockNumber['frax-plugins']
+          },},],
+      });
+
+    expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['frax-plugins'])
+
   })
 
   beforeEach(async () => {
@@ -181,8 +196,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       primaryBasket: [fTokenCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries:[],
     }
 
     // Deploy RToken via FacadeWrite
@@ -599,7 +613,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status
       await expect(newFTokenCollateral.refresh())
-        .to.emit(newFTokenCollateral, 'DefaultStatusChanged')
+        .to.emit(newFTokenCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -617,7 +631,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const prevWhenDefault: BigNumber = await newFTokenCollateral.whenDefault()
       await expect(newFTokenCollateral.refresh()).to.not.emit(
         newFTokenCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newFTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -661,7 +675,7 @@ describeFork(`FTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newFTokenCollateral.refresh())
-        .to.emit(newFTokenCollateral, 'DefaultStatusChanged')
+        .to.emit(newFTokenCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newFTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)

@@ -79,7 +79,7 @@ contract FTokenFiatCollateral is Collateral {
             // {uoa/ref}
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 // {target/ref} 
-                uint192 peg = 1 ether; // FIX_ONE, but not reading from storage to use less gas :D
+                uint192 peg = FIX_ONE; // FIX_ONE, but not reading from storage to use less gas :D
 
                 // D18{target/ref}= D18{target/ref} * D18{1} / D18
                 uint192 delta = (peg * defaultThreshold) / peg;
@@ -99,7 +99,7 @@ contract FTokenFiatCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
