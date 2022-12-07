@@ -264,6 +264,14 @@ library RecollateralizationLibP1 {
             // Accumulate potential losses to dust
             potentialDustLoss = potentialDustLoss.plus(rules.minTradeVolume);
 
+            // Skip disabled collateral (TODO: this is probably wrong, but necessary to match
+            // possibly trading these values at a min-value of 0 in prepareRecollateralizationTrade)
+            if (
+                asset.isCollateral() &&
+                (ICollateral(address(asset)).status() == CollateralStatus.DISABLED)
+            ) {
+                continue;
+            }
             // Consider only reliable sources of value for the assetsLow estimate
             if (!isFallback) {
                 assetsLow = assetsLow.plus(val);
