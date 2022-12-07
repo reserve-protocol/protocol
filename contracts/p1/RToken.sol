@@ -675,7 +675,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             // untestable:
             //      All calls to refundSpan() use valid values for left and right.
             //      queue.left <= left && right <= queue.right.
-            //      Any call to refundSpan() passes queue.left for left, OR passes queue.right for right, OR both.
+            //      Any call to refundSpan() passes queue.left for left,
+            //      OR passes queue.right for right, OR both.
             revert("Bad refundSpan");
         } // error: can't remove [left,right) from the queue, and leave just one interval
 
