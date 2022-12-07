@@ -44,7 +44,6 @@ contract EURFiatCollateral is FiatCollateral {
             return (0, FIX_MAX, 0);
         }
 
-        // this oracleError is already the combined oracle error
         uint192 delta = refPrice.mul(oracleError);
         low = refPrice - delta;
         high = refPrice + delta;

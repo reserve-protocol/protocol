@@ -53,7 +53,7 @@ export const expectRTokenPrice = async (
 
   let expectedHigh = avgPrice.add(delta)
   expectedHigh = expectedHigh.add(expectedHigh.mul(oracleError).div(fp('1')))
-  expectedHigh = expectedHigh.mul(fp('1')).div(avgPrice.sub(delta))
+  expectedHigh = expectedHigh.mul(avgPrice).div(avgPrice.sub(delta)).add(1)
 
   if (maxTradeSlippage) {
     // There can be any amount of shortfall, from zero to all the capital held by BackingManager
@@ -70,6 +70,7 @@ export const expectRTokenPrice = async (
   }
 
   const [lowPrice, highPrice] = await rTokenAsset.price()
+  console.log('expectRTokenPrice', lowPrice, highPrice, expectedLow, avgPrice, expectedHigh)
   expect(lowPrice).to.be.gte(expectedLow)
   expect(lowPrice).to.be.lte(avgPrice)
   expect(highPrice).to.be.lte(expectedHigh)
