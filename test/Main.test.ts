@@ -1865,50 +1865,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         expect(newBasket[i]).to.not.equal(token0.address)
       }
     })
-
-    it('Should not put RToken, RSR, or stRSR in the basket', async () => {
-      // Swap out collateral for bad target name
-      const CollFactory = await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-      const newColl = await CollFactory.deploy(
-        fp('1'),
-        await collateral0.chainlinkFeed(),
-        token0.address,
-        config.rTokenMaxTradeVolume,
-        await collateral0.oracleTimeout(),
-        await ethers.utils.formatBytes32String('NEW TARGET'),
-        await collateral0.defaultThreshold(),
-        await collateral0.delayUntilDefault()
-      )
-      await assetRegistry.connect(owner).swapRegistered(newColl.address)
-
-      // Change basket
-      await basketHandler.connect(owner).refreshBasket()
-
-      // New basket should be disabled since no basket backup config
-      expect(await basketHandler.status()).to.equal(CollateralStatus.DISABLED)
-
-      // Set basket backup config
-      await expect(
-        basketHandler
-          .connect(owner)
-          .setBackupConfig(ethers.utils.formatBytes32String('USD'), bn(2), [
-            token0.address,
-            token2.address,
-            token3.address,
-          ])
-      ).to.emit(basketHandler, 'BackupConfigSet')
-
-      // Change basket
-      await basketHandler.connect(owner).refreshBasket()
-
-      // New basket should not contain RToken, RSR, or stRSR
-      const newBasket = await facade.basketTokens(rToken.address)
-      for (let i = 0; i < newBasket.length; i++) {
-        expect(newBasket[i]).to.not.equal(token0.address)
-      }
-    })
   })
 
   describeGas('Gas Reporting', () => {
