@@ -786,6 +786,28 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await stRSR.balanceOf(addr1.address)).to.equal(0)
       })
 
+      it('Should not withdraw if firstId >= endId', async () => {
+        const prevAddr1Balance = await rsr.balanceOf(addr1.address)
+
+        await advanceTime(stkWithdrawalDelay + 1)
+
+        // Withdraw
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+        // Withdrawal was completed
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
+
+        // withdraw with same ID, nothing happens
+        await stRSR.connect(addr1).withdraw(addr1.address, 1)
+
+        // Nothing changed since second withdrawal
+        expect(await stRSR.totalSupply()).to.equal(amount2.add(amount3))
+        expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
+        expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
+      })
+
       it('Should withdraw after stakingWithdrawalDelay', async () => {
         // Get current balance for user
         const prevAddr1Balance = await rsr.balanceOf(addr1.address)

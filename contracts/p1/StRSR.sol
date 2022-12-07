@@ -697,10 +697,14 @@ abstract contract StRSRP1 is Initializable, ComponentP1, IStRSR, EIP712Upgradeab
     // effects: bal[account] -= amount; totalStakes -= amount;
     // this must only be called from a function that will fixup stakeRSR/Rate
     function _burn(address account, uint256 amount) internal virtual {
+        // untestable:
+        //      _burn is only called from unstake(), which uses msg.sender as `account`
         require(account != address(0), "ERC20: burn from the zero address");
 
         mapping(address => uint256) storage eraStakes = stakes[era];
         uint256 accountBalance = eraStakes[account];
+        // untestable:
+        //      _burn is only called from unstake(), which already checks this
         require(accountBalance >= amount, "ERC20: burn amount exceeds balance");
         unchecked {
             eraStakes[account] = accountBalance - amount;
