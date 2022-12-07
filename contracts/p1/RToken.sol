@@ -169,11 +169,24 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         setRedemptionRateFloor(redemptionRateFloor_);
     }
 
-    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// Convenience function for msg.sender to issue RTokens and maintain API compability
     /// @param amtRToken {qTok} The quantity of RToken to issue
+    /// @custom:interaction nearly CEI, see comments in issue(address,uint256) below for details
+    function issue(uint256 amtRToken) external {
+        issue(_msgSender(), amtRToken);
+    }
+
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param recipient The recipient of the issued RTokens
+    /// @param amtRToken {qTok} The quantity of RToken to issue
+    /// @return mintedAmount {qTok} The quantity of RToken instantly minted
     /// @custom:interaction nearly CEI, but see comments around handling of refunds
-    function issue(uint256 amtRToken) external notPausedOrFrozen {
-        require(amtRToken > 0, "Cannot issue zero");
+    function issue(address recipient, uint256 amtRToken)
+        public
+        notPausedOrFrozen
+        returns (uint256)
+    {
+        require(amtRToken != 0, "Cannot issue zero");
 
         // == Refresh ==
         assetRegistry.refresh();
@@ -181,20 +194,20 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         address issuer = _msgSender(); // OK to save: it can't be changed in reentrant runs
 
         uint48 basketNonce = basketHandler.nonce();
-        IssueQueue storage queue = issueQueues[issuer];
+        IssueQueue storage queue = issueQueues[recipient];
 
         // Refund issuances against old baskets
         if (queue.basketNonce > 0 && queue.basketNonce != basketNonce) {
             // == Interaction ==
             // This violates simple CEI, so we have to renew any potential transient state!
-            refundSpan(issuer, queue.left, queue.right);
+            refundSpan(recipient, queue.left, queue.right);
 
             // Refresh collateral after interaction
             assetRegistry.refresh();
 
             // Refresh local values after potential reentrant changes to contract state.
             basketNonce = basketHandler.nonce();
-            queue = issueQueues[issuer];
+            queue = issueQueues[recipient];
         }
 
         // == Checks-effects block ==
@@ -246,7 +259,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
             basketsNeeded = newBasketsNeeded;
 
             // Note: We don't need to update the prev queue entry because queue.left = queue.right
-            emit Issuance(issuer, amtRToken, amtBaskets);
+            emit Issuance(recipient, amtRToken, amtBaskets);
 
             // == Interactions then return: transfer tokens ==
             // Complete issuance
@@ -258,7 +271,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
                     deposits[i]
                 );
             }
-            return;
+            return amtRToken;
         }
 
         // ==== Otherwise, we're going to create and enqueue the issuance "iss":
@@ -299,7 +312,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         queue.right++;
 
         emit IssuanceStarted(
-            issuer,
+            recipient,
             queue.right - 1,
             amtRToken,
             amtBaskets,
@@ -317,6 +330,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
         for (uint256 i = 0; i < basketSize; ++i) {
             IERC20Upgradeable(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
         }
+
+        // Return 0 since nothing was minted immediately
+        return 0;
     }
 
     /// Add amtRToken's worth of issuance delay to allVestAt, and return the resulting finish time.
@@ -541,7 +557,8 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // effects:
     //   bal'[caller] = bal[caller] - amtRToken
     //   totalSupply' = totalSupply - amtRToken
-    function melt(uint256 amtRToken) external notPausedOrFrozen {
+    function melt(uint256 amtRToken) external {
+        requireNotPausedOrFrozen();
         _burn(_msgSender(), amtRToken);
         emit Melted(amtRToken);
         requireValidBUExchangeRate();

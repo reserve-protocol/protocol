@@ -34,9 +34,12 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
+    IMarket public immutable market;
+
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     constructor(
         IRToken erc20_,
+        IMarket market_,
         uint192 maxTradeVolume_,
         bytes32 targetName_,
         uint256 delayUntilDefault_
@@ -44,6 +47,7 @@ contract RTokenCollateral is RTokenAsset, ICollateral {
         require(targetName_ != bytes32(0), "targetName missing");
         targetName = targetName_;
         delayUntilDefault = delayUntilDefault_;
+        market = market_;
     }
 
     /// Should not revert

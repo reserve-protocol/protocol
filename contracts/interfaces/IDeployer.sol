@@ -10,6 +10,7 @@ import "./IRToken.sol";
 import "./IStRSR.sol";
 import "./ITrade.sol";
 import "./IVersioned.sol";
+import "./IFacadeRead.sol";
 
 /**
  * @title DeploymentParams
@@ -55,6 +56,7 @@ struct Implementations {
     IMain main;
     Components components;
     ITrade trade;
+    IFacadeRead facadeRead;
 }
 
 /**
@@ -75,8 +77,6 @@ interface IDeployer is IVersioned {
         address indexed owner,
         string version
     );
-
-    //
 
     /// Deploys an instance of the entire system
     /// @param name The name of the RToken to deploy

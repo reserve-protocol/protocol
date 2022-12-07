@@ -6,28 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../libraries/Fixed.sol";
 import "./IMain.sol";
 import "./IRewardable.sol";
-
-interface IMarket {
-    function enter(
-        address fromToken,
-        uint256 amountIn,
-        address toToken,
-        uint256 minAmountOut,
-        address swapTarget,
-        bytes calldata swapCallData,
-        address receiver
-    ) external payable returns (uint256 amountOut);
-
-    function exit(
-        address fromToken,
-        uint256 amountIn,
-        address toToken,
-        uint256 minAmountOut,
-        address swapTarget,
-        bytes calldata swapCallData,
-        address receiver
-    ) external payable returns (uint256 amountOut);
-}
+import "./IMarket.sol";
 
 /**
  * @title IAsset
@@ -60,8 +39,6 @@ interface IAsset is IRewardable {
 
     /// @param {UoA} The max trade volume, in UoA
     function maxTradeVolume() external view returns (uint192);
-
-    function market() external view returns (IMarket);
 }
 
 interface TestIAsset is IAsset {
@@ -118,4 +95,7 @@ interface ICollateral is IAsset {
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg
     function targetPerRef() external view returns (uint192);
+
+    // @return IMarket for entering/exiting this collateral token
+    function market() external view returns (IMarket);
 }

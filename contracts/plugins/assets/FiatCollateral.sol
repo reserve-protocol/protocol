@@ -13,6 +13,7 @@ struct CollateralConfig {
     AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
     uint192 oracleError; // {1} The % the oracle feed can be off by
     IERC20Metadata erc20; // The ERC20 of the collateral token
+    IMarket market; // The market to use to enter/exit this collateral
     uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
     uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
     bytes32 targetName; // The bytes32 representation of the target name
@@ -60,6 +61,8 @@ contract FiatCollateral is ICollateral, Asset {
     // does not become nonzero until after first refresh()
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
+    IMarket public market;
+
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
@@ -84,6 +87,8 @@ contract FiatCollateral is ICollateral, Asset {
         uint192 delta = peg.mul(config.defaultThreshold);
         pegBottom = peg - delta;
         pegTop = peg + delta;
+
+        market = config.market;
     }
 
     /// Can revert, used by other contract functions in order to catch errors

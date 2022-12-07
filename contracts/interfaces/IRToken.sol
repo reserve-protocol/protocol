@@ -111,6 +111,8 @@ interface IRToken is
     /// @custom:interaction
     function issue(uint256 amount) external;
 
+    function issue(address recipient, uint256 amount) external returns (uint256 mintedAmount);
+
     /// Cancels a vesting slow issuance of _msgSender
     /// If earliest == true, cancel id if id < endId
     /// If earliest == false, cancel id if endId <= id

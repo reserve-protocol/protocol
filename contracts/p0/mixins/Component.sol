@@ -25,6 +25,7 @@ abstract contract ComponentP0 is Versioned, Initializable, ContextUpgradeable, I
         require(!main.pausedOrFrozen(), "paused or frozen");
         _;
     }
+
     modifier notFrozen() {
         require(!main.frozen(), "frozen");
         _;

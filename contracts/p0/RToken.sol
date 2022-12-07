@@ -134,19 +134,32 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         battery.redemptionRateFloor = val;
     }
 
-    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// Begin a time-delayed issuance of RToken to msg.sender for basket collateral
     /// @param amount {qTok} The quantity of RToken to issue
     /// @custom:interaction
-    function issue(uint256 amount) external notPausedOrFrozen {
-        require(amount > 0, "Cannot issue zero");
+    function issue(uint256 amount) external override {
+        issue(msg.sender, amount);
+    }
+
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param recipient The account to receive the RToken
+    /// @param amount {qTok} The quantity of RToken to issue
+    /// @return mintedAmount {qTok} The quantity of RToken instantly minted
+    /// @custom:interaction
+    function issue(address recipient, uint256 amount)
+        public
+        override
+        notPausedOrFrozen
+        returns (uint256)
+    {
+        require(amount != 0, "Cannot issue zero");
         // Call collective state keepers.
         main.poke();
 
         IBasketHandler basketHandler = main.basketHandler();
         require(basketHandler.status() == CollateralStatus.SOUND, "basket unsound");
 
-        address issuer = _msgSender();
-        refundAndClearStaleIssuances(issuer);
+        refundAndClearStaleIssuances(recipient);
 
         // Compute # of baskets to create `amount` qRTok
         uint192 baskets = (totalSupply() > 0) // {BU}
@@ -157,13 +170,13 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
         // Accept collateral
         for (uint256 i = 0; i < erc20s.length; i++) {
             liabilities[IERC20(erc20s[i])] += deposits[i];
-            IERC20(erc20s[i]).safeTransferFrom(issuer, address(this), deposits[i]);
+            IERC20(erc20s[i]).safeTransferFrom(_msgSender(), address(this), deposits[i]);
         }
 
         // Add a new SlowIssuance ticket to the queue
         uint48 basketNonce = main.basketHandler().nonce();
         SlowIssuance memory iss = SlowIssuance({
-            issuer: issuer,
+            issuer: recipient,
             amount: amount,
             baskets: baskets,
             erc20s: erc20s,
@@ -172,10 +185,10 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             blockAvailableAt: nextIssuanceBlockAvailable(amount),
             processed: false
         });
-        issuances[issuer].push(iss);
-        accounts.add(issuer);
+        issuances[recipient].push(iss);
+        accounts.add(recipient);
 
-        uint256 index = issuances[issuer].length - 1;
+        uint256 index = issuances[recipient].length - 1;
         emit IssuanceStarted(
             iss.issuer,
             index,
@@ -192,12 +205,14 @@ contract RTokenP0 is ComponentP0, RewardableP0, ERC20PermitUpgradeable, IRToken 
             basketHandler.status() == CollateralStatus.SOUND
         ) {
             // At this point all checks have been done to ensure the issuance should vest
-            uint256 vestedAmount = tryVestIssuance(issuer, index);
-            emit IssuancesCompleted(issuer, index, index, vestedAmount);
+            uint256 vestedAmount = tryVestIssuance(recipient, index);
+            emit IssuancesCompleted(recipient, index, index, vestedAmount);
             assert(vestedAmount == iss.amount);
             // Remove issuance
-            issuances[issuer].pop();
+            issuances[recipient].pop();
         }
+
+        return 0;
     }
 
     /// Cancels a vesting slow issuance

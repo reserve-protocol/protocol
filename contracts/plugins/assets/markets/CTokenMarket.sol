@@ -1,103 +1,101 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./BaseMarket.sol";
+import "./ZeroExMarket.sol";
 
-contract CTokenMarket is BaseMarket {
+contract CTokenMarket is ZeroExMarket {
     using SafeERC20 for IERC20;
 
     IERC20 public constant CETH = IERC20(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
-    constructor() {
-        // 0x
-        approvedTargets[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true;
-    }
+    // solhint-disable-next-line no-empty-blocks
+    constructor() ZeroExMarket() {}
 
     function enter(
-        address fromToken,
+        IERC20 fromToken,
         uint256 amountIn,
-        address toCToken,
+        IERC20 toCToken,
         uint256 minAmountOut,
         address swapTarget,
         bytes calldata swapCallData,
         address receiver
-    ) external payable override whenNotPaused returns (uint256 outTokenAmount) {
-        IERC20 cTokenERC20 = IERC20(toCToken);
-        uint256 cTokenInitialBalance = cTokenERC20.balanceOf(address(this));
-
-        // ETH => cETH
-        if (fromToken == address(0) && toCToken == address(CETH)) {
-            require(msg.value > 0, "CTokenMarket: INSUFFICIENT_INPUT");
-
-            ICompoundToken(toCToken).mint{ value: msg.value }();
-            outTokenAmount = cTokenERC20.balanceOf(address(this)) - cTokenInitialBalance;
-
-            require(outTokenAmount >= minAmountOut, "CTokenMarket: INSUFFICIENT_OUTPUT");
-            return outTokenAmount;
-        }
-
-        require(amountIn > 0, "CTokenMarket: INSUFFICIENT_INPUT");
-        if (fromToken == address(0)) {
-            require(msg.value == amountIn, "CTokenMarket: INVALID_INPUT");
-        } else {
-            require(msg.value == 0, "CTokenMarket: NONZERO_MESSAGE_VALUE");
-            IERC20(fromToken).safeTransferFrom(msg.sender, address(this), amountIn);
-            IERC20(fromToken).safeApprove(swapTarget, amountIn);
-        }
-
-        // Swaps
+    ) external payable virtual override returns (uint256 outTokenAmount) {
+        require(amountIn != 0, "CTokenMarket: INSUFFICIENT_INPUT");
         require(approvedTargets[swapTarget], "CTokenMarket: SWAP_TARGET_NOT_APPROVED");
 
+        ICompoundToken cToken = ICompoundToken(address(toCToken));
+        uint256 cTokenBalanceBefore = toCToken.balanceOf(address(this));
+
+        if (address(fromToken) == address(0)) {
+            require(msg.value == amountIn, "CTokenMarket: INVALID_INPUT");
+
+            // ETH => cETH
+            if (address(toCToken) == address(CETH)) {
+                cToken.mint{ value: amountIn }();
+                outTokenAmount = toCToken.balanceOf(address(this)) - cTokenBalanceBefore;
+
+                require(outTokenAmount >= minAmountOut, "CTokenMarket: INSUFFICIENT_OUTPUT");
+                return outTokenAmount;
+            }
+        } else {
+            require(msg.value == 0, "CTokenMarket: INVALID_INPUT");
+
+            fromToken.safeTransferFrom(msg.sender, address(this), amountIn);
+            fromToken.safeApprove(swapTarget, amountIn);
+        }
+
         // X => ETH => cETH
-        if (toCToken == address(CETH)) {
-            uint256 initialUnderlyingAmount = address(this).balance;
+        if (address(fromToken) != address(0) && address(toCToken) == address(CETH)) {
+            uint256 initialBalance = address(this).balance;
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = swapTarget.call{ value: msg.value }(swapCallData);
+            (bool success, ) = swapTarget.call{ value: 0 }(swapCallData);
             require(success, "CTokenMarket: SWAP_TARGET_CALL_FAILED");
 
-            uint256 underlyingAmount = address(this).balance - initialUnderlyingAmount;
-            ICompoundToken(toCToken).mint{ value: underlyingAmount }();
+            cToken.mint{ value: address(this).balance - initialBalance }();
         }
         // X => Underlying => CompoundToken
         else {
-            IERC20 underlyingERC20 = IERC20(ICompoundToken(toCToken).underlying());
-            uint256 initialUnderlyingAmount = underlyingERC20.balanceOf(address(this));
+            IERC20 underlyingToken = IERC20(cToken.underlying());
+            uint256 underlyingBalanceBefore = underlyingToken.balanceOf(address(this));
 
             // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = swapTarget.call{ value: msg.value }(swapCallData);
+            (bool success, ) = swapTarget.call(swapCallData);
             require(success, "CTokenMarket: SWAP_TARGET_CALL_FAILED");
 
-            uint256 underlyingAmount = underlyingERC20.balanceOf(address(this)) -
-                initialUnderlyingAmount;
-            underlyingERC20.safeApprove(toCToken, underlyingAmount);
-            ICompoundToken(toCToken).mint(underlyingAmount);
+            uint256 underlyingAmount = underlyingToken.balanceOf(address(this)) -
+                underlyingBalanceBefore;
+
+            underlyingToken.safeApprove(address(toCToken), underlyingAmount);
+            cToken.mint(underlyingAmount);
         }
 
-        outTokenAmount = cTokenERC20.balanceOf(address(this)) - cTokenInitialBalance;
+        outTokenAmount = toCToken.balanceOf(address(this)) - cTokenBalanceBefore;
         require(outTokenAmount >= minAmountOut, "ZeroExMarket: INSUFFICIENT_OUTPUT");
 
-        cTokenERC20.safeTransfer(receiver, outTokenAmount);
+        toCToken.safeTransfer(receiver, outTokenAmount);
     }
 
     function exit(
-        address fromCToken,
+        IERC20 fromCToken,
         uint256 amountIn,
-        address toToken,
+        IERC20 toToken,
         uint256 minAmountOut,
         address swapTarget,
         bytes calldata swapCallData,
         address receiver
-    ) external payable override whenNotPaused returns (uint256 outTokenAmount) {
+    ) external payable virtual override returns (uint256 outTokenAmount) {
         require(msg.value == 0, "CTokenMarket: INVALID_VALUE");
-        require(amountIn > 0, "CTokenMarket: INSUFFICIENT_INPUT");
-        IERC20(fromCToken).safeTransferFrom(msg.sender, address(this), amountIn);
+        require(amountIn != 0, "CTokenMarket: INSUFFICIENT_INPUT");
+        fromCToken.safeTransferFrom(msg.sender, address(this), amountIn);
+
+        ICompoundToken cToken = ICompoundToken(address(fromCToken));
 
         // cETH => ETH
-        if (fromCToken == address(CETH) && toToken == address(0)) {
-            uint256 balanceBefore = address(this).balance;
+        if (address(fromCToken) == address(CETH) && address(toToken) == address(0)) {
+            uint256 initialBalance = address(this).balance;
 
-            ICompoundToken(fromCToken).redeem(amountIn);
-            outTokenAmount = address(this).balance - balanceBefore;
+            cToken.redeem(amountIn);
+            outTokenAmount = address(this).balance - initialBalance;
 
             payable(receiver).transfer(outTokenAmount);
 
@@ -106,35 +104,25 @@ contract CTokenMarket is BaseMarket {
         }
 
         // CompoundToken => Underlying
-        IERC20 underlyingERC20 = IERC20(ICompoundToken(fromCToken).underlying());
-        uint256 underlyingTokenInitialBalance = underlyingERC20.balanceOf(address(this));
+        IERC20 underlyingToken = IERC20(cToken.underlying());
+        uint256 underlyingBalanceBefore = underlyingToken.balanceOf(address(this));
 
-        ICompoundToken(fromCToken).redeem(amountIn);
-        uint256 underlyingTokenAmount = underlyingERC20.balanceOf(address(this)) -
-            underlyingTokenInitialBalance;
+        ICompoundToken(address(fromCToken)).redeem(amountIn);
+        uint256 underlyingTokenAmount = underlyingToken.balanceOf(address(this)) -
+            underlyingBalanceBefore;
 
-        // Underlying => To
-        if (toToken == address(underlyingERC20)) {
-            outTokenAmount = underlyingTokenAmount;
-        } else {
-            uint256 toTokenInitialBalance = IERC20(toToken).balanceOf(address(this));
+        // Underlying => X
+        outTokenAmount = _swap(
+            underlyingToken,
+            underlyingTokenAmount,
+            toToken,
+            minAmountOut,
+            swapTarget,
+            swapCallData,
+            address(this)
+        );
 
-            require(approvedTargets[swapTarget], "CTokenMarket: SWAP_TARGET_NOT_APPROVED");
-            underlyingERC20.safeApprove(swapTarget, underlyingTokenAmount);
-            // solhint-disable-next-line avoid-low-level-calls
-            (bool success, ) = swapTarget.call(swapCallData);
-            require(success, "CTokenMarket: SWAP_TARGET_CALL_FAILED");
-
-            outTokenAmount = IERC20(toToken).balanceOf(address(this)) - toTokenInitialBalance;
-        }
-
-        require(outTokenAmount >= minAmountOut, "CTokenMarket: INSUFFICIENT_OUTPUT");
-        IERC20(toToken).safeTransfer(receiver, outTokenAmount);
-    }
-
-    receive() external payable {
-        // solhint-disable-next-line avoid-tx-origin
-        require(msg.sender != tx.origin, "Do not send ETH directly");
+        toToken.safeTransfer(receiver, outTokenAmount);
     }
 }
 
