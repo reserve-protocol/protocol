@@ -18,5 +18,8 @@ interface IWrappedfCash {
 
     /// @notice True if the fCash has matured, assets mature exactly on the block time
     function hasMatured() external view returns (bool);
+
+    /// @notice fCash is always denominated in 8 decimal places
+    function decimals() external pure returns (uint8);
 }
 

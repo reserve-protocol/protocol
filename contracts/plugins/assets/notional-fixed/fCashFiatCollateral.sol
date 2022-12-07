@@ -86,7 +86,7 @@ contract fCashCollateral is RevenueHiding {
 
     /// @return {ref/tok} Actual quantity of whole reference units per whole collateral tokens
     function actualRefPerTok() public view override returns (uint192) {
-        return _safeWrap(fCashWrapper.refPerTok(msg.sender));
+        return _safeWrap(fCashWrapper.refPerTok());
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
