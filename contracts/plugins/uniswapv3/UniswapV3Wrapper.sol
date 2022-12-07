@@ -94,17 +94,23 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         _refund(params.amount0Desired, params.amount1Desired, amount0, amount1, liquidityProvider);
     }
 
-    // TODO put amount0Min, amount1Min, and deadline back to the params list
-    /// @notice Increases the amount of liquidity in the wrapped position, with wrapper tokens paid by the `msg.sender`
-    /// @param amount0Desired The desired amount of token0 to be spent
-    /// @param amount1Desired The desired amount of token1 to be spent,
-    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
-    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return liquidity The new liquidity amount as a result of the increase
-    /// @return amount0 The amount of token0 used to acheive resulting liquidity
-    /// @return amount1 The amount of token1 used to acheive resulting liquidity
-    function increaseLiquidity(uint256 amount0Desired, uint256 amount1Desired)
+    /** 
+        @notice Increases the amount of liquidity in the wrapped position, with wrapper tokens paid by the `msg.sender`
+        @param amount0Desired The desired amount of token0 to be spent
+        @param amount1Desired The desired amount of token1 to be spent,
+        @param amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
+        @param amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
+        @param deadline The time by which the transaction must be included to effect the change
+        @return liquidity The new liquidity amount as a result of the increase
+        @return amount0 The amount of token0 used to acheive resulting liquidity
+        @return amount1 The amount of token1 used to acheive resulting liquidity
+      */
+    function increaseLiquidity(
+        uint256 amount0Desired, 
+        uint256 amount1Desired,
+        uint256 amount0Min,
+        uint256 amount1Min,
+        uint256 deadline)
         external
         nonReentrant
         returns (
@@ -123,9 +129,9 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         increaseLiquidityParams.tokenId = tokenId;
         increaseLiquidityParams.amount0Desired = amount0Desired;
         increaseLiquidityParams.amount1Desired = amount1Desired;
-        increaseLiquidityParams.amount0Min = 0;
-        increaseLiquidityParams.amount1Min = 0;
-        increaseLiquidityParams.deadline = block.timestamp;
+        increaseLiquidityParams.amount0Min = amount0Min;
+        increaseLiquidityParams.amount1Min = amount1Min;
+        increaseLiquidityParams.deadline = deadline;
         (liquidity, amount0, amount1) = nonfungiblePositionManager.increaseLiquidity(
             increaseLiquidityParams
         );
@@ -134,14 +140,21 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         _refund(amount0Desired, amount1Desired, amount0, amount1, msg.sender);
     }
 
-    /// @notice Decreases the amount of liquidity in the wrapped position and accounts it to the `msg.sender`
-    /// @param liquidity The amount by which liquidity will be decreased
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return amount0 The amount of token0 accounted to the position's tokens owed
-    /// @return amount1 The amount of token1 accounted to the position's tokens owed
-    function decreaseLiquidity(uint128 liquidity)
+    /** 
+        @notice Decreases the amount of liquidity in the wrapped position and accounts it to the `msg.sender`
+        @param liquidity The amount by which liquidity will be decreased
+        @param amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
+        @param amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
+        @param deadline The time by which the transaction must be included to effect the change
+        @return amount0 The amount of token0 accounted to the position's tokens owed
+        @return amount1 The amount of token1 accounted to the position's tokens owed
+    */
+    function decreaseLiquidity(
+        uint128 liquidity,
+        uint256 amount0Min,
+        uint256 amount1Min,
+        uint256 deadline
+        )
         external
         nonReentrant
         returns (uint256 amount0, uint256 amount1)
@@ -149,9 +162,9 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
         INonfungiblePositionManager.DecreaseLiquidityParams memory decreaseLiquidityParams;
         decreaseLiquidityParams.tokenId = tokenId;
         decreaseLiquidityParams.liquidity = liquidity;
-        decreaseLiquidityParams.amount0Min = 0;
-        decreaseLiquidityParams.amount1Min = 0;
-        decreaseLiquidityParams.deadline = block.timestamp;
+        decreaseLiquidityParams.amount0Min = amount0Min;
+        decreaseLiquidityParams.amount1Min = amount1Min;
+        decreaseLiquidityParams.deadline = deadline;
         (amount0, amount1) = nonfungiblePositionManager.decreaseLiquidity(decreaseLiquidityParams);
 
         INonfungiblePositionManager.CollectParams memory collectParams = INonfungiblePositionManager
@@ -162,16 +175,16 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     }
 
     /**
-     * @notice Collects up to a maximum amount of fees owed by the holder of the wrapper token
-     * @notice calculated from the following values:
-     * @notice * all the fees ever acquired by the wrapped position
-     * @notice * balance history of the wrapper token holder (`msg.sender`) so far
-     * @notice * how much the wrapper token holder (`msg.sender`) was already paid
-     * @param recipient the recipient of the fees owed to `msg.sender`
-     * @return token0 first token address
-     * @return token1 second token address
-     * @return amount0 The amount of fees paid in token0
-     * @return amount1 The amount of fees paid in token1
+        @notice Collects up to a maximum amount of fees owed by the holder of the wrapper token
+        @notice calculated from the following values:
+        @notice * all the fees ever acquired by the wrapped position
+        @notice * balance history of the wrapper token holder (`msg.sender`) so far
+        @notice * how much the wrapper token holder (`msg.sender`) was already paid
+        @param recipient the recipient of the fees owed to `msg.sender`
+        @return token0 first token address
+        @return token1 second token address
+        @return amount0 The amount of fees paid in token0
+        @return amount1 The amount of fees paid in token1
      */
     function claimRewards(address recipient)
         external
@@ -191,8 +204,11 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     }
 
     /**
-     * @notice called when there's 0 liquidity wrapped to calculate the price of it
-     * @notice answers the question "how much of each token would it cost to acquire some liquitity"
+        @notice called when there's 0 liquidity wrapped to calculate the price of it
+        @notice answers the question "how much of each token would it cost to acquire some liquitity"
+        @return amount0 The amount of token0 required to create a particular amount of liquidity
+        @return amount1 The amount of token1 required to create a particular amount of liquidity
+        @return liquidity The amount of liquidity that can be created from amount0 and amount1 of respective tokens
      */
     function priceSimilarPosition()
         external
@@ -255,7 +271,9 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
     }
 
     /**
-     * @notice Calculates the principal (currently acting as liquidity) locked in this wrapper
+        @notice Calculates the principal (currently acting as liquidity) locked in this wrapper
+        @return amount0 total amount of token0 locked in the position
+        @return amount1 total amount of token1 locked in the position
      */
     function principal() external view returns (uint256 amount0, uint256 amount1) {
         (uint160 sqrtRatioX96, , , , , , ) = pool.slot0();

@@ -4,7 +4,7 @@ import { UniswapV3Wrapper } from '@typechain/UniswapV3Wrapper'
 import { UniswapV3WrapperMock } from '@typechain/UniswapV3WrapperMock'
 import { USDCMock } from '@typechain/USDCMock'
 import { BaseContract, BigNumber, BigNumberish } from 'ethers'
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 const { getContractAddress } = require('@ethersproject/address')
 import { ITokens, networkConfig } from '../../../common/configuration'
 import { ZERO_ADDRESS } from '../../../common/constants'
@@ -14,6 +14,11 @@ import { waitForTx } from '../utils'
 export const MIN_TICK = -887272
 /// @dev The maximum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**128
 export const MAX_TICK = -MIN_TICK
+
+// Relevant addresses (Mainnet)
+export const holderDAI = '0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186'
+export const holderUSDT = '0xf977814e90da44bfa03b6295a0616a897441acec'
+export const holderUSDC = '0x0a59649758aa4d66e25f08dd01271e891fe52199'
 
 export type TMintParams = {
     token0: string
@@ -111,4 +116,12 @@ export function sqrt(x: BigNumber): BigNumber {
         z = x.div(z).add(z).div(TWO);
     }
     return y;
+}
+
+export async function closeDeadline(): Promise<number> {
+    return (await hre.ethers.provider.getBlock("latest")).timestamp + 600;
+}
+
+export function p999(x: BigNumber): BigNumber {
+    return x.mul(999).div(1000)
 }
