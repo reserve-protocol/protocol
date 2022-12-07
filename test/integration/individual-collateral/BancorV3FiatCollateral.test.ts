@@ -186,7 +186,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
     // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
     await whileImpersonating(HOLDER_USDC, async (bnUsdcSigner) => {
-      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000000e8'))
+      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000e8'))
     })
 
     // Set parameters
@@ -316,9 +316,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await bnUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      await console.log(bnUsdc.allowance(addr1.address,rToken.address))
+      const issueAmount: BigNumber = bn('2000e8')
+      await bnUsdc.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
@@ -363,14 +362,14 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('2000e8')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await bnUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await bnUsdc.connect(addr1).approve(rToken.address,issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
