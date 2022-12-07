@@ -2,10 +2,11 @@ import { anyValue } from '@nomicfoundation/hardhat-chai-matchers/withArgs'
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { Fixture } from 'ethereum-waffle'
 import { expect } from 'chai'
-import { Wallet } from 'ethers'
+import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { ZERO_ADDRESS, CollateralStatus } from '../../common/constants'
-import { bn, fp } from '../../common/numbers'
+import { bn, divCeil, fp } from '../../common/numbers'
+import { withinQuad } from '../utils/matchers'
 import { expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { advanceTime } from '../utils/time'
 import { expectEvents } from '../../common/events'
@@ -61,6 +62,45 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
   let loadFixtureDual: ReturnType<typeof createFixtureLoader>
 
   let wallet: Wallet
+
+  // Computes the sellAmt for a minBuyAmt at two prices
+  const toSellAmt = (
+    minBuyAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber,
+    oracleError: BigNumber,
+    maxTradeSlippage: BigNumber
+  ): BigNumber => {
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const product = minBuyAmt.mul(fp('1').add(maxTradeSlippage)).mul(highBuyPrice)
+
+    return divCeil(divCeil(product, lowSellPrice), fp('1'))
+  }
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber,
+    oracleError: BigNumber,
+    maxTradeSlippage: BigNumber
+  ): BigNumber => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
+    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const product = sellAmt
+      .mul(fp('1').sub(maxTradeSlippage)) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -201,10 +241,22 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
       // Launch recollateralization auction in inner RToken
       const buyAmt = issueAmt.div(2)
-      const sellAmt = buyAmt.mul(100).div(99).add(1)
+      const sellAmt = toSellAmt(
+        buyAmt,
+        fp('1'),
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage()
+      )
       await expect(one.backingManager.manageTokens([]))
         .to.emit(one.backingManager, 'TradeStarted')
-        .withArgs(anyValue, one.rsr.address, staticATokenERC20.address, sellAmt, buyAmt)
+        .withArgs(
+          anyValue,
+          one.rsr.address,
+          staticATokenERC20.address,
+          withinQuad(sellAmt),
+          withinQuad(buyAmt)
+        )
 
       // Verify outer RToken isn't panicking
       await two.assetRegistry.refresh()
@@ -250,6 +302,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
       // Outer RToken should launch revenue auctions with the donated inner RToken
       const rTokSellAmt = issueAmt.div(2).mul(2).div(5)
       const rsrSellAmt = issueAmt.div(2).mul(3).div(5)
+      const rsrMinBuyAmt = toMinBuyAmt(
+        rsrSellAmt,
+        fp('1'),
+        fp('1'),
+        ORACLE_ERROR,
+        await two.backingManager.maxTradeSlippage()
+      )
 
       // Note that here the outer RToken actually mints itself as the first step
       await expectEvents(two.facadeTest.runAuctionsForAllTraders(two.rToken.address), [
@@ -268,13 +327,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
         {
           contract: two.rsrTrader,
           name: 'TradeStarted',
-          args: [
-            anyValue,
-            two.rToken.address,
-            two.rsr.address,
-            rsrSellAmt,
-            rsrSellAmt.mul(99).div(100),
-          ],
+          args: [anyValue, two.rToken.address, two.rsr.address, rsrSellAmt, rsrMinBuyAmt],
           emitted: true,
         },
       ])
@@ -330,6 +383,13 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
 
       const rTokSellAmt = issueAmt.div(2).mul(2).div(5).sub(40)
       const rsrSellAmt = issueAmt.div(2).mul(3).div(5).sub(60)
+      const rsrMinBuyAmt = toMinBuyAmt(
+        rsrSellAmt,
+        fp('1'),
+        fp('1'),
+        ORACLE_ERROR,
+        await one.backingManager.maxTradeSlippage()
+      )
       expect(await staticATokenERC20.balanceOf(one.backingManager.address)).to.equal(issueAmt)
 
       // Note the inner RToken mints internally since it has excess backing
@@ -354,7 +414,7 @@ describe(`Nested RTokens - P${IMPLEMENTATION}`, () => {
             one.rToken.address,
             one.rsr.address,
             rsrSellAmt,
-            rsrSellAmt.mul(99).div(100).add(31),
+            rsrMinBuyAmt, //rsrSellAmt.mul(99).div(100).add(31),
           ],
           emitted: true,
         },
