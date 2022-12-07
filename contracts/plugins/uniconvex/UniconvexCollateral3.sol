@@ -46,13 +46,10 @@ contract UniconvexCollateral3 is Collateral {
         chainlinkFeeds = chainlinkFeeds_;
     }
 
-    // function refPerTok() public view override returns (uint192) {
-    //     IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
-    //     // Seems like can be safety replaced with sellPrice(feeOn)
-    //     (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-    //     uint256 rootK = Math.sqrt(reserve0 * reserve1);
-    //     return uint192((rootK * 10**18) / pair.totalSupply());
-    // }
+    //TODO perhaps check in refresh()
+    function refPerTok() public view override returns (uint192) {
+       return uint192(curvePool.get_virtual_price());
+    }
 
     // Can be used to define chainlink oracles order by caller
     function coins(uint256 i) external view returns (address) {

@@ -1,10 +1,10 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers"
-import hre, { ethers, waffle } from "hardhat"
-import { BigNumberish, ContractTransaction, Wallet } from "ethers"
+import hre, { ethers, network, waffle } from "hardhat"
+import { BigNumber, BigNumberish, ContractTransaction, Wallet } from "ethers"
 import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
-import { bn, fp, pow10 } from "../../../../common/numbers"
+import { bn, fp, pow10, ZERO } from "../../../../common/numbers"
 import {
     ERC20Mock,
     MockV3Aggregator,
@@ -21,6 +21,7 @@ import { UniconvexCollateral__factory } from "@typechain/factories/UniconvexColl
 import { getLatestBlockTimestamp } from "../../../utils/time"
 import { ICurvePool3Assets } from "@typechain/ICurvePool3Assets"
 import { logBalances, sqrt } from "../common"
+import forkBlockNumber from "../../fork-block-numbers"
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -101,6 +102,81 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 const p = (value: BigNumberish) => pow10(decimals).mul(value)
                 await usdc.connect(usdcSigner).transfer(owner.address, p(initialBal))
             })
+        })
+
+        it(`investigate virtual price`, async () => {
+            let prevVirtualPrice = ZERO
+            let prevTotalSupply = ZERO
+
+            for (let index = 0; index < 100; index++) {
+                await network.provider.request({
+                    method: "hardhat_reset",
+                    params: [
+                        {
+                            forking: {
+                                jsonRpcUrl:
+                                    process.env.MAINNET_RPC_URL ||
+                                    process.env.ALCHEMY_MAINNET_RPC_URL ||
+                                    "",
+                                blockNumber:
+                                    (process.env.MAINNET_BLOCK
+                                        ? Number(process.env.MAINNET_BLOCK)
+                                        : forkBlockNumber["default"]) +
+                                    index * 100,
+                            },
+                        },
+                    ],
+                })
+
+                const asset0 = dai
+                const asset1 = usdc
+                const asset2 = usdt
+
+                const decimals0 = await asset0.decimals()
+                const decimals1 = await asset1.decimals()
+                const decimals2 = await asset2.decimals()
+
+                const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+                const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+                const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
+
+                const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+                // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
+                const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
+                const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
+                    "ICurvePool3Assets",
+                    stableSwap3PoolAddress
+                )
+
+                const lpTokenAddress = curveContractV2
+
+                const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
+
+                let virtualPrice = await stableSwap3Pool.connect(addr1).get_virtual_price()
+
+                let totalSupply = await lpToken.connect(addr1).totalSupply()
+
+                console.log({
+                    virtualPrice,
+                    totalSupply,
+                    div: BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply),
+                })
+
+                if (prevTotalSupply.gt(0)) {
+                    console.log({
+                        diffPrice: virtualPrice.sub(prevVirtualPrice),
+                        diffSupply: totalSupply.sub(prevTotalSupply),
+                        diffDiv: BigNumber.from(10)
+                            .pow(18)
+                            .mul(prevVirtualPrice)
+                            .div(prevTotalSupply)
+                            .sub(BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply)),
+                    })
+                }
+
+                prevVirtualPrice = virtualPrice
+                prevTotalSupply = totalSupply
+            }
         })
 
         it("Convex Collateral can be deployed", async () => {
