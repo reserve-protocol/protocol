@@ -246,7 +246,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
-  describe('Deployment', () => {
+  xdescribe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
       // Check Rewards assets (if applies)
@@ -379,7 +379,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
   })
 
-  describe('Issuance/Appreciation/Redemption', () => {
+  xdescribe('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
@@ -489,7 +489,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
   // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
   // claiming calls throughout the protocol are handled correctly and do not revert.
-  describe('Rewards', () => {
+  xdescribe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
       const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
@@ -544,7 +544,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     })
   })
 
-  describe('Price Handling', () => {
+  xdescribe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
@@ -621,7 +621,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
   // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
-  describe('Collateral Status', () => {
+  xdescribe('Collateral Status', () => {
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
