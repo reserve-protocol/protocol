@@ -151,9 +151,9 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // rETH 
-    initialBal = bn('2000000e18')
+    initialBal = bn('8000e18')
     await whileImpersonating(holderRETH, async (rethSigner) => {
-      await reth.connect(rethSigner).transfer(addr1.address, toBNDecimals(initialBal, 8))
+      await reth.connect(rethSigner).transfer(addr1.address, initialBal)
     })
 
     // Set parameters
@@ -273,13 +273,13 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
-      expect(price).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(price).to.be.closeTo(fp('2000'), fp('1000'))
 
       // Check RToken price
-      const issueAmount: BigNumber = bn('10000e18')
-      await reth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      const issueAmount: BigNumber = bn('5000e18')
+      await reth.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('2000'), fp('1000'))
     })
 
     // Validate constructor arguments
@@ -302,7 +302,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+    const MIN_ISSUANCE_PER_BLOCK = bn('5000e18')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
