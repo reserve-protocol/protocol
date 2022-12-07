@@ -146,7 +146,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        reth.address
       )
     )
 
@@ -223,11 +222,11 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await rethCollateral.erc20()).to.equal(reth.address)
       expect(await reth.decimals()).to.equal(18)
       expect(await rethCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await rethCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
+      expect(await rethCollateral.refPerTok()).to.be.closeTo(fp('1.080'), fp('1.000'))
       expect(await rethCollateral.targetPerRef()).to.equal(fp('1'))
-      expect(await rethCollateral.pricePerTarget()).to.equal(fp('1'))
+      expect(await rethCollateral.pricePerTarget()).to.be.closeTo(fp('1000'), fp('5000'))
       expect(await rethCollateral.prevReferencePrice()).to.equal(await rethCollateral.refPerTok())
-      expect(await rethCollateral.strictPrice()).to.be.closeTo(fp('0.022'), fp('0.001')) // close to $0.022 cents
+      expect(await rethCollateral.strictPrice()).to.be.closeTo(fp('1000'), fp('5000'))
 
       // Check claim data
       // await expect(rethCollateral.claimRewards())
@@ -296,8 +295,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
           bn(0),
-          delayUntilDefault,
-          reth.address
+          delayUntilDefault
         )
       ).to.be.revertedWith('defaultThreshold zero')
     })
@@ -484,7 +482,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        reth.address
       )
 
       // CTokens - Collateral with no price info should revert
@@ -508,7 +505,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        reth.address
       )
 
       await setOraclePrice(invalidpriceRethCollateral.address, bn(0))
@@ -545,7 +541,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         await rethCollateral.targetName(),
         await rethCollateral.defaultThreshold(),
         await rethCollateral.delayUntilDefault(),
-        reth.address
       )
 
       // Check initial state
@@ -599,7 +594,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         await rethCollateral.targetName(),
         await rethCollateral.defaultThreshold(),
         await rethCollateral.delayUntilDefault(),
-        reth.address
       )
 
       // Check initial state
@@ -634,7 +628,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
           await rethCollateral.targetName(),
           await rethCollateral.defaultThreshold(),
           await rethCollateral.delayUntilDefault(),
-          reth.address
         )
       )
 

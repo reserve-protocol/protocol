@@ -39,8 +39,7 @@ contract RETHCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        IRETH rETH_ 
+        uint256 delayUntilDefault_
     )
         Collateral(
             fallbackPrice_,
@@ -57,9 +56,8 @@ contract RETHCollateral is Collateral {
             address(refUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
         );
-        require(address(rETH_) != address(0), "reth missing");
         defaultThreshold = defaultThreshold_;
-        rETH = rETH_;
+        rETH = IRETH(address(erc20));
 
         prevReferencePrice = refPerTok();
     }
@@ -102,7 +100,7 @@ contract RETHCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint192(rETH.getExchangeRate());
+        return uint192(rETH.getExchangeRate());
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
