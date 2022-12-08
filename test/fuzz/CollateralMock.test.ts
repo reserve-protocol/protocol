@@ -25,26 +25,30 @@ describe('CollateralMock', () => {
   ): Promise<sc.CollateralMock> {
     const f: sc.CollateralMock__factory = await ethers.getContractFactory('CollateralMock')
     return await f.deploy(
-      token.address,
-      fp(1e6), // maxTradeVolume
-      fp(0.05),
-      86400,
-      underToken.address,
-      ethers.utils.formatBytes32String('USD'),
-      refPerTok,
-      targetPerRef,
-      uoaPerTarget,
-      deviation
+      token.address, // erc20_
+      fp(1e6), // maxTradeVolume_
+      806400, // priceTimeout_
+      fp(0.005), // oracleError_
+      fp(0.05), // defaultThreshold_
+      86400, // delayUntilDefault_
+      ethers.utils.formatBytes32String('USD'), // targetName_
+      refPerTok, // refPerTokModel_
+      targetPerRef, // targetPerRefModel_
+      uoaPerTarget, // uoaPerTargetModel_
+      deviation // deviationModel_
     )
   }
 
   beforeEach(async () => {
-    {
-      const f: sc.ERC20Mock__factory = await ethers.getContractFactory('ERC20Mock')
-      token = await f.deploy('Collateral Token', 'TK')
-      underToken = await f.deploy('Underlying (Base) Token', 'BASE')
-    }
+    const f: sc.ERC20Mock__factory = await ethers.getContractFactory('ERC20Mock')
+    token = await f.deploy('Collateral Token', 'TK')
+    underToken = await f.deploy('Underlying (Base) Token', 'BASE')
   })
+
+  const priceAround = async (asset: sc.AssetMock, expected: BigNumberish) => {
+    const [low, high] = await asset.price()
+    expect(low.add(high).div(2)).to.equal(expected)
+  }
 
   it('has isCollateral() == true', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
@@ -53,32 +57,28 @@ describe('CollateralMock', () => {
 
   it('combines price models ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.strictPrice()).equal(fp(1))
+    await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
-    expect(await coll.pricePerTarget()).equal(fp(1))
 
     await coll.update(fp(0.5), fp(3), fp(7), fp(0.1))
 
-    expect(await coll.strictPrice()).equal(fp(1.05))
+    await priceAround(coll, fp(1.05))
     expect(await coll.refPerTok()).equal(fp(0.5))
     expect(await coll.targetPerRef()).equal(fp(3))
-    expect(await coll.pricePerTarget()).equal(fp(7))
 
     await coll.update(fp(2), fp(3), fp(0.5), fp(0.7))
 
-    expect(await coll.strictPrice()).equal(fp(2.1))
+    await priceAround(coll, fp(2.1))
     expect(await coll.refPerTok()).equal(fp(2))
     expect(await coll.targetPerRef()).equal(fp(3))
-    expect(await coll.pricePerTarget()).equal(fp(0.5))
   })
 
   it('should default collateral - hard default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.strictPrice()).equal(fp(1))
+    await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
-    expect(await coll.pricePerTarget()).equal(fp(1))
 
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.SOUND)
@@ -88,18 +88,16 @@ describe('CollateralMock', () => {
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
 
-    expect(await coll.strictPrice()).equal(fp(0.5))
+    await priceAround(coll, fp(0.5))
     expect(await coll.refPerTok()).equal(fp(0.5))
     expect(await coll.targetPerRef()).equal(fp(1))
-    expect(await coll.pricePerTarget()).equal(fp(1))
   })
 
   it('should default collateral - soft default ', async () => {
     const coll: sc.CollateralMock = await newColl(manualPM, manualPM, manualPM, manualPM)
-    expect(await coll.strictPrice()).equal(fp(1))
+    await priceAround(coll, fp(1))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(1))
-    expect(await coll.pricePerTarget()).equal(fp(1))
 
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.SOUND)
@@ -114,19 +112,17 @@ describe('CollateralMock', () => {
     await coll.refresh()
     expect(await coll.status()).to.equal(CollateralStatus.IFFY)
 
-    expect(await coll.strictPrice()).equal(fp(0.8))
+    await priceAround(coll, fp(0.8))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(0.8))
-    expect(await coll.pricePerTarget()).equal(fp(1))
 
     // Advance time past delayUntildEfault
     await advanceTime(Number(await coll.delayUntilDefault()))
     expect(await coll.status()).to.equal(CollateralStatus.DISABLED)
 
     // Check final values
-    expect(await coll.strictPrice()).equal(fp(0.8))
+    await priceAround(coll, fp(0.8))
     expect(await coll.refPerTok()).equal(fp(1))
     expect(await coll.targetPerRef()).equal(fp(0.8))
-    expect(await coll.pricePerTarget()).equal(fp(1))
   })
 })

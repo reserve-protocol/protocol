@@ -1048,12 +1048,13 @@ contract DiffTestScenario {
     function assetsEqualPrices(IAsset a, IAsset b) public view returns (bool) {
         (uint192 aLow, uint192 aHigh) = a.price();
         (uint192 bLow, uint192 bHigh) = b.price();
-        if (!aLow.near(bLow, EPSILON)) require(false, "aLow price not near bLow price");
-        if (!aHigh.near(bHigh, EPSILON)) require(false, "aHigh price not near bHigh price");
+        if (!aLow.near(bLow, EPSILON)) require(false, "low prices diverge");
+        if (!aHigh.near(bHigh, EPSILON)) require(false, "high prices diverge");
 
-        if (!a.lotPrice().near(b.lotPrice(), EPSILON)) {
-            require(false, "a lotPrice not near b lotPrice");
-        }
+        (aLow, aHigh) = a.lotPrice();
+        (bLow, bHigh) = b.lotPrice();
+        if (!aLow.near(bLow, EPSILON)) require(false, "low lotPrices diverge");
+        if (!aHigh.near(bHigh, EPSILON)) require(false, "high lotPrices diverge");
         return true;
     }
 

@@ -10,7 +10,13 @@ describe(`PriceModels in AssetMock`, () => {
 
   async function newAsset(priceModel: PriceModel): Promise<sc.AssetMock> {
     const f: sc.AssetMock__factory = await ethers.getContractFactory('AssetMock')
-    return await f.deploy(token.address, fp(1e6), priceModel)
+    return await f.deploy(
+      token.address, // erc20
+      fp(1e6), // maxTradeVolume
+      806400, // priceTimeout
+      fp(0.005), // oracleError
+      priceModel // model
+    )
   }
 
   beforeEach(async () => {
@@ -20,6 +26,11 @@ describe(`PriceModels in AssetMock`, () => {
     }
   })
 
+  const priceAround = async (asset: sc.AssetMock, expected: BigNumberish) => {
+    const price = await asset.price()
+    expect(price[0].add(price[1]).div(2)).to.equal(expected)
+  }
+
   it('does not change prices in CONSTANT mode', async () => {
     const asset: sc.AssetMock = await newAsset({
       kind: PriceModelKind.CONSTANT,
@@ -27,20 +38,20 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.strictPrice()).to.equal(fp(1.02))
+    await priceAround(asset, fp(1.02))
     await asset.update(fp(0.99))
-    expect(await asset.strictPrice()).to.equal(fp(1.02))
+    await priceAround(asset, fp(1.02))
     await asset.update(0)
-    expect(await asset.strictPrice()).to.equal(fp(1.02))
+    await priceAround(asset, fp(1.02))
   })
 
   it('returns price 1 from p.m. onePM', async () => {
     const asset: sc.AssetMock = await newAsset(onePM)
-    expect(await asset.strictPrice()).to.equal(fp(1))
+    await priceAround(asset, fp(1))
     await asset.update(123)
-    expect(await asset.strictPrice()).to.equal(fp(1))
+    await priceAround(asset, fp(1))
     await asset.update(96523976243)
-    expect(await asset.strictPrice()).to.equal(fp(1))
+    await priceAround(asset, fp(1))
   })
 
   it('sets prices as expected in MANUAL mode', async () => {
@@ -50,17 +61,17 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.strictPrice()).to.equal(fp(1.02))
+    await priceAround(asset, fp(1.02))
     await asset.update(fp(0.99))
-    expect(await asset.strictPrice()).to.equal(fp(0.99))
+    await priceAround(asset, fp(0.99))
     await asset.update(fp(1.3))
-    expect(await asset.strictPrice()).to.equal(fp(1.3))
+    await priceAround(asset, fp(1.3))
     await asset.update(0)
-    expect(await asset.strictPrice()).to.equal(0)
+    await priceAround(asset, 0)
 
-    const big: BigNumber = BigNumber.from(2n ** 192n - 1n) // max uint192
+    const big: BigNumber = BigNumber.from(2n ** 191n) // a bit less than max uint192
     await asset.update(big)
-    expect(await asset.strictPrice()).to.equal(big)
+    await priceAround(asset, big)
   })
 
   it('sets arbitrary in-band prices in BAND mode', async () => {
@@ -70,18 +81,19 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.9),
       high: fp(1.1),
     })
-    expect(await asset.strictPrice()).to.equal(fp(1.02))
+    await priceAround(asset, fp(1.02))
 
     await asset.update(0) // hit low; implementation-sensitive
-    expect(await asset.strictPrice()).to.equal(fp(0.9))
+    await priceAround(asset, fp(0.9))
 
     await asset.update(fp(0.2)) // hit high; implementation-sensitive
-    expect(await asset.strictPrice()).to.equal(fp(1.1))
+    await priceAround(asset, fp(1.1))
 
     await asset.update(fp(98643.8623))
-    const p = await asset.strictPrice()
-    expect(p.gte(fp(0.9))).to.be.true
-    expect(p.lte(fp(1.1))).to.be.true
+    const [low, high] = await asset.price()
+    const avg = low.add(high).div(2)
+    expect(avg.gte(fp(0.9))).to.be.true
+    expect(avg.lte(fp(1.1))).to.be.true
   })
 
   it('changes by arbitrary multiplications in WALK mode', async () => {
@@ -91,18 +103,19 @@ describe(`PriceModels in AssetMock`, () => {
       low: fp(0.5),
       high: fp(2),
     })
-    expect(await asset.strictPrice()).to.equal(fp(1))
+    await priceAround(asset, fp(1))
 
     await asset.update(0) // hit low; implementation-sensitive
-    expect(await asset.strictPrice()).to.equal(fp(0.5))
+    await priceAround(asset, fp(0.5))
 
     await asset.update(fp(1.5)) // hit high; implementation-sensitive
     await asset.update(fp(1.5)) // hit high; implementation-sensitive
-    expect(await asset.strictPrice()).to.equal(fp(2))
+    await priceAround(asset, fp(2))
 
     await asset.update(fp(98643.8623))
-    const p = await asset.strictPrice()
-    expect(p.gte(fp(1))).to.be.true
-    expect(p.lte(fp(4))).to.be.true
+    const [low, high] = await asset.price()
+    const avg = low.add(high).div(2)
+    expect(avg.gte(fp(1))).to.be.true
+    expect(avg.lte(fp(4))).to.be.true
   })
 })
