@@ -37,6 +37,7 @@ import {
   IBnTokenERC20,
   IStandardRewards,
   IAutoCompoundingRewards,
+  IBancorTradingProxy,
 } from '../../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -56,6 +57,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
   let autoProcessRewardsProxy: IAutoCompoundingRewards
+  let bancorTradingProxy: IBancorTradingProxy
   let bancorToken: ERC20Mock
   let bancorAsset: Asset
   let rsr: ERC20Mock
@@ -138,6 +140,13 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt(
         'IStandardRewards',
         networkConfig[chainId].BANCOR_REWARDS_PROXY || ''
+      )
+    )
+
+    bancorTradingProxy = <IBancorTradingProxy>(
+      await ethers.getContractAt(
+        'IBancorTradingProxy',
+        networkConfig[chainId].BANCOR_TRADING_PROXY || ''
       )
     )
 
@@ -393,6 +402,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       )
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
 
+      await bnDAI.connect(addr1).approve(addr1.address,issueAmount)
+      await 
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)

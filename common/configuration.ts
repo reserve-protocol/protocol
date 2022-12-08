@@ -49,6 +49,7 @@ interface INetworkConfig {
   BANCOR_PROXY?: string
   BANCOR_REWARDS_PROXY?: string
   BANCOR_PROCESSING_PROXY?: string
+  BANCOR_TRADING_PROXY?: string
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -115,6 +116,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     BANCOR_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
     BANCOR_REWARDS_PROXY: '0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372',
     BANCOR_PROCESSING_PROXY: '0x036f8B31D78ca354Ada40dbd117e54F78B6f6CDc',
+    BANCOR_TRADING_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
   },
   '3': {
     name: 'ropsten',
@@ -178,6 +180,8 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     BANCOR_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
     BANCOR_REWARDS_PROXY: '0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372',
     BANCOR_PROCESSING_PROXY: '0x036f8B31D78ca354Ada40dbd117e54F78B6f6CDc',
+    BANCOR_TRADING_PROXY: '0x8E303D296851B320e6a697bAcB979d13c9D6E760',
+    
   },
   '5': {
     name: 'goerli',
