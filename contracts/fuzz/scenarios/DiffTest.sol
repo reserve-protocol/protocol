@@ -85,24 +85,23 @@ contract DiffTestScenario {
                 if (i < 2) {
                     reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
                     main.addToken(reward);
-                    main.assetRegistry().register(
-                        new AssetMock(IERC20Metadata(address(reward)), maxTradeVolume, volatile)
-                    );
+                    main.assetRegistry().register(createAsset(reward));
                     token.setRewardToken(reward);
                 }
                 main.assetRegistry().register(
-                    new CollateralMock(
-                        IERC20Metadata(address(token)),
-                        maxTradeVolume,
-                        5e16, // defaultThreshold
-                        86400, // delayUntilDefault
-                        IERC20Metadata(address(0)),
-                        bytes32("USD"),
-                        growing,
-                        justOne,
-                        justOne,
-                        stable
-                    )
+                    new CollateralMock({
+                        erc20_: IERC20Metadata(address(token)),
+                        maxTradeVolume_: maxTradeVolume,
+                        priceTimeout_: 806400,
+                        oracleError_: 0.005e18,
+                        defaultThreshold_: 0.05e18,
+                        delayUntilDefault_: 86400,
+                        targetName_: bytes32("USD"),
+                        refPerTokModel_: growing,
+                        targetPerRefModel_: justOne,
+                        uoaPerTargetModel_: justOne,
+                        deviationModel_: stable
+                    })
                 );
                 collateralTokens.push(IERC20(token));
             }
@@ -118,18 +117,19 @@ contract DiffTestScenario {
                 main.addToken(token);
 
                 main.assetRegistry().register(
-                    new CollateralMock(
-                        IERC20Metadata(address(token)),
-                        maxTradeVolume,
-                        5e16, // defaultThreshold
-                        86400, // delayUntilDefault
-                        IERC20Metadata(address(0)),
-                        bytes32("USD"),
-                        justOne,
-                        stable,
-                        justOne,
-                        justOne
-                    )
+                    new CollateralMock({
+                        erc20_: IERC20Metadata(address(token)),
+                        maxTradeVolume_: maxTradeVolume,
+                        priceTimeout_: 806400,
+                        oracleError_: 0.005e18,
+                        defaultThreshold_: 0.05e18,
+                        delayUntilDefault_: 86400,
+                        targetName_: bytes32("USD"),
+                        refPerTokModel_: justOne,
+                        targetPerRefModel_: stable,
+                        uoaPerTargetModel_: justOne,
+                        deviationModel_: justOne
+                    })
                 );
                 backupTokens.push(IERC20(token));
             }
@@ -282,9 +282,7 @@ contract DiffTestScenario {
                     )
                 );
             } else {
-                p[N].assetRegistry().register(
-                    new AssetMock(erc20, defaultParams().rTokenMaxTradeVolume, getNextPriceModel())
-                );
+                p[N].assetRegistry().register(createAsset(erc20));
             }
         }
     }
@@ -322,13 +320,7 @@ contract DiffTestScenario {
                     )
                 );
             } else {
-                reg.swapRegistered(
-                    new AssetMock(
-                        IERC20Metadata(address(erc20)),
-                        defaultParams().rTokenMaxTradeVolume,
-                        getNextPriceModel()
-                    )
-                );
+                reg.swapRegistered(createAsset(erc20));
             }
         }
     }
@@ -918,6 +910,17 @@ contract DiffTestScenario {
         return tokenID;
     }
 
+    function createAsset(IERC20 erc20) internal returns (AssetMock) {
+        return
+            new AssetMock({
+                erc20_: IERC20Metadata(address(erc20)),
+                maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
+                priceTimeout_: 604800,
+                oracleError_: 0.005e18,
+                model_: volatile
+            });
+    }
+
     /// save the last-created collateral mock from createColl
     /// this is _just_ for ease of testing these tests.
     CollateralMock public lastCreatedColl;
@@ -930,19 +933,20 @@ contract DiffTestScenario {
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
-    ) public returns (CollateralMock) {
-        lastCreatedColl = new CollateralMock(
-            IERC20Metadata(address(erc20)),
-            defaultParams().rTokenMaxTradeVolume,
-            uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
-            between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
-            IERC20Metadata(address(0)),
-            targetName,
-            isStable ? growing : getNextPriceModel(),
-            isStable ? justOne : getNextPriceModel(),
-            isStable ? justOne : getNextPriceModel(),
-            isStable ? stable : getNextPriceModel()
-        );
+    ) internal returns (CollateralMock) {
+        lastCreatedColl = new CollateralMock({
+            erc20_: IERC20Metadata(address(erc20)),
+            maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
+            priceTimeout_: 806400,
+            oracleError_: 0.005e18,
+            defaultThreshold_: uint192(between(1, 1e18, defaultThresholdSeed)),
+            delayUntilDefault_: between(1, type(uint256).max, delayUntilDefaultSeed),
+            targetName_: targetName,
+            refPerTokModel_: isStable ? growing : getNextPriceModel(),
+            targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
+            uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
+            deviationModel_: isStable ? stable : getNextPriceModel()
+        });
         return lastCreatedColl;
     }
 
@@ -1042,36 +1046,14 @@ contract DiffTestScenario {
 
     // AssetRegistry: isRegsietered(token), <isAsset(token)>, <isCollateral(token)>
     function assetsEqualPrices(IAsset a, IAsset b) public view returns (bool) {
-        bool aFail;
-        bool bFail;
-        uint192 aPrice;
-        uint192 bPrice;
+        (uint192 aLow, uint192 aHigh) = a.price();
+        (uint192 bLow, uint192 bHigh) = b.price();
+        if (!aLow.near(bLow, EPSILON)) require(false, "aLow price not near bLow price");
+        if (!aHigh.near(bHigh, EPSILON)) require(false, "aHigh price not near bHigh price");
 
-        // equivalent price(false)
-        try a.price(false) returns (bool, uint192 price) {
-            (aFail, aPrice) = (false, price);
-            require(aPrice == a.strictPrice(), "aPrice != a.strictPrice()");
-        } catch {
-            aFail = true;
+        if (!a.lotPrice().near(b.lotPrice(), EPSILON)) {
+            require(false, "a lotPrice not near b lotPrice");
         }
-        try b.price(false) returns (bool, uint192 price) {
-            (bFail, bPrice) = (false, price);
-            require(bPrice == b.strictPrice(), "bPrice != b.strictPrice()");
-        } catch {
-            bFail = true;
-        }
-        if (aFail != bFail) require(false, "aFail != bFail");
-        if (!aPrice.near(bPrice, EPSILON)) require(false, "aPrice not near bPrice");
-
-        // equivalent price(true)
-
-        (bool aFail2, uint192 aPrice2) = a.price(true);
-        (bool bFail2, uint192 bPrice2) = b.price(true);
-        require(aFail == aFail2, "aFail != aFail2");
-        if (!aFail) require(aPrice == aPrice2, "aPrice != aPrice2");
-        require(bFail == bFail2, "bFail != bFail2");
-        if (!bFail) require(bPrice == bPrice2, "bPrice != bPrice2");
-
         return true;
     }
 
@@ -1116,26 +1098,11 @@ contract DiffTestScenario {
     }
 
     function echidna_bhEqualPrices() external view returns (bool) {
-        IBasketHandler a = p[0].basketHandler();
-        IBasketHandler b = p[1].basketHandler();
+        (uint192 aLow, uint192 aHigh) = p[0].basketHandler().price();
+        (uint192 bLow, uint192 bHigh) = p[1].basketHandler().price();
+        if (!aLow.near(bLow, EPSILON)) require(false, "aLow price not near bLow price");
+        if (!aHigh.near(bHigh, EPSILON)) require(false, "aHigh price not near bHigh price");
 
-        (bool aFail, uint192 aPrice) = a.price(true);
-        (bool bFail, uint192 bPrice) = b.price(true);
-        if (aFail != bFail) return false;
-        if (!aPrice.near(bPrice, EPSILON)) return false;
-
-        try a.price(false) returns (bool, uint192 price) {
-            (aFail, aPrice) = (false, price);
-        } catch {
-            aFail = true;
-        }
-        try b.price(false) returns (bool, uint192 price) {
-            (bFail, bPrice) = (false, price);
-        } catch {
-            bFail = true;
-        }
-        if (aFail != bFail) return false;
-        if (!aPrice.near(bPrice, EPSILON)) return false;
         return true;
     }
 
