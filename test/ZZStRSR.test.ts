@@ -791,6 +791,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
 
         await advanceTime(stkWithdrawalDelay + 1)
 
+        console.log('first')
         // Withdraw
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
@@ -799,6 +800,7 @@ describe(`StRSRP${IMPLEMENTATION} contract`, () => {
         expect(await rsr.balanceOf(stRSR.address)).to.equal(await stRSR.totalSupply())
         expect(await rsr.balanceOf(addr1.address)).to.equal(prevAddr1Balance.add(amount1))
 
+        console.log('second')
         // withdraw with same ID, nothing happens
         await stRSR.connect(addr1).withdraw(addr1.address, 1)
 
