@@ -7,10 +7,9 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import { IAddressProvider } from "./interfaces/IAddressProvider.sol";
 import { ICurveExchange, ICurvePool } from "./interfaces/ICurveExchange.sol";
-import { IComptroller } from "./interfaces/IComptroller.sol";
-import { ICToken } from "./interfaces/ICToken.sol";
 import { IZapRouter } from "./interfaces/IZapRouter.sol";
 import { ICurveRegistry } from "./interfaces/ICurveRegistry.sol";
+import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
 import "hardhat/console.sol";
 
@@ -25,22 +24,31 @@ contract ZapRouter is IZapRouter {
     ICurveExchange internal curveExchangeProvider;
     ICurveRegistry internal curveRegistry;
 
+    mapping(address => address) public getRouterAdapter;
     uint256 public maxSlippage;
-
-    mapping(address => bool) public isCompoundToken;
+    address public routerManager;
 
     constructor(uint256 _maxSlippage) {
-        IComptroller comptroller = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-        address[] memory markets = comptroller.getAllMarkets();
-        for (uint256 i = 0; i < markets.length; i++) {
-            isCompoundToken[markets[i]] = true;
-        }
-
         curveExchangeProvider = ICurveExchange(CURVE_ADDRESS_PROVIDER.get_address(2));
         curveRegistry = ICurveRegistry(CURVE_ADDRESS_PROVIDER.get_registry());
 
         maxSlippage = _maxSlippage;
         require(maxSlippage < MAX_BPS, "Invalid slippage");
+        routerManager = msg.sender;
+    }
+
+    function setRouterManager(address _routerManager) public {
+        require(msg.sender == routerManager, "!manager");
+        routerManager = _routerManager;
+    }
+
+    /// @notice This overrides existing registrations, adapaters are limited 1:1
+    function registerAdapter(address _adapter) public {
+        require(msg.sender == routerManager, "!manager");
+        address[] memory supportedTokens = IRouterAdapter(_adapter).supportedTokens();
+        for (uint256 i = 0; i < supportedTokens.length; i ++) {
+            getRouterAdapter[supportedTokens[i]] = _adapter;
+        }
     }
 
     function swap(
@@ -51,23 +59,24 @@ contract ZapRouter is IZapRouter {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
         require(IERC20(_from).balanceOf(address(this)) == _amount, "!balance");
 
+        IRouterAdapter fromAdapter = IRouterAdapter(getRouterAdapter[_from]);
+        IRouterAdapter toAdapter = IRouterAdapter(getRouterAdapter[_to]);
+
         address source = _from;
         address target = _to;
         uint256 amount = _amount;
 
-        if (isCompoundToken[_to]) {
-            target = ICToken(_to).underlying();
+        if (address(toAdapter) != address(0) && toAdapter.isAdapterToken(_to)) {
+            target = toAdapter.getUnwrapToken(_to);
         }
-        if (isCompoundToken[_from]) {
-            IERC20(_from).safeApprove(_from, 0);
-            IERC20(_from).safeApprove(_from, amount);
-            require(ICToken(_from).redeem(amount) == 0, "!redeem");
-            source = ICToken(_from).underlying();
-            amount = IERC20(source).balanceOf(address(this));
+        if (address(fromAdapter) != address(0) && fromAdapter.isAdapterToken(_from)) {
+            IERC20(_from).safeApprove(address(fromAdapter), 0);
+            IERC20(_from).safeApprove(address(fromAdapter), _amount);
+            (source, amount) = fromAdapter.unwrap(_from, _amount);
         }
 
         if (source == target) {
-            received = IERC20(source).balanceOf(address(this));
+            received = IERC20(target).balanceOf(address(this));
         } else {
             /// @notice Only supports stable coin swap look ups,
             /// need to investigate how to query for tricrypto based routing
@@ -129,11 +138,11 @@ contract ZapRouter is IZapRouter {
             }
         }
 
-        if (isCompoundToken[_to]) {
-            IERC20(target).safeApprove(_to, 0);
-            IERC20(target).safeApprove(_to, received);
-            require(ICToken(_to).mint(received) == 0, "!deposit");
-            received = IERC20(_to).balanceOf(address(this));
+        if (address(toAdapter) != address(0) && toAdapter.isAdapterToken(_to)) {
+            address unwrapToken = toAdapter.getUnwrapToken(_to);
+            IERC20(unwrapToken).safeApprove(address(toAdapter), 0);
+            IERC20(unwrapToken).safeApprove(address(toAdapter), received);
+            received = toAdapter.wrap(_to, received);
         }
 
         IERC20(_to).safeTransfer(msg.sender, received);
