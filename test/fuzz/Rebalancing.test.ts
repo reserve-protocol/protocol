@@ -1413,7 +1413,7 @@ describe('The Rebalancing scenario', () => {
       expect(await scenario.echidna_basketRangeSmallerWhenRebalancing()).to.be.true
 
       // Check trade
-      let trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
+      const trade = await ConAt('TradeMock', await comp.broker.lastOpenedTrade())
 
       expect(await comp.backingManager.tradesOpen()).to.equal(1)
       expect(await trade.status()).to.equal(TradeStatus.OPEN)
@@ -1598,8 +1598,6 @@ describe('The Rebalancing scenario', () => {
       expect(await trade.status()).to.equal(TradeStatus.CLOSED)
       expect(await comp.backingManager.tradesOpen()).to.equal(0)
     }
-
-    console.log('rebalancing done')
 
     // Check rebalanced status...
     expect(await scenario.status()).to.equal(RebalancingScenarioStatus.REBALANCING_DONE)

@@ -8,7 +8,6 @@ import * as sc from '../../typechain' // All smart contract types
 
 describe('CollateralMock', () => {
   let token: sc.ERC20Mock
-  let underToken: sc.ERC20Mock
 
   const manualPM = {
     kind: PriceModelKind.MANUAL,
@@ -42,7 +41,6 @@ describe('CollateralMock', () => {
   beforeEach(async () => {
     const f: sc.ERC20Mock__factory = await ethers.getContractFactory('ERC20Mock')
     token = await f.deploy('Collateral Token', 'TK')
-    underToken = await f.deploy('Underlying (Base) Token', 'BASE')
   })
 
   const priceAround = async (asset: sc.AssetMock, expected: BigNumberish) => {

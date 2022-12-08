@@ -136,19 +136,7 @@ describe('The Normal Operations scenario', () => {
       for (let u = 0; u < 3; u++) {
         expect(await token.balanceOf(user(u))).to.equal(fp(1e6))
       }
-      const assetAddr = await comp.assetRegistry.toAsset(tokenAddr)
-      const asset = await ConAt('IAsset', assetAddr)
-      // if (await asset.isCollateral()) {
-      //   const coll = await ConAt('CollateralMock', assetAddr)
-      //   const status = await coll.status()
-      //   console.log(`${sym} status: ${status}`)
-      //   const [low, high, peg] = await coll.tryPrice()
-      //   console.log(`    low:  ${low}`)
-      //   console.log(`    high: ${high}`)
-      //   console.log(`    peg:  ${peg}`)
-      //   console.log(`    pegBottom: ${await coll.pegBottom()}`)
-      //   console.log(`    pegTop:    ${await coll.pegTop()}`)
-      // }
+      await comp.assetRegistry.toAsset(tokenAddr)
     }
 
     // assets and collateral

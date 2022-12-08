@@ -3,7 +3,7 @@ import { ethers } from 'hardhat'
 import { Wallet, Signer } from 'ethers'
 import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
-import { fp, near } from '../../common/numbers'
+import { fp } from '../../common/numbers'
 
 import * as sc from '../../typechain' // All smart contract types
 
