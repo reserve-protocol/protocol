@@ -20,14 +20,14 @@ contract RETHCollateral is Collateral {
 
     /// Should not use Collateral.chainlinkFeed, since naming is ambiguous
 
-    uint192 public immutable defaultThreshold; // {%} e.g. 0.05
-
-    uint192 public prevReferencePrice; // previous rate, {collateral/reference}
+    uint192 public immutable marginRatio; // max drop allowed // D18
+    uint192 public maxRefPerTok; // max rate previous seen, {ref/tok}
 
     /// @param refUnitUSDChainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
-    /// @param defaultThreshold_ {%} A value like 0.05 that represents a deviation tolerance
+    /// @param _allowedDropBasisPoints {%} A value like 5 that represents
+    /// the max drop in ref price before default out of 10000 basis points.
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
     constructor(
         uint192 fallbackPrice_,
@@ -36,7 +36,7 @@ contract RETHCollateral is Collateral {
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
-        uint192 defaultThreshold_,
+        uint16 _allowedDropBasisPoints,
         uint256 delayUntilDefault_
     )
         Collateral(
@@ -49,21 +49,20 @@ contract RETHCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(
             address(refUnitUSDChainlinkFeed_) != address(0),
             "missing target unit chainlink feed"
         );
-        defaultThreshold = defaultThreshold_;
+        require(_allowedDropBasisPoints < 10000, "Allowed refPerTok drop out of range");
 
-        prevReferencePrice = refPerTok();
+        marginRatio = 10000 - _allowedDropBasisPoints;
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         return chainlinkFeed.price(oracleTimeout)
-                .mul(refPerTok());
+                .mul(actualRefPerTok());
     }
 
     /// Refresh exchange rates and update default status.
@@ -72,10 +71,10 @@ contract RETHCollateral is Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // Check for hard default
-        uint192 referencePrice = refPerTok();
-        // uint192(<) is equivalent to Fix.lt
-        if (referencePrice < prevReferencePrice) {
+        uint192 _actualRefPerTok = actualRefPerTok();
+
+        // check if refPerTok rate has decreased below the accepted threshold
+        if (_actualRefPerTok < refPerTok()) {
             markStatus(CollateralStatus.DISABLED);
         } else {
             // p {target/ref}
@@ -87,7 +86,11 @@ contract RETHCollateral is Collateral {
                 markStatus(CollateralStatus.IFFY);
             }
         }
-        prevReferencePrice = referencePrice;
+
+        // store actual refPerTok if it's the highest seen
+        if (_actualRefPerTok > maxRefPerTok) {
+            maxRefPerTok = _actualRefPerTok;
+        }
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
@@ -96,8 +99,14 @@ contract RETHCollateral is Collateral {
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    function refPerTok() public view override returns (uint192) {
+    function actualRefPerTok() public view returns (uint192) {
         return uint192(IRETH(address(erc20)).getExchangeRate());
+    }
+
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
+    /// @dev This amount has a {margin} space discounted to allow a certain drop on value
+    function refPerTok() public view override returns (uint192) {
+        return maxRefPerTok.mul(marginRatio).div(10000);
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
