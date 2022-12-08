@@ -297,7 +297,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("USD")
+            const targetName = `CONVEXLP${asset0.name()}${asset1.name()}${asset2.name()}`
             const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
                 .connect(addr1)
                 .deploy(
@@ -319,9 +319,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
             expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
             expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
-            expect(await uniconvexCollateral3.targetName()).to.equal(
-                ethers.utils.formatBytes32String("USD")
-            )
+            expect(await uniconvexCollateral3.targetName()).to.equal(targetName)
             expect(await uniconvexCollateral3.status()).to.equal(CollateralStatus.SOUND)
             expect(await uniconvexCollateral3.whenDefault()).to.equal(MAX_UINT256)
             //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
