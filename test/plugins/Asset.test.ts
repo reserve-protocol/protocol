@@ -221,7 +221,7 @@ describe('Assets contracts #fast', () => {
       )
     })
 
-    it('Should return (0, FIX_MAX) if price is zero', async () => {
+    it('Should return (0, 0) if price is zero', async () => {
       // Update values in Oracles to 0
       await setOraclePrice(compAsset.address, bn('0'))
       await setOraclePrice(aaveAsset.address, bn('0'))
