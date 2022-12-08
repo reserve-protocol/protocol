@@ -17,7 +17,7 @@ import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
 import { expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { advanceBlocks, advanceTime } from '../../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockNumber } from '../../utils/time'
 import {
   Asset,
   ERC20Mock,
@@ -39,6 +39,7 @@ import {
   IAutoCompoundingRewards,
   IBancorTradingProxy,
 } from '../../../typechain'
+import forkBlockNumber from '../fork-block-numbers'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -402,8 +403,16 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       )
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
 
-      await bnDAI.connect(addr1).approve(addr1.address,issueAmount)
-      await 
+      await bnDAI.connect(addr1).approve(bancorTradingProxy.address,issueAmount)
+      //await console.log(await bancorTradingProxy.tradeByTargetAmount(bnDAI.address,bancorToken.address,issueAmount,issueAmount,await getLatestBlockNumber() + 10000,addr1.address))
+      await console.log(bancorTradingProxy.address)
+      await console.log(bnDAI.address)
+      await console.log(bancorToken.address)
+      await console.log(issueAmount)
+      await console.log(await getLatestBlockNumber() + 10000)
+      await console.log(addr1.address)
+      await bancorTradingProxy.tradeByTargetAmount(bnDAI.address,bancorToken.address,issueAmount,issueAmount,await getLatestBlockNumber() + 10000,addr1.address)
+      
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
