@@ -49,7 +49,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // also: battery.redemptionRateFloor + battery.scalingRedemptionRate
+    // the follwing governance parameters exist inside the Battery struct:
+    //      battery.redemptionRateFloor
+    //      battery.scalingRedemptionRate
 
     // ==== End Governance Params ====
 
@@ -121,9 +123,9 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     //
     // We define a (partial) ordering on IssueItems: item1 < item2 iff the following all hold:
     //   item1.when < item2.when
-    //   item2.amtRToken < item2.amtRToken
+    //   item1.amtRToken < item2.amtRToken
     //   item1.amtBaskets < item2.amtBaskets
-    //   for all valid indices i, item1[i].deposits < item2[i].deposits
+    //   for all valid indices i, item1.deposits[i] < item2.deposits[i]
     //
     // And, in fact, item2 - item1 is then well-defined (and also piecewise).
     //
