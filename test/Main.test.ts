@@ -1373,25 +1373,6 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
         .withArgs([token0.address], [fp('1')], [ethers.utils.formatBytes32String('USD')])
     })
 
-    it('Should have a status of DISABLED if the basket is empty', async () => {
-      // run a fresh deployment specifically for this test
-      const receipt = await (
-        await deployer.deploy(
-          'RTKN RToken (empty basket)',
-          'RTKN (empty basket)',
-          'mandate (empty basket)',
-          owner.address,
-          config
-        )
-      ).wait()
-      const mainAddr = expectInReceipt(receipt, 'RTokenCreated').args.main
-      const newMain: TestIMain = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
-      const emptyBasketHandler: IBasketHandler = <IBasketHandler>(
-        await ethers.getContractAt('IBasketHandler', await newMain.basketHandler())
-      )
-      expect(await emptyBasketHandler.status()).to.equal(CollateralStatus.DISABLED)
-    })
-
     it('Should return FIX_ZERO for basketsHeldBy(<any account>) if the basket is empty', async () => {
       // run a fresh deployment specifically for this test
       const receipt = await (

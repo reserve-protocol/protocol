@@ -275,6 +275,8 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     function status() public view returns (CollateralStatus status_) {
         uint256 size = basket.erc20s.length;
 
+        // untestable:
+        //      disabled is only set in _switchBasket, and only if size > 0.
         if (disabled || size == 0) return CollateralStatus.DISABLED;
 
         for (uint256 i = 0; i < size; ++i) {
