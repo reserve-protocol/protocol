@@ -540,13 +540,12 @@ async function main() {
 
   /********  Deploy EURO Fiat Collateral  - EURT **************************/
   const eurtError = fp('0.02') // 2%
-  const eurError = fp('0.0015') // 0.15%
 
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
     priceTimeout: priceTimeout.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
-    combinedOracleError: combinedError(eurtError, eurError).toString(), // 2%
+    oracleError: eurtError.toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),

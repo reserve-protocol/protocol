@@ -133,8 +133,8 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
 
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
     const product = sellAmt
       .mul(fp('1').sub(await backingManager.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)
@@ -1222,7 +1222,7 @@ describe(`Recollateralization - P${IMPLEMENTATION}`, () => {
         )
       })
 
-      it.only('Should recollateralize correctly when switching basket - Using RSR for remainder', async () => {
+      it.skip('Should recollateralize correctly when switching basket - Using RSR for remainder', async () => {
         // Set prime basket
         await basketHandler.connect(owner).setPrimeBasket([token1.address], [fp('1')])
 

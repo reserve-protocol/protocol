@@ -49,9 +49,9 @@ contract CTokenNonFiatCollateral is CTokenFiatCollateral {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
         uint192 p = pricePerTarget.mul(pegPrice).mul(refPerTok());
 
-        // oracleError is on whatever the _true_ price is, not the one observed
         // this oracleError is already the combined total oracle error
-        low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError), CEIL);
+        uint192 delta = p.mul(oracleError);
+        low = p - delta;
+        high = p + delta;
     }
 }

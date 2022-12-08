@@ -27,19 +27,14 @@ contract SelfReferentialCollateral is FiatCollateral {
         external
         view
         override
-        returns (
-            uint192 low,
-            uint192 high,
-            uint192 pegPrice
-        )
+        returns (uint192 low, uint192 high, uint192 pegPrice)
     {
         // {UoA/tok} = {UoA/ref} * {ref/tok}
         uint192 p = chainlinkFeed.price(oracleTimeout).mul(refPerTok());
+        uint192 delta = p.mul(oracleError);
 
-        // oracleError is on whatever the _true_ price is, not the one observed
-        // this oracleError is already the combined total oracle error
-        low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError), CEIL);
+        low = p - delta;
+        high = p + delta;
         pegPrice = targetPerRef();
     }
 }

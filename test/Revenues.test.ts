@@ -123,8 +123,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
 
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(ORACLE_ERROR))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(ORACLE_ERROR))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(ORACLE_ERROR).div(BN_SCALE_FACTOR))
     const product = sellAmt
       .mul(fp('1').sub(await rTokenTrader.maxTradeSlippage())) // (a)
       .mul(lowSellPrice) // (b)
@@ -849,7 +849,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         expect(await rToken.balanceOf(furnace.address)).to.equal(0)
 
         // Expected values based on Prices between COMP and RSR = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = fp('1').mul(101).div(100) // due to oracleError
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to maxTradeSlippage
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         // Run auctions
@@ -1029,7 +1029,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between AAVE and RToken = 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18').mul(101).div(100) // due to max trade volume
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to max trade slippage
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         await expectEvents(backingManager.claimRewards(), [
@@ -1223,7 +1223,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Collect revenue
         // Expected values based on Prices between COMP and RSR/RToken = 1 to 1 (for simplification)
-        const sellAmt: BigNumber = bn('1e18').mul(101).div(100) // due to max trade volume
+        const sellAmt: BigNumber = fp('1').mul(100).div(99) // due to max trade slippage
         const minBuyAmt: BigNumber = await toMinBuyAmt(sellAmt, fp('1'), fp('1'))
 
         const sellAmtRToken: BigNumber = rewardAmountCOMP.mul(20).div(100) // All Rtokens can be sold - 20% of total comp based on f
@@ -1351,7 +1351,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         // Check destinations at this stage
         // StRSR
-        expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
+        expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(minBuyAmt, 15)
         // Furnace
         expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
 
