@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, div, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
+import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   Asset,
   ComptrollerMock,
@@ -164,23 +164,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       .mul(lowSellPrice) // (b)
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
-  }
-
-  // getMidPrice: helper to have an estimate in value for an asset
-  const getMidPrice = async (asset: Asset): Promise<BigNumber> => {
-    const [lowPrice, highPrice] = await asset.price()
-
-    // back-solve for oracleError using system of equations
-    const oracleError: BigNumber = div(
-      highPrice.sub(lowPrice),
-      lowPrice.add(highPrice),
-      RoundingMode.ROUND
-    )
-
-    // extrapolate lowPrice to midPrice using oracleError
-    const midPrice: BigNumber = lowPrice.mul(BN_SCALE_FACTOR.add(oracleError))
-
-    return midPrice
   }
 
   before('create fixture loader', async () => {
