@@ -42,13 +42,15 @@ library TradeLib {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
+        (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
+
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, rules.minTradeVolume)) {
             return (false, req);
         }
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.sell.lotPrice()); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -65,6 +67,7 @@ library TradeLib {
         req.minBuyAmount = b.shiftl_toUint(int8(trade.buy.erc20Decimals()), CEIL);
         req.sell = trade.sell;
         req.buy = trade.buy;
+
         return (true, req);
     }
 
@@ -129,15 +132,17 @@ library TradeLib {
 
     /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use for sizing
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
         return
-            amt.gte(minTradeSize(minTradeVolume, asset.lotPrice())) &&
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;

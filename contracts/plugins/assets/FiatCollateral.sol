@@ -121,16 +121,22 @@ contract FiatCollateral is ICollateral, Asset {
         CollateralStatus oldStatus = status();
 
         // Check for soft default + save lotPrice
-        try this.tryPrice() returns (uint192 low, uint192, uint192 pegPrice) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
+
+            // high can't be FIX_MAX in this contract, but inheritors might mess this up
+            if (high < FIX_MAX) {
+                // Save prices
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            }
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || pegPrice < pegBottom || pegPrice > pegTop) {
+            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
                 markStatus(CollateralStatus.IFFY);
             } else {
-                lastPrice = low;
-                lastTimestamp = uint48(block.timestamp);
                 markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {

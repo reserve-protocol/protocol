@@ -26,9 +26,10 @@ interface IAsset is IRewardable {
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert
-    /// Should be nonzero when the asset might be worth selling
-    /// @return {UoA/tok} A lot price to use for trade sizing
-    function lotPrice() external view returns (uint192);
+    /// lotLow be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
     /// @return {tok} The balance of the ERC20 in whole tokens
     function bal(address account) external view returns (uint192);

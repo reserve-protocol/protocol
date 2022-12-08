@@ -78,24 +78,23 @@ contract RTokenAsset is IAsset {
     }
 
     /// Should not revert
-    /// Should be nonzero when the asset might be worth selling
-    /// @return {UoA/tok} A lot price to use for trade sizing
-    function lotPrice() external view returns (uint192) {
-        // This function can revert if any of the math inside it reverts
-        // But we prefer reverting over returning a zero value for lotPrice()
-
-        uint192 buLotPrice = basketHandler.lotPrice(); // {UoA/BU}
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
+        (uint192 buLow, uint192 buHigh) = basketHandler.lotPrice(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return buLotPrice;
+        if (supply == 0) return (buLow, buHigh);
 
         RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return range.bottom.mulDiv(buLotPrice, supply);
+        lotLow = range.bottom.mulDiv(buLow, supply);
+        lotHigh = range.top.mulDiv(buHigh, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

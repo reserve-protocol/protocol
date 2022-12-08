@@ -89,9 +89,10 @@ interface IBasketHandler is IComponent {
     function price() external view returns (uint192 low, uint192 high);
 
     /// Should not revert
-    /// Should be nonzero
-    /// @return {UoA/tok} A lot price to use for trade sizing
-    function lotPrice() external view returns (uint192);
+    /// lotLow should be nonzero if a BU could be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
     /// @return The basket nonce, a monotonically increasing unique identifier
     function nonce() external view returns (uint48);

@@ -289,42 +289,41 @@ contract BasketHandlerP0 is ComponentP0, IBasketHandler {
     /// @return high {UoA/tok} The upper end of the price estimate
     // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
     function price() external view returns (uint192 low, uint192 high) {
+        return _price(false);
+    }
+
+    /// Should not revert
+    /// lowLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    // returns sum(quantity(erc20) * lotPrice(erc20) for erc20 in basket.erc20s)
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
+        return _price(true);
+    }
+
+    /// Returns the price of a BU, using the lot prices if `useLotPrice` is true
+    /// @return low {UoA/tok} The lower end of the lot price estimate
+    /// @return high {UoA/tok} The upper end of the lot price estimate
+    function _price(bool useLotPrice) internal view returns (uint192 low, uint192 high) {
         IAssetRegistry reg = main.assetRegistry();
+
         uint256 low256;
         uint256 high256;
 
-        uint256 length = basket.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
+        for (uint256 i = 0; i < basket.erc20s.length; i++) {
             uint192 qty = quantity(basket.erc20s[i]);
             if (qty == 0) continue;
 
-            (uint192 lowP, uint192 highP) = reg.toAsset(basket.erc20s[i]).price();
+            (uint192 lowP, uint192 highP) = useLotPrice
+                ? reg.toAsset(basket.erc20s[i]).lotPrice()
+                : reg.toAsset(basket.erc20s[i]).price();
+
             low256 += quantityMulPrice(qty, lowP);
             high256 += quantityMulPrice(qty, highP);
         }
 
         low = low256 >= FIX_MAX ? FIX_MAX : uint192(low256);
         high = high256 >= FIX_MAX ? FIX_MAX : uint192(high256);
-    }
-
-    /// Should not revert
-    /// Should be nonzero
-    /// @return p {UoA/tok} A lot price to use for trade sizing when price().low is 0
-    // returns sum(quantity(erc20) * price(erc20) for erc20 in basket.erc20s)
-    function lotPrice() external view returns (uint192 p) {
-        IAssetRegistry reg = main.assetRegistry();
-        uint256 p256;
-
-        uint256 length = basket.erc20s.length;
-        for (uint256 i = 0; i < length; ++i) {
-            uint192 qty = quantity(basket.erc20s[i]);
-            if (qty == 0) continue;
-
-            uint192 fbPrice = reg.toAsset(basket.erc20s[i]).lotPrice();
-            p256 += quantityMulPrice(qty, fbPrice);
-        }
-
-        p = p256 >= FIX_MAX ? FIX_MAX : uint192(p256);
     }
 
     /// Multiply quantity by price, rounding up to FIX_MAX and down to 0
