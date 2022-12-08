@@ -245,6 +245,34 @@ describe('FacadeWrite contract', () => {
     ).to.be.revertedWith('no collateral')
   })
 
+  it('Should allow all rev share to go to RSR stakers', async () => {
+    rTokenSetup.beneficiaries = [
+      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(1), rTokenDist: bn(0) } },
+    ]
+    // Deploy RToken via FacadeWrite
+    const receipt = await (
+      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).wait()
+
+    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
+      .main
+    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+  })
+
+  it('Should allow all rev share to go to RToken holders', async () => {
+    rTokenSetup.beneficiaries = [
+      { beneficiary: beneficiary1.address, revShare: { rsrDist: bn(0), rTokenDist: bn(1) } },
+    ]
+    // Deploy RToken via FacadeWrite
+    const receipt = await (
+      await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
+    ).wait()
+
+    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
+      .main
+    main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
+  })
+
   describe('Deployment Process', () => {
     beforeEach(async () => {
       // Deploy RToken via FacadeWrite
