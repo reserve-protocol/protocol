@@ -84,6 +84,7 @@ contract BancorV3FiatCollateral is Collateral {
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
+        console.log(referencePrice);
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
@@ -134,6 +135,7 @@ contract BancorV3FiatCollateral is Collateral {
         bool isActive = standardRewards.isProgramActive(ids[0]);
         console.log("%s", isActive);
         uint256 claimed = standardRewards.claimRewards(ids);
+        console.log("%s", claimed);
         IERC20 bnt = IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C);
         emit RewardsClaimed(bnt, 0);
     }

@@ -42,7 +42,7 @@ import {
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
-const HOLDER_USDC = '0xc32e1289b5765b2c4d8a6aa925cbd2a29d35cc22'
+const HOLDER_BNDAI = '0xb494096548aa049c066289a083204e923cbf4413'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -51,7 +51,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let addr1: SignerWithAddress
 
   // Tokens/Assets
-  let bnUsdc: ERC20Mock
+  let bnDAI: ERC20Mock
   let BancorV3Collateral: BancorV3FiatCollateral
   let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
@@ -126,8 +126,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    bnUsdc = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnUSDC || '')
+    bnDAI = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnDAI || '')
     )
 
     bancorProxy = <IBnTokenERC20>(
@@ -171,8 +171,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     BancorV3Collateral = <BancorV3FiatCollateral>(
       await BancorV3CollateralFactory.deploy(
         fp('0.02'),
-        networkConfig[chainId].chainlinkFeeds.USDC as string,
-        bnUsdc.address,
+        networkConfig[chainId].chainlinkFeeds.DAI as string,
+        bnDAI.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('USD'),
@@ -184,9 +184,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       )
     )
 
-    // Setup balances of bnUsdc for addr1 - Transfer from Mainnet holder
-    await whileImpersonating(HOLDER_USDC, async (bnUsdcSigner) => {
-      await bnUsdc.connect(bnUsdcSigner).transfer(addr1.address, bn('2000e8'))
+    // Setup balances of bnDAI for addr1 - Transfer from Mainnet holder
+    await whileImpersonating(HOLDER_BNDAI, async (bnDAISigner) => {
+      await bnDAI.connect(bnDAISigner).transfer(addr1.address, bn('2000e8'))
     })
 
     // Set parameters
@@ -260,8 +260,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       expect(await bancorProxy.address).to.equal(networkConfig[chainId].BANCOR_PROXY)
       expect(await BancorV3Collateral.isCollateral()).to.equal(true)
-      expect(await BancorV3Collateral.erc20Decimals()).to.equal(await bnUsdc.decimals())
-      expect(await BancorV3Collateral.erc20()).to.equal(bnUsdc.address)
+      expect(await BancorV3Collateral.erc20Decimals()).to.equal(await bnDAI.decimals())
+      expect(await BancorV3Collateral.erc20()).to.equal(bnDAI.address)
       expect(await BancorV3Collateral.targetName()).to.equal(
         ethers.utils.formatBytes32String('USD')
       )
@@ -285,7 +285,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
       expect(ERC20s[2]).to.equal(bancorToken.address)
-      expect(ERC20s[3]).to.equal(bnUsdc.address)
+      expect(ERC20s[3]).to.equal(bnDAI.address)
       expect(ERC20s.length).to.eql(4)
 
       // Assets
@@ -303,7 +303,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Basket
       expect(await basketHandler.fullyCollateralized()).to.equal(true)
       const backing = await facade.basketTokens(rToken.address)
-      expect(backing[0]).to.equal(bnUsdc.address)
+      expect(backing[0]).to.equal(bnDAI.address)
       expect(backing.length).to.equal(1)
 
       // Check other values
@@ -317,7 +317,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       // Check RToken price
       const issueAmount: BigNumber = bn('2000e8')
-      await bnUsdc.connect(addr1).approve(rToken.address, issueAmount)
+      await bnDAI.connect(addr1).approve(rToken.address, issueAmount)
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
@@ -329,8 +329,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(
         BancorV3CollateralFactory.deploy(
           fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.USDC as string,
-          bnUsdc.address,
+          networkConfig[chainId].chainlinkFeeds.DAI as string,
+          bnDAI.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -346,8 +346,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(
         BancorV3CollateralFactory.deploy(
           fp('0.02'),
-          networkConfig[chainId].chainlinkFeeds.USDC as string,
-          bnUsdc.address,
+          networkConfig[chainId].chainlinkFeeds.DAI as string,
+          bnDAI.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
           ethers.utils.formatBytes32String('USD'),
@@ -369,7 +369,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       // Provide approvals for issuances
-      await bnUsdc.connect(addr1).approve(rToken.address,issueAmount)
+      await bnDAI.connect(addr1).approve(rToken.address,issueAmount)
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
@@ -378,20 +378,21 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Store Balances after issuance
-      const balanceAddr1bnUsdc: BigNumber = await bnUsdc.balanceOf(addr1.address)
+      const balanceAddr1bnDAI: BigNumber = await bnDAI.balanceOf(addr1.address)
 
       // Check rates and prices
-      const bnUsdcPrice1: BigNumber = await BancorV3Collateral.strictPrice() // ~ 0.022015 cents
-      const bnUsdcRefPerTok1: BigNumber = await BancorV3Collateral.refPerTok() // ~ 0.022015 cents
+      const bnDAIPrice1: BigNumber = await BancorV3Collateral.strictPrice() // ~ 0.022015 cents
+      const bnDAIRefPerTok1: BigNumber = await BancorV3Collateral.refPerTok() // ~ 0.022015 cents
 
-      expect(bnUsdcPrice1).to.be.closeTo(fp('1'), fp('0.5'))
-      expect(bnUsdcRefPerTok1).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIPrice1).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIRefPerTok1).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
       expect(totalAssetValue1).to.be.closeTo(issueAmount, fp('150')) // approx 10K in value
+
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
@@ -402,16 +403,16 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed, slight inrease
-      const bnUsdcPrice2: BigNumber = await BancorV3Collateral.strictPrice() // ~0.022016
-      const bnUsdcRefPerTok2: BigNumber = await BancorV3Collateral.refPerTok() // ~0.022016
+      const bnDAIPrice2: BigNumber = await BancorV3Collateral.strictPrice() // ~0.022016
+      const bnDAIRefPerTok2: BigNumber = await BancorV3Collateral.refPerTok() // ~0.022016
 
       // Check rates and price increase
-      expect(bnUsdcPrice2).to.be.gte(bnUsdcPrice1)
-      expect(bnUsdcRefPerTok2).to.be.gte(bnUsdcRefPerTok1)
+      expect(bnDAIPrice2).to.be.gt(bnDAIPrice1)
+      expect(bnDAIRefPerTok2).to.be.gt(bnDAIRefPerTok1)
 
       // Still close to the original values
-      expect(bnUsdcPrice2).to.be.closeTo(fp('1'), fp('0.5'))
-      expect(bnUsdcRefPerTok2).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIPrice2).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIRefPerTok2).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -428,16 +429,16 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const bnUsdcPrice3: BigNumber = await BancorV3Collateral.strictPrice() // ~0.03294
-      const bnUsdcRefPerTok3: BigNumber = await BancorV3Collateral.refPerTok() // ~0.03294
+      const bnDAIPrice3: BigNumber = await BancorV3Collateral.strictPrice() // ~0.03294
+      const bnDAIRefPerTok3: BigNumber = await BancorV3Collateral.refPerTok() // ~0.03294
 
       // Check rates and price increase
-      expect(bnUsdcPrice3).to.be.gt(bnUsdcPrice2)
-      expect(bnUsdcRefPerTok3).to.be.gt(bnUsdcRefPerTok2)
+      expect(bnDAIPrice3).to.be.gt(bnDAIPrice2)
+      expect(bnDAIRefPerTok3).to.be.gt(bnDAIRefPerTok2)
 
       // Need to adjust ranges
-      expect(bnUsdcPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(bnUsdcRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(bnDAIPrice3).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIRefPerTok3).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -453,13 +454,13 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rToken.totalSupply()).to.equal(0)
 
       // Check balances - Fewer cTokens should have been sent to the user
-      const newBalanceAddr1bnUsdc: BigNumber = await bnUsdc.balanceOf(addr1.address)
+      const newBalanceAddr1bnDAI: BigNumber = await bnDAI.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1bnUsdc.sub(balanceAddr1bnUsdc)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1bnDAI.sub(balanceAddr1bnDAI)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await bnUsdc.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await bnDAI.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
