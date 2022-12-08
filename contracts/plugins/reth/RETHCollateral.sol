@@ -24,8 +24,6 @@ contract RETHCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    IRETH public immutable rETH;
-
     /// @param refUnitUSDChainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
@@ -57,7 +55,6 @@ contract RETHCollateral is Collateral {
             "missing target unit chainlink feed"
         );
         defaultThreshold = defaultThreshold_;
-        rETH = IRETH(address(erc20));
 
         prevReferencePrice = refPerTok();
     }
@@ -100,7 +97,7 @@ contract RETHCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        return uint192(rETH.getExchangeRate());
+        return uint192(IRETH(address(erc20)).getExchangeRate());
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
