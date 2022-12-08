@@ -1,9 +1,9 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
-import { BigNumber, ContractFactory } from 'ethers'
+import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
 import { ethers } from 'hardhat'
 import { bn, toBNDecimals } from '../../common/numbers'
-import { Zapper, ZapRouter, TestIRToken, ERC20Mock } from '../../typechain'
+import { Zapper, ZapRouter, TestIRToken, ERC20Mock, CompoundRouterAdapter } from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 
 interface TestTokenParams {
@@ -12,9 +12,26 @@ interface TestTokenParams {
   amountOverride?: BigNumber | undefined
 }
 
-// Commented paths have what seems to be bad slippage?
+interface TestResultTableData {
+  from: string
+  tokenAmount: string
+  to: string
+  rTokenAmount: string
+  redeemAmount: string
+  efficiency: string
+}
+
+interface TestTokenParams {
+  address: string
+  whale: string
+  amountOverride?: BigNumber | undefined
+}
+
+function formatBalance(amount: BigNumberish, decimals = 18): number {
+  return Number(ethers.utils.formatUnits(amount, decimals))
+}
+
 const testTokens: TestTokenParams[] = [
-  // Does not support cyptos yet sadly, registry only paths stables it seems
   // WBTC
   {
     address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
@@ -52,21 +69,6 @@ const testTokens: TestTokenParams[] = [
     address: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
     whale: '0xdcef968d416a41cdac0ed8702fac8128a64241a2',
   },
-  // cUSDC (Compound Supplied)
-  {
-    address: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
-    whale: '0x342491c093a640c7c2347c4ffa7d8b9cbc84d1eb',
-  },
-  // cDAI (Compound Supplied)
-  {
-    address: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
-    whale: '0x1676055fe954ee6fc388f9096210e5ebe0a9070c',
-  },
-  // cTUSD (Compound Supplied)
-  {
-    address: '0x12392F67bdf24faE0AF363c24aC620a2f67DAd86',
-    whale: '0xb99cc7e10fe0acc68c50c7829f473d81e23249cc',
-  },
 ]
 
 const testBaskets = [
@@ -89,6 +91,7 @@ describe(`RToken Zapper Test V1`, () => {
 
   // Core Contracts
   let router: ZapRouter
+  let compoundRouterAdapter: CompoundRouterAdapter
   let zapper: Zapper
   let rToken: TestIRToken
 
@@ -99,6 +102,14 @@ describe(`RToken Zapper Test V1`, () => {
     const ZapRouterFactory: ContractFactory = await ethers.getContractFactory('ZapRouter')
     const zapRouterDeploy: ZapRouter = (await ZapRouterFactory.deploy(200)) as ZapRouter
     router = await zapRouterDeploy.deployed()
+
+    const CompoundRouterAdapterFactory: ContractFactory = await ethers.getContractFactory(
+      'CompoundRouterAdapter'
+    )
+    const compoundRouterAdapterDeploy: CompoundRouterAdapter =
+      (await CompoundRouterAdapterFactory.deploy()) as CompoundRouterAdapter
+    compoundRouterAdapter = await compoundRouterAdapterDeploy.deployed()
+    await router.registerAdapter(compoundRouterAdapter.address)
 
     // Deploy Zapper
     const ZapperFactory: ContractFactory = await ethers.getContractFactory('Zapper')
@@ -111,27 +122,29 @@ describe(`RToken Zapper Test V1`, () => {
   })
 
   async function verifyTokenInputs(inputs: TestTokenParams[]) {
+    const testData: TestResultTableData[] = []
     for (const input of inputs) {
       const { address, whale, amountOverride } = input
       for (const targetBasket of testBaskets) {
-        await verifyMint(
+        const result = await verifyMint(
           address,
           whale,
           amountOverride || acquireAmount,
-          amountOverride || spendAmount,
           targetBasket
         )
+        testData.push(result)
       }
     }
+    console.table(testData)
   }
 
   async function verifyMint(
     purchaseToken: string,
     whale: string,
     acquireAmount: BigNumber,
-    spendAmount: BigNumber,
     targetBasket: string
-  ) {
+  ): Promise<TestResultTableData> {
+    console.log(`${purchaseToken} -> ${targetBasket}`)
     const token = (await ethers.getContractAt('ERC20Mock', purchaseToken)) as ERC20Mock
     const [decimals, tokenName] = await Promise.all([token.decimals(), token.name()])
     await whileImpersonating(whale, async (signer) => {
@@ -143,33 +156,31 @@ describe(`RToken Zapper Test V1`, () => {
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', targetBasket)
     const rTokenBalanceBefore = await rToken.balanceOf(owner.address)
     const basketName = await rToken.name()
-    console.log(`Attempt mint of ${basketName} with ${tokenName}`)
     await zapper.connect(owner).zapIn(purchaseToken, targetBasket, convertedSpend)
     const rTokenBalanceAfter = await rToken.balanceOf(owner.address)
     expect(rTokenBalanceAfter).to.be.gt(rTokenBalanceBefore)
 
-    const rTokenDisplayBalance = Number(
-      ethers.utils.formatEther(rTokenBalanceAfter.toString())
-    ).toFixed(2)
-    const displayBalance = Number(
-      ethers.utils.formatUnits(convertedSpend.toString(), decimals)
-    ).toFixed(2)
-
-    console.log(`Minted ${rTokenDisplayBalance} ${basketName} with ${displayBalance} ${tokenName}`)
-
+    const rTokenDisplayBalance = formatBalance(rTokenBalanceAfter).toFixed(2)
+    const displayBalance = formatBalance(convertedSpend, decimals).toFixed(2)
     await rToken.connect(owner).approve(zapper.address, ethers.constants.MaxUint256)
-    console.log(`Attempt redeem ${rTokenDisplayBalance} ${basketName} to to ${tokenName}`)
     await zapper.connect(owner).zapOut(targetBasket, purchaseToken, rTokenBalanceAfter)
     const balanceOfAfter = await token.balanceOf(owner.address)
-    const displayBalanceAfter = Number(
-      ethers.utils.formatUnits(balanceOfAfter.toString(), decimals)
-    ).toFixed(2)
-    console.log(
-      `Before: ${displayBalance} ${tokenName}, After: ${displayBalanceAfter} ${tokenName}`
-    )
+    const displayBalanceAfter = formatBalance(balanceOfAfter, decimals).toFixed(2)
     const effeciency =
-      Number(ethers.utils.formatUnits(balanceOfAfter, decimals)) /
-      Number(ethers.utils.formatUnits(convertedSpend, decimals))
-    console.log(`Effeciency: ${(effeciency * 100).toFixed(2)}%`)
+      (100 * formatBalance(balanceOfAfter, decimals)) / formatBalance(convertedSpend, decimals)
+    expect(effeciency).to.be.lte(101)
+
+    const result = {
+      from: tokenName,
+      tokenAmount: displayBalance,
+      to: basketName,
+      rTokenAmount: rTokenDisplayBalance,
+      redeemAmount: displayBalanceAfter,
+      efficiency: `${effeciency.toFixed(2)}%`,
+    }
+
+    await token.connect(owner).transfer(other.address, balanceOfAfter)
+
+    return result
   }
 })

@@ -66,9 +66,7 @@ contract Zapper is IZap {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
 
         IRToken(_from).redeem(_amount);
-        (address[] memory erc20s,,) = facade.basketBreakdown(
-            RTokenP1(address(_from))
-        );
+        (address[] memory erc20s, , ) = facade.basketBreakdown(RTokenP1(address(_from)));
 
         for (uint256 i = 0; i < erc20s.length; i++) {
             address token = erc20s[i];
@@ -92,7 +90,7 @@ contract Zapper is IZap {
     ) internal returns (address[] memory, uint256[] memory) {
         // Get underlying assets and ratios
         // TODO this is a write call - check if it's safe
-        (address[] memory erc20s, uint192[] memory uoaShares,) = facade.basketBreakdown(
+        (address[] memory erc20s, uint192[] memory uoaShares, ) = facade.basketBreakdown(
             RTokenP1(address(_to))
         );
 
