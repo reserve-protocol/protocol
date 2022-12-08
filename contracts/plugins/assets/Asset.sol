@@ -24,13 +24,15 @@ contract Asset is IAsset {
 
     // === Lot price ===
 
-    uint48 public immutable priceTimeout; // {s} The period over which `lastPrice` decays to 0
+    uint48 public immutable priceTimeout; // {s} The period over which `savedHighPrice` decays to 0
 
-    uint192 internal lastPrice; // {UoA/tok} The price of the token during the last update
+    uint192 public savedLowPrice; // {UoA/tok} The low price of the token during the last update
 
-    uint48 internal lastTimestamp; // {s} The timestamp when `lastPrice` was last saved
+    uint192 public savedHighPrice; // {UoA/tok} The high price of the token during the last update
 
-    /// @param priceTimeout_ {s} The number of seconds over which lastPrice decays to 0
+    uint48 public lastSave; // {s} The timestamp when prices were last saved
+
+    /// @param priceTimeout_ {s} The number of seconds over which savedHighPrice decays to 0
     /// @param chainlinkFeed_ Feed units: {UoA/tok}
     /// @param oracleError_ {1} The % the oracle feed can be off by
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -69,11 +71,17 @@ contract Asset is IAsset {
     }
 
     /// Should not revert
-    /// Refresh saved lastPrice
+    /// Refresh saved prices
     function refresh() public virtual override {
-        try this.tryPrice() returns (uint192 low, uint192, uint192) {
-            lastPrice = low;
-            lastTimestamp = uint48(block.timestamp);
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            // this can't happen in this contract as-is, but inheritors might make this mistake
+            // (0, 0) is a valid price
+            if (high < FIX_MAX) {
+                // Save prices
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -86,7 +94,7 @@ contract Asset is IAsset {
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            assert(low <= high); // TODO remove?
+            assert(low <= high);
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -96,14 +104,29 @@ contract Asset is IAsset {
     }
 
     /// Should not revert
-    /// Should be nonzero when the asset might be worth selling
-    /// @return {UoA/tok} A lot price to use for trade sizing
-    function lotPrice() external view virtual returns (uint192) {
-        uint48 delta = uint48(block.timestamp) - lastTimestamp; // {s}
-        if (delta >= priceTimeout) return 0; // no price after timeout elapses
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            // if the price feed is still functioning, use that
+            return (low, high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
 
-        // {UoA/tok} = {UoA/tok} * {s} / {s}
-        return lastPrice.mul(divuu(priceTimeout - delta, priceTimeout));
+            // if the price feed is broken, use a decayed historical value
+
+            uint48 delta = uint48(block.timestamp) - lastSave; // {s}
+            if (delta >= priceTimeout) return (0, 0); // no price after timeout elapses
+
+            // {1} = {s} / {s}
+            uint192 lotMultiplier = divuu(priceTimeout - delta, priceTimeout);
+
+            // {UoA/tok} = {UoA/tok} * {1}
+            lotLow = savedLowPrice.mul(lotMultiplier);
+            lotHigh = savedHighPrice.mul(lotMultiplier);
+        }
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens

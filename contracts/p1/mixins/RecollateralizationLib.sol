@@ -248,22 +248,25 @@ library RecollateralizationLibP1 {
                 bal = bal.plus(reg.assets[i].bal(address(components.stRSR)));
             }
 
-            (uint192 lowPrice, uint192 highPrice) = reg.assets[i].price(); // {UoA/tok}
+            (uint192 low, uint192 high) = reg.assets[i].price(); // {UoA/tok}
+            (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/tok}
 
             uint192 qty = components.bh.quantity(reg.erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !TradeLib.isEnoughToSell(reg.assets[i], bal, rules.minTradeVolume))
-                continue;
+            if (
+                qty == 0 &&
+                !TradeLib.isEnoughToSell(reg.assets[i], bal, lotLow, rules.minTradeVolume)
+            ) continue;
 
-            // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
+            // Intentionally include value of IFFY/DISABLED collateral when low is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsLow += lowPrice.mul(bal, FLOOR);
+            assetsLow += low.mul(bal, FLOOR);
             // += is same as Fix.plus
 
-            // assetsHigh += highPrice.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
+            // assetsHigh += high.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
             // {UoA} = {UoA/tok} * {tok}
-            uint192 val = TradeLib.safeMulDivCeil(components.bm, highPrice, bal, FIX_ONE);
+            uint192 val = TradeLib.safeMulDivCeil(components.bm, high, bal, FIX_ONE);
             if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
             else assetsHigh += val;
             // += is same as Fix.plus
@@ -332,13 +335,19 @@ library RecollateralizationLibP1 {
             // needed(Top): token balance needed for range.top baskets: quantity(e) * range.top
             uint192 needed = range.top.mul(components.bh.quantity(reg.erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                (uint192 lowPrice, uint192 highPrice) = reg.assets[i].price(); // {UoA/sellTok}
+                uint192 low; // {UoA/sellTok}
 
-                // Skip worthless assets
-                if (highPrice == 0) continue;
+                // this wonky block is just for getting around the stack limit
+                {
+                    uint192 high; // {UoA/sellTok}
+                    (low, high) = reg.assets[i].price(); // {UoA/sellTok}
+
+                    // Skip worthless assets
+                    if (high == 0) continue;
+                }
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
+                uint192 delta = bal.minus(needed).mul(low, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
@@ -348,32 +357,39 @@ library RecollateralizationLibP1 {
 
                 // Select the most-in-surplus "best" asset still enough to sell,
                 // as defined by a (status, surplusAmt) ordering
-                if (
-                    isBetterSurplus(maxes, status, delta) &&
-                    TradeLib.isEnoughToSell(reg.assets[i], bal.minus(needed), rules.minTradeVolume)
-                ) {
-                    trade.sell = reg.assets[i];
-                    trade.sellAmount = bal.minus(needed);
-                    trade.sellPrice = lowPrice;
+                if (isBetterSurplus(maxes, status, delta)) {
+                    (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
+                    if (
+                        TradeLib.isEnoughToSell(
+                            reg.assets[i],
+                            bal.minus(needed),
+                            lotLow,
+                            rules.minTradeVolume
+                        )
+                    ) {
+                        trade.sell = reg.assets[i];
+                        trade.sellAmount = bal.minus(needed);
+                        trade.sellPrice = low;
 
-                    maxes.surplusStatus = status;
-                    maxes.surplus = delta;
+                        maxes.surplusStatus = status;
+                        maxes.surplus = delta;
+                    }
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range
                 needed = range.bottom.mul(components.bh.quantity(reg.erc20s[i]), CEIL); // {buyTok};
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (, uint192 highPrice) = reg.assets[i].price(); // {UoA/buyTok}
+                    (, uint192 high) = reg.assets[i].price(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(highPrice, CEIL);
+                    uint192 delta = amtShort.mul(high, CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(reg.assets[i]));
                         trade.buyAmount = amtShort;
-                        trade.buyPrice = highPrice;
+                        trade.buyPrice = high;
 
                         maxes.deficit = delta;
                     }
@@ -388,15 +404,16 @@ library RecollateralizationLibP1 {
             uint192 rsrAvailable = rsrAsset.bal(address(components.bm)).plus(
                 rsrAsset.bal(address(components.stRSR))
             );
-            (uint192 lowPrice, uint192 highPrice) = rsrAsset.price(); // {UoA/tok}
+            (uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}
+            (uint192 lotLow, ) = rsrAsset.lotPrice(); // {UoA/tok}
 
             if (
-                highPrice > 0 &&
-                TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)
+                high > 0 &&
+                TradeLib.isEnoughToSell(rsrAsset, rsrAvailable, lotLow, rules.minTradeVolume)
             ) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.sellPrice = lowPrice;
+                trade.sellPrice = low;
             }
         }
     }

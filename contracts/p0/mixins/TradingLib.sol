@@ -45,13 +45,15 @@ library TradingLibP0 {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
+        (uint192 lotLow, uint192 lotHigh) = trade.sell.lotPrice();
+
         // Don't sell dust
-        if (!isEnoughToSell(trade.sell, trade.sellAmount, rules.minTradeVolume)) {
+        if (!isEnoughToSell(trade.sell, trade.sellAmount, lotLow, rules.minTradeVolume)) {
             return (false, req);
         }
 
         // Cap sell amount
-        uint192 maxSell = maxTradeSize(trade.sell, trade.sell.lotPrice()); // {sellTok}
+        uint192 maxSell = maxTradeSize(trade.sell, lotHigh); // {sellTok}
         uint192 s = trade.sellAmount > maxSell ? maxSell : trade.sellAmount; // {sellTok}
 
         // Calculate equivalent buyAmount within [0, FIX_MAX]
@@ -303,20 +305,21 @@ library TradingLibP0 {
             // For RSR, include the staking balance
             if (erc20s[i] == components.rsr) bal = bal.plus(asset.bal(address(components.stRSR)));
 
-            (uint192 lowPrice, uint192 highPrice) = asset.price(); // {UoA/tok}
+            (uint192 low, uint192 high) = asset.price(); // {UoA/tok}
+            (uint192 lotLow, ) = asset.lotPrice(); // {UoA/tok}
 
             uint192 qty = components.bh.quantity(erc20s[i]); // {tok/BU}
 
             // Ignore dust amounts for assets not in the basket; their value is inaccessible
-            if (qty == 0 && !isEnoughToSell(asset, bal, rules.minTradeVolume)) continue;
+            if (qty == 0 && !isEnoughToSell(asset, bal, lotLow, rules.minTradeVolume)) continue;
 
-            // Intentionally include value of IFFY/DISABLED collateral when lowPrice is nonzero
+            // Intentionally include value of IFFY/DISABLED collateral when low is nonzero
             // {UoA} = {UoA} + {UoA/tok} * {tok}
-            assetsLow = assetsLow.plus(lowPrice.mul(bal, FLOOR));
+            assetsLow = assetsLow.plus(low.mul(bal, FLOOR));
 
-            // assetsHigh += highPrice.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
+            // assetsHigh += high.mul(bal, CEIL), where assetsHigh is [0, FIX_MAX]
             // {UoA} = {UoA/tok} * {tok}
-            uint192 val = safeMulDivCeil(components.bm, highPrice, bal, FIX_ONE);
+            uint192 val = safeMulDivCeil(components.bm, high, bal, FIX_ONE);
             if (uint256(assetsHigh) + val >= FIX_MAX) assetsHigh = FIX_MAX;
             else assetsHigh = assetsHigh.plus(val);
 
@@ -386,19 +389,26 @@ library TradingLibP0 {
             // {tok} = {BU} * {tok/BU}
             uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                uint192 lowPrice; // {UoA/sellTok} Price to use in trade
-
-                // This block is only here for stack limit reasons
+                // by calculating this early we can duck the stack limit but be less gas-efficient
+                bool enoughToSell;
                 {
-                    (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
+                    (uint192 lotLow, ) = asset.lotPrice(); // {UoA/sellTok}
 
-                    // Skip worthless assets
-                    if (high == 0) continue;
-                    lowPrice = low;
+                    enoughToSell = isEnoughToSell(
+                        asset,
+                        bal.minus(needed),
+                        lotLow,
+                        rules.minTradeVolume
+                    );
                 }
 
+                (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
+
+                // Skip worthless assets
+                if (high == 0) continue;
+
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(lowPrice, FLOOR);
+                uint192 delta = bal.minus(needed).mul(low, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
@@ -406,13 +416,10 @@ library TradingLibP0 {
 
                 // Select the most-in-surplus "best" asset still enough to sell,
                 // as defined by a (status, surplusAmt) ordering
-                if (
-                    isBetterSurplus(maxes, status, delta) &&
-                    isEnoughToSell(asset, bal.minus(needed), rules.minTradeVolume)
-                ) {
+                if (isBetterSurplus(maxes, status, delta) && enoughToSell) {
                     trade.sell = asset;
                     trade.sellAmount = bal.minus(needed);
-                    trade.sellPrice = lowPrice;
+                    trade.sellPrice = low;
 
                     maxes.surplusStatus = status;
                     maxes.surplus = delta;
@@ -422,16 +429,16 @@ library TradingLibP0 {
                 needed = range.bottom.mul(components.bh.quantity(erc20s[i]), CEIL); // {buyTok};
                 if (bal.lt(needed)) {
                     uint192 amtShort = needed.minus(bal); // {buyTok}
-                    (, uint192 highPrice) = asset.price(); // {UoA/buyTok}
+                    (, uint192 high) = asset.price(); // {UoA/buyTok}
 
                     // {UoA} = {buyTok} * {UoA/buyTok}
-                    uint192 delta = amtShort.mul(highPrice, CEIL);
+                    uint192 delta = amtShort.mul(high, CEIL);
 
                     // The best asset to buy is whichever asset has the largest deficit
                     if (delta.gt(maxes.deficit)) {
                         trade.buy = ICollateral(address(asset));
                         trade.buyAmount = amtShort;
-                        trade.buyPrice = highPrice;
+                        trade.buyPrice = high;
 
                         maxes.deficit = delta;
                     }
@@ -446,12 +453,13 @@ library TradingLibP0 {
             uint192 rsrAvailable = rsrAsset.bal(address(components.bm)).plus(
                 rsrAsset.bal(address(components.stRSR))
             );
-            (uint192 lowPrice, uint192 highPrice) = rsrAsset.price(); // {UoA/tok}
+            (uint192 low, uint192 high) = rsrAsset.price(); // {UoA/tok}
+            (uint192 lotLow, ) = rsrAsset.lotPrice(); // {UoA/sellTok}
 
-            if (highPrice > 0 && isEnoughToSell(rsrAsset, rsrAvailable, rules.minTradeVolume)) {
+            if (high > 0 && isEnoughToSell(rsrAsset, rsrAvailable, lotLow, rules.minTradeVolume)) {
                 trade.sell = rsrAsset;
                 trade.sellAmount = rsrAvailable;
-                trade.sellPrice = lowPrice;
+                trade.sellPrice = low;
             }
         }
     }
@@ -579,15 +587,17 @@ library TradingLibP0 {
 
     /// @param asset The asset in consideration
     /// @param amt {tok} The number of whole tokens we plan to sell
+    /// @param price {UoA/tok} The price to use for sizing
     /// @param minTradeVolume {UoA} The min trade volume, passed in for gas optimization
     /// @return If amt is sufficiently large to be worth selling into our trading platforms
     function isEnoughToSell(
         IAsset asset,
         uint192 amt,
+        uint192 price,
         uint192 minTradeVolume
     ) internal view returns (bool) {
         return
-            amt.gte(minTradeSize(minTradeVolume, asset.lotPrice())) &&
+            amt.gte(minTradeSize(minTradeVolume, price)) &&
             // Trading platforms often don't allow token quanta trades for rounding reasons
             // {qTok} = {tok} / {tok/qTok}
             amt.shiftl_toUint(int8(asset.erc20Decimals())) > 1;
