@@ -254,8 +254,7 @@ describe('FacadeWrite contract', () => {
       await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).wait()
 
-    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
-      .main
+    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
     main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
   })
 
@@ -268,8 +267,7 @@ describe('FacadeWrite contract', () => {
       await facadeWrite.connect(deployerUser).deployRToken(rTokenConfig, rTokenSetup)
     ).wait()
 
-    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args
-      .main
+    const mainAddr = expectInIndirectReceipt(receipt, deployer.interface, 'RTokenCreated').args.main
     main = <TestIMain>await ethers.getContractAt('TestIMain', mainAddr)
   })
 

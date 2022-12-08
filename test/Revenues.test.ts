@@ -1354,13 +1354,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
 
         await main.connect(owner).pause()
 
-        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount)).to.be.revertedWith('paused or frozen')
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, distAmount)
+        ).to.be.revertedWith('paused or frozen')
 
         await main.connect(owner).unpause()
 
         await main.connect(owner).freezeShort()
 
-        await expect(distributor.distribute(rsr.address, backingManager.address, distAmount)).to.be.revertedWith('paused or frozen')
+        await expect(
+          distributor.distribute(rsr.address, backingManager.address, distAmount)
+        ).to.be.revertedWith('paused or frozen')
       })
 
       it('Should allow anyone to call distribute', async () => {
