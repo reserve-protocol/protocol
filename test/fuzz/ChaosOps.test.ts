@@ -454,10 +454,10 @@ describe('The Chaos Operations scenario', () => {
 
         // update the price twice, saving the price
         await scenario.updatePrice(i, 0, 0, 0, 0)
-        const p0 = await asset.strictPrice()
+        const [p0Low, p0High] = await asset.price()
 
         await scenario.updatePrice(i, exa, exa, exa, exa)
-        const p1 = await asset.strictPrice()
+        const [p1Low, p1High] = await asset.price()
 
         // if not all price models are constant, then prices p0 and p1 should be different
         if (await asset.isCollateral()) {
@@ -466,13 +466,23 @@ describe('The Chaos Operations scenario', () => {
           const [kind1, , ,] = await coll.targetPerRefModel()
           const [kind2, , ,] = await coll.uoaPerTargetModel()
           const [kind3, , ,] = await coll.deviationModel()
-          if (kind0 == 0 && kind1 == 0 && kind2 == 0 && kind3 == 0) expect(p0).to.equal(p1)
-          else expect(p0).to.not.equal(p1)
+          if (kind0 == 0 && kind1 == 0 && kind2 == 0 && kind3 == 0) {
+            expect(p0Low).to.equal(p1Low)
+            expect(p0High).to.equal(p1High)
+          } else {
+            expect(p0Low).to.not.equal(p1Low)
+            expect(p0High).to.not.equal(p1High)
+          }
         } else {
           const assetMock = await ConAt('AssetMock', asset.address)
           const [kind, , ,] = await assetMock.model()
-          if (kind == 0) expect(p0).to.equal(p1)
-          else expect(p0).to.not.equal(p1)
+          if (kind == 0) {
+            expect(p0Low).to.equal(p1Low)
+            expect(p0High).to.equal(p1High)
+          } else {
+            expect(p0Low).to.not.equal(p1Low)
+            expect(p0High).to.not.equal(p1High)
+          }
         }
       }
     })
@@ -814,10 +824,11 @@ describe('The Chaos Operations scenario', () => {
       const token = await ConAt('ERC20Fuzz', await main.tokenBySymbol('SA2'))
       const newColl = await ConAt('CollateralMock', await comp.assetRegistry.toColl(token.address))
 
-      expect(await newColl.strictPrice()).equal(fp(1))
+      const [low, high] = await newColl.price()
+
+      expect(low.add(high).div(2)).equal(fp(1))
       expect(await newColl.refPerTok()).equal(fp(1))
       expect(await newColl.targetPerRef()).equal(fp(1))
-      expect(await newColl.pricePerTarget()).equal(fp(1))
 
       // Set reward asset
       await scenario.setRewardToken(7, 6)
