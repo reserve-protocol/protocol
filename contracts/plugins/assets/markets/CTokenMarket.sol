@@ -41,7 +41,7 @@ contract CTokenMarket is ZeroExMarket {
             require(msg.value == 0, "CTokenMarket: INVALID_INPUT");
 
             fromToken.safeTransferFrom(msg.sender, address(this), amountIn);
-            fromToken.safeApprove(swapTarget, amountIn);
+            fromToken.approve(swapTarget, amountIn);
         }
 
         // X => ETH => cETH
@@ -65,7 +65,7 @@ contract CTokenMarket is ZeroExMarket {
             uint256 underlyingAmount = underlyingToken.balanceOf(address(this)) -
                 underlyingBalanceBefore;
 
-            underlyingToken.safeApprove(address(toCToken), underlyingAmount);
+            underlyingToken.approve(address(toCToken), underlyingAmount);
             cToken.mint(underlyingAmount);
         }
 

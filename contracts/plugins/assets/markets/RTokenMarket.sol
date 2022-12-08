@@ -65,19 +65,21 @@ contract RTokenMarket is IMarket {
 
         for (uint256 i = 0; i < requiredTokenCount; ++i) {
             IERC20 requiredToken = IERC20(requiredTokens[i]);
+            uint256 requiredTokenAmount = requiredTokenAmounts[i];
+            bytes memory swapCallDataCopy = swapCallDatas[i];
             IMarket market = assetRegistry.toColl(requiredToken).market();
 
-            fromTokenCopy.safeApprove(address(market), swapAmountIns[i]);
+            fromTokenCopy.approve(address(market), swapAmountIns[i]);
             // Use the return value of `market.enter` to approve the full amount of received tokens
-            requiredToken.safeApprove(
+            requiredToken.approve(
                 address(rToken),
                 market.enter(
                     fromTokenCopy,
                     swapAmountIns[i],
                     requiredToken,
-                    requiredTokenAmounts[i],
+                    requiredTokenAmount,
                     swapTargetCopy,
-                    swapCallDatas[i],
+                    swapCallDataCopy,
                     address(this)
                 )
             );

@@ -103,7 +103,7 @@ contract ZeroExMarket is PermissionedMarket {
             : toToken.balanceOf(address(this));
 
         if (address(fromToken) != address(0)) {
-            fromToken.safeApprove(swapTarget, amountIn);
+            fromToken.approve(swapTarget, amountIn);
         }
         // solhint-disable-next-line avoid-low-level-calls
         (bool success, ) = swapTarget.call{ value: amountIn }(swapCallData);
