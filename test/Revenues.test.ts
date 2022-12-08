@@ -2066,33 +2066,33 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       context('With issued RTokens', function () {
         beforeEach(async function () {
           issueAmount = bn('100e18')
-  
+
           // Setup new basket with ATokens and CTokens
           await basketHandler
             .connect(owner)
             .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
           await basketHandler.connect(owner).refreshBasket()
-  
+
           // Provide approvals
           await token2.connect(addr1).approve(rToken.address, initialBal)
           await token3.connect(addr1).approve(rToken.address, initialBal)
-  
+
           // Issue rTokens
           await rToken.connect(addr1).issue(issueAmount)
-  
+
           // Mint some RSR
           await rsr.connect(owner).mint(addr1.address, initialBal)
         })
-  
+
         it('Should sell collateral as it appreciates and handle revenue auction correctly', async () => {
           // Check Price and Assets value
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Increase redemption rate for AToken to double
           await token2.setExchangeRate(fp('2'))
-  
+
           // Check Price (unchanged) and Assets value increment by 50%
           const excessValue: BigNumber = issueAmount.div(2)
           const excessQuantity: BigNumber = excessValue.div(2) // Because each unit is now worth $2
@@ -2101,21 +2101,21 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             issueAmount.add(excessValue)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Check status of destinations at this point
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           // Expected values
           const currentTotalSupply: BigNumber = await rToken.totalSupply()
           const expectedToTrader = excessQuantity.mul(60).div(100)
           const expectedToFurnace = excessQuantity.sub(expectedToTrader)
-  
+
           const sellAmt: BigNumber = expectedToTrader // everything is auctioned, below max auction
           const minBuyAmt: BigNumber = sellAmt.mul(2).sub(sellAmt.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
           const sellAmtRToken: BigNumber = expectedToFurnace // everything is auctioned, below max auction
           const minBuyAmtRToken: BigNumber = sellAmtRToken.mul(2).sub(sellAmtRToken.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken are worth half
-  
+
           // Run auctions - Will detect excess
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2131,18 +2131,18 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: true,
             },
           ])
-  
+
           // Check Price (unchanged) and Assets value (restored) - Supply remains constant
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
-  
+
           // Check destinations at this stage
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           const auctionTimestamp: number = await getLatestBlockTimestamp()
-  
+
           // Check auctions registered
           // AToken -> RSR Auction
           await expectTrade(rsrTrader, {
@@ -2151,7 +2151,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('0'),
           })
-  
+
           // AToken -> RToken Auction
           await expectTrade(rTokenTrader, {
             sell: token2.address,
@@ -2159,17 +2159,17 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('1'),
           })
-  
+
           // Check funds in Market and Traders
           expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
           expect(await token2.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
           expect(await token2.balanceOf(rTokenTrader.address)).to.equal(
             expectedToFurnace.sub(sellAmtRToken)
           )
-  
+
           // Advance time till auction ended
           await advanceTime(config.auctionLength.add(100).toString())
-  
+
           // Mock auction by minting the buy tokens (in this case RSR and RToken)
           await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
           await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
@@ -2183,7 +2183,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             sellAmount: sellAmtRToken,
             buyAmount: minBuyAmtRToken,
           })
-  
+
           // Close auctions
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2209,32 +2209,32 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: false,
             },
           ])
-  
+
           // Check Price (unchanged) and Assets value (unchanged)
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
-  
+
           // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
           expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
           expect(await rToken.balanceOf(furnace.address)).to.equal(minBuyAmtRToken)
-  
+
           // Check no more funds in Market and Traders
           expect(await token2.balanceOf(gnosis.address)).to.equal(0)
           expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
           expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
         })
-  
+
         it('Should handle slight increase in collateral correctly - full cycle', async () => {
           // Check Price and Assets value
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Increase redemption rate for AToken by 2%
           const rate: BigNumber = fp('1.02')
           await token2.setExchangeRate(rate)
-  
+
           // Check Price (unchanged) and Assets value increment by 1% (only half of the basket increased in value)
           const excessValue: BigNumber = issueAmount.mul(1).div(100)
           const excessQuantity: BigNumber = divCeil(excessValue.mul(BN_SCALE_FACTOR), rate) // Because each unit is now worth $1.02
@@ -2243,25 +2243,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             issueAmount.add(excessValue)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Check status of destinations at this point
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           // Expected values
           const currentTotalSupply: BigNumber = await rToken.totalSupply()
           const expectedToTrader = divCeil(excessQuantity.mul(60), bn(100)).sub(60)
           const expectedToFurnace = divCeil(excessQuantity.mul(40), bn(100)).sub(40) // excessQuantity.sub(expectedToTrader)
-  
+
           // Auction values - using divCeil for dealing with Rounding
           const sellAmt: BigNumber = expectedToTrader
           const buyAmt: BigNumber = divCeil(sellAmt.mul(rate), BN_SCALE_FACTOR) // RSR quantity with no slippage
           const minBuyAmt: BigNumber = buyAmt.sub(divFloor(buyAmt, bn(100))) // due to trade slippage 1%
-  
+
           const sellAmtRToken: BigNumber = expectedToFurnace
           const buyAmtRToken: BigNumber = divCeil(sellAmtRToken.mul(rate), BN_SCALE_FACTOR) // RToken quantity with no slippage
           const minBuyAmtRToken: BigNumber = buyAmtRToken.sub(divFloor(buyAmtRToken, bn(100))) // due to trade slippage 1%
-  
+
           // Run auctions
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2277,7 +2277,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: true,
             },
           ])
-  
+
           // Check Price (unchanged) and Assets value (restored) - Supply remains constant
           expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
           expect(
@@ -2287,13 +2287,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             (await facadeTest.callStatic.totalAssetValue(rToken.address)).gt(issueAmount)
           ).to.equal(true)
           expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
-  
+
           // Check destinations at this stage
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           const auctionTimestamp: number = await getLatestBlockTimestamp()
-  
+
           // Check auctions registered
           // AToken -> RSR Auction
           await expectTrade(rsrTrader, {
@@ -2302,7 +2302,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('0'),
           })
-  
+
           // AToken -> RToken Auction
           await expectTrade(rTokenTrader, {
             sell: token2.address,
@@ -2310,7 +2310,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('1'),
           })
-  
+
           // Check funds in Market and Traders
           expect(near(await token2.balanceOf(gnosis.address), excessQuantity, 100)).to.equal(true)
           expect(await token2.balanceOf(gnosis.address)).to.equal(sellAmt.add(sellAmtRToken))
@@ -2320,10 +2320,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             expectedToFurnace.sub(sellAmtRToken)
           )
           expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
-  
+
           // Advance time till auction ended
           await advanceTime(config.auctionLength.add(100).toString())
-  
+
           // Mock auction by minting the buy tokens (in this case RSR and RToken)
           await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
           await rToken.connect(addr1).approve(gnosis.address, minBuyAmtRToken)
@@ -2337,7 +2337,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             sellAmount: sellAmtRToken,
             buyAmount: minBuyAmtRToken,
           })
-  
+
           // Close auctions
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2363,7 +2363,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: false,
             },
           ])
-  
+
           //  Check Price (unchanged) and Assets value (unchanged)
           expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
           expect(
@@ -2373,24 +2373,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             (await facadeTest.callStatic.totalAssetValue(rToken.address)).gt(issueAmount)
           ).to.equal(true)
           expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
-  
+
           // Check balances sent to corresponding destinations
           // StRSR
           expect(near(await rsr.balanceOf(stRSR.address), minBuyAmt, 100)).to.equal(true)
           // Furnace
           expect(near(await rToken.balanceOf(furnace.address), minBuyAmtRToken, 100)).to.equal(true)
         })
-  
+
         it('Should not overspend if backingManager.manageTokens() is called with duplicate tokens', async () => {
           expect(await basketHandler.fullyCollateralized()).to.be.true
-  
+
           // Change redemption rate for AToken and CToken to double
           await token2.setExchangeRate(fp('1.2'))
-  
+
           await expect(
             backingManager.manageTokens([token2.address, token2.address])
           ).to.be.revertedWith('duplicate tokens')
-  
+
           await expect(
             backingManager.manageTokens([
               token2.address,
@@ -2399,11 +2399,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
             ])
           ).to.be.revertedWith('duplicate tokens')
-  
+
           await expect(
             backingManager.manageTokens([token2.address, token1.address, token2.address])
           ).to.be.revertedWith('duplicate tokens')
-  
+
           await expect(
             backingManager.manageTokens([
               token1.address,
@@ -2412,7 +2412,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
             ])
           ).to.be.revertedWith('duplicate tokens')
-  
+
           await expect(
             backingManager.manageTokens([
               token1.address,
@@ -2421,22 +2421,23 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token3.address,
             ])
           ).to.be.revertedWith('duplicate tokens')
-  
+
           // Remove duplicates, should work
-          await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
-            .to.not.be.reverted
+          await expect(
+            backingManager.manageTokens([token1.address, token2.address, token3.address])
+          ).to.not.be.reverted
         })
-  
+
         it('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
           expect(await basketHandler.fullyCollateralized()).to.be.true
-  
+
           // Change redemption rate for AToken and CToken to double
           await token2.setExchangeRate(fp('1.2'))
-  
+
           await expect(
             backingManager.manageTokensSortedOrder([token2.address, token2.address])
           ).to.be.revertedWith('duplicate/unsorted tokens')
-  
+
           await expect(
             backingManager.manageTokensSortedOrder([
               token2.address,
@@ -2445,11 +2446,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
             ])
           ).to.be.revertedWith('duplicate/unsorted tokens')
-  
+
           await expect(
             backingManager.manageTokensSortedOrder([token2.address, token1.address, token2.address])
           ).to.be.revertedWith('duplicate/unsorted tokens')
-  
+
           await expect(
             backingManager.manageTokensSortedOrder([
               token1.address,
@@ -2458,7 +2459,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token2.address,
             ])
           ).to.be.revertedWith('duplicate/unsorted tokens')
-  
+
           await expect(
             backingManager.manageTokensSortedOrder([
               token1.address,
@@ -2467,7 +2468,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               token3.address,
             ])
           ).to.be.revertedWith('duplicate/unsorted tokens')
-  
+
           // Remove duplicates but unsort
           const sorted = [token1.address, token2.address, token3.address].sort((a, b) => {
             const x = BigNumber.from(a)
@@ -2480,43 +2481,43 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           await expect(backingManager.manageTokensSortedOrder(unsorted)).to.be.revertedWith(
             'duplicate/unsorted tokens'
           )
-  
+
           // Remove duplicates and sort, should work
           await expect(backingManager.manageTokensSortedOrder(sorted)).to.not.be.reverted
         })
-  
+
         it('Should mint RTokens when collateral appreciates and handle revenue auction correctly - Even quantity', async () => {
           // Check Price and Assets value
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Change redemption rate for AToken and CToken to double
           await token2.setExchangeRate(fp('2'))
           await token3.setExchangeRate(fp('2'))
-  
+
           // Check Price (unchanged) and Assets value (now doubled)
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
             issueAmount.mul(2)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Check status of destinations at this point
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           // Set expected minting, based on f = 0.6
           const expectedToTrader = issueAmount.mul(60).div(100)
           const expectedToFurnace = issueAmount.sub(expectedToTrader)
-  
+
           // Set expected auction values
           const currentTotalSupply: BigNumber = await rToken.totalSupply()
           const newTotalSupply: BigNumber = currentTotalSupply.mul(2)
           const sellAmt: BigNumber = expectedToTrader // everything is auctioned, due to max trade volume
           const minBuyAmt: BigNumber = sellAmt.sub(sellAmt.div(100)) // due to trade slippage 1%
-  
+
           // Collect revenue and mint new tokens - Will also launch auction
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2532,24 +2533,24 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: true,
             },
           ])
-  
+
           // Check Price (unchanged) and Assets value - Supply has doubled
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
             issueAmount.mul(2)
           )
           expect(await rToken.totalSupply()).to.equal(newTotalSupply)
-  
+
           // Check destinations after newly minted tokens
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(expectedToTrader.sub(sellAmt))
           expect(await rToken.balanceOf(furnace.address)).to.equal(expectedToFurnace)
-  
+
           // Check funds in Market
           expect(await rToken.balanceOf(gnosis.address)).to.equal(sellAmt)
-  
+
           const auctionTimestamp: number = await getLatestBlockTimestamp()
-  
+
           // Check auctions registered
           // RToken -> RSR Auction
           await expectTrade(rsrTrader, {
@@ -2558,7 +2559,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('0'),
           })
-  
+
           // Perform Mock Bids for RSR(addr1 has balance)
           await rsr.connect(addr1).approve(gnosis.address, minBuyAmt)
           await gnosis.placeBid(0, {
@@ -2566,10 +2567,10 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             sellAmount: sellAmt,
             buyAmount: minBuyAmt,
           })
-  
+
           // Advance time till auction ended
           await advanceTime(config.auctionLength.add(100).toString())
-  
+
           //  End current auction - will not start new one
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2584,7 +2585,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: false,
             },
           ])
-  
+
           // Check Price and Assets value - RToken price increases due to melting
           const updatedRTokenPrice: BigNumber = newTotalSupply
             .mul(BN_SCALE_FACTOR)
@@ -2593,25 +2594,25 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
             issueAmount.mul(2)
           )
-  
+
           // Check no funds in Market
           expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
-  
+
           // Check destinations after newly minted tokens
           expect(await rsr.balanceOf(stRSR.address)).to.equal(minBuyAmt)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
         })
-  
+
         it('Should mint RTokens and handle remainder when collateral appreciates - Uneven quantity', async () => {
           // Check Price and Assets value
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(issueAmount)
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Change redemption rates for AToken and CToken - Higher for the AToken
           await token2.setExchangeRate(fp('2'))
           await token3.setExchangeRate(fp('1.6'))
-  
+
           // Check Price (unchanged) and Assets value (now 80% higher)
           const excessTotalValue: BigNumber = issueAmount.mul(80).div(100)
           expect(near(await rTokenAsset.strictPrice(), fp('1'), 1)).to.equal(true)
@@ -2619,14 +2620,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             issueAmount.add(excessTotalValue)
           )
           expect(await rToken.totalSupply()).to.equal(issueAmount)
-  
+
           // Check status of destinations and traders at this point
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
           expect(await token2.balanceOf(rsrTrader.address)).to.equal(0)
           expect(await token2.balanceOf(rTokenTrader.address)).to.equal(0)
           expect(await rToken.balanceOf(furnace.address)).to.equal(0)
-  
+
           // Set expected values based on f=0.6
           const currentTotalSupply: BigNumber = await rToken.totalSupply()
           const excessRToken: BigNumber = issueAmount.mul(60).div(100)
@@ -2638,7 +2639,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const expectedToRTokenTraderFromCollateral = excessCollateralQty.sub(
             expectedToRSRTraderFromCollateral
           )
-  
+
           //  Set expected auction values
           const newTotalSupply: BigNumber = currentTotalSupply.mul(160).div(100)
           const sellAmtFromRToken: BigNumber = expectedToTraderFromRToken // all will be processed at once, due to max trade volume of 50%
@@ -2651,7 +2652,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const minBuyAmtRTokenFromCollateral: BigNumber = sellAmtRTokenFromCollateral
             .mul(2)
             .sub(sellAmtRTokenFromCollateral.mul(2).div(100)) // due to trade slippage 1% and because RSR/RToken is worth half
-  
+
           //  Collect revenue and mint new tokens - Will also launch auctions
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2691,14 +2692,14 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: true,
             },
           ])
-  
+
           // Check Price (unchanged) and Assets value (excess collateral not counted anymore) - Supply has increased
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
             issueAmount.add(excessRToken)
           )
           expect(await rToken.totalSupply()).to.equal(newTotalSupply)
-  
+
           // Check destinations after newly minted tokens
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(
@@ -2711,15 +2712,15 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await token2.balanceOf(rTokenTrader.address)).to.equal(
             expectedToRTokenTraderFromCollateral.sub(sellAmtRTokenFromCollateral)
           )
-  
+
           // Check funds in Market
           expect(await rToken.balanceOf(gnosis.address)).to.equal(sellAmtFromRToken)
           expect(await token2.balanceOf(gnosis.address)).to.equal(
             sellAmtRSRFromCollateral.add(sellAmtRTokenFromCollateral)
           )
-  
+
           const auctionTimestamp: number = await getLatestBlockTimestamp()
-  
+
           // Check auctions registered
           // RToken -> RSR Auction
           await expectTrade(rsrTrader, {
@@ -2728,7 +2729,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('0'),
           })
-  
+
           // Collateral -> RSR Auction
           await expectTrade(rsrTrader, {
             sell: token2.address,
@@ -2736,7 +2737,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('1'),
           })
-  
+
           // Collateral -> Rtoken Auction
           await expectTrade(rTokenTrader, {
             sell: token2.address,
@@ -2744,7 +2745,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             endTime: auctionTimestamp + Number(config.auctionLength),
             externalId: bn('2'),
           })
-  
+
           //  Perform Mock Bids for RSR/RToken (addr1 has balance)
           await rsr
             .connect(addr1)
@@ -2755,22 +2756,22 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
             sellAmount: sellAmtFromRToken,
             buyAmount: minBuyAmtFromRToken,
           })
-  
+
           await gnosis.placeBid(1, {
             bidder: addr1.address,
             sellAmount: sellAmtRSRFromCollateral,
             buyAmount: minBuyAmtRSRFromCollateral,
           })
-  
+
           await gnosis.placeBid(2, {
             bidder: addr1.address,
             sellAmount: sellAmtRTokenFromCollateral,
             buyAmount: minBuyAmtRTokenFromCollateral,
           })
-  
+
           //  Advance time till auction ended
           await advanceTime(config.auctionLength.add(100).toString())
-  
+
           // End current auction, should start a new one with same amount
           await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
             {
@@ -2814,11 +2815,11 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
               emitted: false,
             },
           ])
-  
+
           // Check no funds in Market
           expect(await rToken.balanceOf(gnosis.address)).to.equal(0)
           expect(await token2.balanceOf(gnosis.address)).to.equal(0)
-  
+
           //  Check Price and Assets value - RToken price increases due to melting
           const updatedRTokenPrice: BigNumber = newTotalSupply
             .mul(BN_SCALE_FACTOR)
@@ -2827,7 +2828,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(
             issueAmount.add(excessRToken)
           )
-  
+
           //  Check destinations
           expect(await rsr.balanceOf(stRSR.address)).to.equal(
             minBuyAmtFromRToken.add(minBuyAmtRSRFromCollateral)
@@ -2841,13 +2842,13 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
       context('Without issued RTokens', function () {
         beforeEach(async function () {
           issueAmount = bn('100e18')
-  
+
           // Setup new basket with ATokens and CTokens
           await basketHandler
             .connect(owner)
             .setPrimeBasket([token2.address, token3.address], [fp('0.5'), fp('0.5')])
           await basketHandler.connect(owner).refreshBasket()
-  
+
           // Mint some RSR
           await rsr.connect(owner).mint(addr1.address, initialBal)
         })
@@ -2857,7 +2858,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           expect(await rTokenAsset.strictPrice()).to.equal(fp('1'))
           expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
           expect(await rToken.totalSupply()).to.equal(0)
-  
+
           // Check status of destinations at this point
           expect(await rsr.balanceOf(stRSR.address)).to.equal(0)
           expect(await rToken.balanceOf(rsrTrader.address)).to.equal(0)
@@ -2866,7 +2867,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
           const mintAmt = bn('10000e18')
           await token2.connect(owner).mint(backingManager.address, mintAmt)
           await token3.connect(owner).mint(backingManager.address, mintAmt)
-  
+
           await expect(backingManager.manageTokens([])).revertedWith('BU rate out of range')
         })
       })
