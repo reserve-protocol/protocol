@@ -5,11 +5,7 @@ import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10, ZERO } from "../../../../common/numbers"
-import {
-    ERC20Mock,
-    USDCMock,
-    IBooster,
-} from "../../../../typechain"
+import { ERC20Mock, USDCMock, IBooster } from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
@@ -24,6 +20,9 @@ const createFixtureLoader = waffle.createFixtureLoader
 const holderDAI = "0x16b34ce9a6a6f7fc2dd25ba59bf7308e7b38e186"
 const holderUSDT = "0xf977814e90da44bfa03b6295a0616a897441acec"
 const holderUSDC = "0x0a59649758aa4d66e25f08dd01271e891fe52199"
+// Complex Basket holders
+const holderWBTC = "0xbf72da2bd84c5170618fbe5914b0eca9638d5eb5"
+const holderWETH = "0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e"
 
 const describeFork = process.env.FORK ? describe : describe.skip
 describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
@@ -34,8 +33,11 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
     // Tokens and Assets
     let dai: ERC20Mock
-    let usdc: USDCMock
-    let usdt: USDCMock
+    let usdc: ERC20Mock
+    let usdt: ERC20Mock
+
+    let weth: ERC20Mock
+    let wbtc: ERC20Mock
 
     let loadFixture: ReturnType<typeof createFixtureLoader>
     let wallet: Wallet
@@ -57,127 +59,140 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             ;[owner, , addr1, addr2] = await ethers.getSigners()
 
             await loadFixture(defaultFixture)
-            dai = <ERC20Mock>(
-                await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.DAI!)
-            )
-            await whileImpersonating(holderDAI, async (daiSigner) => {
-                const decimals = await dai.decimals()
-                const p = (value: BigNumberish) => pow10(decimals).mul(value)
-                await dai.connect(daiSigner).transfer(addr1.address, p(initialBal))
-            })
-            usdc = <USDCMock>(
-                await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.USDC!)
-            )
-            await whileImpersonating(holderUSDC, async (usdcSigner) => {
-                const decimals = await usdc.decimals()
-                const p = (value: BigNumberish) => pow10(decimals).mul(value)
-                await usdc.connect(usdcSigner).transfer(addr1.address, p(initialBal))
-            })
-            usdt = <USDCMock>(
-                await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.USDT || "")
-            )
-            await whileImpersonating(holderUSDT, async (usdtSigner) => {
-                const decimals = await usdt.decimals()
-                const p = (value: BigNumberish) => pow10(decimals).mul(value)
-                await usdt.connect(usdtSigner).transfer(addr1.address, p(initialBal))
-            })
-            dai = <ERC20Mock>(
-                await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.DAI!)
-            )
-            await whileImpersonating(holderDAI, async (daiSigner) => {
-                const decimals = await dai.decimals()
-                const p = (value: BigNumberish) => pow10(decimals).mul(value)
-                await dai.connect(daiSigner).transfer(owner.address, p(initialBal))
-            })
-            usdc = <USDCMock>(
-                await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.USDC!)
-            )
-            await whileImpersonating(holderUSDC, async (usdcSigner) => {
-                const decimals = await usdc.decimals()
-                const p = (value: BigNumberish) => pow10(decimals).mul(value)
-                await usdc.connect(usdcSigner).transfer(owner.address, p(initialBal))
-            })
-        })
 
-        it(`investigate virtual price`, async () => {
-            let prevVirtualPrice = ZERO
-            let prevTotalSupply = ZERO
+            const tokens = networkConfig[chainId].tokens
 
-            for (let index = 0; index < 100; index++) {
-                await network.provider.request({
-                    method: "hardhat_reset",
-                    params: [
-                        {
-                            forking: {
-                                jsonRpcUrl:
-                                    process.env.MAINNET_RPC_URL ||
-                                    process.env.ALCHEMY_MAINNET_RPC_URL ||
-                                    "",
-                                blockNumber:
-                                    (process.env.MAINNET_BLOCK
-                                        ? Number(process.env.MAINNET_BLOCK)
-                                        : forkBlockNumber["default"]) +
-                                    index * 100,
-                            },
-                        },
-                    ],
-                })
-
-                const asset0 = dai
-                const asset1 = usdc
-                const asset2 = usdt
-
-                const decimals0 = await asset0.decimals()
-                const decimals1 = await asset1.decimals()
-                const decimals2 = await asset2.decimals()
-
-                const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
-                const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
-                const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
-
-                const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-                // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
-                const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-                const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
-                    "ICurvePool3Assets",
-                    stableSwap3PoolAddress
+            ;[weth, wbtc, dai, usdt, usdc] = await Promise.all(
+                [tokens.WETH!, tokens.WBTC!, tokens.DAI!, tokens.USDT!, tokens.USDC!].map(
+                    async (address) => await ethers.getContractAt("ERC20Mock", address)
                 )
+            )
 
-                const lpTokenAddress = curveContractV2
-
-                const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
-
-                let virtualPrice = await stableSwap3Pool.connect(addr1).get_virtual_price()
-
-                let totalSupply = await lpToken.connect(addr1).totalSupply()
-
-                console.log({
-                    virtualPrice,
-                    totalSupply,
-                    div: BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply),
-                })
-
-                if (prevTotalSupply.gt(0)) {
-                    console.log({
-                        diffPrice: virtualPrice.sub(prevVirtualPrice),
-                        diffSupply: totalSupply.sub(prevTotalSupply),
-                        diffDiv: BigNumber.from(10)
-                            .pow(18)
-                            .mul(prevVirtualPrice)
-                            .div(prevTotalSupply)
-                            .sub(BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply)),
+            await Promise.all(
+                [
+                    [weth, holderWETH],
+                    [wbtc, holderWBTC],
+                    [dai, holderDAI],
+                    [usdt, holderUSDT],
+                    [usdc, holderUSDC],
+                ].map(async ([asset, holder]) => {
+                    await whileImpersonating(holder, async (signer) => {
+                        const decimals = await asset.decimals()
+                        const p = (value: BigNumberish) => pow10(decimals).mul(value)
+                        await asset.connect(signer).transfer(addr1.address, p(initialBal))
                     })
-                }
-
-                prevVirtualPrice = virtualPrice
-                prevTotalSupply = totalSupply
-            }
+                })
+            )
         })
+
+        // it(`investigate virtual price`, async () => {
+        //     let prevVirtualPrice = ZERO
+        //     let prevTotalSupply = ZERO
+
+        //     for (let index = 0; index < 100; index++) {
+        //         await network.provider.request({
+        //             method: "hardhat_reset",
+        //             params: [
+        //                 {
+        //                     forking: {
+        //                         jsonRpcUrl:
+        //                             process.env.MAINNET_RPC_URL ||
+        //                             process.env.ALCHEMY_MAINNET_RPC_URL ||
+        //                             "",
+        //                         blockNumber:
+        //                             (process.env.MAINNET_BLOCK
+        //                                 ? Number(process.env.MAINNET_BLOCK)
+        //                                 : forkBlockNumber["default"]) +
+        //                             index * 100,
+        //                     },
+        //                 },
+        //             ],
+        //         })
+
+        //         const asset0 = dai
+        //         const asset1 = usdc
+        //         const asset2 = usdt
+
+        //         const decimals0 = await asset0.decimals()
+        //         const decimals1 = await asset1.decimals()
+        //         const decimals2 = await asset2.decimals()
+
+        //         const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+        //         const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+        //         const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
+
+        //         const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        //         // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
+        //         const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
+        //         const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
+        //             "ICurvePool3Assets",
+        //             stableSwap3PoolAddress
+        //         )
+
+        //         const lpTokenAddress = curveContractV2
+
+        //         const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
+
+        //         let virtualPrice = await stableSwap3Pool.connect(addr1).get_virtual_price()
+
+        //         let totalSupply = await lpToken.connect(addr1).totalSupply()
+
+        //         console.log({
+        //             virtualPrice,
+        //             totalSupply,
+        //             div: BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply),
+        //         })
+
+        //         if (prevTotalSupply.gt(0)) {
+        //             console.log({
+        //                 diffPrice: virtualPrice.sub(prevVirtualPrice),
+        //                 diffSupply: totalSupply.sub(prevTotalSupply),
+        //                 diffDiv: BigNumber.from(10)
+        //                     .pow(18)
+        //                     .mul(prevVirtualPrice)
+        //                     .div(prevTotalSupply)
+        //                     .sub(BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply)),
+        //             })
+        //         }
+
+        //         prevVirtualPrice = virtualPrice
+        //         prevTotalSupply = totalSupply
+        //     }
+        // })
+
+        // https://curve.readthedocs.io/ref-addresses.html
+
+        // Pool for USDT/BTC/ETH or similar
+        // USD-like asset should be first, ETH should be last
+        //https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
+        // const TriCryptoPool = "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5"
+        // const TriCryptoCurveTokenV4 = "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF"
+        //const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
+
+        //StableSwap3Pool for DAI, USDC, and USDT
+        const stableSwap3Pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
+        const stableSwap3CurveTokenV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+
+        // TODO: need we zap depositor?
+        // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
+        // TODO: need we always raising on mint invariant?
+        // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
 
         it("Convex Collateral can be deployed", async () => {
             const asset0 = dai
             const asset1 = usdc
             const asset2 = usdt
+
+            // const asset0 = usdt
+            // const asset1 = wbtc
+            // const asset2 = weth
+
+            // token not always public or implemented
+            // const lpTokenAddress = await stableSwap3Pool.token();
+            const lpTokenAddress = stableSwap3CurveTokenV2
+            const curvePollAddress = stableSwap3Pool;
+            // const lpTokenAddress = TriCryptoCurveTokenV4
+            // const curvePollAddress = TriCryptoPool
 
             const decimals0 = await asset0.decimals()
             const decimals1 = await asset1.decimals()
@@ -188,35 +203,22 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
 
             //curve view
-            //NOTE it's one of AMM contracts
-            //StableSwap3Pool for DAI, USDC, and USDT
 
-            // https://curve.readthedocs.io/ref-addresses.html
-            const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-            // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
-            const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-            const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
+            const curvePool3Assets: ICurvePool3Assets = await ethers.getContractAt(
                 "ICurvePool3Assets",
-                stableSwap3PoolAddress
+                curvePollAddress
             )
 
-            // token not always public or implemented
-            // const lpTokenAddress = await stableSwap3Pool.token();
-            const lpTokenAddress = curveContractV2
+            
 
             const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
 
-            await waitForTx(await asset0.connect(addr1).approve(stableSwap3Pool.address, p0(100)))
-            await waitForTx(await asset1.connect(addr1).approve(stableSwap3Pool.address, p1(100)))
-            await waitForTx(await asset2.connect(addr1).approve(stableSwap3Pool.address, p2(100)))
-
-            // TODO: need we zap depositor?
-            // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
-            // TODO: need we always raising on mint invariant?
-            // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
+            await waitForTx(await asset0.connect(addr1).approve(curvePool3Assets.address, p0(100)))
+            await waitForTx(await asset1.connect(addr1).approve(curvePool3Assets.address, p1(100)))
+            await waitForTx(await asset2.connect(addr1).approve(curvePool3Assets.address, p2(100)))
 
             const receipt = await waitForTx(
-                await stableSwap3Pool.connect(addr1).add_liquidity(
+                await curvePool3Assets.connect(addr1).add_liquidity(
                     [p0(100), p1(100), p2(100)],
                     0 //min_mint_amount
                 )
@@ -300,7 +302,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 .connect(addr1)
                 .deploy(
                     matchedPools[0].poolInfo.crvRewards,
-                    stableSwap3Pool.address,
+                    curvePool3Assets.address,
                     fallbackPrice,
                     [
                         mockChainlinkFeed0.address,
