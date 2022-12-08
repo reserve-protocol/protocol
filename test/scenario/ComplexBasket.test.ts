@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
+import { bn, div, divCeil, fp, pow10, toBNDecimals } from '../../common/numbers'
 import {
   Asset,
   ComptrollerMock,
@@ -26,6 +26,7 @@ import {
   TestIStRSR,
   TestIDistributor,
   TestIBroker,
+  TestIAsset,
 } from '../../typechain'
 import { withinQuad } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -37,7 +38,13 @@ import {
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
-import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
+import {
+  BN_SCALE_FACTOR,
+  CollateralStatus,
+  FURNACE_DEST,
+  RoundingMode,
+  STRSR_DEST,
+} from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -150,14 +157,30 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // b = loss due to selling token at the low price
     // c = loss due to buying token at the high price
     // mirrors the math from TradeLib ~L:57
-
-    const lowSellPrice = sellPrice.mul(fp('1')).div(fp('1').add(oracleError))
-    const highBuyPrice = divCeil(buyPrice.mul(fp('1')), fp('1').sub(oracleError))
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
     const product = sellAmt
       .mul(fp('1').sub(maxTradeSlippage)) // (a)
       .mul(lowSellPrice) // (b)
 
     return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
+
+  // getMidPrice: helper to have an estimate in value for an asset
+  const getMidPrice = async (asset: Asset): Promise<BigNumber> => {
+    const [lowPrice, highPrice] = await asset.price()
+
+    // back-solve for oracleError using system of equations
+    const oracleError: BigNumber = div(
+      highPrice.sub(lowPrice),
+      lowPrice.add(highPrice),
+      RoundingMode.ROUND
+    )
+
+    // extrapolate lowPrice to midPrice using oracleError
+    const midPrice: BigNumber = lowPrice.mul(BN_SCALE_FACTOR.add(oracleError))
+
+    return midPrice
   }
 
   before('create fixture loader', async () => {
@@ -768,27 +791,37 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check Price (unchanged) and Assets value increment by 50%
     // Excess cDAI = 100 (half) - valued at 100 * 0.04 = 4 usd
     const excessQuantity2: BigNumber = quotes[2].sub(newQuotes[2]).mul(pow10(10)) // Convert to 18 decimals for simplification
-    const excessValue2: BigNumber = excessQuantity2
-      .mul(await collateral[2].strictPrice())
-      .div(BN_SCALE_FACTOR)
+
+    const [lowPrice2, highPrice2] = await collateral[2].price()
+    const excessValueLow2: BigNumber = excessQuantity2.mul(lowPrice2).div(BN_SCALE_FACTOR)
+    const excessValueHigh2: BigNumber = excessQuantity2.mul(highPrice2).div(BN_SCALE_FACTOR)
+
     expect(excessQuantity2).to.equal(fp('100'))
-    expect(excessValue2).to.equal(fp('4'))
+    await expectPrice(collateral[2].address, fp('0.04'), ORACLE_ERROR, true)
+    expect(excessValueLow2).to.be.lt(fp('4'))
+    expect(excessValueHigh2).to.be.gt(fp('4'))
 
     // Excess cWBTC = 320 - valued at 320 * 500 = 160K usd (25%)
     const excessQuantity5: BigNumber = quotes[5].sub(newQuotes[5]).mul(pow10(10)) // Convert to 18 decimals for simplification
-    const excessValue5: BigNumber = excessQuantity5
-      .mul(await collateral[5].strictPrice())
-      .div(BN_SCALE_FACTOR)
+    const [lowPrice5, highPrice5] = await collateral[5].price()
+    const excessValueLow5: BigNumber = excessQuantity5.mul(lowPrice5).div(BN_SCALE_FACTOR)
+    const excessValueHigh5: BigNumber = excessQuantity5.mul(highPrice5).div(BN_SCALE_FACTOR)
+
     expect(excessQuantity5).to.equal(fp('320'))
-    expect(excessValue5).to.equal(fp('160000'))
+    await expectPrice(collateral[5].address, fp('500'), ORACLE_ERROR, true)
+    expect(excessValueLow5).to.be.lt(fp('160000'))
+    expect(excessValueHigh5).to.be.gt(fp('160000'))
 
     // Excess cETH = 304.7619- valued at 25.2 = 7679.999 usd (5%)
     const excessQuantity7: BigNumber = quotes[7].sub(newQuotes[7]).mul(pow10(10)) // Convert to 18 decimals for simplification
-    const excessValue7: BigNumber = excessQuantity7
-      .mul(await collateral[7].strictPrice())
-      .div(BN_SCALE_FACTOR)
+    const [lowPrice7, highPrice7] = await collateral[7].price()
+    const excessValueLow7: BigNumber = excessQuantity7.mul(lowPrice7).div(BN_SCALE_FACTOR)
+    const excessValueHigh7: BigNumber = excessQuantity7.mul(highPrice7).div(BN_SCALE_FACTOR)
+
     expect(excessQuantity7).to.be.closeTo(fp('304.7619'), point5Pct(fp('304.7619')))
-    expect(excessValue7).to.be.closeTo(fp('7679.999'), point5Pct(fp('7679.999')))
+    await expectPrice(collateral[7].address, fp('25.2'), ORACLE_ERROR, true)
+    expect(excessValueLow7).to.be.lt(fp('7679.999'))
+    expect(excessValueHigh7).to.be.gt(fp('7679.999'))
 
     await expectRTokenPrice(
       rTokenAsset.address,
@@ -797,10 +830,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       await backingManager.maxTradeSlippage(),
       config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
     )
-    const excessTotal = excessValue2.add(excessValue5).add(excessValue7)
-    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-      origAssetValue.add(excessTotal),
-      point5Pct(origAssetValue.add(excessTotal))
+    const excessLowTotal = excessValueLow2.add(excessValueLow5).add(excessValueLow7)
+    const excessHighTotal = excessValueHigh2.add(excessValueHigh5).add(excessValueHigh7)
+
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.lt(
+      origAssetValue.add(excessHighTotal)
+    )
+    expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.gt(
+      origAssetValue.add(excessLowTotal)
     )
 
     // Check status of destinations at this point
@@ -830,20 +867,35 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Set expected values for first auction - cDAI
     const sellAmt2: BigNumber = expectedToTrader2 // everything is auctioned, below max auction
-    const minBuyAmt2: BigNumber = sellAmt2
-      .sub(sellAmt2.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[2].strictPrice())
-      .div(await rsrAsset.strictPrice()) // trade slippage 1% - 59.4 cDAI @ 0.04 = 2.376 USD of value, in RSR = 475.2 RSR (@0.005)
-    expect(minBuyAmt2).to.equal(fp('475.2'))
+
+    const minBuyAmt2 = toMinBuyAmt(
+      sellAmt2.mul(pow10(10)),
+      fp('0.04'),
+      fp('0.005'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    // 59.4 cDAI @ 0.04 = 2.376 USD of value, in RSR = 465.8 RSR (@0.005)
+    expect(minBuyAmt2).to.be.closeTo(fp('465.8'), fp('0.01'))
+
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
 
     const sellAmtRToken2: BigNumber = expectedToFurnace2 // everything is auctioned, below max auction
-    const minBuyAmtRToken2: BigNumber = sellAmtRToken2
-      .sub(sellAmtRToken2.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[2].strictPrice())
-      .div(await rTokenAsset.strictPrice()) // trade slippage 1% - 39.6 cDAI @ 0.04 = 1.584 USD of value, in Rtoken = 0.000001330
-    expect(minBuyAmtRToken2).to.be.closeTo(fp('0.00000133'), fp('0.00000001'))
+    const minBuyAmtRToken2 = toMinBuyAmt(
+      sellAmtRToken2.mul(pow10(10)),
+      fp('0.04'),
+      fp('1190415'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    //  39.6 cDAI @ 0.04 = 1.584 USD of value, in Rtoken = 0.000001330
+    expect(minBuyAmtRToken2).to.be.closeTo(fp('0.0000013'), fp('0.00000001'))
 
     // Run auctions - Will detect excess
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -892,7 +944,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(minBuyAmtRToken2).to.be.closeTo(auctionbuyAmtRToken2, point5Pct(auctionbuyAmtRToken2))
 
     // Check Price (unchanged) and Assets value
-    expect(await rTokenAsset.strictPrice()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
+
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -934,20 +993,26 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Closing auction will create new auction for cWBTC
     // Set expected values
     const sellAmt5: BigNumber = expectedToTrader5 // everything is auctioned, below max auction
-    const minBuyAmt5: BigNumber = sellAmt5
-      .sub(sellAmt5.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[5].strictPrice())
-      .div(await rsrAsset.strictPrice()) // trade slippage 1% - 190.08 CWBTC @ 500 = 95K USD of value, in RSR = 19,008,000 RSR (@0.005)
-    expect(minBuyAmt5).to.equal(fp('19008e3'))
+    const minBuyAmt5 = toMinBuyAmt(
+      sellAmt5.mul(pow10(10)),
+      fp('500'),
+      fp('0.005'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    // 190.08 CWBTC @ 500 = 95K USD of value, in RSR = 18,631,603RSR (@0.005)
+    expect(minBuyAmt5).to.be.closeTo(fp('18631603'), fp('1'))
 
     const sellAmtRToken5: BigNumber = expectedToFurnace5 // everything is auctioned, below max auction
-    const minBuyAmtRToken5: BigNumber = sellAmtRToken5
-      .sub(sellAmtRToken5.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[5].strictPrice())
-      .div(await rTokenAsset.strictPrice()) // trade slippage 1% - 128 CWBTC @ 500 = 64K USD of value, in Rtoken = 0.053225
-    expect(minBuyAmtRToken5).to.be.closeTo(fp('0.053225'), fp('0.0001'))
+    const minBuyAmtRToken5 = toMinBuyAmt(
+      sellAmtRToken5.mul(pow10(10)),
+      fp('500'),
+      fp('1190415'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    // 128 CWBTC @ 500 = 64K USD of value, in Rtoken = 0.05217
+    expect(minBuyAmtRToken5).to.be.closeTo(fp('0.05217'), fp('0.00001'))
 
     // Close auctions - Will open for next token
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -982,7 +1047,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rTokenAsset.strictPrice()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -1065,20 +1136,26 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Closing auction will create new auction for cETH
     // Set expected values
     const sellAmt7: BigNumber = expectedToTrader7 // everything is auctioned, below max auction
-    const minBuyAmt7: BigNumber = sellAmt7
-      .sub(sellAmt7.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[7].strictPrice())
-      .div(await rsrAsset.strictPrice()) // trade slippage 1% - 181.02 CETH @ 25.2 = 4561 USD of value, in RSR = 912,384 RSR (@0.005)
-    expect(minBuyAmt7).to.be.closeTo(fp('912384'), point5Pct(fp('912384')))
+    const minBuyAmt7 = toMinBuyAmt(
+      sellAmt7.mul(pow10(10)),
+      fp('25.2'),
+      fp('0.005'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    // 181.02 CETH @ 25.2 = 4561 USD of value, in RSR = 894,317 RSR (@0.005)
+    expect(minBuyAmt7).to.be.closeTo(fp('894317'), point5Pct(fp('894317')))
 
     const sellAmtRToken7: BigNumber = expectedToFurnace7 // everything is auctioned, below max auction
-    const minBuyAmtRToken7: BigNumber = sellAmtRToken7
-      .sub(sellAmtRToken7.div(100))
-      .mul(pow10(10))
-      .mul(await collateral[7].strictPrice())
-      .div(await rTokenAsset.strictPrice()) // trade slippage 1% - 119.79 CETH @ 25.2 = 3018.7 USD of value, in Rtoken = 0.002554
-    expect(minBuyAmtRToken7).to.be.closeTo(fp('0.002554'), point5Pct(fp('0.002554')))
+    const minBuyAmtRToken7 = toMinBuyAmt(
+      sellAmtRToken7.mul(pow10(10)),
+      fp('25.2'),
+      fp('1190415'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    )
+    // 119.79 CETH @ 25.2 = 3018.7 USD of value, in Rtoken = 0.002504
+    expect(minBuyAmtRToken7).to.be.closeTo(fp('0.002504'), point5Pct(fp('0.002504')))
 
     // Close auctions - Will open for next token
     await expectEvents(facadeTest.runAuctionsForAllTraders(rToken.address), [
@@ -1113,7 +1190,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rTokenAsset.strictPrice()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
+
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -1121,7 +1205,10 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(auctionbuyAmt2.add(auctionbuyAmt5))
+    expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+      auctionbuyAmt2.add(auctionbuyAmt5),
+      bn('50')
+    )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5),
       point5Pct(auctionbuyAmtRToken2.add(auctionbuyAmtRToken5))
@@ -1220,7 +1307,14 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     ])
 
     // Check Price (unchanged) and Assets value (unchanged)
-    expect(await rTokenAsset.strictPrice()).to.be.closeTo(totalPriceUSD, point5Pct(totalPriceUSD))
+    await expectRTokenPrice(
+      rTokenAsset.address,
+      totalPriceUSD,
+      ORACLE_ERROR,
+      await backingManager.maxTradeSlippage(),
+      config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
+    )
+
     expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
       origAssetValue,
       point5Pct(origAssetValue)
@@ -1228,8 +1322,9 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     expect(await rToken.totalSupply()).to.equal(currentTotalSupply)
 
     // Check destinations at this stage - RSR and RTokens already in StRSR and Furnace
-    expect(await rsr.balanceOf(stRSR.address)).to.equal(
-      auctionbuyAmt2.add(auctionbuyAmt5).add(auctionbuyAmt7)
+    expect(await rsr.balanceOf(stRSR.address)).to.be.closeTo(
+      auctionbuyAmt2.add(auctionbuyAmt5).add(auctionbuyAmt7),
+      bn('10')
     )
     expect(await rToken.balanceOf(furnace.address)).to.be.closeTo(
       auctionbuyAmtRToken2.add(auctionbuyAmtRToken5).add(auctionbuyAmtRToken7),
