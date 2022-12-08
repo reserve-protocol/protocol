@@ -106,5 +106,6 @@
   },
   "resolutions": {
     "@solidity-parser/parser": "^0.13.2"
-  }
+  },
+  "packageManager": "yarn@3.3.0"
 }
