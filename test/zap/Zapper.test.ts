@@ -13,12 +13,12 @@ interface TestTokenParams {
 }
 
 interface TestResultTableData {
-  from: string;
-  tokenAmount: string;
-  to: string;
-  rTokenAmount: string;
-  redeemAmount: string;
-  efficiency: string;
+  from: string
+  tokenAmount: string
+  to: string
+  rTokenAmount: string
+  redeemAmount: string
+  efficiency: string
 }
 
 interface TestTokenParams {
@@ -28,7 +28,7 @@ interface TestTokenParams {
 }
 
 function formatBalance(amount: BigNumberish, decimals = 18): number {
-  return Number(ethers.utils.formatUnits(amount, decimals));
+  return Number(ethers.utils.formatUnits(amount, decimals))
 }
 
 const testTokens: TestTokenParams[] = [
@@ -68,7 +68,7 @@ const testTokens: TestTokenParams[] = [
   {
     address: '0x853d955aCEf822Db058eb8505911ED77F175b99e',
     whale: '0xdcef968d416a41cdac0ed8702fac8128a64241a2',
-  }
+  },
 ]
 
 const testBaskets = [
@@ -91,7 +91,7 @@ describe(`RToken Zapper Test V1`, () => {
 
   // Core Contracts
   let router: ZapRouter
-  let compoundRouterAdapter: CompoundRouterAdapter;
+  let compoundRouterAdapter: CompoundRouterAdapter
   let zapper: Zapper
   let rToken: TestIRToken
 
@@ -103,10 +103,13 @@ describe(`RToken Zapper Test V1`, () => {
     const zapRouterDeploy: ZapRouter = (await ZapRouterFactory.deploy(200)) as ZapRouter
     router = await zapRouterDeploy.deployed()
 
-    const CompoundRouterAdapterFactory: ContractFactory = await ethers.getContractFactory('CompoundRouterAdapter')
-    const compoundRouterAdapterDeploy: CompoundRouterAdapter = (await CompoundRouterAdapterFactory.deploy()) as CompoundRouterAdapter
+    const CompoundRouterAdapterFactory: ContractFactory = await ethers.getContractFactory(
+      'CompoundRouterAdapter'
+    )
+    const compoundRouterAdapterDeploy: CompoundRouterAdapter =
+      (await CompoundRouterAdapterFactory.deploy()) as CompoundRouterAdapter
     compoundRouterAdapter = await compoundRouterAdapterDeploy.deployed()
-    await router.registerAdapter(compoundRouterAdapter.address);
+    await router.registerAdapter(compoundRouterAdapter.address)
 
     // Deploy Zapper
     const ZapperFactory: ContractFactory = await ethers.getContractFactory('Zapper')
@@ -119,7 +122,7 @@ describe(`RToken Zapper Test V1`, () => {
   })
 
   async function verifyTokenInputs(inputs: TestTokenParams[]) {
-    const testData: TestResultTableData[] = [];
+    const testData: TestResultTableData[] = []
     for (const input of inputs) {
       const { address, whale, amountOverride } = input
       for (const targetBasket of testBaskets) {
@@ -129,10 +132,10 @@ describe(`RToken Zapper Test V1`, () => {
           amountOverride || acquireAmount,
           targetBasket
         )
-        testData.push(result);
+        testData.push(result)
       }
     }
-    console.table(testData);
+    console.table(testData)
   }
 
   async function verifyMint(
@@ -141,7 +144,7 @@ describe(`RToken Zapper Test V1`, () => {
     acquireAmount: BigNumber,
     targetBasket: string
   ): Promise<TestResultTableData> {
-    console.log(`${purchaseToken} -> ${targetBasket}`);
+    console.log(`${purchaseToken} -> ${targetBasket}`)
     const token = (await ethers.getContractAt('ERC20Mock', purchaseToken)) as ERC20Mock
     const [decimals, tokenName] = await Promise.all([token.decimals(), token.name()])
     await whileImpersonating(whale, async (signer) => {
@@ -157,16 +160,15 @@ describe(`RToken Zapper Test V1`, () => {
     const rTokenBalanceAfter = await rToken.balanceOf(owner.address)
     expect(rTokenBalanceAfter).to.be.gt(rTokenBalanceBefore)
 
-    const rTokenDisplayBalance = formatBalance(rTokenBalanceAfter).toFixed(2);
-    const displayBalance = formatBalance(convertedSpend, decimals).toFixed(2);
+    const rTokenDisplayBalance = formatBalance(rTokenBalanceAfter).toFixed(2)
+    const displayBalance = formatBalance(convertedSpend, decimals).toFixed(2)
     await rToken.connect(owner).approve(zapper.address, ethers.constants.MaxUint256)
     await zapper.connect(owner).zapOut(targetBasket, purchaseToken, rTokenBalanceAfter)
     const balanceOfAfter = await token.balanceOf(owner.address)
     const displayBalanceAfter = formatBalance(balanceOfAfter, decimals).toFixed(2)
-    const effeciency = 100 *
-      formatBalance(balanceOfAfter, decimals) /
-      formatBalance(convertedSpend, decimals);
-    expect(effeciency).to.be.lte(101);
+    const effeciency =
+      (100 * formatBalance(balanceOfAfter, decimals)) / formatBalance(convertedSpend, decimals)
+    expect(effeciency).to.be.lte(101)
 
     const result = {
       from: tokenName,
@@ -174,11 +176,11 @@ describe(`RToken Zapper Test V1`, () => {
       to: basketName,
       rTokenAmount: rTokenDisplayBalance,
       redeemAmount: displayBalanceAfter,
-      efficiency: `${(effeciency).toFixed(2)}%`,
-    };
+      efficiency: `${effeciency.toFixed(2)}%`,
+    }
 
-    await token.connect(owner).transfer(other.address, balanceOfAfter);
+    await token.connect(owner).transfer(other.address, balanceOfAfter)
 
-    return result;
+    return result
   }
 })

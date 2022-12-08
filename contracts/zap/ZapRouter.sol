@@ -46,7 +46,7 @@ contract ZapRouter is IZapRouter {
     function registerAdapter(address _adapter) public {
         require(msg.sender == routerManager, "!manager");
         address[] memory supportedTokens = IRouterAdapter(_adapter).supportedTokens();
-        for (uint256 i = 0; i < supportedTokens.length; i ++) {
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
             getRouterAdapter[supportedTokens[i]] = _adapter;
         }
     }

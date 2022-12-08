@@ -50,7 +50,10 @@ contract CompoundRouterAdapter is IRouterAdapter {
         IERC20(_token).safeTransferFrom(address(this), msg.sender, received);
     }
 
-    function unwrap(address _token, uint256 _amount) external returns (address unwrapToken, uint256 received) {
+    function unwrap(address _token, uint256 _amount)
+        external
+        returns (address unwrapToken, uint256 received)
+    {
         IERC20(_token).safeTransferFrom(msg.sender, address(this), _amount);
         require(IERC20(_token).balanceOf(address(this)) == _amount, "!balance");
 
@@ -62,5 +65,4 @@ contract CompoundRouterAdapter is IRouterAdapter {
 
         IERC20(unwrapToken).safeTransfer(msg.sender, received);
     }
-
 }
