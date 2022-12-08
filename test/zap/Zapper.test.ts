@@ -1,9 +1,16 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, BigNumberish, ContractFactory } from 'ethers'
-import { ethers } from 'hardhat'
+import hre, { ethers } from 'hardhat'
 import { bn, toBNDecimals } from '../../common/numbers'
-import { Zapper, ZapRouter, TestIRToken, ERC20Mock, CompoundRouterAdapter } from '../../typechain'
+import {
+  Zapper,
+  ZapRouter,
+  TestIRToken,
+  ERC20Mock,
+  CompoundRouterAdapter,
+  StaticAaveRouterAdapter,
+} from '../../typechain'
 import { whileImpersonating } from '../utils/impersonation'
 
 interface TestTokenParams {
@@ -71,20 +78,22 @@ const testTokens: TestTokenParams[] = [
   },
 ]
 
+const staticAaveBasket = '0xAf48c99b3b4E47286dac9E53E091b70536CB4373'
+const stabilizedBtc = '0xD14B53b114064159184e7Da58a50bFb25a56a28E';
+
 const testBaskets = [
+  // Aave Token
+  staticAaveBasket,
   // Frictionless Auction Token
   '0xc3ac2836FadAD8076bfB583150447a8629658591',
   // Bogota Test
   '0xcEC59484A59e0EE908B25Ae6C9e2FeC43c012bbD',
   // RUSD
   '0xe2822bbB0c962aAce905773b15adf50706258A8A',
-  // Stabilized BTC
-  // '0xD14B53b114064159184e7Da58a50bFb25a56a28E',
 ]
 
 describe(`RToken Zapper Test V1`, () => {
   const acquireAmount = bn('10000e18')
-  const spendAmount = bn('1000e18')
 
   let owner: SignerWithAddress
   let other: SignerWithAddress
@@ -92,11 +101,27 @@ describe(`RToken Zapper Test V1`, () => {
   // Core Contracts
   let router: ZapRouter
   let compoundRouterAdapter: CompoundRouterAdapter
+  let staticAaveRouterAdapter: StaticAaveRouterAdapter
   let zapper: Zapper
   let rToken: TestIRToken
 
-  before(async () => {
-    ;[owner, other] = await ethers.getSigners()
+  const setup = async (blockNumber: number) => {
+    // Use Mainnet fork
+    await hre.network.provider.request({
+      method: 'hardhat_reset',
+      params: [
+        {
+          forking: {
+            jsonRpcUrl: process.env.MAINNET_RPC_URL,
+            blockNumber: blockNumber,
+          },
+        },
+      ],
+    })
+  }
+
+  async function setupTest(targetBasket: string) {
+    await setup(targetBasket === staticAaveBasket ? 15719898 : 16077247)
 
     // Deploy ZapRouter
     const ZapRouterFactory: ContractFactory = await ethers.getContractFactory('ZapRouter')
@@ -111,21 +136,32 @@ describe(`RToken Zapper Test V1`, () => {
     compoundRouterAdapter = await compoundRouterAdapterDeploy.deployed()
     await router.registerAdapter(compoundRouterAdapter.address)
 
+    const StaticAaveRouterAdapterFactory: ContractFactory = await ethers.getContractFactory(
+      'StaticAaveRouterAdapter'
+    )
+    const staticAaveRouterAdapterDeploy: StaticAaveRouterAdapter =
+      (await StaticAaveRouterAdapterFactory.deploy([
+        '0x064746E7E8f44b41773B6377A38b5b2ebeD73349',
+      ])) as StaticAaveRouterAdapter
+    staticAaveRouterAdapter = await staticAaveRouterAdapterDeploy.deployed()
+    await router.registerAdapter(staticAaveRouterAdapter.address)
+
     // Deploy Zapper
     const ZapperFactory: ContractFactory = await ethers.getContractFactory('Zapper')
     const zapperDeploy: Zapper = (await ZapperFactory.deploy(router.address)) as Zapper
     zapper = await zapperDeploy.deployed()
+  }
+
+  before(async () => {
+    ;[owner, other] = await ethers.getSigners()
   })
 
   it(`Zaps in various stable coins to various rTokens`, async () => {
-    await verifyTokenInputs(testTokens)
-  })
-
-  async function verifyTokenInputs(inputs: TestTokenParams[]) {
     const testData: TestResultTableData[] = []
-    for (const input of inputs) {
+    for (const input of testTokens) {
       const { address, whale, amountOverride } = input
       for (const targetBasket of testBaskets) {
+        await setupTest(targetBasket)
         const result = await verifyMint(
           address,
           whale,
@@ -136,7 +172,7 @@ describe(`RToken Zapper Test V1`, () => {
       }
     }
     console.table(testData)
-  }
+  })
 
   async function verifyMint(
     purchaseToken: string,
@@ -152,6 +188,16 @@ describe(`RToken Zapper Test V1`, () => {
     })
     const convertedSpend = toBNDecimals(acquireAmount, decimals)
     await token.connect(owner).approve(zapper.address, convertedSpend)
+
+    // current static aave test basket is paused and keys burned
+    if (targetBasket == staticAaveBasket) {
+      const OWNER = '0xf7bd1f8fde9fbdc8436d45594e792e014c5ac966' // Facade Writer
+      const MAIN_ADDRESS = '0x80403bB991A76908Daea5A4330aEe5B4073F96c4'
+      const MAIN_ABI = ['function unpause()']
+      await whileImpersonating(OWNER, async (signer) => {
+        await (await ethers.getContractAt(MAIN_ABI, MAIN_ADDRESS)).connect(signer).unpause()
+      })
+    }
 
     rToken = <TestIRToken>await ethers.getContractAt('TestIRToken', targetBasket)
     const rTokenBalanceBefore = await rToken.balanceOf(owner.address)

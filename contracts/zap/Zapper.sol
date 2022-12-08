@@ -2,32 +2,44 @@
 pragma solidity 0.8.9;
 
 import "contracts/libraries/Fixed.sol";
-import "contracts/p1/RToken.sol";
 
-import "contracts/interfaces/IRToken.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/IFacadeRead.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+import { RTokenP1 } from "contracts/p1/RToken.sol";
+import { IRToken } from "contracts/interfaces/IRToken.sol";
+import { IBasketHandler } from "contracts/interfaces/IBasketHandler.sol";
+import { IMain } from "contracts/interfaces/IMain.sol";
+import { IFacadeRead } from "contracts/interfaces/IFacadeRead.sol";
 
 import { IZap } from "./interfaces/IZap.sol";
 import { IZapRouter } from "./ZapRouter.sol";
-
-import "hardhat/console.sol";
-
-interface IRtokenP1 is IRToken {
-    function mint(address _account, uint256 _amount) external;
-}
 
 contract Zapper is IZap {
     using SafeERC20 for IERC20;
 
     IFacadeRead private immutable facade = IFacadeRead(0x3DAf5a7681a9cfB92fB38983EB3998dFC7963B28);
     IZapRouter public zapRouter;
+    address public zapManager;
 
+    /// @param _zapRouter The default zap router to utilize 
     constructor(address _zapRouter) {
+        zapRouter = IZapRouter(_zapRouter);
+        zapManager = msg.sender;
+    }
+
+    /// @param _zapManager New zap manager
+    function setZapManager(address _zapManager) external {
+        require(msg.sender == zapManager, "!manager");
+        zapManager = _zapManager;
+    }
+
+    /// @param _zapRouter New zap router
+    function setZapRouter(address _zapRouter) external {
+        require(msg.sender == zapManager, "!manager");
         zapRouter = IZapRouter(_zapRouter);
     }
 
-    /// Zap an arbitrary token to target collateral tokens
     function zapIn(
         address _from,
         address _to,
@@ -42,8 +54,6 @@ contract Zapper is IZap {
         );
 
         uint256 lowestIssueRatio = getLowestIssueRatio(IRToken(_to), zappedAmounts);
-
-        // TOOD: this somehow fucks up and we can't mint, gives weird errors
         IRToken(_to).issue((lowestIssueRatio * 9950) / 10_000);
 
         received = IERC20(_to).balanceOf(address(this));
@@ -83,24 +93,32 @@ contract Zapper is IZap {
         IERC20(_to).safeTransfer(msg.sender, received);
     }
 
+    /// @notice Zap input token to individual rToken assets
+    /// @param _from Token to zap out from into rToken
+    /// @param _to rToken to zap out into
+    /// @param _amount Amount of token _from to zap in
+    /// @return addresses Addresses of tokens acquired
+    /// @return amoutns Amounts of tokens returned
     function zapToCollateralTokens(
         address _from,
         address _to,
         uint256 _amount
     ) internal returns (address[] memory, uint256[] memory) {
-        // Get underlying assets and ratios
-        // TODO this is a write call - check if it's safe
+        // Acquire breakdown of basket assets
         (address[] memory erc20s, uint192[] memory uoaShares, ) = facade.basketBreakdown(
             RTokenP1(address(_to))
         );
 
         uint256[] memory amounts = new uint256[](erc20s.length);
 
-        // TODO SHOULD sum to 1e18 but have to verify
+        // Verify a valid configuration
         uint256 totalSharesDenom;
         for (uint256 i = 0; i < erc20s.length; i++) {
             totalSharesDenom += uoaShares[i];
         }
+
+        // TODO: LARRY ITS NOT ALWAYS 1
+        // require(totalSharesDenom == 1 ether, "!totalSharesDenom");
 
         // Loop through each underlying asset and zap into each
         for (uint256 i = 0; i < erc20s.length; i++) {
@@ -113,6 +131,7 @@ contract Zapper is IZap {
             IERC20(_from).safeApprove(address(zapRouter), zapAmount);
             uint256 erc20Amount = zapRouter.swap(_from, erc20, zapAmount);
             amounts[i] = erc20Amount;
+
             // Approve rToken spending
             IERC20(erc20).safeApprove(address(_to), 0);
             IERC20(erc20).safeApprove(address(_to), erc20Amount);
@@ -121,20 +140,22 @@ contract Zapper is IZap {
         return (erc20s, amounts);
     }
 
-    /// Get the lowest ratio of collateral asset to determine issue amount
-    function getLowestIssueRatio(IRToken _rtoken, uint256[] memory _zappedAmounts)
+    /// @notice Get the lowest ratio of collateral asset to determine issue amount
+    /// @param _rToken Address of the rToken to verify against
+    /// @param _zappedAmounts Amounts of tokens available to issue rToken
+    function getLowestIssueRatio(IRToken _rToken, uint256[] memory _zappedAmounts)
         internal
         view
         returns (uint256 lowestRatio)
     {
-        IMain main = IMain(_rtoken.main());
+        IMain main = IMain(_rToken.main());
         IBasketHandler basketHandler = IBasketHandler(main.basketHandler());
 
         // Get amtBaskets for 1e18 rToken to use as reference
         // See RToken.sol:218
         uint192 amtBaskets = uint192(
-            _rtoken.totalSupply() > 0
-                ? mulDiv256(_rtoken.basketsNeeded(), 1 ether, _rtoken.totalSupply())
+            _rToken.totalSupply() > 0
+                ? mulDiv256(_rToken.basketsNeeded(), 1 ether, _rToken.totalSupply())
                 : 1 ether
         );
 

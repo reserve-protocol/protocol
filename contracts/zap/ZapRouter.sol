@@ -11,8 +11,6 @@ import { IZapRouter } from "./interfaces/IZapRouter.sol";
 import { ICurveRegistry } from "./interfaces/ICurveRegistry.sol";
 import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
-import "hardhat/console.sol";
-
 contract ZapRouter is IZapRouter {
     using SafeERC20 for IERC20;
 
@@ -51,6 +49,26 @@ contract ZapRouter is IZapRouter {
         }
     }
 
+    /// @param _routerManager Address to set as new router manager
+    function setRouterManager(address _routerManager) public {
+        require(msg.sender == routerManager, "!manager");
+        routerManager = _routerManager;
+    }
+
+    /// @param _adapter Address to register a new adapter at
+    /// @dev This overrides existing registrations, adapaters are limited 1:1
+    function registerAdapter(address _adapter) public {
+        require(msg.sender == routerManager, "!manager");
+        address[] memory supportedTokens = IRouterAdapter(_adapter).supportedTokens();
+        for (uint256 i = 0; i < supportedTokens.length; i++) {
+            getRouterAdapter[supportedTokens[i]] = _adapter;
+        }
+    }
+
+    /// @param _from Token to swap into the zap
+    /// @param _to Token to swap out of the zap
+    /// @param _amount Amount of _from to input into the zap
+    /// @dev Swap is zap in / out agnostic and works bidirectionally
     function swap(
         address _from,
         address _to,
@@ -59,9 +77,12 @@ contract ZapRouter is IZapRouter {
         IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
         require(IERC20(_from).balanceOf(address(this)) == _amount, "!balance");
 
+        // Grab possible token adapters, these are not required
         IRouterAdapter fromAdapter = IRouterAdapter(getRouterAdapter[_from]);
         IRouterAdapter toAdapter = IRouterAdapter(getRouterAdapter[_to]);
 
+        // Update the source, target, and amounts depending on adapater actions
+        // Adapters may unwrap a token potentially changing the amount that needs to be swapped
         address source = _from;
         address target = _to;
         uint256 amount = _amount;
