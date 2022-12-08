@@ -54,9 +54,11 @@ contract FiatCollateral is ICollateral, Asset {
     // targetName: The canonical name of this collateral's target unit.
     bytes32 public immutable targetName;
 
-    uint192 public immutable pegBottom; // {target/ref} The bottom of the peg
+    uint192 public pegBottom; // fuzz needs this to not be immutable!
+    // {target/ref} The bottom of the peg
 
-    uint192 public immutable pegTop; // {target/ref} The top of the peg
+    uint192 public pegTop; // fuzz needs this to not be immutable!
+    // {target/ref} The top of the peg
 
     // does not become nonzero until after first refresh()
     uint192 public prevReferencePrice; // previous rate, {ref/tok}

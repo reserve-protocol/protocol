@@ -56,6 +56,14 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
         targetPerRefModel = targetPerRefModel_;
         uoaPerTargetModel = uoaPerTargetModel_;
         deviationModel = deviationModel_;
+
+        // Cache constants
+        uint192 peg = targetPerRef(); // {target/ref}
+
+        // {target/ref}= {target/ref} * {1}
+        uint192 delta = peg.mul(defaultThreshold_);
+        pegBottom = peg - delta;
+        pegTop = peg + delta;
     }
 
     function tryPrice()
@@ -105,5 +113,10 @@ contract CollateralMock is OracleErrorMock, FiatCollateral {
     function partialUpdate(uint192 a, uint192 b) public {
         uoaPerTargetModel.update(a);
         deviationModel.update(b);
+    }
+
+    // expects delegatecall; claimer and rewardee is `this`
+    function claimRewards() public override {
+        ERC20Fuzz(address(erc20)).payRewards(address(this));
     }
 }

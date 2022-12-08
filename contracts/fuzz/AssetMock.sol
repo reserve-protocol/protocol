@@ -62,7 +62,6 @@ contract AssetMock is OracleErrorMock, Asset {
         emit SetPrice(erc20.symbol(), model.price());
     }
 
-    // ==== Rewards ====
     // expects delegatecall; claimer and rewardee is `this`
     function claimRewards() public override {
         ERC20Fuzz(address(erc20)).payRewards(address(this));

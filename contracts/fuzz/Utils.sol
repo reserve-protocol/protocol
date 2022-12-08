@@ -60,7 +60,7 @@ function concat(
 }
 
 function errRange(uint192 price, uint192 error) pure returns (uint192 low, uint192 high) {
-    return (FixLib.div(price, FIX_ONE + error), FixLib.div(price, FIX_ONE - error, CEIL));
+    return (FixLib.mul(price, FIX_ONE - error), FixLib.mul(price, FIX_ONE + error, CEIL));
 }
 
 function getFirstChar(string memory originString) pure returns (string memory firstChar) {

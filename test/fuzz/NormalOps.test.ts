@@ -5,7 +5,7 @@ import * as helpers from '@nomicfoundation/hardhat-network-helpers'
 
 import { fp } from '../../common/numbers'
 import { whileImpersonating } from '../../test/utils/impersonation'
-import { RoundingMode, TradeStatus } from '../../common/constants'
+import { RoundingMode, TradeStatus, CollateralStatus } from '../../common/constants'
 import { advanceTime } from '../../test/utils/time'
 
 import * as sc from '../../typechain' // All smart contract types
@@ -114,6 +114,7 @@ describe('The Normal Operations scenario', () => {
   beforeEach(async () => {
     await startState.restore()
   })
+
   it('deploys as expected', async () => {
     // users
     expect(await main.numUsers()).to.equal(3)
@@ -135,6 +136,19 @@ describe('The Normal Operations scenario', () => {
       for (let u = 0; u < 3; u++) {
         expect(await token.balanceOf(user(u))).to.equal(fp(1e6))
       }
+      const assetAddr = await comp.assetRegistry.toAsset(tokenAddr)
+      const asset = await ConAt('IAsset', assetAddr)
+      // if (await asset.isCollateral()) {
+      //   const coll = await ConAt('CollateralMock', assetAddr)
+      //   const status = await coll.status()
+      //   console.log(`${sym} status: ${status}`)
+      //   const [low, high, peg] = await coll.tryPrice()
+      //   console.log(`    low:  ${low}`)
+      //   console.log(`    high: ${high}`)
+      //   console.log(`    peg:  ${peg}`)
+      //   console.log(`    pegBottom: ${await coll.pegBottom()}`)
+      //   console.log(`    pegTop:    ${await coll.pegTop()}`)
+      // }
     }
 
     // assets and collateral
@@ -157,6 +171,8 @@ describe('The Normal Operations scenario', () => {
     expect(await comp.rTokenTrader.main()).to.equal(main.address)
     expect(await comp.furnace.main()).to.equal(main.address)
     expect(await comp.broker.main()).to.equal(main.address)
+
+    expect(await comp.basketHandler.status()).to.equal(CollateralStatus.SOUND)
   })
   describe('has mutators that', () => {
     describe('contains a mock Broker, TradingMock, and MarketMock, which...', () => {
@@ -426,10 +442,10 @@ describe('The Normal Operations scenario', () => {
 
         // update the price twice, saving the price
         await scenario.updatePrice(i, 0, 0, 0, 0)
-        const p0 = await asset.strictPrice()
+        const [p0Low, p0High] = await asset.price()
 
         await scenario.updatePrice(i, exa, exa, exa, exa)
-        const p1 = await asset.strictPrice()
+        const [p1Low, p1High] = await asset.price()
 
         // if not all price models are constant, then prices p0 and p1 should be different
         if (await asset.isCollateral()) {
@@ -438,13 +454,23 @@ describe('The Normal Operations scenario', () => {
           const [kind1, , ,] = await coll.targetPerRefModel()
           const [kind2, , ,] = await coll.uoaPerTargetModel()
           const [kind3, , ,] = await coll.deviationModel()
-          if (kind0 == 0 && kind1 == 0 && kind2 == 0 && kind3 == 0) expect(p0).to.equal(p1)
-          else expect(p0).to.not.equal(p1)
+          if (kind0 == 0 && kind1 == 0 && kind2 == 0 && kind3 == 0) {
+            expect(p0Low).to.equal(p1Low)
+            expect(p0High).to.equal(p1High)
+          } else {
+            expect(p0Low).to.not.equal(p1Low)
+            expect(p0High).to.not.equal(p1High)
+          }
         } else {
           const assetMock = await ConAt('AssetMock', asset.address)
           const [kind, , ,] = await assetMock.model()
-          if (kind == 0) expect(p0).to.equal(p1)
-          else expect(p0).to.not.equal(p1)
+          if (kind == 0) {
+            expect(p0Low).to.equal(p1Low)
+            expect(p0High).to.equal(p1High)
+          } else {
+            expect(p0Low).to.not.equal(p1Low)
+            expect(p0High).to.not.equal(p1High)
+          }
         }
       }
     })

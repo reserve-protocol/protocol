@@ -66,7 +66,13 @@ contract NormalOpsScenario {
                 reward = new ERC20Fuzz(concat("Reward ", num), concat("R", num), main);
                 main.addToken(reward);
                 main.assetRegistry().register(
-                    new AssetMock(IERC20Metadata(address(reward)), maxTradeVolume, volatile)
+                    new AssetMock(
+                        IERC20Metadata(address(reward)),
+                        maxTradeVolume,
+                        604800, // priceTimeout
+                        0.005e18, // oracleError
+                        volatile // (price) model
+                    )
                 );
                 token.setRewardToken(reward);
             }
@@ -75,14 +81,15 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     maxTradeVolume,
-                    5e16, // defaultThreshold
+                    604800, // priceTimeout
+                    0.005e18, // oracleError
+                    0.05e18, // defaultThreshold
                     86400, // delayUntilDefault
-                    IERC20Metadata(address(0)),
                     bytes32("USD"),
-                    growing,
-                    justOne,
-                    justOne,
-                    stable
+                    growing, // refPerTok model
+                    justOne, // targetPerRef model
+                    justOne, // uoaPerTarget model
+                    stable   // deviation model
                 )
             );
             collateralTokens.push(IERC20(token));
@@ -98,9 +105,10 @@ contract NormalOpsScenario {
                 new CollateralMock(
                     IERC20Metadata(address(token)),
                     maxTradeVolume,
+                    604800, // priceTimeout
+                    0.005e18, // oracleError
                     5e16, // defaultThreshold
                     86400, // delayUntilDefault
-                    IERC20Metadata(address(0)),
                     bytes32("USD"),
                     justOne,
                     stable,
