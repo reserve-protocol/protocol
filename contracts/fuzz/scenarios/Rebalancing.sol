@@ -103,23 +103,32 @@ contract RebalancingScenario {
                     );
                     main.addToken(reward);
                     token.setRewardToken(reward);
-                    main.assetRegistry().register(new AssetMock(reward, maxTradeVolume, volatile));
+                    main.assetRegistry().register(
+                        new AssetMock({
+                            erc20_: IERC20Metadata(address(reward)),
+                            maxTradeVolume_: maxTradeVolume,
+                            priceTimeout_: 604800,
+                            oracleError_: 0.005e18,
+                            model_: volatile
+                        })
+                    );
                 }
 
                 // Register Collateral
                 main.assetRegistry().register(
-                    new CollateralMock(
-                        IERC20Metadata(address(token)),
-                        maxTradeVolume,
-                        5e16, // defaultThreshold
-                        86400, // delayUntilDefault
-                        IERC20Metadata(address(0)),
-                        targetName,
-                        [growing, growing, mayHardDefault][k],
-                        [justOne, mayDepeg, justOne][k],
-                        [justOne, justOne, justOne][k],
-                        [stable, volatile, volatile][k]
-                    )
+                    new CollateralMock({
+                        erc20_: IERC20Metadata(address(token)),
+                        maxTradeVolume_: maxTradeVolume,
+                        priceTimeout_: 806400,
+                        oracleError_: 0.005e18,
+                        defaultThreshold_: 0.05e18,
+                        delayUntilDefault_: 86400,
+                        targetName_: targetName,
+                        refPerTokModel_: [growing, growing, mayHardDefault][k],
+                        targetPerRefModel_: [justOne, mayDepeg, justOne][k],
+                        uoaPerTargetModel_: [justOne, justOne, justOne][k],
+                        deviationModel_: [stable, volatile, volatile][k]
+                    })
                 );
                 collateralTokens.push(IERC20(token));
             }
@@ -134,18 +143,19 @@ contract RebalancingScenario {
                 );
                 main.addToken(token);
                 main.assetRegistry().register(
-                    new CollateralMock(
-                        IERC20Metadata(address(token)),
-                        maxTradeVolume,
-                        5e16, // defaultThreshold
-                        86400, // delayUntilDefault
-                        IERC20Metadata(address(0)),
-                        targetName,
-                        justOne,
-                        stable,
-                        justOne,
-                        justOne
-                    )
+                    new CollateralMock({
+                        erc20_: IERC20Metadata(address(token)),
+                        maxTradeVolume_: maxTradeVolume,
+                        priceTimeout_: 806400,
+                        oracleError_: 0.005e18,
+                        defaultThreshold_: 0.05e18,
+                        delayUntilDefault_: 86400,
+                        targetName_: targetName,
+                        refPerTokModel_: justOne,
+                        targetPerRefModel_: stable,
+                        uoaPerTargetModel_: justOne,
+                        deviationModel_: justOne
+                    })
                 );
                 backupTokens[targetName].push(IERC20(token));
             }
@@ -911,27 +921,30 @@ contract RebalancingScenario {
         bytes32 targetName
     ) internal returns (CollateralMock) {
         return
-            new CollateralMock(
-                IERC20Metadata(address(erc20)),
-                defaultParams().rTokenMaxTradeVolume,
-                uint192(between(1, 1e18, defaultThresholdSeed)), // def threshold
-                between(1, type(uint256).max, delayUntilDefaultSeed), // delay until default
-                IERC20Metadata(address(0)),
-                targetName,
-                isStable ? growing : getNextPriceModel(),
-                isStable ? justOne : getNextPriceModel(),
-                isStable ? justOne : getNextPriceModel(),
-                isStable ? stable : getNextPriceModel()
-            );
+            new CollateralMock({
+                erc20_: IERC20Metadata(address(erc20)),
+                maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
+                priceTimeout_: 806400,
+                oracleError_: 0.005e18,
+                defaultThreshold_: uint192(between(1, 1e18, defaultThresholdSeed)),
+                delayUntilDefault_: between(1, type(uint256).max, delayUntilDefaultSeed),
+                targetName_: targetName,
+                refPerTokModel_: isStable ? growing : getNextPriceModel(),
+                targetPerRefModel_: isStable ? justOne : getNextPriceModel(),
+                uoaPerTargetModel_: isStable ? justOne : getNextPriceModel(),
+                deviationModel_: isStable ? stable : getNextPriceModel()
+            });
     }
 
     function createAsset(IERC20 erc20) internal returns (AssetMock asset) {
         return
-            new AssetMock(
-                IERC20Metadata(address(erc20)),
-                defaultParams().rTokenMaxTradeVolume,
-                getNextPriceModel()
-            );
+            new AssetMock({
+                erc20_: IERC20Metadata(address(erc20)),
+                maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
+                priceTimeout_: 604800,
+                oracleError_: 0.005e18,
+                model_: getNextPriceModel()
+            });
     }
 
     function getNextPriceModel() internal returns (PriceModel memory) {
