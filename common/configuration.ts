@@ -19,6 +19,7 @@ export interface ITokens {
   aBUSD?: string
   aUSDP?: string
   aWETH?: string
+  arrakisUSDCWETH?: string
   cDAI?: string
   cUSDC?: string
   cUSDT?: string
@@ -68,6 +69,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
       aWETH: '0x030bA81f1c18d280636F32af80b9AAd02Cf0854e',
+      arrakisUSDCWETH: '0x24416cba1772c283De3B41eB99E850E8321322Bc',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
@@ -128,6 +130,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       aUSDT: '0x3Ed3B47Dd13EC9a98b44e6204A523E766B225811',
       aBUSD: '0xA361718326c15715591c299427c62086F69923D9',
       aUSDP: '0x2e8F4bdbE3d47d7d7DE490437AeA9915D930F1A3',
+      arrakisUSDCWETH: '0x24416cba1772c283De3B41eB99E850E8321322Bc',
       cDAI: '0x5d3a536E4D6DbD6114cc1Ead35777bAB948E3643',
       cUSDC: '0x39AA39c021dfbaE8faC545936693aC917d5E7563',
       cUSDT: '0xf650C3d88D12dB855b8bf7D11Be6C55A4e07dCC9',
