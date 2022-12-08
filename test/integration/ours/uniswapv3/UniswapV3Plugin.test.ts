@@ -287,7 +287,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await ethers.getContractFactory("UniswapV3Collateral")
 
             const fallbackPrice = fp("1")
-            const targetName = `UNIV3SQRT${asset0.name()}${asset1.name()}`
+            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT");
             const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
                 await uniswapV3CollateralContractFactory
                     .connect(addr1)

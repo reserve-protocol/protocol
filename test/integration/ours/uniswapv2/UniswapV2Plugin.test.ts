@@ -153,7 +153,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String(`UNIV2SQRT${asset0.name()}${asset1.name()}`)
+            const targetName = ethers.utils.formatBytes32String("UNIV2SQRT")
             const uniswapV2Collateral: UniswapV2Collateral = <UniswapV2Collateral>(
                 await uniswapV2CollateralContractFactory
                     .connect(addr1)

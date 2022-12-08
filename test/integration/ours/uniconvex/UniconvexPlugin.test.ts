@@ -297,7 +297,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             const fallbackPrice = fp("1")
-            const targetName = `CONVEXLP${asset0.name()}${asset1.name()}${asset2.name()}`
+            const targetName = ethers.utils.formatBytes32String(`CONVEXLP${asset0.name()}${asset1.name()}${asset2.name()}`)
             const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
                 .connect(addr1)
                 .deploy(
