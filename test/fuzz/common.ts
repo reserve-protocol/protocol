@@ -31,7 +31,6 @@ export const onePM: PriceModel = {
   high: fp(1),
 }
 
-// TODO: test me a little
 export function aroundPM(value: BigNumberish, spread: BigNumberish): PriceModel {
   // e.g, aroundPM(fp(100), fp(0.05)) should give a BAND PriceModel [fp(95), fp(105)].
 

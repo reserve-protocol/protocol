@@ -123,9 +123,6 @@ contract RTokenP0Fuzz is IRTokenFuzz, RTokenP0 {
 
     // To be called only from MarketMock; this only works if MarketMock never enqueues any other
     // issuances.
-
-    // TODO(elder): need allVestAt to have equivalent behavior on both sides; double-check
-    // that allVestAt gets reset in P1 also
     function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
 

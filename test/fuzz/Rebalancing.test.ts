@@ -1397,7 +1397,6 @@ describe('The Rebalancing scenario', () => {
     )
 
     let iteration = 0
-    // TODO, HERE: probably the issue is just that this equality isn't behaving how I expect it to... :P
     while ((await scenario.status()) == RebalancingScenarioStatus.REBALANCING_ONGOING) {
       iteration++
       // We'll check the echidna properties at each step during rebalancing...

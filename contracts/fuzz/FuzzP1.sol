@@ -348,6 +348,9 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
     // issuances.
     function fastIssue(uint256 amtRToken) external notPausedOrFrozen {
         require(amtRToken > 0, "Cannot issue zero");
+
+        uint192 initAllVestAt = allVestAt;
+
         issue(amtRToken);
 
         IssueQueue storage queue = issueQueues[_msgSender()];
@@ -356,6 +359,8 @@ contract RTokenP1Fuzz is IRTokenFuzz, RTokenP1 {
             queue.items[queue.right - 1].when = 0;
             vestUpTo(_msgSender(), queue.right);
         }
+
+        allVestAt = initAllVestAt;
     }
 
     /// The tokens and underlying quantities needed to issue `amount` qRTokens.
