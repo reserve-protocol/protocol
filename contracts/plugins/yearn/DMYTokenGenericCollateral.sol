@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "contracts/plugins/assets/OracleLib.sol";
 import "../../libraries/Fixed.sol";
 import "../assets/DemurrageCollateral.sol";
 import "./IYToken.sol";
@@ -41,13 +42,14 @@ contract DMYTokenGenericCollateral is DemurrageCollateral {
 
     function pricePerUTok() internal view override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
-        return
-            shiftl_toFix(
-                priceProvider.price(address(vault.token())),
-                -int8(priceProvider.decimals())
-            );
+        uint256 _price = priceProvider.price(address(vault.token()));
+        if (_price == 0) {
+            revert PriceOutsideRange();
+        }
+        return shiftl_toFix(_price, -int8(priceProvider.decimals()));
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _checkAndUpdateDefaultStatus() internal override returns (bool isSound) {}
+    function _checkAndUpdateDefaultStatus() internal pure override returns (bool isSound) {
+        isSound = true;
+    }
 }

@@ -27,11 +27,13 @@ export interface ITokens {
   cWBTC?: string
   yvDAI?: string
   yvWBTC?: string
+  yvLINK?: string
   AAVE?: string
   stkAAVE?: string
   COMP?: string
   WETH?: string
   WBTC?: string
+  LINK?: string
   EURT?: string
   RSR?: string
 }
@@ -78,11 +80,13 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       cWBTC: '0xC11b1268C1A384e55C48c2391d8d480264A3A7F4',
       yvDAI: '0x19D3364A399d251E894aC732651be8B0E4e85001',
       yvWBTC: '0xA696a63cc78DfFa1a63E9E50587C197387FF6C7E',
+      yvLINK: '0x671a912C10bba0CFA74Cfc2d6Fba9BA1ed9530B2',
       AAVE: '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9',
       stkAAVE: '0x4da27a545c0c5B758a6BA100e3a049001de870f5',
       COMP: '0xc00e94Cb662C3520282E6f5717214004A7f26888',
       WETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
       WBTC: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+      LINK: '0x514910771AF9Ca656af840dff83E8264EcF986CA',
       EURT: '0xC581b735A1688071A1746c968e0798D642EDE491',
       RSR: '0x320623b8E4fF03373931769A31Fc52A4E78B5d70',
     },
@@ -100,6 +104,7 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       WBTC: '0xfdFD9C85aD200c506Cf9e21F1FD8dd01932FBB23',
       BTC: '0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c',
       EURT: '0x01D391A48f4F7339aC64CA2c83a07C22F95F587a',
+      LINK: '0x2c1d072e956affc0d435cb7ac38ef18d24d9127c',
       EUR: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     },
     AAVE_LENDING_POOL: '0x7d2768dE32b0b80b7a3454c06BdAc94A69DDc7A9',

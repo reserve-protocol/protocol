@@ -45,13 +45,14 @@ contract YTokenGenericCollateral is RevenueHidingCollateral {
     /// @return {UoA/tok} The current price()
     function strictPrice() public view override returns (uint192) {
         IYToken vault = IYToken(address(erc20));
-        return
-            shiftl_toFix(
-                priceProvider.price(address(vault.token())),
-                -int8(priceProvider.decimals())
-            ).mul(actualRefPerTok());
+        uint256 _price = priceProvider.price(address(vault.token()));
+        if (_price == 0) {
+            revert PriceOutsideRange();
+        }
+        return shiftl_toFix(_price, -int8(priceProvider.decimals())).mul(actualRefPerTok());
     }
 
-    // solhint-disable-next-line no-empty-blocks
-    function _checkAndUpdateDefaultStatus() internal override returns (bool isSound) {}
+    function _checkAndUpdateDefaultStatus() internal pure override returns (bool isSound) {
+        isSound = true;
+    }
 }
