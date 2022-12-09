@@ -13,7 +13,7 @@ import "contracts/libraries/Fixed.sol";
  * @notice Collateral plugin for fCash lending positions where lent underlying is Fiat pegged
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract fCashCollateral is RevenueHiding {
+contract fCashFiatPeggedCollateral is RevenueHiding {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -57,6 +57,11 @@ contract fCashCollateral is RevenueHiding {
         defaultThreshold = _defaultThreshold;
     }
 
+    function _beforeRefreshing() internal override {
+        // try to reinvest any matured positions
+        fCashWrapper.reinvest();
+    }
+
     function checkReferencePeg() internal override {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 currentPrice) {
             // the peg of our reference is always ONE target
@@ -93,10 +98,5 @@ contract fCashCollateral is RevenueHiding {
     /// Must emit `RewardsClaimed` for each token rewards are claimed for
     /// @dev delegatecall: let there be dragons!
     /// @custom:interaction
-    function claimRewards() external override {
-        // try to reinvest and matured positions
-        fCashWrapper.reinvest();
-        // no event is emitted because there is no token being claimed,
-        // this function simply re-lends the assets to maximize profits
-    }
+    function claimRewards() external override {}
 }

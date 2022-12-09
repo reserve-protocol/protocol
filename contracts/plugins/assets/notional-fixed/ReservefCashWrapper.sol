@@ -173,8 +173,13 @@ contract ReservefCashWrapper is ERC20, IReservefCashWrapper {
                 }
                 // remove last element
                 markets.pop();
-                // Since we are removing a market we dont want
-                // to increase the counter when we find a matured market
+
+                // since there is one position on each maturity, and they are separated by at least 3-month time
+                // it's not probable that if we just found one matured market there is another waiting
+                // we can just return and save gas on this scenario.
+                // if the case was there another market is waiting, it will be reinvested on the next check
+                // @dev can just remove this return, but it spends more gas with little benefit
+                return;
             }
             else {
                 // if market didn't mature increase the counter.
