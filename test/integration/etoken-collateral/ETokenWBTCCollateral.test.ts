@@ -6,20 +6,19 @@ import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
-  IGovParams,
-  IRTokenSetup,
-  networkConfig,
+    IGovParams,
+    IRTokenSetup,
+    networkConfig,
 } from '../../../common/configuration'
 import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals, ZERO } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { getOraclePrice, setOraclePrice1 } from '../../utils/oracles'
+import { setOraclePrice1, getOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  EULClaimableETokenWSTETHCollateral,
-  EulDistributorMock,
+  ETokenWBTCCollateral,
   ETokenMock,
   ERC20Mock,
   FacadeRead,
@@ -34,27 +33,27 @@ import {
   TestIBackingManager,
   TestIDeployer,
   TestIMain,
-  TestIRToken
+  TestIRToken,
 } from '../../../typechain'
 import { 
   ITestParams, 
-  eTokenHolders, 
-  targetName, 
-  etokenRefPerTok, 
-  delta, 
-  issueAmount, 
-  tokenOneUnit, 
-  fallBackPrice,
-  config,
-  rTokenConfig,
-  BN1,
-  FP1
-} from './test-params'
+    eTokenHolders, 
+    targetName, 
+    etokenRefPerTok, 
+    delta, 
+    issueAmount, 
+    tokenOneUnit, 
+    fallBackPrice,
+    config,
+    rTokenConfig,
+    BN1,
+    FP1
+ } from './test-params'
 
 const createFixtureLoader = waffle.createFixtureLoader
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`ETokenWBTCCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
 
   let params: ITestParams
 
@@ -64,9 +63,8 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
   // Tokens/Assets
   let token: ERC20Mock
   let eToken: ETokenMock
-  let eTokenCollateral: EULClaimableETokenWSTETHCollateral
+  let eTokenCollateral: ETokenWBTCCollateral
   let eulToken: ERC20Mock
-  let eulAsset: Asset
   let rsr: ERC20Mock
   let rsrAsset: Asset
 
@@ -96,9 +94,6 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
   let MockV3AggregatorFactory: ContractFactory
   let mockChainlinkFeed: MockV3Aggregator
 
-  let EulDistributorMockFactory: ContractFactory
-  let euldistributor: EulDistributorMock
-
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -115,71 +110,54 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       await loadFixture(defaultFixture))
 
     // ---  Testing Params ---- //
-    // Define which SelfReferentialCollateral, such as WETH, UNI, LINK is used for this test file. 
-    
+    // NonFiatCollateral: only WBTC at this point, but potentially renBTC and WETH?. 
+    // Check further details about parameters ./test-params.ts
+
     params = {
         // Token Addresses
         eulAddr: networkConfig[chainId].tokens.EUL,
-        tokenAddr: networkConfig[chainId].tokens.WSTETH,
-        etokenAddr: networkConfig[chainId].tokens.eWSTETH,
+        tokenAddr: networkConfig[chainId].tokens.WBTC,
+        etokenAddr: networkConfig[chainId].tokens.eWBTC,
         // ChainlinkFeed
-        tokenChainlinkFeed: networkConfig[chainId].chainlinkFeeds.STETH,
-        refUnitChainlinkFeed: ZERO_ADDRESS,
-        targetChainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
+        refChainLinkFeed: networkConfig[chainId].chainlinkFeeds.WBTC, 
+        targetChainlinkFeed:  networkConfig[chainId].chainlinkFeeds.BTC,
         // Holder address in Mainnet
-        etokenHolderAddr: eTokenHolders.ewsteth,
+        etokenHolderAddr: eTokenHolders.eWBTC,
         // Target
-        targetName: targetName.eth,
+        targetName: targetName.BTC,
         // Numbers: 
-        refPerTok: etokenRefPerTok.ewsteth, 
-        refPerTok1: etokenRefPerTok.ewsteth1,
-        delta: delta.wsteth, 
-        issueAmount: issueAmount.wsteth, 
-        oneUnit: tokenOneUnit.erc18, 
-        fallBackPrice: fallBackPrice.wsteth
+        refPerTok: etokenRefPerTok.eWBTC, 
+        refPerTok1: etokenRefPerTok.eWBTC1, 
+        delta: delta.WBTC, // apx 0.1%
+        issueAmount: issueAmount.WBTC, 
+        oneUnit: tokenOneUnit.ERC8, 
+        fallBackPrice: fallBackPrice.WBTC
       }
     
     // ------- // 
 
-    // Get required contracts for eDAI
+    // Get required contracts for eToken
     // EUL token
     eulToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.eulAddr || '')
     )
-    // DAI token
+    // Token
     token = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.tokenAddr || '')
     )
-    // eToken token
+    // eToken 
     eToken = <ETokenMock>(
       await ethers.getContractAt('ETokenMock', params.etokenAddr || '')
     )
 
-    eulAsset = <Asset>(
-      await (
-        await ethers.getContractFactory('Asset')
-      ).deploy(
-        fp('1'),
-        // networkConfig[chainId].chainlinkFeeds.EUL || '', // COMP Feed due to lack of EUL chainlink feed
-        networkConfig[chainId].chainlinkFeeds.EUL as string, // COMP Feed due to lack of EUL chainlink feed
-        eulToken.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT
-      )
-    )
-
-    // Deploy EulDistributorMock
-    EulDistributorMockFactory = await ethers.getContractFactory('EulDistributorMock')
-    euldistributor = <EulDistributorMock>await EulDistributorMockFactory.deploy(eulToken.address)
-
     // Deploy eToken collateral plugin
-    ETokenCollateralFactory = await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+    ETokenCollateralFactory = await ethers.getContractFactory('ETokenWBTCCollateral', {
       libraries: { OracleLib: oracleLib.address },
     })
-    eTokenCollateral = <EULClaimableETokenWSTETHCollateral>(
+    eTokenCollateral = <ETokenWBTCCollateral>(
       await ETokenCollateralFactory.deploy(
         params.fallBackPrice, // {UoA}
-        params.tokenChainlinkFeed as string,
+        params.refChainLinkFeed as string,
         params.targetChainlinkFeed as string,
         params.etokenAddr as string,
         config.rTokenMaxTradeVolume,
@@ -187,9 +165,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         params.targetName,
         defaultThreshold,
         delayUntilDefault,
-        (await token.decimals()).toString(),
-        params.tokenAddr as string,
-        euldistributor.address
+        (await token.decimals()).toString()
       )
     )
 
@@ -201,7 +177,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
 
     // Set primary basket
     const rTokenSetup: IRTokenSetup = {
-      assets: [eulAsset.address],
+      assets: [],
       primaryBasket: [eTokenCollateral.address],
       weights: [fp('1')],
       backups: [],
@@ -249,100 +225,78 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
   })
 
   describe('Deployment', () => {
-
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-
-      expect(await eulAsset.isCollateral()).to.equal(false)
-      expect(await eulAsset.erc20()).to.equal(eulToken.address)
-      expect(await eulAsset.erc20()).to.equal(networkConfig[chainId].tokens.EUL)
-      // expect(await eulAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // No Chainlink Address for EUL
-      await expect(eulAsset.claimRewards()).to.not.emit(eulAsset, 'RewardsClaimed')
-      expect(await eulAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       expect(await eulToken.decimals()).to.equal(18)
       expect(await eToken.decimals()).to.equal(18)
 
-      // Check Collateral plugin
-      // eToken (EULClaimableETokenWSTETHCollateral)
-
-      const wstETHPrice:BigNumber = await eTokenCollateral.getWstETHPrice()
-      const stETHPrice:BigNumber = await eTokenCollateral.getStETHPrice()
-      const ETHPrice:BigNumber = await eTokenCollateral.getETHPrice()
-
+      const WBTC_BTC:BigNumber = await eTokenCollateral.getTargetPerRef()
+      const BTCPrice:BigNumber = await eTokenCollateral.getTargetPrice()
       const strictPrice:BigNumber = await eTokenCollateral.strictPrice()
       const refPerTok:BigNumber = await eTokenCollateral.refPerTok()
-      const targetPerUnderlying:BigNumber = await eTokenCollateral.getTargetPerUnderlying()
 
+      // Check Collateral plugin
+      // eToken (ETokenWBTCCollateral)
       expect(await eTokenCollateral.fallbackPrice()).to.equal(params.fallBackPrice)
-      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.tokenChainlinkFeed as string)
-      expect(await eTokenCollateral.targetChainlinkFeed()).to.equal(params.targetChainlinkFeed as string)
+      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.refChainLinkFeed as string)
+      expect(await eTokenCollateral.targetUnitChainlinkFeed()).to.equal(params.targetChainlinkFeed as string)
       expect(await eTokenCollateral.erc20()).to.equal(params.etokenAddr as string)
       expect(await eTokenCollateral.targetName()).to.equal(params.targetName)
 
       expect(await eTokenCollateral.isCollateral()).to.equal(true)
       expect(await eTokenCollateral.referenceERC20Decimals()).to.equal(await token.decimals())
-      expect(await eTokenCollateral.targetPerRef()).to.equal(wstETHPrice.mul(BN1).div(ETHPrice))
+      expect(await eTokenCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await eTokenCollateral.prevReferencePrice()).to.be.closeTo(params.refPerTok, params.delta)
-    
-      expect(wstETHPrice).to.be.closeTo(params.fallBackPrice, params.delta)
-      expect(stETHPrice).to.be.closeTo( await getOraclePrice(params.tokenChainlinkFeed as string, owner), params.delta)
-      expect(ETHPrice).to.be.closeTo( await getOraclePrice(params.targetChainlinkFeed as string, owner), params.delta)
-      expect(strictPrice).to.be.closeTo(params.refPerTok.mul(params.fallBackPrice).div(BN1), params.delta)
+
+      expect(WBTC_BTC).to.be.closeTo( await getOraclePrice(params.refChainLinkFeed as string, owner), params.delta)
+      expect(BTCPrice).to.be.closeTo( await getOraclePrice(params.targetChainlinkFeed as string, owner), params.delta)
+      expect(strictPrice).to.be.closeTo(params.refPerTok.mul(params.fallBackPrice.div(bn('1e18'))), params.delta)
       expect(refPerTok).to.be.closeTo(params.refPerTok, params.delta)
-      expect(targetPerUnderlying).to.be.closeTo(ETHPrice.mul(BN1).div(wstETHPrice), params.delta)
 
       // Check claim data
       await expect(eTokenCollateral.claimRewards())
         .to.emit(eTokenCollateral, 'RewardsClaimed')
-        .withArgs(eulToken.address, 0)
+        .withArgs(ZERO_ADDRESS, 0)
       expect(await eTokenCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
 
-    console.log(
+      console.log(
         '\n',
-        '- wstETH Price: ', wstETHPrice.toString(),  '\n',
-        '- stETH Price: ', stETHPrice.toString(), '\n',
-        '- ETH Price : ', ETHPrice.toString(), '\n',
+        '- WBTC_BTC Rate: ', WBTC_BTC.toString(),  '\n',
+        '- BTC Price: ', BTCPrice.toString(), '\n',
         '- Collateral Price: ', strictPrice.toString(), '\n',
         '- refPerTok: ', refPerTok.toString(), '\n',
-        '- targetPerUnderlying: ', targetPerUnderlying.toString(), '\n',
         '\n',
         )
-      })
+    })
 
     // Check assets/collaterals in the Asset Registry
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
-
       // Check assets/collateral
       const ERC20s = await assetRegistry.erc20s()
       expect(ERC20s[0]).to.equal(rToken.address)
       expect(ERC20s[1]).to.equal(rsr.address)
-      expect(ERC20s[2]).to.equal(eulToken.address)
-      expect(ERC20s[3]).to.equal(params.etokenAddr as string)
-      expect(ERC20s.length).to.eql(4)
+      expect(ERC20s[2]).to.equal(params.etokenAddr as string)
+      expect(ERC20s.length).to.eql(3)
 
       // Assets
       expect(await assetRegistry.toAsset(ERC20s[0])).to.equal(rTokenAsset.address)
       expect(await assetRegistry.toAsset(ERC20s[1])).to.equal(rsrAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(eulAsset.address)
-      expect(await assetRegistry.toAsset(ERC20s[3])).to.equal(eTokenCollateral.address)
+      expect(await assetRegistry.toAsset(ERC20s[2])).to.equal(eTokenCollateral.address)
 
       // Collaterals
-      expect(await assetRegistry.toColl(ERC20s[3])).to.equal(eTokenCollateral.address)
+      expect(await assetRegistry.toColl(ERC20s[2])).to.equal(eTokenCollateral.address)
 
       console.log(
         '\n',
         '- RToken Address: ', rToken.address, '\n',
         '- RToken Asset Address:' , rTokenAsset.address, '\n',
-        '- EUL Address:' , eulToken.address, '\n',
-        '- EulAsset Address:' , eulAsset.address, '\n',
         '- EToken Collateral Address: ', eTokenCollateral.address, '\n',
         '\n',
         )
-
     })
 
     // Check RToken basket
@@ -361,38 +315,36 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
 
       const [isFallback, price1] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
+
       // 1RToken = ref * (ref/target)
       const rTokenPrice: BigNumber = params.fallBackPrice.mul(
         (await getOraclePrice(params.targetChainlinkFeed as string, owner)).mul(BN1)
         .div(params.fallBackPrice)).div(BN1)
 
-      expect(price1).to.be.closeTo(rTokenPrice ,params.fallBackPrice.mul(fp('0.01')).div(FP1))
-      
+      expect(price1).to.be.closeTo(rTokenPrice, rTokenPrice.mul(fp("0.01")).div(FP1)) // 1% delta
+
       // Check RToken price
       await eToken.connect(addr1).approve(rToken.address, toBNDecimals(params.issueAmount, 18).mul(100))
       await expect(rToken.connect(addr1).issue(params.issueAmount)).to.emit(rToken, 'Issuance')
 
       const price2 :BigNumber = await rTokenAsset.strictPrice()
-      expect(price2).to.be.closeTo(rTokenPrice, params.fallBackPrice.mul(fp('0.01')).div(FP1))
+      expect(price2).to.be.closeTo(rTokenPrice, rTokenPrice.mul(fp("0.01")).div(FP1))
 
-      const balanceAddr1ewstETH: BigNumber = await eToken.balanceOf(addr1.address)
-      const balanceBackingManagerewstETH: BigNumber = await eToken.balanceOf(backingManager.address)
+      const balanceAddr1: BigNumber = await eToken.balanceOf(addr1.address)
+      const balanceBackingManager: BigNumber = await eToken.balanceOf(backingManager.address)
 
       // make sure that the smaller unit of eToken is held in backingManager after the issuance of RTokens
-      // 1 BU <= 1 Ref
-      await expect(params.issueAmount).to.be.gt(balanceBackingManagerewstETH)
+      await expect(params.issueAmount).to.be.gt(balanceBackingManager)
 
       const price3 :BigNumber = await eTokenCollateral.strictPrice()
-      const price4:[boolean, BigNumber] = await eTokenCollateral.price(true)
 
       console.log(
         '\n',
         '- RToken Price(basketHandler): ', price1.toString(), '\n',
         '- RToken Price(rTokenAsset): ', price2.toString(), '\n',
-        '- ewstETH Balance Addr1: ', balanceAddr1ewstETH.toString(), '\n',
-        '- ewstETH Balance BackingManager: ', balanceBackingManagerewstETH.toString(), '\n',
+        '- eWBTC Balance Addr1: ', balanceAddr1.toString(), '\n',
+        '- eWBTC Balance BackingManager: ', balanceBackingManager.toString(), '\n',
         '- Collateral strictPrice(eTokenCollateral): ', price3.toString(), '\n',
-        '- Collateral price(eTokenCollateral): ', price4[1].toString(), '\n',
         '\n',
       )
     })
@@ -400,12 +352,11 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
     // Validate constructor arguments
     // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
-
       // Default threshold
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
+          params.refChainLinkFeed as string,
           params.targetChainlinkFeed as string,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
@@ -413,9 +364,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
           params.targetName,
           ZERO,
           delayUntilDefault,
-          (await token.decimals()).toString(),
-          params.tokenAddr as string,
-          euldistributor.address
+          (await token.decimals()).toString()
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
@@ -423,7 +372,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
+          params.refChainLinkFeed as string,
           params.targetChainlinkFeed as string,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
@@ -431,9 +380,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
           params.targetName,
           defaultThreshold,
           delayUntilDefault,
-          0,
-          params.tokenAddr as string,
-          euldistributor.address
+          0
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
 
@@ -441,7 +388,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
+          params.refChainLinkFeed as string,
           ZERO_ADDRESS,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
@@ -449,47 +396,9 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
           params.targetName,
           defaultThreshold,
           delayUntilDefault,
-          (await token.decimals()).toString(),
-          params.tokenAddr as string,
-          euldistributor.address
+          (await token.decimals()).toString()
         )
-      ).to.be.revertedWith('targetChainlinkFeed missing')
-
-      // wstETH Address
-      await expect(
-        ETokenCollateralFactory.deploy(
-          params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
-          params.targetChainlinkFeed as string,
-          params.etokenAddr as string,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          params.targetName,
-          defaultThreshold,
-          delayUntilDefault,
-          (await token.decimals()).toString(),
-          ZERO_ADDRESS,
-          euldistributor.address
-        )
-      ).to.be.revertedWith('wstETH missing')
-
-        // eulDistributor Address
-        await expect(
-          ETokenCollateralFactory.deploy(
-            params.fallBackPrice,
-            params.tokenChainlinkFeed as string,
-            params.targetChainlinkFeed as string,
-            params.etokenAddr as string,
-            config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT,
-            params.targetName,
-            defaultThreshold,
-            delayUntilDefault,
-            (await token.decimals()).toString(),
-            params.tokenAddr as string,
-            ZERO_ADDRESS
-          )
-        ).to.be.revertedWith('eulDistributor missing')
+      ).to.be.revertedWith('missing target unit chainlink feed')
     })
   })
 
@@ -512,8 +421,8 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       expect(await rToken.balanceOf(addr1.address)).to.equal(params.issueAmount)
 
       // Check rates and prices
-      const eTokenPrice1: BigNumber = await eTokenCollateral.strictPrice() 
-      const eTokenRefPerTok1: BigNumber = await eTokenCollateral.refPerTok() 
+      const eTokenPrice1: BigNumber = await eTokenCollateral.strictPrice()
+      const eTokenRefPerTok1: BigNumber = await eTokenCollateral.refPerTok()
 
       const strictPrice: BigNumber = params.fallBackPrice.mul(params.refPerTok).div(BN1)
 
@@ -524,13 +433,8 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-
-      // estimateValue = issue amount * rToken Price(= ref * (target / ref))
-      const rTokenPrice: BigNumber = params.fallBackPrice.mul(
-        (await getOraclePrice(params.targetChainlinkFeed as string, owner)).mul(BN1)
-        .div(params.fallBackPrice)).div(BN1)
-      const estimatedValue1: BigNumber = params.issueAmount.div(BN1).mul(rTokenPrice)
-      expect(totalAssetValue1).to.be.closeTo(estimatedValue1, params.delta.mul(estimatedValue1.div(BN1))) 
+      const estimatedValue1: BigNumber = params.issueAmount.div(BN1).mul(params.refPerTok).mul(params.fallBackPrice.div(BN1))
+      expect(totalAssetValue1).to.be.closeTo(estimatedValue1, params.delta.mul(params.issueAmount.div(BN1))) 
 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
@@ -556,7 +460,6 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
       // Advance time and blocks significantly, causing refPerTok() to increase
@@ -598,10 +501,10 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       const balanceAddr1eToken2: BigNumber = await eToken.balanceOf(addr1.address)
       expect(balanceAddr1eToken2).to.be.lt(balanceAddr1eToken1)
 
-      // Check new etoken balance is worth than previous balance
+      // Check received tokens represent ~10K in value at current prices
       const BeforeBalanceValue: BigNumber = rate1.mul(balanceAddr1eToken1).div(params.oneUnit).mul(params.fallBackPrice.div(BN1))
       const AfterBalanceValue: BigNumber = (await eToken.convertBalanceToUnderlying(BN1)).mul(balanceAddr1eToken2).div(params.oneUnit).mul(params.fallBackPrice.div(BN1))
-      expect(AfterBalanceValue).to.be.gt(BeforeBalanceValue)
+      expect(AfterBalanceValue).to.be.gte(BeforeBalanceValue)
 
       // Check remainders in Backing Manager
       const BMETokenBalance:BigNumber = await eToken.balanceOf(backingManager.address)
@@ -611,22 +514,22 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       const RTokenTotalValue: BigNumber = await facadeTest.callStatic.totalAssetValue(rToken.address)
       expect(RTokenTotalValue).to.be.gt(ZERO)
 
-    console.log(
+      console.log(
         '\n',
-        '- ewstETH Balance 1: ', balanceAddr1eToken1.toString(), '\n',
+        '- EToken Balance 1: ', balanceAddr1eToken1.toString(), '\n',
         '- eTokenRefPerTok1: ', eTokenRefPerTok1.toString(), '\n',
         '- eTokenPrice1: ', eTokenPrice1.toString(), '\n',
         '- totalAssetValue1: ', totalAssetValue1.toString(), '\n',
         '\n',
-        '- ewstETH Balance 2: ', balanceAddr1eToken2.toString(), '\n',
+        '- EToken Balance 2: ', balanceAddr1eToken2.toString(), '\n',
         '- eTokenRefPerTok3: ', eTokenRefPerTok3.toString(), '\n',
         '- eTokenPrice3: ', eTokenPrice3.toString(), '\n',
         '- totalAssetValue3: ', totalAssetValue3.toString(), '\n',
         '\n',
         '- BeforeBalanceValue: ', BeforeBalanceValue.toString(), '\n',
         '- AfterBalanceValue: ', AfterBalanceValue.toString(), '\n',
-        '- EToken Balance(Backing Manager): ', (BMETokenBalance.div(BN1)).toString(), '\n',
-        '- RToken TotalValue: ', (RTokenTotalValue.div(BN1)).toString(), '\n',
+        '- EToken Balance(Backing Manager): ', BMETokenBalance.toString(), '\n',
+        '- RToken TotalValue: ', RTokenTotalValue.toString(), '\n',
         '\n',
         )
     })
@@ -644,7 +547,7 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         {
           contract: backingManager,
           name: 'RewardsClaimed',
-          args: [eulToken.address, bn(ZERO)],
+          args: [ZERO_ADDRESS, bn(ZERO)],
           emitted: true,
         },
       ])
@@ -667,76 +570,40 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       // Advance Time
       await advanceTime(8000)
 
-      const eulHolder = "0x7597851F3fD386a13b5784677AE8a569bdB33A95"
-      await whileImpersonating(eulHolder, async (eulSigner) => {
-        await eulToken.connect(eulSigner).transfer(euldistributor.address, toBNDecimals(bn('10000e18'), 18))
-      })
-
-      const proof:string[] = ['0x05416460deb76d57af601be17e777b93592d8d4d4a4096c57876a91c84f4a712']
-      const claimable: BigNumber = bn('1000e18')
-      // console.log("latestClaimDataCount1: ",  await euld.latestClaimDataCount())
-      await euldistributor.setClaimData(claimable, proof)
-
-      const result:any = await euldistributor.getClaimData()
-
-      // 1: Claim rewards from Backing Manager
+      // Claim rewards
       await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards in EUL
       const rewardsEUL1: BigNumber = await eulToken.balanceOf(backingManager.address)
 
-      expect(rewardsEUL1).to.equal(claimable)
+      expect(rewardsEUL1).to.equal(ZERO)
 
       // Keep moving time
       await advanceTime(3600)
 
-      const claimable2: BigNumber = bn('3000e18')
-      await euldistributor.setClaimData(claimable2, proof)
+      // Get additional rewards
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-      // 2: Get additional rewards from RToken
-      await expect(rToken.claimRewards()).to.emit(rToken, 'RewardsClaimed')
+      const rewardsEUL2: BigNumber = await eulToken.balanceOf(backingManager.address)
 
-      const rewardsEUL2: BigNumber = await eulToken.balanceOf(rToken.address)
-
-      expect(rewardsEUL2).to.equal(claimable2)
-
-      // Keep moving time
-      await advanceTime(2000)
-
-      // 3: Grab final rewards from Revenue Trader
-      await rToken.sweepRewardsSingle(eulToken.address)
-
-      const totalReward: BigNumber = await eulToken.balanceOf(backingManager.address)
-      const euldistributorBalance: BigNumber = await eulToken.balanceOf(euldistributor.address)
-
-      expect(totalReward).to.equal((bn('10000e18').sub(euldistributorBalance)))
-
-      console.log(
-        '\n',
-        '- rewardsEUL1: ', rewardsEUL1.toString(), '\n',
-        '- rewardsEUL2: ', rewardsEUL2.toString(), '\n',
-        '- totalReward: ', totalReward.toString(), '\n',
-        '- euldistributorBalance: ', euldistributorBalance.toString(), '\n',
-        '\n',
-        )
+      expect(rewardsEUL2.sub(rewardsEUL1)).to.equal(ZERO)
     })
   })
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
 
-      const NO_PRICE_DATA_FEED = '0xAB256C9d6aAE9ee6118A1531d43751996541799D'
-      const strictPrice: BigNumber = params.fallBackPrice.mul(params.refPerTok).div(BN1)
+     const NO_PRICE_DATA_FEED = '0xAB256C9d6aAE9ee6118A1531d43751996541799D'
 
       // Non/Invalid Price FEED
-      // 1: NO_PRICE_DATA_FEED for tokenChainlinkFeed: USD/stETH
-      // 2: NO_PRICE_DATA_FEED for targetChainlinkFeed: USD/ETH
-      // 3: Invalid Feed for tokenChainlinkFeed
-      // 3: Invalid Feed for targetChainlinkFeed
+      // 1: NO_PRICE_DATA_FEED for refChainLinkFeed: WBTC/BTC
+      // 2: NO_PRICE_DATA_FEED for targetUnitChainlinkFeed: BTC/USD
+      // 3: Invalid Feed for refChainLinkFeed
+      // 3: Invalid Feed for targetUnitChainlinkFeed
 
-      // 1: ETokens Collateral with no Underlying(stETH) Price
-      const nonUnderlyingEtokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-        await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+      // 1: ETokens Collateral with no ref/target price
+      const nonpRefTargetPriceEtokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
@@ -749,27 +616,24 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         params.targetName,
         defaultThreshold,
         delayUntilDefault,
-        await token.decimals(),
-        params.tokenAddr as string,
-        euldistributor.address
+        await token.decimals()
       )
 
-      // ETokens - Collateral with no underlying price info should revert
-      await expect(nonUnderlyingEtokenCollateral.strictPrice()).to.be.reverted
-
+      // ETokens - Collateral with no price info should revert
+      await expect(nonpRefTargetPriceEtokenCollateral.strictPrice()).to.be.reverted
       // Refresh should also revert - status is not modified
-      await expect(nonUnderlyingEtokenCollateral.refresh()).to.be.reverted
-      const status1 = await nonUnderlyingEtokenCollateral.status()
+      await expect(nonpRefTargetPriceEtokenCollateral.refresh()).to.be.reverted
+      const status1 = await nonpRefTargetPriceEtokenCollateral.status()
       expect(status1).to.equal(CollateralStatus.SOUND)
 
-      // 2: ETokens Collateral with no Target(ETH) Price
-      const nonTargetPriceEtokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-        await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+      // 2] ETokens Collateral with no target price(usd)
+      const nonTargetPriceEtokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         params.fallBackPrice,
-        params.tokenChainlinkFeed as string,
+        params.refChainLinkFeed as string,
         NO_PRICE_DATA_FEED,
         params.etokenAddr as string,
         config.rTokenMaxTradeVolume,
@@ -777,23 +641,17 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         params.targetName,
         defaultThreshold,
         delayUntilDefault,
-        await token.decimals(),
-        params.tokenAddr as string,
-        euldistributor.address
+        await token.decimals()
       )
 
-      // ETokens - Collateral shouldn't revert even if no target price info is given
-      expect(await nonTargetPriceEtokenCollateral.strictPrice()).to.be.closeTo(strictPrice, params.delta) 
-
-      // But refresh should revert - status is not modified
-      await expect(nonTargetPriceEtokenCollateral.refresh()).to.be.reverted
-
+      // ETokens - Collateral with no target price info should revert
+      await expect(nonTargetPriceEtokenCollateral.strictPrice()).to.be.reverted
       const status2 = await nonTargetPriceEtokenCollateral.status()
       expect(await status2).to.equal(CollateralStatus.SOUND)
 
-      // 3: Reverts with a feed with zero price
-      const invalidpriceEtokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-        await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+      // 3: Reverts with a ref/target feed with zero price
+      const invalidPriceEtokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
@@ -806,31 +664,29 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         params.targetName,
         defaultThreshold,
         delayUntilDefault,
-        await token.decimals(),
-        params.tokenAddr as string,
-        euldistributor.address
+        await token.decimals()
       )
 
       await setOraclePrice1(mockChainlinkFeed.address, ZERO)
 
       // Reverts with zero price
-      await expect(invalidpriceEtokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidPriceEtokenCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
-      // Refresh should mark status IFFY
-      await invalidpriceEtokenCollateral.refresh()
 
-      const status3 = await invalidpriceEtokenCollateral.status()
+      // Refresh should mark status IFFY
+      await invalidPriceEtokenCollateral.refresh()
+      const status3 = await invalidPriceEtokenCollateral.status()
       expect(status3).to.equal(CollateralStatus.IFFY)
 
-      // 4: Reverts with a feed with zero price
-      const invalidTargetPriceEtokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-        await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+      // 4: Reverts with a target price feed with zero price
+      const invalidTargetPriceEtokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         params.fallBackPrice,
-        params.tokenChainlinkFeed as string,
+        params.refChainLinkFeed as string,
         mockChainlinkFeed.address,
         params.etokenAddr as string,
         config.rTokenMaxTradeVolume,
@@ -838,14 +694,14 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         params.targetName,
         defaultThreshold,
         delayUntilDefault,
-        await token.decimals(),
-        params.tokenAddr as string,
-        euldistributor.address
+        await token.decimals()
       )
 
       await setOraclePrice1(mockChainlinkFeed.address, ZERO)
-      // it still doesn't revert
-      expect(await invalidTargetPriceEtokenCollateral.strictPrice()).to.be.closeTo(strictPrice, params.delta) 
+      // Reverts with zero price
+      await expect(invalidPriceEtokenCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
 
       // Refresh should mark status IFFY
       await invalidTargetPriceEtokenCollateral.refresh()
@@ -871,88 +727,77 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
 
       console.log(
         '\n',
-        '- status1 (No UnderlyingPrice) : ', status1, '\n',
+        '- status1 (No ReferencePrice) : ', status1, '\n',
         '- status2 (No TargetPrice) : ', status2, '\n',
-        '- status3 (Invalid UnderlyingPrice) : ', status3, '\n',
-        '- status4 (invalid TargetPric) : ', status4, '\n',
+        '- status3 (Invalid ReferencePrice) : ', status3, '\n',
+        '- status4 (invalid TargetPrice) : ', status4, '\n',
         '- status5 (eTokenCollateral) After Timeout : ', status5, '\n',
         '- price : ', price.toString(), '\n',
         '\n',
         )
-
     })
   })
 
   // Note: Here the idea is to test all possible statuses and check all possible paths to default
+  // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
   describe('Collateral Status', () => {
-
     // Test for soft default
     it('Updates status in case of soft default', async () => {
-        // Redeploy plugin using a Chainlink mock feed where we can change the price
-        const neweTokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-          await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
-            libraries: { OracleLib: oracleLib.address },
-          })
-        ).deploy(
-          params.fallBackPrice,
-          mockChainlinkFeed.address,
-          await eTokenCollateral.targetChainlinkFeed(),
-          await eTokenCollateral.erc20(),
-          await eTokenCollateral.maxTradeVolume(),
-          await eTokenCollateral.oracleTimeout(),
-          await eTokenCollateral.targetName(),
-          await eTokenCollateral.defaultThreshold(),
-          await eTokenCollateral.delayUntilDefault(),
-          await token.decimals(),
-          params.tokenAddr as string,
-          euldistributor.address
-        )
-  
-        // Check initial state
-        expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await neweTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
-  
-        // Depeg one of the underlying tokens - Reducing price 4% & 6%
-        //await setOraclePrice1(neweTokenCollateral.address, fp('1570')) // -4% => throw error
-        await setOraclePrice1(mockChainlinkFeed.address, fp('1530')) // -6%
-  
-        // Force updates - Should update whenDefault and status
-        await expect(neweTokenCollateral.refresh())
-          .to.emit(neweTokenCollateral, 'CollateralStatusChanged')
-          .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-  
-        expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
-  
-        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
-          delayUntilDefault
-        )
-        expect(await neweTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-  
-        // Move time forward past delayUntilDefault
-        await advanceTime(Number(delayUntilDefault))
-        expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-  
-        // Nothing changes if attempt to refresh after default
-        // EToken
-        const prevWhenDefault: BigNumber = await neweTokenCollateral.whenDefault()
-        await expect(neweTokenCollateral.refresh()).to.not.emit(
-          neweTokenCollateral,
-          'CollateralStatusChanged'
-        )
-  
-        expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
-        expect(await neweTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
+      // Redeploy plugin using a Chainlink mock feed where we can change the price
+      const neweTokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        params.fallBackPrice,
+        mockChainlinkFeed.address,
+        await eTokenCollateral.targetUnitChainlinkFeed(),
+        await eTokenCollateral.erc20(),
+        await eTokenCollateral.maxTradeVolume(),
+        await eTokenCollateral.oracleTimeout(),
+        await eTokenCollateral.targetName(),
+        await eTokenCollateral.defaultThreshold(),
+        await eTokenCollateral.delayUntilDefault(),
+        await token.decimals()
+      )
 
-        console.log(
-            '\n',
-            '- expectedDefaultTimestamp : ', expectedDefaultTimestamp.toString(), '\n',
-            '- prevWhenDefault : ', prevWhenDefault.toString(), '\n',
-            '\n',
-            )
-      })
-    
+      // Check initial state
+      expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await neweTokenCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Depeg one of the underlying tokens - Reducing price 20%
+      await setOraclePrice1(mockChainlinkFeed.address, bn('0.8').mul(params.oneUnit)) // -20%
+
+      // Force updates - Should update whenDefault and status
+      await expect(neweTokenCollateral.refresh())
+        .to.emit(neweTokenCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+
+      expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+        delayUntilDefault
+      )
+      expect(await neweTokenCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(delayUntilDefault))
+      expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Nothing changes if attempt to refresh after default
+      // EToken
+      const prevWhenDefault: BigNumber = await neweTokenCollateral.whenDefault()
+      await expect(neweTokenCollateral.refresh()).to.not.emit(
+        neweTokenCollateral,
+        'CollateralStatusChanged'
+      )
+
+      expect(await neweTokenCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await neweTokenCollateral.whenDefault()).to.equal(prevWhenDefault)
+    })
+
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a EToken mock to be able to change the rate
@@ -966,23 +811,21 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
       await eTokenMock.setExchangeRate(FP1)
 
       // Redeploy plugin using the new eToken mock
-      const neweTokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>await (
-        await ethers.getContractFactory('EULClaimableETokenWSTETHCollateral', {
+      const neweTokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>await (
+        await ethers.getContractFactory('ETokenWBTCCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         params.fallBackPrice,
         await eTokenCollateral.chainlinkFeed(),
-        await eTokenCollateral.targetChainlinkFeed(),
+        await eTokenCollateral.targetUnitChainlinkFeed(),
         eTokenMock.address,
         await eTokenCollateral.maxTradeVolume(),
         await eTokenCollateral.oracleTimeout(),
         await eTokenCollateral.targetName(),
         await eTokenCollateral.defaultThreshold(),
         await eTokenCollateral.delayUntilDefault(),
-        await token.decimals(),
-        params.tokenAddr as string,
-        euldistributor.address
+        await token.decimals()
       )
 
       // Check initial state
@@ -1007,23 +850,21 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
         'InvalidMockV3Aggregator'
       )
       const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-        await InvalidMockV3AggregatorFactory.deploy(18, BN1)
+        await InvalidMockV3AggregatorFactory.deploy(18, bn('1e18'))
       )
 
-      const invalidETokenCollateral: EULClaimableETokenWSTETHCollateral = <EULClaimableETokenWSTETHCollateral>(
+      const invalidETokenCollateral: ETokenWBTCCollateral = <ETokenWBTCCollateral>(
         await ETokenCollateralFactory.deploy(
           params.fallBackPrice,
           invalidChainlinkFeed.address,
-          await eTokenCollateral.targetChainlinkFeed(),
+          await eTokenCollateral.targetUnitChainlinkFeed(),
           await eTokenCollateral.erc20(),
           await eTokenCollateral.maxTradeVolume(),
           await eTokenCollateral.oracleTimeout(),
           await eTokenCollateral.targetName(),
           await eTokenCollateral.defaultThreshold(),
           await eTokenCollateral.delayUntilDefault(),
-          await token.decimals(),
-          params.tokenAddr as string,
-          await eTokenCollateral.eulDistributor(),
+          await token.decimals()
         )
       )
 
@@ -1039,10 +880,9 @@ describeFork(`EULClaimableETokenWSTETHCollateral - Mainnet Forking P${IMPLEMENTA
 
       console.log(
         '\n',
-        '- [EulClaimableETokenWSTETH] Testing Done', '\n',
+        '[ETokenWBTCCollateral] Testing Done', '\n',
         '\n',
         )
-
     })
   })
 })

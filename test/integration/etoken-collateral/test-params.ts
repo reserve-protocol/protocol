@@ -12,8 +12,7 @@ export interface ITestParams {
     eulAddr?: string
     tokenAddr?: string
     etokenAddr?: string
-    tokenChainlinkFeed?: string
-    refUnitChainlinkFeed?: string
+    refChainLinkFeed?: string
     targetChainlinkFeed?: string
     etokenHolderAddr: string
     targetName: string
@@ -26,77 +25,77 @@ export interface ITestParams {
 }
 
     export const eTokenHolders = {
-        edai: "0x2562DD39af7440b63EEf5549D9486A4066C328B7",
-        eusdc: "0x1ec0dde402dae69021492e7a9c4cbfdf72ffd84a",
-        eusdt: "0x178b390cafd29cc969ca60eef5d5484a8ba83f74",
-        ewbtc: "0x6780ac060fdcba20ae02a6197c84bdc70cf8716b",
-        eweth: "0xA29332b560103d52F758B978E0661420A9D40CB5",
-        ewsteth: "0xd275e5cb559d6dc236a5f8002a5f0b4c8e610701",
-        euni: "0x139776871Ee95f55d20b10d9Ba5a0385451066cd",
-        elink: "0xbDfA4f4492dD7b7Cf211209C4791AF8d52BF5c50",
+        eDAI: "0x2562DD39af7440b63EEf5549D9486A4066C328B7",
+        eUSDC: "0x1ec0dde402dae69021492e7a9c4cbfdf72ffd84a",
+        eUSDT: "0x178b390cafd29cc969ca60eef5d5484a8ba83f74",
+        eWBTC: "0x6780ac060fdcba20ae02a6197c84bdc70cf8716b",
+        eWETH: "0xA29332b560103d52F758B978E0661420A9D40CB5",
+        eWSTETH: "0xd275e5cb559d6dc236a5f8002a5f0b4c8e610701",
+        eUNI: "0x139776871Ee95f55d20b10d9Ba5a0385451066cd",
+        eLINK: "0xbDfA4f4492dD7b7Cf211209C4791AF8d52BF5c50",
       }
   
     export const targetName = {
-        usd: utils.formatBytes32String('USD'),
-        btc: utils.formatBytes32String('BTC'),
-        eth: utils.formatBytes32String('ETH'),
-        uni: utils.formatBytes32String('UNI'),
-        link: utils.formatBytes32String('LINK'),
+        USD: utils.formatBytes32String('USD'),
+        BTC: utils.formatBytes32String('BTC'),
+        ETH: utils.formatBytes32String('ETH'),
+        UNI: utils.formatBytes32String('UNI'),
+        LINK: utils.formatBytes32String('LINK'),
     }
 
     export const etokenRefPerTok = {
         // Forked: Block 15400000
-        edai: fp('1.015'),
-        eusdc: fp('1.019'),
-        eusdt: fp('1.019'),
-        ewbtc: fp('1.0084'),
-        eweth: fp('1.008'),
-        ewsteth: fp('1.007'),
-        euni: fp('1.006'),
-        elink: fp('1.0168'),
+        eDAI: fp('1.015'),
+        eUSDC: fp('1.019'),
+        eUSDT: fp('1.019'),
+        eWBTC: fp('1.0084'),
+        eWETH: fp('1.008'),
+        eWSTETH: fp('1.091'),
+        eUNI: fp('1.006'),
+        eLINK: fp('1.0168'),
         // Advanced: Block 115410034
-        edai1: fp('1.065'),
-        eusdc1: fp('1.097'),
-        eusdt1: fp('1.278'),
-        ewbtc1: fp('1.0094'),
-        eweth1: fp('1.058'),
-        ewsteth1: fp('1.115'),
-        euni1: fp('1.037'),
-        elink1: fp('1.0168'),
+        eDAI1: fp('1.065'),
+        eUSDC1: fp('1.097'),
+        eUSDT1: fp('1.278'),
+        eWBTC1: fp('1.0094'),
+        eWETH1: fp('1.058'),
+        eWSTETH1: fp('1.21'),
+        eUNI1: fp('1.037'),
+        eLINK1: fp('1.0168'),
       }
 
     // apx 1%
     export const delta = {
-        usd: fp('0.001'),
-        wbtc: fp('214'),
-        weth: fp('16'),
-        wsteth: fp('17'),
-        uni: fp('0.07'),
-        link: fp('0.07'),
+        USD: fp('0.001'),
+        WBTC: fp('214'),
+        WETH: fp('16'),
+        WSTETH: fp('17'),
+        UNI: fp('0.07'),
+        LINK: fp('0.07'),
     }
     
     export const issueAmount = {
-        usd: bn('5000e18'),
-        wbtc: bn('3e18'), 
-        weth: bn('20e18'), 
-        wsteth: bn('20e18'), 
-        uni: bn('1500e18'), 
-        link: bn('1500e18'), 
+        USD: bn('5000e18'),
+        WBTC: bn('3e18'), 
+        WETH: bn('20e18'), 
+        WSTETH: bn('20e18'), 
+        UNI: bn('1500e18'), 
+        LINK: bn('1500e18'), 
     }
   
      export const tokenOneUnit = {
-        erc18: bn('1e18'),
-        erc8: bn('1e8'),
-        erc6: bn('1e6'),
+        ERC18: bn('1e18'),
+        ERC8: bn('1e8'),
+        ERC6: bn('1e6'),
       }
 
       export const fallBackPrice = {
-        usd: fp('1'),
-        wbtc: fp('21400'),
-        weth: fp('1634'),
-        wsteth: fp('1729'),
-        uni: fp('7.03'),
-        link: fp('7.127')
+        USD: fp('1'),
+        WBTC: fp('21400'),
+        WETH: fp('1634'),
+        WSTETH: fp('1729'),
+        UNI: fp('7.03'),
+        LINK: fp('7.127')
       }
 
         // RToken Configuration

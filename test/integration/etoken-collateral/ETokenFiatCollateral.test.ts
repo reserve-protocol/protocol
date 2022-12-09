@@ -110,38 +110,38 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await loadFixture(defaultFixture))
 
     // ---  Testing Params ---- //
-    // Define which FiatCollateral, such as DAI, USDC, USDT is used for this test file. 
-
+    // Define FiatCollateral asset, such as eDAI, eUSDC, eUSDT for runnning the test. 
+    // Check further details about parameters ./test-params.ts
+    
     params = {
-        // Token Addresses
-        eulAddr: networkConfig[chainId].tokens.EUL,
-        tokenAddr: networkConfig[chainId].tokens.DAI,
-        etokenAddr: networkConfig[chainId].tokens.eDAI,
-        // ChainlinkFeed
-        tokenChainlinkFeed: networkConfig[chainId].chainlinkFeeds.DAI,
-        refUnitChainlinkFeed: ZERO_ADDRESS,
-        targetChainlinkFeed: ZERO_ADDRESS,
-        // Holder address in Mainnet
-        etokenHolderAddr: eTokenHolders.edai,
-        // Target
-        targetName: targetName.usd,
-        // Numbers: 
-        refPerTok: etokenRefPerTok.edai, // DAI/eDAI = 1.015, USDC/eUSDC = 1.018, USDT/eUSDT = 1.018
-        refPerTok1: etokenRefPerTok.edai1, // DAI/eDAI = 1.065, USDC/eUSDC = 1.097, USDT/eUSDT = 1.018
-        delta: delta.usd, // apx 0.1 cent$
-        issueAmount: issueAmount.usd, // 10000e18 for DAI, 10000e6 for USDC&USDT
-        oneUnit: tokenOneUnit.erc18, // DAI = 1e18, USDC and USDT = 1e6
-        fallBackPrice: fallBackPrice.usd
-      }
+      // Token Addresses
+      eulAddr: networkConfig[chainId].tokens.EUL,
+      tokenAddr: networkConfig[chainId].tokens.DAI, // DAI, USDC or USDT
+      etokenAddr: networkConfig[chainId].tokens.eDAI, // eDAI, eUSDC or eUSDT
+      // ChainlinkFeed
+      refChainLinkFeed: networkConfig[chainId].chainlinkFeeds.DAI, // DAI, USDC or USDT
+      targetChainlinkFeed: ZERO_ADDRESS,
+      // Holder address in Mainnet
+      etokenHolderAddr: eTokenHolders.eDAI, // eDAI, eUSDC or eUSDT
+      // Target
+      targetName: targetName.USD,
+      // Numbers: 
+      refPerTok: etokenRefPerTok.eDAI, // eDAI, eUSDC or eUSDT
+      refPerTok1: etokenRefPerTok.eDAI1, // eDAI1, eUSDC1 or eUSDT1
+      delta: delta.USD, // apx 0.1 cent$
+      issueAmount: issueAmount.USD, // 5k RToken
+      oneUnit: tokenOneUnit.ERC18, // ERC18 for DAI or ERC6 for USDC and USDT 
+      fallBackPrice: fallBackPrice.USD // 1e18
+    }
+  
     
     // ------- // 
 
-    // Get required contracts for eDAI
     // EUL token
     eulToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.eulAddr || '')
     )
-    // DAI token
+    // reference token
     token = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.tokenAddr || '')
     )
@@ -157,7 +157,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     eTokenCollateral = <ETokenFiatCollateral>(
       await ETokenCollateralFactory.deploy(
         params.fallBackPrice, // {UoA}
-        params.tokenChainlinkFeed as string,
+        params.refChainLinkFeed as string,
         params.etokenAddr as string,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -236,7 +236,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const refPerTok:BigNumber = await eTokenCollateral.refPerTok()
 
       expect(await eTokenCollateral.fallbackPrice()).to.equal(params.fallBackPrice)
-      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.tokenChainlinkFeed as string)
+      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.refChainLinkFeed as string)
       expect(await eTokenCollateral.erc20()).to.equal(params.etokenAddr as string)
       expect(await eTokenCollateral.targetName()).to.equal(params.targetName)
 
@@ -317,8 +317,8 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       console.log(
         '\n',
-        '- RToken Price(basketHandler): ', price1.toString(), '\n',
-        '- RToken Price(rTokenAsset): ', price2.toString(), '\n',
+        '- BasketUnit Price(basketHandler): ', price1.toString(), '\n',
+        '- BasketUnit Price(rTokenAsset): ', price2.toString(), '\n',
         '- usdColl Balance Addr1: ', balanceAddr1.toString(), '\n',
         '- usdColl Balance BackingManager: ', balanceBackingManager.toString(), '\n',
         '- Collateral strictPrice(eTokenCollateral): ', price3.toString(), '\n',
@@ -333,7 +333,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
+          params.refChainLinkFeed as string,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -348,7 +348,7 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string,
+          params.refChainLinkFeed as string,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -561,11 +561,10 @@ describeFork(`ETokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     it('Should handle invalid/stale Price', async () => {
 
       const NO_PRICE_DATA_FEED = '0xAB256C9d6aAE9ee6118A1531d43751996541799D'
-      const strictPrice: BigNumber = params.fallBackPrice.mul(params.refPerTok).div(BN1)
 
       // Non/Invalid Price FEED
-      // 1: NO_PRICE_DATA_FEED for tokenChainlinkFeed:
-      // 2: Invalid Feed for tokenChainlinkFeed
+      // 1: NO_PRICE_DATA_FEED for refChainLinkFeed:
+      // 2: Invalid Feed for refChainLinkFeed
 
       // ETokens Collateral with no price
       const nonPriceEtokenCollateral: ETokenFiatCollateral = <ETokenFiatCollateral>await (

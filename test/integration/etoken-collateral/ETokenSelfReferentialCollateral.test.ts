@@ -110,37 +110,36 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
 
     // ---  Testing Params ---- //
     // Define which SelfReferentialCollateral, such as WETH, UNI, LINK is used for this test file. 
-
+    // Check further details about parameters ./test-params.ts
+    
     params = {
         // Token Addresses
         eulAddr: networkConfig[chainId].tokens.EUL,
-        tokenAddr: networkConfig[chainId].tokens.WETH,
-        etokenAddr: networkConfig[chainId].tokens.eWETH,
+        tokenAddr: networkConfig[chainId].tokens.WETH, // WETH, UNI or LINK
+        etokenAddr: networkConfig[chainId].tokens.eWETH, // eWETH, eUNI or eLINK
         // ChainlinkFeed
-        tokenChainlinkFeed: networkConfig[chainId].chainlinkFeeds.ETH,
-        refUnitChainlinkFeed: ZERO_ADDRESS,
+        refChainLinkFeed: networkConfig[chainId].chainlinkFeeds.ETH, // ETH, UNI or LINK
         targetChainlinkFeed: ZERO_ADDRESS,
         // Holder address in Mainnet
-        etokenHolderAddr: eTokenHolders.eweth,
+        etokenHolderAddr: eTokenHolders.eWETH, // eWETH, eUNI or eLINK
         // Target
-        targetName: targetName.eth,
+        targetName: targetName.ETH, // ETH, UNI or LINK
         // Numbers: 
-        refPerTok: etokenRefPerTok.eweth, // DAI/eDAI = 1.015, USDC/eUSDC = 1.018, USDT/eUSDT = 1.018
-        refPerTok1: etokenRefPerTok.eweth1, // DAI/eDAI = 1.065, USDC/eUSDC = 1.097, USDT/eUSDT = 1.018
-        delta: delta.weth, // apx 0.1 cent$
-        issueAmount: issueAmount.weth, // 10000e18 for DAI, 10000e6 for USDC&USDT
-        oneUnit: tokenOneUnit.erc18, // DAI = 1e18, USDC and USDT = 1e6
-        fallBackPrice: fallBackPrice.weth
+        refPerTok: etokenRefPerTok.eWETH, // eWETH, eUNI or eLINK
+        refPerTok1: etokenRefPerTok.eWETH1, // eWETH1, eUNI1 or eLINK1
+        delta: delta.WETH, // apx 1%
+        issueAmount: issueAmount.WETH, // WETH, UNI or LINK
+        oneUnit: tokenOneUnit.ERC18, // ERC18 for three of them
+        fallBackPrice: fallBackPrice.WETH // WETH, UNI or LINK
       }
     
     // ------- // 
 
-    // Get required contracts for eDAI
     // EUL token
     eulToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.eulAddr || '')
     )
-    // DAI token
+    // reference token
     token = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', params.tokenAddr || '')
     )
@@ -156,7 +155,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
     eTokenCollateral = <ETokenSelfReferentialCollateral>(
       await ETokenCollateralFactory.deploy(
         params.fallBackPrice, // {UoA}
-        params.tokenChainlinkFeed as string,
+        params.refChainLinkFeed as string,
         params.etokenAddr as string,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -235,7 +234,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
 
 
       expect(await eTokenCollateral.fallbackPrice()).to.equal(params.fallBackPrice)
-      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.tokenChainlinkFeed as string)
+      expect(await eTokenCollateral.chainlinkFeed()).to.equal(params.refChainLinkFeed as string)
       expect(await eTokenCollateral.erc20()).to.equal(params.etokenAddr as string)
       expect(await eTokenCollateral.targetName()).to.equal(params.targetName)
 
@@ -334,7 +333,7 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       await expect(
         ETokenCollateralFactory.deploy(
           params.fallBackPrice,
-          params.tokenChainlinkFeed as string as string,
+          params.refChainLinkFeed as string as string,
           params.etokenAddr as string,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -551,8 +550,8 @@ describeFork(`ETokenSelfReferentialCollateral - Mainnet Forking P${IMPLEMENTATIO
       const strictPrice: BigNumber = params.fallBackPrice.mul(params.refPerTok).div(BN1)
 
       // Non/Invalid Price FEED
-      // 1: NO_PRICE_DATA_FEED for tokenChainlinkFeed:
-      // 2: Invalid Feed for tokenChainlinkFeed
+      // 1: NO_PRICE_DATA_FEED for refChainLinkFeed:
+      // 2: Invalid Feed for refChainLinkFeed
 
       // ETokens Collateral with no price
       const nonPriceEtokenCollateral: ETokenSelfReferentialCollateral = <ETokenSelfReferentialCollateral>await (

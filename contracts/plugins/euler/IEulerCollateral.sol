@@ -22,4 +22,5 @@ interface IEulDistributor {
 
 interface IWSTETH {
     function stEthPerToken() external view returns(uint);
+    function getStETHByWstETH(uint) external view returns(uint);
 }
