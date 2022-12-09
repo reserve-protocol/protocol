@@ -339,7 +339,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const rethRefPerTok2: BigNumber = await rethCollateral.refPerTok() // reth in ref
 
       // Check rates and price increase
-      // expect(rethPrice2).to.be.gt(rethPrice1)
+      expect(rethPrice2).to.be.gt(rethPrice1)
       expect(rethRefPerTok2).to.be.gt(rethRefPerTok1)
 
       // Still close to the original values
@@ -361,16 +361,16 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await rethCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const cDaiPrice3: BigNumber = await rethCollateral.strictPrice() // ~0.03294
-      const cDaiRefPerTok3: BigNumber = await rethCollateral.refPerTok() // ~0.03294
+      const rethPrice3: BigNumber = await rethCollateral.strictPrice() // reth in UoA
+      const rethRefPerTok3: BigNumber = await rethCollateral.refPerTok() // reth in ref
 
       // Check rates and price increase
-      expect(cDaiPrice3).to.be.gt(cDaiPrice2)
-      expect(cDaiRefPerTok3).to.be.gt(cDaiRefPerTok2)
+      expect(rethPrice3).to.be.gt(rethPrice2)
+      expect(rethRefPerTok3).to.be.gt(rethRefPerTok2)
 
       // Need to adjust ranges
-      expect(cDaiPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(cDaiRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
+      expect(rethPrice3).to.be.closeTo(fp('2000'), fp('1000'))
+      expect(rethRefPerTok3).to.be.closeTo(fp('1.080'), fp('1.000'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -409,17 +409,8 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const MIN_ISSUANCE_PER_BLOCK = bn('5000e18')
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
-      // Try to claim rewards at this point - Nothing for Backing Manager
-      // expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-      // await expectEvents(backingManager.claimRewards(), [
-      //   {
-      //     contract: backingManager,
-      //     name: 'RewardsClaimed',
-      //     args: [ZERO_ADDRESS, bn(0)],
-      //     emitted: true,
-      //   },
-      // ])
+      // Trying to claim should not revert
+      await expect(backingManager.claimRewards()).to.not.reverted
 
       // Provide approvals for issuances
       await reth.connect(addr1).approve(rToken.address, issueAmount)
@@ -468,7 +459,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         })
       ).deploy(
         fp('0.02'),
-        mockChainlinkFeed.address,
+        NO_PRICE_DATA_FEED,
         reth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
