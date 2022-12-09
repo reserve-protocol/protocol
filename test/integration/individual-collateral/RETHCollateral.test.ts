@@ -23,6 +23,7 @@ import {
   Asset,
   CTokenFiatCollateral,
   ERC20Mock,
+  RETHMock,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
@@ -523,7 +524,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         await rethCollateral.maxTradeVolume(),
         await rethCollateral.oracleTimeout(),
         await rethCollateral.targetName(),
-        10000 - await rethCollateral.marginRatio(),
+        bn('10000').sub(await rethCollateral.marginRatio()),
         await rethCollateral.delayUntilDefault(),
       )
 
@@ -562,9 +563,16 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
+      // Note: In this case requires to use a rETH mock to be able to change the rate
+      const rETHMockFactory: ContractFactory = await ethers.getContractFactory('RETHMock')
+      const symbol = await reth.symbol()
+      const rETHMock: RETHMock = <RETHMock>(
+        await rETHMockFactory.deploy(symbol + ' Token', symbol)
+      )
+      // Set initial exchange rate for the new rETH Mock
+      await rETHMock.setExchangeRate(fp('1.03'))
 
-      // Redeploy plugin using the new cDai mock
+      // Redeploy plugin using the new rETH mock
       const newRethCollateral: RETHCollateral = <RETHCollateral>await (
         await ethers.getContractFactory('RETHCollateral', {
           // libraries: { OracleLib: oracleLib.address },
@@ -572,19 +580,25 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       ).deploy(
         fp('0.02'),
         await rethCollateral.chainlinkFeed(),
-        reth.address,
+        rETHMock.address,
         await rethCollateral.maxTradeVolume(),
         await rethCollateral.oracleTimeout(),
         await rethCollateral.targetName(),
-        10000 - await rethCollateral.marginRatio(),
+        bn('10000').sub(await rethCollateral.marginRatio()),
         await rethCollateral.delayUntilDefault(),
       )
+
+      // Force updates - Should update whenDefault and status for rETH 
+      await newRethCollateral.refresh()
 
       // Check initial state
       expect(await newRethCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newRethCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      // Decrease rate for rETH, will disable collateral immediately
+      await rETHMock.setExchangeRate(fp('1.02'))
+
+      // Force updates - Should update whenDefault and status for rETH 
       await expect(newRethCollateral.refresh())
         .to.emit(newRethCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
@@ -592,6 +606,16 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await newRethCollateral.status()).to.equal(CollateralStatus.DISABLED)
       const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
       expect(await newRethCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Nothing changes if attempt to refresh after default
+      // CToken
+      const prevWhenDefault: BigNumber = await newRethCollateral.whenDefault()
+      await expect(newRethCollateral.refresh()).to.not.emit(
+        newRethCollateral,
+        'CollateralStatusChanged'
+      )
+      expect(await newRethCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newRethCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
@@ -610,7 +634,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
           await rethCollateral.maxTradeVolume(),
           await rethCollateral.oracleTimeout(),
           await rethCollateral.targetName(),
-          10000 - await rethCollateral.marginRatio(),
+          bn('10000').sub(await rethCollateral.marginRatio()),
           await rethCollateral.delayUntilDefault(),
         )
       )
