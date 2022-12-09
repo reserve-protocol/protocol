@@ -49,7 +49,6 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
 
     function token1() external view returns (address);
 
-
     /** 
         @notice Increases the amount of liquidity in the wrapped position, with wrapper tokens paid by the `msg.sender`
         @param amount0Desired The desired amount of token0 to be spent
@@ -62,18 +61,12 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
         @return amount1 The amount of token1 used to acheive resulting liquidity
       */
     function increaseLiquidity(
-        uint256 amount0Desired, 
+        uint256 amount0Desired,
         uint256 amount1Desired,
         uint256 amount0Min,
         uint256 amount1Min,
         uint256 deadline
-        )
-        external
-        returns (
-            uint128 liquidity,
-            uint256 amount0,
-            uint256 amount1
-        );
+    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /** 
         @notice Decreases the amount of liquidity in the wrapped position and accounts it to the `msg.sender`
@@ -89,10 +82,7 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
         uint256 amount0Min,
         uint256 amount1Min,
         uint256 deadline
-        )
-        external
-        returns (uint256 amount0, uint256 amount1);
-
+    ) external returns (uint256 amount0, uint256 amount1);
 
     /**
         @notice Collects up to a maximum amount of fees owed by the holder of the wrapper token
@@ -106,14 +96,9 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
         @return amount0 The amount of fees paid in token0
         @return amount1 The amount of fees paid in token1
      */
-    function claimRewards(address recipient)
-        external
-        returns (
-            address token0,
-            address token1,
-            uint256 amount0,
-            uint256 amount1
-        );
+    function claimRewards(
+        address recipient
+    ) external returns (address token0, address token1, uint256 amount0, uint256 amount1);
 
     /**
         @notice Calculates the principal (currently acting as liquidity) locked in this wrapper
@@ -132,9 +117,5 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
     function priceSimilarPosition()
         external
         view
-        returns (
-            uint256 amount0,
-            uint256 amount1,
-            uint128 liquidity
-        );
+        returns (uint256 amount0, uint256 amount1, uint128 liquidity);
 }

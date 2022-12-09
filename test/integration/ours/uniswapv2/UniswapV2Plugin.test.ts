@@ -153,7 +153,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("USD")
+            const targetName = ethers.utils.formatBytes32String("UNIV2SQRT")
             const uniswapV2Collateral: UniswapV2Collateral = <UniswapV2Collateral>(
                 await uniswapV2CollateralContractFactory
                     .connect(addr1)
@@ -172,7 +172,7 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV2Collateral.isCollateral()).to.equal(true)
             expect(await uniswapV2Collateral.erc20()).to.equal(pairAddress)
             expect(await uniswapV2Collateral.erc20Decimals()).to.equal(18)
-            expect(await uniswapV2Collateral.targetName()).to.equal(ethers.utils.formatBytes32String("USD"))
+            expect(await uniswapV2Collateral.targetName()).to.equal(targetName)
             expect(await uniswapV2Collateral.status()).to.equal(CollateralStatus.SOUND)
             expect(await uniswapV2Collateral.whenDefault()).to.equal(MAX_UINT256)
             //expect(await uniswapV2Collateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)

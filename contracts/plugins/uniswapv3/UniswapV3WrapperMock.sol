@@ -4,6 +4,7 @@ pragma solidity ^0.8.9;
 import { UniswapV3Wrapper } from "./UniswapV3Wrapper.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
 import "@uniswap/v3-periphery/contracts/libraries/TransferHelper.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 
 /**
     @title Uniswap V3 Wrapper Mock

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.9;
 
 import "../assets/AbstractCollateral.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool_3.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurveRegistry.sol";
@@ -13,11 +14,10 @@ contract UniconvexCollateral3 is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface[N_COINS] public chainlinkFeeds;
     ICurvePool3Assets public immutable curvePool;
-    ICurveRegistry public immutable curveRegistry = ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
+    ICurveRegistry public immutable curveRegistry =
+        ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
     IBooster public immutable convexBooster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     IBaseRewardPool baseRewardPool;
-
-
 
     //TODO dont like curvePool not depends on erc20 token
     //https://github.com/curvefi/curve-pool-registry/blob/0bdb116024ccacda39295bb3949c3e6dd0a8e2d9/contracts/Registry.vy#L114
@@ -56,7 +56,7 @@ contract UniconvexCollateral3 is Collateral {
 
     //TODO perhaps check in refresh()
     function refPerTok() public view override returns (uint192) {
-       return uint192(curvePool.get_virtual_price());
+        return uint192(curvePool.get_virtual_price());
     }
 
     // Can be used to define chainlink oracles order by caller

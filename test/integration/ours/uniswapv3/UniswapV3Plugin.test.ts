@@ -287,7 +287,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await ethers.getContractFactory("UniswapV3Collateral")
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("USD")
+            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT");
             const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
                 await uniswapV3CollateralContractFactory
                     .connect(addr1)
@@ -306,9 +306,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await uniswapV3Collateral.isCollateral()).to.equal(true)
             expect(await uniswapV3Collateral.erc20()).to.equal(uniswapV3WrapperMock.address)
             expect(await uniswapV3Collateral.erc20Decimals()).to.equal(18)
-            expect(await uniswapV3Collateral.targetName()).to.equal(
-                ethers.utils.formatBytes32String("USD")
-            )
+            expect(await uniswapV3Collateral.targetName()).to.equal(targetName)
             expect(await uniswapV3Collateral.status()).to.equal(CollateralStatus.SOUND)
             expect(await uniswapV3Collateral.whenDefault()).to.equal(MAX_UINT256)
             //expect(await uniswapV3Collateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
