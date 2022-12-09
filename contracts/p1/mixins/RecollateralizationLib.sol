@@ -346,15 +346,16 @@ library RecollateralizationLibP1 {
                     if (high == 0) continue;
                 }
 
+                (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
+
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(low, FLOOR);
+                uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
                 if (reg.assets[i].isCollateral()) {
                     status = ICollateral(address(reg.assets[i])).status();
                 }
-                (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
 
                 // Select the most-in-surplus "best" asset still enough to sell,
                 // as defined by a (status, surplusAmt) ordering
