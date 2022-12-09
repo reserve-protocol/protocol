@@ -41,7 +41,7 @@ contract AssetMock is OracleErrorMock, Asset {
     /// Our best guess at the market price of 1 whole token in UoA
     /// @return low {UoA/tok} The bottom of the plausible price range
     /// @return high {UoA/tok} The top of the plausible price range
-    /// @return fnord {UoA/tok} Unusued; here for compatibility with Collateral
+    /// @return {UoA/tok} Unusued; here for compatibility with Collateral
     function tryPrice()
         external
         view
@@ -50,7 +50,7 @@ contract AssetMock is OracleErrorMock, Asset {
         returns (
             uint192 low,
             uint192 high,
-            uint192 fnord
+            uint192
         )
     {
         maybeFail();

@@ -201,7 +201,6 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             minTradeVolume: ITrading(address(this)).minTradeVolume(),
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
-        IERC20[] memory erc20s = components.reg.erc20s();
 
         return RecollateralizationLibP1.basketRange(components, rules, components.reg.getRegistry());
     }

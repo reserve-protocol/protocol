@@ -236,7 +236,7 @@ contract MarketMock is IMarketMock {
         return seed;
     }
 
-    function getMaxTradeSlippage(IERC20 buy) internal returns (uint256) {
+    function getMaxTradeSlippage(IERC20 buy) internal view returns (uint256) {
         uint192 maxTradeSlippage;
         if (address(buy) == address(main.rToken())) {
             // RTokenTrader
