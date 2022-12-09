@@ -8,6 +8,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "hardhat/console.sol";
 
+//TODO sync in refresh in uniswapV2 and perhaps uniswapV3
 //TODO Unsiwap uses 112 bits floating points math for price accumulators
 abstract contract UniswapV2AbstractCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
@@ -33,7 +34,10 @@ abstract contract UniswapV2AbstractCollateral is Collateral {
             delayUntilDefault_
         )
     {
-        require(address(chainlinkFeedSecondAsset_) != address(0), "missing chainlink feed for second asset in pair");
+        require(
+            address(chainlinkFeedSecondAsset_) != address(0),
+            "missing chainlink feed for second asset in pair"
+        );
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
     }
 
@@ -42,7 +46,7 @@ abstract contract UniswapV2AbstractCollateral is Collateral {
         // Seems like can be safety replaced with sellPrice(feeOn)
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
         uint256 rootK = Math.sqrt(reserve0 * reserve1);
-        return uint192((rootK * 10**18) / pair.totalSupply());
+        return uint192((rootK * 10 ** 18) / pair.totalSupply());
     }
 
     function _calculatePrice(
@@ -56,8 +60,12 @@ abstract contract UniswapV2AbstractCollateral is Collateral {
         uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
         //TODO liquidity can be 10 ** 18 for some assets.
         //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**IERC20Metadata(token0).decimals();
-        uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**IERC20Metadata(token1).decimals();
+        uint256 priceScaled0 = (price0 * amount0) /
+            liquidity /
+            10 ** IERC20Metadata(token0).decimals();
+        uint256 priceScaled1 = (price1 * amount1) /
+            liquidity /
+            10 ** IERC20Metadata(token1).decimals();
         return uint192(priceScaled0 + priceScaled1);
     }
 
@@ -65,8 +73,13 @@ abstract contract UniswapV2AbstractCollateral is Collateral {
     function strictPrice() external view override returns (uint192) {
         IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
         (uint112 reserve0, uint112 reserve1, ) = pair.getReserves();
-        return _calculatePrice(pair.token0(), pair.token1(), reserve0, reserve1, IERC20(erc20).totalSupply());
+        return
+            _calculatePrice(
+                pair.token0(),
+                pair.token1(),
+                reserve0,
+                reserve1,
+                IERC20(erc20).totalSupply()
+            );
     }
-
-    
 }
