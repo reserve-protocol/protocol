@@ -7,17 +7,17 @@ import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10 } from "../../../../common/numbers"
 import {
     ERC20Mock,
-    MockV3Aggregator,
+    MockV3Aggregator, OracleLib,
     UniswapV3Wrapper,
     UniswapV3WrapperMock,
-    USDCMock,
-} from "../../../../typechain"
+    USDCMock
+} from "../../../../typechain";
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
 import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
-import { UniswapV3Collateral__factory } from "@typechain/factories/UniswapV3Collateral__factory"
-import { UniswapV3Collateral } from "@typechain/UniswapV3Collateral"
+import { UniswapV3UsdCollateral__factory } from "@typechain/factories/UniswapV3UsdCollateral__factory"
+import { UniswapV3UsdCollateral } from "@typechain/UniswapV3UsdCollateral"
 import {
     closeDeadline,
     defaultMintParams,
@@ -39,6 +39,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     let owner: SignerWithAddress
     let addr1: SignerWithAddress
     let addr2: SignerWithAddress
+
+    let oracleLib: OracleLib
 
     // Tokens and Assets
     let dai: ERC20Mock
@@ -64,7 +66,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         beforeEach(async () => {
             ;[owner, , addr1, addr2] = await ethers.getSigners()
 
-            await loadFixture(defaultFixture)
+
+            ;({ oracleLib } = await loadFixture(defaultFixture))
+
             dai = <ERC20Mock>(
                 await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.DAI!)
             )
@@ -283,15 +287,17 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
             )
 
-            const uniswapV3CollateralContractFactory: UniswapV3Collateral__factory =
-                await ethers.getContractFactory("UniswapV3Collateral")
+            const UniswapV3UsdCollateralContractFactory: UniswapV3UsdCollateral__factory =
+                await ethers.getContractFactory("UniswapV3UsdCollateral", {
+                libraries: { OracleLib: oracleLib.address },
+            })
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("UNIV3SQRT");
-            const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
-                await uniswapV3CollateralContractFactory
+            const UniswapV3UsdCollateral: UniswapV3UsdCollateral = await UniswapV3UsdCollateralContractFactory
                     .connect(addr1)
                     .deploy(
+                        fallbackPrice,
                         fallbackPrice,
                         mockChainlinkFeed0.address,
                         mockChainlinkFeed1.address,
@@ -299,34 +305,36 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         RTOKEN_MAX_TRADE_VALUE,
                         ORACLE_TIMEOUT,
                         targetName,
+                        pow10(16).mul(5), //5%
+                        100,
                         DELAY_UNTIL_DEFAULT
                     )
-            )
 
-            expect(await uniswapV3Collateral.isCollateral()).to.equal(true)
-            expect(await uniswapV3Collateral.erc20()).to.equal(uniswapV3WrapperMock.address)
-            expect(await uniswapV3Collateral.erc20Decimals()).to.equal(18)
-            expect(await uniswapV3Collateral.targetName()).to.equal(targetName)
-            expect(await uniswapV3Collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await uniswapV3Collateral.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await uniswapV3Collateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-            expect(await uniswapV3Collateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-            expect(await uniswapV3Collateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-            expect(await uniswapV3Collateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
-            expect(await uniswapV3Collateral.refPerTok()).to.equal(fp("1"))
-            expect(await uniswapV3Collateral.targetPerRef()).to.equal(fp("1"))
-            expect(await uniswapV3Collateral.pricePerTarget()).to.equal(fp("1"))
+
+            expect(await UniswapV3UsdCollateral.isCollateral()).to.equal(true)
+            expect(await UniswapV3UsdCollateral.erc20()).to.equal(uniswapV3WrapperMock.address)
+            expect(await UniswapV3UsdCollateral.erc20Decimals()).to.equal(18)
+            expect(await UniswapV3UsdCollateral.targetName()).to.equal(targetName)
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await UniswapV3UsdCollateral.whenDefault()).to.equal(MAX_UINT256)
+            //expect(await UniswapV3UsdCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+            expect(await UniswapV3UsdCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+            expect(await UniswapV3UsdCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+            expect(await UniswapV3UsdCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+            expect(await UniswapV3UsdCollateral.refPerTok()).to.equal(fp("1"))
+            expect(await UniswapV3UsdCollateral.targetPerRef()).to.equal(fp("1"))
+            expect(await UniswapV3UsdCollateral.pricePerTarget()).to.equal(fp("1"))
             const positions = await uniswapV3WrapperMock.positions()
-            expect(await uniswapV3Collateral.strictPrice()).closeTo(
+            expect(await UniswapV3UsdCollateral.strictPrice()).closeTo(
                 fp("200").div(positions.liquidity),
                 10
             )
-            expect(await uniswapV3Collateral.strictPrice()).to.equal(
-                await uniswapV3Collateral._fallbackPrice()
+            expect(await UniswapV3UsdCollateral.strictPrice()).to.equal(
+                await UniswapV3UsdCollateral._fallbackPrice()
             )
             //TODO
-            //expect(await uniswapV3Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await uniswapV3Collateral.bal(addr1.address)).to.equal(
+            //expect(await UniswapV3UsdCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+            // expect(await UniswapV3UsdCollateral.bal(addr1.address)).to.equal(
             //   await adjustedAmout(uniswapV3Wrapper, 100)
             // )
         })
@@ -457,6 +465,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 mintParams,
                 addr1
             )
+            const amount0SpentOnMint = p0(100).sub(await asset0.balanceOf(addr1.address))
+            const amount1SpentOnMint = p1(100).sub(await asset1.balanceOf(addr1.address))
 
             // approve assets for mock rewards payouts
             const asset0Owner = await asset0.connect(owner)

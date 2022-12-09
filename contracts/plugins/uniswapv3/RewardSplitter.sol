@@ -80,7 +80,7 @@ abstract contract RewardSplitter is ERC20 {
             address token = _rewardsTokens[i];
             uint256 amountDue = _unclaimedRewards[token][msg.sender];
             // make sure there's enough balance to pay the amount due to `msg.sender`
-            if (amountDue > IERC20(token).balanceOf(address(this))) 
+            if (amountDue > IERC20(token).balanceOf(address(this)))
                 _claimRewardsFromUnderlying();
             TransferHelper.safeTransfer(token, recipient, amountDue);
             amounts[i] = amountDue;
@@ -125,9 +125,9 @@ abstract contract RewardSplitter is ERC20 {
      */
     function _updateRewards() internal {
         uint256 supply = totalSupply();
-        if (supply == 0) 
+        if (supply == 0)
             return;
-        
+
         // check rewards due to RS contract
         uint256[MAX_TOKENS] memory freshRewards = _freshRewards();
 
@@ -205,7 +205,7 @@ abstract contract RewardSplitter is ERC20 {
         @notice get reward amounts due to RS contract
         @notice This function should be implemented by RS children
         @return freshRewards claimable rewards yet unclaimed
-     */   
+     */
     function _freshRewards()
         internal
         view

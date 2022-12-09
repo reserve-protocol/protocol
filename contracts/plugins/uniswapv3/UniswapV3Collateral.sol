@@ -6,21 +6,23 @@ import "./IUniswapV3Wrapper.sol";
 
 /**
     @title Uniswap V3 Collateral
-    @notice Collateral plugin for Uniswap V3 positions
-    @notice Requires Uniswap V3 Wrapper to be deployed first to wrap the position used
+    @notice Abstract collateral plugin for Uniswap V3 positions.
+    @notice Requires Uniswap V3 Wrapper to be deployed first to wrap the position used.
+    @notice This contract is meant to be inherited by collateral implementations for fiat and non-fiat positions.
     @author Gene A. Tsvigun
     @author Vic G. Larson
-    @dev As discussed with Reserve team during office hours, UniswapV3 contracts are non-upgradeable and well tested,
-    @dev so we can rely on synthetic reference token amount staying the same and inherit the default `refPerTok`
   */
-contract UniswapV3Collateral is Collateral {
+abstract contract UniswapV3Collateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
     uint8 public immutable underlyingERC20Decimals0;
     uint8 public immutable underlyingERC20Decimals1;
 
+    uint192 public immutable fallbackPriceSecondAsset; //TODO pass this as a parameter
+
     constructor(
         uint192 fallbackPrice_,
+        uint192 fallbackPriceSecondAsset_,
         AggregatorV3Interface chainlinkFeed_,
         AggregatorV3Interface chainlinkFeedSecondAsset_,
         IUniswapV3Wrapper uniswapV3Wrapper_,
@@ -43,6 +45,7 @@ contract UniswapV3Collateral is Collateral {
             address(chainlinkFeedSecondAsset_) != address(0),
             "missing chainlink feed for second asset in pair"
         );
+        fallbackPriceSecondAsset = fallbackPriceSecondAsset_;
         chainlinkFeedSecondAsset = chainlinkFeedSecondAsset_;
         address underlyingAsset0 = uniswapV3Wrapper_.token0();
         address underlyingAsset1 = uniswapV3Wrapper_.token1();
@@ -58,6 +61,7 @@ contract UniswapV3Collateral is Collateral {
         emit RewardsClaimed(IERC20(token1), amount1);
     }
 
+    /// @return {UoA/tok} Total price in UoA of all assets obtainable by burning all liquidity in 1 whole token
     function strictPrice() external view override returns (uint192) {
         (uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20)).principal();
         (uint192 price0, uint192 price1) = _priceFeeds();
@@ -87,8 +91,8 @@ contract UniswapV3Collateral is Collateral {
                 underlyingERC20Decimals1,
                 amount0,
                 amount1,
-                FIX_ONE,
-                FIX_ONE,
+                fallbackPrice,
+                fallbackPriceSecondAsset,
                 liquidity
             );
     }
@@ -107,10 +111,5 @@ contract UniswapV3Collateral is Collateral {
         uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**decimals0;
         uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**decimals1;
         return uint192(priceScaled0 + priceScaled1);
-    }
-
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual override returns (uint192) {
-        return strictPrice();
     }
 }
