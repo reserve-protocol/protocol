@@ -267,7 +267,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(await cDaiCollateral.refPerTok()).to.be.closeTo(fp('0.022'), fp('0.001'))
       expect(await cDaiCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await cDaiCollateral.prevReferencePrice()).to.equal(await cDaiCollateral.refPerTok())
-      await expectPrice(cDaiCollateral.address, fp('0.022015105509346448'), ORACLE_ERROR, true) // close to $0.022 cents
+      await expectPrice(cDaiCollateral.address, fp('0.022015105509346448'), ORACLE_ERROR, true, bn('1e5') ) // close to $0.022 cents
 
       // Check claim data
       await expect(cDaiCollateral.claimRewards())
@@ -373,7 +373,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const [cDaiPriceLow1, cDaiPriceHigh1] = await cDaiCollateral.price() // ~ 0.022015 cents
       const cDaiRefPerTok1: BigNumber = await cDaiCollateral.refPerTok() // ~ 0.022015 cents
 
-      await expectPrice(cDaiCollateral.address, fp('0.022015105946267361'), ORACLE_ERROR, true)
+      await expectPrice(cDaiCollateral.address, fp('0.022015105946267361'), ORACLE_ERROR, true, bn('1e5'))
       expect(cDaiRefPerTok1).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value
