@@ -57,13 +57,13 @@ Some examples:
 
 - Let's say we're building a pure-stable USD basket, out of USDC, USDP, and DAI. The unit of account would surely be USD. Each collateral token would also be its own reference unit, and its target would be USD.
 
-- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies.  This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively.  The target units would then be ETH & BTC, while the `{UoA}` would be USD.  Thus, the *value* of the rToken would fluctuate (according to its unit-of-account), but all other necessary properties could be maintained.
+- Perhaps we're interested in a USD-denominated basket of blue-chip cryptocurrencies. This type of rToken could be a 50/50 basket of wstETH and yvwBTC, where the reference units could be ETH and wBTC, respectively. The target units would then be ETH & BTC, while the `{UoA}` would be USD. Thus, the _value_ of the rToken would fluctuate (according to its unit-of-account), but all other necessary properties could be maintained.
 
 Separate from these, a number in dimension `{BU}` ("basket units") is an amount of current baskets.
 
 ### Regarding `{UoA}` and `{target}`
 
-While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement.  The `{UoA}` is a way to value the RToken and its collateral in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`.  As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
+While it will usually be the case that a collateral's `{target}` will be the same as its RToken's `{UoA}`, this is by no means a requirement. The `{UoA}` is a way to value the RToken and its collateral in terms of a single unit, while each collateral's `{target}` is the expected value of its liability, or its `{ref}`. As in example #3 above, an RToken's collaterals may have completely different `{target}` units, but be valued by the same `{UoA}`.
 
 ## Basket Dynamics
 
@@ -152,12 +152,16 @@ Mainnet reasonable range: 0% to 100%
 
 Dimension: `{UoA}`
 
-The minimum sized trade that can be performed, in terms of the unit of account. Setting this too high will result in auctions happening infrequently. Setting this too low may allow adversaries to cause auctions that incur large amounts of slippage.
+The minimum sized trade that can be performed, in terms of the unit of account.
+
+Setting this too high will result in auctions happening infrequently or the RToken taking a haircut when it cannot be sure it has enough staked RSR to succeed in rebalancing at par.
+
+Setting this too low may allow griefers to delay important auctions. The variable should be set such that donations of size `minTradeVolume` would be worth delaying trading `auctionLength` seconds.
 
 This parameter can be set to zero.
 
-Anticipated value: `1e22` = $10k
-Mainnet reasonable range: 1e20 to 1e24
+Anticipated value: `1e21` = $1k
+Mainnet reasonable range: 1e19 to 1e23
 
 #### `rTokenMaxTradeVolume`
 
@@ -230,7 +234,7 @@ Dimension: `{1}`
 
 The max trade slippage is a percentage value that describes the maximum deviation from oracle prices that any trade can clear at. Oracle prices have ranges of their own; the maximum trade slippage permits additional price movement beyond the worst-case oracle price.
 
-Anticipated value: `0.01e18` = 1%
+Anticipated value: `0.02e18` = 2%
 Mainnet reasonable range: 1e12 to 1e18
 
 ### `shortFreeze`
