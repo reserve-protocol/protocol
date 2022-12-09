@@ -588,9 +588,6 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         await rethCollateral.delayUntilDefault(),
       )
 
-      // Force updates - Should update whenDefault and status for rETH 
-      await newRethCollateral.refresh()
-
       // Check initial state
       expect(await newRethCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newRethCollateral.whenDefault()).to.equal(MAX_UINT256)

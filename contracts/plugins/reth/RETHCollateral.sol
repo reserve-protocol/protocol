@@ -55,6 +55,7 @@ contract RETHCollateral is Collateral {
         );
         require(_allowedDropBasisPoints < 10000, "Allowed refPerTok drop out of range");
 
+        maxRefPerTok = actualRefPerTok();
         marginRatio = 10000 - _allowedDropBasisPoints;
     }
 
