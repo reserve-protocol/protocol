@@ -47,21 +47,19 @@ The fact that all of these eTokens currently provide higher APYs than any c/aTok
 
 ### NonFitCollateral1: ewstETH Collateral
 
-| `tok`   | `ref`  | `target` | (`underlying`) | `UoA` |
-| ------- | ------ | -------- | -------------- | ----- |
-| ewstETH | wstETH | . ETH    | . stETH        | USD   |
+| `tok`   | `ref` | `target` | `UoA` |
+| ------- | ----- | -------- | ----- |
+| ewstETH | stETH | . ETH    | USD   |
 
-`ETokenWSTETHCollateral.sol` is a collateral that expects `tok`, `ref` and `target` to be ewstETH, wstETH and ETH respectively. Despite the lack of availability of `wstETH/USD` oracle, the combination of `stETH/USD` chainlink feeds and `stEthPerToken()` function in wstETH contract makes it possible to figure out wstETH price in USD and `strictPrice()` which is calculated by the equation `USD/stETH * stETH/wstETH * wstETH/ewstETH`. <br>
+`ETokenWSTETHCollateral.sol` is a collateral that expects `tok`, `ref` and `target` to be ewstETH, stETH and ETH, respectively. Despite the lack of availability of `wstETH/USD` oracle, the combination of `stETH/USD` chainlink feed, `stEthPerToken()`/`getStETHByWstETH()` functions in wstETH contract and `convertBalanceToUnderlying()` in EToken contract makes it possible to figure out wstETH price in USD and hence `strictPrice()` of ewstETH which is calculated by the equation `USD/stETH * stETH/wstETH * wstETH/ewstETH`. <br>
 
-The primary reason why `target` is neither wstETH nor stETH but ETH is that this ewstETH collateral is expected to be included in RToken baskets along with other Liquid Staking ETH tokens such as wstETH, cbETH, rETH adn frETH, where `target` is likely to be ETH more than anything else. <br>
+`target` is set to ETH because this ewstETH collateral will most likely be included in RToken baskets along with other Liquid Staking ETH tokens such as wstETH, cbETH, rETH adn frxETH, where `target` is likely to be ETH more than anything else. It's expected that a strong expansion in demand for the basket of these ETH derivatives in the future. <br>
 
-`refresh()` function is designed to trigger soft-default if `ETH/stETH(target/underlying)` rate deviates more than 5% from peg 1:1 and hard-default if either `refPertok(wstETH/ewstETH)` or `underlyingPerRef(wstETH/stETH)` rates ever decreases. <br>
+The primary reason that `ref` isn't wstETH, which is `tok`'s underlying asset in Euler, but stETH is that while wstETH price constantly increases against ETH over time, stETH is theoretically supposed to be pegged to ETH. Despite the ongoing de-pegging issue of stETH that effectively makes it unquestionably difficult to ensure that `targetPerRef` is equal to a constant value at this point, thus possibly causing detrimental effects on RTokens that composes ewstETH in some ways, this seems like the most viable and practical approach in the long run, esp after Shanghai Hardfork. <br>
 
-As for soft-default, it doesn't take into account `wstETH/ETH (ref/target)` but `stETH/ETH(underlying/target)` because wstETH whose price(exchange rate against stETH) is ever-increasing can go beyond default threshold rate at some point in the future while stETH, the underlying token of wstETH, is always expected to be pegged to ETH. <br>
+`refresh()` function is designed to trigger soft-default if `ETH/stETH(TargetPerRef)` rate deviates more than threshold(%) from 1:1 peg and hard-default if `refPertok(stETH/ewstETH)` rate ever decreases. Both stETH/wstETH and wstETH/ewstETH are a type of yield-bearing asset that the exchange rate against underlying asset ever-increases. <br>
 
-Currently, [wstETH](https://app.euler.finance/market/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0) is arguably the most demanded asset on Euler in which apx $120M wstETH is supplied for 5.8% APY and $40M is borrowed for 8.16% APY, accounting for nearly half of Euler's TVL. <br>
-
-In the near future, cbETH, Coinbase's liquid staking ETH will also likely be collateral on Euler. With ecbETH and other potential ETH derivative ETokens like rETH and frETH, RTokens with more yield-amplified backing could possibly be created. <br>
+Currently, [wstETH](https://app.euler.finance/market/0x7f39c581f595b53c5cb19bd0b3f8da6c935e2ca0) is arguably the most demanded asset on Euler in which apx $120M wstETH is supplied for 5.8% APY(1.1% higher than [the native stETH APY](https://lido.fi/ethereum) ) and $40M is borrowed for 8.16% APY, accounting for nearly half of Euler's TVL. <br>
 
 ### NonFitCollateral2: eWBTC Collateral
 
