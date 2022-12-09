@@ -400,7 +400,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       expect(cDaiRefPerTok2).to.be.gt(cDaiRefPerTok1)
 
       // Still close to the original values
-      await expectPrice(cDaiCollateral.address, fp('0.022016198467092545'), ORACLE_ERROR, true)
+      await expectPrice(cDaiCollateral.address, fp('0.022016198467092545'), ORACLE_ERROR, true, bn('1e5'))
       expect(cDaiRefPerTok2).to.be.closeTo(fp('0.022'), fp('0.001'))
 
       // Check total asset value increased
