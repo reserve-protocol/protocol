@@ -59,9 +59,12 @@ contract RTokenAsset is IAsset {
         high = range.top.mulDiv(highBUPrice, supply);
     }
 
+    // solhint-disable no-empty-blocks
     function refresh() public virtual override {
         // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
     }
+
+    // solhint-enable no-empty-blocks
 
     /// Should not revert
     /// @return {UoA/tok} The lower end of the price estimate

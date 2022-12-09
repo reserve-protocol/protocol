@@ -84,7 +84,11 @@ library BasketLibP1 {
     /// Add `weight` to the refAmount of collateral token `tok` in the basket `self`
     // self'.refAmts[tok] = self.refAmts[tok] + weight
     // self'.erc20s is keys(self'.refAmts)
-    function add(Basket storage self, IERC20 tok, uint192 weight) internal {
+    function add(
+        Basket storage self,
+        IERC20 tok,
+        uint192 weight
+    ) internal {
         if (weight == FIX_ZERO) return;
         if (self.refAmts[tok].eq(FIX_ZERO)) {
             self.erc20s.push(tok);
@@ -198,10 +202,10 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     //   config'.erc20s = erc20s
     //   config'.targetAmts[erc20s[i]] = targetAmts[i], for i from 0 to erc20s.length-1
     //   config'.targetNames[e] = assetRegistry.toColl(e).targetName, for e in erc20s
-    function setPrimeBasket(
-        IERC20[] calldata erc20s,
-        uint192[] calldata targetAmts
-    ) external governance {
+    function setPrimeBasket(IERC20[] calldata erc20s, uint192[] calldata targetAmts)
+        external
+        governance
+    {
         require(erc20s.length > 0, "cannot empty basket");
         require(erc20s.length == targetAmts.length, "must be same length");
         requireValidCollArray(erc20s);
@@ -368,10 +372,11 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     /// @return erc20s The backing collateral erc20s
     /// @return quantities {qTok} ERC20 token quantities equal to `amount` BUs
     // Returns (erc20s, [quantity(e) * amount {as qTok} for e in erc20s])
-    function quote(
-        uint192 amount,
-        RoundingMode rounding
-    ) external view returns (address[] memory erc20s, uint256[] memory quantities) {
+    function quote(uint192 amount, RoundingMode rounding)
+        external
+        view
+        returns (address[] memory erc20s, uint256[] memory quantities)
+    {
         uint256 length = basket.erc20s.length;
         erc20s = new address[](length);
         quantities = new uint256[](length);

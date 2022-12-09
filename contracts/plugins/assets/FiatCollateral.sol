@@ -62,9 +62,7 @@ contract FiatCollateral is ICollateral, Asset {
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
-    constructor(
-        CollateralConfig memory config
-    )
+    constructor(CollateralConfig memory config)
         Asset(
             config.priceTimeout,
             config.chainlinkFeed,
@@ -101,7 +99,11 @@ contract FiatCollateral is ICollateral, Asset {
         view
         virtual
         override
-        returns (uint192 low, uint192 high, uint192 pegPrice)
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192 pegPrice
+        )
     {
         pegPrice = chainlinkFeed.price(oracleTimeout); // {target/ref}
 

@@ -64,7 +64,16 @@ contract Asset is IAsset {
     /// @dev The third (unused) variable is only here for compatibility with Collateral
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
-    function tryPrice() external view virtual returns (uint192 low, uint192 high, uint192) {
+    function tryPrice()
+        external
+        view
+        virtual
+        returns (
+            uint192 low,
+            uint192 high,
+            uint192
+        )
+    {
         uint192 p = chainlinkFeed.price(oracleTimeout); // {UoA/tok}
         uint192 delta = p.mul(oracleError);
         return (p - delta, p + delta, 0);

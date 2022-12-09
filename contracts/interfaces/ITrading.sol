@@ -58,7 +58,11 @@ interface ITrading is IComponent, IRewardableComponent {
     function trades(IERC20 sell) external view returns (ITrade);
 
     /// Light wrapper around FixLib.mulDiv to support try-catch
-    function mulDivCeil(uint192 x, uint192 y, uint192 z) external pure returns (uint192);
+    function mulDivCeil(
+        uint192 x,
+        uint192 y,
+        uint192 z
+    ) external pure returns (uint192);
 }
 
 interface TestITrading is ITrading {

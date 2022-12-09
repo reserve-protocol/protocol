@@ -38,10 +38,11 @@ library TradingLibP0 {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
@@ -108,9 +109,11 @@ library TradingLibP0 {
     //   let trade = nextTradePair(...)
     //   if trade.sell is not a defaulted collateral, prepareTradeToCoverDeficit(...)
     //   otherwise, prepareTradeSell(trade) with a 0 minBuyAmount
-    function prepareRecollateralizationTrade(
-        IBackingManager bm
-    ) external view returns (bool doTrade, TradeRequest memory req) {
+    function prepareRecollateralizationTrade(IBackingManager bm)
+        external
+        view
+        returns (bool doTrade, TradeRequest memory req)
+    {
         // === Prepare cached values ===
 
         IMain main = bm.main();
@@ -164,7 +167,7 @@ library TradingLibP0 {
         uint192 bottom; // {BU}
     }
 
-    // It's a precondition for all of these internal helpers that their `erc20s` argument contains at
+    // It's a precondition for all of the below helpers that their `erc20s` argument contains at
     // least all basket collateral, plus any registered assets for which the BackingManager has a
     // nonzero balance. Any user of these functions should just pass in assetRegistry().erc20s(). We
     // would prefer to look it up from inside each function, and avoid the extra parameter to get
@@ -551,10 +554,11 @@ library TradingLibP0 {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(
             trade.sellPrice > 0 &&
                 trade.sellPrice < FIX_MAX &&
@@ -609,7 +613,7 @@ library TradingLibP0 {
     ) internal pure returns (uint192) {
         try trader.mulDivCeil(x, y, z) returns (uint192 result) {
             return result;
-        } catch Panic(uint errorCode) {
+        } catch Panic(uint256 errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
             assert(errorCode == 0x11 || errorCode == 0x12);

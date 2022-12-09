@@ -35,10 +35,11 @@ library TradeLib {
     //   1 < req.sellAmount
     //
     // If notDust is false, no trade exists that satisfies those constraints.
-    function prepareTradeSell(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeSell(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         // checked for in RevenueTrader / CollateralizatlionLib
         assert(trade.buyPrice > 0 && trade.buyPrice < FIX_MAX && trade.sellPrice < FIX_MAX);
 
@@ -99,10 +100,11 @@ library TradeLib {
     //   req.minBuyAmount ~= trade.sellAmount * sellPrice / buyPrice * (1-maxTradeSlippage)
     //
     //   req.sellAmount (and req.minBuyAmount) are maximal satisfying all these conditions
-    function prepareTradeToCoverDeficit(
-        TradeInfo memory trade,
-        TradingRules memory rules
-    ) internal view returns (bool notDust, TradeRequest memory req) {
+    function prepareTradeToCoverDeficit(TradeInfo memory trade, TradingRules memory rules)
+        internal
+        view
+        returns (bool notDust, TradeRequest memory req)
+    {
         assert(
             trade.sellPrice > 0 &&
                 trade.sellPrice < FIX_MAX &&
@@ -157,7 +159,7 @@ library TradeLib {
     ) internal pure returns (uint192) {
         try trader.mulDivCeil(x, y, z) returns (uint192 result) {
             return result;
-        } catch Panic(uint errorCode) {
+        } catch Panic(uint256 errorCode) {
             // 0x11: overflow
             // 0x12: div-by-zero
             assert(errorCode == 0x11 || errorCode == 0x12);
