@@ -67,3 +67,27 @@ contract AssetMock is OracleErrorMock, Asset {
         ERC20Fuzz(address(erc20)).payRewards(address(this));
     }
 }
+
+// An AssetMock that does not use decaying lotPrice()s, but instead just returns the last saved
+// value. Needed for DiffTest, because refresh() doesn't always happen in the same block on both P0
+// and P1.
+contract AssetNoDecay is AssetMock {
+    function lotPrice() external view virtual override returns (uint192 lotLow, uint192 lotHigh) {
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
+            // if the price feed is still functioning, use that
+            return (low, high);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            return (savedLowPrice, savedHighPrice);
+        }
+    }
+
+    constructor(
+        IERC20Metadata erc20_,
+        uint192 maxTradeVolume_,
+        uint48 priceTimeout_,
+        uint192 oracleError_,
+        PriceModel memory model_
+    ) AssetMock(erc20_, maxTradeVolume_, priceTimeout_, oracleError_, model_) {}
+}

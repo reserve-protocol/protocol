@@ -89,7 +89,7 @@ contract DiffTestScenario {
                     token.setRewardToken(reward);
                 }
                 main.assetRegistry().register(
-                    new CollateralMock({
+                    new CollateralNoDecay({
                         erc20_: IERC20Metadata(address(token)),
                         maxTradeVolume_: maxTradeVolume,
                         priceTimeout_: 806400,
@@ -117,7 +117,7 @@ contract DiffTestScenario {
                 main.addToken(token);
 
                 main.assetRegistry().register(
-                    new CollateralMock({
+                    new CollateralNoDecay({
                         erc20_: IERC20Metadata(address(token)),
                         maxTradeVolume_: maxTradeVolume,
                         priceTimeout_: 806400,
@@ -452,7 +452,7 @@ contract DiffTestScenario {
         }
     }
 
-    // TODO: trigger AssetMock.setStalePrice or AssetMock.setPriceOutsideRange
+    // TODO: trigger AssetNoDecay.setStalePrice or AssetNoDecay.setPriceOutsideRange
 
     function updatePrice(
         uint256 seedID,
@@ -469,9 +469,9 @@ contract DiffTestScenario {
             if (!reg.isRegistered(erc20)) return;
             IAsset asset = reg.toAsset(erc20);
             if (asset.isCollateral()) {
-                CollateralMock(address(asset)).update(a, b, c, d);
+                CollateralNoDecay(address(asset)).update(a, b, c, d);
             } else {
-                AssetMock(address(asset)).update(a);
+                AssetNoDecay(address(asset)).update(a);
             }
         }
     }
@@ -910,9 +910,9 @@ contract DiffTestScenario {
         return tokenID;
     }
 
-    function createAsset(IERC20 erc20) internal returns (AssetMock) {
+    function createAsset(IERC20 erc20) internal returns (AssetNoDecay) {
         return
-            new AssetMock({
+            new AssetNoDecay({
                 erc20_: IERC20Metadata(address(erc20)),
                 maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
                 priceTimeout_: 604800,
@@ -923,9 +923,9 @@ contract DiffTestScenario {
 
     /// save the last-created collateral mock from createColl
     /// this is _just_ for ease of testing these tests.
-    CollateralMock public lastCreatedColl;
+    CollateralNoDecay public lastCreatedColl;
 
-    /// Create and return one new CollateralMock contract.
+    /// Create and return one new CollateralNoDecay contract.
     /// @return The created Collateral address
     function createColl(
         IERC20 erc20,
@@ -933,8 +933,8 @@ contract DiffTestScenario {
         uint256 defaultThresholdSeed,
         uint256 delayUntilDefaultSeed,
         bytes32 targetName
-    ) internal returns (CollateralMock) {
-        lastCreatedColl = new CollateralMock({
+    ) internal returns (CollateralNoDecay) {
+        lastCreatedColl = new CollateralNoDecay({
             erc20_: IERC20Metadata(address(erc20)),
             maxTradeVolume_: defaultParams().rTokenMaxTradeVolume,
             priceTimeout_: 806400,
