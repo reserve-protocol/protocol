@@ -30,6 +30,7 @@ pragma solidity ^0.8.9;
 
 // A uint value passed to this library was out of bounds for uint192 operations
 error UIntOutOfBounds();
+bytes32 constant UIntOutofBoundsHash = keccak256(abi.encodeWithSignature("UIntOutOfBounds()"));
 
 // Used by P1 implementation for easier casting
 uint256 constant FIX_ONE_256 = 1e18;
@@ -95,6 +96,7 @@ function shiftl_toFix(
     int8 shiftLeft,
     RoundingMode rounding
 ) pure returns (uint192) {
+    // conditions for avoiding overflow
     if (x == 0) return 0;
     if (shiftLeft <= -96) return (rounding == CEIL ? 1 : 0); // 0 < uint.max / 10**77 < 0.5
     if (40 <= shiftLeft) revert UIntOutOfBounds(); // 10**56 < FIX_MAX < 10**57
@@ -207,8 +209,8 @@ library FixLib {
     ) internal pure returns (uint192) {
         // Handle overflow cases
         if (x == 0) return 0;
-        if (decimals <= -58) return (rounding == CEIL ? 1 : 0);
-        if (58 <= decimals) revert UIntOutOfBounds();
+        if (decimals <= -59) return (rounding == CEIL ? 1 : 0); // 59, because 1e58 > 2**192
+        if (58 <= decimals) revert UIntOutOfBounds(); // 58, because x * 1e58 > 2 ** 192 if x != 0
 
         uint256 coeff = uint256(10**abs(decimals));
         return _safeWrap(decimals >= 0 ? x * coeff : _divrnd(x, coeff, rounding));
@@ -384,7 +386,7 @@ library FixLib {
     ) internal pure returns (uint256) {
         // Handle overflow cases
         if (x == 0) return 0; // always computable, no matter what decimals is
-        if (decimals <= -60) return (rounding == CEIL ? 1 : 0);
+        if (decimals <= -42) return (rounding == CEIL ? 1 : 0);
         if (96 <= decimals) revert UIntOutOfBounds();
 
         decimals -= 18; // shift so that toUint happens at the same time.

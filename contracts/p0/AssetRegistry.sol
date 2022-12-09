@@ -30,8 +30,7 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
     function refresh() public {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         for (uint256 i = 0; i < _erc20s.length(); i++) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+            assets[IERC20(_erc20s.at(i))].refresh();
         }
     }
 
@@ -123,6 +122,9 @@ contract AssetRegistryP0 is ComponentP0, IAssetRegistry {
 
     /// Register an asset, unregistering any previous asset with the same ERC20.
     function _registerIgnoringCollisions(IAsset asset) private returns (bool swapped) {
+        // Refresh to ensure it does not revert, and to save a recent lastPrice
+        asset.refresh();
+
         if (_erc20s.contains(address(asset.erc20())) && assets[asset.erc20()] == asset)
             return false;
 

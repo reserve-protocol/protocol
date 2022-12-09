@@ -2,21 +2,13 @@ import hre from 'hardhat'
 import axios from 'axios'
 import { exec } from 'child_process'
 import { BigNumber } from 'ethers'
-import { bn, fp } from '../../common/numbers'
+import { bn } from '../../common/numbers'
 import { IComponents } from '../../common/configuration'
 import { isValidContract } from '../../common/blockchain-utils'
 import { IDeployments } from './common'
 import { useEnv } from '#/utils/env'
 
-// {tok}
-export const getCurrentPrice = async (chainlinkAddr?: string): Promise<BigNumber> => {
-  if (!chainlinkAddr) throw new Error('Missing chainlink addr')
-
-  // Calculate fallbackPrice
-  const chainlinkFeed = await hre.ethers.getContractAt('MockV3Aggregator', chainlinkAddr)
-  const answer = await chainlinkFeed.latestAnswer()
-  return fp(answer).div(bn(10).pow(await chainlinkFeed.decimals()))
-}
+export const priceTimeout = bn('604800') // 1 week
 
 export const getOracleTimeout = (chainId: number): BigNumber => {
   return bn(chainId == 1 ? '86400' : '4294967296') // long timeout on testnets

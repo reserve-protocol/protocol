@@ -4,7 +4,7 @@ import { ContractFactory } from 'ethers'
 import { NonFiatCollateral } from '../../../typechain'
 
 task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('referenceUnitFeed', 'Reference Price Feed address')
   .addParam('targetUnitFeed', 'Target Unit Price Feed address')
   .addParam('combinedOracleError', 'The combined % error from both oracle sources')
@@ -25,10 +25,10 @@ task('deploy-nonfiat-collateral', 'Deploys a non-fiat Collateral')
 
     const collateral = <NonFiatCollateral>await NonFiatCollateralFactory.connect(deployer).deploy(
       {
-        fallbackPrice: params.fallbackPrice,
-        chainlinkFeed: params.priceFeed,
-        oracleError: params.oracleError,
-        erc20: params.cToken,
+        priceTimeout: params.priceTimeout,
+        chainlinkFeed: params.referenceUnitFeed,
+        oracleError: params.combinedOracleError,
+        erc20: params.tokenAddress,
         maxTradeVolume: params.maxTradeVolume,
         oracleTimeout: params.oracleTimeout,
         targetName: params.targetName,

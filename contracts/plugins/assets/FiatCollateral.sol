@@ -3,17 +3,18 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/interfaces/IAsset.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../interfaces/IAsset.sol";
+import "../../libraries/Fixed.sol";
+import "./FiatCollateral.sol";
 import "./Asset.sol";
 import "./OracleLib.sol";
 
 struct CollateralConfig {
-    uint192 fallbackPrice; // {UoA/tok} A fallback price to use for lot sizing when oracles fail
+    uint48 priceTimeout; // {s} The number of seconds over which saved prices decay
     AggregatorV3Interface chainlinkFeed; // Feed units: {target/ref}
     uint192 oracleError; // {1} The % the oracle feed can be off by
     IERC20Metadata erc20; // The ERC20 of the collateral token
-    IMarket market; // The market to use to enter/exit this collateral
+    IMarket market; // The market that can be used to enter/exit this collateral
     uint192 maxTradeVolume; // {UoA} The max trade volume, in UoA
     uint48 oracleTimeout; // {s} The number of seconds until a oracle value becomes invalid
     bytes32 targetName; // The bytes32 representation of the target name
@@ -61,12 +62,12 @@ contract FiatCollateral is ICollateral, Asset {
     // does not become nonzero until after first refresh()
     uint192 public prevReferencePrice; // previous rate, {ref/tok}
 
-    IMarket public market;
+    IMarket public immutable market;
 
     /// @param config.chainlinkFeed Feed units: {UoA/ref}
     constructor(CollateralConfig memory config)
         Asset(
-            config.fallbackPrice,
+            config.priceTimeout,
             config.chainlinkFeed,
             config.oracleError,
             config.erc20,
@@ -75,7 +76,9 @@ contract FiatCollateral is ICollateral, Asset {
         )
     {
         require(config.targetName != bytes32(0), "targetName missing");
-        require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        if (config.defaultThreshold > 0) {
+            require(config.delayUntilDefault > 0, "delayUntilDefault zero");
+        }
 
         targetName = config.targetName;
         delayUntilDefault = config.delayUntilDefault;
@@ -111,29 +114,36 @@ contract FiatCollateral is ICollateral, Asset {
 
         // {UoA/tok} = {target/ref} * {ref/tok} * {UoA/target} (1)
         uint192 p = pegPrice.mul(refPerTok());
+        uint192 delta = p.mul(oracleError);
 
-        // oracleError is on whatever the _true_ price is, not the one observed
-        low = p.div(FIX_ONE.plus(oracleError));
-        high = p.div(FIX_ONE.minus(oracleError));
+        low = p - delta;
+        high = p + delta;
     }
 
     /// Should not revert
     /// Refresh exchange rates and update default status.
     /// @dev Should be general enough to not need to be overridden
-    function refresh() public virtual override {
+    function refresh() public virtual override(Asset, IAsset) {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        // Check for soft default + save fallbackPrice
-        try this.tryPrice() returns (uint192 low, uint192, uint192 pegPrice) {
+        // Check for soft default + save lotPrice
+        try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
+
+            // high can't be FIX_MAX in this contract, but inheritors might mess this up
+            if (high < FIX_MAX) {
+                // Save prices
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            }
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus
-            if (low == 0 || pegPrice < pegBottom || pegPrice > pegTop) {
+            if (pegPrice < pegBottom || pegPrice > pegTop || low == 0) {
                 markStatus(CollateralStatus.IFFY);
             } else {
-                fallbackPrice = low;
                 markStatus(CollateralStatus.SOUND);
             }
         } catch (bytes memory errData) {
@@ -152,7 +162,7 @@ contract FiatCollateral is ICollateral, Asset {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 

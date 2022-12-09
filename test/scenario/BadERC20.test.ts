@@ -4,7 +4,7 @@ import { expect } from 'chai'
 import { BigNumber, Wallet } from 'ethers'
 import { ethers, waffle } from 'hardhat'
 import { IConfig } from '../../common/configuration'
-import { bn, fp } from '../../common/numbers'
+import { bn, divCeil, fp } from '../../common/numbers'
 import {
   BadERC20,
   ERC20Mock,
@@ -12,7 +12,6 @@ import {
   IBasketHandler,
   MockV3Aggregator,
   RTokenAsset,
-  OracleLib,
   TestIBackingManager,
   TestIFurnace,
   TestIStRSR,
@@ -22,7 +21,14 @@ import {
 import { setOraclePrice } from '../utils/oracles'
 import { getTrade } from '../utils/trades'
 import { advanceTime } from '../utils/time'
-import { Collateral, defaultFixture, IMPLEMENTATION, ORACLE_TIMEOUT } from '../fixtures'
+import {
+  Collateral,
+  defaultFixture,
+  IMPLEMENTATION,
+  ORACLE_ERROR,
+  ORACLE_TIMEOUT,
+  PRICE_TIMEOUT,
+} from '../fixtures'
 
 const DEFAULT_THRESHOLD = fp('0.05') // 5%
 const DELAY_UNTIL_DEFAULT = bn('86400') // 24h
@@ -58,10 +64,33 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
   let rTokenTrader: TestIRevenueTrader
   let rsrTrader: TestIRevenueTrader
   let basketHandler: IBasketHandler
-  let oracleLib: OracleLib
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
+
+  // Computes the minBuyAmt for a sellAmt at two prices
+  // sellPrice + buyPrice should not be the low and high estimates, but rather the oracle prices
+  const toMinBuyAmt = (
+    sellAmt: BigNumber,
+    sellPrice: BigNumber,
+    buyPrice: BigNumber,
+    oracleError: BigNumber,
+    maxTradeSlippage: BigNumber
+  ): BigNumber => {
+    // do all muls first so we don't round unnecessarily
+    // a = loss due to max trade slippage
+    // b = loss due to selling token at the low price
+    // c = loss due to buying token at the high price
+    // mirrors the math from TradeLib ~L:57
+
+    const lowSellPrice = sellPrice.sub(sellPrice.mul(oracleError).div(fp('1')))
+    const highBuyPrice = buyPrice.add(buyPrice.mul(oracleError).div(fp('1')))
+    const product = sellAmt
+      .mul(fp('1').sub(maxTradeSlippage)) // (a)
+      .mul(lowSellPrice) // (b)
+
+    return divCeil(divCeil(product, highBuyPrice), fp('1')) // (c)
+  }
 
   before('create fixture loader', async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
@@ -84,7 +113,6 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      oracleLib,
       rTokenTrader,
       rsrTrader,
       rTokenAsset,
@@ -96,19 +124,18 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
       await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
     )
     collateral0 = await (
-      await ethers.getContractFactory('FiatCollateral', {
-        libraries: { OracleLib: oracleLib.address },
-      })
-    ).deploy(
-      fp('1'),
-      chainlinkFeed.address,
-      token0.address,
-      config.rTokenMaxTradeVolume,
-      ORACLE_TIMEOUT,
-      ethers.utils.formatBytes32String('USD'),
-      DEFAULT_THRESHOLD,
-      DELAY_UNTIL_DEFAULT
-    )
+      await ethers.getContractFactory('FiatCollateral')
+    ).deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: token0.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: DEFAULT_THRESHOLD,
+      delayUntilDefault: DELAY_UNTIL_DEFAULT,
+    })
 
     // Backup
     backupToken = erc20s[2] // USDT
@@ -201,9 +228,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.strictPrice()
+      await collateral0.price()
       await collateral0.targetPerRef()
-      await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
     })
 
@@ -302,9 +328,8 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
 
     it('should keep collateral working', async () => {
       await collateral0.refresh()
-      await collateral0.strictPrice()
+      await collateral0.price()
       await collateral0.targetPerRef()
-      await collateral0.pricePerTarget()
       expect(await collateral0.status()).to.equal(0)
     })
 
@@ -326,7 +351,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
     })
 
     it('should still have price', async () => {
-      await rTokenAsset.strictPrice()
+      await rTokenAsset.price()
     })
 
     it('should still melt', async () => {
@@ -362,7 +387,7 @@ describe(`Bad ERC20 - P${IMPLEMENTATION}`, () => {
           rToken.address,
           rsr.address,
           issueAmt.div(2),
-          issueAmt.div(2).mul(99).div(100)
+          toMinBuyAmt(issueAmt.div(2), fp('1'), fp('1'), ORACLE_ERROR, config.maxTradeSlippage)
         )
     })
   })

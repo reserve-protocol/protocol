@@ -1,10 +1,10 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 1`] = `81334`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 1`] = `81356`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 2`] = `85581`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, all at once 2`] = `85855`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 1`] = `81334`;
+exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 1`] = `81356`;
 
 exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the other 2`] = `83415`;
 
@@ -28,7 +28,7 @@ exports[`FurnaceP1 contract Gas Reporting Melt - Many periods, one after the oth
 
 exports[`FurnaceP1 contract Gas Reporting Melt - One period  1`] = `43192`;
 
-exports[`FurnaceP1 contract Gas Reporting Melt - One period  2`] = `81334`;
+exports[`FurnaceP1 contract Gas Reporting Melt - One period  2`] = `81356`;
 
 exports[`FurnaceP1 contract Gas Reporting Melt - One period  3`] = `83415`;
 

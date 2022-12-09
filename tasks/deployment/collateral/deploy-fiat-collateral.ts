@@ -4,7 +4,7 @@ import { ContractFactory } from 'ethers'
 import { FiatCollateral } from '../../../typechain'
 
 task('deploy-fiat-collateral', 'Deploys a Fiat Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
@@ -23,10 +23,10 @@ task('deploy-fiat-collateral', 'Deploys a Fiat Collateral')
     )
 
     const collateral = <FiatCollateral>await FiatCollateralFactory.connect(deployer).deploy({
-      fallbackPrice: params.fallbackPrice,
+      priceTimeout: params.priceTimeout,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
-      erc20: params.cToken,
+      erc20: params.tokenAddress,
       maxTradeVolume: params.maxTradeVolume,
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,

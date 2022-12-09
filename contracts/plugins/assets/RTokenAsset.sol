@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "./Asset.sol";
+import "../../p1/mixins/RecollateralizationLib.sol";
 import "../../interfaces/IMain.sol";
 import "../../interfaces/IRToken.sol";
-import "../../p1/mixins/RecollateralizationLib.sol";
+import "./Asset.sol";
 
 /// Once an RToken gets large enough to get a price feed, replacing this asset with
 /// a simpler one will do wonders for gas usage
@@ -50,6 +50,8 @@ contract RTokenAsset is IAsset {
 
         if (supply == 0) return (lowBUPrice, highBUPrice);
 
+        // The RToken's price is not symmetric like other assets!
+        // range.bottom is lower because of the slippage from the shortfall
         RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
@@ -57,11 +59,19 @@ contract RTokenAsset is IAsset {
         high = range.top.mulDiv(highBUPrice, supply);
     }
 
+    // solhint-disable no-empty-blocks
+    function refresh() public virtual override {
+        // No need to save lastPrice; can piggyback off the backing collateral's lotPrice()
+    }
+
+    // solhint-enable no-empty-blocks
+
     /// Should not revert
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
         try this.tryPrice() returns (uint192 low, uint192 high) {
+            assert(low <= high); // TODO remove?
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -71,24 +81,23 @@ contract RTokenAsset is IAsset {
     }
 
     /// Should not revert
-    /// Should be nonzero
-    /// @return {UoA/tok} A fallback price to use for trade sizing
-    function fallbackPrice() external view returns (uint192) {
-        // This function can revert if of the math inside it reverts
-        // But we prefer reverting over returning a zero value for fallbackPrice()
-
-        uint192 buFallbackPrice = basketHandler.fallbackPrice(); // {UoA/BU}
+    /// lotLow should be nonzero when the asset might be worth selling
+    /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+    /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+    function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh) {
+        (uint192 buLow, uint192 buHigh) = basketHandler.lotPrice(); // {UoA/BU}
 
         // Here we take advantage of the fact that we know RToken has 18 decimals
         // to convert between uint256 an uint192. Fits due to assumed max totalSupply.
         uint192 supply = _safeWrap(IRToken(address(erc20)).totalSupply());
 
-        if (supply == 0) return buFallbackPrice;
+        if (supply == 0) return (buLow, buHigh);
 
         RecollateralizationLibP1.BasketRange memory range = basketRange(); // {BU}
 
         // {UoA/tok} = {BU} * {UoA/BU} / {tok}
-        return range.bottom.mulDiv(buFallbackPrice, supply);
+        lotLow = range.bottom.mulDiv(buLow, supply);
+        lotHigh = range.top.mulDiv(buHigh, supply);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
@@ -129,7 +138,7 @@ contract RTokenAsset is IAsset {
 
             IMain main = backingManager.main();
             ComponentCache memory components = ComponentCache({
-                trader: backingManager,
+                bm: backingManager,
                 bh: main.basketHandler(),
                 reg: main.assetRegistry(),
                 stRSR: main.stRSR(),

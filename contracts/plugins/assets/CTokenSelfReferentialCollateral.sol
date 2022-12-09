@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "./FiatCollateral.sol";
 import "./ICToken.sol";
-import "../../libraries/Fixed.sol";
+import "./SelfReferentialCollateral.sol";
 
 /**
- * @title CTokenFiatCollateral
- * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
- * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
+ * @title CTokenSelfReferentialCollateral
+ * @notice Collateral plugin for a cToken of unpegged collateral, such as cETH.
+ * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
  */
-contract CTokenFiatCollateral is FiatCollateral {
+contract CTokenSelfReferentialCollateral is SelfReferentialCollateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -21,11 +19,16 @@ contract CTokenFiatCollateral is FiatCollateral {
 
     IComptroller public immutable comptroller;
 
+    /// @param referenceERC20Decimals_ The number of decimals in the reference token
     /// @param comptroller_ The CompoundFinance Comptroller
-    constructor(CollateralConfig memory config, IComptroller comptroller_) FiatCollateral(config) {
+    constructor(
+        CollateralConfig memory config,
+        uint8 referenceERC20Decimals_,
+        IComptroller comptroller_
+    ) SelfReferentialCollateral(config) {
+        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         require(address(comptroller_) != address(0), "comptroller missing");
-        ICToken erc20 = ICToken(address(config.erc20));
-        referenceERC20Decimals = IERC20Metadata(erc20.underlying()).decimals();
+        referenceERC20Decimals = referenceERC20Decimals_;
         comptroller = comptroller_;
     }
 
@@ -36,7 +39,7 @@ contract CTokenFiatCollateral is FiatCollateral {
         // Update the Compound Protocol
         ICToken(address(erc20)).exchangeRateCurrent();
 
-        // Intentional and correct for the super call to be last!
+        // Violation of calling super first! Composition broken! Intentional!
         super.refresh(); // already handles all necessary default checks
     }
 

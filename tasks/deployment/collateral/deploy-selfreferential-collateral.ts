@@ -1,34 +1,35 @@
 import { getChainId } from '../../../common/blockchain-utils'
 import { task } from 'hardhat/config'
 import { ContractFactory } from 'ethers'
-import { FiatCollateral } from '../../../typechain'
+import { SelfReferentialCollateral } from '../../../typechain'
 
 task('deploy-selfreferential-collateral', 'Deploys a Self-referential Collateral')
-  .addParam('fallbackPrice', 'A fallback price (in UoA)')
+  .addParam('priceTimeout', 'The amount of time before a price decays to 0')
   .addParam('priceFeed', 'Price Feed address')
   .addParam('oracleError', 'The % error in the price feed as a fix')
   .addParam('tokenAddress', 'ERC20 token address')
   .addParam('maxTradeVolume', 'Max Trade Volume (in UoA)')
   .addParam('oracleTimeout', 'Max oracle timeout')
   .addParam('targetName', 'Target Name')
-  .addParam('delayUntilDefault', 'Seconds until default')
   .setAction(async (params, hre) => {
     const [deployer] = await hre.ethers.getSigners()
 
     const chainId = await getChainId(hre)
 
-    const CollateralFactory: ContractFactory = await hre.ethers.getContractFactory('FiatCollateral')
+    const CollateralFactory: ContractFactory = await hre.ethers.getContractFactory(
+      'SelfReferentialCollateral'
+    )
 
-    const collateral = <FiatCollateral>await CollateralFactory.connect(deployer).deploy({
-      fallbackPrice: params.fallbackPrice,
+    const collateral = <SelfReferentialCollateral>await CollateralFactory.connect(deployer).deploy({
+      priceTimeout: params.priceTimeout,
       chainlinkFeed: params.priceFeed,
       oracleError: params.oracleError,
-      erc20: params.cToken,
+      erc20: params.tokenAddress,
       maxTradeVolume: params.maxTradeVolume,
       oracleTimeout: params.oracleTimeout,
       targetName: params.targetName,
-      defaultThreshold: 0, // makes it self-referential
-      delayUntilDefault: params.delayUntilDefault,
+      defaultThreshold: 0,
+      delayUntilDefault: 0,
     })
     await collateral.deployed()
 

@@ -53,8 +53,6 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
     function manageToken(IERC20 erc20) external notPausedOrFrozen {
         if (address(trades[erc20]) != address(0)) return;
 
-        // TODO require fullyCollateralized and SOUND, so that RToken price is always reliable
-
         uint256 bal = erc20.balanceOf(address(this));
         if (bal == 0) return;
 
@@ -71,7 +69,7 @@ contract RevenueTraderP1 is TradingP1, IRevenueTrader {
         (uint192 sellPrice, ) = sell.price(); // {UoA/tok}
         (, uint192 buyPrice) = buy.price(); // {UoA/tok}
 
-        require(buyPrice > 0, "buy asset has zero price");
+        require(buyPrice > 0 && buyPrice < FIX_MAX, "buy asset price unknown");
 
         TradeInfo memory trade = TradeInfo({
             sell: sell,

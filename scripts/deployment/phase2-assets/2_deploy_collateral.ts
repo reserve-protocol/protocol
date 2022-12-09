@@ -9,11 +9,10 @@ import {
   getAssetCollDeploymentFilename,
   IAssetCollDeployments,
   getDeploymentFilename,
-  IDeployments,
   fileExists,
 } from '../common'
-import { getCurrentPrice, getOracleTimeout } from '../utils'
-import { ATokenMock, StaticATokenLM } from '../../../typechain'
+import { priceTimeout, getOracleTimeout } from '../utils'
+import { Asset, ATokenMock, StaticATokenLM } from '../../../typechain'
 
 const combinedError = (x: BigNumber, y: BigNumber): BigNumber => {
   return fp('1').add(x).mul(fp('1').add(y)).div(fp('1')).sub(fp('1'))
@@ -37,8 +36,6 @@ async function main() {
   if (!fileExists(phase1File)) {
     throw new Error(`${phase1File} doesn't exist yet. Run phase 1`)
   }
-  const phase1Deployment = <IDeployments>getDeploymentFile(phase1File)
-
   // Check previous step completed
   const assetCollDeploymentFilename = getAssetCollDeploymentFilename(chainId)
   const assetCollDeployments = <IAssetCollDeployments>getDeploymentFile(assetCollDeploymentFilename)
@@ -48,7 +45,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - DAI  **************************/
   const { collateral: daiCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.DAI,
@@ -58,6 +55,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', daiCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -66,7 +64,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDC  **************************/
   const { collateral: usdcCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDC,
@@ -76,6 +74,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', usdcCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -84,7 +83,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDT  **************************/
   const { collateral: usdtCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     tokenAddress: networkConfig[chainId].tokens.USDT,
@@ -94,6 +93,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', usdtCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -102,7 +102,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - USDP  **************************/
   const { collateral: usdpCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     tokenAddress: networkConfig[chainId].tokens.USDP,
@@ -112,6 +112,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', usdpCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -120,7 +121,7 @@ async function main() {
 
   /********  Deploy Fiat Collateral - TUSD  **************************/
   const { collateral: tusdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.TUSD,
     oracleError: fp('0.003').toString(), // 0.3%
     tokenAddress: networkConfig[chainId].tokens.TUSD,
@@ -130,13 +131,14 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', tusdCollateral)).refresh()
 
   assetCollDeployments.collateral.TUSD = tusdCollateral
   deployedCollateral.push(tusdCollateral.toString())
 
   /********  Deploy Fiat Collateral - BUSD  **************************/
   const { collateral: busdCollateral } = await hre.run('deploy-fiat-collateral', {
-    fallbackPrice: fp('1').toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.BUSD,
@@ -146,6 +148,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', busdCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -178,12 +181,8 @@ async function main() {
     `Deployed StaticAToken for aDAI on ${hre.network.name} (${chainId}): ${adaiStaticToken.address} `
   )
 
-  let fallbackPrice = fp('1')
-    .mul(await adaiStaticToken.rate())
-    .div(bn('1e27'))
-
   const { collateral: aDaiCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: adaiStaticToken.address,
@@ -193,6 +192,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', aDaiCollateral)).refresh()
 
   fs.writeFileSync(assetCollDeploymentFilename, JSON.stringify(assetCollDeployments, null, 2))
 
@@ -224,12 +224,8 @@ async function main() {
     `Deployed StaticAToken for aUSDC on ${hre.network.name} (${chainId}): ${ausdcStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
-    .mul(await ausdcStaticToken.rate())
-    .div(bn('1e27'))
-
   const { collateral: aUsdcCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdcStaticToken.address,
@@ -239,6 +235,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', aUsdcCollateral)).refresh()
 
   assetCollDeployments.collateral.aUSDC = aUsdcCollateral
   deployedCollateral.push(aUsdcCollateral.toString())
@@ -270,12 +267,8 @@ async function main() {
     `Deployed StaticAToken for aUSDT on ${hre.network.name} (${chainId}): ${ausdtStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
-    .mul(await ausdtStaticToken.rate())
-    .div(bn('1e27'))
-
   const { collateral: aUsdtCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     staticAToken: ausdtStaticToken.address,
@@ -285,6 +278,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', aUsdtCollateral)).refresh()
 
   assetCollDeployments.collateral.aUSDT = aUsdtCollateral
   deployedCollateral.push(aUsdtCollateral.toString())
@@ -315,12 +309,8 @@ async function main() {
     `Deployed StaticAToken for aBUSD on ${hre.network.name} (${chainId}): ${abusdStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
-    .mul(await abusdStaticToken.rate())
-    .div(bn('1e27'))
-
   const { collateral: aBusdCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.BUSD,
     oracleError: fp('0.005').toString(), // 0.5%
     staticAToken: abusdStaticToken.address,
@@ -330,6 +320,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', aBusdCollateral)).refresh()
 
   assetCollDeployments.collateral.aBUSD = aBusdCollateral
   deployedCollateral.push(aBusdCollateral.toString())
@@ -361,12 +352,8 @@ async function main() {
     `Deployed StaticAToken for aUSDP on ${hre.network.name} (${chainId}): ${ausdpStaticToken.address} `
   )
 
-  fallbackPrice = fp('1')
-    .mul(await ausdpStaticToken.rate())
-    .div(bn('1e27'))
-
   const { collateral: aUsdpCollateral } = await hre.run('deploy-atoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     staticAToken: ausdpStaticToken.address,
@@ -376,6 +363,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', aUsdpCollateral)).refresh()
 
   assetCollDeployments.collateral.aUSDP = aUsdpCollateral
   deployedCollateral.push(aUsdpCollateral.toString())
@@ -384,16 +372,8 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cDAI  **************************/
 
-  let cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cDAI as string
-  )
-  fallbackPrice = fp('1')
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e28'))
-
   const { collateral: cDaiCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.DAI,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cDAI,
@@ -404,6 +384,7 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
+  await (<Asset>await ethers.getContractAt('Asset', cDaiCollateral)).refresh()
 
   assetCollDeployments.collateral.cDAI = cDaiCollateral
   deployedCollateral.push(cDaiCollateral.toString())
@@ -412,16 +393,8 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDC  **************************/
 
-  cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cUSDC as string
-  )
-  fallbackPrice = fp('1')
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e16'))
-
   const { collateral: cUsdcCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDC,
@@ -432,6 +405,7 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
+  await (<Asset>await ethers.getContractAt('Asset', cUsdcCollateral)).refresh()
 
   assetCollDeployments.collateral.cUSDC = cUsdcCollateral
   deployedCollateral.push(cUsdcCollateral.toString())
@@ -440,16 +414,8 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDT  **************************/
 
-  cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cUSDT as string
-  )
-  fallbackPrice = fp('1')
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e16'))
-
   const { collateral: cUsdtCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDT,
     oracleError: fp('0.0025').toString(), // 0.25%
     cToken: networkConfig[chainId].tokens.cUSDT,
@@ -460,6 +426,7 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
+  await (<Asset>await ethers.getContractAt('Asset', cUsdtCollateral)).refresh()
 
   assetCollDeployments.collateral.cUSDT = cUsdtCollateral
   deployedCollateral.push(cUsdtCollateral.toString())
@@ -468,17 +435,8 @@ async function main() {
 
   /********  Deploy CToken Fiat Collateral - cUSDP  **************************/
 
-  cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cUSDP as string
-  )
-
-  fallbackPrice = fp('1')
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e28'))
-
   const { collateral: cUsdpCollateral } = await hre.run('deploy-ctoken-fiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.USDP,
     oracleError: fp('0.01').toString(), // 1%
     cToken: networkConfig[chainId].tokens.cUSDP,
@@ -489,6 +447,7 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
+  await (<Asset>await ethers.getContractAt('Asset', cUsdpCollateral)).refresh()
 
   assetCollDeployments.collateral.cUSDP = cUsdpCollateral
   deployedCollateral.push(cUsdpCollateral.toString())
@@ -497,20 +456,12 @@ async function main() {
 
   /********  Deploy CToken Non-Fiat Collateral - cWBTC  **************************/
 
-  cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cWBTC as string
-  )
-  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC))
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e18'))
-
   const wbtcOracleError = fp('0.02') // 2%
   const btcOracleError = fp('0.005') // 0.5%
   const combinedBTCWBTCError = combinedError(wbtcOracleError, btcOracleError)
 
   const { collateral: cWBTCCollateral } = await hre.run('deploy-ctoken-nonfiat-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     combinedOracleError: combinedBTCWBTCError.toString(),
@@ -522,6 +473,7 @@ async function main() {
     delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
   })
+  await (<Asset>await ethers.getContractAt('Asset', cWBTCCollateral)).refresh()
 
   assetCollDeployments.collateral.cWBTC = cWBTCCollateral
   deployedCollateral.push(cWBTCCollateral.toString())
@@ -530,25 +482,18 @@ async function main() {
 
   /********  Deploy CToken Self-Referential Collateral - cETH  **************************/
 
-  cToken = await hre.ethers.getContractAt(
-    'CTokenMock',
-    networkConfig[chainId].tokens.cETH as string
-  )
-  fallbackPrice = (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH))
-    .mul(await cToken.exchangeRateStored())
-    .div(bn('1e28'))
-
   const { collateral: cETHCollateral } = await hre.run('deploy-ctoken-selfreferential-collateral', {
-    fallbackPrice: fallbackPrice.toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     oracleError: fp('0.005').toString(), // 0.5%
     cToken: networkConfig[chainId].tokens.cETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
-    delayUntilDefault: bn('86400').toString(), // 24h
     comptroller: networkConfig[chainId].COMPTROLLER,
+    referenceERC20Decimals: '18',
   })
+  await (<Asset>await ethers.getContractAt('Asset', cETHCollateral)).refresh()
 
   assetCollDeployments.collateral.cETH = cETHCollateral
   deployedCollateral.push(cETHCollateral.toString())
@@ -557,7 +502,7 @@ async function main() {
 
   /********  Deploy Non-Fiat Collateral  - wBTC **************************/
   const { collateral: wBTCCollateral } = await hre.run('deploy-nonfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.BTC)).toString(),
+    priceTimeout: priceTimeout.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.WBTC,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.BTC,
     combinedOracleError: combinedBTCWBTCError.toString(),
@@ -568,6 +513,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', wBTCCollateral)).refresh()
 
   assetCollDeployments.collateral.WBTC = wBTCCollateral
   deployedCollateral.push(wBTCCollateral.toString())
@@ -577,15 +523,15 @@ async function main() {
   /********  Deploy Self Referential Collateral - wETH  **************************/
 
   const { collateral: wETHCollateral } = await hre.run('deploy-selfreferential-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.ETH)).toString(),
+    priceTimeout: priceTimeout.toString(),
     priceFeed: networkConfig[chainId].chainlinkFeeds.ETH,
     oracleError: fp('0.005').toString(), // 0.5%
     tokenAddress: networkConfig[chainId].tokens.WETH,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
     targetName: hre.ethers.utils.formatBytes32String('ETH'),
-    delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', wETHCollateral)).refresh()
 
   assetCollDeployments.collateral.WETH = wETHCollateral
   deployedCollateral.push(wETHCollateral.toString())
@@ -594,13 +540,12 @@ async function main() {
 
   /********  Deploy EURO Fiat Collateral  - EURT **************************/
   const eurtError = fp('0.02') // 2%
-  const eurError = fp('0.0015') // 0.15%
 
   const { collateral: eurtCollateral } = await hre.run('deploy-eurfiat-collateral', {
-    fallbackPrice: (await getCurrentPrice(networkConfig[chainId].chainlinkFeeds.EURT)).toString(),
+    priceTimeout: priceTimeout.toString(),
     referenceUnitFeed: networkConfig[chainId].chainlinkFeeds.EURT,
     targetUnitFeed: networkConfig[chainId].chainlinkFeeds.EUR,
-    oracleError: combinedError(eurtError, eurError).toString(), // 2%
+    oracleError: eurtError.toString(), // 2%
     tokenAddress: networkConfig[chainId].tokens.EURT,
     maxTradeVolume: fp('1e6').toString(), // $1m,
     oracleTimeout: getOracleTimeout(chainId).toString(),
@@ -608,6 +553,7 @@ async function main() {
     defaultThreshold: fp('0.05').toString(), // 5%
     delayUntilDefault: bn('86400').toString(), // 24h
   })
+  await (<Asset>await ethers.getContractAt('Asset', eurtCollateral)).refresh()
 
   assetCollDeployments.collateral.EURT = eurtCollateral
   deployedCollateral.push(eurtCollateral.toString())

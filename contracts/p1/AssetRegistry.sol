@@ -47,8 +47,7 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
         // It's a waste of gas to require notPausedOrFrozen because assets can be updated directly
         uint256 length = _erc20s.length();
         for (uint256 i = 0; i < length; ++i) {
-            IAsset asset = assets[IERC20(_erc20s.at(i))];
-            if (asset.isCollateral()) ICollateral(address(asset)).refresh();
+            assets[IERC20(_erc20s.at(i))].refresh();
         }
     }
 
@@ -76,9 +75,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         uint192 quantity = basketHandler.quantity(asset.erc20());
 
-        swapped = _registerIgnoringCollisions(asset);
-
         if (quantity > 0) basketHandler.disableBasket();
+
+        swapped = _registerIgnoringCollisions(asset);
     }
 
     /// Unregister an asset, requiring that it is already registered
@@ -171,6 +170,9 @@ contract AssetRegistryP1 is ComponentP1, IAssetRegistry {
 
         assets[erc20] = asset;
         emit AssetRegistered(erc20, asset);
+
+        // Refresh to ensure it does not revert, and to save a recent lastPrice
+        asset.refresh();
         return true;
     }
 
