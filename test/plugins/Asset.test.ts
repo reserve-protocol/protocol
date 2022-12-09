@@ -232,10 +232,16 @@ describe('Assets contracts #fast', () => {
       await expectPrice(compAsset.address, bn('0'), bn('0'), false)
       await expectPrice(aaveAsset.address, bn('0'), bn('0'), false)
 
-      // Fallback prices should be nonzero
-      expect(await rsrAsset.lotPrice()).to.be.gt(0)
-      expect(await compAsset.lotPrice()).to.be.gt(0)
-      expect(await aaveAsset.lotPrice()).to.be.gt(0)
+      // Fallback prices should be zero
+      let [lotLow, lotHigh] = await rsrAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
+      ;[lotLow, lotHigh] = await rsrAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
+      ;[lotLow, lotHigh] = await aaveAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
 
       // Update values of underlying tokens of RToken to 0
       await setOraclePrice(collateral0.address, bn(0))
@@ -250,8 +256,10 @@ describe('Assets contracts #fast', () => {
         config.minTradeVolume.mul((await assetRegistry.erc20s()).length)
       )
 
-      // Should have nonzero lot price
-      expect(await rTokenAsset.lotPrice()).to.be.gt(0)
+      // Should have lot price
+      ;[lotLow, lotHigh] = await rTokenAsset.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
     })
 
     it('Should return 0 price for RTokenAsset in full haircut scenario', async () => {

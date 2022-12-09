@@ -499,15 +499,17 @@ describe('Collateral contracts', () => {
       )
     })
 
-    it('Should be unpriced if price is zero', async () => {
+    it('Should be (0, 0) if price is zero', async () => {
       // Set price of token to 0 in Aave
       await setOraclePrice(tokenCollateral.address, bn('0'))
 
       // Check price of token
       await expectPrice(tokenCollateral.address, bn('0'), bn('0'), false)
 
-      // Fallback price should be nonzero
-      expect(await tokenCollateral.lotPrice()).to.be.gt(0)
+      // Lot prices should be zero
+      const [lotLow, lotHigh] = await tokenCollateral.lotPrice()
+      expect(lotLow).to.eq(0)
+      expect(lotHigh).to.eq(0)
 
       // When refreshed, sets status to Unpriced
       await tokenCollateral.refresh()
