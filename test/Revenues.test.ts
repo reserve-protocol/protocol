@@ -2422,9 +2422,8 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
         ).to.be.revertedWith('duplicate tokens')
 
         // Remove duplicates, should work
-        await expect(
-          backingManager.manageTokens([token1.address, token2.address, token3.address])
-        ).to.not.be.reverted
+        await expect(backingManager.manageTokens([token1.address, token2.address, token3.address]))
+          .to.not.be.reverted
       })
 
       it('Should not overspend if backingManager.manageTokensSortedOrder() is called with duplicate tokens', async () => {
@@ -2839,11 +2838,7 @@ describe(`Revenues - P${IMPLEMENTATION}`, () => {
     })
 
     context('With simple basket of ATokens and CTokens: no issued RTokens', function () {
-      let issueAmount: BigNumber
-
       beforeEach(async function () {
-        issueAmount = bn('100e18')
-
         // Setup new basket with ATokens and CTokens
         await basketHandler
           .connect(owner)
