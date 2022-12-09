@@ -452,8 +452,6 @@ contract DiffTestScenario {
         }
     }
 
-    // TODO: trigger AssetNoDecay.setStalePrice or AssetNoDecay.setPriceOutsideRange
-
     function updatePrice(
         uint256 seedID,
         uint192 a,
@@ -489,6 +487,22 @@ contract DiffTestScenario {
         for (uint256 N = 0; N < 2; N++) {
             IERC20 erc20 = p[N].someToken(seedID);
             ERC20Fuzz(address(erc20)).setRewardAmount(a);
+        }
+    }
+
+    // update stalePrice
+    function setErrorState(
+        uint256 seedID,
+        bool stale,
+        bool value
+    ) public {
+        for (uint256 N = 0; N < 2; N++) {
+            IERC20 erc20 = p[N].someToken(seedID);
+            if (address(erc20) == address(p[N].rToken())) return; // can't set RToken staleness
+            IAssetRegistry reg = p[N].assetRegistry();
+            if (!reg.isRegistered(erc20)) return;
+            OracleErrorMock asset = OracleErrorMock(address(reg.toAsset(erc20)));
+            stale ? asset.setStalePrice(value) : asset.setPriceOutsideRange(value);
         }
     }
 
