@@ -511,20 +511,29 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
   // This may require to deploy some mocks to be able to force some of these situations
   describe('Collateral Status', () => {
     // Test for soft default
-    it('Updates status in case of soft default', async () => {
-      // Redeploy plugin using a Chainlink mock feed where we can change the price
+    it("Doesn't Updates status in case of soft default (revenue hiding)", async () => {
+      // Note: In this case requires to use a rETH mock to be able to change the rate
+      const rETHMockFactory: ContractFactory = await ethers.getContractFactory('RETHMock')
+      const symbol = await reth.symbol()
+      const rETHMock: RETHMock = <RETHMock>(
+        await rETHMockFactory.deploy(symbol + ' Token', symbol)
+      )
+      // Set initial exchange rate for the new rETH Mock
+      await rETHMock.setExchangeRate(fp('1.03'))
+
+      // Redeploy plugin using the new rETH mock
       const newRethCollateral: RETHCollateral = <RETHCollateral>await (
         await ethers.getContractFactory('RETHCollateral', {
           // libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         fp('0.02'),
-        mockChainlinkFeed.address,
-        reth.address,
+        await rethCollateral.chainlinkFeed(),
+        rETHMock.address,
         await rethCollateral.maxTradeVolume(),
         await rethCollateral.oracleTimeout(),
         await rethCollateral.targetName(),
-        bn('10000').sub(await rethCollateral.marginRatio()),
+        defaultAllowedDropBasisPoints,
         await rethCollateral.delayUntilDefault(),
       )
 
@@ -532,33 +541,16 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await newRethCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newRethCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Depeg one of the underlying tokens - Reducing price 20%
-      await setOraclePrice(newRethCollateral.address, bn('8e7')) // -20%
+      // Decrease rate for rETH above the allowed drop - Reducing price 4%
+      // 
+      await rETHMock.setExchangeRate(fp('1.029'))
 
-      // Force updates - Should update whenDefault and status
+      // Force updates - Should update whenDefault and status for rETH 
       await expect(newRethCollateral.refresh())
-        .to.emit(newRethCollateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
-      expect(await newRethCollateral.status()).to.equal(CollateralStatus.IFFY)
+        .to.not.emit(newRethCollateral, 'CollateralStatusChanged');
 
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
-        delayUntilDefault
-      )
-      expect(await newRethCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-
-      // Move time forward past delayUntilDefault
-      await advanceTime(Number(delayUntilDefault))
-      expect(await newRethCollateral.status()).to.equal(CollateralStatus.DISABLED)
-
-      // Nothing changes if attempt to refresh after default
-      // CToken
-      const prevWhenDefault: BigNumber = await newRethCollateral.whenDefault()
-      await expect(newRethCollateral.refresh()).to.not.emit(
-        newRethCollateral,
-        'CollateralStatusChanged'
-      )
-      expect(await newRethCollateral.status()).to.equal(CollateralStatus.DISABLED)
-      expect(await newRethCollateral.whenDefault()).to.equal(prevWhenDefault)
+      expect(await newRethCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newRethCollateral.whenDefault()).to.equal(MAX_UINT256)
     })
 
     // Test for hard default
@@ -584,7 +576,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         await rethCollateral.maxTradeVolume(),
         await rethCollateral.oracleTimeout(),
         await rethCollateral.targetName(),
-        bn('10000').sub(await rethCollateral.marginRatio()),
+        defaultAllowedDropBasisPoints,
         await rethCollateral.delayUntilDefault(),
       )
 
@@ -631,7 +623,7 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
           await rethCollateral.maxTradeVolume(),
           await rethCollateral.oracleTimeout(),
           await rethCollateral.targetName(),
-          bn('10000').sub(await rethCollateral.marginRatio()),
+          defaultAllowedDropBasisPoints,
           await rethCollateral.delayUntilDefault(),
         )
       )
