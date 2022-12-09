@@ -1848,7 +1848,7 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       })
     })
 
-    it.only('Asset Registry - Register Asset', async () => {
+    it('Asset Registry - Register Asset', async () => {
       const chainlinkFeed = <MockV3Aggregator>(
         await (await ethers.getContractFactory('MockV3Aggregator')).deploy(8, bn('1e8'))
       )
