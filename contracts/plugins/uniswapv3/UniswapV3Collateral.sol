@@ -108,4 +108,9 @@ contract UniswapV3Collateral is Collateral {
         uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**decimals1;
         return uint192(priceScaled0 + priceScaled1);
     }
+
+    /// @return {UoA/target} The price of a target unit in UoA
+    function pricePerTarget() public view virtual override returns (uint192) {
+        return strictPrice();
+    }
 }

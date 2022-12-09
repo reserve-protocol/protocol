@@ -7,6 +7,7 @@ import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10 } from "../../../../common/numbers"
 import {
     ERC20Mock,
+    ISwapRouter,
     MockV3Aggregator,
     UniswapV3Wrapper,
     UniswapV3WrapperMock,
@@ -31,8 +32,11 @@ import {
     TMintParams,
 } from "../common"
 import { anyUint, anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs"
+import { getLatestBlockTimestamp } from "../../../utils/time"
 
 const createFixtureLoader = waffle.createFixtureLoader
+
+const swapRouterAddress = "0xE592427A0AEce92De3Edee1F18E0157C05861564"
 
 const describeFork = process.env.FORK ? describe : describe.skip
 describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
@@ -120,7 +124,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 p0(100),
                 p1(100)
             )
-            
+
             mintParams.tickLower = BigNumber.from(MAX_TICK).mul(1).div(10)
 
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
@@ -143,7 +147,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await ethers.getContractFactory("UniswapV3Collateral")
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT");
+            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT")
             const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
                 await uniswapV3CollateralContractFactory
                     .connect(addr1)
@@ -157,29 +161,48 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         targetName,
                         DELAY_UNTIL_DEFAULT
                     )
-            )    
-
-            console.log({mintParams});
-            console.log("strictPrice", await uniswapV3Collateral.strictPrice());
-            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice());
-
-            mintParams.amount0Desired = await asset0.balanceOf(addr2.address);
-
-            const uniswapV3WrapperMock2: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
-                asset0,
-                asset1,
-                owner,
-                mintParams,
-                addr2
             )
 
-            console.log("strictPrice", await uniswapV3Collateral.strictPrice());
-            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice());
+            console.log({ mintParams })
+            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
+            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
 
+            mintParams.amount0Desired = await asset0.balanceOf(addr2.address)
+
+            // const uniswapV3WrapperMock2: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
+            //     asset0,
+            //     asset1,
+            //     owner,
+            //     mintParams,
+            //     addr2
+            // )
+
+            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
+            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
+
+            const swapRouter: ISwapRouter = await ethers.getContractAt(
+                "ISwapRouter",
+                swapRouterAddress
+            )
+
+            await waitForTx(
+                await asset0.connect(addr2).approve(swapRouter.address, await asset0.balanceOf(addr2.address),)
+            )
             
-        })
+            await waitForTx(await swapRouter.connect(addr2).exactInputSingle({
+                tokenIn: asset0.address,
+                tokenOut: asset1.address,
+                fee: mintParams.fee,
+                recipient: addr2.address,
+                deadline: await closeDeadline(),
+                amountIn: await asset0.balanceOf(addr2.address),
+                amountOutMinimum: 0,
+                sqrtPriceLimitX96: 0,
+            }))
 
-        
+            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
+            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
+        })
     })
 })
 
