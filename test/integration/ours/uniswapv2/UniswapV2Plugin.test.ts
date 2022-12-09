@@ -17,8 +17,8 @@ import {whileImpersonating} from "../../../utils/impersonation"
 import {waitForTx} from "../../utils"
 import {expect} from "chai"
 import {CollateralStatus, MAX_UINT256} from "../../../../common/constants"
-import {UniswapV2Collateral__factory} from "@typechain/factories/UniswapV2Collateral__factory"
-import {UniswapV2Collateral} from "@typechain/UniswapV2Collateral"
+import {UniswapV2NonFiatCollateral__factory} from "@typechain/factories/UniswapV2NonFiatCollateral__factory"
+import {UniswapV2NonFiatCollateral} from "@typechain/UniswapV2NonFiatCollateral"
 import {getLatestBlockTimestamp} from "../../../utils/time"
 import {sqrt} from "../common"
 
@@ -148,14 +148,14 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
             )
 
-            const uniswapV2CollateralContractFactory: UniswapV2Collateral__factory = await ethers.getContractFactory(
-                "UniswapV2Collateral"
+            const uniswapV2NonFiatCollateralContractFactory: UniswapV2NonFiatCollateral__factory = await ethers.getContractFactory(
+                "UniswapV2NonFiatCollateral"
             )
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("UNIV2SQRT")
-            const uniswapV2Collateral: UniswapV2Collateral = <UniswapV2Collateral>(
-                await uniswapV2CollateralContractFactory
+            const uniswapV2NonFiatCollateral: UniswapV2NonFiatCollateral = <UniswapV2NonFiatCollateral>(
+                await uniswapV2NonFiatCollateralContractFactory
                     .connect(addr1)
                     .deploy(
                         fallbackPrice,
@@ -169,30 +169,30 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     )
             )
 
-            expect(await uniswapV2Collateral.isCollateral()).to.equal(true)
-            expect(await uniswapV2Collateral.erc20()).to.equal(pairAddress)
-            expect(await uniswapV2Collateral.erc20Decimals()).to.equal(18)
-            expect(await uniswapV2Collateral.targetName()).to.equal(targetName)
-            expect(await uniswapV2Collateral.status()).to.equal(CollateralStatus.SOUND)
-            expect(await uniswapV2Collateral.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await uniswapV2Collateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-            expect(await uniswapV2Collateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-            expect(await uniswapV2Collateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-            expect(await uniswapV2Collateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+            expect(await uniswapV2NonFiatCollateral.isCollateral()).to.equal(true)
+            expect(await uniswapV2NonFiatCollateral.erc20()).to.equal(pairAddress)
+            expect(await uniswapV2NonFiatCollateral.erc20Decimals()).to.equal(18)
+            expect(await uniswapV2NonFiatCollateral.targetName()).to.equal(targetName)
+            expect(await uniswapV2NonFiatCollateral.status()).to.equal(CollateralStatus.SOUND)
+            expect(await uniswapV2NonFiatCollateral.whenDefault()).to.equal(MAX_UINT256)
+            //expect(await uniswapV2NonFiatCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+            expect(await uniswapV2NonFiatCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+            expect(await uniswapV2NonFiatCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+            expect(await uniswapV2NonFiatCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
             const pair = <IUniswapV2Pair>await ethers.getContractAt("IUniswapV2Pair", pairAddress)
             const {reserve0, reserve1} = await pair.getReserves()
             const totalSupply = await pair.totalSupply()
             const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
-            expect(await uniswapV2Collateral.refPerTok()).to.equal(expectedRefPerTok)
+            expect(await uniswapV2NonFiatCollateral.refPerTok()).to.equal(expectedRefPerTok)
 
-            expect(await uniswapV2Collateral.targetPerRef()).to.equal(fp("1"))
-            expect(await uniswapV2Collateral.pricePerTarget()).to.equal(fp("1"))
-            //expect(await uniswapV2Collateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-            //expect(await uniswapV2Collateral.strictPrice()).to.equal(await uniswapV2Collateral._fallbackPrice())
+            expect(await uniswapV2NonFiatCollateral.targetPerRef()).to.equal(fp("1"))
+            expect(await uniswapV2NonFiatCollateral.pricePerTarget()).to.equal(fp("1"))
+            //expect(await uniswapV2NonFiatCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
+            //expect(await uniswapV2NonFiatCollateral.strictPrice()).to.equal(await uniswapV2NonFiatCollateral._fallbackPrice())
             //TODO
-            //expect(await uniswapV2Collateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await uniswapV2Collateral.bal(addr1.address)).to.equal(
+            //expect(await uniswapV2NonFiatCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+            // expect(await uniswapV2NonFiatCollateral.bal(addr1.address)).to.equal(
             //   await adjustedAmout(uniswapV2Wrapper, 100)
             // )
         })

@@ -3,15 +3,14 @@
 // done as part of a reserver-protocol hackathon
 pragma solidity ^0.8.9;
 
-import "../assets/AbstractCollateral.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "hardhat/console.sol";
-import "./UniswapV2Collateral.sol";
+import "./UniswapV2AbstractCollateral.sol";
 
 //TODO Unsiwap uses 112 bits floating points math for price accumulators
-contract UniswapV2CollateralMock is UniswapV2Collateral {
+contract UniswapV2CollateralMock is UniswapV2AbstractCollateral {
     constructor(
         uint192 fallbackPrice_,
         AggregatorV3Interface chainlinkFeed_,
@@ -22,7 +21,7 @@ contract UniswapV2CollateralMock is UniswapV2Collateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_
     )
-        UniswapV2Collateral(
+        UniswapV2AbstractCollateral(
             fallbackPrice_,
             chainlinkFeed_,
             chainlinkFeedSecondAsset_,

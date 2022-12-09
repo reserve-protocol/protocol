@@ -9,7 +9,7 @@ import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Factory.sol";
 import "hardhat/console.sol";
 
 //TODO Unsiwap uses 112 bits floating points math for price accumulators
-contract UniswapV2Collateral is Collateral {
+abstract contract UniswapV2AbstractCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     AggregatorV3Interface public immutable chainlinkFeedSecondAsset;
 
