@@ -95,7 +95,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
     redemptionRateFloor: fp('1e6'), // 1M RToken
   }
 
-  const defaultThreshold = fp('0.85') // 85%
+  const defaultRelativeThreshold = fp('0.85') // 85%
   const delayUntilDefault = bn('86400') // 24h
   // values at block 14916729
   const initialCBETHRate = fp('1.018056973225187234')
@@ -145,7 +145,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
         ethers.utils.formatBytes32String('ETH'),
-        defaultThreshold,
+        defaultRelativeThreshold,
         delayUntilDefault
       )
     )
