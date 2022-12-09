@@ -27,16 +27,20 @@ async function main() {
   const assets = Object.values(assetsColls.assets)
   const collateral = Object.values(assetsColls.collateral)
 
-  // Confirm each non-collateral asset's price is near the lot price
+  // Confirm lotPrice() == price()
   for (const a of assets) {
     console.log(`confirming asset ${a}`)
     const asset = await hre.ethers.getContractAt('Asset', a)
-    const lotPrice = await asset.lotPrice()
-    const [low] = await asset.price() // {UoA/tok}
-    if (low.eq(0)) throw new Error('misconfigured oracle')
+    const [lotLow, lotHigh] = await asset.lotPrice()
+    const [low, high] = await asset.price() // {UoA/tok}
+    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
 
-    const lower = low.sub(low.div(100)) // 1%
-    if (lotPrice.lt(lower) || lotPrice.gt(low)) {
+    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
+      throw new Error('lot price off')
+    }
+    const savedLow = await asset.savedLowPrice()
+    const savedHigh = await asset.savedHighPrice()
+    if (!savedLow.eq(low) || !savedHigh.eq(high)) {
       throw new Error('lot price off')
     }
   }
@@ -49,12 +53,17 @@ async function main() {
 
     if ((await coll.status()) != CollateralStatus.SOUND) throw new Error('collateral unsound')
 
-    const [low] = await coll.price() // {UoA/tok}
-    if (low.eq(0)) throw new Error('misconfigured oracle')
+    const [lotLow, lotHigh] = await coll.lotPrice()
+    const [low, high] = await coll.price() // {UoA/tok}
+    if (low.eq(0) || high.eq(0)) throw new Error('misconfigured oracle')
 
-    const lotPrice = await coll.lotPrice() // {UoA/tok}
-    const lower = low.sub(low.div(100)) // 1%
-    if (lotPrice.lt(lower) || lotPrice.gt(low)) {
+    if (!lotLow.eq(low) || !lotHigh.eq(high)) {
+      throw new Error('lot price off')
+    }
+
+    const savedLow = await coll.savedLowPrice()
+    const savedHigh = await coll.savedHighPrice()
+    if (!savedLow.eq(low) || !savedHigh.eq(high)) {
       throw new Error('lot price off')
     }
   }

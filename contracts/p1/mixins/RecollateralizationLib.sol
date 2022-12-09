@@ -194,7 +194,7 @@ library RecollateralizationLibP1 {
             ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
             : 0;
 
-        // {BU} = {UoA} / {BU/UoA}
+        // {BU} = {UoA} / {UoA/BU}
         range.top = basketTargetHigh.div(basketPriceLow, CEIL);
         range.bottom = basketTargetLow.div(basketPriceHigh, CEIL);
     }
@@ -346,8 +346,10 @@ library RecollateralizationLibP1 {
                     if (high == 0) continue;
                 }
 
+                (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
+
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(low, FLOOR);
+                uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND
@@ -357,23 +359,21 @@ library RecollateralizationLibP1 {
 
                 // Select the most-in-surplus "best" asset still enough to sell,
                 // as defined by a (status, surplusAmt) ordering
-                if (isBetterSurplus(maxes, status, delta)) {
-                    (uint192 lotLow, ) = reg.assets[i].lotPrice(); // {UoA/sellTok}
-                    if (
-                        TradeLib.isEnoughToSell(
-                            reg.assets[i],
-                            bal.minus(needed),
-                            lotLow,
-                            rules.minTradeVolume
-                        )
-                    ) {
-                        trade.sell = reg.assets[i];
-                        trade.sellAmount = bal.minus(needed);
-                        trade.sellPrice = low;
+                if (
+                    isBetterSurplus(maxes, status, delta) &&
+                    TradeLib.isEnoughToSell(
+                        reg.assets[i],
+                        bal.minus(needed),
+                        lotLow,
+                        rules.minTradeVolume
+                    )
+                ) {
+                    trade.sell = reg.assets[i];
+                    trade.sellAmount = bal.minus(needed);
+                    trade.sellPrice = low;
 
-                        maxes.surplusStatus = status;
-                        maxes.surplus = delta;
-                    }
+                    maxes.surplusStatus = status;
+                    maxes.surplus = delta;
                 }
             } else {
                 // needed(Bottom): token balance needed at bottom of the basket range

@@ -389,18 +389,15 @@ library TradingLibP0 {
             // {tok} = {BU} * {tok/BU}
             uint192 needed = range.top.mul(components.bh.quantity(erc20s[i]), CEIL); // {tok}
             if (bal.gt(needed)) {
-                // by calculating this early we can duck the stack limit but be less gas-efficient
-                bool enoughToSell;
-                {
-                    (uint192 lotLow, ) = asset.lotPrice(); // {UoA/sellTok}
+                (uint192 lotLow, ) = asset.lotPrice(); // {UoA/sellTok}
 
-                    enoughToSell = isEnoughToSell(
-                        asset,
-                        bal.minus(needed),
-                        lotLow,
-                        rules.minTradeVolume
-                    );
-                }
+                // by calculating this early we can duck the stack limit but be less gas-efficient
+                bool enoughToSell = isEnoughToSell(
+                    asset,
+                    bal.minus(needed),
+                    lotLow,
+                    rules.minTradeVolume
+                );
 
                 (uint192 low, uint192 high) = asset.price(); // {UoA/sellTok}
 
@@ -408,7 +405,7 @@ library TradingLibP0 {
                 if (high == 0) continue;
 
                 // {UoA} = {sellTok} * {UoA/sellTok}
-                uint192 delta = bal.minus(needed).mul(low, FLOOR);
+                uint192 delta = bal.minus(needed).mul(lotLow, FLOOR);
 
                 // status = asset.status() if asset.isCollateral() else SOUND
                 CollateralStatus status; // starts SOUND

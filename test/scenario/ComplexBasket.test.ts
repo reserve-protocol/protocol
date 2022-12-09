@@ -25,8 +25,6 @@ import {
   TestIFurnace,
   TestIStRSR,
   TestIDistributor,
-  TestIBroker,
-  TestIAsset,
 } from '../../typechain'
 import { withinQuad } from '../utils/matchers'
 import { advanceTime, getLatestBlockTimestamp } from '../utils/time'
@@ -38,13 +36,7 @@ import {
   ORACLE_TIMEOUT,
   PRICE_TIMEOUT,
 } from '../fixtures'
-import {
-  BN_SCALE_FACTOR,
-  CollateralStatus,
-  FURNACE_DEST,
-  RoundingMode,
-  STRSR_DEST,
-} from '../../common/constants'
+import { BN_SCALE_FACTOR, CollateralStatus, FURNACE_DEST, STRSR_DEST } from '../../common/constants'
 import { expectTrade, getTrade } from '../utils/trades'
 import { expectPrice, expectRTokenPrice, setOraclePrice } from '../utils/oracles'
 import { expectEvents } from '../../common/events'
@@ -112,7 +104,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
   let facade: FacadeRead
   let facadeTest: FacadeTest
   let backingManager: TestIBackingManager
-  let broker: TestIBroker
 
   let loadFixture: ReturnType<typeof createFixtureLoader>
   let wallet: Wallet
@@ -186,7 +177,6 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
       assetRegistry,
       backingManager,
       basketHandler,
-      broker,
       facade,
       facadeTest,
       rsr,
@@ -1611,10 +1601,8 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Running auctions will trigger recollateralization - cETH partial sale for weth
     // Will sell about 841K of cETH, expect to receive 8167 wETH (minimum)
     // We would still have about 438K to sell of cETH
-    const sellAmt = toBNDecimals(
-      MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(await cETHCollateral.lotPrice()),
-      8
-    )
+    let [, lotHigh] = await cETHCollateral.lotPrice()
+    const sellAmt = toBNDecimals(MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh), 8)
     const sellAmtRemainder = (await cETH.balanceOf(backingManager.address)).sub(sellAmt)
     // Price for cETH = 1200 / 50 = $24 at rate 50% = $12
     const minBuyAmt = toMinBuyAmt(
@@ -1729,7 +1717,13 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
 
     // Mock auction
     // 438,000 cETH  @ 12 = 5.25 M = approx 4255 ETH - Get 4400 WETH
-    const auctionbuyAmtRemainder = fp('4400')
+    const auctionbuyAmtRemainder = toMinBuyAmt(
+      auctionSellAmtRemainder,
+      fp('12'),
+      fp('1200'),
+      ORACLE_ERROR,
+      config.maxTradeSlippage
+    ).mul(bn('1e10')) // decimal shift
     await weth.connect(addr1).approve(gnosis.address, auctionbuyAmtRemainder)
     await gnosis.placeBid(1, {
       bidder: addr1.address,
@@ -1745,11 +1739,11 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // 13K wETH @ 1200 = 15,600,000 USD of value, in RSR ~= 156,000 RSR (@100 usd)
     // We exceed maxTradeVolume so we need two auctions - Will first sell 10M in value
     // Sells about 101K RSR, for 8167 WETH minimum
-    const [rsrAssetLastPrice] = await rsrAsset.price()
-    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(rsrAssetLastPrice)
+    ;[, lotHigh] = await rsrAsset.lotPrice()
+    const sellAmtRSR1 = MAX_TRADE_VOLUME.mul(BN_SCALE_FACTOR).div(lotHigh)
     const buyAmtBidRSR1 = toMinBuyAmt(
       sellAmtRSR1,
-      fp('100'),
+      rsrPrice,
       fp('1200'),
       ORACLE_ERROR,
       config.maxTradeSlippage
@@ -1800,7 +1794,7 @@ describe(`Complex Basket - P${IMPLEMENTATION}`, () => {
     // Check trade
     trade = await getTrade(backingManager, rsr.address)
     auctionId = await trade.auctionId()
-    let [, , , auctionSellAmtRSR1, auctionBuyAmtRSR1] = await gnosis.auctions(auctionId)
+    const [, , , auctionSellAmtRSR1, auctionBuyAmtRSR1] = await gnosis.auctions(auctionId)
     expect(auctionSellAmtRSR1).to.equal(sellAmtRSR1)
     expect(auctionBuyAmtRSR1).to.be.closeTo(buyAmtBidRSR1, point5Pct(buyAmtBidRSR1))
 
