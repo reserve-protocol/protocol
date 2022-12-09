@@ -202,7 +202,8 @@ contract BackingManagerP1Fuzz is BackingManagerP1 {
             maxTradeSlippage: ITrading(address(this)).maxTradeSlippage()
         });
 
-        return RecollateralizationLibP1.basketRange(components, rules, components.reg.getRegistry());
+        return
+            RecollateralizationLibP1.basketRange(components, rules, components.reg.getRegistry());
     }
 
     function _msgSender() internal view virtual override returns (address) {

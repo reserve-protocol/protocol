@@ -541,14 +541,13 @@ contract ChaosOpsScenario {
         bool stale,
         bool value
     ) public {
-            IERC20 erc20 = main.someToken(seedID);
-            if (address(erc20) == address(main.rToken())) return; // can't set RToken staleness
-            IAssetRegistry reg = main.assetRegistry();
-            if (!reg.isRegistered(erc20)) return;
-            OracleErrorMock asset = OracleErrorMock(address(reg.toAsset(erc20)));
-            stale ? asset.setStalePrice(value) : asset.setPriceOutsideRange(value);
+        IERC20 erc20 = main.someToken(seedID);
+        if (address(erc20) == address(main.rToken())) return; // can't set RToken staleness
+        IAssetRegistry reg = main.assetRegistry();
+        if (!reg.isRegistered(erc20)) return;
+        OracleErrorMock asset = OracleErrorMock(address(reg.toAsset(erc20)));
+        stale ? asset.setStalePrice(value) : asset.setPriceOutsideRange(value);
     }
-
 
     function claimRewards(uint8 which) public {
         which %= 4;
