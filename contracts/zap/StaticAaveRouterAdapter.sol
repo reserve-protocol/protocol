@@ -4,22 +4,19 @@ pragma solidity 0.8.9;
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { IComptroller } from "./interfaces/IComptroller.sol";
-import { ICToken } from "./interfaces/ICToken.sol";
+import { IStaticAToken } from "./interfaces/IStaticAToken.sol";
 import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
-contract CompoundRouterAdapter is IRouterAdapter {
+contract StaticAaveRouterAdapter is IRouterAdapter {
     using SafeERC20 for IERC20;
 
-    mapping(address => bool) public isCompoundToken;
+    mapping(address => bool) public isStaticAaveToken;
     address[] public getSupportedToken;
 
-    constructor() {
-        IComptroller comptroller = IComptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-        address[] memory markets = comptroller.getAllMarkets();
-        for (uint256 i = 0; i < markets.length; i++) {
-            isCompoundToken[markets[i]] = true;
-            getSupportedToken.push(markets[i]);
+    constructor(address[] memory _supportedTokens) {
+        for (uint256 i = 0; i < _supportedTokens.length; i++) {
+            isStaticAaveToken[_supportedTokens[i]] = true;
+            getSupportedToken.push(_supportedTokens[i]);
         }
     }
 
@@ -28,11 +25,11 @@ contract CompoundRouterAdapter is IRouterAdapter {
     }
 
     function isAdapterToken(address _token) external view returns (bool) {
-        return isCompoundToken[_token];
+        return isStaticAaveToken[_token];
     }
 
     function getUnwrapToken(address _token) external view returns (address) {
-        return ICToken(_token).underlying();
+        return IStaticAToken(_token).ASSET();
     }
 
     function wrap(address _token, uint256 _amount) external returns (uint256 received) {
@@ -42,10 +39,7 @@ contract CompoundRouterAdapter is IRouterAdapter {
 
         IERC20(unwrapToken).safeApprove(_token, 0);
         IERC20(unwrapToken).safeApprove(_token, _amount);
-        require(ICToken(_token).mint(_amount) == 0, "!deposit");
-        received = IERC20(_token).balanceOf(address(this));
-
-        IERC20(_token).safeTransferFrom(address(this), msg.sender, received);
+        return IStaticAToken(_token).deposit(msg.sender, _amount, 0x0, true);
     }
 
     function unwrap(address _token, uint256 _amount)
@@ -58,9 +52,6 @@ contract CompoundRouterAdapter is IRouterAdapter {
         unwrapToken = this.getUnwrapToken(_token);
         IERC20(_token).safeApprove(_token, 0);
         IERC20(_token).safeApprove(_token, _amount);
-        require(ICToken(_token).redeem(_amount) == 0, "!redeem");
-        received = IERC20(unwrapToken).balanceOf(address(this));
-
-        IERC20(unwrapToken).safeTransfer(msg.sender, received);
+        (, received) = IStaticAToken(_token).withdraw(msg.sender, _amount, true);
     }
 }
