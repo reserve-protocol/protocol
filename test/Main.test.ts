@@ -1336,6 +1336,18 @@ describe(`MainP${IMPLEMENTATION} contract`, () => {
       ).to.be.revertedWith('contains duplicates')
     })
 
+    it.only('Should not allow to set prime Basket with 0 address tokens', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([ZERO_ADDRESS], [fp('1')])
+      ).to.be.revertedWith('address zero is not valid collateral')
+    })
+
+    it.only('Should not allow to set prime Basket with stRSR', async () => {
+      await expect(
+        basketHandler.connect(owner).setPrimeBasket([stRSR.address], [fp('1')])
+      ).to.be.revertedWith('stRSR is not valid collateral')
+    })
+
     it('Should not allow to set prime Basket with invalid target amounts', async () => {
       await expect(
         basketHandler.connect(owner).setPrimeBasket([token0.address], [MAX_TARGET_AMT.add(1)])
