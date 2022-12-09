@@ -284,5 +284,10 @@ describe('The Differential Testing scenario', () => {
       expect(await scenario.callStatic.echidna_distributorEqual()).to.be.true
       expect(await scenario.callStatic.echidna_brokerDisabledEqual()).to.be.true
     })
+    it('regression: claimRewards does not rupture sync after one block', async () => {
+      await helpers.mine(10, 120) // pass some time
+      await scenario.connect(alice).claimRewards(0)
+      expect(await scenario.callStatic.echidna_assetsEquivalent()).to.be.true
+    })
   })
 })
