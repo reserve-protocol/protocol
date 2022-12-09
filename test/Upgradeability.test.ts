@@ -399,12 +399,19 @@ describeP1(`Upgradeability - P${IMPLEMENTATION}`, () => {
   describe('Upgrades', () => {
     it('Should only allow OWNER to upgrade - Main', async () => {
       const MainV2Factory: ContractFactory = await ethers.getContractFactory('MainP1V2', notWallet)
-      await expect(upgrades.upgradeProxy(main.address, MainV2Factory)).revertedWith(`AccessControl: account ${notWallet.address.toLowerCase()} is missing role 0x4f574e4552000000000000000000000000000000000000000000000000000000`)
+      await expect(upgrades.upgradeProxy(main.address, MainV2Factory)).revertedWith(
+        `AccessControl: account ${notWallet.address.toLowerCase()} is missing role 0x4f574e4552000000000000000000000000000000000000000000000000000000`
+      )
     })
 
     it('Should only allow governance to upgrade - Component', async () => {
-      const AssetRegV2Factory: ContractFactory = await ethers.getContractFactory('AssetRegistryP1V2', notWallet)
-      await expect(upgrades.upgradeProxy(assetRegistry.address, AssetRegV2Factory)).revertedWith('governance only')
+      const AssetRegV2Factory: ContractFactory = await ethers.getContractFactory(
+        'AssetRegistryP1V2',
+        notWallet
+      )
+      await expect(upgrades.upgradeProxy(assetRegistry.address, AssetRegV2Factory)).revertedWith(
+        'governance only'
+      )
     })
 
     it('Should upgrade correctly - Main', async () => {
