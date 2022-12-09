@@ -1372,6 +1372,24 @@ describe('Collateral contracts', () => {
       )
     })
 
+    it('Should not allow invalid defaultThreshold', async () => {
+      await expect(
+        SelfRefCollateralFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: selfRefToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn(100),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          }
+        )
+      ).to.be.revertedWith('default threshold not supported')
+    })
+
     it('Should calculate prices correctly', async function () {
       // Check initial prices
       await expectPrice(selfReferentialCollateral.address, fp('1'), ORACLE_ERROR, true)
@@ -1518,6 +1536,26 @@ describe('Collateral contracts', () => {
           compoundMock.address
         )
       ).to.be.revertedWith('referenceERC20Decimals missing')
+    })
+
+    it('Should not allow invalid defaultThreshold', async () => {
+      await expect(
+        CTokenSelfReferentialFactory.deploy(
+          {
+            priceTimeout: PRICE_TIMEOUT,
+            chainlinkFeed: chainlinkFeed.address,
+            oracleError: ORACLE_ERROR,
+            erc20: cSelfRefToken.address,
+            maxTradeVolume: config.rTokenMaxTradeVolume,
+            oracleTimeout: ORACLE_TIMEOUT,
+            targetName: ethers.utils.formatBytes32String('ETH'),
+            defaultThreshold: bn(200),
+            delayUntilDefault: DELAY_UNTIL_DEFAULT,
+          },
+          0,
+          compoundMock.address
+        )
+      ).to.be.revertedWith('default threshold not supported')
     })
 
     it('Should setup collateral correctly', async function () {
