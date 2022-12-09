@@ -53,10 +53,12 @@ abstract contract RevenueHiding is Collateral {
     /// Refresh exchange rates and update default status.
     /// The Reserve protocol calls this at least once per transaction, before relying on
     /// this collateral's prices or default status.
-    function refresh() external override {
+    function refresh() external virtual override {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
+
+        _beforeRefreshing();
 
         uint192 _actualRefPerTok = actualRefPerTok();
 
@@ -79,6 +81,9 @@ abstract contract RevenueHiding is Collateral {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
+
+    /// @dev Allows any implementation to run custom code before and of the `refresh` logic happens
+    function _beforeRefreshing() internal virtual {}
 
     /// @dev Implement here the logic to check the peg status of the reference
     function checkReferencePeg() internal virtual;
