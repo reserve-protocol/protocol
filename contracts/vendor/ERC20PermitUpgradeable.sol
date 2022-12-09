@@ -49,6 +49,10 @@ abstract contract ERC20PermitUpgradeable is
     // solhint-disable-next-line var-name-mixedcase
     bytes32 private _PERMIT_TYPEHASH_DEPRECATED_SLOT;
 
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     /**
      * @dev Initializes the {EIP712} domain separator using the `name` parameter, and setting `version` to `"1"`.
      *
