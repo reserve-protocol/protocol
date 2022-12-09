@@ -45,11 +45,11 @@ Manages the state of the plugins CollateralStatus. There are three ways the coll
 recover before the timeout, an error with the USD/ETH oracle, an error with the cbETH/ETH oracle, or the cbETH/ETH
 oracle price falling below the threshold.
 
-In the case that refPerTok ever returns a value lower than the previously read value the plugin will immediately hard 
+In the case that refPerTok ever returns a value lower than the previously read value the plugin will immediately hard
 default and become disabled.
 
-Compared to similar plugins there is a gas optimisation to save ~94 gas during normal usage where the status result is 
-unchanged from SOUND. Instead of always overwriting the status and incurring a 100 gas fee for setting a slot to the 
+Compared to similar plugins there is a gas optimisation to save ~94 gas during normal usage where the status result is
+unchanged from SOUND. Instead of always overwriting the status and incurring a 100 gas fee for setting a slot to the
 same value, it compares first to see if it has changed, adding a DUP and EQ instead at a cost of ~6 gas.
 
 Slither reports two warnings in refresh. One has been kept as one it is the recommended pattern to use in the reserve
@@ -73,11 +73,14 @@ does need to claim rewards it will not revert.
 
 ## Tests
 
+The cbETH/ETH oracle was added after the block usually used by reserve protocol fork tests. Because of that these tests
+are designed to run against MAINNET_BLOCK=16135362. To solve this the before step resets the hardhat network to fork at
+that block, and the after step sets it back to default for the next tests.
+
 Integration tests for the cbETH collateral plugin have been implemented following the template provided by the
 CTokenFiatCollater test, they can be found at test/integration/individual-collateral/CBETHCollateral.test.ts. A
-dedicated
-script has been added in package.json to only run the tests added for this plugin, it can be run with "yarn test:
-cbeth"
+dedicated script has been added in package.json to only run the tests added for this plugin, it can be run with "yarn
+test:cbeth"
 
 These tests avoid using cbETH mocks to ensure realistic behaviour of the cbETH token and use the real addresses of
 cbETH contracts on ethereum. refPerTok is manipulated by impersonating the coinbase oracle and updating the
@@ -95,19 +98,19 @@ The following snippet demonstrates deploying this plugin with from an ethers scr
 ```typescript
 // Deploy CBETH collateral plugin
 cbethCollateralFactory = await ethers.getContractFactory('CBETHCollateral', {
-  libraries: { OracleLib: oracleLib.address },
+    libraries: {OracleLib: oracleLib.address},
 })
 cbethCollateral = <CBETHCollateral>(
-  await cbethCollateralFactory.deploy(
-    fp('1'),
-    networkConfig[chainId].chainlinkFeeds.ETH as string,
-    networkConfig[chainId].chainlinkFeeds.CBETH as string,
-    cbeth.address,
-    config.rTokenMaxTradeVolume,
-    ORACLE_TIMEOUT,
-    ethers.utils.formatBytes32String('ETH'),
-    defaultRelativeThreshold,
-    delayUntilDefault
-  )
+    await cbethCollateralFactory.deploy(
+        fp('1'),
+        networkConfig[chainId].chainlinkFeeds.ETH as string,
+        networkConfig[chainId].chainlinkFeeds.CBETH as string,
+        cbeth.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('ETH'),
+        defaultRelativeThreshold,
+        delayUntilDefault
+    )
 )
 ```

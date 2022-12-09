@@ -3,8 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-/// External Interface for RETH
-// See: https://github.com/rocket-pool/rocketpool/blob/master/contracts/interface/token/RocketTokenRETHInterface.sol
+/// External Interface for cbETH
 interface Icbeth is IERC20 {
     function updateExchangeRate(uint256 newExchangeRate) external;
 
