@@ -79,7 +79,6 @@ const testTokens: TestTokenParams[] = [
 ]
 
 const staticAaveBasket = '0xAf48c99b3b4E47286dac9E53E091b70536CB4373'
-const stabilizedBtc = '0xD14B53b114064159184e7Da58a50bFb25a56a28E';
 
 const testBaskets = [
   // Aave Token
