@@ -257,4 +257,4 @@ Mainnet addresses for chainlink added in [config file](../../../../common/config
 3) Create Rtoken with UniV2Collateral
 4) As UniV2 holder approve Rtoken adddress to transfer your LP tokens (ERC20).
 5) test
-6) Follow [deployment](../../../docs/deployment.md).
+6) Follow [deployment](../../../../docs/deployment.md).
