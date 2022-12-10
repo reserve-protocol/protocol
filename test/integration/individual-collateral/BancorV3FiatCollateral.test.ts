@@ -13,12 +13,12 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '../../../common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '../../../common/constants'
+import { CollateralStatus,MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
 import { expectEvents,expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { setOraclePrice } from '../../utils/oracles'
-import { advanceBlocks, advanceTime, getLatestBlockNumber} from '../../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp} from '../../utils/time'
 import {
   Asset,
   ERC20Mock,
@@ -37,9 +37,12 @@ import {
   BancorV3FiatCollateral,
   IBnTokenERC20,
   IStandardRewards,
+  InvalidMockV3Aggregator,
   IAutoCompoundingRewards,
   IBancorTradingProxy,
+  ERC20,
 } from '../../../typechain'
+import { BnTokenMock } from '@typechain/BnTokenMock'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -55,6 +58,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let addr1: SignerWithAddress
 
   // Tokens/Assets
+  let dai: ERC20Mock
   let bnDAI: ERC20Mock
   let BancorV3Collateral: BancorV3FiatCollateral
   let bancorProxy: IBnTokenERC20
@@ -131,7 +135,11 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    bnDAI = <ERC20Mock>(
+    dai = <ERC20Mock>(
+      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
+    )
+
+    bnDAI = <BnTokenMock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnDAI || '')
     )
 
@@ -419,7 +427,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await advanceTime(2000)
       await advanceBlocks(2000)
 
-      // Refresh cToken manually (required)
+      // Refresh BnToken manually (required)
       await BancorV3Collateral.refresh()
       expect(await BancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
       
@@ -451,7 +459,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await advanceTime(100000)
       await advanceBlocks(100000)
 
-      // Refresh cToken manually (required)
+      // Refresh BnToken manually (required)
       await BancorV3Collateral.refresh()
       expect(await BancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -628,5 +636,143 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     })
   })
 
-  
+  describe('Collateral Status', () => {
+    // Test for soft default
+    it('Updates status in case of soft default', async () => {
+      // Redeploy plugin using a Chainlink mock feed where we can change the price
+      const newBnDAICollateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>await (
+        await ethers.getContractFactory('BancorV3FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('0.02'),
+        mockChainlinkFeed.address,
+        await BancorV3Collateral.erc20(),
+        await BancorV3Collateral.maxTradeVolume(),
+        await BancorV3Collateral.oracleTimeout(),
+        await BancorV3Collateral.targetName(),
+        await BancorV3Collateral.defaultThreshold(),
+        await BancorV3Collateral.delayUntilDefault(),
+        bancorProxy.address,
+        rewardsProxy.address,
+        autoProcessRewardsProxy.address
+      )
+
+      // Check initial state
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newBnDAICollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Depeg one of the underlying tokens - Reducing price 20%
+      await setOraclePrice(newBnDAICollateral.address, bn('8e7')) // -20%
+
+      // Force updates - Should update whenDefault and status
+      await expect(newBnDAICollateral.refresh())
+        .to.emit(newBnDAICollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+        delayUntilDefault
+      )
+      expect(await newBnDAICollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(delayUntilDefault))
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Nothing changes if attempt to refresh after default
+      // BnToken
+      const prevWhenDefault: BigNumber = await newBnDAICollateral.whenDefault()
+      await expect(newBnDAICollateral.refresh()).to.not.emit(
+        newBnDAICollateral,
+        'DefaultStatusChanged'
+      )
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newBnDAICollateral.whenDefault()).to.equal(prevWhenDefault)
+    })
+
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a BnToken mock to be able to change the rate
+      const BnTokenMockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
+      const symbol = await bnDAI.symbol()
+      const bnDaiMock: BnTokenMock = <BnTokenMock>(
+        await BnTokenMockFactory.deploy(symbol + ' Token', dai.address)
+      )
+      // Set initial exchange rate to the new cDai Mock
+      await bnDaiMock.setExchangeRate(fp('0.02'))
+
+      // Redeploy plugin using the new cDai mock
+      const newBnDAICollateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>await (
+        await ethers.getContractFactory('BancorV3FiatCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('0.02'),
+        mockChainlinkFeed.address,
+        bnDaiMock.address,
+        await BancorV3Collateral.maxTradeVolume(),
+        await BancorV3Collateral.oracleTimeout(),
+        await BancorV3Collateral.targetName(),
+        await BancorV3Collateral.defaultThreshold(),
+        await BancorV3Collateral.delayUntilDefault(),
+        bancorProxy.address,
+        rewardsProxy.address,
+        autoProcessRewardsProxy.address
+      )
+
+      
+
+      // Check initial state
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newBnDAICollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for cDAI, will disable collateral immediately
+      await bnDaiMock.setExchangeRate(fp('0.019'))
+
+      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      await expect(newBnDAICollateral.refresh())
+        .to.emit(newBnDAICollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newBnDAICollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
+    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidBnTokenCollateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>(
+        await BancorV3CollateralFactory.deploy(
+          fp('0.02'),
+          mockChainlinkFeed.address,
+          invalidChainlinkFeed.address,
+          await BancorV3Collateral.maxTradeVolume(),
+          await BancorV3Collateral.oracleTimeout(),
+          await BancorV3Collateral.targetName(),
+          await BancorV3Collateral.defaultThreshold(),
+          await BancorV3Collateral.delayUntilDefault(),
+          bancorProxy.address,
+          rewardsProxy.address,
+          autoProcessRewardsProxy.address
+        )
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidBnTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidBnTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidBnTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidBnTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+  })
 })
