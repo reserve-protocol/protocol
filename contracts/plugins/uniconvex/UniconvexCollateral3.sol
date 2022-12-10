@@ -50,6 +50,7 @@ contract UniconvexCollateral3 is Collateral {
         ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
     IBooster public immutable convexBooster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     IBaseRewardPool baseRewardPool;
+    address public immutable curveToken; 
 
     function getConvexTokenFromPoolId(uint256 i) private view returns (address token) {
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(i);
@@ -78,6 +79,7 @@ contract UniconvexCollateral3 is Collateral {
         chainlinkFeeds = chainlinkFeeds_;
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
         baseRewardPool = IBaseRewardPool(poolInfo.crvRewards);
+        curveToken = poolInfo.lptoken; 
         curvePool = ICurveCryptoPool3Assets(curveRegistry.get_pool_from_lp_token(poolInfo.lptoken));
         require(address(baseRewardPool) != address(0), "missing baseRewardPool");
         require(address(curvePool) != address(0), "missing curvePool");
@@ -116,12 +118,16 @@ contract UniconvexCollateral3 is Collateral {
         uint256 priceScaled;
         for (uint256 i = 0; i < N_COINS; i++) {
             uint192 oraclePrice = chainlinkFeeds[i].price(oracleTimeout);
-            uint256 decimals = IERC20Metadata(curvePool.token()).decimals();
-            uint256 underlyingAssetPriceScaled_ = (10 ** decimals *
+            console.log("oraclePrice", oraclePrice);
+            uint256 decimals = IERC20Metadata(curveToken).decimals();
+            console.log("decimals", decimals);
+            uint256 underlyingAssetPriceScaled = (10 ** decimals *
                 (oraclePrice * this.balances(i))) / 10 ** IERC20Metadata(this.coins(i)).decimals();
-            priceScaled += underlyingAssetPriceScaled_;
+            console.log("underlyingAssetPriceScaled_", underlyingAssetPriceScaled);
+            priceScaled += underlyingAssetPriceScaled;
         }
-        return uint192(priceScaled / IERC20(curvePool.token()).totalSupply());
+        console.log("totalSupply", IERC20(curveToken).totalSupply());
+        return uint192(priceScaled / IERC20(curveToken).totalSupply());
     }
     
     function strictPrice() external view returns (uint192) {

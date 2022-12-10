@@ -61,21 +61,21 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             await loadFixture(defaultFixture)
 
             const tokens = networkConfig[chainId].tokens
-
             ;[weth, wbtc, dai, usdt, usdc] = await Promise.all(
                 [tokens.WETH!, tokens.WBTC!, tokens.DAI!, tokens.USDT!, tokens.USDC!].map(
                     async (address) => await ethers.getContractAt("ERC20Mock", address)
                 )
             )
 
+            const holders: [ERC20Mock, string][] = [
+                [weth, holderWETH],
+                [wbtc, holderWBTC],
+                [dai, holderDAI],
+                [usdt, holderUSDT],
+                [usdc, holderUSDC],
+            ]
             await Promise.all(
-                [
-                    [weth, holderWETH],
-                    [wbtc, holderWBTC],
-                    [dai, holderDAI],
-                    [usdt, holderUSDT],
-                    [usdc, holderUSDC],
-                ].map(async ([asset, holder]) => {
+                holders.map(async ([asset, holder]) => {
                     await whileImpersonating(holder, async (signer) => {
                         const decimals = await asset.decimals()
                         const p = (value: BigNumberish) => pow10(decimals).mul(value)
@@ -160,230 +160,221 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             }
         })
 
-        // https://curve.readthedocs.io/ref-addresses.html
+        for (const poolName of ["StableSwap3", "TriCrypto"]) {
+            it(`Convex Collateral can be deployed with curve ${poolName}`, async () => {
+                // TODO: need we always raising on mint invariant?
+                // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
 
-        // Pool for USDT/BTC/ETH or similar
-        // USD-like asset should be first, ETH should be last
-        //https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
-        const TriCryptoPool = "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5"
-        const TriCryptoCurveTokenV4 = "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF"
-        const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
+                // Zap depositor can be used to wrap tokens
+                // Deployer would use custom oracle feeds for wrapped tokens
+                // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
+                const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
 
-        //StableSwap3Pool for DAI, USDC, and USDT
-        // const stableSwap3Pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-        // const stableSwap3CurveTokenV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-
-        // TODO: need we zap depositor?
-        // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
-        // TODO: need we always raising on mint invariant?
-        // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
-
-        it("Convex Collateral can be deployed", async () => {
-            // const asset0 = dai
-            // const asset1 = usdc
-            // const asset2 = usdt
-
-            const asset0 = usdt
-            const asset1 = wbtc
-            const asset2 = weth
-
-            // token not always public or implemented
-            // const lpTokenAddress = await stableSwap3Pool.token();
-            // const lpTokenAddress = stableSwap3CurveTokenV2
-            // const curvePollAddress = stableSwap3Pool;
-            const lpTokenAddress = TriCryptoCurveTokenV4
-            const curvePollAddress = TriCryptoPool
-
-            const decimals0 = await asset0.decimals()
-            const decimals1 = await asset1.decimals()
-            const decimals2 = await asset2.decimals()
-
-            const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
-            const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
-            const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
-
-            //curve view
-
-            const curvePool3Assets: ICurvePool3Assets = await ethers.getContractAt(
-                "ICurvePool3Assets",
-                curvePollAddress
-            )
-
-            const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
-
-            await waitForTx(await asset0.connect(addr1).approve(curvePool3Assets.address, p0(100)))
-            await waitForTx(await asset1.connect(addr1).approve(curvePool3Assets.address, p1(100)))
-            await waitForTx(await asset2.connect(addr1).approve(curvePool3Assets.address, p2(100)))
-
-            const receipt = await waitForTx(
-                await curvePool3Assets.connect(addr1).add_liquidity(
-                    [p0(100).div(1000), p1(100).div(1000), p2(100).div(1000)],
-                    0 //min_mint_amount
-                )
-            )
-
-            await logBalances(
-                "after minting Curve LP",
-                [owner, addr1],
-                [asset0, asset1, asset2, lpToken]
-            )
-
-            const liquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
-            console.log({ liquidity })
-
-            const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
-            const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
-            const balance2before = await asset2.connect(addr1).balanceOf(addr1.address)
-
-            const receipt2 = await waitForTx(
-                await curvePool3Assets.connect(addr1).remove_liquidity(
-                    liquidity,
-                    [0, 0, 0] //min_mint_amount
-                )
-            )
-
-            const balance0after = await asset0.connect(addr1).balanceOf(addr1.address)
-            const balance1after = await asset1.connect(addr1).balanceOf(addr1.address)
-            const balance2after = await asset2.connect(addr1).balanceOf(addr1.address)
-                    
-            console.log(balance0after - balance0before);
-            console.log(balance1after - balance1before);
-            console.log(balance2after - balance2before);
-
-            console.log({ liquidity })
-
-            await logBalances(
-                "after burning Curve LP",
-                [owner, addr1],
-                [asset0, asset1, asset2, lpToken]
-            )
-
-            // convex view
-            // https://docs.convexfinance.com/convexfinance/faq/contract-addresses
-            const boosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
-            const booster: IBooster = <IBooster>(
-                await ethers.getContractAt("IBooster", boosterAddress)
-            )
-
-            // just to investigate api
-            // on deploy need to use constant address
-            const poolLenght = await booster.connect(owner).poolLength()
-            const allPools = []
-            const matchedPools = []
-            for (let index = 0; index < poolLenght.toNumber(); index++) {
-                const poolInfo = await booster.poolInfo(index)
-                allPools.push({ index, poolInfo })
-                if (poolInfo.lptoken == lpTokenAddress) {
-                    matchedPools.push({ index, poolInfo })
-                    console.log(matchedPools)
+                // https://curve.readthedocs.io/ref-addresses.html
+                const pools = {
+                    // https://github.com/curvefi/curve-contract/blob/master/contracts/pools/3pool/StableSwap3Pool.vy
+                    // StableSwap3Pool for DAI, USDC, and USDT
+                    StableSwap3: {
+                        asset0: dai,
+                        asset1: usdc,
+                        asset2: usdt,
+                        // CurveTokenV2
+                        lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
+                        curvePoolAddress: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
+                        feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
+                    },
+                    // Pool for USDT/BTC/ETH or similar
+                    // USD-like asset should be first, ETH should be last
+                    //https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
+                    TriCrypto: {
+                        asset0: usdt,
+                        asset1: wbtc,
+                        asset2: weth,
+                        // CurveTokenV4
+                        lpTokenAddress: "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF",
+                        curvePoolAddress: "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5",
+                        feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
+                    },
                 }
-            }
 
-            const lpTokenBalance1 = await lpToken.connect(addr1).balanceOf(addr1.address)
+                const { asset0, asset1, asset2, lpTokenAddress, curvePoolAddress, feedPrices } =
+                    pools[poolName]
 
-            await waitForTx(await lpToken.connect(addr1).approve(booster.address, lpTokenBalance1))
+                const decimals0 = await asset0.decimals()
+                const decimals1 = await asset1.decimals()
+                const decimals2 = await asset2.decimals()
 
-            await waitForTx(
-                await booster.connect(addr1).depositAll(
-                    matchedPools[0].index,
-                    false //don't stake on deposit
-                )
-            )
+                const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+                const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+                const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
 
-            const convexLpTokenAddress = matchedPools[0].poolInfo.token
+                //curve view
 
-            const convexLpToken = await ethers.getContractAt("ERC20Mock", convexLpTokenAddress)
-
-            await logBalances(
-                "after minting Convex LP",
-                [addr1],
-                [asset0, asset1, asset2, lpToken, convexLpToken]
-            )
-
-            const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
-            const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
-            const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
-
-            const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
-            // const mockChainlinkFeed0 = await MockV3AggregatorFactory.connect(addr1).deploy(
-            //     8,
-            //     bn("1e8")
-            // )
-
-            // const mockChainlinkFeed1 = await MockV3AggregatorFactory.connect(addr1).deploy(
-            //     8,
-            //     bn("1e8")
-            // )
-
-            // const mockChainlinkFeed2 = await MockV3AggregatorFactory.connect(addr1).deploy(
-            //     8,
-            //     bn("1e8")
-            // )
-
-            const mockChainlinkFeed0 = await MockV3AggregatorFactory.connect(addr1).deploy(
-                8,
-                bn("1e8")
-            )
-
-            const mockChainlinkFeed1 = await MockV3AggregatorFactory.connect(addr1).deploy(
-                8,
-                bn("17000e8")
-            )
-
-            const mockChainlinkFeed2 = await MockV3AggregatorFactory.connect(addr1).deploy(
-                8,
-                bn("1300e8")
-            )
-
-            const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
-                "UniconvexCollateral3"
-            )
-
-            const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String(`CONVEXLP`)
-            const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
-                .connect(addr1)
-                .deploy(
-                    matchedPools[0].index,
-                    fallbackPrice,
-                    [
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
-                        mockChainlinkFeed2.address,
-                    ],
-                    RTOKEN_MAX_TRADE_VALUE,
-                    ORACLE_TIMEOUT,
-                    targetName,
-                    DELAY_UNTIL_DEFAULT
+                const curvePool3Assets: ICurvePool3Assets = await ethers.getContractAt(
+                    "ICurvePool3Assets",
+                    curvePoolAddress
                 )
 
-            expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
-            expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
-            expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
-            expect(await uniconvexCollateral3.targetName()).to.equal(targetName)
-            expect(await uniconvexCollateral3.status()).to.equal(CollateralStatus.SOUND)
-            expect(await uniconvexCollateral3.whenDefault()).to.equal(MAX_UINT256)
-            //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-            expect(await uniconvexCollateral3.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-            expect(await uniconvexCollateral3.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-            expect(await uniconvexCollateral3.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+                const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
 
-            // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
-            // const {reserve0, reserve1} = await pair.getReserves()
-            // const totalSupply = await pair.totalSupply()
-            // const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
-            // expect(await uniconvexCollateral.refPerTok()).to.equal(expectedRefPerTok)
+                await waitForTx(
+                    await asset0.connect(addr1).approve(curvePool3Assets.address, p0(100))
+                )
+                await waitForTx(
+                    await asset1.connect(addr1).approve(curvePool3Assets.address, p1(100))
+                )
+                await waitForTx(
+                    await asset2.connect(addr1).approve(curvePool3Assets.address, p2(100))
+                )
 
-            // expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
-            // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
-            //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-            //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
-            expect(await uniconvexCollateral3.strictPrice()).to.equal(fp("1"))
-            //TODO
-            //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
-            //   await adjustedAmout(uniconvexWrapper, 100)
-            // )
-        })
+                const receipt = await waitForTx(
+                    await curvePool3Assets.connect(addr1).add_liquidity(
+                        [p0(100).div(1000), p1(100).div(1000), p2(100).div(1000)],
+                        0 //min_mint_amount
+                    )
+                )
+
+                await logBalances(
+                    "after minting Curve LP",
+                    [owner, addr1],
+                    [asset0, asset1, asset2, lpToken]
+                )
+
+                const liquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
+                console.log({ liquidity })
+
+                const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
+                const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
+                const balance2before = await asset2.connect(addr1).balanceOf(addr1.address)
+
+                const receipt2 = await waitForTx(
+                    await curvePool3Assets.connect(addr1).remove_liquidity(
+                        liquidity,
+                        [0, 0, 0] //min_mint_amount
+                    )
+                )
+
+                const balance0after = await asset0.connect(addr1).balanceOf(addr1.address)
+                const balance1after = await asset1.connect(addr1).balanceOf(addr1.address)
+                const balance2after = await asset2.connect(addr1).balanceOf(addr1.address)
+
+                console.log(balance0after.sub(balance0before))
+                console.log(balance1after.sub(balance1before))
+                console.log(balance2after.sub(balance2before))
+
+                console.log({ liquidity })
+
+                await logBalances(
+                    "after burning Curve LP",
+                    [owner, addr1],
+                    [asset0, asset1, asset2, lpToken]
+                )
+
+                // convex view
+                // https://docs.convexfinance.com/convexfinance/faq/contract-addresses
+                const boosterAddress = "0xF403C135812408BFbE8713b5A23a04b3D48AAE31"
+                const booster: IBooster = <IBooster>(
+                    await ethers.getContractAt("IBooster", boosterAddress)
+                )
+
+                // on deploy better to use constant address
+                const poolLenght = await booster.connect(owner).poolLength()
+                const allPools = []
+                const matchedPools = []
+                for (let index = 0; index < poolLenght.toNumber(); index++) {
+                    const poolInfo = await booster.poolInfo(index)
+                    allPools.push({ index, poolInfo })
+                    if (poolInfo.lptoken == lpTokenAddress) {
+                        matchedPools.push({ index, poolInfo })
+                        console.log(matchedPools)
+                    }
+                }
+
+                const lpTokenBalance1 = await lpToken.connect(addr1).balanceOf(addr1.address)
+
+                await waitForTx(
+                    await lpToken.connect(addr1).approve(booster.address, lpTokenBalance1)
+                )
+
+                await waitForTx(
+                    await booster.connect(addr1).depositAll(
+                        matchedPools[0].index,
+                        false //don't stake on deposit
+                    )
+                )
+
+                const convexLpTokenAddress = matchedPools[0].poolInfo.token
+
+                const convexLpToken = await ethers.getContractAt("ERC20Mock", convexLpTokenAddress)
+
+                await logBalances(
+                    "after minting Convex LP",
+                    [addr1],
+                    [asset0, asset1, asset2, lpToken, convexLpToken]
+                )
+
+                const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
+                const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
+                const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
+
+                const mockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
+
+                const mockChainlinkFeeds = await Promise.all(
+                    feedPrices.map(async (feedPrice) => {
+                        return await mockV3AggregatorFactory.connect(addr1).deploy(8, feedPrice)
+                    })
+                )
+
+                const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
+                    "UniconvexCollateral3"
+                )
+
+                const fallbackPrice = fp("1")
+                const targetName = ethers.utils.formatBytes32String(`CONVEXLP`)
+                const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
+                    .connect(addr1)
+                    .deploy(
+                        matchedPools[0].index,
+                        fallbackPrice,
+                        [
+                            mockChainlinkFeeds[0].address,
+                            mockChainlinkFeeds[1].address,
+                            mockChainlinkFeeds[2].address,
+                        ],
+                        RTOKEN_MAX_TRADE_VALUE,
+                        ORACLE_TIMEOUT,
+                        targetName,
+                        DELAY_UNTIL_DEFAULT
+                    )
+
+                expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
+                expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
+                expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
+                expect(await uniconvexCollateral3.targetName()).to.equal(targetName)
+                expect(await uniconvexCollateral3.status()).to.equal(CollateralStatus.SOUND)
+                expect(await uniconvexCollateral3.whenDefault()).to.equal(MAX_UINT256)
+                //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+                expect(await uniconvexCollateral3.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+                expect(await uniconvexCollateral3.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+                expect(await uniconvexCollateral3.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+
+                // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
+                // const {reserve0, reserve1} = await pair.getReserves()
+                // const totalSupply = await pair.totalSupply()
+                // const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
+                // expect(await uniconvexCollateral.refPerTok()).to.equal(expectedRefPerTok)
+
+                // expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
+                // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
+                //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
+                //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
+                expect(await uniconvexCollateral3.strictPrice()).to.equal(fp("1"))
+                //TODO
+                //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
+                // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
+                //   await adjustedAmout(uniconvexWrapper, 100)
+                // )
+            })
+        }
     })
 })
