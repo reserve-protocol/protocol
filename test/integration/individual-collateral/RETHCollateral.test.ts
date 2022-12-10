@@ -1,5 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
-import { expect } from 'chai'
+import chai, { expect } from 'chai'
+import { FakeContract, smock } from '@defi-wonderland/smock';
+
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
@@ -38,8 +40,12 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
+  IRETH__factory,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
+
+chai.should();
+chai.use(smock.matchers);
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -47,6 +53,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 const holderRETH = '0xEADB3840596cabF312F2bC88A4Bb0b93A4E1FF5F'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
+
+const RocketNetworkBalancesABI = [{"inputs":[{"internalType":"contract RocketStorageInterface","name":"_rocketStorageAddress","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":false,"internalType":"uint256","name":"block","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalEth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"stakingEth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"rethSupply","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"time","type":"uint256"}],"name":"BalancesSubmitted","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"internalType":"uint256","name":"block","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"totalEth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"stakingEth","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"rethSupply","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"time","type":"uint256"}],"name":"BalancesUpdated","type":"event"},{"inputs":[{"internalType":"uint256","name":"_block","type":"uint256"},{"internalType":"uint256","name":"_totalEth","type":"uint256"},{"internalType":"uint256","name":"_stakingEth","type":"uint256"},{"internalType":"uint256","name":"_rethSupply","type":"uint256"}],"name":"executeUpdateBalances","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"getBalancesBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getETHUtilizationRate","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getLatestReportableBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getStakingETHBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTotalETHBalance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"getTotalRETHSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"_block","type":"uint256"},{"internalType":"uint256","name":"_totalEth","type":"uint256"},{"internalType":"uint256","name":"_stakingEth","type":"uint256"},{"internalType":"uint256","name":"_rethSupply","type":"uint256"}],"name":"submitBalances","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"version","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}]
 
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
@@ -302,6 +310,12 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
+      // We mock rocketNetworkBalances to simulate balances update
+      // by the OracleDAO memebers.
+      let rocketNetworkBalancesFake = await smock.fake(RocketNetworkBalancesABI, {address: "0x138313f102cE9a0662F826fCA977E3ab4D6e5539"});
+      rocketNetworkBalancesFake.getTotalRETHSupply.returns(fp(1));
+      rocketNetworkBalancesFake.getTotalETHBalance.returns(fp('1.03'));
+
       // Provide approvals for issuances
       await reth.connect(addr1).approve(rToken.address, issueAmount)
 
@@ -330,6 +344,8 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(10000)
       await advanceBlocks(10000)
+      // RocketPools ETH supply increases with time.
+      rocketNetworkBalancesFake.getTotalETHBalance.returns(fp('1.035'));
 
       // Refresh cToken manually (required)
       await rethCollateral.refresh()
@@ -356,6 +372,8 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       // Advance time and blocks slightly, causing refPerTok() to increase
       await advanceTime(100000000)
       await advanceBlocks(100000000)
+      // RocketPools ETH supply increases with time.
+      rocketNetworkBalancesFake.getTotalETHBalance.returns(fp('1.040'));
 
       // Refresh rethCollateral manually (required)
       await rethCollateral.refresh()
@@ -390,15 +408,15 @@ describeFork(`RETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       const newBalanceAddr1cDai: BigNumber = await reth.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1cDai.sub(balanceAddr1cDai)).to.be.closeTo(issueAmount, bn('4800e18')) // ~0.03294 * 303571 ~= 10K (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await reth.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await reth.balanceOf(backingManager.address)).to.be.closeTo(bn('50e18'), bn('46e18')) // ~= 46.6 in rETH
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('4962.8'), // ~= 4962.8 usd (from above)
-        fp('0.5')
+        fp('100000'),
+        fp('10000')
       )
     })
   })

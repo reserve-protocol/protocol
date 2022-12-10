@@ -414,6 +414,29 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@defi-wonderland/smock@npm:^2.3.4":
+  version: 2.3.4
+  resolution: "@defi-wonderland/smock@npm:2.3.4"
+  dependencies:
+    "@nomicfoundation/ethereumjs-evm": ^1.0.0-rc.3
+    "@nomicfoundation/ethereumjs-util": ^8.0.0-rc.3
+    "@nomicfoundation/ethereumjs-vm": ^6.0.0-rc.3
+    diff: ^5.0.0
+    lodash.isequal: ^4.5.0
+    lodash.isequalwith: ^4.4.0
+    rxjs: ^7.2.0
+    semver: ^7.3.5
+  peerDependencies:
+    "@ethersproject/abi": ^5
+    "@ethersproject/abstract-provider": ^5
+    "@ethersproject/abstract-signer": ^5
+    "@nomiclabs/hardhat-ethers": ^2
+    ethers: ^5
+    hardhat: ^2
+  checksum: 316026d672364a02c5d83c15110b2d5df4358768a6f645e9fd0786fbb230c0c7983a39b928521ee7d0b917a478e07c454b7d7bdf22ff10ed140f520340c28267
+  languageName: node
+  linkType: hard
+
 "@ensdomains/ens@npm:^0.4.4":
   version: 0.4.5
   resolution: "@ensdomains/ens@npm:0.4.5"
@@ -1452,7 +1475,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-evm@npm:^1.0.0":
+"@nomicfoundation/ethereumjs-evm@npm:^1.0.0, @nomicfoundation/ethereumjs-evm@npm:^1.0.0-rc.3":
   version: 1.0.0
   resolution: "@nomicfoundation/ethereumjs-evm@npm:1.0.0"
   dependencies:
@@ -1516,7 +1539,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-util@npm:^8.0.0":
+"@nomicfoundation/ethereumjs-util@npm:^8.0.0, @nomicfoundation/ethereumjs-util@npm:^8.0.0-rc.3":
   version: 8.0.0
   resolution: "@nomicfoundation/ethereumjs-util@npm:8.0.0"
   dependencies:
@@ -1526,7 +1549,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/ethereumjs-vm@npm:^6.0.0":
+"@nomicfoundation/ethereumjs-vm@npm:^6.0.0, @nomicfoundation/ethereumjs-vm@npm:^6.0.0-rc.3":
   version: 6.0.0
   resolution: "@nomicfoundation/ethereumjs-vm@npm:6.0.0"
   dependencies:
@@ -5458,6 +5481,13 @@ __metadata:
   version: 4.0.2
   resolution: "diff@npm:4.0.2"
   checksum: f2c09b0ce4e6b301c221addd83bf3f454c0bc00caa3dd837cf6c127d6edf7223aa2bbe3b688feea110b7f262adbfc845b757c44c8a9f8c0c5b15d8fa9ce9d20d
+  languageName: node
+  linkType: hard
+
+"diff@npm:^5.0.0":
+  version: 5.1.0
+  resolution: "diff@npm:5.1.0"
+  checksum: c7bf0df7c9bfbe1cf8a678fd1b2137c4fb11be117a67bc18a0e03ae75105e8533dbfb1cda6b46beb3586ef5aed22143ef9d70713977d5fb1f9114e21455fba90
   languageName: node
   linkType: hard
 
@@ -9887,6 +9917,20 @@ fsevents@~2.1.1:
   languageName: node
   linkType: hard
 
+"lodash.isequal@npm:^4.5.0":
+  version: 4.5.0
+  resolution: "lodash.isequal@npm:4.5.0"
+  checksum: da27515dc5230eb1140ba65ff8de3613649620e8656b19a6270afe4866b7bd461d9ba2ac8a48dcc57f7adac4ee80e1de9f965d89d4d81a0ad52bb3eec2609644
+  languageName: node
+  linkType: hard
+
+"lodash.isequalwith@npm:^4.4.0":
+  version: 4.4.0
+  resolution: "lodash.isequalwith@npm:4.4.0"
+  checksum: 428ba7a57c47ec05e2dd18c03a4b4c45dac524a46af7ce3f412594bfc7be6a5acaa51acf9ea113d0002598e9aafc6e19ee8d20bc28363145fcb4d21808c9039f
+  languageName: node
+  linkType: hard
+
 "lodash.merge@npm:^4.6.2":
   version: 4.6.2
   resolution: "lodash.merge@npm:4.6.2"
@@ -12397,6 +12441,7 @@ fsevents@~2.1.1:
   dependencies:
     "@aave/protocol-v2": ^1.0.1
     "@chainlink/contracts": ^0.4.1
+    "@defi-wonderland/smock": ^2.3.4
     "@nomicfoundation/hardhat-chai-matchers": ^1.0.3
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-etherscan": ^3.1.0
@@ -12678,6 +12723,15 @@ resolve@1.17.0:
   dependencies:
     tslib: ^1.9.0
   checksum: bc334edef1bb8bbf56590b0b25734ba0deaf8825b703256a93714308ea36dff8a11d25533671adf8e104e5e8f256aa6fdfe39b2e248cdbd7a5f90c260acbbd1b
+  languageName: node
+  linkType: hard
+
+"rxjs@npm:^7.2.0":
+  version: 7.6.0
+  resolution: "rxjs@npm:7.6.0"
+  dependencies:
+    tslib: ^2.1.0
+  checksum: b3abbbfe1ddfd06fca9314b83cbd13bcddc3320429218136f75c79a4802ac430dd13873364aac1ded54fd457f8c77df332d205a92d8a1c61656565bb718c50af
   languageName: node
   linkType: hard
 
@@ -14167,6 +14221,13 @@ resolve@1.17.0:
   version: 1.14.1
   resolution: "tslib@npm:1.14.1"
   checksum: dbe628ef87f66691d5d2959b3e41b9ca0045c3ee3c7c7b906cc1e328b39f199bb1ad9e671c39025bd56122ac57dfbf7385a94843b1cc07c60a4db74795829acd
+  languageName: node
+  linkType: hard
+
+"tslib@npm:^2.1.0":
+  version: 2.4.1
+  resolution: "tslib@npm:2.4.1"
+  checksum: 19480d6e0313292bd6505d4efe096a6b31c70e21cf08b5febf4da62e95c265c8f571f7b36fcc3d1a17e068032f59c269fab3459d6cd3ed6949eafecf64315fca
   languageName: node
   linkType: hard
 
