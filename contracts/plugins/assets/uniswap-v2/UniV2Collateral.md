@@ -1,5 +1,5 @@
 
-# UniV2Collateral Plugin (for non fiat LP)
+# UniV2Collateral Plugin (for fiat LP)
 
 ## Files
 _Plugin contracts_
