@@ -458,6 +458,9 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 p0(100),
                 p1(100)
             )
+            const balance0Before = await asset0.balanceOf(addr1.address)
+            const balance1Before = await asset1.balanceOf(addr1.address)
+
             const uniswapV3WrapperMock: UniswapV3WrapperMock = await deployUniswapV3WrapperMock(
                 asset0,
                 asset1,
@@ -465,8 +468,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 mintParams,
                 addr1
             )
-            const amount0SpentOnMint = p0(100).sub(await asset0.balanceOf(addr1.address))
-            const amount1SpentOnMint = p1(100).sub(await asset1.balanceOf(addr1.address))
+            const amount0SpentOnMint = balance0Before.sub(await asset0.balanceOf(addr1.address))
+            const amount1SpentOnMint = balance1Before.sub(await asset1.balanceOf(addr1.address))
 
             // approve assets for mock rewards payouts
             const asset0Owner = await asset0.connect(owner)
@@ -666,14 +669,14 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     value1
                         .add(p0(10)) // burned
                         .add(p0(initialBal))
-                        .sub(mintParams.amount0Desired),
+                        .sub(amount0SpentOnMint),
                     d0(1)
                 )
                 expect(await asset1.balanceOf(addr1.address)).closeTo(
                     value2
                         .add(p1(10)) //burned
                         .add(p1(initialBal))
-                        .sub(mintParams.amount1Desired),
+                        .sub(amount1SpentOnMint),
                     d1(100)
                 )
                 expect(await asset0.balanceOf(addr2.address)).closeTo(value3.add(p0(10)), d0(1))
