@@ -6,8 +6,6 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../assets/AbstractCollateral.sol";
 import "./ITFToken.sol";
 import "../../libraries/Fixed.sol";
-import { ethers } from 'hardhat'
-
 
 
 /**
