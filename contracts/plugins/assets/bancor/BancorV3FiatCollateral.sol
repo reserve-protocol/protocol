@@ -80,11 +80,8 @@ contract BancorV3FiatCollateral is Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        autoCompoundingRewards.autoProcessRewards();
-
         // Check for hard default
         uint192 referencePrice = refPerTok();
-        console.log(referencePrice);
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
@@ -131,11 +128,8 @@ contract BancorV3FiatCollateral is Collateral {
     function claimRewards() external override {
         uint256[] memory ids = new uint256[](1);
         ids[0] = standardRewards.latestProgramId(bnToken.reserveToken());
-        console.log("%s", ids[0]);
         bool isActive = standardRewards.isProgramActive(ids[0]);
-        console.log("%s", isActive);
         uint256 claimed = standardRewards.claimRewards(ids);
-        console.log("%s", claimed);
         IERC20 bnt = IERC20(0x1F573D6Fb3F13d689FF844B4cE37794d79a7FF1C);
         emit RewardsClaimed(bnt, 0);
     }
