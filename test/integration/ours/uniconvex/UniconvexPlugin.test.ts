@@ -89,7 +89,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             let prevVirtualPrice = ZERO
             let prevTotalSupply = ZERO
 
-            for (let index = 0; index < 100; index++) {
+            for (let index = 0; index < 3; index++) {
                 await network.provider.request({
                     method: "hardhat_reset",
                     params: [
@@ -165,13 +165,13 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         // Pool for USDT/BTC/ETH or similar
         // USD-like asset should be first, ETH should be last
         //https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
-        // const TriCryptoPool = "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5"
-        // const TriCryptoCurveTokenV4 = "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF"
-        //const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
+        const TriCryptoPool = "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5"
+        const TriCryptoCurveTokenV4 = "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF"
+        const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
 
         //StableSwap3Pool for DAI, USDC, and USDT
-        const stableSwap3Pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-        const stableSwap3CurveTokenV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
+        // const stableSwap3Pool = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
+        // const stableSwap3CurveTokenV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
 
         // TODO: need we zap depositor?
         // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
@@ -179,20 +179,20 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
 
         it("Convex Collateral can be deployed", async () => {
-            const asset0 = dai
-            const asset1 = usdc
-            const asset2 = usdt
+            // const asset0 = dai
+            // const asset1 = usdc
+            // const asset2 = usdt
 
-            // const asset0 = usdt
-            // const asset1 = wbtc
-            // const asset2 = weth
+            const asset0 = usdt
+            const asset1 = wbtc
+            const asset2 = weth
 
             // token not always public or implemented
             // const lpTokenAddress = await stableSwap3Pool.token();
-            const lpTokenAddress = stableSwap3CurveTokenV2
-            const curvePollAddress = stableSwap3Pool;
-            // const lpTokenAddress = TriCryptoCurveTokenV4
-            // const curvePollAddress = TriCryptoPool
+            // const lpTokenAddress = stableSwap3CurveTokenV2
+            // const curvePollAddress = stableSwap3Pool;
+            const lpTokenAddress = TriCryptoCurveTokenV4
+            const curvePollAddress = TriCryptoPool
 
             const decimals0 = await asset0.decimals()
             const decimals1 = await asset1.decimals()
@@ -297,19 +297,17 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String(`CONVEXLP${asset0.name()}${asset1.name()}${asset2.name()}`)
+            const targetName = ethers.utils.formatBytes32String(`CONVEXLP`)
             const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
                 .connect(addr1)
                 .deploy(
-                    matchedPools[0].poolInfo.crvRewards,
-                    curvePool3Assets.address,
+                    matchedPools[0].index,
                     fallbackPrice,
                     [
                         mockChainlinkFeed0.address,
                         mockChainlinkFeed1.address,
                         mockChainlinkFeed2.address,
                     ],
-                    convexLpToken.address,
                     RTOKEN_MAX_TRADE_VALUE,
                     ORACLE_TIMEOUT,
                     targetName,

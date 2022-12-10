@@ -19,24 +19,24 @@ abstract contract RewardSplitter is ERC20 {
     // number of reward tokens managed by RS (instantiated RewardSplitter child)
     uint256 internal immutable _length;
 
-    // addresses of reward tokens managed by RS 
+    // addresses of reward tokens managed by RS
     address[MAX_TOKENS] internal _rewardsTokens;
-    // sum of total amounts of rewards accumulated per token, 
+    // sum of total amounts of rewards accumulated per token,
     // both claimed - transferred from reward source to RS balance, including amounts distributed to RS holders
-    // and unclaimed - rewards due to RS that are yet to be transferred/minted  
+    // and unclaimed - rewards due to RS that are yet to be transferred/minted
     uint256[MAX_TOKENS] internal _lifetimeRewards;
     // total amounts claimed by RS per token, updated in `_claimRewardsFromUnderlying`
     uint256[MAX_TOKENS] internal _lifetimeRewardsClaimed;
     // sum of reward increments per single RS token
     // r(t1) / s(t1) + ... + r(tn) / s(tn)
-    // where 
+    // where
     // t0, t1 .. tn represent moments when any particular balance changes, including
-    // * mints and burns, when `totalSupply` changes, as well as 
+    // * mints and burns, when `totalSupply` changes, as well as
     // * mere transfers between holders, when `totalSupply` stays unchanged
     // s(t) is `totalSupply` right before the moment t
-    // * t0 is the moment of the first mint 
+    // * t0 is the moment of the first mint
     // * s(t0) = 0, r(t0) = 0
-    // r(t+1) is how lifetime reward amount changed since t till (t+1)  
+    // r(t+1) is how lifetime reward amount changed since t till (t+1)
     uint256[MAX_TOKENS] internal _accRewardsPerToken;
     // rewards due to each RS holder per reward token
     // updated on holder balance change, starting at t1, and on reward claims by holders
@@ -70,18 +70,16 @@ abstract contract RewardSplitter is ERC20 {
         @return tokens addresses of tokens paid as rewards
         @return amounts amounts paid to recipient
      */
-    function _claimRewardsShareTo(address recipient)
-        internal
-        returns (address[MAX_TOKENS] memory tokens, uint256[MAX_TOKENS] memory amounts)
-    {
+    function _claimRewardsShareTo(
+        address recipient
+    ) internal returns (address[MAX_TOKENS] memory tokens, uint256[MAX_TOKENS] memory amounts) {
         _updateRewards();
         _updateUser(msg.sender);
         for (uint256 i; i < _length; i++) {
             address token = _rewardsTokens[i];
             uint256 amountDue = _unclaimedRewards[token][msg.sender];
             // make sure there's enough balance to pay the amount due to `msg.sender`
-            if (amountDue > IERC20(token).balanceOf(address(this))) 
-                _claimRewardsFromUnderlying();
+            if (amountDue > IERC20(token).balanceOf(address(this))) _claimRewardsFromUnderlying();
             TransferHelper.safeTransfer(token, recipient, amountDue);
             amounts[i] = amountDue;
             _unclaimedRewards[token][msg.sender] = 0;
@@ -94,11 +92,7 @@ abstract contract RewardSplitter is ERC20 {
         @param from The address of the sender of tokens
         @param to The address of the receiver of tokens
      */
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256
-    ) internal override {
+    function _beforeTokenTransfer(address from, address to, uint256) internal override {
         _updateRewards();
         if (from != address(0)) {
             _updateUser(from);
@@ -125,16 +119,15 @@ abstract contract RewardSplitter is ERC20 {
      */
     function _updateRewards() internal {
         uint256 supply = totalSupply();
-        if (supply == 0) 
-            return;
-        
+        if (supply == 0) return;
+
         // check rewards due to RS contract
         uint256[MAX_TOKENS] memory freshRewards = _freshRewards();
 
         for (uint256 i; i < _length; i++) {
             // calculate lifetime rewards at this moment
             uint256 lifetimeRewards = _lifetimeRewardsClaimed[i] + freshRewards[i];
-            // subtract the value stored from last update 
+            // subtract the value stored from last update
             uint256 rewardsAccrued = lifetimeRewards - _lifetimeRewards[i];
             _accRewardsPerToken[i] += (rewardsAccrued * PRECISION_RATIO) / supply;
             _lifetimeRewards[i] = lifetimeRewards;
@@ -172,11 +165,10 @@ abstract contract RewardSplitter is ERC20 {
         @param index reward token index
         @param user the user for which snapshot lookup is performed
      */
-    function userSnapshotRewardsPerToken(uint256 index, address user)
-        internal
-        view
-        returns (uint256)
-    {
+    function userSnapshotRewardsPerToken(
+        uint256 index,
+        address user
+    ) internal view returns (uint256) {
         address token = _rewardsTokens[index];
         return _userSnapshotRewardsPerToken[token][user];
     }
@@ -186,26 +178,22 @@ abstract contract RewardSplitter is ERC20 {
         @param user The user to compute pending rewards for
         @return pendingRewards The amount of pending rewards for each token
      */
-    function _getPendingRewards(address user)
-        internal
-        view
-        returns (uint256[MAX_TOKENS] memory pendingRewards)
-    {
+    function _getPendingRewards(
+        address user
+    ) internal view returns (uint256[MAX_TOKENS] memory pendingRewards) {
         uint256 balance = balanceOf(user);
         for (uint256 i; i < _length; i++) {
             uint256 sinceSnapshot = _accRewardsPerToken[i] - userSnapshotRewardsPerToken(i, user);
-            pendingRewards[i] =
-                balance * sinceSnapshot / PRECISION_RATIO;
+            pendingRewards[i] = (balance * sinceSnapshot) / PRECISION_RATIO;
         }
     }
 
-
-     /**
+    /**
         @notice Perform operations specific to a particular reward source to
         @notice get reward amounts due to RS contract
         @notice This function should be implemented by RS children
         @return freshRewards claimable rewards yet unclaimed
-     */   
+     */
     function _freshRewards()
         internal
         view
