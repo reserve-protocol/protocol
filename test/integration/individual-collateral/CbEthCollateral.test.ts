@@ -184,8 +184,7 @@ describeFork(`CbEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
       primaryBasket: [cbEthCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
     // Deploy RToken via FacadeWrite
     const receipt = await (
@@ -518,7 +517,7 @@ describeFork(`CbEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
 
         // Force updates - Should update whenDefault and status
         await expect(newcbEthCollateral.refresh())
-          .to.emit(newcbEthCollateral, 'DefaultStatusChanged')
+          .to.emit(newcbEthCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
         expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -535,7 +534,7 @@ describeFork(`CbEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
         const prevWhenDefault: BigNumber = await newcbEthCollateral.whenDefault()
         await expect(newcbEthCollateral.refresh()).to.not.emit(
           newcbEthCollateral,
-          'DefaultStatusChanged'
+          'CollateralStatusChanged'
         )
         expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await newcbEthCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -577,7 +576,7 @@ describeFork(`CbEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
 
         // Force updates - Should update whenDefault and status
         await expect(newcbEthCollateral.refresh())
-          .to.emit(newcbEthCollateral, 'DefaultStatusChanged')
+          .to.emit(newcbEthCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
         expect(await newcbEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
