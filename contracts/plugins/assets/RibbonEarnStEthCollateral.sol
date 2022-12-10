@@ -18,6 +18,8 @@ contract RibbonEarnStEthCollateral is Collateral {
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.1
 
+    uint192 public immutable volatilityBuffer; // {%} e.r. 1
+
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     AggregatorV3Interface public immutable chainlinkFeedFallback;
@@ -37,7 +39,8 @@ contract RibbonEarnStEthCollateral is Collateral {
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint192 defaultThreshold_,
-        AggregatorV3Interface chainlinkFeedFallback_ // eth/usd 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419
+        AggregatorV3Interface chainlinkFeedFallback_, // eth/usd 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419
+        uint192 volatilityBuffer_ // allowance for samll losses since rEARN-stETH strategy has only 99.5% collateral protection
 
     )
         Collateral(
@@ -52,8 +55,10 @@ contract RibbonEarnStEthCollateral is Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(address(chainlinkFeedFallback_) != address(0), "missing fallback chainlink feed");
+        require(volatilityBuffer_ > 0, "volatilityBuffer zero");
         defaultThreshold = defaultThreshold_;
         chainlinkFeedFallback = chainlinkFeedFallback_;
+        volatilityBuffer = volatilityBuffer_;
     }
 
     /// Refresh exchange rates and update default status.

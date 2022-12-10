@@ -345,7 +345,7 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       await advanceTime(10000)
       await advanceBlocks(10000)
 
-      // Refresh cToken manually (required)
+      // Refresh Token manually (required)
       await rEarnUsdcCollateral.refresh()
       expect(await rEarnUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -560,7 +560,6 @@ describeFork(`RibbonEarnUsdcCollateral - Mainnet Forking P${IMPLEMENTATION}`, fu
       expect(await newREarnCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // CToken
       const prevWhenDefault: BigNumber = await newREarnCollateral.whenDefault()
       await expect(newREarnCollateral.refresh()).to.not.emit(
         newREarnCollateral,
