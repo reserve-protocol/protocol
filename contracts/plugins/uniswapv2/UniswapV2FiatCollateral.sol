@@ -51,6 +51,10 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
     /// Refresh exchange rates and update default status.
     function refresh() external virtual override {
         if (alreadyDefaulted()) return;
+
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+        pair.sync();
+
         CollateralStatus oldStatus = status();
 
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 price0) {
@@ -77,7 +81,6 @@ contract UniswapV2FiatCollateral is UniswapV2AbstractCollateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            //TODO need we emit it? correct in other collateral?
             emit DefaultStatusChanged(oldStatus, newStatus);
         }
     }

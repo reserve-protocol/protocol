@@ -169,6 +169,10 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     )
             )
 
+
+            //TODO asserts
+            await waitForTx(await uniswapV2NonFiatCollateral.refresh())
+
             expect(await uniswapV2NonFiatCollateral.isCollateral()).to.equal(true)
             expect(await uniswapV2NonFiatCollateral.erc20()).to.equal(pairAddress)
             expect(await uniswapV2NonFiatCollateral.erc20Decimals()).to.equal(18)
@@ -197,167 +201,167 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             // )
         })
 
-        it("Try feeds", async () => {
-            const asset0 = usdt
-            const asset1 = usdc
+        // it("Try feeds", async () => {
+        //     const asset0 = usdt
+        //     const asset1 = usdc
 
-            const decimals0 = await asset0.decimals()
-            const decimals1 = await asset1.decimals()
+        //     const decimals0 = await asset0.decimals()
+        //     const decimals1 = await asset1.decimals()
 
-            const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
-            const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
+        //     const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
+        //     const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
 
-            const asset0InitialBalance = await asset0.balanceOf(addr1.address)
-            const asset1InitialBalance = await asset1.balanceOf(addr1.address)
+        //     const asset0InitialBalance = await asset0.balanceOf(addr1.address)
+        //     const asset1InitialBalance = await asset1.balanceOf(addr1.address)
 
-            await asset0.connect(addr1).transfer(owner.address, p0(200))
-            await asset1.connect(addr1).transfer(owner.address, p1(100))
+        //     await asset0.connect(addr1).transfer(owner.address, p0(200))
+        //     await asset1.connect(addr1).transfer(owner.address, p1(100))
 
-            const asset0Balance0 = await asset0.balanceOf(addr1.address)
-            const asset1Balance0 = await asset1.balanceOf(addr1.address)
+        //     const asset0Balance0 = await asset0.balanceOf(addr1.address)
+        //     const asset1Balance0 = await asset1.balanceOf(addr1.address)
 
-            //check if balance changes after transfer
-            expect(asset0Balance0).to.equal(asset0InitialBalance.sub(p0(200)))
-            expect(asset1Balance0).to.equal(asset1InitialBalance.sub(p0(100)))
+        //     //check if balance changes after transfer
+        //     expect(asset0Balance0).to.equal(asset0InitialBalance.sub(p0(200)))
+        //     expect(asset1Balance0).to.equal(asset1InitialBalance.sub(p0(100)))
 
-            const pairAddress = await factory.getPair(asset0.address, asset1.address)
+        //     const pairAddress = await factory.getPair(asset0.address, asset1.address)
 
-            await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
-            await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
+        //     await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
+        //     await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
 
-            await waitForTx(
-                await router
-                    .connect(owner)
-                    .addLiquidity(
-                        asset0.address,
-                        asset1.address,
-                        p0(100),
-                        p1(100),
-                        0,
-                        0,
-                        addr1.address,
-                        (await getLatestBlockTimestamp()) + 60
-                    )
-            )
-
-            
-
-            const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
-            const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
-            const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
-
-            const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
-            
-            const usdtPrice1 = fp("1")
-            const usdcPrice1 = fp("1")
-            
-            let mockChainlinkFeed0 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, usdtPrice1)
-            )
-
-            let mockChainlinkFeed1 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, usdcPrice1)
-            )
-
-            const uniswapV2CollateralContractFactory: UniswapV2Collateral__factory = await ethers.getContractFactory(
-                "UniswapV2Collateral"
-            )
-
-            const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("USD")
-            const uniswapV2Collateral1: UniswapV2Collateral = <UniswapV2Collateral>(
-                await uniswapV2CollateralContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        fallbackPrice,
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
-                        pairAddress,
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DELAY_UNTIL_DEFAULT
-                    )
-            )
+        //     await waitForTx(
+        //         await router
+        //             .connect(owner)
+        //             .addLiquidity(
+        //                 asset0.address,
+        //                 asset1.address,
+        //                 p0(100),
+        //                 p1(100),
+        //                 0,
+        //                 0,
+        //                 addr1.address,
+        //                 (await getLatestBlockTimestamp()) + 60
+        //             )
+        //     )
 
             
-            expect(await uniswapV2Collateral1.status()).to.equal(CollateralStatus.SOUND)
 
-            const strictPrice1 = await uniswapV2Collateral1.strictPrice()
-            console.log("strictPrice1", strictPrice1)
+        //     const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
+        //     const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
+        //     const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
 
-            const usdtPrice2 = fp("1.1")
-            const usdcPrice2 = fp("1.1")
-
-            mockChainlinkFeed0 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, usdtPrice2)
-            )
-
-            mockChainlinkFeed1 = <MockV3Aggregator>(
-                await MockV3AggregatorFactory.connect(addr1).deploy(8, usdcPrice2)
-            )
+        //     const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
             
-            const uniswapV2Collateral2: UniswapV2Collateral = <UniswapV2Collateral>(
-                await uniswapV2CollateralContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        fallbackPrice,
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
-                        pairAddress,
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DELAY_UNTIL_DEFAULT
-                    )
-            )
-
-            const strictPrice2 = await uniswapV2Collateral2.strictPrice()
-            const refPerTor2 = await uniswapV2Collateral2.refPerTok()
-            const refPerTok1 = await uniswapV2Collateral1.refPerTok()
-
-            console.log(refPerTok1, refPerTor2)
+        //     const usdtPrice1 = fp("1")
+        //     const usdcPrice1 = fp("1")
             
-            // check if strictPrice of collateral depends on currency price
-            expect(strictPrice1).to.not.equal(strictPrice2)
-            expect(strictPrice2).to.above(strictPrice1)
-            expect(refPerTok1).to.equal(refPerTor2)
+        //     let mockChainlinkFeed0 = <MockV3Aggregator>(
+        //         await MockV3AggregatorFactory.connect(addr1).deploy(8, usdtPrice1)
+        //     )
 
-            await asset0.connect(addr1).transfer(owner.address, p0(200))
-            await asset1.connect(addr1).transfer(owner.address, p1(100))
+        //     let mockChainlinkFeed1 = <MockV3Aggregator>(
+        //         await MockV3AggregatorFactory.connect(addr1).deploy(8, usdcPrice1)
+        //     )
 
-            await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
-            await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
+        //     const uniswapV2NonFiatCollateralContractFactory: UniswapV2NonFiatCollateral__factory = await ethers.getContractFactory(
+        //         "UniswapV2NonFiatCollateral"
+        //     )
+
+        //     const fallbackPrice = fp("1")
+        //     const targetName = ethers.utils.formatBytes32String("USD")
+        //     const uniswapV2NonFiatCollateral1: UniswapV2NonFiatCollateral = <UniswapV2NonFiatCollateral>(
+        //         await uniswapV2NonFiatCollateralContractFactory
+        //             .connect(addr1)
+        //             .deploy(
+        //                 fallbackPrice,
+        //                 mockChainlinkFeed0.address,
+        //                 mockChainlinkFeed1.address,
+        //                 pairAddress,
+        //                 RTOKEN_MAX_TRADE_VALUE,
+        //                 ORACLE_TIMEOUT,
+        //                 targetName,
+        //                 DELAY_UNTIL_DEFAULT
+        //             )
+        //     )
+
+            
+        //     expect(await uniswapV2NonFiatCollateral1.status()).to.equal(CollateralStatus.SOUND)
+
+        //     const strictPrice1 = await uniswapV2NonFiatCollateral1.strictPrice()
+        //     console.log("strictPrice1", strictPrice1)
+
+        //     const usdtPrice2 = fp("1.1")
+        //     const usdcPrice2 = fp("1.1")
+
+        //     mockChainlinkFeed0 = <MockV3Aggregator>(
+        //         await MockV3AggregatorFactory.connect(addr1).deploy(8, usdtPrice2)
+        //     )
+
+        //     mockChainlinkFeed1 = <MockV3Aggregator>(
+        //         await MockV3AggregatorFactory.connect(addr1).deploy(8, usdcPrice2)
+        //     )
+            
+        //     const uniswapV2NonFiatCollateral2: UniswapV2NonFiatCollateral = <UniswapV2NonFiatCollateral>(
+        //         await uniswapV2NonFiatCollateralContractFactory
+        //             .connect(addr1)
+        //             .deploy(
+        //                 fallbackPrice,
+        //                 mockChainlinkFeed0.address,
+        //                 mockChainlinkFeed1.address,
+        //                 pairAddress,
+        //                 RTOKEN_MAX_TRADE_VALUE,
+        //                 ORACLE_TIMEOUT,
+        //                 targetName,
+        //                 DELAY_UNTIL_DEFAULT
+        //             )
+        //     )
+
+        //     const strictPrice2 = await uniswapV2NonFiatCollateral2.strictPrice()
+        //     const refPerTor2 = await uniswapV2NonFiatCollateral2.refPerTok()
+        //     const refPerTok1 = await uniswapV2NonFiatCollateral1.refPerTok()
+
+        //     console.log(refPerTok1, refPerTor2)
+            
+        //     // check if strictPrice of collateral depends on currency price
+        //     expect(strictPrice1).to.not.equal(strictPrice2)
+        //     expect(strictPrice2).to.above(strictPrice1)
+        //     expect(refPerTok1).to.equal(refPerTor2)
+
+        //     await asset0.connect(addr1).transfer(owner.address, p0(200))
+        //     await asset1.connect(addr1).transfer(owner.address, p1(100))
+
+        //     await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
+        //     await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
 
 
-            await waitForTx(
-                await router
-                    .connect(owner)
-                    .addLiquidity(
-                        asset0.address,
-                        asset1.address,
-                        p0(100),
-                        p1(100),
-                        0,
-                        0,
-                        addr1.address,
-                        (await getLatestBlockTimestamp()) + 60
-                    )
-            )
+        //     await waitForTx(
+        //         await router
+        //             .connect(owner)
+        //             .addLiquidity(
+        //                 asset0.address,
+        //                 asset1.address,
+        //                 p0(100),
+        //                 p1(100),
+        //                 0,
+        //                 0,
+        //                 addr1.address,
+        //                 (await getLatestBlockTimestamp()) + 60
+        //             )
+        //     )
 
-            // await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
-            // await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
+        //     // await waitForTx(await asset0.connect(owner).approve(router.address, p0(100)))
+        //     // await waitForTx(await asset1.connect(owner).approve(router.address, p1(100)))
 
-            await asset0.connect(owner).approve(router.address, p0(100))
+        //     await asset0.connect(owner).approve(router.address, p0(100))
 
-            await router.swapExactTokensForTokens(
-                p0(100),
-                0,
-                [asset0.address, asset1.address],
-                addr1.address,
-                await closeDeadline())
+        //     await router.swapExactTokensForTokens(
+        //         p0(100),
+        //         0,
+        //         [asset0.address, asset1.address],
+        //         addr1.address,
+        //         await closeDeadline())
 
-            // console.log(await uniswapV2Coƒllateral2.refPerTok())
+        //     // console.log(await uniswapV2Coƒllateral2.refPerTok())
 
             
             
@@ -381,6 +385,6 @@ describeFork(`UniswapV2Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             
 
 
-        })
+        //})
     })
 })

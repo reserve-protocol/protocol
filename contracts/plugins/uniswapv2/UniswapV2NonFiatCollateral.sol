@@ -35,6 +35,28 @@ contract UniswapV2NonFiatCollateral is UniswapV2AbstractCollateral {
     {
     }
 
+    function refresh() external override {
+        if (alreadyDefaulted()) return;
+
+        //Only difference with abstract collateral refresh() implementation
+        IUniswapV2Pair pair = IUniswapV2Pair(address(erc20));
+        pair.sync();
+
+        CollateralStatus oldStatus = status();
+        try this.strictPrice() returns (uint192) {
+            markStatus(CollateralStatus.SOUND);
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+            markStatus(CollateralStatus.IFFY);
+        }
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+    }
+
     /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
         return strictPrice();
