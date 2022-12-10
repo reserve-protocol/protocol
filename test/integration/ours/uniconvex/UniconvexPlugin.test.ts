@@ -209,8 +209,6 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 curvePollAddress
             )
 
-            
-
             const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
 
             await waitForTx(await asset0.connect(addr1).approve(curvePool3Assets.address, p0(100)))
@@ -219,13 +217,43 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const receipt = await waitForTx(
                 await curvePool3Assets.connect(addr1).add_liquidity(
-                    [p0(100), p1(100), p2(100)],
+                    [p0(100).div(1000), p1(100).div(1000), p2(100).div(1000)],
                     0 //min_mint_amount
                 )
             )
 
             await logBalances(
                 "after minting Curve LP",
+                [owner, addr1],
+                [asset0, asset1, asset2, lpToken]
+            )
+
+            const liquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
+            console.log({ liquidity })
+
+            const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
+            const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
+            const balance2before = await asset2.connect(addr1).balanceOf(addr1.address)
+
+            const receipt2 = await waitForTx(
+                await curvePool3Assets.connect(addr1).remove_liquidity(
+                    liquidity,
+                    [0, 0, 0] //min_mint_amount
+                )
+            )
+
+            const balance0after = await asset0.connect(addr1).balanceOf(addr1.address)
+            const balance1after = await asset1.connect(addr1).balanceOf(addr1.address)
+            const balance2after = await asset2.connect(addr1).balanceOf(addr1.address)
+                    
+            console.log(balance0after - balance0before);
+            console.log(balance1after - balance1before);
+            console.log(balance2after - balance2before);
+
+            console.log({ liquidity })
+
+            await logBalances(
+                "after burning Curve LP",
                 [owner, addr1],
                 [asset0, asset1, asset2, lpToken]
             )
@@ -277,6 +305,21 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
 
             const MockV3AggregatorFactory = await ethers.getContractFactory("MockV3Aggregator")
+            // const mockChainlinkFeed0 = await MockV3AggregatorFactory.connect(addr1).deploy(
+            //     8,
+            //     bn("1e8")
+            // )
+
+            // const mockChainlinkFeed1 = await MockV3AggregatorFactory.connect(addr1).deploy(
+            //     8,
+            //     bn("1e8")
+            // )
+
+            // const mockChainlinkFeed2 = await MockV3AggregatorFactory.connect(addr1).deploy(
+            //     8,
+            //     bn("1e8")
+            // )
+
             const mockChainlinkFeed0 = await MockV3AggregatorFactory.connect(addr1).deploy(
                 8,
                 bn("1e8")
@@ -284,12 +327,12 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const mockChainlinkFeed1 = await MockV3AggregatorFactory.connect(addr1).deploy(
                 8,
-                bn("1e8")
+                bn("17000e8")
             )
 
             const mockChainlinkFeed2 = await MockV3AggregatorFactory.connect(addr1).deploy(
                 8,
-                bn("1e8")
+                bn("1300e8")
             )
 
             const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
