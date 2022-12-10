@@ -46,8 +46,7 @@ contract TFTokenCollateral is Collateral {
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_,
-        address TFContractAddress_,
+        int8 referenceERC20Decimals_
     )
         Collateral(
             fallbackPrice_,
@@ -79,7 +78,7 @@ contract TFTokenCollateral is Collateral {
     function refresh() external virtual override {
         // == Refresh ==
         // Update the Compound Protocol
-        ITFToken(address(erc20)).exchangeRateCurrent();
+        // ITFToken(address(erc20)).exchangeRateTfUsdc(referenceERC20Decimals);
 
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
@@ -127,10 +126,10 @@ contract TFTokenCollateral is Collateral {
 
     /// Claim rewards earned by holding a balance of the ERC20 token
     /// @dev delegatecall
-    function claimRewards() external virtual override {
-        IERC20 comp = IERC20(comptroller.getCompAddress());
-        uint256 oldBal = comp.balanceOf(address(this));
-        comptroller.claimComp(address(this));
-        emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
-    }
+    // function claimRewards() external virtual override {
+    //     // IERC20 comp = IERC20(comptroller.getCompAddress());
+    //     // uint256 oldBal = comp.balanceOf(address(this));
+    //     comptroller.claimComp(address(this));
+    //     emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
+    // }
 }

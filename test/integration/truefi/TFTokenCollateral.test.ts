@@ -157,7 +157,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     )
     console.log(await tfUsdc.decimals())
     console.log(await tfUsdc.totalSupply())
-    // console.log(await tfUsdc.poolValue())
+    console.log(await tfUsdc.poolValue())
     console.log(await tfUsdc.name())
     console.log(await usdc.totalSupply())
     // TRU token
@@ -733,8 +733,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         await tfUsdcCollateral.targetName(),
         await tfUsdcCollateral.defaultThreshold(),
         await tfUsdcCollateral.delayUntilDefault(),
-        8,
-        { gasLimit: 5000000 }
+        6
       )
 
       // Check initial state

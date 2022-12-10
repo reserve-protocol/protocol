@@ -9,4 +9,6 @@ interface ITFToken {
     function poolValue() external view returns (uint256);
 
     function totalSupply() external view returns (uint256);
+
+    function exchangeRateTfUsdc() external returns (uint256);
 }

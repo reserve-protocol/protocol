@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "../../libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
-contract TFTTokenMock is ERC20Mock {
+contract TFTokenMock is ERC20Mock {
     using FixLib for uint192;
     address internal _underlyingToken;
     uint256 public poolValue;
@@ -18,6 +18,12 @@ contract TFTTokenMock is ERC20Mock {
         _underlyingToken = underlyingToken;
         poolValue = totalSupply();
     }
+
+    // function exchangeRateTfUsdc(int8 referenceERC20Decimals) external returns (uint256) {
+    //     uint256 rate = totalSupply() / totalSupply(); // should be poolValue / totalSupply
+    //     int8 shiftLeft = 6 - referenceERC20Decimals - 18;
+    //     return shiftl_toFix(rate, shiftLeft);
+    // }
 
     function decimals() public pure override returns (uint8) {
         return 6;
