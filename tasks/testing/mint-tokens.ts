@@ -53,6 +53,8 @@ task('mint-tokens', 'Mints all the tokens to an address')
       'WBTC',
       'EURT',
       'RSR',
+      'tfUSDC',
+      'TRU',
     ]
 
     for (const token of tokens) {
