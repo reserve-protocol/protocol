@@ -4,7 +4,7 @@
 ## Files
 _Plugin contracts_
 
-- [UniV2Collateral.sol](./UniV2NonFiatCollateral.sol)
+- [UniV2NonFiatCollateral.sol](./UniV2NonFiatCollateral.sol)
 - [UnitV2Asset.sol](./UniV2Asset.sol)
 
 _Tests contracts_
@@ -36,8 +36,8 @@ __`refPerTok()`__
 Same as [UniV2Collateral refPerTock](./UniV2Collateral.md#pluggin-functions)
 
 TLDR; 
-- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok()` is nondecreasing over time.
-- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
+- $\dfrac{\sqrt{x y}}{l}$ as `refPerTok()` is nondecreasing over time.
+- $\dfrac{\sqrt{x y}}{l}$ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
 
 
 __`targetPerRef()`__ usd per sqrt(x*y)
@@ -85,7 +85,7 @@ __`price(bool)`, `bal(address)`, `erc20()`, `erc20Decimals()` and `maxTradeVolum
 - Implemeted in `UniV2Asset`.
 
 ## Tests
-Added UniV2Collateral to [integrated tests](../../../../test/integration/individual-collateral/UniV2Collateral.test.ts)
+Added UniV2NonFiatCollateral to [integrated tests](../../../../test/integration/individual-collateral/UniV2NonFiatCollateral.test.ts)
 Test all expected behaviour including:
 
 - refPerTok non decreasing for add/remove liquidity 
@@ -227,4 +227,4 @@ Mainnet addresses for chainlink added in [config file](../../../../common/config
 3) Create Rtoken with UniV2Collateral
 4) As UniV2 holder approve Rtoken adddress to transfer your LP tokens (ERC20).
 5) test
-6) Follow [deployment](../../../docs/deployment.md).
+6) Follow [deployment](../../../../docs/deployment.md).
