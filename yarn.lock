@@ -1550,9 +1550,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@nomicfoundation/hardhat-chai-matchers@npm:^1.0.3":
-  version: 1.0.3
-  resolution: "@nomicfoundation/hardhat-chai-matchers@npm:1.0.3"
+"@nomicfoundation/hardhat-chai-matchers@npm:^1.0.5":
+  version: 1.0.5
+  resolution: "@nomicfoundation/hardhat-chai-matchers@npm:1.0.5"
   dependencies:
     "@ethersproject/abi": ^5.1.2
     "@types/chai-as-promised": ^7.1.3
@@ -1565,7 +1565,7 @@ __metadata:
     chai: ^4.2.0
     ethers: ^5.0.0
     hardhat: ^2.9.4
-  checksum: bee445e7ed53d6ee00b85c5c76ca79b7cd1792487481803a29357803b09f92b626b6429a50522a8398c8010ad4fd1f0106c79416dc8c01aea644e7360ea9c203
+  checksum: ad1f34d62be22323a12cd623bbc43c05bcd88cf9f3bc77a4fd449d076a6e890c9abf58c9d75f2254bf2f060e1c8d666c71715cff555c0cb6029d7357a200273d
   languageName: node
   linkType: hard
 
@@ -5297,11 +5297,11 @@ __metadata:
   linkType: hard
 
 "deep-eql@npm:^4.0.1":
-  version: 4.1.0
-  resolution: "deep-eql@npm:4.1.0"
+  version: 4.1.3
+  resolution: "deep-eql@npm:4.1.3"
   dependencies:
     type-detect: ^4.0.0
-  checksum: 2fccd527df9a70a92a1dfa8c771d139753625938e137b09fc946af8577d22360ef28d3c74f0e9c5aaa399bab20542d0899da1529c71db76f280a30147cd2a110
+  checksum: 7f6d30cb41c713973dc07eaadded848b2ab0b835e518a88b91bea72f34e08c4c71d167a722a6f302d3a6108f05afd8e6d7650689a84d5d29ec7fe6220420397f
   languageName: node
   linkType: hard
 
@@ -12428,7 +12428,7 @@ fsevents@~2.1.1:
   dependencies:
     "@aave/protocol-v2": ^1.0.1
     "@chainlink/contracts": ^0.4.1
-    "@nomicfoundation/hardhat-chai-matchers": ^1.0.3
+    "@nomicfoundation/hardhat-chai-matchers": ^1.0.5
     "@nomiclabs/hardhat-ethers": ^2.0.3
     "@nomiclabs/hardhat-etherscan": ^3.1.0
     "@nomiclabs/hardhat-waffle": ^2.0.1

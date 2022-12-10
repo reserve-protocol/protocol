@@ -15,14 +15,14 @@ import "./libraries/UniV2Math.sol";
  * @title  UniswapV2Collateral
  * {tok} = UNI-V2 LP token
  * {ref} = UNIV2-SQRT-TA-TB ie sqrt(tokA*tokB) synthetic reference
- * {target} = USD
+ * {target} = UNIV2-SQRT-TA-TB
  * {UoA} = {target}= USD
  * @dev structure is different from Collateral abstract contract
  * so we directly import interfaces instead of Collateral parent.
  * Nevertheless helper functions for status are maintained
  * @dev check README file for details
  */
-contract UniV2Collateral is ICollateral, UniV2Asset {
+contract UniV2NonFiatCollateral is ICollateral, UniV2Asset {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -34,13 +34,10 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
     uint256 private constant NEVER = type(uint256).max;
     uint256 private _whenDefault = NEVER;
 
-    bytes32 public immutable targetName = "USD";
-    // USD is "0x5553440000000000000000000000000000000000000000000000000000000000"
+    bytes32 public immutable targetName;
 
     // prices
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
-    uint192 public immutable pegA;
-    uint192 public immutable pegB;
     uint192 public immutable defaultThreshold;
 
     /// constructor
@@ -48,8 +45,7 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
     /// @param fallbackPrice_ fallback price for LP tokens
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA = USD
     /// @param delayUntilDefault_ delay until default from IFFY status
-    /// @param pegA_ pegged price for tokenA with 18 decimals
-    /// @param pegB_ pegged price for tokenB with 18 decimals
+    /// @param targetName_ target name
     /// @param chainlinkFeedA_ Feed units: {UoA/tokA}
     /// @param chainlinkFeedB_ Feed units: {UoA/tokB}
     /// @param defaultThreshold_ threshold for pool ratio
@@ -61,8 +57,7 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         uint256 delayUntilDefault_,
         AggregatorV3Interface chainlinkFeedA_,
         AggregatorV3Interface chainlinkFeedB_,
-        uint192 pegA_,
-        uint192 pegB_,
+        bytes32 targetName_,
         uint192 defaultThreshold_,
         uint48 oracleTimeout_
     )
@@ -77,8 +72,7 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         )
     {
         require(defaultThreshold_ > 0, "[UNIV2COL DEPLOY ERROR]: defaultThreshold zero");
-        pegA = pegA_;
-        pegB = pegB_;
+        targetName = targetName_;
         defaultThreshold = defaultThreshold_;
         prevReferencePrice = refPerTok();
     }
@@ -108,15 +102,25 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         return rpt;
     }
 
-    /// targetPerRef {target/ref} = USD/sqrt(xy) ~ 2 sqrt(pegA*pegB)
+    /// targetPerRef {target/ref} = 1
     /// @dev see README for details
-    function targetPerRef() public view override returns (uint192) {
-        return 2 * uint192(UniV2Math.sqrt(pegA * pegB));
+    function targetPerRef() public pure override returns (uint192) {
+        return FIX_ONE;
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view virtual returns (uint192) {
-        return FIX_ONE;
+    /// @dev can return 0 an revert
+    function pricePerTarget() public view returns (uint192) {
+        uint192 pA = 0;
+        uint192 pB = 0;
+        pA = chainlinkFeedA.price(oracleTimeout);
+        pB = chainlinkFeedB.price(oracleTimeout);
+        (uint112 x, uint112 y, ) = pairV2.getReserves();
+        // reserves to 18 decimals
+        uint192 reserveA = uint192(x * 10**(18 - decA));
+        uint192 reserveB = uint192(y * 10**(18 - decB));
+        uint192 sqrt = UniV2Math.sqrt(reserveA * reserveB);
+        return (reserveA.mulu(pA) + reserveB.mulu(pB)).divu(sqrt, ROUND);
     }
 
     /// @return If the asset is an instance of ICollateral or not
@@ -136,34 +140,20 @@ contract UniV2Collateral is ICollateral, UniV2Asset {
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
-            // tokenA soft default
             try chainlinkFeedA.price_(oracleTimeout) returns (uint192 pA) {
-                uint192 deltaA = (pegA * defaultThreshold) / FIX_ONE;
-                if (pA < pegA - deltaA || pA > pegA + deltaA) {
-                    markStatus(CollateralStatus.IFFY);
-                } else {
-                    //markStatus(CollateralStatus.SOUND);
-                    // tokenB soft default
-                    try chainlinkFeedB.price_(oracleTimeout) returns (uint192 pB) {
-                        uint192 deltaB = (pegB * defaultThreshold) / FIX_ONE;
-                        if (pB < pegB - deltaB || pB > pegB + deltaB) {
-                            markStatus(CollateralStatus.IFFY);
-                        } else {
-                            // prices from A/B gives not IFFY
-                            // check ratio in range
-                            (uint112 x, uint112 y, ) = pairV2.getReserves();
-                            uint192 ratio = uint192((y * 10**(18 - decB))).div(
-                                uint192(x * 10**(18 - decA))
-                            );
-                            uint192 deltaR = (pegA.div(pegB).mul(defaultThreshold));
-                            if (ratio < pegA.div(pegB) - deltaR || ratio > pegA.div(pegB) + deltaR)
-                                markStatus(CollateralStatus.IFFY);
-                            else markStatus(CollateralStatus.SOUND);
-                        }
-                    } catch (bytes memory errData) {
-                        if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                try chainlinkFeedB.price_(oracleTimeout) returns (uint192 pB) {
+                    //check soft default ratio away from prices
+                    (uint112 x, uint112 y, ) = pairV2.getReserves();
+                    uint192 ratio = uint192((y * 10**(18 - decB))).div(
+                        uint192(x * 10**(18 - decA))
+                    );
+                    uint192 deltaR = (pA.div(pB).mul(defaultThreshold));
+                    if (ratio < pA.div(pB) - deltaR || ratio > pA.div(pB) + deltaR)
                         markStatus(CollateralStatus.IFFY);
-                    }
+                    else markStatus(CollateralStatus.SOUND);
+                } catch (bytes memory errData) {
+                    if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                    markStatus(CollateralStatus.IFFY);
                 }
             } catch (bytes memory errData) {
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string

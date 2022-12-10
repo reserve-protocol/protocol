@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2ERC20.sol";
-import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "../../../interfaces/IAsset.sol";
@@ -21,15 +20,14 @@ contract UniV2Asset is IAsset {
     using FixLib for uint192;
 
     IUniswapV2Pair public immutable pairV2;
-    IUniswapV2Router02 public immutable router;
     IERC20Metadata public immutable erc20;
     uint8 public immutable erc20Decimals;
 
     AggregatorV3Interface public immutable chainlinkFeedA;
     AggregatorV3Interface public immutable chainlinkFeedB;
 
-    uint8 public decA;
-    uint8 public decB;
+    uint8 public immutable decA;
+    uint8 public immutable decB;
 
     uint192 public immutable override maxTradeVolume; // {UoA}
     uint192 public immutable fallbackPrice; // {UoA/Tok}
@@ -38,7 +36,6 @@ contract UniV2Asset is IAsset {
 
     /// constructor
     /// @param pairV2_ UniswapV2 pair address
-    /// @param router_ UniswapV2 router
     /// @param fallbackPrice_ fallback price for LP tokens
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA = USD
     /// @param delayUntilDefault_ delay until default from IFFY status
@@ -47,7 +44,6 @@ contract UniV2Asset is IAsset {
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
         address pairV2_,
-        address router_,
         uint192 fallbackPrice_,
         uint192 maxTradeVolume_,
         uint256 delayUntilDefault_,
@@ -57,7 +53,6 @@ contract UniV2Asset is IAsset {
     ) {
         require(fallbackPrice_ > 0, "[UNIV2A DEPLOY ERROR]: fallback price zero");
         require(address(pairV2_) != address(0), "[UNIV2A DEPLOY ERROR]: missing PairV2");
-        require(address(router_) != address(0), "[UNIV2A DEPLOY ERROR]: missing router");
         require(
             address(chainlinkFeedA_) != address(0),
             "[UNIV2A DEPLOY ERROR]: missing chainlink feed for token A"
@@ -75,7 +70,6 @@ contract UniV2Asset is IAsset {
         chainlinkFeedA = chainlinkFeedA_;
         chainlinkFeedB = chainlinkFeedB_;
         pairV2 = IUniswapV2Pair(pairV2_);
-        router = IUniswapV2Router02(router_);
         decA = IUniswapV2ERC20(pairV2.token0()).decimals();
         decB = IUniswapV2ERC20(pairV2.token1()).decimals();
         erc20 = IERC20Metadata(pairV2_);
@@ -86,8 +80,10 @@ contract UniV2Asset is IAsset {
     /// Can return 0, can revert
     /// @return {UoA/tok} The current price() as (pA* rA + pB*rB) / L
     function strictPrice() external view override returns (uint192) {
-        uint192 pA = chainlinkFeedA.price(oracleTimeout);
-        uint192 pB = chainlinkFeedB.price(oracleTimeout);
+        uint192 pA = 0;
+        uint192 pB = 0;
+        pA = chainlinkFeedA.price(oracleTimeout);
+        pB = chainlinkFeedB.price(oracleTimeout);
         (uint112 x, uint112 y, ) = pairV2.getReserves();
         // reserves to 18 decimals
         uint192 reserveA = uint192(x * 10**(18 - decA));
@@ -101,7 +97,7 @@ contract UniV2Asset is IAsset {
     /// @param allowFallback Whether to try the fallback price in case precise price reverts
     /// @return isFallback If the price is a allowFallback price
     /// @return {UoA/tok} The current price, or if it's reverting, a fallback price
-    function price(bool allowFallback) public view virtual returns (bool isFallback, uint192) {
+    function price(bool allowFallback) public view returns (bool isFallback, uint192) {
         try this.strictPrice() returns (uint192 p) {
             return (false, p);
         } catch {

@@ -133,6 +133,39 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
   let InvalidPairV2: InvalidPairMock
 
+  let initialPrice: BigNumber
+  let initialRefPerTock: BigNumber
+
+  async function getPrice(UniV2PairMock: UniswapV2MockPair): Promise<BigNumber> {
+    const [resA0, resB0] = await UniV2PairMock.getReserves()
+    const initialTotalSuply = await UniV2PairMock.totalSupply()
+    const MockV3AggregatorA = await ethers.getContractAt(
+      'MockV3Aggregator',
+      networkConfig[chainId].chainlinkFeeds.DAI || ''
+    )
+    const pa = Number(await MockV3AggregatorA.latestAnswer()) / 10 ** 8
+    const MockV3AggregatorB = await ethers.getContractAt(
+      'MockV3Aggregator',
+      networkConfig[chainId].chainlinkFeeds.USDC || ''
+    )
+    const pb = Number(await MockV3AggregatorB.latestAnswer()) / 10 ** 8
+    return bn(
+      Math.round(
+        (pa * Number(resA0) + pb * Number(resB0) * 10 ** (18 - 6)) / Number(initialTotalSuply)
+      )
+    )
+  }
+
+  async function getRefPertok(UniV2PairMock: UniswapV2MockPair): Promise<BigNumber> {
+    const [resA0, resB0] = await UniV2PairMock.getReserves()
+    const initialTotalSuply = await UniV2PairMock.totalSupply()
+    return bn(
+      Math.round(
+        Math.sqrt(Number(resA0) * Number(resB0) * 10 ** (18 - 6)) / Number(initialTotalSuply)
+      )
+    )
+  }
+
   before(async () => {
     ;[wallet] = (await ethers.getSigners()) as unknown as Wallet[]
     loadFixture = createFixtureLoader([wallet])
@@ -161,7 +194,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       'UniswapV2MockFactory',
       networkConfig[chainId].UNISWAP_V2_FACTORY || ''
     )
-
     // Get pair for DAI/USDC
     const pairAddress = await UniV2FactoryMock.getPair(dai.address, usdc.address)
     UniV2PairMock = await ethers.getContractAt('UniswapV2MockPair', pairAddress)
@@ -176,7 +208,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await ethers.getContractFactory('UniV2Asset')
     ).deploy(
       UniV2PairMock.address,
-      UniV2RouterMock.address,
       fp('2'),
       config.rTokenMaxTradeVolume,
       delayUntilDefault,
@@ -191,7 +222,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
 
     UniV2Collateral = await UniV2CollateralFactory.deploy(
       UniV2PairMock.address,
-      UniV2RouterMock.address,
       fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
       config.rTokenMaxTradeVolume,
       delayUntilDefault,
@@ -235,6 +265,9 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     )
 
     initialLPs = await UniV2PairMock.balanceOf(addr1.address)
+    // get initial price
+    initialPrice = await getPrice(UniV2PairMock)
+    initialRefPerTock = await getRefPertok(UniV2PairMock)
 
     // Set parameters
     const rTokenConfig: IRTokenConfig = {
@@ -320,7 +353,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         networkConfig[chainId].tokens.UNIV2_DAI_USDC
       )
       expect(await UniV2PairMock.decimals()).to.equal(18)
-      expect(await UniV2Asset.strictPrice()).to.be.closeTo(fp('2251989'), fp('0.5')) // Close to $2251989 USD per LPs- June 2022
+      expect(await UniV2Asset.strictPrice()).to.be.closeTo(fp(initialPrice), fp('0.5')) // Close to $2251989 USD per LPs- June 2022
       await expect(UniV2Asset.claimRewards()).to.not.emit(UniV2Asset, 'RewardsClaimed')
       expect(await UniV2Asset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -330,11 +363,11 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await UniV2Collateral.erc20()).to.equal(UniV2PairMock.address)
       expect(await UniV2PairMock.decimals()).to.equal(18)
       expect(await UniV2Collateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await UniV2Collateral.refPerTok()).to.closeTo(fp('1125769'), fp('0.5')) // june 2022 ~1125769,3
+      expect(await UniV2Collateral.refPerTok()).to.closeTo(fp(initialRefPerTock), fp('0.5')) // june 2022 ~1125769,3
       expect(await UniV2Collateral.targetPerRef()).to.equal(fp('2')) // 2 sqrt(1e18 * 1e18) dai and usdc pegged to 1USD
       expect(await UniV2Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await UniV2Collateral.prevReferencePrice()).to.equal(await UniV2Collateral.refPerTok())
-      expect(await UniV2Collateral.strictPrice()).to.be.closeTo(fp('2251989'), fp('1')) // same as asset Close to $2251989 USD per LPs- June 2022
+      expect(await UniV2Collateral.strictPrice()).to.be.closeTo(fp(initialPrice), fp('0.5')) // same as asset Close to $2251989 USD per LPs- June 2022
 
       // Check claim data
       await expect(UniV2Collateral.claimRewards())
@@ -394,7 +427,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -410,7 +442,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           ZERO_ADDRESS,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -426,23 +457,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          ZERO_ADDRESS,
-          fp('2'),
-          config.rTokenMaxTradeVolume,
-          delayUntilDefault,
-          networkConfig[chainId].chainlinkFeeds.DAI as string,
-          networkConfig[chainId].chainlinkFeeds.USDC as string,
-          fp('1'),
-          fp('1'),
-          defaultThreshold,
-          ORACLE_TIMEOUT
-        )
-      ).to.be.revertedWith('[UNIV2A DEPLOY ERROR]: missing router')
-
-      await expect(
-        UniV2CollateralFactory.deploy(
-          UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -458,7 +472,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -474,7 +487,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           bn('0'),
           delayUntilDefault,
@@ -490,7 +502,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           bn('0'),
@@ -506,7 +517,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           fp('2'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -522,7 +532,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       await expect(
         UniV2CollateralFactory.deploy(
           UniV2PairMock.address,
-          UniV2RouterMock.address,
           bn('0'),
           config.rTokenMaxTradeVolume,
           delayUntilDefault,
@@ -534,6 +543,239 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
           ORACLE_TIMEOUT
         )
       ).to.be.revertedWith('[UNIV2A DEPLOY ERROR]: fallback price zero')
+    })
+  })
+
+  describe('RefPerTok non decreasing checks', () => {
+    it('Adding/Removing liquidy should not change refPerTock', async () => {
+      // Initial refPerTok
+      const UniV2RefPerTok1: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok1).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+      expect(await UniV2PairMock.balanceOf(addr2.address)).to.equal(fp('0'))
+
+      // add liquidity
+      const daiAddr2 = fp('2e6') // 2M DAI
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr2.address, daiAddr2)
+      })
+
+      const usdcAddr2 = bn('2e12') // 2M Usdc
+      await whileImpersonating(holderUSDC, async (daiSigner) => {
+        await usdc.connect(daiSigner).transfer(addr2.address, usdcAddr2)
+      })
+      const deadLine = Date.now() + 24 * 3600
+      const stakedDaiAddr2 = fp('2e6')
+      const stakedDaiLowAddr2 = fp('1.99e6')
+      const stakedUsdcAddr2 = bn('2e12')
+      const stakedUsdcLowAddr2 = bn('1.99e12')
+      // aprove router02
+      await dai.connect(addr2).approve(UniV2RouterMock.address, daiAddr2)
+      await usdc.connect(addr2).approve(UniV2RouterMock.address, usdcAddr2)
+      // add liquidity
+      await UniV2RouterMock.connect(addr2).addLiquidity(
+        dai.address,
+        usdc.address,
+        stakedDaiAddr2,
+        stakedUsdcAddr2,
+        stakedDaiLowAddr2,
+        stakedUsdcLowAddr2,
+        addr2.address,
+        bn(deadLine)
+      )
+
+      // refresh
+      await UniV2Collateral.refresh()
+      expect(await UniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      const newLiqAddr2 = await UniV2PairMock.balanceOf(addr2.address)
+      expect(newLiqAddr2).to.be.gt(fp('0'))
+
+      const UniV2RefPerTok2: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok2).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+      await UniV2PairMock.connect(addr2).approve(UniV2RouterMock.address, newLiqAddr2)
+
+      //Remove liquidity
+      await UniV2RouterMock.connect(addr2).removeLiquidity(
+        dai.address,
+        usdc.address,
+        newLiqAddr2,
+        stakedDaiLowAddr2,
+        stakedUsdcLowAddr2,
+        addr2.address,
+        bn(deadLine)
+      )
+
+      // refresh
+      await UniV2Collateral.refresh()
+      expect(await UniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      expect(await UniV2PairMock.balanceOf(addr2.address)).to.equal(fp('0'))
+
+      const UniV2RefPerTok3: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok3).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+    })
+
+    it('Swap tokenA to tokenB should increase refPerTock', async () => {
+      // Initial refPerTok
+      const UniV2RefPerTok1: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok1).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+      expect(await UniV2PairMock.balanceOf(addr2.address)).to.equal(fp('0'))
+
+      // add DAI
+      const daiAddr2 = fp('2e6') // 2M DAI
+      const usdcAddr2 = bn('2e12') // 2M usdc
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr2.address, daiAddr2)
+      })
+
+      const deadLine = Date.now() + 24 * 3600
+      const usdcLowAddr2 = bn('1.9e12')
+
+      expect(await dai.balanceOf(addr2.address)).to.equal(daiAddr2)
+      expect(await usdc.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      // aprove router02
+      await dai.connect(addr2).approve(UniV2RouterMock.address, daiAddr2)
+
+      //Make a swap
+      await UniV2RouterMock.connect(addr2).swapExactTokensForTokens(
+        daiAddr2,
+        usdcLowAddr2,
+        [dai.address, usdc.address],
+        addr2.address,
+        deadLine
+      )
+      const usdcAddr2Bal = await usdc.balanceOf(addr2.address)
+      expect(usdcAddr2Bal).to.be.gt(usdcLowAddr2)
+      expect(usdcAddr2Bal).to.be.closeTo(usdcAddr2, bn('1e12')) // ~10%
+      expect(await dai.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      // refresh
+      await UniV2Collateral.refresh()
+      // 2M DAI=>USDC is a huge swap. Pluggin status can be IFFY but not disabled
+      expect(await UniV2Collateral.status()).to.not.equal(CollateralStatus.DISABLED)
+
+      // refPertok increases
+      const UniV2RefPerTok2: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok2).to.be.gt(fp(initialRefPerTock))
+      expect(UniV2RefPerTok2).to.be.gt(UniV2RefPerTok1)
+      //huge swap huge increase in refPerTock, more than 50 {ref} june 2022
+      expect(UniV2RefPerTok2).to.be.not.closeTo(UniV2RefPerTok1, fp('50'))
+      expect(UniV2RefPerTok2).to.be.closeTo(UniV2RefPerTok1, fp('100'))
+    })
+
+    it('Swap tokenB to tokenA should increase refPerTock', async () => {
+      // Initial refPerTok
+      const UniV2RefPerTok1: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok1).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+      expect(await UniV2PairMock.balanceOf(addr2.address)).to.equal(fp('0'))
+
+      // add DAI
+      const daiAddr2 = fp('2e6') // 2M DAI
+      const usdcAddr2 = bn('2e12') // 2M usdc
+      await whileImpersonating(holderUSDC, async (usdcSigner) => {
+        await usdc.connect(usdcSigner).transfer(addr2.address, usdcAddr2)
+      })
+
+      const deadLine = Date.now() + 24 * 3600
+      const daiLowAddr2 = fp('1.9e6')
+
+      expect(await usdc.balanceOf(addr2.address)).to.equal(usdcAddr2)
+      expect(await dai.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      // aprove router02
+      await usdc.connect(addr2).approve(UniV2RouterMock.address, usdcAddr2)
+
+      //Make a swap
+      await UniV2RouterMock.connect(addr2).swapExactTokensForTokens(
+        usdcAddr2,
+        daiLowAddr2,
+        [usdc.address, dai.address],
+        addr2.address,
+        deadLine
+      )
+      const daiAddr2Bal = await dai.balanceOf(addr2.address)
+      expect(daiAddr2Bal).to.be.gt(daiLowAddr2)
+      expect(daiAddr2Bal).to.be.closeTo(daiAddr2, fp('1e5')) // ~5%
+      expect(await usdc.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      // refresh
+      await UniV2Collateral.refresh()
+      // 2M USDC=>DAI is a huge swap. Pluggin status can be IFFY but not disabled
+      expect(await UniV2Collateral.status()).to.not.equal(CollateralStatus.DISABLED)
+
+      // refPertok increases
+      const UniV2RefPerTok2: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok2).to.be.gt(fp(initialRefPerTock))
+      expect(UniV2RefPerTok2).to.be.gt(UniV2RefPerTok1)
+      //huge swap huge increase in refPerTock, more than 50 {ref} june 2022
+      expect(UniV2RefPerTok2).to.be.not.closeTo(UniV2RefPerTok1, fp('50'))
+      expect(UniV2RefPerTok2).to.be.closeTo(UniV2RefPerTok1, fp('100'))
+    })
+
+    it('Swap tokens in and out should only increase refPerTock', async () => {
+      // Initial refPerTok
+      const UniV2RefPerTok1: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok1).to.be.closeTo(fp(initialRefPerTock), fp('0.5'))
+      expect(await UniV2PairMock.balanceOf(addr2.address)).to.equal(fp('0'))
+
+      // add DAI
+      const daiAddr2 = fp('2e6') // 2M DAI
+      await whileImpersonating(holderDAI, async (daiSigner) => {
+        await dai.connect(daiSigner).transfer(addr2.address, daiAddr2)
+      })
+
+      const deadLine = Date.now() + 24 * 3600
+      const usdcLowAddr2 = bn('1.9e12')
+
+      expect(await dai.balanceOf(addr2.address)).to.equal(daiAddr2)
+
+      // aprove router02
+      await dai.connect(addr2).approve(UniV2RouterMock.address, daiAddr2)
+
+      //Make a swap
+      await UniV2RouterMock.connect(addr2).swapExactTokensForTokens(
+        daiAddr2,
+        usdcLowAddr2,
+        [dai.address, usdc.address],
+        addr2.address,
+        deadLine
+      )
+
+      const usdcAddr2 = await usdc.balanceOf(addr2.address)
+      expect(usdcAddr2).to.be.gt(usdcLowAddr2)
+      expect(usdcAddr2).to.be.closeTo(bn('2e12'), bn('1e11')) // ~5% slip
+      expect(await dai.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      const daiLowAddr2 = fp('1.9e6')
+      await usdc.connect(addr2).approve(UniV2RouterMock.address, usdcAddr2)
+
+      //Make a swap
+      await UniV2RouterMock.connect(addr2).swapExactTokensForTokens(
+        usdcAddr2,
+        daiLowAddr2,
+        [usdc.address, dai.address],
+        addr2.address,
+        deadLine
+      )
+
+      const daiBal = await dai.balanceOf(addr2.address)
+      expect(daiBal).to.be.gt(daiLowAddr2)
+      expect(daiBal).to.be.closeTo(daiAddr2, fp('12e3')) // ~0.6% slip total
+      expect(await usdc.balanceOf(addr2.address)).to.equal(bn('0'))
+
+      // refresh
+      await UniV2Collateral.refresh()
+      // 2M in and out is a huge swap but pluggin status should be SOUND
+      expect(await UniV2Collateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // refPertok increases
+      const UniV2RefPerTok2: BigNumber = await UniV2Collateral.refPerTok()
+      expect(UniV2RefPerTok2).to.be.gt(fp(initialRefPerTock))
+      expect(UniV2RefPerTok2).to.be.gt(UniV2RefPerTok1)
+      //huge swap huge increase in refPerTock, more than 2*50 = 100 {ref} june 2022
+      expect(UniV2RefPerTok2).to.be.not.closeTo(UniV2RefPerTok1, fp('100'))
+      expect(UniV2RefPerTok2).to.be.closeTo(UniV2RefPerTok1, fp('200'))
     })
   })
 
@@ -560,9 +802,8 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       // Check rates and prices
       const UniV2Price1: BigNumber = await UniV2Collateral.strictPrice()
       const UniV2RefPerTok1: BigNumber = await UniV2Collateral.refPerTok()
-
-      expect(UniV2Price1).to.be.closeTo(fp('2251988'), fp('1')) // ~2251988 USD per LP 6/6/2022
-      expect(UniV2RefPerTok1).to.closeTo(fp('1125769'), fp('0.5')) // refPertok initial ~ 1125769.30 6/6/2022
+      expect(UniV2Price1).to.be.closeTo(fp(initialPrice), fp('0.5')) // ~2251988 USD per LP 6/6/2022
+      expect(UniV2RefPerTok1).to.closeTo(fp(initialRefPerTock), fp('0.5')) // refPertok initial ~ 1125769.30 6/6/2022
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -609,8 +850,8 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(UniV2RefPerTok2).to.be.gt(UniV2RefPerTok1)
 
       // Still close to the original values
-      expect(UniV2Price2).to.be.closeTo(fp('2251988'), fp('2'))
-      expect(UniV2RefPerTok2).to.closeTo(fp('1125769'), fp('1'))
+      expect(UniV2Price2).to.be.closeTo(fp(initialPrice), fp('2'))
+      expect(UniV2RefPerTok2).to.closeTo(fp(initialRefPerTock), fp('1'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -656,8 +897,10 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(UniV2RefPerTok3).to.be.gt(UniV2RefPerTok2)
 
       // Check rates and prices - Have changed significantly
-      expect(UniV2Price3).to.be.closeTo(fp('2252357'), fp('0.5')) // ~ 2252356.88 USD/LPs
-      expect(UniV2RefPerTok3).to.closeTo(fp('1125769'), fp('50'))
+      expect(UniV2Price3).to.not.closeTo(fp(initialPrice), fp('100')) // not close
+      expect(UniV2Price3).to.be.closeTo(fp(initialPrice), fp('500')) // ~ 2252356.88 USD/LPs
+      expect(UniV2RefPerTok3).to.not.closeTo(fp(initialRefPerTock), fp('10')) // not close
+      expect(UniV2RefPerTok3).to.closeTo(fp(initialRefPerTock), fp('50')) // 1125769
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -787,7 +1030,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -813,7 +1055,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -896,7 +1137,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -949,7 +1189,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1002,7 +1241,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1062,7 +1300,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         InvalidPairV2.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1129,7 +1366,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1180,7 +1416,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1231,7 +1466,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1293,7 +1527,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         InvalidPairV2.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1351,7 +1584,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
     })
 
     // Test for hard default
-    it('Updates status in case of hard default', async () => {
+    it('Updates status in case of hard default and persist in hard default state', async () => {
       // Note: In this case requires to use a InvalidPairV2 mock to be able to change the rate
       //at first valid ratio 1:1
       await InvalidPairV2.setReserves(bn('1e18'), bn('1e6'), bn('1e18'))
@@ -1361,7 +1594,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         InvalidPairV2.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
@@ -1399,7 +1631,7 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
       expect(await newUniV2Collateral.status()).to.equal(CollateralStatus.DISABLED)
     })
 
-    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+    it('Reverts if any oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
         'InvalidMockV3Aggregator'
       )
@@ -1417,7 +1649,6 @@ describeFork(`UniswapV2Collateral - Mainnet Forking P${IMPLEMENTATION}`, functio
         })
       ).deploy(
         UniV2PairMock.address,
-        UniV2RouterMock.address,
         fp('2'), // dai and usdc pegged to USD => fallback = 2sqrt(pApB)=2
         config.rTokenMaxTradeVolume,
         delayUntilDefault,
