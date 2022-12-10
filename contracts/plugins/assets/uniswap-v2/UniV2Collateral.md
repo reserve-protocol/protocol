@@ -20,7 +20,7 @@ _Tests contracts_
  of tokenA + tokenB
    
  * __Reference unit `{ref}`__ is `UNIV2SQRT-TA-TB` a synthetic reference unit equal to 
- $ \sqrt{x y}$. This reference only increasing value per token will be detailled in [`refPerTok()` function](#pluggin-functions) description. With 
+ $\sqrt{x y}$. This reference only increasing value per token will be detailled in [`refPerTok()` function](#pluggin-functions) description. With 
       * x = current tokenA reserves
       * y = current tokenB reserves
 
@@ -34,31 +34,26 @@ _Tests contracts_
 __`refPerTok()`__
 
 `{ref}` is a synthetic reference unit equal to 
-$$ \sqrt{x y}$$
+$$\sqrt{x y}$$
 In [implementation](#implementation) we found that:
-$$
-\dfrac{k'}{k} = \left( \dfrac{l'}{l} \right)^2
-$$
+$$\dfrac{k'}{k} = \left( \dfrac{l'}{l} \right)^2$$
 Whenever liquidity is added or removed from the poll. Thus
-$$
-\dfrac{x'y'}{xy} = \left( \dfrac{l'}{l} \right)^2 
-$$
-$$
-\dfrac{x'y'}{l'^2}=\dfrac{xy}{l^2} 
-$$
+$$\dfrac{x'y'}{xy} = \left( \dfrac{l'}{l} \right)^2$$
+$$\dfrac{x'y'}{l'^2}=\dfrac{xy}{l^2}$$
 Meaning that: 
 - This quantity doesn't change if liquidity is added or removed: it's constant
 - Can be calculated any time via a contract call to unswap pair
 -  When trading with without fees $k' = k$ . $\dfrac{\sqrt{x'y'}}{l}$ remains constant.
-- When trading with fees $k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda}) $
-  and $0<\lambda<1$ then $k' > k$ so $\dfrac{x'y'}{l^2}>\dfrac{xy}{l^2} $; since square root function is an increasing function $\sqrt{\dfrac{x'y'}{l^2}}>\sqrt{\dfrac{xy}{l^2}}$ demostrating 
+- When trading with fees $k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda})$
+  and $0<\lambda<1$ then $k' > k$ so $\dfrac{x'y'}{l^2}>\dfrac{xy}{l^2}$; since square root function is an increasing function 
+  $\sqrt{\dfrac{x'y'}{l^2}}>\sqrt{\dfrac{xy}{l^2}}$ demostrating 
   this ref can only increase when a trade is made with fees.
 - initial value is equal to $\sqrt{\dfrac{xy}{l^2}}= \sqrt{\dfrac{xy}{(\sqrt{xy})^2}} = \sqrt{1} = 1$
 - It's a ref per token since {ref} = refPerToken() * {tok}
 
 TLDR; 
-- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok()` is nondecreasing over time.
-- $ \dfrac{\sqrt{x y}}{l} $ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
+- $\dfrac{\sqrt{x y}}{l}$ as `refPerTok()` is nondecreasing over time.
+- $\dfrac{\sqrt{x y}}{l}$ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
 
 
 __`targetPerRef()`__ usd per sqrt(x*y)
@@ -67,13 +62,14 @@ Since `{ref}` is `sqrt(x*y)` we take:
 - $p_x$ = tokenA/USD from oracle ~ a USD
 - $p_y$ = tokenB/USD from oracle ~ b USD
 - x and y reserves from uniswap pair ~ b:a ratio
-- removing LP tokens gives x token and y tokens with $y \approx \frac{a}{b} x$ and value in usd is $a x + b y \approx  a x + b\frac{a}{b} x \approx 2ax $ so tagetPerRef = $ \dfrac{2a x }{\sqrt{xy}} \approx \dfrac{2ax}{\sqrt{\frac{a}{b}x^2}} \approx 2  \sqrt{ab}$
+- removing LP tokens gives x token and y tokens with $y \approx \frac{a}{b} x$ and value in usd is $a x + b y \approx  a x + b\frac{a}{b} x \approx 2ax$ 
+- so tagetPerRef = $\dfrac{2a x }{\sqrt{xy}} \approx \dfrac{2ax}{\sqrt{\frac{a}{b}x^2}} \approx 2  \sqrt{ab}$
 
 For example consider a DAI/USDC pair:
 - $p_x$ = tokenA/USD from oracle ~ 1 USD 
 - $p_y$ = tokenB/USD from oracle ~ 1 USD
 - x and y reserves from uniswap pair ~ 1:1 ratio
-- redeem L gives x token and y tokens with $x \approx y$ and a value in usd is $p_x x + p_y y \approx  1 \cdot x+ 1 \cdot y \approx 2x $ so tagetPerRef = $ \dfrac{2x}{\sqrt{xy}} \approx \dfrac{2x}{\sqrt{x^2}} \approx 2$
+- redeem L gives x token and y tokens with $x \approx y$ and a value in usd is $p_x x + p_y y \approx  1 \cdot x+ 1 \cdot y \approx 2x$ so tagetPerRef = $\dfrac{2x}{\sqrt{xy}} \approx \dfrac{2x}{\sqrt{x^2}} \approx 2$
 - tragetPerRef = $2  \sqrt{ab} \approx 2 \sqrt{1 \cdot 1} = 2$
 
 TLDR;
