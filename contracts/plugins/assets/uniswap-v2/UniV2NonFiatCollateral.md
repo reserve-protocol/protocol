@@ -1,5 +1,5 @@
 
-# UniV2Collateral Plugin (for non fiat LP)
+# UniV2NonFiatCollateral Plugin (for non fiat LP)
 
 ## Files
 _Plugin contracts_
@@ -40,7 +40,7 @@ TLDR;
 - $\dfrac{\sqrt{x y}}{l}$ as `refPerTok() {ref}` is good market rate for 1 `{tok}` 
 
 
-__`targetPerRef()`__ usd per sqrt(x*y)
+__`targetPerRef()`__
 
 Since `{target}` ==  `{ref}`:
 
