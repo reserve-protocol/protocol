@@ -91,6 +91,40 @@ export async function deployUniswapV3WrapperMock(
     return uniswapV3WrapperMock
 }
 
+export async function deployUniswapV3Wrapper(
+    asset0: ERC20Mock | USDCMock,
+    asset1: ERC20Mock | USDCMock,
+    signer: SignerWithAddress,
+    mintParams: TMintParams,
+    liquiDityProvider: SignerWithAddress = signer
+): Promise<UniswapV3Wrapper> {
+
+    const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
+    const transactionCount = await signer.getTransactionCount()
+
+    // just in case we want to deploy it with
+    // the same address for deployer and liquidity provider
+    const futureAddress = getContractAddress({
+        from: signer.address,
+        nonce: transactionCount + (liquiDityProvider == signer ? 2 : 0),
+    })
+
+    await waitForTx(await asset0.connect(liquiDityProvider).approve(futureAddress, mintParams.amount0Desired))
+    await waitForTx(await asset1.connect(liquiDityProvider).approve(futureAddress, mintParams.amount1Desired))
+
+    const uniswapV3Wrapper = await uniswapV3WrapperContractFactory
+        .connect(signer)
+        .deploy('UniswapV3WrapperToken', 'U3W', mintParams, liquiDityProvider.address)
+    if (liquiDityProvider != signer) {
+        await waitForTx(
+            await uniswapV3Wrapper
+                .connect(signer)
+                .transfer(liquiDityProvider.address, await uniswapV3Wrapper.totalSupply())
+        )
+    }
+    return uniswapV3Wrapper
+}
+
 export async function logBalances(
     prefix: string,
     accounts: SignerWithAddress[],

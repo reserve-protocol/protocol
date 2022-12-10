@@ -118,4 +118,9 @@ interface IUniswapV3Wrapper is IERC20, IERC20Metadata {
         external
         view
         returns (uint256 amount0, uint256 amount1, uint128 liquidity);
+
+    /**
+        @notice https://docs.uniswap.org/contracts/v3/reference/core/libraries/Tick
+    */
+    function tick() external view returns (int24);
 }

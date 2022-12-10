@@ -9,7 +9,6 @@ import {
     ERC20Mock,
     ISwapRouter,
     MockV3Aggregator,
-    UniswapV3Wrapper,
     UniswapV3WrapperMock,
     USDCMock,
 } from "../../../../typechain"
@@ -17,8 +16,8 @@ import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
 import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
-import { UniswapV3Collateral__factory } from "@typechain/factories/UniswapV3Collateral__factory"
-import { UniswapV3Collateral } from "@typechain/UniswapV3Collateral"
+import { UniswapV3NonFiatCollateral__factory } from "@typechain/factories/UniswapV3NonFiatCollateral__factory"
+import { UniswapV3NonFiatCollateral } from "@typechain/UniswapV3NonFiatCollateral"
 import {
     closeDeadline,
     defaultMintParams,
@@ -143,29 +142,27 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 await MockV3AggregatorFactory.connect(addr1).deploy(8, bn("1e8"))
             )
 
-            const uniswapV3CollateralContractFactory: UniswapV3Collateral__factory =
-                await ethers.getContractFactory("UniswapV3Collateral")
+            const UniswapV3NonFiatCollateralContractFactory: UniswapV3NonFiatCollateral__factory =
+                await ethers.getContractFactory("UniswapV3NonFiatCollateral")
 
             const fallbackPrice = fp("1")
             const targetName = ethers.utils.formatBytes32String("UNIV3SQRT")
-            const uniswapV3Collateral: UniswapV3Collateral = <UniswapV3Collateral>(
-                await uniswapV3CollateralContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        fallbackPrice,
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
-                        uniswapV3WrapperMock.address,
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DELAY_UNTIL_DEFAULT
-                    )
-            )
+            const UniswapV3NonFiatCollateral: UniswapV3NonFiatCollateral =
+                await UniswapV3NonFiatCollateralContractFactory.connect(addr1).deploy(
+                    fallbackPrice,
+                    fallbackPrice,
+                    mockChainlinkFeed0.address,
+                    mockChainlinkFeed1.address,
+                    uniswapV3WrapperMock.address,
+                    RTOKEN_MAX_TRADE_VALUE,
+                    ORACLE_TIMEOUT,
+                    targetName,
+                    DELAY_UNTIL_DEFAULT
+                )
 
             console.log({ mintParams })
-            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
-            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
+            console.log("strictPrice", await UniswapV3NonFiatCollateral.strictPrice())
+            console.log("_fallbackPrice", await UniswapV3NonFiatCollateral._fallbackPrice())
 
             mintParams.amount0Desired = await asset0.balanceOf(addr2.address)
 
@@ -177,8 +174,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             //     addr2
             // )
 
-            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
-            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
+            console.log("strictPrice", await UniswapV3NonFiatCollateral.strictPrice())
+            console.log("_fallbackPrice", await UniswapV3NonFiatCollateral._fallbackPrice())
 
             const swapRouter: ISwapRouter = await ethers.getContractAt(
                 "ISwapRouter",
@@ -186,22 +183,26 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
 
             await waitForTx(
-                await asset0.connect(addr2).approve(swapRouter.address, await asset0.balanceOf(addr2.address),)
+                await asset0
+                    .connect(addr2)
+                    .approve(swapRouter.address, await asset0.balanceOf(addr2.address))
             )
-            
-            await waitForTx(await swapRouter.connect(addr2).exactInputSingle({
-                tokenIn: asset0.address,
-                tokenOut: asset1.address,
-                fee: mintParams.fee,
-                recipient: addr2.address,
-                deadline: await closeDeadline(),
-                amountIn: await asset0.balanceOf(addr2.address),
-                amountOutMinimum: 0,
-                sqrtPriceLimitX96: 0,
-            }))
 
-            console.log("strictPrice", await uniswapV3Collateral.strictPrice())
-            console.log("_fallbackPrice", await uniswapV3Collateral._fallbackPrice())
+            await waitForTx(
+                await swapRouter.connect(addr2).exactInputSingle({
+                    tokenIn: asset0.address,
+                    tokenOut: asset1.address,
+                    fee: mintParams.fee,
+                    recipient: addr2.address,
+                    deadline: await closeDeadline(),
+                    amountIn: await asset0.balanceOf(addr2.address),
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0,
+                })
+            )
+
+            console.log("strictPrice", await UniswapV3NonFiatCollateral.strictPrice())
+            console.log("_fallbackPrice", await UniswapV3NonFiatCollateral._fallbackPrice())
         })
     })
 })

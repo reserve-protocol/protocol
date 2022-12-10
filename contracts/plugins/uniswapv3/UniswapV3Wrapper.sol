@@ -334,4 +334,9 @@ contract UniswapV3Wrapper is IUniswapV3Wrapper, RewardSplitter, ReentrancyGuard 
             TransferHelper.safeTransfer(token1, recipient, refund1);
         }
     }
+
+    function tick() external view returns (int24){
+        (, int24 tick, , , , , ) = pool.slot0();
+        return tick;
+    }
 }
