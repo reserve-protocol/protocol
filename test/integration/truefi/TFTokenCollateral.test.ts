@@ -59,7 +59,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
   // Tokens/Assets
   let usdc: ERC20Mock
-  let tfUsdc: TFTokenMock 
+  let tfUsdc: TFTokenMock
   let tfUsdcCollateral: TFTokenCollateral
   let truToken: ERC20Mock
   let truAsset: Asset
@@ -126,24 +126,26 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     if (!networkConfig[chainId]) {
       throw new Error(`Missing network configuration for ${hre.network.name}`)
     }
-//?????????????????????
+    //?????????????????????
     // Fork at designated block number - REQUIRED
     await hre.network.provider.request({
       method: "hardhat_reset",
-      params: [{forking: {
-            jsonRpcUrl: MAINNET_RPC_URL,
-            blockNumber: forkBlockNumber['mainnet-deployment']
-          },},],
-      });
+      params: [{
+        forking: {
+          jsonRpcUrl: MAINNET_RPC_URL,
+          blockNumber: forkBlockNumber['trueFi-deployment']
+        },
+      },],
+    });
 
-    expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['mainnet-deployment'])
+    expect(await ethers.provider.getBlockNumber()).to.equal(forkBlockNumber['trueFi-deployment'])
 
   })
 
   beforeEach(async () => {
     ;[owner, addr1] = await ethers.getSigners()
-    ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
-      await loadFixture(defaultFixture))
+      ; ({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
+        await loadFixture(defaultFixture))
 
     // USDC token
     usdc = <ERC20Mock>(
@@ -153,12 +155,16 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     tfUsdc = <TFTokenMock>(
       await ethers.getContractAt('TFTokenMock', networkConfig[chainId].tokens.tfUSDC || '')
     )
-
+    console.log(await tfUsdc.decimals())
+    console.log(await tfUsdc.totalSupply())
+    // console.log(await tfUsdc.poolValue())
+    console.log(await tfUsdc.name())
+    console.log(await usdc.totalSupply())
     // TRU token
     truToken = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.TRU || '')
     )
-        // Create TRU asset
+    // Create TRU asset
     truAsset = <Asset>(
       await (
         await ethers.getContractFactory('Asset')
@@ -186,7 +192,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         defaultThreshold,
         delayUntilDefault,
         (await usdc.decimals()).toString(),
-        {gasLimit: 5000000}
+        { gasLimit: 5000000 }
       )
     )
 
@@ -254,10 +260,32 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
+  //test for seeing if we can get poolValue() &  totalSupply()
+  // describe('basic calls', () => {
+  //     it('usdc pool value & total supply', async () => {
+  //       // console.log(await usdc.decimals())
+  //       expect(await usdc.decimals()).to.equal(18)
+  //       // console.log(await tfUsdc.totalSupply())
+  //       }
+  //     )
+
+  //   }
+  // )
+
+  describe('tfUSDC basic calls', () => {
+    it('pool value & total supply', async () => {
+      console.log(await tfUsdc.poolValue())
+      console.log(await tfUsdc.totalSupply())
+    }
+    )
+  }
+  )
+
+
   describe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
-// Check Rewards assets (if applies)
+      // Check Rewards assets (if applies)
       // TRU Asset
       expect(await truAsset.isCollateral()).to.equal(false)
       expect(await truAsset.erc20()).to.equal(truToken.address)
@@ -267,6 +295,11 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       await expect(truAsset.claimRewards()).to.not.emit(truAsset, 'RewardsClaimed')
       expect(await truAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
+
+
+
+
+
       // Check Collateral plugin
       // tfUSDC (TFTokenCollateral)
       expect(await tfUsdcCollateral.isCollateral()).to.equal(true)
@@ -274,7 +307,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await tfUsdcCollateral.erc20()).to.equal(tfUsdc.address)
       expect(await tfUsdc.decimals()).to.equal(18)
       expect(await tfUsdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
-      expect(await tfUsdcCollateral.refPerTok()).to.be.closeTo(fp('1.023573'), fp('0.000001'))
+      console.log((await tfUsdcCollateral.refPerTok()).to.be.closeTo(fp('1.023573'), fp('0.000001')))
       expect(await tfUsdcCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await tfUsdcCollateral.pricePerTarget()).to.equal(fp('1'))
       // the following assertion cannot always be true since Euler's TFToken->underlying exchange rates do not need to be updated via 
@@ -289,8 +322,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
       // Check claim data
       await expect(tfUsdcCollateral.claimRewards())
-      .to.emit(tfUsdcCollateral, 'RewardsClaimed')
-      .withArgs(truToken.address, 0)
+        .to.emit(tfUsdcCollateral, 'RewardsClaimed')
+        .withArgs(truToken.address, 0)
       expect(await tfUsdcCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -681,7 +714,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       const TFTokenMockFactory: ContractFactory = await ethers.getContractFactory('TFTokenMock')
       const symbol = await tfUsdc.symbol()
       const tfUsdcMock: TFTokenMock = <TFTokenMock>(
-        await TFTokenMockFactory.deploy(symbol + ' Token', symbol, usdc.address, {gasLimit: 2000000})
+        await TFTokenMockFactory.deploy(symbol + ' Token', symbol, usdc.address, { gasLimit: 2000000 })
       )
       // Set initial exchange rate to the new tfUsdc Mock
       await tfUsdcMock.setExchangeRate(fp('1.1'))
@@ -701,7 +734,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         await tfUsdcCollateral.defaultThreshold(),
         await tfUsdcCollateral.delayUntilDefault(),
         8,
-        {gasLimit: 5000000}
+        { gasLimit: 5000000 }
       )
 
       // Check initial state

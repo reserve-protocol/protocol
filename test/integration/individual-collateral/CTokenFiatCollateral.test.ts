@@ -149,6 +149,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
     cDai = <CTokenMock>(
       await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
     )
+    console.log(await cDai.decimals())
 
     // Create COMP asset
     compAsset = <Asset>(

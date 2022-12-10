@@ -6,13 +6,16 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "../assets/AbstractCollateral.sol";
 import "./ITFToken.sol";
 import "../../libraries/Fixed.sol";
+import { ethers } from 'hardhat'
+
+
 
 /**
  * @title TFTokenFiatCollateral
  * @notice Collateral plugin for a cToken of fiat collateral, like cUSDC or cUSDP
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
-contract TFTokenFiatCollateral is Collateral {
+contract TFTokenCollateral is Collateral {
     using OracleLib for AggregatorV3Interface;
     using FixLib for uint192;
 
@@ -28,7 +31,8 @@ contract TFTokenFiatCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    IComptroller public immutable comptroller;
+    
+
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -45,7 +49,7 @@ contract TFTokenFiatCollateral is Collateral {
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
         int8 referenceERC20Decimals_,
-        IComptroller comptroller_
+        address TFContractAddress_,
     )
         Collateral(
             fallbackPrice_,
@@ -59,12 +63,11 @@ contract TFTokenFiatCollateral is Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
-        require(address(comptroller_) != address(0), "comptroller missing");
         defaultThreshold = defaultThreshold_;
         referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok();
-        comptroller = comptroller_;
+        
     }
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
@@ -119,8 +122,8 @@ contract TFTokenFiatCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint256 rate = ITFToken(address(erc20)).exchangeRateStored();
-        int8 shiftLeft = 8 - referenceERC20Decimals - 18;
+        uint256 rate = ITFToken(address(erc20)).poolValue() / ITFToken(address(erc20)).totalSupply();
+        int8 shiftLeft = 6 - referenceERC20Decimals - 18;
         return shiftl_toFix(rate, shiftLeft);
     }
 
