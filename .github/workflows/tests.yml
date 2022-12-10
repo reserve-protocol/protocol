@@ -24,6 +24,8 @@ jobs:
   integration-tests:
     name: 'Integration Tests'
     runs-on: ubuntu-latest
+    env:
+      FORK: true
     steps:
       - uses: actions/checkout@v3
         with:
