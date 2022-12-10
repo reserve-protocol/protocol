@@ -48,70 +48,46 @@ gives us technical details for the core contract, as well as the factory contrac
 
 UniswapV2 uses a constant product formula to decide how much a swap will
 return. This means at any time you trade: 
-$$
-x \cdot y = k = constant 
-$$
+$$x \cdot y = k = constant$$
 
 Where $x$ and $y$ are tokenA and tokenB reserves, respectively.
 
 __Swap with no fees:__
 
 When a user trade $\Delta x$ for $\Delta y$ tokens, given $\alpha = \dfrac{\Delta x}{x_0}$ and $\beta = \dfrac{\Delta y}{y_0}$
-$$ x_1 = x_0 + \Delta x$$
+$$x_1 = x_0 + \Delta x$$
 $$y_1 = y_0 - \Delta y$$
 Still 
-$$
-x_1 \cdot y_1 = (x_0 + \Delta x) \cdot (y_0 - \Delta y) = k
-$$
+$$x_1 \cdot y_1 = (x_0 + \Delta x) \cdot (y_0 - \Delta y) = k$$
 
 Developing:
 
-$$
- x_0 \cdot y_0 - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = k \\
- \cancel{k} - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = \cancel{k} \\
- \Delta y \cdot (x_0 + \Delta x) = \Delta x \cdot y_0
-$$
+$$x_0 \cdot y_0 - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = k$$
+$$\cancel{k} - x_0 \cdot \Delta y + \Delta x \cdot y_0 - \Delta x \cdot \Delta y = \cancel{k}$$
+$$\Delta y \cdot (x_0 + \Delta x) = \Delta x \cdot y_0$$
 then 
-$$
-\Delta y = \dfrac{\Delta x \cdot y_0}{x_0 + \Delta x} = \dfrac{ \frac{\Delta x}{x_0} y_0 }{1 + \frac{\Delta x}{x_0} } = \dfrac{\alpha}{1+\alpha} \cdot y_0
-$$
+$$\Delta y = \dfrac{\Delta x \cdot y_0}{x_0 + \Delta x} = \dfrac{ \frac{\Delta x}{x_0} y_0 }{1 + \frac{\Delta x}{x_0} } = \dfrac{\alpha}{1+\alpha} \cdot y_0$$
 and 
-$$
-\Delta x = \dfrac{\Delta y \cdot x_0}{y_0 - \Delta y} = \dfrac{ \frac{\Delta y}{y_0} x_0 }{1 - \frac{\Delta y}{y_0} } = \dfrac{\beta}{1-\beta} \cdot x_0
-$$
+$$\Delta x = \dfrac{\Delta y \cdot x_0}{y_0 - \Delta y} = \dfrac{ \frac{\Delta y}{y_0} x_0 }{1 - \frac{\Delta y}{y_0} } = \dfrac{\beta}{1-\beta} \cdot x_0$$
 
 Note:
-$$
-\beta = \dfrac{\alpha}{1+\alpha} 
-$$
-$$
-\alpha = \dfrac{\beta}{1-\beta}
-$$
+$$\beta = \dfrac{\alpha}{1+\alpha}$$
+$$\alpha = \dfrac{\beta}{1-\beta}$$
 
 __Swap with fees:__
 
-Now let's add a fee rate $ \eta = 0.3 \% $ in total and $\lambda  = 1 - \eta = 99.7 \%$
-$$
-\alpha' = \dfrac{\Delta x_{fee}}{x_0} =  \dfrac{\Delta x - \eta \cdot \Delta x} {x_0} = (1-\eta) \cdot \dfrac{\Delta x}{x_0} = (1-\eta) \cdot \alpha = \lambda \alpha 
-$$
+Now let's add a fee rate $\eta = 0.3 \%$ in total and $\lambda  = 1 - \eta = 99.7 \%$
+$$\alpha' = \dfrac{\Delta x_{fee}}{x_0} =  \dfrac{\Delta x - \eta \cdot \Delta x} {x_0} = (1-\eta) \cdot \dfrac{\Delta x}{x_0} = (1-\eta) \cdot \alpha = \lambda \alpha $$
 thus 
-$$
-\Delta y  = \dfrac{\alpha'}{1+\alpha'} \cdot y_0 = \dfrac{\lambda \alpha}{1+\lambda \alpha} \cdot y_0 
-$$
-$$
-\Delta x = \dfrac{\Delta x_{fee}}{\lambda} = \dfrac{1}{\lambda} \cdot \dfrac{\beta}{1-\beta} \cdot x_0
-$$
+$$\Delta y  = \dfrac{\alpha'}{1+\alpha'} \cdot y_0 = \dfrac{\lambda \alpha}{1+\lambda \alpha} \cdot y_0 $$
+$$\Delta x = \dfrac{\Delta x_{fee}}{\lambda} = \dfrac{1}{\lambda} \cdot \dfrac{\beta}{1-\beta} \cdot x_0$$
 
 Note:
 
-$$
-(x+\Delta x) \cdot (y - \Delta y) = k' = k + \alpha k - \beta k - \alpha \beta \\
-$$
-$$
-k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda})
-$$
+$$(x+\Delta x) \cdot (y - \Delta y) = k' = k + \alpha k - \beta k - \alpha \beta$$
+$$k' = k \cdot (1 + \beta \dfrac{1-\lambda}{\lambda})$$
 
-Since $\lambda < 1 \Rightarrow k' > k $
+Since $\lambda < 1 \Rightarrow k' > k$
 
 TLDR;
 
@@ -123,45 +99,35 @@ __how is constant $k$ fixed ?__
 Well liquidity is a token that represents 
 the proportion of the total x you participatted:
 
-$$
-L_{recv} = \dfrac{x_{deposited}}{x_{starting}} \cdot L_{starting}
-$$
+$$L_{recv} = \dfrac{x_{deposited}}{x_{starting}} \cdot L_{starting}$$
 
-Initialy $ L_{starting} = \sqrt{x_{deposited} \cdot y_{desposited}} $
+Initialy $L_{starting} = \sqrt{x_{deposited} \cdot y_{desposited}}$
 So 
-$$
-k = L_{starting}^2
-$$
+$k = L_{starting}^2$
 
-Supose a LP deposits $dx$ of token A and dy of token B where $\frac{dy}{y} = \frac{dx}{x} = r > 0 $
+Supose a LP deposits $dx$ of token A and dy of token B where $\frac{dy}{y} = \frac{dx}{x} = r > 0$
 
 New state will be:
-$$
-x_1 = (1+r) x \\
-y_1 = (1+r) y \\
-l_1 = l_{rcv} + l = \dfrac{dx}{x} \cdot l + l =  r \cdot l + l = (1+r) \cdot l
-$$
+$$x_1 = (1+r) x$$
+$$y_1 = (1+r) y$$
+$$l_1 = l_{rcv} + l = \dfrac{dx}{x} \cdot l + l =  r \cdot l + l = (1+r) \cdot l$$
 
 
-$$
-x_1 \cdot y_1 = (x + dx) \cdot (y + dy) = k' \\
-k' = (1+r)^2 \cdot x y \\
-k' = (1+r)^2 \cdot k
-$$
+$$x_1 \cdot y_1 = (x + dx) \cdot (y + dy) = k'$$
+$$k' = (1+r)^2 \cdot x y$$
+$$k' = (1+r)^2 \cdot k$$
 
-Since it is a deposit $r>0$ then $ (1+r)^2 >1$ and $k' > k $
+Since it is a deposit $r>0$ then 
+$(1+r)^2 >1$ and $k' > k$
 
 But  
 
-$$
-\dfrac{k'}{k} = (1+r)^2 = \left( \frac{l_1}{l} \right)^2
-$$
+$$\dfrac{k'}{k} = (1+r)^2 = \left( \frac{l_1}{l} \right)^2$$
 
 Removing liquidity works the same way but with $r<0$
-giving $k'<k$ but still 
-$$
-\dfrac{k'}{k} = \left( \frac{l_1}{l} \right)^2
-$$
+giving $k'< k$ but still 
+
+$$\dfrac{k'}{k} = \left( \frac{l_1}{l} \right)^2$$
 
 
 __Risks__
@@ -170,9 +136,7 @@ Main risk is impermanent loss due to a price ratio change.
 
 Following this formula:
 
-$$
-loss = 2\cdot \dfrac{\sqrt{p_{ratio}}}{1+p_{ratio}} - 1
-$$
+$$loss = 2\cdot \dfrac{\sqrt{p_{ratio}}}{1+p_{ratio}} - 1$$
 
 See UniswapV2 doc [Understanding Returns](https://docs.uniswap.org/contracts/v2/concepts/advanced-topics/understanding-returns) for more details.
 
