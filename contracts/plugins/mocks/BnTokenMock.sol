@@ -21,7 +21,7 @@ contract BnTokenMock is ERC20Mock {
     }
 
     function decimals() public pure override returns (uint8) {
-        return 8;
+        return 18;
     }
 
     function exchangeRateCurrent() external returns (uint256) {

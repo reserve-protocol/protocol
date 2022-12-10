@@ -41,8 +41,9 @@ import {
   IAutoCompoundingRewards,
   IBancorTradingProxy,
   ERC20,
+  BnTokenMock,
+  CTokenMock,
 } from '../../../typechain'
-import { BnTokenMock } from '@typechain/BnTokenMock'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -60,6 +61,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   // Tokens/Assets
   let dai: ERC20Mock
   let bnDAI: ERC20Mock
+  let bnDaiMock: BnTokenMock
+  let cDai: CTokenMock
   let BancorV3Collateral: BancorV3FiatCollateral
   let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
@@ -139,8 +142,17 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
     )
 
-    bnDAI = <BnTokenMock>(
+    // cDAI token
+    cDai = <CTokenMock>(
+      await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
+    )
+
+    bnDAI = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnDAI || '')
+    )
+
+    bnDaiMock = <BnTokenMock>(
+      await ethers.getContractAt('BnTokenMock', networkConfig[chainId].tokens.bnDAI || '')
     )
 
     bancorProxy = <IBnTokenERC20>(
@@ -691,54 +703,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newBnDAICollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
-    // Test for hard default
-    it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a BnToken mock to be able to change the rate
-      const BnTokenMockFactory: ContractFactory = await ethers.getContractFactory('ERC20Mock')
-      const symbol = await bnDAI.symbol()
-      const bnDaiMock: BnTokenMock = <BnTokenMock>(
-        await BnTokenMockFactory.deploy(symbol + ' Token', dai.address)
-      )
-      // Set initial exchange rate to the new cDai Mock
-      await bnDaiMock.setExchangeRate(fp('0.02'))
-
-      // Redeploy plugin using the new cDai mock
-      const newBnDAICollateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>await (
-        await ethers.getContractFactory('BancorV3FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        fp('0.02'),
-        mockChainlinkFeed.address,
-        bnDaiMock.address,
-        await BancorV3Collateral.maxTradeVolume(),
-        await BancorV3Collateral.oracleTimeout(),
-        await BancorV3Collateral.targetName(),
-        await BancorV3Collateral.defaultThreshold(),
-        await BancorV3Collateral.delayUntilDefault(),
-        bancorProxy.address,
-        rewardsProxy.address,
-        autoProcessRewardsProxy.address
-      )
-
-      
-
-      // Check initial state
-      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newBnDAICollateral.whenDefault()).to.equal(MAX_UINT256)
-
-      // Decrease rate for cDAI, will disable collateral immediately
-      await bnDaiMock.setExchangeRate(fp('0.019'))
-
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newBnDAICollateral.refresh())
-        .to.emit(newBnDAICollateral, 'DefaultStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newBnDAICollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    })
+  
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
