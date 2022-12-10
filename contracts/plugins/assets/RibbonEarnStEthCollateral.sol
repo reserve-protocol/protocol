@@ -22,6 +22,10 @@ contract RibbonEarnStEthCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
+    uint192 public highestObservedReferencePrice;
+
+    event log (uint192 p, uint192 fp, uint192 tPerRef, uint192 fixOneMinusDefaultThreshold, bool check);
+
     AggregatorV3Interface public immutable chainlinkFeedFallback;
 
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
@@ -69,27 +73,32 @@ contract RibbonEarnStEthCollateral is Collateral {
         CollateralStatus oldStatus = status();
 
         // Check for hard default
-        uint192 referencePrice = refPerTok();
+        // Here we compare the volatility adjusted reference price
+        // with the actual price
+        uint192 referencePrice = pricePerShare();
+        highestObservedReferencePrice < referencePrice ? highestObservedReferencePrice = referencePrice : highestObservedReferencePrice;
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
         } else {
             // since there is no eth/stEth price feed, we have to use two 
             // oracle feeds, here we check both of them
-            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
-                try chainlinkFeedFallback.price_(oracleTimeout) returns (uint192 fp) {
+            try chainlinkFeed.price_(oracleTimeout) returns (uint192 p){
+                try chainlinkFeedFallback.price_(oracleTimeout) returns (uint192 fp){
 
-                    // same as targetPerRef() but since we have to check
-                    // integrity of price feed above in try-catch, 
-                    // we avoid calling targetPerRef() to optimize on gas
+                    // we get actual {target/ref} from the oracle prices. 
+                    // we cannot use targetPerRef() here since that is a constant
                     // p == stEth/usd, fp == eth/usd
                     uint192 tPerRef = p.div(fp);
 
                     // we check for depeg of stEth from Eth for collateral status
+                    // we avoid calling targetPerRef()(== 1) for gas optimization
                     if (tPerRef < (FIX_ONE - defaultThreshold) ) {
                         markStatus(CollateralStatus.IFFY);
+                        emit log (p, fp, tPerRef, FIX_ONE - defaultThreshold, (tPerRef < (FIX_ONE - defaultThreshold) ));
                     } else {
                         markStatus(CollateralStatus.SOUND);
+                        // emit log (p, fp, tPerRef, FIX_ONE - defaultThreshold, (tPerRef < (FIX_ONE - defaultThreshold) ));
                     }
 
                 } catch (bytes memory errData) {
@@ -104,7 +113,13 @@ contract RibbonEarnStEthCollateral is Collateral {
                     markStatus(CollateralStatus.IFFY);
             }
         }
-        prevReferencePrice = referencePrice;
+
+        // same as calling refPerTok() but we save an external contract call
+        // by reusing pricePerShare() from above
+        uint192 ref;
+        referencePrice < highestObservedReferencePrice ? ref = highestObservedReferencePrice : ref = referencePrice;
+        uint192 rpt = ref - ref.mul(volatilityBuffer);
+        rpt <= prevReferencePrice ? prevReferencePrice : prevReferencePrice = rpt;
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
@@ -113,26 +128,37 @@ contract RibbonEarnStEthCollateral is Collateral {
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit (Eth/stEth)
-    function targetPerRef() public view override returns (uint192) {
-        uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // stEth / usd feed
-        uint192 uoaPerTarget = pricePerTarget(); // Eth / usd feed
-        // == {UoA/ref} / {UoA/target}
-        // == {UoA/ref} * {target/UoA}
-        // == {target/ref}
-        return uoaPerRef.div(uoaPerTarget);  
-    }
+    // function targetPerRef() public pure override returns (uint192) {
+    //     return FIX_ONE;
+    //     // uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // stEth / usd feed
+    //     // uint192 uoaPerTarget = pricePerTarget(); // Eth / usd feed
+    //     // // == {UoA/ref} / {UoA/target}
+    //     // // == {UoA/ref} * {target/UoA}
+    //     // // == {target/ref}
+    //     // return uoaPerRef.div(uoaPerTarget);  
+    // }
 
     /// @return {UoA/target} The price of a target unit in UoA (Eth/usd)
     function pricePerTarget() public view override returns (uint192) {
         return chainlinkFeedFallback.price(oracleTimeout);
     }
 
+    /// @return pricePerShare of rEARN-sTEth in Eth as Fixed uint192
+    /// rEARN-stEth has 18 decimals
+    function pricePerShare() public view returns (uint192) {
+        uint256 pps = IrEARN(address(erc20)).pricePerShare();
+        int8 shiftLeft = -18;
+        return shiftl_toFix(pps, shiftLeft);
+    }
+
     /// @return {ref/tok} Quantity of whole reference units per whole collateral token
+    /// we are hiding volatilityBuffer {%} of revenue to account for volatility
     /// rEARN-stEth has 18 decimals
     function refPerTok() public view override returns (uint192) {
-        uint256 pricePerShare = IrEARN(address(erc20)).pricePerShare();
-        int8 shiftLeft = -18;
-        return shiftl_toFix(pricePerShare, shiftLeft);
+        uint192 pps = pricePerShare();
+        uint192 p;
+        pps < highestObservedReferencePrice ? p = highestObservedReferencePrice : p = pps;
+        return p - p.mul(volatilityBuffer);
     }
 
     /// Can return 0, can revert
@@ -140,7 +166,7 @@ contract RibbonEarnStEthCollateral is Collateral {
     /// we cancel out ref to get {UoA/tok}
     function strictPrice() public view override returns (uint192) {
         uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // stEth/usd
-        return uoaPerRef.mul(refPerTok());
+        return uoaPerRef.mul(pricePerShare());
     }
 
     /// Can return 0
@@ -154,8 +180,9 @@ contract RibbonEarnStEthCollateral is Collateral {
         } catch {
             require(allowFallback, "price reverted without failover enabled");
             // we use Eth price instead of stEth price as fallback here
-            uint192 uoaPerTarget = chainlinkFeedFallback.price(oracleTimeout);
-            return (true, uoaPerTarget.mul(refPerTok()));
+            // uint192 uoaPerTarget = chainlinkFeedFallback.price(oracleTimeout);
+            // return (true, uoaPerTarget.mul(pricePerShare()));
+            return (true, highestObservedReferencePrice);
         }
     }
 }

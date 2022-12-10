@@ -9,7 +9,7 @@ contract REarnStEthMock is ERC20Mock {
     using FixLib for uint192;
     address internal _underlyingToken;
 
-    uint256 internal pps = 1100000000000000000;
+    uint256 internal pps = 1000000000000000000;
 
     constructor(
         string memory name,
