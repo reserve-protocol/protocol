@@ -13,35 +13,40 @@ import {
   IRTokenSetup,
   networkConfig,
 } from '#/common/configuration'
-import { CollateralStatus, ZERO_ADDRESS } from '#/common/constants'
-import { expectInIndirectReceipt } from '#/common/events'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
+import { expectEvents, expectInIndirectReceipt } from '#/common/events'
 import { bn, fp, toBNDecimals } from '#/common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import {
   Asset,
-  FCashFiatPeggedCollateral,
   ERC20Mock,
   FacadeRead,
   FacadeTest,
   FacadeWrite,
+  FCashFiatPeggedCollateral,
   IAssetRegistry,
   IBasketHandler,
-  OracleLib,
+  InvalidMockV3Aggregator,
   MockV3Aggregator,
+  OracleLib,
+  ReservefCashWrapper,
   RTokenAsset,
+  RwfCashMock,
   TestIBackingManager,
   TestIDeployer,
   TestIMain,
   TestIRToken,
-  ReservefCashWrapper,
 } from '#/typechain'
 import forkBlockNumber from '../fork-block-numbers'
-import { advanceBlocks, advanceTime } from '../../utils/time'
+import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
+import { setOraclePrice } from '#/test/utils/oracles'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
 const holderUSDC = '0x0a59649758aa4d66e25f08dd01271e891fe52199'
+
+const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
@@ -112,6 +117,17 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
     await rwfUsdc.connect(addr1).deposit(amount)
   }
 
+  async function issueRToken(amount: BigNumber) {
+    const collateralAmount: BigNumber = amount.mul(2)
+    await mintRwf(toBNDecimals(collateralAmount, 6))
+
+    // Provide approvals for issuances
+    await rwfUsdc.connect(addr1).approve(rToken.address, collateralAmount)
+
+    // Issue rTokens
+    await expect(rToken.connect(addr1).issue(amount)).to.emit(rToken, 'Issuance')
+  }
+
   const setup = async (blockNumber: number) => {
     // Use Mainnet fork
     await hre.network.provider.request({
@@ -166,7 +182,7 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
       rwfUsdc.address,
       config.rTokenMaxTradeVolume,
       ORACLE_TIMEOUT,
-      70, // 0.3 %
+      70, // 0.7 %
       ethers.utils.formatBytes32String('USD'),
       delayUntilDefault,
       defaultThreshold
@@ -235,7 +251,6 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
-  /*
   describe('Deployment', () => {
     // Check the initial state
     it('Should setup RToken, Assets, and Collateral correctly', async () => {
@@ -297,14 +312,9 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
       expect(price).to.be.closeTo(fp('1'), fp('0.015'))
 
       const issueAmount: BigNumber = bn('100e18')
-      const collateralAmount: BigNumber = issueAmount.mul(2)
-
-      // mint some collateral -- more amount since refPerTok below 1
-      await mintRwf(toBNDecimals(collateralAmount, 6))
-      await rwfUsdc.connect(addr1).approve(rToken.address, collateralAmount)
 
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await issueRToken(issueAmount)
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
       // Check RToken price
@@ -329,19 +339,12 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
       ).to.be.revertedWith('invalid defaultThreshold')
     })
   })
-*/
+
   describe('Issuance/Appreciation/Redemption', () => {
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = bn('100e18')
-      const collateralAmount: BigNumber = issueAmount.mul(2)
-      await mintRwf(toBNDecimals(collateralAmount, 6))
-
-      // Provide approvals for issuances
-      await rwfUsdc.connect(addr1).approve(rToken.address, collateralAmount)
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+      await issueRToken(issueAmount)
 
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
@@ -463,6 +466,242 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
         fp(0.81), // ~= 0.81 usd profit
         fp(0.01)
       )
+    })
+  })
+
+  describe('Rewards', () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
+      await expectEvents(backingManager.claimRewards(), [
+        {
+          contract: backingManager,
+          name: 'RewardsClaimed',
+          args: [],
+          emitted: false,
+        },
+      ])
+
+      const issueAmount: BigNumber = bn('100e18')
+      await issueRToken(issueAmount)
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Advance Time
+      await advanceTime(8000)
+
+      // Claim rewards
+      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
+    })
+  })
+
+  describe('Price Handling', () => {
+    it('Should handle invalid/stale Price', async () => {
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+
+      // Compound
+      await expect(rwfUsdcCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+
+      // Fallback price is returned
+      const [isFallback, price] = await rwfUsdcCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
+
+      // Refresh should mark status IFFY
+      await rwfUsdcCollateral.refresh()
+      expect(await rwfUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Collateral with no price valid feed
+      const nonpricefCashFiatPeggedCollateral: FCashFiatPeggedCollateral = <
+        FCashFiatPeggedCollateral
+      >await (
+        await ethers.getContractFactory('fCashFiatPeggedCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        NO_PRICE_DATA_FEED,
+        rwfUsdc.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        70, // 0.7 %
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold
+      )
+
+      // Collateral with no price info should revert
+      await expect(nonpricefCashFiatPeggedCollateral.strictPrice()).to.be.reverted
+
+      // Refresh should also revert - status is not modified
+      await expect(nonpricefCashFiatPeggedCollateral.refresh()).to.be.reverted
+      expect(await nonpricefCashFiatPeggedCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Reverts with a feed with zero price
+      const invalidpricefCashFiatPeggedCollateral: FCashFiatPeggedCollateral = <
+        FCashFiatPeggedCollateral
+      >await (
+        await ethers.getContractFactory('fCashFiatPeggedCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        mockChainlinkFeed.address,
+        rwfUsdc.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        70, // 0.7 %
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold
+      )
+
+      await setOraclePrice(invalidpricefCashFiatPeggedCollateral.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidpricefCashFiatPeggedCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status IFFY
+      await invalidpricefCashFiatPeggedCollateral.refresh()
+      expect(await invalidpricefCashFiatPeggedCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+  })
+
+  describe('Collateral Status', () => {
+    // Test for soft default
+    it('Updates status in case of soft default', async () => {
+      // Redeploy plugin using a Chainlink mock feed where we can change the price
+      const newCollateralPlugin: FCashFiatPeggedCollateral = <FCashFiatPeggedCollateral>await (
+        await ethers.getContractFactory('fCashFiatPeggedCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        mockChainlinkFeed.address,
+        rwfUsdc.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        70, // 0.7 %
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold
+      )
+
+      // Check initial state
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newCollateralPlugin.whenDefault()).to.equal(MAX_UINT256)
+
+      // Depeg one of the underlying tokens - Reducing price 20%
+      await setOraclePrice(newCollateralPlugin.address, bn('8e7')) // -20%
+
+      // Force updates - Should update whenDefault and status
+      await expect(newCollateralPlugin.refresh())
+        .to.emit(newCollateralPlugin, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.IFFY)
+
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp()).add(
+        delayUntilDefault
+      )
+      expect(await newCollateralPlugin.whenDefault()).to.equal(expectedDefaultTimestamp)
+
+      // Move time forward past delayUntilDefault
+      await advanceTime(Number(delayUntilDefault))
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.DISABLED)
+
+      // Nothing changes if attempt to refresh after default
+      // CToken
+      const prevWhenDefault: BigNumber = await newCollateralPlugin.whenDefault()
+      await expect(newCollateralPlugin.refresh()).to.not.emit(
+        newCollateralPlugin,
+        'CollateralStatusChanged'
+      )
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.DISABLED)
+      expect(await newCollateralPlugin.whenDefault()).to.equal(prevWhenDefault)
+    })
+
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a CToken mock to be able to change the rate
+      const rwfCashMockFactory: ContractFactory = await ethers.getContractFactory('rwfCashMock')
+      const rwfCashMock: RwfCashMock = <RwfCashMock>(
+        await rwfCashMockFactory.deploy('rwfCash token', 'rwfcash')
+      )
+      // Set initial exchange rate to the new cDai Mock
+      await rwfCashMock.setRefPerTok(fp('1'))
+
+      // Redeploy plugin using the new cDai mock
+      const newCollateralPlugin: FCashFiatPeggedCollateral = <FCashFiatPeggedCollateral>await (
+        await ethers.getContractFactory('fCashFiatPeggedCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        networkConfig[chainId].chainlinkFeeds.USDC as string,
+        rwfCashMock.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        70, // 0.7 %
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold
+      )
+
+      // initialize interal maxRefPerTok
+      await newCollateralPlugin.refresh()
+
+      // Check initial state
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newCollateralPlugin.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease refPerTok below the accepted 0.7%
+      await rwfCashMock.setRefPerTok(fp('0.990'))
+
+      // Force updates - Should update whenDefault and status
+      await expect(newCollateralPlugin.refresh())
+        .to.emit(newCollateralPlugin, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newCollateralPlugin.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newCollateralPlugin.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
+    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
+      )
+
+      const invalidCTokenCollateral: FCashFiatPeggedCollateral = <FCashFiatPeggedCollateral>await (
+        await ethers.getContractFactory('fCashFiatPeggedCollateral', {
+          libraries: { OracleLib: oracleLib.address },
+        })
+      ).deploy(
+        fp('1'),
+        invalidChainlinkFeed.address,
+        rwfUsdc.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        70, // 0.7 %
+        ethers.utils.formatBytes32String('USD'),
+        delayUntilDefault,
+        defaultThreshold
+      )
+
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Runnning out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidCTokenCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidCTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })
