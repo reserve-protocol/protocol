@@ -38,13 +38,14 @@ import {
   TestIMain,
   TestIRToken,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
 const holderRETH = '0xba12222222228d8ba445958a75a0704d566bf2c8'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`RethCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -177,8 +178,7 @@ describeFork(`RethCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       primaryBasket: [rethCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -493,7 +493,7 @@ describeFork(`RethCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
 
       // Force updates
       await expect(rethCollateral.refresh())
-        .to.emit(rethCollateral, 'DefaultStatusChanged')
+        .to.emit(rethCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await rethCollateral.status()).to.equal(CollateralStatus.DISABLED)
