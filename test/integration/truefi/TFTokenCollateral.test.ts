@@ -746,12 +746,14 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Check initial state
       expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      //console.log(await newTFUsdcCollateral.refPerTok())
 
-      await tfUsdcMock.setExchangeRate(fp('1.09')) // we want to expect that it is still SOUND when it only increases.
-      await newTFUsdcCollateral.refresh()
+      // await tfUsdcMock.setExchangeRate(fp('1.09')) // we want to expect that it is still SOUND when it only increases.
+      // await newTFUsdcCollateral.refresh()
     
-      expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+      // expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      
+      // expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
 
       // Decrease rate for tfUSDC, will disable collateral immediately

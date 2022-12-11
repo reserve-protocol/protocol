@@ -16,8 +16,8 @@ contract TFTokenMock is ERC20Mock {
         address underlyingToken
     ) ERC20Mock(name, symbol) {
         _underlyingToken = underlyingToken;
-        _mint(0x663FDeDb7Fa953DdB4FBf778D2c77DA497b7644a, 1);
-        poolValue = totalSupply();
+        _mint(0x663FDeDb7Fa953DdB4FBf778D2c77DA497b7644a, FIX_ONE);
+        poolValue = totalSupply(); // initial refpertok of 1
     }
     
 
@@ -26,8 +26,7 @@ contract TFTokenMock is ERC20Mock {
     }
 
     function setExchangeRate(uint192 rate) external {
-        uint192 fixPoolValue = rate.mul(shiftl_toFix(totalSupply(), -6));
-        poolValue = shiftl_toFix(fixPoolValue, -(36 - 6));
+        poolValue = rate * totalSupply() / FIX_ONE;
     }
 
     function underlying() external view returns (address) {
