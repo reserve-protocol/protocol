@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity ^0.8.9;
 
+import "@uniswap/v3-core/contracts/libraries/FixedPoint96.sol";
+import "@uniswap/v3-core/contracts/libraries/TickMath.sol";
+
+import "@openzeppelin/contracts/utils/math/Math.sol";
+
+import "hardhat/console.sol";
+import "contracts/libraries/Fixed.sol";
+
 import "./IUniswapV3Wrapper.sol";
 import "./UniswapV3Collateral.sol";
 
@@ -11,22 +19,18 @@ import "./UniswapV3Collateral.sol";
     @author Gene A. Tsvigun
     @author Vic G. Larson
   */
-
-/*
-This would be sensible for many UNI v2 pools, but someone holding value in a two-sided USD-fiatcoin pool probably intends to represent a USD position with those holdings, and so it'd be better for the Collateral plugin to have a target of USD. This is coherent so long as the Collateral plugin is setup to default under any of the following conditions:
-
-- According to a trusted oracle, USDC is far from \$1 for some time
-- According a trusted oracle, USDT is far from \$1 for some time
-- The UNI v2 pool is far from the 1:1 point for some time
-
-And even then, it would be somewhat dangerous for an RToken designer to use this LP token as a _backup_ Collateral position -- because whenever the pool's proportion is away from 1:1 at all, it'll take more than \$1 of collateral to buy an LP position that can reliably convert to \$1 later.
-*/
 contract UniswapV3UsdCollateral is UniswapV3Collateral {
     using OracleLib for AggregatorV3Interface;
-    uint24 public immutable tickThreshold;
+    using FixLib for uint192;
 
+    int24 public immutable lowTickThreshold;
+    int24 public immutable highTickThreshold;
     uint192 public immutable defaultThreshold;
 
+    /**
+     * @param tickThreshold_ max acceptable absolute value of difference with Uniswap pool tick
+     * 10 means ~0.1%, 100 means ~1% price difference from the optimum 1:1 pool state
+     */
     constructor(
         uint192 fallbackPrice_,
         uint192 fallbackPriceSecondAsset_,
@@ -54,15 +58,10 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
         defaultThreshold = defaultThreshold_;
-        tickThreshold = tickThreshold_;
-    }
-
-    function priceNotInBounds(
-        uint192 price,
-        uint192 peg,
-        uint192 delta
-    ) internal pure returns (bool) {
-        return price < peg - delta || price > peg + delta;
+        // tick representing the balanced state of the pool
+        int24 zeroTick = _zeroTick(1, 1);
+        lowTickThreshold = zeroTick - int24(tickThreshold_);
+        highTickThreshold = zeroTick + int24(tickThreshold_);
     }
 
     /// Refresh exchange rates and update default status.
@@ -70,59 +69,91 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
-        try chainlinkFeed.price_(oracleTimeout) returns (uint192 price0) {
-            try chainlinkFeedSecondAsset.price_(oracleTimeout) returns (uint192 price1) {
-                uint192 peg = peg();
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE;
-                if (
-                    priceNotInBounds(price0, peg, delta) ||
-                    priceNotInBounds(price1, peg, delta) ||
-                    poolIsAwayFromOptimalPoint()
-                ) {
-                    markStatus(CollateralStatus.IFFY);
-                } else {
-                    markStatus(CollateralStatus.SOUND);
-                }
-            } catch (bytes memory errData) {
-                if (errData.length == 0) revert();
-                markStatus(CollateralStatus.IFFY);
+        CollateralStatus newStatus = poolAwayFromOptimalPoint() || pricesAwayFromPegOrUnknown()
+            ? CollateralStatus.IFFY
+            : CollateralStatus.SOUND;
+
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+        markStatus(newStatus);
+    }
+
+    /**
+     * @notice Check if the current tick value the Uniswap pool
+     * @notice in which the wrapped position is opened
+     * @notice is within bounds
+     * @dev the point of comparing ticks instead of calculating price deviation
+     * @dev from price values is that price values are calculated 
+     * @dev the tick value which is already stored in `pool.slot0`
+     */
+    function poolAwayFromOptimalPoint() internal view returns (bool) {
+        int24 tick = IUniswapV3Wrapper(address(erc20)).tick();
+        return tick < lowTickThreshold || tick > highTickThreshold;
+    }
+
+    /**
+     * @notice Check if both prices are available to get from the feed
+     * @notice and if they are within bounds
+     */    
+    function pricesAwayFromPegOrUnknown() internal view returns (bool) {
+        uint192 peg = pricePerTarget();
+        uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+        return
+            priceOutOfBoundsOrUnknown(chainlinkFeed, peg, delta) ||
+            priceOutOfBoundsOrUnknown(chainlinkFeedSecondAsset, peg, delta);
+    }
+
+    /**
+     * @notice Check if the price is available to get from the feed
+     * @notice and if it is within bounds
+     * @param feed Price feed to get the price from
+     * @param peg center of the acceptable price bounds
+     * @param delta radius of the acceptable price bounds
+     */
+    function priceOutOfBoundsOrUnknown(
+        AggregatorV3Interface feed,
+        uint192 peg,
+        uint192 delta
+    ) internal view returns (bool) {
+        try feed.price_(oracleTimeout) returns (uint192 price) {
+            if (price < peg - delta || price > peg + delta) {
+                return true;
             }
         } catch (bytes memory errData) {
             if (errData.length == 0) revert();
-            markStatus(CollateralStatus.IFFY);
-        }
-
-        CollateralStatus newStatus = status();
-        if (oldStatus != newStatus) {
-            //TODO need we emit it? correct in other collateral?
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            return true;
         }
     }
 
-    /// @return {UoA/target} The price of a target unit in UoA
-    function pricePerTarget() public view override returns (uint192) {
-        return FIX_ONE; //TODO target can be other than USD, it can be EUR, GBP, etc
-    }
+    /**
+        @notice calculates the tick representing token0Price of the balanced state of the pool
+        @dev https://docs.uniswap.org/contracts/v3/reference/core/interfaces/pool/IUniswapV3PoolState#slot0
+        @dev Pool balance boundaries can be expressed with ticks, since that math is already done in Uniswap
+        @dev tick = log(token0Price, 1.0001)
+        @dev Tick is around 0 when the pool is balanced and prices are close to 1
+        @dev and further from 0 when prices are further from 1, like 1.001 ** 100 = 1.105115697720756, 
+        @dev i.e. tick value 100 means that there's ~1.1 times more of token1 than of token0 in the pool.
+        @dev The above is true for the case when both tokens have the same decimals.
+        @dev for DAI/USDT equal amounts of DAI and USDT will result in 
+        @dev token0Price = 10 ** (-12)
+        @dev log(10 ** 12, 1.0001) ~= 276324.0264 ~= 276324
+        @dev so 276324 is a good value to represent the balanced state
+        @dev and +-100 results in the same ~1.1 price disbalance
+        @dev 1.0001 ** (-276324 + 100) * 10 ** 12 ~= 1.01005
+        @dev 1.0001 ** (-276324 - 100) * 10 ** 12 ~= 0.99005
+        @param decimals0 decimals of token0 of the pool
+        @param decimals1 decimals of token1 of the pool 
+    */
+    function _zeroTick(uint8 decimals0, uint8 decimals1) internal pure returns (int24) {
+        int8 decimalsDiff = int8(decimals0) - int8(decimals1);
+        uint8 absDecimalsDiff = decimalsDiff < 0 ? uint8(-decimalsDiff) : uint8(decimalsDiff);
+        uint256 decimalsMultiplier = Math.sqrt(10 ** absDecimalsDiff);
+        uint256 price = FixedPoint96.Q96;
+        if (decimalsDiff > 0) {
+            price *= decimalsMultiplier;
+        } else price /= decimalsMultiplier;
 
-    function poolIsAwayFromOptimalPoint() internal view returns (bool) {
-        int24 tick = IUniswapV3Wrapper(address(erc20)).tick();
-        return true;
-//        return Math.abs(int256(tick)) < tickThreshold; //TODO handle different decimals case
-        //for DAI/USDT balance point tick is -276326 and priceSqrtX96 is  79223177837511642798966
-//        >>> DECIMALS_DIFF = 18 - 6
-        //>>> price = 1.0001 ** (-276326) * 10 ** DECIMALS_DIFF
-        //>>> price
-        //0.9998026733013067
-
-//        >>> 79223177837511642798966 / 2 ** 96
-        //9.999370845341542e-07
-        //>>> 79223177837511642798966 / 2 ** 96 * 10 ** 12
-
-//        DAI/USDT pool https://etherscan.io/address/0x48da0965ab2d2cbf1c17c09cfb5cbe67ad5b1406#readContract
-//        USDC/USDT pool https://etherscan.io/address/0x3416cf6c708da44db2624d63ea0aaef7113527c6#readContract
-    }
-
-    function peg() internal view returns (uint192) { //not pure but view because it can be overridden using feeds
-        return FIX_ONE;
+        return TickMath.getTickAtSqrtRatio(uint160(price));
     }
 }
