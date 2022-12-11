@@ -699,55 +699,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newBnDAICollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
-     // Test for hard default
-     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a BnToken mock to be able to change the rate
-      const BnTokenMockFactory: ContractFactory = await ethers.getContractFactory('BnTokenMock')
-      const symbol = await bnDAI.symbol()
-      const bnDaiMock: BnTokenMock = <BnTokenMock>(
-        await BnTokenMockFactory.deploy(symbol + ' Token', symbol)
-      )
-      // Set initial exchange rate to the new cDai Mock
-      await bnDaiMock.mint(addr1.address, fp('100'))
-      await bnDaiMock.setUnderlying(fp('0.02'))
-
-      // Redeploy plugin using the new bnDai mock
-      const newBancorV3Collateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>await (
-        await ethers.getContractFactory('BancorV3FiatCollateral', {
-          libraries: { OracleLib: oracleLib.address },
-        })
-      ).deploy(
-        fp('0.02'),
-        networkConfig[chainId].chainlinkFeeds.DAI as string,
-        bnDaiMock.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault,
-        bancorProxy.address,
-        rewardsProxy.address,
-        autoProcessRewardsProxy.address
-      )
-
      
-
-      // Check initial state
-      expect(await newBancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
-      expect(await newBancorV3Collateral.whenDefault()).to.equal(MAX_UINT256)
-
-      // Decrease rate for bnDai, will disable collateral immediately
-      await bnDaiMock.setUnderlying(fp('0.019'))
-
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
-      await expect(newBancorV3Collateral.refresh())
-        .to.emit(newBancorV3Collateral, 'CollateralStatusChanged')
-        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-      expect(await newBancorV3Collateral.status()).to.equal(CollateralStatus.DISABLED)
-      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-      expect(await newBancorV3Collateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-    })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
