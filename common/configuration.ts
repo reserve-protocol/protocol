@@ -44,6 +44,10 @@ interface INetworkConfig {
   COMPTROLLER?: string
   GNOSIS_EASY_AUCTION?: string
   EASY_AUCTION_OWNER?: string
+  UNISWAP_V3_ROUTER?: string
+  UNISWAP_V3_FACTORY?: string
+  UNISWAP_V3_NFT_POSITION_MANAGER?: string,
+  UNISWAP_V3_QUOTER?: string,
 }
 
 export const networkConfig: { [key: string]: INetworkConfig } = {
@@ -104,6 +108,9 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
     COMPTROLLER: '0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B',
     GNOSIS_EASY_AUCTION: '0x0b7fFc1f4AD541A4Ed16b40D8c37f0929158D101',
     EASY_AUCTION_OWNER: '0x0da0c3e52c977ed3cbc641ff02dd271c3ed55afe',
+    UNISWAP_V3_FACTORY: '0x1F98431c8aD98523631AE4a59f267346ea31F984',
+    UNISWAP_V3_NFT_POSITION_MANAGER: '0xC36442b4a4522E871399CD717aBDD847Ab11FE88',
+    UNISWAP_V3_ROUTER: '0xE592427A0AEce92De3Edee1F18E0157C05861564'
   },
   '3': {
     name: 'ropsten',

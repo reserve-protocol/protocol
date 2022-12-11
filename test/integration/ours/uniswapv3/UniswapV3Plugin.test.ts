@@ -7,11 +7,12 @@ import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10 } from "../../../../common/numbers"
 import {
     ERC20Mock,
-    MockV3Aggregator, OracleLib,
+    MockV3Aggregator,
+    OracleLib,
     UniswapV3Wrapper,
     UniswapV3WrapperMock,
-    USDCMock
-} from "../../../../typechain";
+    USDCMock,
+} from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
@@ -65,8 +66,6 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
         beforeEach(async () => {
             ;[owner, , addr1, addr2] = await ethers.getSigners()
-
-
             ;({ oracleLib } = await loadFixture(defaultFixture))
 
             dai = <ERC20Mock>(
@@ -289,27 +288,25 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const UniswapV3UsdCollateralContractFactory: UniswapV3UsdCollateral__factory =
                 await ethers.getContractFactory("UniswapV3UsdCollateral", {
-                libraries: { OracleLib: oracleLib.address },
-            })
+                    libraries: { OracleLib: oracleLib.address },
+                })
 
             const fallbackPrice = fp("1")
-            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT");
-            const UniswapV3UsdCollateral: UniswapV3UsdCollateral = await UniswapV3UsdCollateralContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        fallbackPrice,
-                        fallbackPrice,
-                        mockChainlinkFeed0.address,
-                        mockChainlinkFeed1.address,
-                        uniswapV3WrapperMock.address,
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        pow10(16).mul(5), //5%
-                        100,
-                        DELAY_UNTIL_DEFAULT
-                    )
-
+            const targetName = ethers.utils.formatBytes32String("UNIV3SQRT")
+            const UniswapV3UsdCollateral: UniswapV3UsdCollateral =
+                await UniswapV3UsdCollateralContractFactory.connect(addr1).deploy(
+                    fallbackPrice,
+                    fallbackPrice,
+                    mockChainlinkFeed0.address,
+                    mockChainlinkFeed1.address,
+                    uniswapV3WrapperMock.address,
+                    RTOKEN_MAX_TRADE_VALUE,
+                    ORACLE_TIMEOUT,
+                    targetName,
+                    pow10(16).mul(5), //5%
+                    100,
+                    DELAY_UNTIL_DEFAULT
+                )
 
             expect(await UniswapV3UsdCollateral.isCollateral()).to.equal(true)
             expect(await UniswapV3UsdCollateral.erc20()).to.equal(uniswapV3WrapperMock.address)

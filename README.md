@@ -1,3 +1,8 @@
+[Twitter](https://twitter.com/ChainHackerClan)  
+[Telegram](https://t.me/utgardaloki)  
+[Discord](https://discord.gg/a5E9vWbp9R)  
+
+
 # Reserve Protocol
 
 The Reserve Protocol enables a class of token called RToken: self-issued tokens backed by a rebalancing basket of collateral. While the protocol enables any number of RTokens to be created, further discussion is limited to the characterization of a single RToken instance.
