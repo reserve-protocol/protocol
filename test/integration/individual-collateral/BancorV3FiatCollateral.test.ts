@@ -479,9 +479,15 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(bnDAIPrice3).to.be.gte(bnDAIPrice2)
       expect(bnDAIRefPerTok3).to.be.gte(bnDAIRefPerTok2)
 
+      expect(bnDAIPrice3_hardcode).to.be.gt(bnDAIPrice2)
+      expect(bnDAIRefPerTok3_hardcode).to.be.gt(bnDAIRefPerTok2)
+
       // Need to adjust ranges
       expect(bnDAIPrice3).to.be.closeTo(fp('1'), fp('0.5'))
       expect(bnDAIRefPerTok3).to.be.closeTo(fp('1'), fp('0.5'))
+
+      expect(bnDAIPrice3_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
+      expect(bnDAIRefPerTok3_hardcode).to.be.closeTo(fp('1'), fp('0.5'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -553,9 +559,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
       // Check rewards both in COMP and stkAAVE
-      const rewardsCOMP1: BigNumber = await bancorToken.balanceOf(backingManager.address)
+      const rewardsBNT1: BigNumber = await bancorToken.balanceOf(backingManager.address)
 
-      expect(rewardsCOMP1).to.be.gte(0)
+      expect(rewardsBNT1).to.be.gte(0)
 
       // Keep moving time
       await advanceTime(3600)
@@ -563,9 +569,9 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Get additional rewards
       await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
 
-      const rewardsCOMP2: BigNumber = await bancorToken.balanceOf(backingManager.address)
+      const rewardsBNT2: BigNumber = await bancorToken.balanceOf(backingManager.address)
 
-      expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gte(0)
+      expect(rewardsBNT2.sub(rewardsBNT1)).to.be.gte(0)
     })
   })
 
@@ -698,8 +704,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newBnDAICollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newBnDAICollateral.whenDefault()).to.equal(prevWhenDefault)
     })
-
-     
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
