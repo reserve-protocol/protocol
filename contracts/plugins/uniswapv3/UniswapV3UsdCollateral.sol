@@ -124,6 +124,7 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
             if (errData.length == 0) revert();
             return true;
         }
+        return false;
     }
 
     /**

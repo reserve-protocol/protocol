@@ -4,6 +4,36 @@ Collateral Plugin - Convex - Volatile Curve Pools
 https://gitcoin.co/issue/29516
 Collateral Plugin - Convex - Stable Curve Pools
 
+
+/CRYPTO POOLS like USDT-BTC-WETH - strict order
+//STABLE POOLS like DAI-USDC-USDT
+//TODO REPORT_GAS FOR REFRESH
+//TODO use shutdown in REFRESH
+//TODO shutdown in refresh
+// {
+//     index: 9,
+//     poolInfo: [
+//       '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490',
+//       '0x30D9410ED1D5DA1F6C8391af5338C93ab8d4035C',
+//       '0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A',
+//       '0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8',
+//       '0x0000000000000000000000000000000000000000',
+//       false,
+//       lptoken: '0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490',
+//       token: '0x30D9410ED1D5DA1F6C8391af5338C93ab8d4035C',
+//       gauge: '0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A',
+//       crvRewards: '0x689440f2Ff927E1f24c72F1087E1FAF471eCe1c8',
+//       stash: '0x0000000000000000000000000000000000000000',
+//       shutdown: false
+//     ]
+//   }
+// lptoken:  the underlying token(ex. the curve lp token)
+// token: the convex deposit token(a 1:1 token representing an lp deposit).  The supply of this token can be used to calculate the TVL of the pool
+// gauge: the curve "gauge" or staking contract used by the pool
+// crvRewards: the main reward contract for the pool
+// stash: a helper contract used to hold extra rewards (like snx) on behalf of the pool until distribution is called
+// shutdown: a shutdown flag of the pool
+
 Seems like v2 vs v1
 
 https://classic.curve.fi/files/CurveDAO.pdf

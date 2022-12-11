@@ -60,10 +60,10 @@ abstract contract UniswapV2AbstractCollateral is Collateral {
         uint192 price1 = chainlinkFeedSecondAsset.price(oracleTimeout);
         //TODO liquidity can be 10 ** 18 for some assets.
         //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = (price0 * amount0) /
+        uint256 priceScaled0 = FIX_ONE * (price0 * amount0) /
             liquidity /
             10 ** IERC20Metadata(token0).decimals();
-        uint256 priceScaled1 = (price1 * amount1) /
+        uint256 priceScaled1 = FIX_ONE * (price1 * amount1) /
             liquidity /
             10 ** IERC20Metadata(token1).decimals();
         return uint192(priceScaled0 + priceScaled1);

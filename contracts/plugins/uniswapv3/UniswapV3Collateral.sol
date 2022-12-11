@@ -108,8 +108,8 @@ abstract contract UniswapV3Collateral is Collateral {
     ) internal pure returns (uint192) {
         //TODO liquidity can be 10 ** 18 for some assets.
         //Resulting price per one liquidity would have too bad precision. Need to check
-        uint256 priceScaled0 = (price0 * amount0) / liquidity / 10**decimals0;
-        uint256 priceScaled1 = (price1 * amount1) / liquidity / 10**decimals1;
+        uint256 priceScaled0 = FIX_ONE * (price0 * amount0) / liquidity / 10**decimals0;
+        uint256 priceScaled1 = FIX_ONE * (price1 * amount1) / liquidity / 10**decimals1;
         return uint192(priceScaled0 + priceScaled1);
     }
 }

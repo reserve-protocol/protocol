@@ -185,6 +185,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         curvePoolAddress: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
                         mockFeedDecimals: 8,
+                        isFiat: true
                     },
                     // Pool for USDT/BTC/ETH or similar
                     // USD-like asset should be first, ETH should be last
@@ -198,6 +199,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         curvePoolAddress: "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
                         mockFeedDecimals: 8,
+                        isFiat: false
                     },
                 }
 
@@ -209,6 +211,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     curvePoolAddress,
                     feedPrices,
                     mockFeedDecimals,
+                    isFiat
                 } = pools[poolName]
 
                 const decimals0 = await asset0.decimals()
@@ -294,6 +297,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
+                const DEFAULT_THRESHOLD = fp('0.05') // 5%
                 const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
                 const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
                 const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
@@ -308,16 +312,43 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     })
                 )
 
-                const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
-                    "UniconvexCollateral3",
-                    {
-                        libraries: { OracleLib: oracleLib.address },
-                    }
-                )
+                
 
                 const fallbackPrice = fp("1")
                 const targetName = ethers.utils.formatBytes32String(`CONVEXLP`)
-                const uniconvexCollateral3 = await uniconvexCollateral3ContractFactory
+
+                async function deployFiat(){
+                    const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
+                        "UniconvexFiatCollateral",
+                        {
+                            libraries: { OracleLib: oracleLib.address },
+                        }
+                    )
+
+                    return await uniconvexCollateral3ContractFactory
+                    .connect(addr1)
+                    .deploy(
+                        matchedPools[0].index,
+                        fallbackPrice,
+                        [
+                            mockChainlinkFeeds[0].address,
+                            mockChainlinkFeeds[1].address,
+                            mockChainlinkFeeds[2].address,
+                        ],
+                        RTOKEN_MAX_TRADE_VALUE,
+                        ORACLE_TIMEOUT,
+                        targetName,
+                        DEFAULT_THRESHOLD,
+                        DELAY_UNTIL_DEFAULT
+                    ) 
+                }
+
+                async function deployNonFiat(){
+                    const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
+                        "UniconvexNonFiatCollateral"
+                    )
+
+                    return await uniconvexCollateral3ContractFactory
                     .connect(addr1)
                     .deploy(
                         matchedPools[0].index,
@@ -331,13 +362,16 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         ORACLE_TIMEOUT,
                         targetName,
                         DELAY_UNTIL_DEFAULT
-                    )
+                    ) 
+                }
 
-                const actualStrictPrice = await uniconvexCollateral3.strictPrice()
+                const uniconvexCollateral = isFiat? await deployFiat() : await deployNonFiat();
+
+                const actualStrictPrice = await uniconvexCollateral.strictPrice()
 
                 await logBalances(
                     "after deploy Collateral",
-                    [addr1, uniconvexCollateral3],
+                    [addr1, uniconvexCollateral],
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
@@ -353,7 +387,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
                 await logBalances(
                     "after withdrawal Convex lp token",
-                    [addr1, uniconvexCollateral3],
+                    [addr1, uniconvexCollateral],
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
@@ -412,16 +446,16 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
                 expect(actualStrictPrice).closeTo(expectedStrictPrice, pow10(18 - 4))
 
-                expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
-                expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
-                expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
-                expect(await uniconvexCollateral3.targetName()).to.equal(targetName)
-                expect(await uniconvexCollateral3.status()).to.equal(CollateralStatus.SOUND)
-                expect(await uniconvexCollateral3.whenDefault()).to.equal(MAX_UINT256)
+                expect(await uniconvexCollateral.isCollateral()).to.equal(true)
+                expect(await uniconvexCollateral.erc20()).to.equal(convexLpToken.address)
+                expect(await uniconvexCollateral.erc20Decimals()).to.equal(18)
+                expect(await uniconvexCollateral.targetName()).to.equal(targetName)
+                expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
+                expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
                 //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
-                expect(await uniconvexCollateral3.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
-                expect(await uniconvexCollateral3.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
-                expect(await uniconvexCollateral3.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
+                expect(await uniconvexCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
+                expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
+                expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
                 // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
                 // const {reserve0, reserve1} = await pair.getReserves()
