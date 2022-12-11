@@ -28,24 +28,33 @@ contract RibbonEarnStEthCollateral is Collateral {
 
     AggregatorV3Interface public immutable chainlinkFeedFallback;
 
-    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
+    /// @param fallbackPrice_ static fallback price makes no sense so it is not used. Can't 
+    /// be 0. Can be set to 1.
+    /// @param chainlinkFeed_ stEth/usd mainnet: 0xcfe54b5cd566ab89272946f602d76ea879cab4a8
+    /// @param erc20_ rEARN-stETH mainnet: 0xCE5513474E077F5336cf1B33c1347FDD8D48aE8c
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param targetName_ bytes32 formatted string of target symbol (ETH)
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
-    /// @dev a static fallbackPrice_ makes no sense so we set it to 0. 
-    /// An alternative chainlink price feed will be used instead to calculate the fallback price
+    /// @param defaultThreshold_ {%} maximum tolerated negative deviation of ref (stEth) 
+    /// from target (Eth). E.g. 0.05
+    /// @param chainlinkFeedFallback_ eth/usd mainnet: 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419
+    /// @param volatilityBuffer_ {%} since the underlying rEARN-stETH strategy is 99.5% capital
+    /// protected, we don't want the collateral to default during temporary drawdown. 
+    /// volatilityBuffer_ defines the amount of revenue we will hide from the protocol in order 
+    /// to avoid default up to this limit. However, due to how Reserve Protocol works, this 
+    /// value has to be rather small. E.g. 0.02 - equates to four bad trades in a row.
     constructor(
         uint192 fallbackPrice_,
-        AggregatorV3Interface chainlinkFeed_, // stEth/usd 0xcfe54b5cd566ab89272946f602d76ea879cab4a8
+        AggregatorV3Interface chainlinkFeed_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint256 delayUntilDefault_,
         uint192 defaultThreshold_,
-        AggregatorV3Interface chainlinkFeedFallback_, // eth/usd 0x5f4ec3df9cbd43714fe2740f5e3616155c5b8419
-        uint192 volatilityBuffer_ // allowance for samll losses since rEARN-stETH strategy has only 99.5% collateral protection
-
+        AggregatorV3Interface chainlinkFeedFallback_,
+        uint192 volatilityBuffer_
     )
         Collateral(
             fallbackPrice_,
@@ -76,13 +85,22 @@ contract RibbonEarnStEthCollateral is Collateral {
         // Here we compare the volatility adjusted reference price
         // with the actual price
         uint192 referencePrice = pricePerShare();
-        highestObservedReferencePrice < referencePrice ? highestObservedReferencePrice = referencePrice : highestObservedReferencePrice;
+
+        // We keep a record of the highest observed price.
+        // Needed to calculate refPerTok() to implement revenue hiding
+        highestObservedReferencePrice < referencePrice ? 
+            highestObservedReferencePrice = referencePrice : 
+            highestObservedReferencePrice;
+
         // uint192(<) is equivalent to Fix.lt
+        // if true - hard default, else check for soft default
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
+
         } else {
+
             // since there is no eth/stEth price feed, we have to use two 
-            // oracle feeds, here we check both of them
+            // oracle feeds. here we check both of them
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p){
                 try chainlinkFeedFallback.price_(oracleTimeout) returns (uint192 fp){
 
@@ -91,16 +109,16 @@ contract RibbonEarnStEthCollateral is Collateral {
                     // p == stEth/usd, fp == eth/usd
                     uint192 tPerRef = p.div(fp);
 
-                    // we check for depeg of stEth from Eth for collateral status
+                    // we check for depeg of stEth from Eth for collateral status decision.
                     // we avoid calling targetPerRef()(== 1) for gas optimization
                     if (tPerRef < (FIX_ONE - defaultThreshold) ) {
                         markStatus(CollateralStatus.IFFY);
                         emit log (p, fp, tPerRef, FIX_ONE - defaultThreshold, (tPerRef < (FIX_ONE - defaultThreshold) ));
                     } else {
                         markStatus(CollateralStatus.SOUND);
-                        // emit log (p, fp, tPerRef, FIX_ONE - defaultThreshold, (tPerRef < (FIX_ONE - defaultThreshold) ));
                     }
 
+            // if either oracle feed is bad, status is set to IFFY
                 } catch (bytes memory errData) {
                     // see: docs/solidity-style.md#Catching-Empty-Data
                     if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -108,42 +126,37 @@ contract RibbonEarnStEthCollateral is Collateral {
                 }
 
             } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
-
-                    markStatus(CollateralStatus.IFFY);
+                markStatus(CollateralStatus.IFFY);
             }
         }
 
-        // same as calling refPerTok() but we save an external contract call
+        // same as calling refPerTok() but we save one external contract call
         // by reusing pricePerShare() from above
         uint192 ref;
-        referencePrice < highestObservedReferencePrice ? ref = highestObservedReferencePrice : ref = referencePrice;
+        referencePrice < highestObservedReferencePrice ? 
+            ref = highestObservedReferencePrice : 
+            ref = referencePrice;
         uint192 rpt = ref - ref.mul(volatilityBuffer);
-        rpt <= prevReferencePrice ? prevReferencePrice : prevReferencePrice = rpt;
 
+        // we set prevReferencePrice to refPerTok if it is bigger than 
+        // previosReferncePrice
+        rpt > prevReferencePrice ? prevReferencePrice = rpt : prevReferencePrice;
+
+        // if collateral status has changed we emit the event
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
-    /// @return {target/ref} Quantity of whole target units per whole reference unit (Eth/stEth)
-    // function targetPerRef() public pure override returns (uint192) {
-    //     return FIX_ONE;
-    //     // uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // stEth / usd feed
-    //     // uint192 uoaPerTarget = pricePerTarget(); // Eth / usd feed
-    //     // // == {UoA/ref} / {UoA/target}
-    //     // // == {UoA/ref} * {target/UoA}
-    //     // // == {target/ref}
-    //     // return uoaPerRef.div(uoaPerTarget);  
-    // }
-
     /// @return {UoA/target} The price of a target unit in UoA (Eth/usd)
     function pricePerTarget() public view override returns (uint192) {
         return chainlinkFeedFallback.price(oracleTimeout);
     }
 
-    /// @return pricePerShare of rEARN-sTEth in Eth as Fixed uint192
+    /// @return pricePerShare of rEARN-sTEth in Eth as Fix uint192
     /// rEARN-stEth has 18 decimals
     function pricePerShare() public view returns (uint192) {
         uint256 pps = IrEARN(address(erc20)).pricePerShare();
@@ -179,9 +192,11 @@ contract RibbonEarnStEthCollateral is Collateral {
             return (false, p);
         } catch {
             require(allowFallback, "price reverted without failover enabled");
-            // we use Eth price instead of stEth price as fallback here
+            // alternative more accurate fallback price but more costly and 
+            // not robust if both oracle feeds fail at the same time
             // uint192 uoaPerTarget = chainlinkFeedFallback.price(oracleTimeout);
             // return (true, uoaPerTarget.mul(pricePerShare()));
+            // so we return highestObservedReferencePrice instead as fallback
             return (true, highestObservedReferencePrice);
         }
     }
