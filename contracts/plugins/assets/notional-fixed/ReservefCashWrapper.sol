@@ -113,10 +113,8 @@ contract ReservefCashWrapper is ERC20, IReservefCashWrapper {
                 // convert `underlyingValue` to percentage with D18
                 + shiftl_toFix(
                     (underlyingValue * 1e18 / position.balance),
-                    - int8(underlyingAsset.decimals())
-                )
-                // divide to get range from 0 to 1
-                / 100;
+                    - int8(wfCash.decimals())
+                );
 
             unchecked {
                 i = i + 1;

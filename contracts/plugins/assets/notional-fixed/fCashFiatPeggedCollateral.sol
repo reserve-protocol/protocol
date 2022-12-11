@@ -3,13 +3,12 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
-import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/plugins/assets/RevenueHiding.sol";
 import "contracts/plugins/assets/notional-fixed/IReservefCashWrapper.sol";
 import "contracts/libraries/Fixed.sol";
 
 /**
- * @title fCashFiatCollateral
+ * @title fCashFiatPeggedCollateral
  * @notice Collateral plugin for fCash lending positions where lent underlying is Fiat pegged
  * Expected: {tok} != {ref}, {ref} is pegged to {target} unless defaulting, {target} == {UoA}
  */
@@ -21,7 +20,7 @@ contract fCashFiatPeggedCollateral is RevenueHiding {
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
     /// @param _fallbackPrice {UoA} Price to be returned in worst case
-    /// @param _chainlinkFeed Feed units: {UoA/ref}
+    /// @param _targetPerRefFeed Feed units: {UoA/ref}
     /// @param _erc20Collateral Asset that the plugin manages
     /// @param _maxTradeVolume {UoA} The max trade volume, in UoA
     /// @param _oracleTimeout {s} The number of seconds until a oracle value becomes invalid
@@ -31,7 +30,7 @@ contract fCashFiatPeggedCollateral is RevenueHiding {
     /// @param _defaultThreshold {%} A value like 0.05 that represents a deviation tolerance
     constructor(
         uint192 _fallbackPrice,
-        AggregatorV3Interface _chainlinkFeed,
+        AggregatorV3Interface _targetPerRefFeed,
         IERC20Metadata _erc20Collateral,
         uint192 _maxTradeVolume,
         uint48 _oracleTimeout,
@@ -42,7 +41,7 @@ contract fCashFiatPeggedCollateral is RevenueHiding {
     )
     RevenueHiding(
         _fallbackPrice,
-        _chainlinkFeed,
+        _targetPerRefFeed,
         _erc20Collateral,
         _maxTradeVolume,
         _oracleTimeout,
@@ -62,7 +61,7 @@ contract fCashFiatPeggedCollateral is RevenueHiding {
         fCashWrapper.reinvest();
     }
 
-    function checkReferencePeg() internal override {
+    function checkReferencePeg() internal virtual override {
         try chainlinkFeed.price_(oracleTimeout) returns (uint192 currentPrice) {
             // the peg of our reference is always ONE target
             uint192 peg = FIX_ONE;

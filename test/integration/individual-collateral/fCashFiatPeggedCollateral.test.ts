@@ -50,7 +50,7 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
 const describeFork = process.env.FORK ? describe : describe.skip
 
-describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describeFork(`fCashFiatPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -331,7 +331,7 @@ describeFork(`NotionalFixedRateCollateral - Mainnet Forking P${IMPLEMENTATION}`,
           rwfUsdc.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          30, // 0.03 %
+          70, // 0.07 %
           ethers.utils.formatBytes32String('USD'),
           delayUntilDefault,
           fp('1.01')
