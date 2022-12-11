@@ -9,8 +9,12 @@ import "./IrEARN.sol";
 /**
  * @title RibbonEarnUsdcCollateral
  * @notice Collateral plugin for the Ribbon Earn USDC Vault
- * Expected: {tok} == rEARN, {ref} == USDC, {target} == USD, 
- * {ref} is pegged to {target} or defaults, {target} == {UoA}
+ * Expected:
+ * {tok}    == rEARN
+ * {ref}    == USDC
+ * {target} == USD
+ * {target} == {UoA}
+ * {ref} is pegged to {target} or defaults
  */
 contract RibbonEarnUsdcCollateral is Collateral {
     using FixLib for uint192;
@@ -20,10 +24,15 @@ contract RibbonEarnUsdcCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
+    /// @param fallbackPrice_ static fallback price should be set to 1e18
+    /// @param chainlinkFeed_ USDC/USD mainnet: 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6
+    /// @param erc20_ rEARN mainnet: 0x84c2b16FA6877a8fF4F3271db7ea837233DFd6f0
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
+    /// @param targetName_ bytes32 formatted string of target symbol (USD)
     /// @param delayUntilDefault_ {s} The number of seconds deviation must occur before default
+    /// @param defaultThreshold_ {%} maximum tolerated negative deviation of ref (USDC)
+    /// from target (USD). E.g. 0.05
 
     constructor(
         uint192 fallbackPrice_,
@@ -50,9 +59,8 @@ contract RibbonEarnUsdcCollateral is Collateral {
     }
 
     /// Refresh exchange rates and update default status.
-    /// @dev This default check assumes that the collateral's price() value is expected
-    /// to stay close to pricePerTarget() * targetPerRef(). If that's not true for the
-    /// collateral you're defining, you MUST redefine refresh()!!
+    /// @dev This check assumes that the collateral's price() value is expected
+    /// to stay close to pricePerTarget() * targetPerRef().
     function refresh() external virtual override {
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
@@ -62,30 +70,30 @@ contract RibbonEarnUsdcCollateral is Collateral {
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
+
+            // check for soft default
         } else {
             try chainlinkFeed.price_(oracleTimeout) returns (uint192 p) {
                 // Check for soft default of underlying reference token
                 // D18{UoA/ref} = D18{UoA/target} * D18{target/ref} / D18
                 uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
 
-                // D18{UoA/ref}= D18{UoA/ref} * D18{1} / D18
-                uint192 delta = (peg * defaultThreshold) / FIX_ONE; // D18{UoA/ref}
+                // D18{UoA/ref}= D18{UoA/ref} * D18{e.g. 0.05} / D18
+                uint192 delta = (peg * defaultThreshold) / FIX_ONE;
 
                 // If the price is below the default-threshold price, default eventually
                 // uint192(+/-) is the same as Fix.plus/minus
                 if (p < peg - delta || p > peg + delta) {
-
-                        // since refernce is usdc we can use usdc depeg
-                        markStatus(CollateralStatus.IFFY);
-                }
-                else {
+                    // since refernce is usdc we can use usdc depeg to trigger IFFY
+                    markStatus(CollateralStatus.IFFY);
+                } else {
                     markStatus(CollateralStatus.SOUND);
                 }
             } catch (bytes memory errData) {
                 // see: docs/solidity-style.md#Catching-Empty-Data
                 if (errData.length == 0) revert(); // solhint-disable-line reason-string
 
-                    markStatus(CollateralStatus.IFFY);
+                markStatus(CollateralStatus.IFFY);
             }
         }
         prevReferencePrice = referencePrice;
@@ -96,9 +104,8 @@ contract RibbonEarnUsdcCollateral is Collateral {
         }
     }
 
-    
-    /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
-    /// rEARN had 6 decimals
+    /// @return {ref/tok} Quantity of whole reference units per whole collateral token
+    /// rEARN has 6 decimals
     function refPerTok() public view override returns (uint192) {
         uint256 pricePerShare = IrEARN(address(erc20)).pricePerShare();
         int8 shiftLeft = -6;
@@ -109,7 +116,7 @@ contract RibbonEarnUsdcCollateral is Collateral {
     /// @return {UoA/tok} The current price()
     /// we cancel out ref to get {UoA/tok}
     function strictPrice() public view override returns (uint192) {
-        uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // usdc/usd
+        uint192 uoaPerRef = chainlinkFeed.price(oracleTimeout); // USDC/USD
         return uoaPerRef.mul(refPerTok());
     }
 

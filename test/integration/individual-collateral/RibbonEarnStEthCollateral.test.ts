@@ -378,12 +378,53 @@ describeFork(`RibbonEarnStEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
   // are no earnings yet. We will therefore use rEarnStEthMock to
   // simulate appreciation. To make it work, the rToken has to be registered
   // with a collateral that points to our mock contract. We achieve this by
-  // setting the variable MOCK=true. Note: this will cause other tests to fail
-  describe('Issuance/Appreciation/Redemption', () => {
+  // setting the variable MOCK=true. Note: this will cause other tests to fail.
+  // there are two tests in this category, both need MOCK=true to pass.
+  xdescribe('Issuance/Appreciation/Redemption', () => {
     const MIN_ISSUANCE_PER_BLOCK = fp('2')
 
+    it('Should handle volatility correctly - mocked', async () => {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
+
+      await rEarnStEthMock.mint(addr1.address, fp('400'))
+
+      // Provide approvals for issuances
+      await rEarnStEthMock
+        .connect(addr1)
+        .approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
+
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
+
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // we increas price per share to simulate appreciation
+      await rEarnStEthMock.setPricePerShare(fp('1.1'))
+
+      // Refresh Token manually (required)
+      await rEarnStEthCollateral.refresh()
+      expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // slight decrease in price but within volatilityBuffer should not
+      // affect the collateral status
+      await rEarnStEthMock.setPricePerShare(ninteyEightPercent('1.1'))
+
+      // Refresh Token manually (required)
+      await rEarnStEthCollateral.refresh()
+      expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await rEarnStEthCollateral.highestObservedReferencePrice()).to.equal(fp('1.1'))
+      expect(await rEarnStEthCollateral.prevReferencePrice()).to.equal(ninteyEightPercent('1.1'))
+
+      // if we decrease price any further it will disable the collateral
+      await rEarnStEthMock.setPricePerShare((await rEarnStEthMock.pricePerShare()).sub('1'))
+      // Refresh Token manually (required)
+      await rEarnStEthCollateral.refresh()
+      expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
+    })
+
     // Issuance and redemption, making the collateral appreciate over time
-    xit('Should issue, redeem, and handle appreciation rates correctly - mocked', async () => {
+    it('Should issue, redeem, and handle appreciation rates correctly - mocked', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
       await rEarnStEthMock.mint(addr1.address, fp('400'))
@@ -421,6 +462,22 @@ describeFork(`RibbonEarnStEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       // Refresh Token manually (required)
       await rEarnStEthCollateral.refresh()
       expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // // slight decrease in price but within volatilityBuffer should not
+      // // affect the collateral status
+      // await rEarnStEthMock.setPricePerShare(ninteyEightPercent('1.1'))
+
+      // // Refresh Token manually (required)
+      // await rEarnStEthCollateral.refresh()
+      // expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // // slight decrease in price but within volatilityBuffer should not
+      // // affect the collateral status
+      // await rEarnStEthMock.setPricePerShare((await rEarnStEthMock.pricePerShare()).sub('1') )
+
+      // // Refresh Token manually (required)
+      // await rEarnStEthCollateral.refresh()
+      // expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Check rates and prices - Have changed, slight inrease
       const rEARNPrice2: BigNumber = await rEarnStEthCollateral.strictPrice() // ~1371
@@ -492,129 +549,6 @@ describeFork(`RibbonEarnStEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
         fp('2799'), // ~= 2539 usd (from above)
         fp('0.6')
-      )
-    })
-
-    // Issuance and redemption, making the collateral appreciate over time
-    it('Should issue, redeem, and handle appreciation rates correctly', async () => {
-      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
-
-      // Provide approvals for issuances
-      await rEARN_stEth
-        .connect(addr1)
-        .approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
-
-      // Issue rTokens
-      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-      // Check RTokens issued to user
-      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-      // Store Balances after issuance
-      const balanceAddr1rEARN: BigNumber = await rEARN_stEth.balanceOf(addr1.address)
-
-      // Check rates and prices
-      const rEARNPrice1: BigNumber = await rEarnStEthCollateral.strictPrice() // ~1241
-      const rEARNRefPerTok1: BigNumber = await rEarnStEthCollateral.refPerTok() // ~0.99 - 5%
-
-      expect(rEARNPrice1).to.be.closeTo(fp('1241'), fp('0.5'))
-      expect(rEARNRefPerTok1).to.be.closeTo(ninteyEightPercent('0.99'), fp('0.05'))
-
-      // Check total asset value
-      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-
-      expect(totalAssetValue1).to.be.closeTo(fp('2545'), fp('0.04')) // approx 2545 in value
-
-      // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(10000)
-      await advanceBlocks(10000)
-
-      // Refresh Token manually (required)
-      await rEarnStEthCollateral.refresh()
-      expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Check rates and prices - Have changed, slight inrease
-      const rEARNPrice2: BigNumber = await rEarnStEthCollateral.strictPrice() // ~1241
-      const rEARNRefPerTok2: BigNumber = await rEarnStEthCollateral.refPerTok() // ~0.99 - 5%
-
-      // Check rates and price increase
-      // note: at the time of writing the vault just went live
-      // so theer are no earnings yet
-      // expect(rEARNPrice2).to.be.gt(rEARNPrice1)
-      // expect(rEARNRefPerTok2).to.be.gt(rEARNRefPerTok1)
-      expect(rEARNPrice2).to.be.gte(rEARNPrice1)
-      expect(rEARNRefPerTok2).to.be.gte(rEARNRefPerTok1)
-
-      // Still close to the original values
-      expect(rEARNPrice2).to.be.closeTo(fp('1241'), fp('0.5'))
-      expect(rEARNRefPerTok2).to.be.closeTo(ninteyEightPercent('0.99'), fp('0.05'))
-
-      // Check total asset value increased
-      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-
-      // note: at the time of writing the vault just went live
-      // so theer are no earnings yet
-      // expect(totalAssetValue2).to.be.gt(totalAssetValue1)
-      expect(totalAssetValue2).to.be.gte(totalAssetValue1)
-
-      // Advance time and blocks significantly, causing refPerTok() to increase
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
-
-      // Refresh collateral manually (required)
-      await rEarnStEthCollateral.refresh()
-      expect(await rEarnStEthCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Check rates and prices - Have changed significantly
-      const rEARNPrice3: BigNumber = await rEarnStEthCollateral.strictPrice() // ~1241
-      const rEARNRefPerTok3: BigNumber = await rEarnStEthCollateral.refPerTok() // ~0.99 - 5%
-
-      // Check rates and price increase
-      // note: at the time of writing the vault just went live
-      // so theer are no earnings
-      // expect(rEARNPrice3).to.be.gt(rEARNPrice2)
-      // expect(rEARNRefPerTok3).to.be.gt(rEARNRefPerTok2)
-      expect(rEARNPrice3).to.be.gte(rEARNPrice2)
-      expect(rEARNRefPerTok3).to.be.gte(rEARNRefPerTok2)
-
-      // Need to adjust ranges
-      expect(rEARNPrice3).to.be.closeTo(fp('1241'), fp('0.5'))
-      expect(rEARNRefPerTok3).to.be.closeTo(ninteyEightPercent('0.99'), fp('0.05'))
-
-      // Check total asset value increased
-      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-
-      // note: at the time of writing the vault just went live
-      // so theer are no earnings
-      // expect(totalAssetValue3).to.be.gt(totalAssetValue2)
-      expect(totalAssetValue3).to.be.gte(totalAssetValue2)
-
-      // Redeem Rtokens with the updated rates
-      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-
-      // Check funds were transferred
-      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-      expect(await rToken.totalSupply()).to.equal(0)
-
-      // Check balances - Fewer rEARN tokens should have been sent to the user
-      const newBalanceAddr1rEARN: BigNumber = await rEARN_stEth.balanceOf(addr1.address)
-
-      // Check received tokens represent ~2570 usd in value at current prices
-      expect(newBalanceAddr1rEARN.sub(balanceAddr1rEARN)).to.be.closeTo(fp('2.0'), fp('0.08'))
-
-      // Check remainders in Backing Manager
-      expect(await rEARN_stEth.balanceOf(backingManager.address)).to.be.closeTo(bn('0'), bn('0')) // ~= 2539 usd in value
-
-      //  Check total asset value (remainder)
-      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('0'), // ~= 2539 usd (from above)
-        fp('0')
       )
     })
   })
@@ -801,7 +735,7 @@ describeFork(`RibbonEarnStEthCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
   // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
-  xdescribe('Collateral Status', () => {
+  describe('Collateral Status', () => {
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price

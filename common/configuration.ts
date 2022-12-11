@@ -87,7 +87,6 @@ export const networkConfig: { [key: string]: INetworkConfig } = {
       rEARN: '0x84c2b16FA6877a8fF4F3271db7ea837233DFd6f0',
       rEARN_STETH: '0xCE5513474E077F5336cf1B33c1347FDD8D48aE8c',
       STETH: '0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84',
-
     },
     chainlinkFeeds: {
       RSR: '0x759bBC1be8F90eE6457C44abc7d443842a976d02',
