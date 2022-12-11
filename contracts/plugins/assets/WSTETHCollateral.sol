@@ -7,8 +7,6 @@ import "contracts/plugins/assets/Iwsteth.sol";
 import "contracts/plugins/assets/OracleLib.sol";
 import "contracts/libraries/Fixed.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title WSTETHCollateral
  * @notice Collateral plugin for wstETH,
