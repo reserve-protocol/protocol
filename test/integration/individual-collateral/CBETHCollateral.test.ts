@@ -39,6 +39,7 @@ import {
   TestIRToken,
 } from '../../../typechain'
 import forkBlockNumber from '../fork-block-numbers'
+import { useEnv } from '#/utils/env'
 
 // Setup test environment
 const setup = async (blockNumber: number) => {
@@ -62,7 +63,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const erateOracle = '0x9b37180d847B27ADC13C2277299045C1237Ae281'
 const holderCBETH = '0xFA11D91e74fdD98F79E01582B9664143E1036931'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -193,8 +194,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
       primaryBasket: [cbethCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -429,8 +429,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
         primaryBasket: [newCBETHCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
@@ -614,8 +613,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
         primaryBasket: [newCBETHCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
@@ -861,7 +859,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
 
       // Force updates - Should update whenDefault and status
       await expect(newCBETHCollateral.refresh())
-        .to.emit(newCBETHCollateral, 'DefaultStatusChanged')
+        .to.emit(newCBETHCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newCBETHCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -878,7 +876,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
       const prevWhenDefault: BigNumber = await newCBETHCollateral.whenDefault()
       await expect(newCBETHCollateral.refresh()).to.not.emit(
         newCBETHCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newCBETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newCBETHCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -900,7 +898,7 @@ describeFork(`CBETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function ()
 
       // Force updates
       await expect(cbethCollateral.refresh())
-        .to.emit(cbethCollateral, 'DefaultStatusChanged')
+        .to.emit(cbethCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await cbethCollateral.status()).to.equal(CollateralStatus.DISABLED)
