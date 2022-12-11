@@ -3,9 +3,9 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/interfaces/ITrade.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/plugins/mocks/GnosisMock.sol";
+import "../../interfaces/ITrade.sol";
+import "../../libraries/Fixed.sol";
+import "./GnosisMock.sol";
 
 /// A Gnosis Mock that attemts to reenter on initiateAuction
 // Simply used for a specific test, not intended to provide valuable functionality

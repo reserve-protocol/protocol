@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "contracts/interfaces/IDeployerRegistry.sol";
+import "../interfaces/IDeployerRegistry.sol";
 
 /**
  * @title DeployerRegistry

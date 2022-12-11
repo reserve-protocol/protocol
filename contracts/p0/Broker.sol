@@ -4,12 +4,12 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "contracts/plugins/trading/GnosisTrade.sol";
-import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/ITrade.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Component.sol";
+import "../plugins/trading/GnosisTrade.sol";
+import "../interfaces/IBroker.sol";
+import "../interfaces/IMain.sol";
+import "../interfaces/ITrade.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Component.sol";
 
 // Gnosis: uint96 ~= 7e28
 uint256 constant GNOSIS_MAX_TOKENS = 7e28;
