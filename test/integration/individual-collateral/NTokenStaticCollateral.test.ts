@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
-import { getChainId } from '../../../common/blockchain-utils'
+import { getChainId } from '#/common/blockchain-utils'
 import {
   IConfig,
   IGovParams,
@@ -12,10 +12,10 @@ import {
   IRTokenConfig,
   IRTokenSetup,
   networkConfig,
-} from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
-import { bn, fp } from '../../../common/numbers'
+} from '#/common/configuration'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
+import { expectEvents, expectInIndirectReceipt } from '#/common/events'
+import { bn, fp } from '#/common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
@@ -36,7 +36,7 @@ import {
   TestIDeployer,
   TestIMain,
   TestIRToken,
-} from '../../../typechain'
+} from '#/typechain'
 import { setOraclePrice } from '../../utils/oracles'
 import forkBlockNumber from '../fork-block-numbers'
 
@@ -46,7 +46,7 @@ const HOLDER_nETH = '0x499b48d5998589a4d58182de765443662bd67b77'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-describe.skip(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
+describe(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
   let addr1: SignerWithAddress
 
@@ -205,8 +205,7 @@ describe.skip(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
       primaryBasket: [nEthCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -627,7 +626,7 @@ describe.skip(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
     it('Updates status in case of soft default', async () => {
       // For a statically pegged reference to target there is no need to test this because
       // there is no chainlink price feed being quoted on refresh.
-      // One `ref` wils always equal to one `target` since it's the native coin
+      // One `ref` will always equal to one `target` since it's the native coin
     })
 
     // Test for hard default
@@ -667,7 +666,7 @@ describe.skip(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
 
       // Force updates - Should update whenDefault and status for collateral
       await expect(newNEthCollateral.refresh())
-        .to.emit(newNEthCollateral, 'DefaultStatusChanged')
+        .to.emit(newNEthCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newNEthCollateral.status()).to.equal(CollateralStatus.DISABLED)
@@ -678,7 +677,7 @@ describe.skip(`NTokenStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       // For a statically pegged reference to target there is no need to test this because
       // there is no chainlink price feed being quoted on refresh.
-      // One `ref` wils always equal to one `target` since it's the native coin
+      // One `ref` will always equal to one `target` since it's the native coin
     })
   })
 })

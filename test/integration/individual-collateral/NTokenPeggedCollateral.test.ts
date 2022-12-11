@@ -4,7 +4,7 @@ import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
-import { getChainId } from '../../../common/blockchain-utils'
+import { getChainId } from '#/common/blockchain-utils'
 import {
   IConfig,
   IGovParams,
@@ -12,10 +12,10 @@ import {
   IRTokenConfig,
   IRTokenSetup,
   networkConfig,
-} from '../../../common/configuration'
-import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/constants'
-import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
-import { bn, fp, toBNDecimals } from '../../../common/numbers'
+} from '#/common/configuration'
+import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '#/common/constants'
+import { expectEvents, expectInIndirectReceipt } from '#/common/events'
+import { bn, fp, toBNDecimals } from '#/common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
@@ -37,7 +37,7 @@ import {
   NTokenERC20ProxyMock,
   INotionalProxy,
   InvalidMockV3Aggregator,
-} from '../../../typechain'
+} from '#/typechain'
 import forkBlockNumber from '../fork-block-numbers'
 import { setOraclePrice } from '../../utils/oracles'
 
@@ -204,8 +204,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         primaryBasket: [nUsdcCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
@@ -654,7 +653,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
         // Force updates - Should update whenDefault and status
         await expect(newNUsdcCollateral.refresh())
-          .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+          .to.emit(newNUsdcCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
         expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -671,7 +670,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         const prevWhenDefault: BigNumber = await newNUsdcCollateral.whenDefault()
         await expect(newNUsdcCollateral.refresh()).to.not.emit(
           newNUsdcCollateral,
-          'DefaultStatusChanged'
+          'CollateralStatusChanged'
         )
         expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
         expect(await newNUsdcCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -716,7 +715,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
         // Force updates - Should update whenDefault and status for collateral
         await expect(newNUsdcCollateral.refresh())
-          .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+          .to.emit(newNUsdcCollateral, 'CollateralStatusChanged')
           .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
         expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
@@ -865,8 +864,7 @@ describeFork(`NTokenPeggedCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         primaryBasket: [nUsdcCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
