@@ -280,294 +280,343 @@ describeFork(`GOhmCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('18.64'), fp('0.01'))
     })
 
-    describe('Issuance/Appreciation/Redemption', () => {
-      const MIN_ISSUANCE_PER_BLOCK = fp('1000')
-
-      // Issuance and redemption, making the collateral appreciate over time
-      it('Should issue, redeem, and handle appreciation rates correctly', async () => {
-        const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
-
-        // Provide approvals for issuances
-        await gOhm.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18))
-
-        // Issue rTokens
-        await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-        // Check RTokens issued to user
-        expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-        // Store Balances after issuance
-        const balanceAddr1GOhm: BigNumber = await gOhm.balanceOf(addr1.address)
-
-        // Check rates and prices
-        const gOhmPrice1: BigNumber = await gOhmCollateral.strictPrice() // ~ 2945 USD
-        const gOhmRefPerTok1: BigNumber = await gOhmCollateral.refPerTok() // ~ 158 OHM
-
-        expect(gOhmPrice1).to.be.closeTo(fp('2945'), fp('10'))
-        expect(gOhmRefPerTok1).to.be.gt(fp('158'))
-
-        // Check total asset value
-        const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
-          rToken.address
+    // Validate constructor arguments
+    // Note: Adapt it to your plugin constructor validations
+    it('Should validate constructor arguments correctly', async () => {
+      // ETH/USD price feed
+      await expect(
+        gOhmCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.OHM as string,
+          ZERO_ADDRESS,
+          gOhm.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('OHM'),
+          delayUntilDefault,
+          referenceERC20Decimals
         )
+      ).to.be.revertedWith('missing uoaPerEthChainlinkFeed_')
 
-        // ~  approx 18K ~ 1000 * 18.64 in value
-        expect(totalAssetValue1).to.be.closeTo(issueAmount.mul(18), fp('1000'))
-
-        // Advance time and blocks slightly, causing refPerTok() to increase
-        await advanceTime(10_000)
-        await advanceBlocks(10_000)
-
-        // Refresh gOhmCollateral manually (required)
-        await gOhmCollateral.refresh()
-        expect(await gOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-        // Check rates and prices - They should be the same as before
-        // Because oracle and stETH contract didn't change
-        const gOhmRefPerTok2: BigNumber = await gOhmCollateral.refPerTok()
-        const gOhmPrice2: BigNumber = await gOhmCollateral.strictPrice()
-
-        // Check rates and price be same
-        expect(gOhmPrice2).to.be.eq(gOhmPrice1)
-        expect(gOhmRefPerTok2).to.be.eq(gOhmRefPerTok1)
-
-        // Check total asset value increased
-        const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
-          rToken.address
+      // ETH/OHM price feed
+      await expect(
+        gOhmCollateralFactory.deploy(
+          fp('1'),
+          ZERO_ADDRESS,
+          networkConfig[chainId].chainlinkFeeds.ETH as string,
+          gOhm.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('OHM'),
+          delayUntilDefault,
+          referenceERC20Decimals
         )
-        expect(totalAssetValue2).to.be.eq(totalAssetValue1)
+      ).to.be.revertedWith('missing chainlink feed')
 
-        // Redeem Rtokens with the updated rates
-        await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+      // referenceERC20Decimals
+      await expect(
+        gOhmCollateralFactory.deploy(
+          fp('1'),
+          networkConfig[chainId].chainlinkFeeds.OHM as string,
+          networkConfig[chainId].chainlinkFeeds.ETH as string,
+          gOhm.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('OHM'),
+          delayUntilDefault,
+          0
+        )
+      ).to.be.revertedWith('referenceERC20Decimals missing')
+    })
+  })
 
-        // Check funds were transferred
-        expect(await rToken.balanceOf(addr1.address)).to.equal(0)
-        expect(await rToken.totalSupply()).to.equal(0)
+  describe('Issuance/Appreciation/Redemption', () => {
+    const MIN_ISSUANCE_PER_BLOCK = fp('1000')
 
-        // Check balances - Fewer gOhm should have been sent to the user
-        const newBalanceAddr1GOhm: BigNumber = await gOhm.balanceOf(addr1.address)
+    // Issuance and redemption, making the collateral appreciate over time
+    it('Should issue, redeem, and handle appreciation rates correctly', async () => {
+      const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
 
-        // Check received tokens represent ~1K in value at current prices
-        expect(newBalanceAddr1GOhm.sub(balanceAddr1GOhm)).to.be.closeTo(fp('6'), fp('0.5'))
+      // Provide approvals for issuances
+      await gOhm.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18))
 
-        // Check remainders in Backing Manager
-        expect(await gOhm.balanceOf(backingManager.address)).to.be.eq(fp('0'))
+      // Issue rTokens
+      await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-        //  Check total asset value (remainder)
-        expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.eq(fp('0'))
-      })
+      // Check RTokens issued to user
+      expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
+
+      // Store Balances after issuance
+      const balanceAddr1GOhm: BigNumber = await gOhm.balanceOf(addr1.address)
+
+      // Check rates and prices
+      const gOhmPrice1: BigNumber = await gOhmCollateral.strictPrice() // ~ 2945 USD
+      const gOhmRefPerTok1: BigNumber = await gOhmCollateral.refPerTok() // ~ 158 OHM
+
+      expect(gOhmPrice1).to.be.closeTo(fp('2945'), fp('10'))
+      expect(gOhmRefPerTok1).to.be.gt(fp('158'))
+
+      // Check total asset value
+      const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+
+      // ~  approx 18K ~ 1000 * 18.64 in value
+      expect(totalAssetValue1).to.be.closeTo(issueAmount.mul(18), fp('1000'))
+
+      // Advance time and blocks slightly, causing refPerTok() to increase
+      await advanceTime(10_000)
+      await advanceBlocks(10_000)
+
+      // Refresh gOhmCollateral manually (required)
+      await gOhmCollateral.refresh()
+      expect(await gOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+      // Check rates and prices - They should be the same as before
+      // Because oracle and stETH contract didn't change
+      const gOhmRefPerTok2: BigNumber = await gOhmCollateral.refPerTok()
+      const gOhmPrice2: BigNumber = await gOhmCollateral.strictPrice()
+
+      // Check rates and price be same
+      expect(gOhmPrice2).to.be.eq(gOhmPrice1)
+      expect(gOhmRefPerTok2).to.be.eq(gOhmRefPerTok1)
+
+      // Check total asset value increased
+      const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
+        rToken.address
+      )
+      expect(totalAssetValue2).to.be.eq(totalAssetValue1)
+
+      // Redeem Rtokens with the updated rates
+      await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
+
+      // Check funds were transferred
+      expect(await rToken.balanceOf(addr1.address)).to.equal(0)
+      expect(await rToken.totalSupply()).to.equal(0)
+
+      // Check balances - Fewer gOhm should have been sent to the user
+      const newBalanceAddr1GOhm: BigNumber = await gOhm.balanceOf(addr1.address)
+
+      // Check received tokens represent ~1K in value at current prices
+      expect(newBalanceAddr1GOhm.sub(balanceAddr1GOhm)).to.be.closeTo(fp('6'), fp('0.5'))
+
+      // Check remainders in Backing Manager
+      expect(await gOhm.balanceOf(backingManager.address)).to.be.eq(fp('0'))
+
+      //  Check total asset value (remainder)
+      expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.eq(fp('0'))
+    })
+  })
+
+  // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
+  // claiming calls throughout the protocol are handled correctly and do not revert.
+  describe('Rewards', () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
+      // Only checking to see that claim call does not revert
+      await expectEvents(backingManager.claimRewards(), [])
+    })
+  })
+
+  describe('Price Handling', () => {
+    it('Should handle invalid/stale Price', async () => {
+      // Reverts with a feed with zero price
+      const invalidPriceGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
+        await (
+          await ethers.getContractFactory('GOhmCollateral')
+        ).deploy(
+          fp('1'),
+          mockChainlinkFeed.address,
+          mockChainlinkFeed.address,
+          gOhm.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('OHM'),
+          delayUntilDefault,
+          referenceERC20Decimals
+        )
+      )
+      await setOraclePrice(invalidPriceGOhmCollateral.address, bn(0))
+
+      // Reverts with zero price
+      await expect(invalidPriceGOhmCollateral.strictPrice()).to.be.revertedWith(
+        'PriceOutsideRange()'
+      )
+
+      // Refresh should mark status IFFY
+      await invalidPriceGOhmCollateral.refresh()
+      expect(await invalidPriceGOhmCollateral.status()).to.equal(CollateralStatus.IFFY)
+
+      // Reverts with stale price
+      await advanceTime(ORACLE_TIMEOUT.toString())
+      await expect(gOhmCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
+
+      // Fallback price is returned
+      const [isFallback, price] = await invalidPriceGOhmCollateral.price(true)
+      expect(isFallback).to.equal(true)
+      expect(price).to.equal(fp('1'))
+
+      // Refresh should mark status DISABLED
+      await gOhmCollateral.refresh()
+      expect(await gOhmCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await advanceBlocks(delayUntilDefault.mul(60))
+      await gOhmCollateral.refresh()
+      expect(await gOhmCollateral.status()).to.equal(CollateralStatus.DISABLED)
+
+      const nonPriceGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
+        await (
+          await ethers.getContractFactory('GOhmCollateral')
+        ).deploy(
+          fp('1'),
+          NO_PRICE_DATA_FEED,
+          NO_PRICE_DATA_FEED,
+          gOhm.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('OHM'),
+          delayUntilDefault,
+          referenceERC20Decimals
+        )
+      )
+
+      // Collateral with no price info should revert
+      await expect(nonPriceGOhmCollateral.strictPrice()).to.be.reverted
+
+      expect(await nonPriceGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
+    })
+  })
+
+  // Note: Here the idea is to test all possible statuses and check all possible paths to default
+  // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
+  // hard default = SOUND -> DISABLED due to an invariant violation
+  // This may require to deploy some mocks to be able to force some of these situations
+  describe('Collateral Status', () => {
+    // Test for soft default
+    it('No Updates status in case of soft default because there is no soft reset', async () => {
+      // Redeploy plugin using a Chainlink mock feed where we can change the price
+      const mockUoaPerEthChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+        await MockV3AggregatorFactory.deploy(18, fp('2000')) // ETH price ~= 2000
+      )
+
+      // ETH/OHM feed
+      const mockEthPerRefChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+        await MockV3AggregatorFactory.deploy(18, fp('0.0071'))
+      )
+
+      const newGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
+        await (
+          await ethers.getContractFactory('GOhmCollateral')
+        ).deploy(
+          fp('2000'),
+          mockEthPerRefChainlinkFeed.address,
+          mockUoaPerEthChainlinkFeed.address,
+          await gOhmCollateral.erc20(),
+          await gOhmCollateral.maxTradeVolume(),
+          await gOhmCollateral.oracleTimeout(),
+          await gOhmCollateral.targetName(),
+          await gOhmCollateral.delayUntilDefault(),
+          referenceERC20Decimals
+        )
+      )
+
+      // Check initial state
+      expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Reducing price of gOHM should be sound
+      const v3Aggregator = await ethers.getContractAt(
+        'MockV3Aggregator',
+        mockUoaPerEthChainlinkFeed.address
+      )
+      await v3Aggregator.updateAnswer(fp('1000'))
+
+      await expect(newGOhmCollateral.refresh()).not.emit(
+        newGOhmCollateral,
+        'CollateralStatusChanged'
+      )
+      expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
     })
 
-    // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
-    // claiming calls throughout the protocol are handled correctly and do not revert.
-    describe('Rewards', () => {
-      it('Should be able to claim rewards (if applicable)', async () => {
-        // Only checking to see that claim call does not revert
-        await expectEvents(backingManager.claimRewards(), [])
-      })
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a gOhm mock to be able to change the rate
+      // to hard default
+      const gOhmOracle = (await ethers.getSigners())[3]
+      const GOhmMockFactory = await ethers.getContractFactory('GOHMMock')
+      const gOhmMock: GOHMMock = <GOHMMock>await GOhmMockFactory.deploy()
+
+      // Set initial exchange rate to the new gOhm Mock
+      await gOhmMock.connect(gOhmOracle).setIndex(bn('1e9'))
+      console.log(await gOhmMock.index())
+
+      // Redeploy plugin using the new gOhm mock
+      const newGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
+        await (
+          await ethers.getContractFactory('GOhmCollateral')
+        ).deploy(
+          fp('1'),
+          await gOhmCollateral.chainlinkFeed(),
+          await gOhmCollateral.chainlinkFeed(),
+          gOhmMock.address,
+          await gOhmCollateral.maxTradeVolume(),
+          await gOhmCollateral.oracleTimeout(),
+          await gOhmCollateral.targetName(),
+          await gOhmCollateral.delayUntilDefault(),
+          referenceERC20Decimals
+        )
+      )
+
+      // init prevRefPerTok
+      await newGOhmCollateral.refresh()
+
+      // Check initial state
+      expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for gOhm, will disable collateral immediately
+      await gOhmMock.connect(gOhmOracle).setIndex(bn('9e8'))
+
+      // Force updates - Should update whenDefault and status
+      await expect(newGOhmCollateral.refresh())
+        .to.emit(newGOhmCollateral, 'CollateralStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newGOhmCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
-    describe('Price Handling', () => {
-      it('Should handle invalid/stale Price', async () => {
-        // Reverts with a feed with zero price
-        const invalidPriceGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
-          await (
-            await ethers.getContractFactory('GOhmCollateral')
-          ).deploy(
-            fp('1'),
-            mockChainlinkFeed.address,
-            mockChainlinkFeed.address,
-            gOhm.address,
-            config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT,
-            ethers.utils.formatBytes32String('OHM'),
-            delayUntilDefault,
-            referenceERC20Decimals
-          )
+    it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
+      const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
+        'InvalidMockV3Aggregator'
+      )
+      const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
+        await InvalidMockV3AggregatorFactory.deploy(18, fp('1800'))
+      )
+
+      const invalidWstETHCollateral: GOhmCollateral = <GOhmCollateral>(
+        await gOhmCollateralFactory.deploy(
+          fp('1'),
+          invalidChainlinkFeed.address,
+          invalidChainlinkFeed.address,
+          await gOhmCollateral.erc20(),
+          await gOhmCollateral.maxTradeVolume(),
+          await gOhmCollateral.oracleTimeout(),
+          await gOhmCollateral.targetName(),
+          await gOhmCollateral.delayUntilDefault(),
+          referenceERC20Decimals
         )
-        await setOraclePrice(invalidPriceGOhmCollateral.address, bn(0))
+      )
 
-        // Reverts with zero price
-        await expect(invalidPriceGOhmCollateral.strictPrice()).to.be.revertedWith(
-          'PriceOutsideRange()'
-        )
+      // Reverting with no reason
+      await invalidChainlinkFeed.setSimplyRevert(true)
+      await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // Refresh should mark status IFFY
-        await invalidPriceGOhmCollateral.refresh()
-        expect(await invalidPriceGOhmCollateral.status()).to.equal(CollateralStatus.IFFY)
-
-        // Reverts with stale price
-        await advanceTime(ORACLE_TIMEOUT.toString())
-        await expect(gOhmCollateral.strictPrice()).to.be.revertedWith('StalePrice()')
-
-        // Fallback price is returned
-        const [isFallback, price] = await invalidPriceGOhmCollateral.price(true)
-        expect(isFallback).to.equal(true)
-        expect(price).to.equal(fp('1'))
-
-        // Refresh should mark status DISABLED
-        await gOhmCollateral.refresh()
-        expect(await gOhmCollateral.status()).to.equal(CollateralStatus.IFFY)
-        await advanceBlocks(delayUntilDefault.mul(60))
-        await gOhmCollateral.refresh()
-        expect(await gOhmCollateral.status()).to.equal(CollateralStatus.DISABLED)
-
-        const nonPriceGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
-          await (
-            await ethers.getContractFactory('GOhmCollateral')
-          ).deploy(
-            fp('1'),
-            NO_PRICE_DATA_FEED,
-            NO_PRICE_DATA_FEED,
-            gOhm.address,
-            config.rTokenMaxTradeVolume,
-            ORACLE_TIMEOUT,
-            ethers.utils.formatBytes32String('OHM'),
-            delayUntilDefault,
-            referenceERC20Decimals
-          )
-        )
-
-        // Collateral with no price info should revert
-        await expect(nonPriceGOhmCollateral.strictPrice()).to.be.reverted
-
-        expect(await nonPriceGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
-      })
-    })
-
-    // Note: Here the idea is to test all possible statuses and check all possible paths to default
-    // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
-    // hard default = SOUND -> DISABLED due to an invariant violation
-    // This may require to deploy some mocks to be able to force some of these situations
-    describe('Collateral Status', () => {
-      // Test for soft default
-      it('No Updates status in case of soft default because there is no soft reset', async () => {
-        // Redeploy plugin using a Chainlink mock feed where we can change the price
-        const mockUoaPerEthChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
-          await MockV3AggregatorFactory.deploy(18, fp('2000')) // ETH price ~= 2000
-        )
-
-        // ETH/OHM feed
-        const mockEthPerRefChainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
-          await MockV3AggregatorFactory.deploy(18, fp('0.0071'))
-        )
-
-        const newGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
-          await (
-            await ethers.getContractFactory('GOhmCollateral')
-          ).deploy(
-            fp('2000'),
-            mockEthPerRefChainlinkFeed.address,
-            mockUoaPerEthChainlinkFeed.address,
-            await gOhmCollateral.erc20(),
-            await gOhmCollateral.maxTradeVolume(),
-            await gOhmCollateral.oracleTimeout(),
-            await gOhmCollateral.targetName(),
-            await gOhmCollateral.delayUntilDefault(),
-            referenceERC20Decimals
-          )
-        )
-
-        // Check initial state
-        expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-        // Reducing price of gOHM should be sound
-        const v3Aggregator = await ethers.getContractAt(
-          'MockV3Aggregator',
-          mockUoaPerEthChainlinkFeed.address
-        )
-        await v3Aggregator.updateAnswer(fp('1000'))
-
-        await expect(newGOhmCollateral.refresh()).not.emit(
-          newGOhmCollateral,
-          'CollateralStatusChanged'
-        )
-        expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
-      })
-
-      // Test for hard default
-      it('Updates status in case of hard default', async () => {
-        // Note: In this case requires to use a gOhm mock to be able to change the rate
-        // to hard default
-        const gOhmOracle = (await ethers.getSigners())[3]
-        const GOhmMockFactory = await ethers.getContractFactory('GOHMMock')
-        const gOhmMock: GOHMMock = <GOHMMock>await GOhmMockFactory.deploy()
-
-        // Set initial exchange rate to the new gOhm Mock
-        await gOhmMock.connect(gOhmOracle).setIndex(bn('1e9'))
-        console.log(await gOhmMock.index())
-
-        // Redeploy plugin using the new gOhm mock
-        const newGOhmCollateral: GOhmCollateral = <GOhmCollateral>(
-          await (
-            await ethers.getContractFactory('GOhmCollateral')
-          ).deploy(
-            fp('1'),
-            await gOhmCollateral.chainlinkFeed(),
-            await gOhmCollateral.chainlinkFeed(),
-            gOhmMock.address,
-            await gOhmCollateral.maxTradeVolume(),
-            await gOhmCollateral.oracleTimeout(),
-            await gOhmCollateral.targetName(),
-            await gOhmCollateral.delayUntilDefault(),
-            referenceERC20Decimals
-          )
-        )
-
-        // init prevRefPerTok
-        await newGOhmCollateral.refresh()
-
-        // Check initial state
-        expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.SOUND)
-        expect(await newGOhmCollateral.whenDefault()).to.equal(MAX_UINT256)
-
-        // Decrease rate for gOhm, will disable collateral immediately
-        await gOhmMock.connect(gOhmOracle).setIndex(bn('9e8'))
-
-        // Force updates - Should update whenDefault and status
-        await expect(newGOhmCollateral.refresh())
-          .to.emit(newGOhmCollateral, 'CollateralStatusChanged')
-          .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
-
-        expect(await newGOhmCollateral.status()).to.equal(CollateralStatus.DISABLED)
-        const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
-        expect(await newGOhmCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
-      })
-
-      it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
-        const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
-          'InvalidMockV3Aggregator'
-        )
-        const invalidChainlinkFeed: InvalidMockV3Aggregator = <InvalidMockV3Aggregator>(
-          await InvalidMockV3AggregatorFactory.deploy(18, fp('1800'))
-        )
-
-        const invalidWstETHCollateral: GOhmCollateral = <GOhmCollateral>(
-          await gOhmCollateralFactory.deploy(
-            fp('1'),
-            invalidChainlinkFeed.address,
-            invalidChainlinkFeed.address,
-            await gOhmCollateral.erc20(),
-            await gOhmCollateral.maxTradeVolume(),
-            await gOhmCollateral.oracleTimeout(),
-            await gOhmCollateral.targetName(),
-            await gOhmCollateral.delayUntilDefault(),
-            referenceERC20Decimals
-          )
-        )
-
-        // Reverting with no reason
-        await invalidChainlinkFeed.setSimplyRevert(true)
-        await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
-        expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-        // Running out of gas (same error)
-        await invalidChainlinkFeed.setSimplyRevert(false)
-        await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
-        expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
-      })
+      // Running out of gas (same error)
+      await invalidChainlinkFeed.setSimplyRevert(false)
+      await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
+      expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 })
