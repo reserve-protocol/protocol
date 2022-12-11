@@ -334,7 +334,7 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
   describe('Issuance/Appreciation/Redemption', () => {
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
-      const issueAmount: BigNumber = bn('100e18')
+      const issueAmount: BigNumber = bn('10e18')
       await issueRToken(issueAmount)
 
       // Check RTokens issued to user
@@ -356,7 +356,7 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(fp(116584.56), fp(0.01))
+      expect(totalAssetValue1).to.be.closeTo(fp(11658.45), fp(0.01))
 
       // Advance time and blocks slightly, actualRefPerTok() does increase
       await advanceTime(10000)
@@ -411,6 +411,8 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
       // Advance blocks again
       await advanceTime(5000000)
       await advanceBlocks(5000000)
+      // Updates internal `maxRefPerTok`
+      await rwfWethCollateral.refresh()
 
       // actualRefPerTok() did go up, enough so our refPerTok() finally increased more than the initial drop
       expect(await rwfWethCollateral.actualRefPerTok()).to.be.gt(postReinvestActualRefPerTok)
@@ -426,9 +428,9 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
       expect(rwfCashActualRefPerTok3).to.be.gt(rwfCashActualRefPerTok2)
 
       // Need to adjust ranges
-      expect(rwfCashPrice3).to.be.closeTo(fp('0.999'), fp('0.01'))
+      expect(rwfCashPrice3).to.be.closeTo(fp(1166.03), fp(0.01))
       expect(rwfCashRefPerTok3).to.be.closeTo(fp('0.993'), fp('0.01'))
-      expect(rwfCashActualRefPerTok3).to.be.closeTo(fp('1.0084'), fp('0.0001'))
+      expect(rwfCashActualRefPerTok3).to.be.closeTo(fp(1.00027), fp(0.00001))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -443,18 +445,18 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances
       const newBalanceAddr1rwfCash: BigNumber = await rwfWeth.balanceOf(addr1.address)
 
       // Check received tokens represent the original value
-      expect(newBalanceAddr1rwfCash.sub(balanceAddr1rwfCash)).to.be.closeTo(fp(100), fp(0.3)) // ~100 rwfCash
+      expect(newBalanceAddr1rwfCash.sub(balanceAddr1rwfCash)).to.be.closeTo(fp(10), fp(0.1)) // ~100 rwfCash
 
       // Check remainders in Backing Manager
-      expect(await rwfWeth.balanceOf(backingManager.address)).to.be.closeTo(fp(0.81), fp(0.01)) // ~= 0.81 rwfCash profit
+      expect(await rwfWeth.balanceOf(backingManager.address)).to.be.closeTo(fp(0.0027), fp(0.0001)) // ~= 0.0027 rwfCash profit
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp(0.81), // ~= 0.81 usd profit
+        fp(3.18), // ~= 3.18 usd profit
         fp(0.01)
       )
     })

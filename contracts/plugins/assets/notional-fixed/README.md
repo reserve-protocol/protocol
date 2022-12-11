@@ -224,3 +224,15 @@ To make it easy for users, the Reserve fCash wrapper could enable a function to 
 case we should also track if the current instance of the contract is actually the one dealing with WETH, and that
 forces us to either hardcode a `currencyId` on the contract or to add a new argument to the constructor.  
 To keep this simple I did not add such helper.
+
+-
+
+Rates in the pools are a result of the liquidity's balance. The more liquidity you add the lower the rate you get.
+The best performance is gotten with lower amounts. By extension, there is a point where you cannot enter the market 
+with too much liquidity because it would bring the rates to negative values.
+
+That will eventually be a problem on a compounding strategy because we will keep lowering the performance until
+a point where we won't be able to lend any more because of too much liquidity.
+
+A possible temporary solution would be to detect when this happens and split the liquidity among different tenors,
+so we keep getting profits from different lending markets instead of betting all into the same one.
