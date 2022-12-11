@@ -9,6 +9,14 @@ interface ITFToken {
     function poolValue() external view returns (uint256);
 
     function totalSupply() external view returns (uint256);
+}
 
-    //function exchangeRateTfUsdc(int8) external returns (uint256);
+interface ITRUFarm {
+
+    function claimable(address token, address account) external view returns (uint256);
+
+    function claim(address[] calldata tokens) external;
+
+    function rewardToken() external view returns (address);
+
 }

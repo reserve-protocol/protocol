@@ -29,7 +29,7 @@ contract TFTokenCollateral is Collateral {
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
-    
+    ITRUFarm public immutable trufarm;
 
 
     /// @param chainlinkFeed_ Feed units: {UoA/ref}
@@ -46,7 +46,8 @@ contract TFTokenCollateral is Collateral {
         bytes32 targetName_,
         uint192 defaultThreshold_,
         uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_
+        int8 referenceERC20Decimals_, 
+        ITRUFarm trufarm_
     )
         Collateral(
             fallbackPrice_,
@@ -64,6 +65,8 @@ contract TFTokenCollateral is Collateral {
         referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok();
+
+        trufarm = trufarm_;
         
     }
 
@@ -119,17 +122,22 @@ contract TFTokenCollateral is Collateral {
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        uint256 rate = ITFToken(address(erc20)).poolValue() / ITFToken(address(erc20)).totalSupply();
-        int8 shiftLeft = 6 - referenceERC20Decimals - 18;
-        return shiftl_toFix(rate, shiftLeft);
+        // uint256 rate = ITFToken(address(erc20)).poolValue() / ITFToken(address(erc20)).totalSupply();
+        // //int8 shiftLeft = 6 - referenceERC20Decimals - 18;
+        // return shiftl_toFix(rate, -0);
+        ITFToken tfToken = ITFToken(address(erc20));
+        uint192 pv = shiftl_toFix(tfToken.poolValue(), -6);
+        uint192 ts = shiftl_toFix(tfToken.totalSupply(), -6);
+        return pv.div(ts);
     }
-
-    /// Claim rewards earned by holding a balance of the ERC20 token
-    /// @dev delegatecall
-    // function claimRewards() external virtual override {
-    //     // IERC20 comp = IERC20(comptroller.getCompAddress());
-    //     // uint256 oldBal = comp.balanceOf(address(this));
-    //     comptroller.claimComp(address(this));
-    //     emit RewardsClaimed(comp, comp.balanceOf(address(this)) - oldBal);
-    // }
+    // / Claim rewards earned by holding a balance of the ERC20 token
+    // / @dev delegatecall
+    function claimRewards() external virtual override {
+        IERC20 tru = IERC20(trufarm.rewardToken());
+        uint amount = trufarm.claimable(address(erc20), address(this));       
+        address[] memory tokens_ = new address[](1);
+        tokens_[0] = address(erc20);
+        trufarm.claim(tokens_);
+        emit RewardsClaimed(tru, amount);
+    }
 }

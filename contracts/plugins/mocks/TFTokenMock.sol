@@ -16,8 +16,10 @@ contract TFTokenMock is ERC20Mock {
         address underlyingToken
     ) ERC20Mock(name, symbol) {
         _underlyingToken = underlyingToken;
+        _mint(0x663FDeDb7Fa953DdB4FBf778D2c77DA497b7644a, 1);
         poolValue = totalSupply();
     }
+    
 
     function decimals() public pure override returns (uint8) {
         return 6;
