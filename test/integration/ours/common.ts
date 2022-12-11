@@ -172,3 +172,15 @@ export async function closeDeadline(): Promise<number> {
 export function p999(x: BigNumber): BigNumber {
     return x.mul(999).div(1000)
 }
+
+// https://github.com/Uniswap/v3-periphery/blob/685ca7f164c56fa4eb7620918a9d266714cdf103/test/shared/tokenSort.ts  
+export function compareToken(a: { address: string }, b: { address: string }): -1 | 1 {
+    return a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1
+}
+  
+export function sortedTokens(
+    a: { address: string },
+    b: { address: string }
+): [typeof a, typeof b] | [typeof b, typeof a] {
+    return compareToken(a, b) < 0 ? [a, b] : [b, a]
+}
