@@ -1,7 +1,6 @@
 import { expect } from 'chai'
 import { ContractFactory, BigNumber } from 'ethers'
 import { ethers } from 'hardhat'
-import fc from 'fast-check'
 
 import { BN_SCALE_FACTOR } from '../../common/constants'
 import { bn, fp, pow10, fpCeil, fpFloor, fpRound, div, shortString } from '../../common/numbers'
@@ -546,6 +545,7 @@ describe('In FixLib,', () => {
         expect(await caller.mul(b, a), `mul(${b}, ${a})`).to.equal(c)
       }
     })
+
     it('correctly rounds', async () => {
       const table = mulu_table.flatMap(([a, b]) => [[fp(a), fp(b)]])
 
@@ -965,66 +965,12 @@ describe('In FixLib,', () => {
     })
   })
 
-  // If seed is an arbitrary (possibly large) uint, return an aribtrary uint in [min, max)
-  // some quick bigint utitlity functions
-  const abs = (n: bigint) => (n >= 0n ? n : -n)
-  const ceilDiv = (x: bigint, y: bigint) => (x >= 0 ? (x + abs(y) - 1n) / y : (x - abs(y) + 1n) / y)
-  const roundDiv = (x: bigint, y: bigint) =>
-    x >= 0 ? (x + abs(y) / 2n) / y : (x - abs(y) / 2n) / y
-  const WORD = 2n ** 256n
-  const UINTMIN = 0n
-  const UINTMAX = 2n ** 192n - 1n
-
   describe('muluDivu + muluDivuRnd', () => {
     it('muluDivu(0,0,1,*) = 0)', async () => {
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), FLOOR)).to.equal(bn(0))
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), CEIL)).to.equal(bn(0))
       expect(await caller.muluDivuRnd(bn(0), bn(0), bn(1), ROUND)).to.equal(bn(0))
       expect(await caller.muluDivu(bn(0), bn(0), bn(1))).to.equal(bn(0))
-    })
-
-    it('muluDivu(,,FLOOR) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = (x * y) / z
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.muluDivu(bn(x), bn(y), bn(z))).to.equal(bn(expected))
-            expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), FLOOR)).to.equal(bn(expected))
-          } else {
-            await expect(caller.muluDivu(bn(x), bn(y), bn(z))).to.be.reverted
-            await expect(caller.muluDivuRnd(bn(x), bn(y), bn(z), FLOOR)).to.be.reverted
-          }
-        })
-      )
-    })
-
-    it('muluDivu(,,CEIL) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = ceilDiv(x * y, z)
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), CEIL)).to.equal(bn(expected))
-          } else {
-            await expect(caller.muluDivuRnd(bn(x), bn(y), bn(z), CEIL)).to.be.reverted
-          }
-        })
-      )
-    })
-
-    it('muluDivu(,,ROUND) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = roundDiv(x * y, z)
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.muluDivuRnd(bn(x), bn(y), bn(z), ROUND)).to.equal(bn(expected))
-          } else {
-            await expect(caller.muluDivuRnd(bn(x), bn(y), bn(z), ROUND)).to.be.reverted
-          }
-        })
-      )
     })
   })
 
@@ -1040,48 +986,6 @@ describe('In FixLib,', () => {
       expect(await caller.mulDivRnd(bn(0), bn(0), bn(1), ROUND)).to.equal(bn(0))
       expect(await caller.mulDiv(bn(0), bn(0), bn(1))).to.equal(bn(0))
     })
-
-    it('mulDiv(,,FLOOR) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(192), fc.bigUintN(192), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = (x * y) / z
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.mulDiv(bn(x), bn(y), bn(z))).to.equal(bn(expected))
-            expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), FLOOR)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDiv(bn(x), bn(y), bn(z))).to.be.reverted
-            await expect(caller.mulDivRnd(bn(x), bn(y), bn(z), FLOOR)).to.be.reverted
-          }
-        })
-      )
-    })
-    it('mulDiv(,,CEIL) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(192), fc.bigUintN(192), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = ceilDiv(x * y, z)
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), CEIL)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDivRnd(bn(x), bn(y), bn(z), CEIL)).to.be.reverted
-          }
-        })
-      )
-    })
-    it('mulDiv(,,ROUND) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(192), fc.bigUintN(192), fc.bigUintN(192), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = roundDiv(x * y, z)
-          if (UINTMIN <= expected && expected <= UINTMAX) {
-            expect(await caller.mulDivRnd(bn(x), bn(y), bn(z), ROUND)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDivRnd(bn(x), bn(y), bn(z), ROUND)).to.be.reverted
-          }
-        })
-      )
-    })
   })
 
   describe('mulDiv256 + mulDiv256Rnd', () => {
@@ -1091,70 +995,9 @@ describe('In FixLib,', () => {
       expect(await caller.mulDiv256Rnd_(bn(0), bn(0), bn(1), CEIL)).to.equal(bn(0))
       expect(await caller.mulDiv256_(bn(0), bn(0), bn(1))).to.equal(bn(0))
     })
-
-    it('mulDiv256(,,FLOOR) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = (x * y) / z
-          if (expected < WORD) {
-            expect(await caller.mulDiv256_(bn(x), bn(y), bn(z))).to.equal(bn(expected))
-            expect(await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), FLOOR)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDiv256_(bn(x), bn(y), bn(z))).to.be.reverted
-            await expect(caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), FLOOR)).to.be.reverted
-          }
-        })
-      )
-    })
-    it('mulDiv256(,,CEIL) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = ceilDiv(x * y, z)
-          if (expected < WORD) {
-            expect(await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), CEIL)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), CEIL)).to.be.reverted
-          }
-        })
-      )
-    })
-    it('mulDiv256(,,ROUND) works for many values', async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), fc.bigUintN(256), async (x, y, z) => {
-          if (z == 0n) return
-          const expected: bigint = roundDiv(x * y, z)
-          if (expected < WORD) {
-            expect(await caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), ROUND)).to.equal(bn(expected))
-          } else {
-            await expect(caller.mulDiv256Rnd_(bn(x), bn(y), bn(z), ROUND)).to.be.reverted
-          }
-        })
-      )
-    })
   })
 
   describe('fullMul', () => {
-    it(`works for many values`, async () => {
-      await fc.assert(
-        fc.asyncProperty(fc.bigUintN(256), fc.bigUintN(256), async (x, y) => {
-          const loExpected = (x * y) % WORD
-          const hiExpected = (x * y) / WORD
-          const [hiResult, loResult] = await caller.fullMul_(BigNumber.from(x), BigNumber.from(y))
-          expect(hiResult).to.equal(hiExpected)
-          expect(loResult).to.equal(loExpected)
-        }),
-        {
-          examples: [
-            [0n, 0n],
-            [0n, 1n],
-            [1n, WORD - 1n],
-            [WORD - 1n, WORD - 1n],
-          ],
-        }
-      )
-    })
     it('fullMul(0,0) = (0,0)', async () => {
       const [hi, lo]: BigNumber[] = await caller.fullMul_(bn(0), bn(0))
       expect(lo).to.equal(bn(0))

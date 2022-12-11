@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/p1/RevenueTrader.sol";
+import "../../../p1/RevenueTrader.sol";
 
 /// @custom:oz-upgrades-unsafe-allow external-library-linking
 contract RevenueTraderP1V2 is RevenueTraderP1 {

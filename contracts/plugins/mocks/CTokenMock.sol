@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-import "contracts/libraries/Fixed.sol";
+import "../../libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 contract CTokenMock is ERC20Mock {

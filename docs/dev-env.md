@@ -76,7 +76,7 @@ The tests located in `test/integration` will require the Mainnet Forking setup i
 For running scripts and tasks using Mainnet Forking a `FORK` environment variable can be defined. For example to run a local node using Mainnet forking you can run:
 
 ```bash
-FORK=true npx hardhat node
+yarn devchain
 ```
 
 ## Pre-push Validation
