@@ -56,11 +56,12 @@ import { whileImpersonating } from './utils/impersonation'
 import { Collateral, defaultFixture, Implementation, IMPLEMENTATION } from './fixtures'
 import snapshotGasCost from './utils/snapshotGasCost'
 import { advanceTime } from './utils/time'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeGas =
-  IMPLEMENTATION == Implementation.P1 && process.env.REPORT_GAS ? describe : describe.skip
+  IMPLEMENTATION == Implementation.P1 && useEnv('REPORT_GAS') ? describe : describe.skip
 
 describe(`MainP${IMPLEMENTATION} contract`, () => {
   let owner: SignerWithAddress

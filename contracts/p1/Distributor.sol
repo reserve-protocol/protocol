@@ -4,10 +4,10 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "contracts/interfaces/IDistributor.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p1/mixins/Component.sol";
+import "../interfaces/IDistributor.sol";
+import "../interfaces/IMain.sol";
+import "../libraries/Fixed.sol";
+import "./mixins/Component.sol";
 
 contract DistributorP1 is ComponentP1, IDistributor {
     using SafeERC20Upgradeable for IERC20Upgradeable;

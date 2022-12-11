@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/ATokenFiatCollateral.sol";
-import "contracts/libraries/Fixed.sol";
+import "../assets/ATokenFiatCollateral.sol";
+import "../../libraries/Fixed.sol";
 import "./ERC20Mock.sol";
 
 // This is the inner, rebasing ERC. It's not what we interact with.

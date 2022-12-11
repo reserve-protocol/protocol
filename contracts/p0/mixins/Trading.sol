@@ -3,11 +3,11 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "contracts/interfaces/IBroker.sol";
-import "contracts/interfaces/IMain.sol";
-import "contracts/interfaces/ITrade.sol";
-import "contracts/libraries/Fixed.sol";
-import "contracts/p0/mixins/Rewardable.sol";
+import "../../interfaces/IBroker.sol";
+import "../../interfaces/IMain.sol";
+import "../../interfaces/ITrade.sol";
+import "../../libraries/Fixed.sol";
+import "./Rewardable.sol";
 
 /// Abstract trading mixin for all Traders, to be paired with TradingLib
 abstract contract TradingP0 is RewardableP0, ITrading {

@@ -39,6 +39,7 @@ import {
   TestIMain,
   TestIRToken,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -47,7 +48,7 @@ const holderCDAI = '0x01ec5e7e03e2835bb2d1ae8d2edded298780129c'
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -202,8 +203,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       primaryBasket: [cDaiCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -651,7 +651,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status
       await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
+        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -669,7 +669,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
       const prevWhenDefault: BigNumber = await newCDaiCollateral.whenDefault()
       await expect(newCDaiCollateral.refresh()).to.not.emit(
         newCDaiCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newCDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -713,7 +713,7 @@ describeFork(`CTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, functi
 
       // Force updates - Should update whenDefault and status for Atokens/CTokens
       await expect(newCDaiCollateral.refresh())
-        .to.emit(newCDaiCollateral, 'DefaultStatusChanged')
+        .to.emit(newCDaiCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newCDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
