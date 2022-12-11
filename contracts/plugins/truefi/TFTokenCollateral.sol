@@ -23,7 +23,7 @@ contract TFTokenCollateral is Collateral {
     // All TrueFiTokens have 6 decimals, their underlying(USDC) also has 6 decimals.
     // USDC: https://etherscan.io/token/0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48
 
-    int8 public immutable referenceERC20Decimals;
+    //int8 public immutable referenceERC20Decimals;
 
     uint192 public immutable defaultThreshold; // {%} e.g. 0.05
 
@@ -45,8 +45,7 @@ contract TFTokenCollateral is Collateral {
         uint48 oracleTimeout_,
         bytes32 targetName_,
         uint192 defaultThreshold_,
-        uint256 delayUntilDefault_,
-        int8 referenceERC20Decimals_, 
+        uint256 delayUntilDefault_, 
         ITRUFarm trufarm_
     )
         Collateral(
@@ -60,9 +59,9 @@ contract TFTokenCollateral is Collateral {
         )
     {
         require(defaultThreshold_ > 0, "defaultThreshold zero");
-        require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
+        //require(referenceERC20Decimals_ > 0, "referenceERC20Decimals missing");
         defaultThreshold = defaultThreshold_;
-        referenceERC20Decimals = referenceERC20Decimals_;
+        //referenceERC20Decimals = referenceERC20Decimals_;
 
         prevReferencePrice = refPerTok();
 

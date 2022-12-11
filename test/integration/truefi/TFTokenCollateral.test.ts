@@ -195,7 +195,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        (await usdc.decimals()).toString(),
         contractAddressTRUFarm,
         { gasLimit: 5000000 }
       )
@@ -285,7 +284,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Check Collateral plugin
       // tfUSDC (TFTokenCollateral)
       expect(await tfUsdcCollateral.isCollateral()).to.equal(true)
-      expect(await tfUsdcCollateral.referenceERC20Decimals()).to.equal(await usdc.decimals())
+      //expect(await tfUsdcCollateral.referenceERC20Decimals()).to.equal(await usdc.decimals())
       expect(await tfUsdcCollateral.erc20()).to.equal(tfUsdc.address)
       expect(await tfUsdc.decimals()).to.equal(6)
       expect(await tfUsdcCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('USD'))
@@ -396,31 +395,29 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
           ethers.utils.formatBytes32String('USD'),
           bn(0),
           delayUntilDefault,
-          (await usdc.decimals()).toString(),
           contractAddressTRUFarm,
         )
       ).to.be.revertedWith('defaultThreshold zero')
 
       // ReferenceERC20Decimals
-      await expect(
-        TFTokenCollateralFactory.deploy(
-          fp('1'),
-          networkConfig[chainId].chainlinkFeeds.USDC as string,
-          tfUsdc.address,
-          config.rTokenMaxTradeVolume,
-          ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
-          defaultThreshold,
-          delayUntilDefault,
-          0,
-          contractAddressTRUFarm,
-        )
-      ).to.be.revertedWith('referenceERC20Decimals missing')
+      // await expect(
+      //   TFTokenCollateralFactory.deploy(
+      //     fp('1'),
+      //     networkConfig[chainId].chainlinkFeeds.USDC as string,
+      //     tfUsdc.address,
+      //     config.rTokenMaxTradeVolume,
+      //     ORACLE_TIMEOUT,
+      //     ethers.utils.formatBytes32String('USD'),
+      //     defaultThreshold,
+      //     delayUntilDefault,
+      //     contractAddressTRUFarm,
+      //   )
+      // ).to.be.revertedWith('referenceERC20Decimals missing')
     })
   })
 
   describe('Issuance/Appreciation/Redemption', () => {
-    const MIN_ISSUANCE_PER_BLOCK = bn('1000') // ??????
+    const MIN_ISSUANCE_PER_BLOCK = bn('10e6')
 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
@@ -494,8 +491,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(tfUsdcRefPerTok3).to.be.gt(tfUsdcRefPerTok2)
 
       // Need to adjust ranges
-      expect(tfUsdcPrice3).to.be.closeTo(fp('1.192'), fp('0.001'))
-      expect(tfUsdcRefPerTok3).to.be.closeTo(fp('1.192'), fp('0.001'))
+      expect(tfUsdcPrice3).to.be.closeTo(fp('1.1321'), fp('0.001'))
+      expect(tfUsdcRefPerTok3).to.be.closeTo(fp('1.1321'), fp('0.001'))
 
       // Check total asset value increased
       const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -617,7 +614,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        await usdc.decimals(),
         contractAddressTRUFarm,
       )
 
@@ -646,7 +642,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         ethers.utils.formatBytes32String('USD'),
         defaultThreshold,
         delayUntilDefault,
-        6,
         contractAddressTRUFarm,
       )
 
@@ -684,7 +679,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         await tfUsdcCollateral.targetName(),
         await tfUsdcCollateral.defaultThreshold(),
         await tfUsdcCollateral.delayUntilDefault(),
-        6,
         contractAddressTRUFarm,
       )
 
@@ -746,19 +740,25 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
         await tfUsdcCollateral.targetName(),
         await tfUsdcCollateral.defaultThreshold(),
         await tfUsdcCollateral.delayUntilDefault(),
-        6,
         contractAddressTRUFarm,
-        {gasLimit: 500000}
       )
 
       // Check initial state
       expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
       expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Decrease rate for tfUSDC, will disable collateral immediately
-      await tfUsdcMock.setExchangeRate(fp('1.09'))
+      await tfUsdcMock.setExchangeRate(fp('1.09')) // we want to expect that it is still SOUND when it only increases.
+      await newTFUsdcCollateral.refresh()
+    
+      expect(await newTFUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newTFUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
 
-      // Force updates - Should update whenDefault and status for Atokens/TFTokens
+
+      // Decrease rate for tfUSDC, will disable collateral immediately
+      await tfUsdcMock.setExchangeRate(fp('1.08'))
+      
+
+      // Force updates - Should update whenDefault and status for TFTokens
       await expect(newTFUsdcCollateral.refresh())
         .to.emit(newTFUsdcCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
@@ -786,7 +786,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
           await tfUsdcCollateral.targetName(),
           await tfUsdcCollateral.defaultThreshold(),
           await tfUsdcCollateral.delayUntilDefault(),
-          6,
           contractAddressTRUFarm,
         )
       )
