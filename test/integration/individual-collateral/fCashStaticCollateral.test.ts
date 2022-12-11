@@ -155,8 +155,8 @@ describeFork(`fCashStaticCollateral - Mainnet Forking P${IMPLEMENTATION}`, funct
     // deploy fUsdc wrapper
     const WrappedFCashFactory = await ethers.getContractFactory('ReservefCashWrapper')
     rwfWeth = <ReservefCashWrapper>await WrappedFCashFactory.deploy(
-      '0x1344A36A1B56144C3Bc62E7757377D288fDE0369',
-      '0x5D051DeB5db151C2172dCdCCD42e6A2953E27261',
+      networkConfig[chainId].NOTIONAL_PROXY || '',
+      networkConfig[chainId].NOTIONAL_WFCASH_FACTORY || '',
       networkConfig[chainId].tokens.WETH || '',
       1 // WETH
     )
