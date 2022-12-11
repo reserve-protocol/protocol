@@ -185,7 +185,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         curvePoolAddress: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
                         mockFeedDecimals: 8,
-                        isFiat: true
+                        isFiat: true,
                     },
                     // Pool for USDT/BTC/ETH or similar
                     // USD-like asset should be first, ETH should be last
@@ -199,7 +199,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         curvePoolAddress: "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
                         mockFeedDecimals: 8,
-                        isFiat: false
+                        isFiat: false,
                     },
                 }
 
@@ -211,7 +211,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     curvePoolAddress,
                     feedPrices,
                     mockFeedDecimals,
-                    isFiat
+                    isFiat,
                 } = pools[poolName]
 
                 const decimals0 = await asset0.decimals()
@@ -297,7 +297,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
-                const DEFAULT_THRESHOLD = fp('0.05') // 5%
+                const DEFAULT_THRESHOLD = fp("0.05") // 5%
                 const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
                 const ORACLE_TIMEOUT = bn("281474976710655").div(2) // type(uint48).max / 2
                 const RTOKEN_MAX_TRADE_VALUE = fp("1e6")
@@ -312,12 +312,10 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     })
                 )
 
-                
-
                 const fallbackPrice = fp("1")
                 const targetName = ethers.utils.formatBytes32String(`CONVEXLP`)
 
-                async function deployFiat(){
+                async function deployFiat() {
                     const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
                         "UniconvexFiatCollateral",
                         {
@@ -326,48 +324,46 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     )
 
                     return await uniconvexCollateral3ContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        matchedPools[0].index,
-                        fallbackPrice,
-                        [
-                            mockChainlinkFeeds[0].address,
-                            mockChainlinkFeeds[1].address,
-                            mockChainlinkFeeds[2].address,
-                        ],
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DEFAULT_THRESHOLD,
-                        DELAY_UNTIL_DEFAULT
-                    ) 
+                        .connect(addr1)
+                        .deploy(
+                            matchedPools[0].index,
+                            fallbackPrice,
+                            [
+                                mockChainlinkFeeds[0].address,
+                                mockChainlinkFeeds[1].address,
+                                mockChainlinkFeeds[2].address,
+                            ],
+                            RTOKEN_MAX_TRADE_VALUE,
+                            ORACLE_TIMEOUT,
+                            targetName,
+                            DEFAULT_THRESHOLD,
+                            DELAY_UNTIL_DEFAULT
+                        )
                 }
 
-                async function deployNonFiat(){
+                async function deployNonFiat() {
                     const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
                         "UniconvexNonFiatCollateral"
                     )
 
                     return await uniconvexCollateral3ContractFactory
-                    .connect(addr1)
-                    .deploy(
-                        matchedPools[0].index,
-                        fallbackPrice,
-                        [
-                            mockChainlinkFeeds[0].address,
-                            mockChainlinkFeeds[1].address,
-                            mockChainlinkFeeds[2].address,
-                        ],
-                        RTOKEN_MAX_TRADE_VALUE,
-                        ORACLE_TIMEOUT,
-                        targetName,
-                        DELAY_UNTIL_DEFAULT
-                    ) 
+                        .connect(addr1)
+                        .deploy(
+                            matchedPools[0].index,
+                            fallbackPrice,
+                            [
+                                mockChainlinkFeeds[0].address,
+                                mockChainlinkFeeds[1].address,
+                                mockChainlinkFeeds[2].address,
+                            ],
+                            RTOKEN_MAX_TRADE_VALUE,
+                            ORACLE_TIMEOUT,
+                            targetName,
+                            DELAY_UNTIL_DEFAULT
+                        )
                 }
 
-                const uniconvexCollateral = isFiat? await deployFiat() : await deployNonFiat();
-
-                const actualStrictPrice = await uniconvexCollateral.strictPrice()
+                const uniconvexCollateral = isFiat ? await deployFiat() : await deployNonFiat()
 
                 await logBalances(
                     "after deploy Collateral",
@@ -375,9 +371,14 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     [asset0, asset1, asset2, lpToken, convexLpToken]
                 )
 
+                const actualStrictPrice = await uniconvexCollateral.strictPrice()
+
+
                 const convexLpTokenLiquidityBefore = await convexLpToken
                     .connect(addr1)
                     .balanceOf(addr1.address)
+
+                expect(await uniconvexCollateral.bal(addr1.address)).to.equal(convexLpTokenLiquidityBefore)
 
                 await waitForTx(await booster.connect(addr1).withdrawAll(matchedPools[0].index))
 
@@ -457,22 +458,11 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
                 expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
-                // const pair = <IUniconvexPair>await ethers.getContractAt("IUniconvexPair", pairAddress)
-                // const {reserve0, reserve1} = await pair.getReserves()
-                // const totalSupply = await pair.totalSupply()
-                // const expectedRefPerTok = fp(sqrt(reserve0.mul(reserve1))).div(totalSupply)
-                // expect(await uniconvexCollateral.refPerTok()).to.equal(expectedRefPerTok)
+                const expectedRefPerTok = await curvePool3Assets.get_virtual_price();
+                expect(await uniconvexCollateral.refPerTok()).to.equal(expectedRefPerTok)
 
-                // expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
-                // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
-                //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
-                //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
-
-                //TODO
-                //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-                // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
-                //   await adjustedAmout(uniconvexWrapper, 100)
-                // )
+                !isFiat && expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))
+                isFiat && expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
             })
         }
     })
