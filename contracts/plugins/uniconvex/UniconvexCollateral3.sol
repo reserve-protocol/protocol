@@ -11,9 +11,8 @@ import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBaseRew
 import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IRewards.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBooster.sol";
 
-
 //CRYPTO POOLS like USDT-BTC-WETH - strict order
-//STABLE POOLS like DAI-USDC-USDT 
+//STABLE POOLS like DAI-USDC-USDT
 
 // {
 //     index: 9,
@@ -50,7 +49,7 @@ contract UniconvexCollateral3 is Collateral {
         ICurveRegistry(0x90E00ACe148ca3b23Ac1bC8C240C2a7Dd9c2d7f5);
     IBooster public immutable convexBooster = IBooster(0xF403C135812408BFbE8713b5A23a04b3D48AAE31);
     IBaseRewardPool baseRewardPool;
-    address public immutable curveToken; 
+    address public immutable curveToken;
 
     function getConvexTokenFromPoolId(uint256 i) private view returns (address token) {
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(i);
@@ -79,7 +78,7 @@ contract UniconvexCollateral3 is Collateral {
         chainlinkFeeds = chainlinkFeeds_;
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
         baseRewardPool = IBaseRewardPool(poolInfo.crvRewards);
-        curveToken = poolInfo.lptoken; 
+        curveToken = poolInfo.lptoken;
         curvePool = ICurveCryptoPool3Assets(curveRegistry.get_pool_from_lp_token(poolInfo.lptoken));
         require(address(baseRewardPool) != address(0), "missing baseRewardPool");
         require(address(curvePool) != address(0), "missing curvePool");
@@ -129,7 +128,7 @@ contract UniconvexCollateral3 is Collateral {
         console.log("totalSupply", IERC20(curveToken).totalSupply());
         return uint192(priceScaled / IERC20(curveToken).totalSupply());
     }
-    
+
     function strictPrice() external view returns (uint192) {
         return _calculatePrice();
     }

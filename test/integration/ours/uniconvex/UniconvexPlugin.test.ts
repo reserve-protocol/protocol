@@ -5,13 +5,13 @@ import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10, ZERO } from "../../../../common/numbers"
-import { ERC20Mock, USDCMock, IBooster } from "../../../../typechain"
+import { ERC20Mock, USDCMock, IBooster, Collateral } from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
 import { CollateralStatus, MAX_UINT256 } from "../../../../common/constants"
 import { ICurvePool3Assets } from "@typechain/ICurvePool3Assets"
-import { logBalances } from "../common"
+import { logBalances, logBalancesAddr } from "../common"
 import forkBlockNumber from "../../fork-block-numbers"
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -165,7 +165,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 // TODO: need we always raising on mint invariant?
                 // https://github.com/curvefi/curve-contract/blob/b0bbf77f8f93c9c5f4e415bce9cd71f0cdee960e/contracts/pools/3pool/StableSwap3Pool.vy#L317
 
-                // Zap depositor can be used to wrap tokens
+                // Zap depositor can be used to wrap/unwrap tokens on deposit/withdrawal
                 // Deployer would use custom oracle feeds for wrapped tokens
                 // https://github.com/curvefi/curve-factory/blob/b6655de2bf9c447b6e80a4e60ed1b3d20b786b34/contracts/zaps/DepositZapUSD.vy#L66
                 const TriCryptoDepositZap = "0x331aF2E331bd619DefAa5DAc6c038f53FCF9F785"
@@ -182,6 +182,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         lpTokenAddress: "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490",
                         curvePoolAddress: "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
+                        mockFeedDecimals: 8,
                     },
                     // Pool for USDT/BTC/ETH or similar
                     // USD-like asset should be first, ETH should be last
@@ -194,11 +195,19 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         lpTokenAddress: "0xcA3d75aC011BF5aD07a98d02f18225F9bD9A6BDF",
                         curvePoolAddress: "0x80466c64868E1ab14a1Ddf27A676C3fcBE638Fe5",
                         feedPrices: [bn("1e8"), bn("17000e8"), bn("1300e8")],
+                        mockFeedDecimals: 8,
                     },
                 }
 
-                const { asset0, asset1, asset2, lpTokenAddress, curvePoolAddress, feedPrices } =
-                    pools[poolName]
+                const {
+                    asset0,
+                    asset1,
+                    asset2,
+                    lpTokenAddress,
+                    curvePoolAddress,
+                    feedPrices,
+                    mockFeedDecimals,
+                } = pools[poolName]
 
                 const decimals0 = await asset0.decimals()
                 const decimals1 = await asset1.decimals()
@@ -218,54 +227,24 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
 
                 await waitForTx(
-                    await asset0.connect(addr1).approve(curvePool3Assets.address, p0(100))
+                    await asset0.connect(addr1).approve(curvePool3Assets.address, p0(1000))
                 )
                 await waitForTx(
-                    await asset1.connect(addr1).approve(curvePool3Assets.address, p1(100))
+                    await asset1.connect(addr1).approve(curvePool3Assets.address, p1(10))
                 )
                 await waitForTx(
                     await asset2.connect(addr1).approve(curvePool3Assets.address, p2(100))
                 )
 
-                const receipt = await waitForTx(
+                await waitForTx(
                     await curvePool3Assets.connect(addr1).add_liquidity(
-                        [p0(100).div(1000), p1(100).div(1000), p2(100).div(1000)],
+                        [p0(1000), p1(10), p2(100)],
                         0 //min_mint_amount
                     )
                 )
 
                 await logBalances(
                     "after minting Curve LP",
-                    [owner, addr1],
-                    [asset0, asset1, asset2, lpToken]
-                )
-
-                const liquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
-                console.log({ liquidity })
-
-                const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
-                const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
-                const balance2before = await asset2.connect(addr1).balanceOf(addr1.address)
-
-                const receipt2 = await waitForTx(
-                    await curvePool3Assets.connect(addr1).remove_liquidity(
-                        liquidity,
-                        [0, 0, 0] //min_mint_amount
-                    )
-                )
-
-                const balance0after = await asset0.connect(addr1).balanceOf(addr1.address)
-                const balance1after = await asset1.connect(addr1).balanceOf(addr1.address)
-                const balance2after = await asset2.connect(addr1).balanceOf(addr1.address)
-
-                console.log(balance0after.sub(balance0before))
-                console.log(balance1after.sub(balance1before))
-                console.log(balance2after.sub(balance2before))
-
-                console.log({ liquidity })
-
-                await logBalances(
-                    "after burning Curve LP",
                     [owner, addr1],
                     [asset0, asset1, asset2, lpToken]
                 )
@@ -321,7 +300,9 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
                 const mockChainlinkFeeds = await Promise.all(
                     feedPrices.map(async (feedPrice) => {
-                        return await mockV3AggregatorFactory.connect(addr1).deploy(8, feedPrice)
+                        return await mockV3AggregatorFactory
+                            .connect(addr1)
+                            .deploy(mockFeedDecimals, feedPrice)
                     })
                 )
 
@@ -347,6 +328,86 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         DELAY_UNTIL_DEFAULT
                     )
 
+                const actualStrictPrice = await uniconvexCollateral3.strictPrice(); 
+
+                await logBalances(
+                    "after deploy Collateral",
+                    [addr1, uniconvexCollateral3],
+                    [asset0, asset1, asset2, lpToken, convexLpToken]
+                )
+
+                const convexLpTokenLiquidityBefore = await convexLpToken
+                    .connect(addr1)
+                    .balanceOf(addr1.address)
+
+                await waitForTx(await booster.connect(addr1).withdrawAll(matchedPools[0].index))
+
+                const convexLpTokenLiquidity = convexLpTokenLiquidityBefore.sub(
+                    await convexLpToken.connect(addr1).balanceOf(addr1.address)
+                )
+
+                await logBalances(
+                    "after withdrawal Convex lp token",
+                    [addr1, uniconvexCollateral3],
+                    [asset0, asset1, asset2, lpToken, convexLpToken]
+                )
+
+                const curveLpTokenLiquidity = await lpToken.connect(addr1).balanceOf(addr1.address)
+                const balance0before = await asset0.connect(addr1).balanceOf(addr1.address)
+                const balance1before = await asset1.connect(addr1).balanceOf(addr1.address)
+                const balance2before = await asset2.connect(addr1).balanceOf(addr1.address)
+
+                await waitForTx(
+                    await curvePool3Assets.connect(addr1).remove_liquidity(
+                        curveLpTokenLiquidity,
+                        [0, 0, 0] //min_mint_amount
+                    )
+                )
+
+                await logBalances(
+                    "after burning Curve LP",
+                    [owner, addr1],
+                    [asset0, asset1, asset2, lpToken]
+                )
+
+                const balance0after = await asset0.connect(addr1).balanceOf(addr1.address)
+                const balance1after = await asset1.connect(addr1).balanceOf(addr1.address)
+                const balance2after = await asset2.connect(addr1).balanceOf(addr1.address)
+
+                const amount0 = balance0after.sub(balance0before)
+                const amount1 = balance1after.sub(balance1before)
+                const amount2 = balance2after.sub(balance2before)
+
+                expect(curveLpTokenLiquidity).to.equal(convexLpTokenLiquidity)
+
+                const decimals = await convexLpToken.decimals()
+
+                console.log({ amount0, amount1, amount2, curveLpTokenLiquidity, decimals })
+
+                const price0Adj = pow10(18 - mockFeedDecimals)
+                    .mul(amount0)
+                    .mul(feedPrices[0])
+                    .div(pow10(decimals0))
+                const price1Adj = pow10(18 - mockFeedDecimals)
+                    .mul(amount1)
+                    .mul(feedPrices[1])
+                    .div(pow10(decimals1))
+                const price2Adj = pow10(18 - mockFeedDecimals)
+                    .mul(amount2)
+                    .mul(feedPrices[2])
+                    .div(pow10(decimals2))
+
+                console.log({ price0Adj, price1Adj, amount2, price2Adj })
+
+                const expectedStrictPrice = price0Adj
+                    .add(price1Adj)
+                    .add(price2Adj)
+                    .mul(pow10(decimals))
+                    .div(convexLpTokenLiquidity)
+
+                
+                expect(actualStrictPrice).closeTo(expectedStrictPrice, pow10(18 - 4))
+
                 expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
                 expect(await uniconvexCollateral3.erc20()).to.equal(convexLpToken.address)
                 expect(await uniconvexCollateral3.erc20Decimals()).to.equal(18)
@@ -368,7 +429,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
                 //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
                 //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
-                expect(await uniconvexCollateral3.strictPrice()).to.equal(fp("1"))
+                
                 //TODO
                 //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
                 // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(

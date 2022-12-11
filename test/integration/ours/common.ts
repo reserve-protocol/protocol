@@ -125,16 +125,15 @@ export async function deployUniswapV3Wrapper(
     return uniswapV3Wrapper
 }
 
-export async function logBalances(
+export async function logBalancesAddr(
     prefix: string,
-    accounts: SignerWithAddress[],
+    adresses: string[],
     assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]
 ) {
     console.log(prefix)
     const table = []
-    for (const account of accounts) {
+    for (const address of adresses) {
         for (const asset of assets) {
-            const address = account.address
             table.push({
                 address: address.substring(0, 6),
                 asset: await asset.name(),
@@ -143,6 +142,14 @@ export async function logBalances(
         }
     }
     console.table(table)
+}
+
+export async function logBalances(
+    prefix: string,
+    accounts: {address: string}[],
+    assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]
+) {
+    return logBalancesAddr(prefix, accounts.map((account)=>account.address), assets)
 }
 
 const ONE = ethers.BigNumber.from(1)
