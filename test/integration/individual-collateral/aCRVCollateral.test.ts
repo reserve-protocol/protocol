@@ -210,7 +210,7 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await aCrvCollateral.strictPrice()).to.be.closeTo(fp('1.39'), fp('0.01')) // close to $0.022 cents
 
       // Check claim data
-      await expect(aCrvCollateral.claimRewards()).to.not.emit(aCrvCollateral, 'RewardsClaimed')
+      await expect(aCrvCollateral.claimRewards()).to.emit(aCrvCollateral, 'RewardsClaimed')
       expect(await aCrvCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -407,7 +407,7 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         {
           contract: backingManager,
           name: 'RewardsClaimed',
-          emitted: false,
+          emitted: true,
         },
       ])
 
@@ -424,13 +424,7 @@ describeFork(`aCRVCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
-
-      // Keep moving time
-      await advanceTime(3600)
-
-      // Get additional rewards
-      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
     })
   })
 

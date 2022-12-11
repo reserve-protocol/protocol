@@ -228,7 +228,7 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       expect(await aFxsCollateral.strictPrice()).to.be.closeTo(fp('6.55'), fp('0.01'))
 
       // Check claim data
-      await expect(aFxsCollateral.claimRewards()).to.not.emit(aFxsCollateral, 'RewardsClaimed')
+      await expect(aFxsCollateral.claimRewards()).to.emit(aFxsCollateral, 'RewardsClaimed')
       expect(await aFxsCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -393,7 +393,7 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
         {
           contract: backingManager,
           name: 'RewardsClaimed',
-          emitted: false,
+          emitted: true,
         },
       ])
 
@@ -410,13 +410,7 @@ describeFork(`aFXSCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () 
       await advanceTime(8000)
 
       // Claim rewards
-      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
-
-      // Keep moving time
-      await advanceTime(3600)
-
-      // Get additional rewards
-      await expect(backingManager.claimRewards()).to.not.emit(backingManager, 'RewardsClaimed')
+      await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
     })
   })
 

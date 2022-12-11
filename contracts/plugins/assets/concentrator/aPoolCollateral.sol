@@ -107,6 +107,6 @@ contract aPoolCollateral is Collateral {
         IaPool(address(erc20)).harvest(address(this), 0);
         // since by harvesting ourselves we might be rewarded some more _aTokens_
         // we keep track of the potential increase on value and fire the event
-        emit RewardsClaimed(address(erc20), erc20.balanceOf(address(this)) - previousBalance);
+        emit RewardsClaimed(erc20, erc20.balanceOf(address(this)) - previousBalance);
     }
 }
