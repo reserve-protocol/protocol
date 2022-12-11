@@ -340,10 +340,10 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         expect(await rToken.totalSupply()).to.equal(0)
 
         // Check balances - Fewer wstETH should have been sent to the user
-        const newbalanceAddr1WstEth: BigNumber = await wstETH.balanceOf(addr1.address)
+        const newBalanceAddr1WstEth: BigNumber = await wstETH.balanceOf(addr1.address)
 
         // Check received tokens represent ~1K in value at current prices
-        expect(newbalanceAddr1WstEth.sub(balanceAddr1WstEth)).to.be.closeTo(fp('1'), fp('0.1'))
+        expect(newBalanceAddr1WstEth.sub(balanceAddr1WstEth)).to.be.closeTo(fp('1'), fp('0.1'))
 
         // Check remainders in Backing Manager
         expect(await wstETH.balanceOf(backingManager.address)).to.be.eq(fp('0'))
@@ -365,7 +365,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
     describe('Price Handling', () => {
       it('Should handle invalid/stale Price', async () => {
         // Reverts with a feed with zero price
-        const invalidpriceCbEthCollateral: WstETHCollateral = <WstETHCollateral>(
+        const invalidPriceWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
           await (
             await ethers.getContractFactory('WstETHCollateral')
           ).deploy(
@@ -380,16 +380,16 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
             delayUntilDefault
           )
         )
-        await setOraclePrice(invalidpriceCbEthCollateral.address, bn(0))
+        await setOraclePrice(invalidPriceWstEthCollateral.address, bn(0))
 
         // Reverts with zero price
-        await expect(invalidpriceCbEthCollateral.strictPrice()).to.be.revertedWith(
+        await expect(invalidPriceWstEthCollateral.strictPrice()).to.be.revertedWith(
           'PriceOutsideRange()'
         )
 
         // Refresh should mark status IFFY
-        await invalidpriceCbEthCollateral.refresh()
-        expect(await invalidpriceCbEthCollateral.status()).to.equal(CollateralStatus.IFFY)
+        await invalidPriceWstEthCollateral.refresh()
+        expect(await invalidPriceWstEthCollateral.status()).to.equal(CollateralStatus.IFFY)
 
         // Reverts with stale price
         await advanceTime(ORACLE_TIMEOUT.toString())
@@ -407,7 +407,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         await wstETHCollateral.refresh()
         expect(await wstETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
-        const nonpriceWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
+        const nonPriceWstEthCollateral: WstETHCollateral = <WstETHCollateral>(
           await (
             await ethers.getContractFactory('WstETHCollateral')
           ).deploy(
@@ -424,9 +424,9 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         )
 
         // Collateral with no price info should revert
-        await expect(nonpriceWstEthCollateral.strictPrice()).to.be.reverted
+        await expect(nonPriceWstEthCollateral.strictPrice()).to.be.reverted
 
-        expect(await nonpriceWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
+        expect(await nonPriceWstEthCollateral.status()).to.equal(CollateralStatus.SOUND)
       })
     })
 
@@ -597,7 +597,7 @@ describeFork(`WstETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
         expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-        // Runnning out of gas (same error)
+        // Running out of gas (same error)
         await invalidChainlinkFeed.setSimplyRevert(false)
         await expect(invalidWstETHCollateral.refresh()).to.be.revertedWith('')
         expect(await invalidWstETHCollateral.status()).to.equal(CollateralStatus.SOUND)
