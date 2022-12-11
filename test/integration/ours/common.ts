@@ -5,9 +5,10 @@ import { UniswapV3WrapperMock } from "@typechain/UniswapV3WrapperMock"
 import { USDCMock } from "@typechain/USDCMock"
 import { BigNumber, BigNumberish } from "ethers"
 import hre, { ethers } from "hardhat"
-const { getContractAddress } = require("@ethersproject/address")
+import { getContractAddress } from "@ethersproject/address"
 import { ZERO_ADDRESS } from "../../../common/constants"
 import { waitForTx } from "../utils"
+import { whileImpersonating } from "../../utils/impersonation"
 
 /// @dev The minimum tick that may be passed to #getSqrtRatioAtTick computed from log base 1.0001 of 2**-128
 export const MIN_TICK = -887272
@@ -98,8 +99,7 @@ export async function deployUniswapV3Wrapper(
     mintParams: TMintParams,
     liquiDityProvider: SignerWithAddress = signer
 ): Promise<UniswapV3Wrapper> {
-
-    const uniswapV3WrapperContractFactory = await ethers.getContractFactory('UniswapV3Wrapper')
+    const uniswapV3WrapperContractFactory = await ethers.getContractFactory("UniswapV3Wrapper")
     const transactionCount = await signer.getTransactionCount()
 
     // just in case we want to deploy it with
@@ -109,12 +109,16 @@ export async function deployUniswapV3Wrapper(
         nonce: transactionCount + (liquiDityProvider == signer ? 2 : 0),
     })
 
-    await waitForTx(await asset0.connect(liquiDityProvider).approve(futureAddress, mintParams.amount0Desired))
-    await waitForTx(await asset1.connect(liquiDityProvider).approve(futureAddress, mintParams.amount1Desired))
+    await waitForTx(
+        await asset0.connect(liquiDityProvider).approve(futureAddress, await asset0.totalSupply())
+    )
+    await waitForTx(
+        await asset1.connect(liquiDityProvider).approve(futureAddress, await asset1.totalSupply())
+    )
 
     const uniswapV3Wrapper = await uniswapV3WrapperContractFactory
         .connect(signer)
-        .deploy('UniswapV3WrapperToken', 'U3W', mintParams, liquiDityProvider.address)
+        .deploy("UniswapV3WrapperToken", "U3W", mintParams, liquiDityProvider.address)
     if (liquiDityProvider != signer) {
         await waitForTx(
             await uniswapV3Wrapper
@@ -173,14 +177,25 @@ export function p999(x: BigNumber): BigNumber {
     return x.mul(999).div(1000)
 }
 
-// https://github.com/Uniswap/v3-periphery/blob/685ca7f164c56fa4eb7620918a9d266714cdf103/test/shared/tokenSort.ts  
+// https://github.com/Uniswap/v3-periphery/blob/685ca7f164c56fa4eb7620918a9d266714cdf103/test/shared/tokenSort.ts
 export function compareToken(a: { address: string }, b: { address: string }): -1 | 1 {
     return a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1
 }
-  
+
 export function sortedTokens(
-    a: { address: string },
-    b: { address: string }
-): [typeof a, typeof b] | [typeof b, typeof a] {
+    a: ERC20Mock | USDCMock,
+    b: ERC20Mock | USDCMock
+): [ERC20Mock | USDCMock, ERC20Mock | USDCMock] {
     return compareToken(a, b) < 0 ? [a, b] : [b, a]
+}
+
+export async function sendTokenAs(
+    token: ERC20Mock,
+    senderAddr: string,
+    recipient: SignerWithAddress,
+    amount: BigNumber
+) {
+    await whileImpersonating(senderAddr, async (sender) => {
+        await token.connect(sender).transfer(recipient.address, amount)
+    })
 }

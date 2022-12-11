@@ -56,10 +56,10 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
             delayUntilDefault_
         )
     {
-        require(defaultThreshold_ > 0, "defaultThreshold zero");
+        require(defaultThreshold_ > 0, "UniswapV3UsdCollateral: defaultThreshold can't be zero");
         defaultThreshold = defaultThreshold_;
         // tick representing the balanced state of the pool
-        int24 zeroTick = _zeroTick(1, 1);
+        int24 zeroTick = _zeroTick(underlyingERC20Decimals0, underlyingERC20Decimals1);
         lowTickThreshold = zeroTick - int24(tickThreshold_);
         highTickThreshold = zeroTick + int24(tickThreshold_);
     }
@@ -151,8 +151,8 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
         uint256 decimalsMultiplier = Math.sqrt(10 ** absDecimalsDiff);
         uint256 price = FixedPoint96.Q96;
         if (decimalsDiff > 0) {
-            price *= decimalsMultiplier;
-        } else price /= decimalsMultiplier;
+            price /= decimalsMultiplier;
+        } else price *= decimalsMultiplier;
 
         return TickMath.getTickAtSqrtRatio(uint160(price));
     }
