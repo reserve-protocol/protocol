@@ -28,7 +28,7 @@
     "test:coverage": "hardhat coverage --temp artifacts",
     "test:serial": "hardhat test",
     "test:recompile": "hardhat compile --force && mocha --require hardhat/register --recursive --exit",
-    "test:tf": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/truefi/*.test.ts",
+    "test:tf": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/truefi/TFTokenCollateral.test.ts",
     "test:ctok": "PROTO_IMPL=1 FORK=1 hardhat test test/integration/individual-collateral/CTokenFiatCollateral.test.ts",
     "lint": "bash tools/lint",
     "eslint": "eslint test/",

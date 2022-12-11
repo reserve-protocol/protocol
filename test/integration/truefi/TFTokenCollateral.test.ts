@@ -3,7 +3,7 @@ import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
 import hre, { ethers, waffle } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
-import { defaultFixture, ORACLE_TIMEOUT } from '../fixtures'
+import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
 import {
   IConfig,
@@ -44,7 +44,7 @@ import forkBlockNumber from '../fork-block-numbers'
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet - we're pretending to be this person who has a LOT of tfUSDC
-const holderTFUSDC = '0xec6c3fd795d6e6f202825ddb56e01b3c128b0b10'
+const holderTFUSDC = '0xf977814e90da44bfa03b6295a0616a897441acec'
 
 //USDC/USD Price Feed - Chainlink & BNB Mainnet
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
@@ -198,9 +198,12 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
     // Setup balances for addr1 - Transfer from Mainnet holder
     // tfUSDC
-    initialBal = bn('5000e18')
+    initialBal = bn('5000')
     await whileImpersonating(holderTFUSDC, async (tfusdcSigner) => {
+      console.log("Hello world")
+      console.log(await tfUsdc.balanceOf(holderTFUSDC))
       await tfUsdc.connect(tfusdcSigner).transfer(addr1.address, initialBal) //???? toBNDecimals(initialBal, 8)
+      console.log(await tfUsdc.balanceOf(holderTFUSDC))
     })
 
     // Set parameters
@@ -260,27 +263,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     mockChainlinkFeed = <MockV3Aggregator>await MockV3AggregatorFactory.deploy(8, bn('1e8'))
   })
 
-  //test for seeing if we can get poolValue() &  totalSupply()
-  // describe('basic calls', () => {
-  //     it('usdc pool value & total supply', async () => {
-  //       // console.log(await usdc.decimals())
-  //       expect(await usdc.decimals()).to.equal(18)
-  //       // console.log(await tfUsdc.totalSupply())
-  //       }
-  //     )
-
-  //   }
-  // )
-
-  describe('tfUSDC basic calls', () => {
-    it('pool value & total supply', async () => {
-      console.log(await tfUsdc.poolValue())
-      console.log(await tfUsdc.totalSupply())
-    }
-    )
-  }
-  )
-
 
   describe('Deployment', () => {
     // Check the initial state
@@ -294,11 +276,6 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await truAsset.strictPrice()).to.be.closeTo(fp('58'), fp('0.5')) // Close to $58 USD - June 2022
       await expect(truAsset.claimRewards()).to.not.emit(truAsset, 'RewardsClaimed')
       expect(await truAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-
-
-
-
-
 
       // Check Collateral plugin
       // tfUSDC (TFTokenCollateral)
@@ -329,6 +306,16 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       // Should setup contracts
       expect(main.address).to.not.equal(ZERO_ADDRESS)
     })
+
+
+
+
+
+
+
+
+
+
 
     // Check assets/collaterals in the Asset Registry
     it('Should register ERC20s and Assets/Collateral correctly', async () => {
@@ -369,8 +356,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
 
       // Check RToken price
       const issueAmount: BigNumber = bn('1000e18')
-      await tfUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-      //await tfUsdc.connect(addr1).approve(rToken.address, issueAmount) 
+      //await tfUsdc.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
+      await tfUsdc.connect(addr1).approve(rToken.address, issueAmount) 
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })

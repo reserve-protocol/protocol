@@ -10,5 +10,5 @@ interface ITFToken {
 
     function totalSupply() external view returns (uint256);
 
-    function exchangeRateTfUsdc() external returns (uint256);
+    //function exchangeRateTfUsdc(int8) external returns (uint256);
 }

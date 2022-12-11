@@ -78,7 +78,7 @@ contract TFTokenCollateral is Collateral {
     function refresh() external virtual override {
         // == Refresh ==
         // Update the Compound Protocol
-        // ITFToken(address(erc20)).exchangeRateTfUsdc(referenceERC20Decimals);
+        //ITFToken(address(erc20)).poolValue() / ITFToken(address(erc20)).totalSupply();
 
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
