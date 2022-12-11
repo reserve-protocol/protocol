@@ -39,6 +39,7 @@ import {
   TestIRToken,
   WSTETHCollateral,
 } from '../../../typechain'
+import { useEnv } from '#/utils/env'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -46,7 +47,7 @@ const createFixtureLoader = waffle.createFixtureLoader
 const lidoOracle = '0x442af784A788A5bd6F42A01Ebe9F287a871243fb'
 const holderWSTETH = '0x10CD5fbe1b404B7E19Ef964B63939907bdaf42E2'
 
-const describeFork = process.env.FORK ? describe : describe.skip
+const describeFork = useEnv('FORK') ? describe : describe.skip
 
 describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -180,8 +181,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       primaryBasket: [wstethCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: ZERO_ADDRESS,
-      revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+      beneficiaries: [],
     }
 
     // Deploy RToken via FacadeWrite
@@ -421,8 +421,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         primaryBasket: [newWSTETHCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
@@ -606,8 +605,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
         primaryBasket: [newWSTETHCollateral.address],
         weights: [fp('1')],
         backups: [],
-        beneficiary: ZERO_ADDRESS,
-        revShare: { rTokenDist: bn('0'), rsrDist: bn('0') },
+        beneficiaries: [],
       }
 
       // Deploy RToken via FacadeWrite
@@ -853,7 +851,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
 
       // Force updates - Should update whenDefault and status
       await expect(newWSTETHCollateral.refresh())
-        .to.emit(newWSTETHCollateral, 'DefaultStatusChanged')
+        .to.emit(newWSTETHCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.IFFY)
       expect(await newWSTETHCollateral.status()).to.equal(CollateralStatus.IFFY)
 
@@ -870,7 +868,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
       const prevWhenDefault: BigNumber = await newWSTETHCollateral.whenDefault()
       await expect(newWSTETHCollateral.refresh()).to.not.emit(
         newWSTETHCollateral,
-        'DefaultStatusChanged'
+        'CollateralStatusChanged'
       )
       expect(await newWSTETHCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newWSTETHCollateral.whenDefault()).to.equal(prevWhenDefault)
@@ -892,7 +890,7 @@ describeFork(`WSTETHCollateral - Mainnet Forking P${IMPLEMENTATION}`, function (
 
       // Force updates
       await expect(wstethCollateral.refresh())
-        .to.emit(wstethCollateral, 'DefaultStatusChanged')
+        .to.emit(wstethCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await wstethCollateral.status()).to.equal(CollateralStatus.DISABLED)

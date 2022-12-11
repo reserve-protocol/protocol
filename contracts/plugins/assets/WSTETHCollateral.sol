@@ -112,14 +112,14 @@ contract WSTETHCollateral is Collateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
     /// @return {ref/tok} Quantity of whole reference units per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
         uint256 rate = Iwsteth(address(erc20)).stEthPerToken();
-        return shiftl_toFix(rate, -18);
+        return _safeWrap(rate);
     }
 
     /// @return {UoA/target} The price of a target unit in UoA
