@@ -99,7 +99,7 @@ contract GOhmCollateral is Collateral {
     /// D9{index} is non-decreasing over time because of the staking rewards
     function refPerTok() public view override returns (uint192) {
         try IgOHM(address(erc20)).index() returns (uint256 rate) {
-            int8 shiftLeft = 8 - referenceERC20Decimals - 18;
+            int8 shiftLeft = referenceERC20Decimals - 18;
             return shiftl_toFix(rate, shiftLeft);
         } catch (bytes memory errData) {
             /// Revert out of gas error
