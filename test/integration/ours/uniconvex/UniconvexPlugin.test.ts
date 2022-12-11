@@ -5,7 +5,7 @@ import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { networkConfig } from "../../../../common/configuration"
 import { bn, fp, pow10, ZERO } from "../../../../common/numbers"
-import { ERC20Mock, USDCMock, IBooster, Collateral } from "../../../../typechain"
+import { ERC20Mock, USDCMock, IBooster, Collateral, OracleLib } from "../../../../typechain"
 import { whileImpersonating } from "../../../utils/impersonation"
 import { waitForTx } from "../../utils"
 import { expect } from "chai"
@@ -43,6 +43,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     let wallet: Wallet
 
     let chainId: number
+    let oracleLib: OracleLib
 
     describe("Assets/Collateral", () => {
         before(async () => {
@@ -58,7 +59,8 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         beforeEach(async () => {
             ;[owner, , addr1, addr2] = await ethers.getSigners()
 
-            await loadFixture(defaultFixture)
+            const loadedFixture = await loadFixture(defaultFixture)
+            oracleLib = loadedFixture.oracleLib
 
             const tokens = networkConfig[chainId].tokens
             ;[weth, wbtc, dai, usdt, usdc] = await Promise.all(
@@ -307,7 +309,10 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 )
 
                 const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
-                    "UniconvexCollateral3"
+                    "UniconvexCollateral3",
+                    {
+                        libraries: { OracleLib: oracleLib.address },
+                    }
                 )
 
                 const fallbackPrice = fp("1")
@@ -328,7 +333,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                         DELAY_UNTIL_DEFAULT
                     )
 
-                const actualStrictPrice = await uniconvexCollateral3.strictPrice(); 
+                const actualStrictPrice = await uniconvexCollateral3.strictPrice()
 
                 await logBalances(
                     "after deploy Collateral",
@@ -405,7 +410,6 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     .mul(pow10(decimals))
                     .div(convexLpTokenLiquidity)
 
-                
                 expect(actualStrictPrice).closeTo(expectedStrictPrice, pow10(18 - 4))
 
                 expect(await uniconvexCollateral3.isCollateral()).to.equal(true)
@@ -429,7 +433,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 // expect(await uniconvexCollateral.pricePerTarget()).to.equal(fp("1"))
                 //expect(await uniconvexCollateral.strictPrice()).closeTo(fp('200').div(pair.getLiquidityValue())), 10)
                 //expect(await uniconvexCollateral.strictPrice()).to.equal(await uniconvexCollateral._fallbackPrice())
-                
+
                 //TODO
                 //expect(await uniconvexCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
                 // expect(await uniconvexCollateral.bal(addr1.address)).to.equal(

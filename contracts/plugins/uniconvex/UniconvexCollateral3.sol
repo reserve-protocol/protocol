@@ -5,7 +5,7 @@ import "../assets/AbstractCollateral.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "hardhat/console.sol";
-import "./ICurveCryptoPool.sol";
+import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurvePool_3.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/curve/ICurveRegistry.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBaseRewardPool.sol";
 import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IRewards.sol";
@@ -13,7 +13,8 @@ import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBooster
 
 //CRYPTO POOLS like USDT-BTC-WETH - strict order
 //STABLE POOLS like DAI-USDC-USDT
-
+//TODO REPORT_GAS FOR REFRESH
+//TODO use shutdown in REFRESH
 // {
 //     index: 9,
 //     poolInfo: [
@@ -37,12 +38,13 @@ import "@gearbox-protocol/integrations-v2/contracts/integrations/convex/IBooster
 // crvRewards: the main reward contract for the pool
 // stash: a helper contract used to hold extra rewards (like snx) on behalf of the pool until distribution is called
 // shutdown: a shutdown flag of the pool
-//TODO use shutdown in REFRESH
 
 contract UniconvexCollateral3 is Collateral {
     using OracleLib for AggregatorV3Interface;
+
     AggregatorV3Interface[N_COINS] public chainlinkFeeds;
-    ICurveCryptoPool3Assets public immutable curvePool;
+    uint192 public prevReferencePrice;
+    ICurvePool3Assets public immutable curvePool;
 
     //https://github.com/curvefi/curve-pool-registry/blob/0bdb116024ccacda39295bb3949c3e6dd0a8e2d9/contracts/Registry.vy#L114
     ICurveRegistry public immutable curveRegistry =
@@ -79,13 +81,95 @@ contract UniconvexCollateral3 is Collateral {
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
         baseRewardPool = IBaseRewardPool(poolInfo.crvRewards);
         curveToken = poolInfo.lptoken;
-        curvePool = ICurveCryptoPool3Assets(curveRegistry.get_pool_from_lp_token(poolInfo.lptoken));
+        curvePool = ICurvePool3Assets(curveRegistry.get_pool_from_lp_token(poolInfo.lptoken));
+        prevReferencePrice = refPerTok();
         require(address(baseRewardPool) != address(0), "missing baseRewardPool");
         require(address(curvePool) != address(0), "missing curvePool");
-
         for (uint256 i = 1; i < N_COINS; i++) {
             require(address(chainlinkFeeds[i]) != address(0), "missing chainlink feed");
         }
+    }
+
+    function priceNotInBounds(
+        uint192 price,
+        uint192 peg,
+        uint192 delta
+    ) internal pure returns (bool) {
+        return price < peg - delta || price > peg + delta;
+    }
+
+    function poolIsAwayFromOptimalPoint() internal pure returns (bool) {
+        return true;
+    }
+
+    // //Fiat
+    function refresh() external override{
+        if (alreadyDefaulted()) return;
+
+        CollateralStatus oldStatus = status();
+
+        uint192 referencePrice = refPerTok();
+        if (referencePrice < prevReferencePrice) {
+            markStatus(CollateralStatus.DISABLED);
+        } 
+        else {
+            for (uint256 i = 0; i < N_COINS; i++) {
+                try chainlinkFeed.price_(oracleTimeout) returns (uint192 oraclePrice) {
+                    uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
+                    uint192 delta = 0; // (peg * defaultThreshold) / FIX_ONE;
+                    if (priceNotInBounds(oraclePrice, peg, delta)) {
+                        markStatus(CollateralStatus.IFFY);
+                        break;
+                    } else {
+                        markStatus(CollateralStatus.SOUND);
+                    }
+                } catch (bytes memory errData) {
+                    if (errData.length == 0) revert();
+                    markStatus(CollateralStatus.IFFY);
+                    break; //TODO check with broken feed
+                }
+            }
+            if (poolIsAwayFromOptimalPoint()) {
+                markStatus(CollateralStatus.IFFY);
+            }
+        }
+        prevReferencePrice = referencePrice;
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+    }
+
+    function refreshNonFiat() external /*override*/ {
+        if (alreadyDefaulted()) return;
+
+        CollateralStatus oldStatus = status();
+
+        uint192 referencePrice = refPerTok();
+        if (referencePrice < prevReferencePrice) {
+            markStatus(CollateralStatus.DISABLED);
+        } else {
+            //TODO need to check feeds
+            try this.strictPrice() returns (uint192) {
+                markStatus(CollateralStatus.SOUND);
+            } catch (bytes memory errData) {
+                // see: docs/solidity-style.md#Catching-Empty-Data
+                if (errData.length == 0) revert(); // solhint-disable-line reason-string
+                markStatus(CollateralStatus.IFFY);
+            }
+        }
+        prevReferencePrice = referencePrice;
+
+        CollateralStatus newStatus = status();
+        if (oldStatus != newStatus) {
+            emit DefaultStatusChanged(oldStatus, newStatus);
+        }
+    }
+
+    /// @return {UoA/target} The price of a target unit in UoA
+    function pricePerTargetNonFiat() public view /*override*/ returns (uint192) {
+        return strictPrice();
     }
 
     //TODO perhaps check in refresh()
