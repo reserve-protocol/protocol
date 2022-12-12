@@ -321,7 +321,7 @@ async function collateralFixture(
     ausdc[0],
     ausdt[0],
     abusd[0],
-    zcoin[0]
+    zcoin[0],
   ]
   const collateral = [
     dai[1],
@@ -335,7 +335,7 @@ async function collateralFixture(
     ausdc[1],
     ausdt[1],
     abusd[1],
-    zcoin[1]
+    zcoin[1],
   ]
 
   // Create the initial basket

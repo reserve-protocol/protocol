@@ -68,8 +68,17 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
   beforeEach(async () => {
     ;[owner, addr1, other] = await ethers.getSigners()
     // Deploy fixture
-    ;({ basket, config, main, backingManager, broker, gnosis, rsrTrader, rTokenTrader, collateral } =
-      await loadFixture(defaultFixture))
+    ;({
+      basket,
+      config,
+      main,
+      backingManager,
+      broker,
+      gnosis,
+      rsrTrader,
+      rTokenTrader,
+      collateral,
+    } = await loadFixture(defaultFixture))
 
     // Get assets
     ;[collateral0, collateral1, ,] = basket
@@ -77,7 +86,9 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
 
     token0 = <ERC20Mock>await ethers.getContractAt('ERC20Mock', await collateral0.erc20())
     token1 = <USDCMock>await ethers.getContractAt('USDCMock', await collateral1.erc20())
-    tokenZ = <ZeroDecimalMock>await ethers.getContractAt('ZeroDecimalMock', await collateralZ.erc20())
+    tokenZ = <ZeroDecimalMock>(
+      await ethers.getContractAt('ZeroDecimalMock', await collateralZ.erc20())
+    )
   })
 
   describe('Deployment', () => {
