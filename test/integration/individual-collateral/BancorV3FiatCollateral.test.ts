@@ -39,7 +39,6 @@ import {
   IStandardRewards,
   InvalidMockV3Aggregator,
   IAutoCompoundingRewards,
-  IBancorTradingProxy,
   ERC20,
   BnTokenMock,
   CTokenMock,
@@ -67,7 +66,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
   let autoProcessRewardsProxy: IAutoCompoundingRewards
-  let bancorTradingProxy: IBancorTradingProxy
   let bancorToken: ERC20Mock
   let bancorAsset: Asset
   let rsr: ERC20Mock
@@ -159,13 +157,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt(
         'IStandardRewards',
         networkConfig[chainId].BANCOR_REWARDS_PROXY || ''
-      )
-    )
-
-    bancorTradingProxy = <IBancorTradingProxy>(
-      await ethers.getContractAt(
-        'IBancorTradingProxy',
-        networkConfig[chainId].BANCOR_TRADING_PROXY || ''
       )
     )
 

@@ -38,7 +38,7 @@ Because the refPerTok() value can be only increased by trading fees, It couldn't
 
 Second option is the one used in the test, the amounts of refPerTok on different fork blocks were hardcoded into the test to display its ever-increasing value.
 
-In the case were the reference per token ratio decreases for some liquidity leak, the plugin will default.
+In the case were the reference per token ratio decreases for some liquidity exploits, the plugin will default.
 
 ## How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
 
