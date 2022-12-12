@@ -33,7 +33,7 @@ contract RTokenMarket is IMarket {
         if (address(fromToken) == address(0)) {
             require(msg.value == amountIn, "RTokenMarket: INVALID_INPUT");
             WETH.deposit{ value: amountIn }();
-            fromToken = IERC20(WETH);
+            fromToken = WETH;
         } else {
             require(msg.value == 0, "RTokenMarket: INVALID_INPUT");
             fromToken.safeTransferFrom(msg.sender, address(this), amountIn);
@@ -56,6 +56,7 @@ contract RTokenMarket is IMarket {
         IERC20 fromTokenCopy = fromToken;
         address swapTargetCopy = swapTarget;
 
+        // Caching this value
         uint256 requiredTokenCount = requiredTokens.length;
         require(
             requiredTokenCount == swapAmountIns.length &&

@@ -111,6 +111,10 @@ interface IRToken is
     /// @custom:interaction
     function issue(uint256 amount) external;
 
+    /// Begin a time-delayed issuance of RToken for basket collateral
+    /// @param recipient The address to receive the issued RToken
+    /// @param amount {qRTok} The quantity of RToken to issue
+    /// @custom:interaction
     function issue(address recipient, uint256 amount) external returns (uint256 mintedAmount);
 
     /// Cancels a vesting slow issuance of _msgSender

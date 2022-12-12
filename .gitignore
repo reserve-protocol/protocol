@@ -12,6 +12,7 @@ reports
 typechain/
 scripts/addresses/31337*
 
+.DS_Store
 .openzeppelin
 .env
 .vscode/

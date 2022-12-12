@@ -1,11 +1,37 @@
-import hre from 'hardhat'
+import axios from 'axios'
 import { ContractTransaction } from 'ethers'
+import hre from 'hardhat'
 
 export const evmSnapshot = async () => await hre.network.provider.send('evm_snapshot', [])
 
 export const evmRevert = async (id: string) => hre.network.provider.send('evm_revert', [id])
 
 export const waitForTx = async (tx: ContractTransaction) => await tx.wait(1)
+
+type ZeroExSwapParams = {
+  sellToken: string
+  buyToken: string
+  slippagePercentage?: number
+} & ({ sellAmount: number } | { buyAmount: number })
+
+interface ZeroExResponse {
+  price: number
+  to: string
+  data: string
+  value: number
+  gas: number
+  gasPrice: number
+  buyAmount: number
+  buyTokenToEthRate: number
+  sellAmount: number
+  sellTokenToEthRate: number
+  sources: { name: string; proportion: string }[]
+}
+
+export const get0xSwap = async (type: 'price' | 'quote', params: ZeroExSwapParams) => {
+  const { data } = await axios.get(`https://api.0x.org/swap/v1/${type}`, { params })
+  return data as ZeroExResponse
+}
 
 export const buildPermitParams = (
   chainId: number,

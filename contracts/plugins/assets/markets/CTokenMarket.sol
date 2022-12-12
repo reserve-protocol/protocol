@@ -5,7 +5,6 @@ import "./ZeroExMarket.sol";
 
 contract CTokenMarket is ZeroExMarket {
     using SafeERC20 for IERC20;
-
     IERC20 public constant CETH = IERC20(0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5);
 
     // solhint-disable-next-line no-empty-blocks
@@ -52,6 +51,12 @@ contract CTokenMarket is ZeroExMarket {
             require(success, "CTokenMarket: SWAP_TARGET_CALL_FAILED");
 
             cToken.mint{ value: address(this).balance - initialBalance }();
+        }
+        // Underlying => CompoundToken
+        else if (address(fromToken) == cToken.underlying()) {
+            IERC20 underlyingToken = IERC20(cToken.underlying());
+            underlyingToken.approve(address(toCToken), amountIn);
+            cToken.mint(amountIn);
         }
         // X => Underlying => CompoundToken
         else {

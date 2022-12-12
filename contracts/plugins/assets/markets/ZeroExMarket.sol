@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+import "contracts/interfaces/IWETH.sol";
 import "./PermissionedMarket.sol";
 
 contract ZeroExMarket is PermissionedMarket {
     using SafeERC20 for IERC20;
+    IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
     constructor() PermissionedMarket() {
         approvedTargets[0xDef1C0ded9bec7F1a1670819833240f027b25EfF] = true;

@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "contracts/interfaces/IAsset.sol";
 
 abstract contract PermissionedMarket is Ownable, IMarket {
-    IWETH public constant WETH = IWETH(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
-
     mapping(address => bool) public approvedTargets;
 
     // solhint-disable-next-line no-empty-blocks
@@ -24,12 +22,4 @@ abstract contract PermissionedMarket is Ownable, IMarket {
             approvedTargets[targets[i]] = approved[i];
         }
     }
-}
-
-interface IWETH {
-    function deposit() external payable;
-
-    function transfer(address to, uint256 value) external returns (bool);
-
-    function withdraw(uint256) external;
 }
