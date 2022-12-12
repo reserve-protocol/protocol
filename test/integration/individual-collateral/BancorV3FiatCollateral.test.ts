@@ -41,7 +41,6 @@ import {
   IAutoCompoundingRewards,
   ERC20,
   BnTokenMock,
-  CTokenMock,
 } from '../../../typechain'
 
 const createFixtureLoader = waffle.createFixtureLoader
@@ -61,7 +60,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   let dai: ERC20Mock
   let bnDAI: ERC20Mock
   let bnDaiMock: BnTokenMock
-  let cDai: CTokenMock
   let BancorV3Collateral: BancorV3FiatCollateral
   let bancorProxy: IBnTokenERC20
   let rewardsProxy: IStandardRewards
@@ -138,11 +136,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
     dai = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
-    )
-
-    // cDAI token
-    cDai = <CTokenMock>(
-      await ethers.getContractAt('CTokenMock', networkConfig[chainId].tokens.cDAI || '')
     )
 
     bnDAI = <ERC20Mock>(
@@ -493,7 +486,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances - Fewer BnTokens should have been sent to the user
       const newBalanceAddr1bnDAI: BigNumber = await bnDAI.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
@@ -571,7 +564,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Reverts with stale price
       await advanceTime(ORACLE_TIMEOUT.toString())
 
-      // Compound
       await expect(BancorV3Collateral.strictPrice()).to.be.revertedWith('StalePrice()')
 
       // Fallback price is returned
@@ -602,7 +594,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         autoProcessRewardsProxy.address
       )
 
-      // CTokens - Collateral with no price info should revert
+      // BnTokens - Collateral with no price info should revert
       await expect(nonpriceBancorV3Collateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
