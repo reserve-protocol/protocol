@@ -7,6 +7,13 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IStaticAToken } from "./interfaces/IStaticAToken.sol";
 import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
+/**
+ * @title StaticAaveRouterAdapter
+ * @notice Wraps and unwraps Aave aTokens for use in ZapRouter.
+ * Relies on the interface of StaticAToken.sol, which provides a wrapper
+ * to produce an ever-increasing exchange rate (vs the rebasing aToken)
+ * @dev _token params are the addresses of StaticAToken wrappers
+ */
 contract StaticAaveRouterAdapter is IRouterAdapter {
     using SafeERC20 for IERC20;
 

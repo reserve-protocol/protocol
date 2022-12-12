@@ -15,6 +15,12 @@ import { IFacadeRead } from "contracts/interfaces/IFacadeRead.sol";
 import { IZap } from "./interfaces/IZap.sol";
 import { IZapRouter } from "./ZapRouter.sol";
 
+/**
+ * @title Zapper
+ * @notice The Zapper serve as the entry point for users to effortlessly
+ * swap into and out of positions in the Reserve ecosystem.
+ * Swap requests are routed to the ZapRouter for execution.
+ */
 contract Zapper is IZap {
     using SafeERC20 for IERC20;
 
@@ -22,7 +28,7 @@ contract Zapper is IZap {
     IZapRouter public zapRouter;
     address public zapManager;
 
-    /// @param _zapRouter The default zap router to utilize 
+    /// @param _zapRouter The default zap router to utilize
     constructor(address _zapRouter) {
         zapRouter = IZapRouter(_zapRouter);
         zapManager = msg.sender;

@@ -1,12 +1,18 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
+/**
+ * @title IRouterAdapter
+ * @notice Router adapters provide limitless flexibility to allow for any
+ * DeFi legos to be used in the zap framework.
+ * Router adapters are contracts that can be registered on the
+ * ZapRouter to support activities specific to protocols
+ */
 interface IRouterAdapter {
-
     /// @return supportedTokens List of tokens the adapter supports hooks for
     function supportedTokens() external view returns (address[] memory);
 
-    /// @param _token The token to check if adapter has support for 
+    /// @param _token The token to check if adapter has support for
     /// @return isAdapterToken true if adapter supports token, false if not
     function isAdapterToken(address _token) external view returns (bool);
 

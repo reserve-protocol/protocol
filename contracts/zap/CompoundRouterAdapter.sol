@@ -8,6 +8,10 @@ import { IComptroller } from "./interfaces/IComptroller.sol";
 import { ICToken } from "./interfaces/ICToken.sol";
 import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
+/**
+ * @title CompoundRouterAdapter
+ * @notice Wraps and unwraps Compound cTokens for use in ZapRouter
+ */
 contract CompoundRouterAdapter is IRouterAdapter {
     using SafeERC20 for IERC20;
 

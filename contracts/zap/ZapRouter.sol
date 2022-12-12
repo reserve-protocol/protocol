@@ -11,6 +11,11 @@ import { IZapRouter } from "./interfaces/IZapRouter.sol";
 import { ICurveRegistry } from "./interfaces/ICurveRegistry.sol";
 import { IRouterAdapter } from "./interfaces/IRouterAdapter.sol";
 
+/**
+ * @title ZapRouter
+ * @notice The ZapRouter is a permissioned contract responsible for
+ * handling all swap logic on behalf of the Zapper
+ */
 contract ZapRouter is IZapRouter {
     using SafeERC20 for IERC20;
 
@@ -85,8 +90,7 @@ contract ZapRouter is IZapRouter {
         if (source == target) {
             received = IERC20(target).balanceOf(address(this));
         } else {
-            /// @notice Only supports stable coin swap look ups,
-            /// need to investigate how to query for tricrypto based routing
+            // See if there is a direct swap available
             (address exchangePool, uint256 exchangeAmount) = curveExchangeProvider.get_best_rate(
                 source,
                 target,
@@ -96,17 +100,18 @@ contract ZapRouter is IZapRouter {
             IERC20(source).safeApprove(address(curveExchangeProvider), 0);
             IERC20(source).safeApprove(address(curveExchangeProvider), amount);
 
-            // swapRoute takes the form [token0, poolx, token1, pooly, token2, ...]
-            address[9] memory swapRoute;
-
-            swapRoute[0] = source;
-
-            // swapParams is a Multidimensional array of [i, j, swap type]
-            // where i and j are the to/from token indices of the pool
-            uint256[3][4] memory swapParams;
-
-            // Multi-hop swap with USDT required
+            // Multi-hop swaps with USDT required
+            // USDT is desirable b/c of its ubiquity & presence in tricrypto
             if (exchangePool == address(0)) {
+                // swapRoute takes the form [token0, poolx, token1, pooly, token2, ...]
+                address[9] memory swapRoute;
+
+                swapRoute[0] = source;
+
+                // swapParams is a Multidimensional array of [i, j, swap type]
+                // where i and j are the to/from token indices of the pool
+                uint256[3][4] memory swapParams;
+
                 // Step 1: define swapRoute
                 (address exchangePoolHopOne, uint256 exchangeAmountHopOne) = curveExchangeProvider
                     .get_best_rate(source, USDT, amount);
@@ -155,6 +160,7 @@ contract ZapRouter is IZapRouter {
         IERC20(_to).safeTransfer(msg.sender, received);
     }
 
+    /// Logic for determining relevant curve pool indices and swap type
     function buildSwapParams(
         address _pool,
         address _from,
