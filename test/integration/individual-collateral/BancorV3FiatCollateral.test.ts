@@ -182,7 +182,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     })
     BancorV3Collateral = <BancorV3FiatCollateral>(
       await BancorV3CollateralFactory.deploy(
-        fp('0.02'),
+        fp('1'),
         networkConfig[chainId].chainlinkFeeds.DAI as string,
         bnDAI.address,
         config.rTokenMaxTradeVolume,
@@ -266,7 +266,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await bancorAsset.erc20()).to.equal(bancorToken.address)
       expect(await bancorAsset.erc20()).to.equal(networkConfig[chainId].tokens.BNT)
       expect(await bancorToken.decimals()).to.equal(18)
-      expect(await bancorAsset.strictPrice()).to.be.closeTo(fp('0.4'), fp('0.3')) // Close to $58 USD - June 2022
+      expect(await bancorAsset.strictPrice()).to.be.closeTo(fp('0.4'), fp('0.3')) 
       await expect(bancorAsset.claimRewards()).to.not.emit(bancorAsset, 'RewardsClaimed')
       expect(await bancorAsset.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
@@ -280,8 +280,8 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1'))
       expect(await BancorV3Collateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
-      expect(await BancorV3Collateral.refPerTok()).to.be.closeTo(fp('1.003759'), fp('0.5')) // close to $1
-      expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.5')) // close to $0.022 cents
+      expect(await BancorV3Collateral.refPerTok()).to.be.closeTo(fp('1.003759'), fp('0.5')) 
+      expect(await BancorV3Collateral.strictPrice()).to.be.closeTo(fp('1'), fp('0.5')) 
 
       await expect(BancorV3Collateral.claimRewards())
         .to.emit(BancorV3Collateral, 'RewardsClaimed')
@@ -341,7 +341,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Default threshold
       await expect(
         BancorV3CollateralFactory.deploy(
-          fp('0.02'),
+          fp('1'),
           networkConfig[chainId].chainlinkFeeds.DAI as string,
           bnDAI.address,
           config.rTokenMaxTradeVolume,
@@ -358,7 +358,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Comptroller
       await expect(
         BancorV3CollateralFactory.deploy(
-          fp('0.02'),
+          fp('1'),
           networkConfig[chainId].chainlinkFeeds.DAI as string,
           bnDAI.address,
           config.rTokenMaxTradeVolume,
@@ -569,7 +569,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // Fallback price is returned
       const [isFallback, price] = await BancorV3Collateral.price(true)
       expect(isFallback).to.equal(true)
-      expect(price).to.equal(fp('0.02'))
+      expect(price).to.equal(fp('1'))
 
       // Refresh should mark status IFFY
       await BancorV3Collateral.refresh()
@@ -581,7 +581,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         NO_PRICE_DATA_FEED,
         bnDAI.address,
         config.rTokenMaxTradeVolume,
@@ -607,7 +607,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         mockChainlinkFeed.address,
         bnDAI.address,
         config.rTokenMaxTradeVolume,
@@ -642,7 +642,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
-        fp('0.02'),
+        fp('1'),
         mockChainlinkFeed.address,
         await BancorV3Collateral.erc20(),
         await BancorV3Collateral.maxTradeVolume(),
@@ -698,7 +698,7 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
       const invalidBnTokenCollateral: BancorV3FiatCollateral = <BancorV3FiatCollateral>(
         await BancorV3CollateralFactory.deploy(
-          fp('0.02'),
+          fp('1'),
           mockChainlinkFeed.address,
           invalidChainlinkFeed.address,
           await BancorV3Collateral.maxTradeVolume(),

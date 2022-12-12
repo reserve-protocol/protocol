@@ -20,7 +20,7 @@ Currently only `bnDai` token pool is available from Bancor V3 pools.
 
 ### Requirements for `bnDai` pool
 
-fallbackPrice: `20000000000000000`
+fallbackPrice: `1000000000000000000`
 chainlinkFeed: a Chainlink price feed for DAI: `0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9`
 erc20collateral: Address of `bnDai` toke: `0x06CD589760Da4616a0606da1367855808196C352`
 targetName: `USD`
