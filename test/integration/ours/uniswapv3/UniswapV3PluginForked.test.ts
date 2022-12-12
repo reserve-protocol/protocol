@@ -13,8 +13,10 @@ import {
     FacadeWrite,
     IAssetRegistry,
     IBasketHandler,
+    INonfungiblePositionManager,
     ISwapRouter,
     IUniswapV3Factory,
+    IUniswapV3Pool,
     MockV3Aggregator,
     OracleLib,
     RTokenAsset,
@@ -38,6 +40,8 @@ import {
     closeDeadline,
     defaultMintParams,
     deployUniswapV3Wrapper,
+    encodePath,
+    FeeAmount,
     holderDAI,
     holderUSDC,
     holderUSDT,
@@ -49,12 +53,13 @@ import {
 } from "../common"
 import { anyUint, anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs"
 import { ORACLE_TIMEOUT } from "../../fixtures"
+import { getContractAt } from "@nomiclabs/hardhat-ethers/internal/helpers"
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 const describeFork = process.env.FORK ? describe : describe.skip
 describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}`, function () {
-    const initialBal = 10 ** 6 // 1M initial balance of each token to each addr
+    const initialBal = 10 ** 7 // 10M initial balance of each token to each addr
     const TARGET_NAME = "USD"
     const DEFAULT_THRESHOLD = pow10(16).mul(5) //5%
     const DELAY_UNTIL_DEFAULT = bn("86400") // 24h
@@ -90,8 +95,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
     let mockChainlinkFeed1: MockV3Aggregator
 
     let UniswapV3UsdCollateralContractFactory: UniswapV3UsdCollateral__factory
+    let NonfungiblePositionManager: INonfungiblePositionManager
 
     let UniswapV3Wrapper: UniswapV3Wrapper
+    let UniswapV3Pool: IUniswapV3Pool
     let UniswapV3Router: ISwapRouter
     let UniswapV3UsdCollateral: UniswapV3UsdCollateral
     let rsr: ERC20Mock
@@ -145,6 +152,14 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 libraries: { OracleLib: oracleLib.address },
             })
         ).connect(owner)
+        NonfungiblePositionManager = await ethers.getContractAt(
+            "INonfungiblePositionManager",
+            networkConfig[chainId].UNISWAP_V3_NFT_POSITION_MANAGER || ""
+        )
+        UniswapV3Router = await ethers.getContractAt(
+            "ISwapRouter",
+            networkConfig[chainId].UNISWAP_V3_ROUTER || ""
+        )
 
         const MockV3AggregatorFactory = (
             await ethers.getContractFactory("MockV3Aggregator")
@@ -156,18 +171,21 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         const daiDecimals = await dai.decimals()
         ofDai = (amount: BigNumberish) => pow10(daiDecimals).mul(amount)
         await sendTokenAs(dai, holderDAI, addr1, ofDai(initialBal))
+        await sendTokenAs(dai, holderDAI, addr2, ofDai(initialBal))
         await sendTokenAs(dai, holderDAI, owner, ofDai(initialBal))
 
         usdc = await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.USDC!)
         const usdcDecimals = await usdc.decimals()
         ofUsdc = (amount: BigNumberish) => pow10(usdcDecimals).mul(amount)
         await sendTokenAs(usdc, holderUSDC, addr1, ofUsdc(initialBal))
+        await sendTokenAs(usdc, holderUSDC, addr2, ofUsdc(initialBal))
         await sendTokenAs(usdc, holderUSDC, owner, ofUsdc(initialBal))
 
         usdt = await ethers.getContractAt("ERC20Mock", networkConfig[chainId].tokens.USDT || "")
         const usdtDecimals = await usdt.decimals()
         ofUsdt = (amount: BigNumberish) => pow10(usdtDecimals).mul(amount)
         await sendTokenAs(usdt, holderUSDT, addr1, ofUsdt(initialBal))
+        await sendTokenAs(usdt, holderUSDT, addr2, ofUsdt(initialBal))
         await sendTokenAs(usdt, holderUSDT, owner, ofUsdt(initialBal))
 
         ofTokenMap = {
@@ -233,7 +251,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
         })
     })
 
-    describe("RefPerTok non decreasing checks", () => {
+    describe("RefPerTok non-decreasing over time", () => {
         beforeEach(async () => {
             setTokens(dai, usdc)
             const mintParams0: TMintParams = await defaultMintParams(
@@ -249,6 +267,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 mintParams0,
                 owner
             )
+            UniswapV3Pool = await ethers.getContractAt(
+                "IUniswapV3Pool",
+                await UniswapV3Wrapper.pool()
+            )
             await waitForTx(
                 await asset0
                     .connect(addr1)
@@ -259,7 +281,26 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     .connect(addr1)
                     .approve(UniswapV3Wrapper.address, await asset1.totalSupply())
             )
-
+            await waitForTx(
+                await asset0
+                    .connect(addr2)
+                    .approve(NonfungiblePositionManager.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+                await asset1
+                    .connect(addr2)
+                    .approve(NonfungiblePositionManager.address, await asset1.totalSupply())
+            )
+            await waitForTx(
+                await asset0
+                    .connect(addr2)
+                    .approve(UniswapV3Router.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+                await asset1
+                    .connect(addr2)
+                    .approve(UniswapV3Router.address, await asset1.totalSupply())
+            )
             const fallbackPrice = fp("1")
             UniswapV3UsdCollateral = await UniswapV3UsdCollateralContractFactory.deploy(
                 fallbackPrice,
@@ -276,7 +317,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
         })
 
-        it("refPerTock remains unchanged after increaseLiquidity/decreaseLiquidity", async () => {
+        it("refPerTok remains unchanged after increaseLiquidity/decreaseLiquidity", async () => {
             await waitForTx(await UniswapV3UsdCollateral.refresh())
             const status = await UniswapV3UsdCollateral.status()
             console.log("status", status)
@@ -284,7 +325,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             // Initial refPerTok
             const refPerTok0 = await UniswapV3UsdCollateral.refPerTok()
-            console.log("initialRefPerTock", refPerTok0.toString())
+            console.log("initialRefPerTok", refPerTok0.toString())
 
             await logBalances(
                 "Balances before increaseLiquidity:",
@@ -342,6 +383,70 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const refPerTok2 = await UniswapV3UsdCollateral.refPerTok()
             console.log("refPerTok2", refPerTok2)
             expect(refPerTok2).to.be.closeTo(refPerTok0, fp("0.001"))
+
+            // Increase liquidity by ~800k,800k through Uniswap directly
+            // not using the wrapper
+
+            const tokenId = await UniswapV3Wrapper.tokenId()
+            const incLiqAmount0Direct = ofToken(asset0)(8 * 10 ** 5)
+            const incLiqAmount1Direct = ofToken(asset1)(8 * 10 ** 5)
+            await waitForTx(
+                await NonfungiblePositionManager.connect(addr2).increaseLiquidity({
+                    tokenId,
+                    amount0Desired: incLiqAmount0Direct,
+                    amount1Desired: incLiqAmount1Direct,
+                    amount0Min: p999(incLiqAmount0Direct),
+                    amount1Min: p999(incLiqAmount1Direct),
+                    deadline: await closeDeadline(),
+                })
+            )
+
+            await waitForTx(await UniswapV3UsdCollateral.refresh())
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+            await logBalances(
+                "Balances after increaseLiquidity through Uniswap directly:",
+                [owner, addr1, addr2],
+                [asset0, asset1, UniswapV3Wrapper]
+            )
+            const refPerTok3 = await UniswapV3UsdCollateral.refPerTok()
+            console.log("refPerTok3", refPerTok3)
+            expect(refPerTok3).to.be.closeTo(refPerTok0, fp("0.001"))
+        })
+
+        it("refPerTok grows on swaps", async () => {
+            // Initial refPerTok
+            const refPerTok0 = await UniswapV3UsdCollateral.refPerTok()
+            console.log("initialRefPerTok", refPerTok0.toString())
+
+            await logBalances("Balances after swap:", [addr2], [asset0, asset1])
+            // swap ~100k asset0 for asset1
+
+            console.log("allowance0", await asset0.allowance(addr2.address, UniswapV3Pool.address))
+            console.log("allowance1", await asset1.allowance(addr2.address, UniswapV3Pool.address))
+            const swapAmount0 = ofToken(asset0)(10 ** 7)
+            console.log("swapAmount0", swapAmount0.toString())
+            await waitForTx(
+                await UniswapV3Router.connect(addr2).exactInputSingle({
+                    tokenIn: asset0.address,
+                    tokenOut: asset1.address,
+                    fee: await UniswapV3Pool.fee(),
+                    recipient: addr2.address,
+                    deadline: await closeDeadline(),
+                    amountIn: swapAmount0,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0,
+                })
+            )
+
+            await waitForTx(await UniswapV3UsdCollateral.refresh())
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+            const refPerTok1 = await UniswapV3UsdCollateral.refPerTok()
+            console.log("refPerTok1", refPerTok1.toString())
+            expect(refPerTok1).to.be.closeTo(refPerTok0, fp("0.001"))
+            await logBalances("Balances after swap:", [addr2], [asset0, asset1])
+            //TODO assert that refPerTok has grown
         })
     })
 })

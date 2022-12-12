@@ -150,10 +150,14 @@ export async function logBalancesAddr(
 
 export async function logBalances(
     prefix: string,
-    accounts: {address: string}[],
+    accounts: { address: string }[],
     assets: (ERC20Mock | USDCMock | UniswapV3Wrapper)[]
 ) {
-    return logBalancesAddr(prefix, accounts.map((account)=>account.address), assets)
+    return logBalancesAddr(
+        prefix,
+        accounts.map((account) => account.address),
+        assets
+    )
 }
 
 const ONE = ethers.BigNumber.from(1)
@@ -198,4 +202,29 @@ export async function sendTokenAs(
     await whileImpersonating(senderAddr, async (sender) => {
         await token.connect(sender).transfer(recipient.address, amount)
     })
+}
+
+// https://github.com/Uniswap/v3-periphery/blob/878a58a461ae30680acd84d44499058826bf5f3e/test/shared/path.ts
+export enum FeeAmount {
+    LOW = 500,
+    MEDIUM = 3000,
+    HIGH = 10000,
+}
+const FEE_SIZE = 3
+export function encodePath(path: string[], fees: FeeAmount[]): string {
+    if (path.length != fees.length + 1) {
+        throw new Error("path/fee lengths do not match")
+    }
+
+    let encoded = "0x"
+    for (let i = 0; i < fees.length; i++) {
+        // 20 byte encoding of the address
+        encoded += path[i].slice(2)
+        // 3 byte encoding of the fee
+        encoded += fees[i].toString(16).padStart(2 * FEE_SIZE, "0")
+    }
+    // encode the final token
+    encoded += path[path.length - 1].slice(2)
+
+    return encoded.toLowerCase()
 }
