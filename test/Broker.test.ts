@@ -385,7 +385,7 @@ describe(`BrokerP${IMPLEMENTATION} contract #fast`, () => {
       ).to.be.revertedWith('Invalid trade state')
     })
 
-    it.only('Should initialize trade with minimum buy amount of at least 1', async () => {
+    it('Should initialize trade with minimum buy amount of at least 1', async () => {
       const amount: BigNumber = bn('100e18')
 
       // Create a Trade
