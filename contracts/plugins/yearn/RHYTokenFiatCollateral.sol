@@ -5,7 +5,7 @@ import "../../libraries/Fixed.sol";
 import "../assets/OracleLib.sol";
 import "./AbstractRHYTokenCollateral.sol";
 
-contract YTokenFiatCollateral is AbstractRHYTokenCollateral {
+contract RHYTokenFiatCollateral is AbstractRHYTokenCollateral {
     using OracleLib for AggregatorV3Interface;
 
     constructor(

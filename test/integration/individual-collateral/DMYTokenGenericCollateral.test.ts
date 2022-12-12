@@ -183,7 +183,7 @@ describeFork(`DMYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       primaryBasket: [yvLinkCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: owner.address,
+      beneficiary: ZERO_ADDRESS,
       revShare: {
         rsrDist: bn(0),
         rTokenDist: bn(0),

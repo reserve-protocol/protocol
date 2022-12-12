@@ -54,7 +54,8 @@ abstract contract RevenueHidingCollateral is ICollateral {
         fallbackPrice = _safeWrap(fallbackPrice_);
         targetName = targetName_;
         delayUntilDefault = delayUntilDefault_;
-        revenueVisibleAmount = FIX_ONE - shiftl_toFix(basisPoints_, -2);
+        revenueVisibleAmount = FIX_ONE - shiftl_toFix(basisPoints_, -4);
+        maxRefPerTok = actualRefPerTok();
     }
 
     function markStatus(CollateralStatus status_) internal {
@@ -158,7 +159,7 @@ abstract contract RevenueHidingCollateral is ICollateral {
 
     /// @return {ref/tok} Quantity of whole reference units (hidden) per whole collateral tokens
     function refPerTok() public view override returns (uint192) {
-        return actualRefPerTok().mul(revenueVisibleAmount);
+        return maxRefPerTok.mul(revenueVisibleAmount);
     }
 
     /// @return {target/ref} Quantity of whole target units per whole reference unit in the peg

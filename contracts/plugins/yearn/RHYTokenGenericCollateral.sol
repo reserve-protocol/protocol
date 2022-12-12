@@ -6,7 +6,7 @@ import "../assets/RevenueHidingCollateral.sol";
 import "./IYToken.sol";
 import "./IPriceProvider.sol";
 
-contract YTokenGenericCollateral is RevenueHidingCollateral {
+contract RHYTokenGenericCollateral is RevenueHidingCollateral {
     using FixLib for uint192;
     IPriceProvider public immutable priceProvider;
 

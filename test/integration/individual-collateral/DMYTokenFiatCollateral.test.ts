@@ -179,7 +179,7 @@ describeFork(`DMYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       primaryBasket: [yvDaiCollateral.address],
       weights: [fp('1')],
       backups: [],
-      beneficiary: owner.address,
+      beneficiary: ZERO_ADDRESS,
       revShare: {
         rsrDist: bn(0),
         rTokenDist: bn(0),
