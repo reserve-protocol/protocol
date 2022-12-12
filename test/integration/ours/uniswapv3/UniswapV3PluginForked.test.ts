@@ -293,6 +293,16 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
             await waitForTx(
                 await asset0
+                    .connect(addr1)
+                    .approve(UniswapV3Router.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+                await asset1
+                    .connect(addr1)
+                    .approve(UniswapV3Router.address, await asset1.totalSupply())
+            )
+            await waitForTx(
+                await asset0
                     .connect(addr2)
                     .approve(UniswapV3Router.address, await asset0.totalSupply())
             )
@@ -386,7 +396,13 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             // Increase liquidity by ~800k,800k through Uniswap directly
             // not using the wrapper
-
+            // In case, for whatever reason, someone wants to increase liquidity
+            // in the wrapped position directly through Uniswap
+            // refPerTok grows, as liquidity reserves increase
+            // while the total supply of the wrapper contract remains the same
+            // That does not present a problem, because the wrapper contractas
+            // remains the owner of the position, so liquidity can be decreased
+            // only through the wrapper contract
             const tokenId = await UniswapV3Wrapper.tokenId()
             const incLiqAmount0Direct = ofToken(asset0)(8 * 10 ** 5)
             const incLiqAmount1Direct = ofToken(asset1)(8 * 10 ** 5)
@@ -411,7 +427,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
             const refPerTok3 = await UniswapV3UsdCollateral.refPerTok()
             console.log("refPerTok3", refPerTok3)
-            expect(refPerTok3).to.be.closeTo(refPerTok0, fp("0.001"))
+            expect(refPerTok3).to.be.gt(refPerTok0)
         })
 
         it("refPerTok grows on swaps", async () => {
@@ -419,9 +435,8 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             const refPerTok0 = await UniswapV3UsdCollateral.refPerTok()
             console.log("initialRefPerTok", refPerTok0.toString())
 
-            await logBalances("Balances after swap:", [addr2], [asset0, asset1])
-            // swap ~100k asset0 for asset1
-
+            await logBalances("Balances before swap:", [addr2], [asset0, asset1])
+            // swap ~10M asset0 for asset1
             console.log("allowance0", await asset0.allowance(addr2.address, UniswapV3Pool.address))
             console.log("allowance1", await asset1.allowance(addr2.address, UniswapV3Pool.address))
             const swapAmount0 = ofToken(asset0)(10 ** 7)
@@ -444,9 +459,69 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const refPerTok1 = await UniswapV3UsdCollateral.refPerTok()
             console.log("refPerTok1", refPerTok1.toString())
-            expect(refPerTok1).to.be.closeTo(refPerTok0, fp("0.001"))
+            expect(refPerTok1).to.be.gt(refPerTok0)
             await logBalances("Balances after swap:", [addr2], [asset0, asset1])
-            //TODO assert that refPerTok has grown
+
+            const swapAmount1 = ofToken(asset1)(10 ** 7)
+            await waitForTx(
+                await UniswapV3Router.connect(addr2).exactInputSingle({
+                    tokenIn: asset1.address,
+                    tokenOut: asset0.address,
+                    fee: await UniswapV3Pool.fee(),
+                    recipient: addr2.address,
+                    deadline: await closeDeadline(),
+                    amountIn: swapAmount1,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0,
+                })
+            )
+
+            await waitForTx(await UniswapV3UsdCollateral.refresh())
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+            const refPerTok2 = await UniswapV3UsdCollateral.refPerTok()
+            expect(refPerTok2).to.be.gt(refPerTok1)
+
+            // Decrease liquidity by ~50k,50k
+            const decLiquidity = (await UniswapV3Wrapper.balanceOf(owner.address)).div(2)
+            const decLiqAmount0 = ofToken(asset0)(5 * 10 ** 4)
+            const decLiqAmount1 = ofToken(asset1)(5 * 10 ** 4)
+            await waitForTx(
+                await UniswapV3Wrapper.connect(owner).decreaseLiquidity(
+                    decLiquidity,
+                    p999(decLiqAmount0),
+                    p999(decLiqAmount1),
+                    await closeDeadline()
+                )
+            )
+
+            await waitForTx(await UniswapV3UsdCollateral.refresh())
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+            const refPerTok3 = await UniswapV3UsdCollateral.refPerTok()
+            expect(refPerTok3).to.be.closeTo(refPerTok2, fp("0.000000000001"))
+
+            // Swap ~1M asset0 for asset1 with addr1
+            const swapAmount2 = ofToken(asset0)(10 ** 5)
+            logBalances("Balances before swap:", [addr1], [asset0, asset1])
+            await waitForTx(
+                await UniswapV3Router.connect(addr1).exactInputSingle({
+                    tokenIn: asset0.address,
+                    tokenOut: asset1.address,
+                    fee: await UniswapV3Pool.fee(),
+                    recipient: addr1.address,
+                    deadline: await closeDeadline(),
+                    amountIn: swapAmount2,
+                    amountOutMinimum: 0,
+                    sqrtPriceLimitX96: 0,
+                })
+            )
+
+            await waitForTx(await UniswapV3UsdCollateral.refresh())
+            expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
+
+            const refPerTok4 = await UniswapV3UsdCollateral.refPerTok()
+            expect(refPerTok4).to.be.gt(refPerTok3)
         })
     })
 })
