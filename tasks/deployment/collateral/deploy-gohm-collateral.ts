@@ -22,6 +22,7 @@ task('deploy-gohm-collateral', 'Deploys gOHM Collateral')
       'GOhmCollateral'
     )
 
+    const targetNameByte32 = hre.ethers.utils.formatBytes32String(params.targetName)
     const collateral = <Collateral>(
       await GOhmCollateralFactory.connect(deployer).deploy(
         params.fallbackPrice,
@@ -30,7 +31,7 @@ task('deploy-gohm-collateral', 'Deploys gOHM Collateral')
         params.tokenAddress,
         params.maxTradeVolume,
         params.oracleTimeout,
-        params.targetName,
+        targetNameByte32,
         params.delayUntilDefault,
         params.decimals
       )
