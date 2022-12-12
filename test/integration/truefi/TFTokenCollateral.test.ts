@@ -44,7 +44,11 @@ import forkBlockNumber from '../fork-block-numbers'
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet - we're pretending to be this person who has a LOT of tfUSDC
-const holderTFUSDC = '0x663fdedb7fa953ddb4fbf778d2c77da497b7644a'
+// const holderTFUSDC = '0x663fdedb7fa953ddb4fbf778d2c77da497b7644a'
+// const holderTFUSDC = '0x58f5f0684c381fcfc203d77b2bba468ebb29b098'
+const holderTFUSDC = '0xec6c3fd795d6e6f202825ddb56e01b3c128b0b10'
+
+
 
 //USDC/USD Price Feed - Chainlink & BNB Mainnet
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
@@ -422,13 +426,13 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
     // Issuance and redemption, making the collateral appreciate over time
     it('Should issue, redeem, and handle appreciation rates correctly', async () => {
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK // instant issuance
-
+      console.log(await rToken.balanceOf(addr1.address))
       // Provide approvals for issuances
       await tfUsdc.connect(addr1).approve(rToken.address, issueAmount.mul(100))
-
+      console.log(await rToken.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
+      console.log(await rToken.balanceOf(addr1.address))
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -475,8 +479,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
 
       // Advance time and blocks greatly, causing refPerTok() to increase greatly ?????
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
+      await advanceTime(10000000)
+      await advanceBlocks(10000000)
 
       // Refresh TFToken manually (required)
       await tfUsdcCollateral.refresh()
@@ -500,9 +504,15 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       )
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
+      console.log("before redeem")
+      console.log(await rToken.balanceOf(addr1.address))
+      console.log(await totalAssetValue1)
+      console.log(await totalAssetValue2)
+      console.log(await totalAssetValue3)
+      // console.log(await rToken.connect(addr1).)
       // Redeem Rtokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
-
+      console.log("after redeem")
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
