@@ -9,6 +9,10 @@ network.
 
 ## Units
 
+| **Units**       | `tok`      | `ref`                                                   | `target` | `UoA` |
+|-----------------|------------|---------------------------------------------------------|----------|-------|
+| **Description** | rETH | ETH  | ETH | USD   |
+
 tok = rETH
 ref = ETH
 target = ETH
@@ -25,10 +29,10 @@ hiding bring stability over these small fluctuations.
 
 ### Hard default:
 
-$\text{actualRefPerTok}  \lt \text{refPerTok} $
+- $\text{actualRefPerTok}  \lt \text{refPerTok} $
 
-Where refPerTok is 
-$\frac{\text{refPerTok}.\text{marginRatio}}{10000} $
+Where refPerTok is:
+- $\frac{\text{refPerTok} * \text{marginRatio}}{10000} $
 
 ## Deployment
 
