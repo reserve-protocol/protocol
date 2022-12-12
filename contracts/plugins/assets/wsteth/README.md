@@ -4,7 +4,7 @@
 
 This plugin allows `wstETH` holders use their tokens as collateral in the Reverse Protocol.
 
-As described in the [Lido Site](https://help.coinbase.com/en/coinbase/trading-and-funding/staking-rewards/cbeth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
+As described in the [Lido Site](https://docs.lido.fi/guides/steth-integration-guide#wsteth) , `wstETH` is a LSD (Liquid staking derivatives) which enables users to sell or transfer stacked ETH even before withdrawal being enabled.
 
 `wstETH` will accrue revenue from **staking rewards** into itself by **increasing** the exchange rate of the `wstETH` per `stETH`.
 
