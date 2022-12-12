@@ -21,6 +21,9 @@ contract MockV3Aggregator is AggregatorV3Interface {
     uint256 public latestTimestamp;
     uint256 public latestRound;
 
+    // Additional variable to be able to test invalid behavior
+    uint256 public latestAnsweredRound;
+
     mapping(uint256 => int256) public getAnswer;
     mapping(uint256 => uint256) public getTimestamp;
     mapping(uint256 => uint256) private getStartedAt;
@@ -37,11 +40,17 @@ contract MockV3Aggregator is AggregatorV3Interface {
         getAnswer[latestRound] = _answer;
         getTimestamp[latestRound] = block.timestamp;
         getStartedAt[latestRound] = block.timestamp;
+        latestAnsweredRound = latestRound;
     }
 
     // Additional function to be able to test invalid Chainlink behavior
     function setInvalidTimestamp() public {
         getTimestamp[latestRound] = 0;
+    }
+
+    // Additional function to be able to test invalid Chainlink behavior
+    function setInvalidAnsweredRound() public {
+        latestAnsweredRound = 0;
     }
 
     function updateRoundData(
@@ -56,6 +65,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
         getAnswer[latestRound] = _answer;
         getTimestamp[latestRound] = _timestamp;
         getStartedAt[latestRound] = _startedAt;
+        latestAnsweredRound = _roundId;
     }
 
     function getRoundData(uint80 _roundId)
@@ -97,7 +107,7 @@ contract MockV3Aggregator is AggregatorV3Interface {
             getAnswer[latestRound],
             getStartedAt[latestRound],
             getTimestamp[latestRound],
-            uint80(latestRound)
+            uint80(latestAnsweredRound)
         );
     }
 

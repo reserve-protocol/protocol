@@ -9,6 +9,7 @@ import {
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
+  setInvalidOracleAnsweredRound,
   setInvalidOracleTimestamp,
   setOraclePrice,
 } from '../utils/oracles'
@@ -328,6 +329,17 @@ describe('Assets contracts #fast', () => {
       await setInvalidOracleTimestamp(rsrAsset.address)
       await setInvalidOracleTimestamp(compAsset.address)
       await setInvalidOracleTimestamp(aaveAsset.address)
+
+      // Check unpriced
+      await expectUnpriced(rsrAsset.address)
+      await expectUnpriced(compAsset.address)
+      await expectUnpriced(aaveAsset.address)
+    })
+
+    it('Should be unpriced in case of invalid answered round', async () => {
+      await setInvalidOracleAnsweredRound(rsrAsset.address)
+      await setInvalidOracleAnsweredRound(compAsset.address)
+      await setInvalidOracleAnsweredRound(aaveAsset.address)
 
       // Check unpriced
       await expectUnpriced(rsrAsset.address)

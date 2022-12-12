@@ -34,6 +34,7 @@ import {
   expectPrice,
   expectRTokenPrice,
   expectUnpriced,
+  setInvalidOracleAnsweredRound,
   setInvalidOracleTimestamp,
   setOraclePrice,
 } from '../utils/oracles'
@@ -518,6 +519,17 @@ describe('Collateral contracts', () => {
 
     it('Should be unpriced in case of invalid timestamp', async () => {
       await setInvalidOracleTimestamp(tokenCollateral.address)
+
+      // Check price of token
+      await expectUnpriced(tokenCollateral.address)
+
+      // When refreshed, sets status to Unpriced
+      await tokenCollateral.refresh()
+      expect(await tokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+    })
+
+    it('Should be unpriced in case of invalid answered round', async () => {
+      await setInvalidOracleAnsweredRound(tokenCollateral.address)
 
       // Check price of token
       await expectUnpriced(tokenCollateral.address)
@@ -1374,19 +1386,17 @@ describe('Collateral contracts', () => {
 
     it('Should not allow invalid defaultThreshold', async () => {
       await expect(
-        SelfRefCollateralFactory.deploy(
-          {
-            priceTimeout: PRICE_TIMEOUT,
-            chainlinkFeed: chainlinkFeed.address,
-            oracleError: ORACLE_ERROR,
-            erc20: selfRefToken.address,
-            maxTradeVolume: config.rTokenMaxTradeVolume,
-            oracleTimeout: ORACLE_TIMEOUT,
-            targetName: ethers.utils.formatBytes32String('ETH'),
-            defaultThreshold: bn(100),
-            delayUntilDefault: DELAY_UNTIL_DEFAULT,
-          }
-        )
+        SelfRefCollateralFactory.deploy({
+          priceTimeout: PRICE_TIMEOUT,
+          chainlinkFeed: chainlinkFeed.address,
+          oracleError: ORACLE_ERROR,
+          erc20: selfRefToken.address,
+          maxTradeVolume: config.rTokenMaxTradeVolume,
+          oracleTimeout: ORACLE_TIMEOUT,
+          targetName: ethers.utils.formatBytes32String('ETH'),
+          defaultThreshold: bn(100),
+          delayUntilDefault: DELAY_UNTIL_DEFAULT,
+        })
       ).to.be.revertedWith('default threshold not supported')
     })
 
