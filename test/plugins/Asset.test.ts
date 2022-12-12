@@ -397,7 +397,7 @@ describe('Assets contracts #fast', () => {
 
     it('Should not revert on refresh if unpriced', async () => {
       // Check initial prices - use RSR as example
-      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      const currBlockTimestamp: number = await getLatestBlockTimestamp()
       await expectPrice(rsrAsset.address, fp('1'), ORACLE_ERROR, true)
       const [prevLowPrice, prevHighPrice] = await rsrAsset.price()
       expect(await rsrAsset.savedLowPrice()).to.equal(prevLowPrice)
