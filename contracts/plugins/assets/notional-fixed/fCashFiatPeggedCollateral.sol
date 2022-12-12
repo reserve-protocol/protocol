@@ -58,7 +58,19 @@ contract fCashFiatPeggedCollateral is RevenueHiding {
 
     function _beforeRefreshing() internal override {
         // try to reinvest any matured positions
-        fCashWrapper.reinvest();
+        try fCashWrapper.reinvest() {
+            // if all goes well, nothing to do
+        } catch (bytes memory errData) {
+            // see: docs/solidity-style.md#Catching-Empty-Data
+            if (errData.length == 0) revert(); // solhint-disable-line reason-string
+
+            /// @dev this could happen when we are trying to re-invest
+            ///   too much liquidity and the market can't keep positive rates
+            ///   after our trade.
+            ///
+            /// We could possibly change the strategy to split the assets on
+            /// different markets when this happens.
+        }
     }
 
     function checkReferencePeg() internal virtual override {

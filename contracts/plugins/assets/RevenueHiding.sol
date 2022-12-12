@@ -82,7 +82,8 @@ abstract contract RevenueHiding is Collateral {
         }
     }
 
-    /// @dev Allows any implementation to run custom code before and of the `refresh` logic happens
+    /// @dev Allows any implementation to run custom code before and of the `refresh` logic happens.
+    /// Should never revert !
     function _beforeRefreshing() internal virtual {}
 
     /// @dev Implement here the logic to check the peg status of the reference
