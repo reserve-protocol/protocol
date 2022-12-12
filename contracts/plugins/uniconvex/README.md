@@ -6,7 +6,6 @@ Collateral Plugin - Convex - Volatile Curve Pools
 https://gitcoin.co/issue/29516
 Collateral Plugin - Convex - Stable Curve Pools
 
-
 What are the collateral token, reference unit, and target unit for this plugins?
 UniconvexFiatCollateral for tokens pegged to usd or eurocoins like stable pools DAI-USDC-USDT
 * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} == {UoA}
@@ -31,13 +30,13 @@ We use invariant designed to only increase
 https://classic.curve.fi/files/crypto-pools-paper.pdf   v2
 https://classic.curve.fi/files/stableswap-paper.pdf     v1
 
- How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
- It compares refpertok with prev value
+How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
+It compares refpertok with prev value
 
+Implementation details
+Uses @gearbox-protocol/integrations-v2" fork at "github:chainhackers/integrations-v2.
+Solidity version changed to 0.8.9^ compare to valilla implementation.
 
-//TODO REPORT_GAS FOR REFRESH
-//TODO use shutdown in REFRESH
-//TODO shutdown in refresh
 
 References:
 
@@ -66,3 +65,9 @@ https://github.com/yearn/yearn-lens/blob/master/contracts/Oracle/Calculations/Cu
 
 https://github.com/yearn/yearn-lens/tree/master/contracts/Oracle/Calculations
 
+
+
+
+//TODO REPORT_GAS FOR REFRESH
+//TODO use shutdown in REFRESH
+//TODO shutdown in refresh
