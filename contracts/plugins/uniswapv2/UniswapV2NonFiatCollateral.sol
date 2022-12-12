@@ -53,7 +53,7 @@ contract UniswapV2NonFiatCollateral is UniswapV2AbstractCollateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 

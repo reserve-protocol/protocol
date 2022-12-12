@@ -74,7 +74,7 @@ contract UniswapV3UsdCollateral is UniswapV3Collateral {
             : CollateralStatus.SOUND;
 
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
         markStatus(newStatus);
     }
