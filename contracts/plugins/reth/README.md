@@ -13,11 +13,6 @@ network.
 |-----------------|------------|---------------------------------------------------------|----------|-------|
 | **Description** | rETH | ETH  | ETH | USD   |
 
-tok = rETH
-ref = ETH
-target = ETH
-UoA = USD/fiat
-
 ## Defaulting Conditions
 
 The rETH collateral can default in scenarios where there's a large number of
