@@ -606,6 +606,25 @@ async function main() {
   console.log(`Deployed collateral to ${hre.network.name} (${chainId})
     New deployments: ${deployedCollateral}
     Deployment file: ${assetCollDeploymentFilename}`)
+
+  /********  Deploy EURO Fiat Collateral  - tfUSDC **************************/
+
+  fallbackPrice = fp('1').div(bn('1e12'))
+
+  const { collateral: tfUSDCCollateral } = await hre.run('deploy-truefi-lending-collateral', {
+    fallbackPrice: fallbackPrice.toString(),
+    priceFeed: networkConfig[chainId].chainlinkFeeds.USDC,
+    erc20: networkConfig[chainId].tokens.tfUSDC,
+    maxTradeVolume: fp('1e6').toString(), // $1m,
+    oracleTimeout: getOracleTimeout(chainId).toString(),
+    targetName: hre.ethers.utils.formatBytes32String('USD'),
+    defaultThreshold: fp('0.05').toString(), // 5%
+    delayUntilDefault: bn('86400').toString(), // 24h
+    loanDefaultThreshold: fp('0.1').toString(), // 10%
+  })
+
+  assetCollDeployments.collateral.tfUSDC = tfUSDCCollateral
+  deployedCollateral.push(tfUSDCCollateral.toString())
 }
 
 main().catch((error) => {
