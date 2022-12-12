@@ -126,8 +126,8 @@ contract Asset is IAsset {
     function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // if the price feed is still functioning, use that
-            assert(low <= high);
-            return (low, high);
+            lotLow = low;
+            lotHigh = high;
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
@@ -144,6 +144,7 @@ contract Asset is IAsset {
             lotLow = savedLowPrice.mul(lotMultiplier);
             lotHigh = savedHighPrice.mul(lotMultiplier);
         }
+        assert(lotLow <= lotHigh);
     }
 
     /// @return {tok} The balance of the ERC20 in whole tokens
