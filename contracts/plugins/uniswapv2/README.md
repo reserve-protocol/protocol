@@ -25,6 +25,3 @@ https://uniswap.org/whitepaper.pdf
 How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
 It rely on well-known uniswap v2 math. No any additional checks of refpertok
 
-Implementation details
-Uses @gearbox-protocol/integrations-v2" fork at "github:chainhackers/integrations-v2.
-Solidity version changed to 0.8.9^ compare to valilla implementation.

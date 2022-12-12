@@ -1,5 +1,11 @@
-1. USD target version
-1. multiple feeds as collateral constructor args
+
+### notes TODO
+* increasing / decreasing liquidity is
+  * permissionless
+  * does not change refPerTok
+* price out of position bounds - TODO
+1. USD target version - done
+1. multiple feeds as collateral constructor args - dont' need
 
 
 ### Using Uniswap V3 LP Tokens
@@ -56,9 +62,3 @@ For an illustration of “range of use cases,” when we implemented our Compoun
     Tokens where the underlying token simply is the target asset, and requires no default check. For instance, cETH has underlying token ETH, and so the underlying token itself needs no default check.
 
 ​ If we had implemented only one or two of these, the range of use cases would be notably smaller. The degree to which each Collateral plugin is configurable will also contribute to the range of use cases covered by the set of plugins. Again, we expect the already-existing Collateral plugins should be a good guide here. ​
-
-### notes TODO
-* increasing / decreasing liquidity is
-  * permissionless
-  * does not change refPerTok
-* price out of position bounds - TODO
