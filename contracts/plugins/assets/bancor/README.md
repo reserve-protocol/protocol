@@ -42,6 +42,6 @@ In the case were the reference per token ratio decreases for some liquidity expl
 
 ## How does the plugin guarantee that its status() becomes DISABLED in those circumstances?
 
-
+The plugin monitors the reference units per collateral token ratio, if there is a drawdown the plugin will default instantly. 
 
 
