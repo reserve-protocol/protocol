@@ -169,7 +169,7 @@ Please follow:
 [UniV2Collateral docs](./UniV2Collateral.md) for more details.
 (in particular `refPerTock` non decresing nature demonstration).
 
-# UniV2HNonFiatCollateral Plugin (for non fiat pegged LP)
+# UniV2NonFiatCollateral Plugin (for non fiat pegged LP)
 
 Similar to UniV2Collateral Plugin, but assumes at least one token not to be pegged to fiat.
 
