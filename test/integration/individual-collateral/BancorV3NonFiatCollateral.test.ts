@@ -193,7 +193,6 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
     // Setup balances of bnETH for addr1 - Transfer from Mainnet holder
     await whileImpersonating(HOLDER_BNETH, async (bnETHSigner) => {
-      console.log(await bnETHSigner.getBalance())
       await bnETH.connect(bnETHSigner).transfer(addr1.address, bn('100e18'))
     })
 
@@ -325,17 +324,21 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(price).to.be.closeTo(fp('1121'), fp('1'))
 
       // Check RToken price
+      console.log((await bnETH.balanceOf(addr1.address)).toString())
       const issueAmount: BigNumber = bn('10e18')
+      console.log(issueAmount.toString())
       await bnETH.connect(addr1).approve(rToken.address, issueAmount.mul(100))
+      console.log(await bnETH.connect(addr1).approve(rToken.address, issueAmount.mul(100)))
+      await bnETH.connect(addr1).increaseAllowance(rToken.address,issueAmount.mul(100))
+      console.log(await rToken.address)
       console.log(await bnETH.allowance(addr1.address,rToken.address))
-      console.log()
       expect(await rToken.connect(addr1).balanceOf(addr1.address)).to.equal(bn('0'))
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
       expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('1'), fp('0.015'))
     })
 
     // Validate constructor arguments
-    // Note: Adapt it to your plugin constructor validationsS
+    // Note: Adapt it to your plugin constructor validations
     it('Should validate constructor arguments correctly', async () => {
       // Default threshold
       await expect(
@@ -617,9 +620,9 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         'PriceOutsideRange()'
       )
 
-      // Refresh should mark status IFFY
+      // Refresh should mark status SOUND
       await invalidpriceBancorV3Collateral.refresh()
-      expect(await invalidpriceBancorV3Collateral.status()).to.equal(CollateralStatus.IFFY)
+      expect(await invalidpriceBancorV3Collateral.status()).to.equal(CollateralStatus.SOUND)
     })
   })
 

@@ -78,18 +78,18 @@ contract BancorV3NonFiatCollateral is Collateral {
 
     function strictPrice() public view virtual override returns (uint192) {
         // {UoA/tok} = {UoA/target} * {target/ref} * {ref/tok}
-        console.log(targetUnitChainlinkFeed.price(oracleTimeout).mul(refPerTok()));
         return targetUnitChainlinkFeed.price(oracleTimeout).mul(refPerTok());
     }
     /// Refresh exchange rates and update default status.
     /// @custom:interaction RCEI
     function refresh() external virtual override {
-        console.log(refPerTok());
         if (alreadyDefaulted()) return;
         CollateralStatus oldStatus = status();
 
         // Check for hard default
         uint192 referencePrice = refPerTok();
+        console.log(referencePrice);
+        console.log(erc20.decimals());
         // uint192(<) is equivalent to Fix.lt
         if (referencePrice < prevReferencePrice) {
             markStatus(CollateralStatus.DISABLED);
@@ -108,7 +108,7 @@ contract BancorV3NonFiatCollateral is Collateral {
         uint192 rate = _safeWrap(
             bancorProxy.poolTokenToUnderlying(bnToken.reserveToken(), 1e18)
         );
-        int8 shiftLeft = 8 - ERC20Decimals - 18;
+        int8 shiftLeft = 8 - ERC20Decimals - 8;
         return shiftl_toFix(rate, shiftLeft);
     }
 
