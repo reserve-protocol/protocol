@@ -13,6 +13,9 @@ import "contracts/plugins/rocket-pool/libraries/ABDKMath64x64.sol";
  * @title REthDemurrageCollateral
  * @notice Collateral plugin for rEth - a Demurrage Collateral Plugin.
  * Expected: {tok} != {ref}, {ref} == {target}, {target} != {UoA}
+ * tok = rETH
+ * ref = target = DMR100rETH
+ * UoA = USD
  */
 contract REthDemurrageCollateral is Collateral {
     using ABDKMath64x64 for uint;
@@ -27,7 +30,7 @@ contract REthDemurrageCollateral is Collateral {
     int8 public immutable referenceERC20Decimals;
    
 
-    /// @param chainlinkFeed_ Feed units: {UoA/ref}
+    /// @param chainlinkFeed_ Feed units: {UoA/ETH}
     /// @param maxTradeVolume_ {UoA} The max trade volume, in UoA
     /// @param oracleTimeout_ {s} The number of seconds until a oracle value becomes invalid
     constructor(
@@ -64,9 +67,9 @@ contract REthDemurrageCollateral is Collateral {
         maxDaysWORefresh = maxDaysWORefresh_;
     }
 
-    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA multiplied by refPerTok
+    /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        // {UoA/tok} = {UoA/ETH} * {ETH/tok} * cumullatedDemurrage
+        // {UoA/tok} = {UoA/ETH} * {ETH/tok} * inflation 
 
         uint192 chainlinkFeedPrice = chainlinkFeed.price(oracleTimeout);
         uint192 unshiftedStrictPrice = chainlinkFeedPrice * rEthToEth() * refPerTok();
@@ -146,7 +149,9 @@ contract REthDemurrageCollateral is Collateral {
 
      /// @return {UoA/target} The price of a target unit in UoA
     function pricePerTarget() public view override returns (uint192) {
-        return chainlinkFeed.price(oracleTimeout);
+        // {ref} == {target}
+        // {UoA/target} = {UoA/ETH} * {ETH/tok} / {ref/tok} = {UoA/ETH} * {ETH/tok} * {tok/ref}
+        return (strictPrice() * FIX_ONE) / refPerTok();
     }
 
     /// Claim rewards earned by holding a balance of the ERC20 token
@@ -155,7 +160,7 @@ contract REthDemurrageCollateral is Collateral {
         emit RewardsClaimed(IERC20(address(0)), 0);
     }
 
-    /// @return {ref/tok} Quantity of whole ETH units per whole collateral tokens
+    /// @return {ref/ETH} Quantity of whole ETH units per whole collateral tokens
     /// @dev from  rocket-pool's documentation:
     // Get the current ETH : rETH exchange rate
     // Returns the amount of ETH backing 1 rETH

@@ -160,7 +160,7 @@ describeFork(`REthDemurrageCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
         rEth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('DMR365rETH'),
+        ethers.utils.formatBytes32String('DMR100rETH'),
         delayUntilDefault,
         ('18'),
         28,
@@ -242,10 +242,10 @@ describeFork(`REthDemurrageCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
       expect(await rEthCollateral.referenceERC20Decimals()).to.equal(18) // ether decimals
       expect(await rEthCollateral.erc20()).to.equal(rEth.address)
       //expect(await rEth.decimals()).to.equal(18)
-      expect(await rEthCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('DMR365rETH'))
+      expect(await rEthCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('DMR100rETH'))
       expect(await rEthCollateral.refPerTok()).to.be.closeTo(fp('1'), fp('0.01'))
       expect(await rEthCollateral.targetPerRef()).to.equal(fp('1')) 
-      expect(await rEthCollateral.pricePerTarget()).to.equal(fp('1368.77682315'))// $1368.77
+      expect(await rEthCollateral.pricePerTarget()).to.equal(fp('1423.741260706338148123'))
       await rEthCollateral.refresh()
       expect(await rEthCollateral.latestRefPerTok()).to.equal(bn('1000000000000000000'));
       expect(await rEthCollateral.strictPrice()).to.be.closeTo(fp('1423'), fp('1')) // 
@@ -417,8 +417,8 @@ describeFork(`REthDemurrageCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
       expect(await rEthCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Check rates and prices - Have changed significantly
-      const rEthPrice3: BigNumber = await rEthCollateral.strictPrice() // ~0.03294
-      const rEthRefPerTok3: BigNumber = await rEthCollateral.refPerTok() // ~0.03294
+      const rEthPrice3: BigNumber = await rEthCollateral.strictPrice() 
+      const rEthRefPerTok3: BigNumber = await rEthCollateral.refPerTok() 
 
       // Check rates and price increase
       expect(rEthPrice3).to.be.gt(rEthPrice2)
@@ -433,17 +433,26 @@ describeFork(`REthDemurrageCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
         rToken.address
       )
       expect(totalAssetValue3).to.be.gt(totalAssetValue2)
-
+      
       // Redeem REth with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
 
       // Check funds were transferred
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
-
+      // advance 800 days
+      for(let i = 0; i < 400; i++){
+       
+        await advanceTime(3600 * 24 * 2)
+        await advanceBlocks(3600 * 24 * 2)
+        await rEthCollateral.refresh();
+      
+      }
+        
       // Check balances - Fewer cTokens should have been sent to the user
       const newBalanceAddr1rEth: BigNumber = await rEth.balanceOf(addr1.address)
-
+     
+      	
       // Check received tokens represent ~10K in value at current prices
       expect(newBalanceAddr1rEth.sub(balanceAddr1rEth)).to.be.closeTo(fp('1'), fp('0.1'))
 
@@ -481,7 +490,7 @@ describeFork(`REthDemurrageCollateral - Mainnet Forking P${IMPLEMENTATION}`, fun
         rEth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('DMR365rETH'),
+        ethers.utils.formatBytes32String('DMR100rETH'),
         delayUntilDefault,
         ('18'),
         28,
