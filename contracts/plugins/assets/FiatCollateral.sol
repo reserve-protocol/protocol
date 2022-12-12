@@ -28,7 +28,6 @@ struct CollateralConfig {
  *
  * For: {tok} == {ref}, {ref} != {target}, {target} == {UoA}
  * Can be easily extended by (optionally) re-implementing:
- *   - refresh()
  *   - tryPrice()
  *   - refPerTok()
  *   - targetPerRef()
@@ -126,13 +125,16 @@ contract FiatCollateral is ICollateral, Asset {
         // Check for soft default + save lotPrice
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
+            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
 
-            // high can't be FIX_MAX in this contract, but inheritors might mess this up
+            // Save prices if priced
             if (high < FIX_MAX) {
-                // Save prices
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
             }
 
             // If the price is below the default-threshold price, default eventually

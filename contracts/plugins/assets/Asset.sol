@@ -84,13 +84,17 @@ contract Asset is IAsset {
     /// Refresh saved prices
     function refresh() public virtual override {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // this can't happen in this contract as-is, but inheritors might make this mistake
-            // (0, 0) is a valid price
+            // {UoA/tok}, {UoA/tok}
+            // (0, 0) is a valid price; (0, FIX_MAX) is unpriced
+
+            // Save prices if priced
             if (high < FIX_MAX) {
-                // Save prices
                 savedLowPrice = low;
                 savedHighPrice = high;
                 lastSave = uint48(block.timestamp);
+            } else {
+                // must be unpriced
+                assert(low == 0);
             }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
@@ -99,7 +103,7 @@ contract Asset is IAsset {
     }
 
     /// Should not revert
-    /// @dev This function should be general enough to not need to be overridden
+    /// @dev Should be general enough to not need to be overridden
     /// @return {UoA/tok} The lower end of the price estimate
     /// @return {UoA/tok} The upper end of the price estimate
     function price() public view virtual returns (uint192, uint192) {
@@ -115,11 +119,13 @@ contract Asset is IAsset {
 
     /// Should not revert
     /// lotLow should be nonzero when the asset might be worth selling
+    /// @dev Should be general enough to not need to be overridden
     /// @return lotLow {UoA/tok} The lower end of the lot price estimate
     /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
     function lotPrice() external view virtual returns (uint192 lotLow, uint192 lotHigh) {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
             // if the price feed is still functioning, use that
+            assert(low <= high);
             return (low, high);
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
