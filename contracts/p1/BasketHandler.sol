@@ -131,7 +131,7 @@ contract BasketHandlerP1 is ComponentP1, IBasketHandler {
     uint48 public override timestamp; // The timestamp when this basket was last set
 
     // If disabled is true, status() is DISABLED, the basket is invalid,
-    // and everything exceptredemption should be paused.
+    // and everything except redemption should be paused.
     bool private disabled;
 
     // ==== Invariants ====
