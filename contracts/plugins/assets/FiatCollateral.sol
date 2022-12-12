@@ -89,7 +89,8 @@ contract FiatCollateral is ICollateral, Asset {
     }
 
     /// Can revert, used by other contract functions in order to catch errors
-    /// Should not return FIX_MAX for either return value
+    /// Should not return FIX_MAX for low
+    /// Should only return FIX_MAX for high if low is 0
     /// @dev Override this when pricing is more complicated than just a single oracle
     /// @param low {UoA/tok} The low price estimate
     /// @param high {UoA/tok} The high price estimate
