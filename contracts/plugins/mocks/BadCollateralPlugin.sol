@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BlueOak-1.0.0
 pragma solidity 0.8.9;
 
-import "contracts/plugins/assets/ATokenFiatCollateral.sol";
+import "../assets/ATokenFiatCollateral.sol";
 
 contract BadCollateralPlugin is ATokenFiatCollateral {
     using OracleLib for AggregatorV3Interface;
@@ -74,7 +74,7 @@ contract BadCollateralPlugin is ATokenFiatCollateral {
 
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 }
