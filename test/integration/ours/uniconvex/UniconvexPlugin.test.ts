@@ -87,81 +87,6 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
         })
 
-        it(`investigate virtual price`, async () => {
-            let prevVirtualPrice = ZERO
-            let prevTotalSupply = ZERO
-
-            for (let index = 0; index < 3; index++) {
-                await network.provider.request({
-                    method: "hardhat_reset",
-                    params: [
-                        {
-                            forking: {
-                                jsonRpcUrl:
-                                    process.env.MAINNET_RPC_URL ||
-                                    process.env.ALCHEMY_MAINNET_RPC_URL ||
-                                    "",
-                                blockNumber:
-                                    (process.env.MAINNET_BLOCK
-                                        ? Number(process.env.MAINNET_BLOCK)
-                                        : forkBlockNumber["default"]) +
-                                    index * 100,
-                            },
-                        },
-                    ],
-                })
-
-                const asset0 = dai
-                const asset1 = usdc
-                const asset2 = usdt
-
-                const decimals0 = await asset0.decimals()
-                const decimals1 = await asset1.decimals()
-                const decimals2 = await asset2.decimals()
-
-                const p0 = (value: BigNumberish) => pow10(decimals0).mul(value)
-                const p1 = (value: BigNumberish) => pow10(decimals1).mul(value)
-                const p2 = (value: BigNumberish) => pow10(decimals2).mul(value)
-
-                const curveContractV2 = "0x6c3F90f043a72FA612cbac8115EE7e52BDe6E490"
-                // LiquidityGauge: 0xbFcF63294aD7105dEa65aA58F8AE5BE2D9d0952A
-                const stableSwap3PoolAddress = "0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7"
-                const stableSwap3Pool: ICurvePool3Assets = await ethers.getContractAt(
-                    "ICurvePool3Assets",
-                    stableSwap3PoolAddress
-                )
-
-                const lpTokenAddress = curveContractV2
-
-                const lpToken = await ethers.getContractAt("ERC20Mock", lpTokenAddress)
-
-                let virtualPrice = await stableSwap3Pool.connect(addr1).get_virtual_price()
-
-                let totalSupply = await lpToken.connect(addr1).totalSupply()
-
-                console.log({
-                    virtualPrice,
-                    totalSupply,
-                    div: BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply),
-                })
-
-                if (prevTotalSupply.gt(0)) {
-                    console.log({
-                        diffPrice: virtualPrice.sub(prevVirtualPrice),
-                        diffSupply: totalSupply.sub(prevTotalSupply),
-                        diffDiv: BigNumber.from(10)
-                            .pow(18)
-                            .mul(prevVirtualPrice)
-                            .div(prevTotalSupply)
-                            .sub(BigNumber.from(10).pow(18).mul(virtualPrice).div(totalSupply)),
-                    })
-                }
-
-                prevVirtualPrice = virtualPrice
-                prevTotalSupply = totalSupply
-            }
-        })
-
         for (const poolName of ["StableSwap3", "TriCrypto"]) {
             it(`Convex Collateral can be deployed with curve ${poolName}`, async () => {
                 // TODO: need we always raising on mint invariant?
@@ -189,7 +114,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     },
                     // Pool for USDT/BTC/ETH or similar
                     // USD-like asset should be first, ETH should be last
-                    //https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
+                    // https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/tricrypto/CurveCryptoSwap.vy
                     TriCrypto: {
                         asset0: usdt,
                         asset1: wbtc,
@@ -319,7 +244,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
                         "UniconvexFiatCollateral",
                         {
-                           //libraries: { OracleLib: oracleLib.address },
+                            libraries: { OracleLib: oracleLib.address },
                         }
                     )
 
@@ -373,14 +298,15 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
                 const actualStrictPrice = await uniconvexCollateral.strictPrice()
 
-
                 const convexLpTokenLiquidityBefore = await convexLpToken
                     .connect(addr1)
                     .balanceOf(addr1.address)
 
-                expect(await uniconvexCollateral.bal(addr1.address)).to.equal(convexLpTokenLiquidityBefore)
+                expect(await uniconvexCollateral.bal(addr1.address)).to.equal(
+                    convexLpTokenLiquidityBefore
+                )
 
-                await waitForTx(await uniconvexCollateral.refresh());
+                await waitForTx(await uniconvexCollateral.refresh())
 
                 await waitForTx(await booster.connect(addr1).withdrawAll(matchedPools[0].index))
 
@@ -453,14 +379,19 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                 expect(await uniconvexCollateral.erc20()).to.equal(convexLpToken.address)
                 expect(await uniconvexCollateral.erc20Decimals()).to.equal(18)
                 expect(await uniconvexCollateral.targetName()).to.equal(targetName)
-                expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
-                expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
-                //expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
+
+                // We use defenitely volatile prices in this test
+                isFiat && expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.IFFY)
+                !isFiat &&
+                    expect(await uniconvexCollateral.status()).to.equal(CollateralStatus.SOUND)
+                !isFiat && expect(await uniconvexCollateral.whenDefault()).to.equal(MAX_UINT256)
+                isFiat && expect(await uniconvexCollateral.whenDefault()).to.not.equal(MAX_UINT256)
+                isFiat && expect(await uniconvexCollateral.defaultThreshold()).to.equal(DEFAULT_THRESHOLD)
                 expect(await uniconvexCollateral.delayUntilDefault()).to.equal(DELAY_UNTIL_DEFAULT)
                 expect(await uniconvexCollateral.maxTradeVolume()).to.equal(RTOKEN_MAX_TRADE_VALUE)
                 expect(await uniconvexCollateral.oracleTimeout()).to.equal(ORACLE_TIMEOUT)
 
-                const expectedRefPerTok = await curvePool3Assets.get_virtual_price();
+                const expectedRefPerTok = await curvePool3Assets.get_virtual_price()
                 expect(await uniconvexCollateral.refPerTok()).to.equal(expectedRefPerTok)
 
                 !isFiat && expect(await uniconvexCollateral.targetPerRef()).to.equal(fp("1"))

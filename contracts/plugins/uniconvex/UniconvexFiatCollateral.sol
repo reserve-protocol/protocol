@@ -38,9 +38,9 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         console.log("dy", curvePool.get_dy(0, 1, FIX_ONE));
         console.log("dy", curvePool.get_dy(0, 2, FIX_ONE));
         uint256 multiplier = 10 ** IERC20Metadata(this.coins(0)).decimals();
-        for (uint256 i = 1; i < chainlinkFeeds.length; i++) {  
+        for (uint256 i = 1; i < chainlinkFeeds.length; i++) {
             uint256 divider = 10 ** IERC20Metadata(this.coins(i)).decimals();
-            uint256 p = multiplier * curvePool.get_dy(0, int128(uint128(i)), FIX_ONE) / divider;
+            uint256 p = (multiplier * curvePool.get_dy(0, int128(uint128(i)), FIX_ONE)) / divider;
             console.log("p", p);
             if (p < peg - delta || p > peg + delta) {
                 console.log("bad");
@@ -56,14 +56,16 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         uint192 peg,
         uint192 delta
     ) internal view returns (bool) {
-        // try feed.price_(oracleTimeout) returns (uint192 p) {
-        //     if (p < peg - delta || p > peg + delta) {
-        //         return true;
-        //     }
-        // } catch (bytes memory errData) {
-        //     if (errData.length == 0) revert();
-        //     return true;
-        // }
+        try feed.price_(oracleTimeout) returns (uint192 p) {
+            if (p < peg - delta || p > peg + delta) {
+                console.log("priceOutOfBoundsOrUnknown", p, peg, delta);
+                return true;
+            }
+        } catch (bytes memory errData) {
+            if (errData.length == 0) revert();
+            return true;
+        }
+        console.log("goodPrice");
         return false;
     }
 
@@ -71,6 +73,7 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         if (alreadyDefaulted()) return;
 
         CollateralStatus oldStatus = status();
+        console.log("oldStatus", oldStatus == CollateralStatus.SOUND ? 0 : 1);
 
         uint192 referencePrice = refPerTok();
         if (referencePrice < prevReferencePrice) {
@@ -78,19 +81,21 @@ contract UniconvexFiatCollateral is UniconvexAbstractCollateral {
         } else {
             uint192 peg = (pricePerTarget() * targetPerRef()) / FIX_ONE;
             uint192 delta = (peg * defaultThreshold) / FIX_ONE;
+            bool _priceOutOfBoundsOrUnknown;
             for (uint256 i = 0; i < chainlinkFeeds.length; i++) {
                 if (priceOutOfBoundsOrUnknown(chainlinkFeeds[i], peg, delta)) {
-                    markStatus(CollateralStatus.IFFY);
+                    _priceOutOfBoundsOrUnknown = true;
                     break;
                 }
             }
-            if (poolIsAwayFromOptimalPoint(peg, delta)) {
-                markStatus(CollateralStatus.IFFY);
-            }
+            (_priceOutOfBoundsOrUnknown || poolIsAwayFromOptimalPoint(peg, delta))
+                ? markStatus(CollateralStatus.IFFY)
+                : markStatus(CollateralStatus.SOUND);
         }
         prevReferencePrice = referencePrice;
 
         CollateralStatus newStatus = status();
+        console.log("newStatus", newStatus == CollateralStatus.SOUND ? 0 : 1);
         if (oldStatus != newStatus) {
             emit CollateralStatusChanged(oldStatus, newStatus);
         }
