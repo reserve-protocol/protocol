@@ -70,7 +70,7 @@ Status changes from `IFFY` to `DISABLED` if it's `IFFY` state stayed over delayU
 [Integrated tests](../../../../test/integration/individual-collateral/UniV2NonFiatCollateral.test.ts) ensure those features.
 
 __`pricePerTarget()`__
-- {UoA/target} is FixOne since `{target} = {UoA} = USD`
+- {UoA/target} prices from oracles `sqrt(x*pA + y * pB)`
 
 __`claimRewards()`__
 
