@@ -127,10 +127,13 @@ contract FiatCollateral is ICollateral, Asset {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192 pegPrice) {
             // {UoA/tok}, {UoA/tok}, {target/ref}
 
-            // Save prices
-            savedLowPrice = low;
-            savedHighPrice = high;
-            lastSave = uint48(block.timestamp);
+            // high can't be FIX_MAX in this contract, but inheritors might mess this up
+            if (high < FIX_MAX) {
+                // Save prices
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            }
 
             // If the price is below the default-threshold price, default eventually
             // uint192(+/-) is the same as Fix.plus/minus

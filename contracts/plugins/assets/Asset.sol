@@ -84,10 +84,14 @@ contract Asset is IAsset {
     /// Refresh saved prices
     function refresh() public virtual override {
         try this.tryPrice() returns (uint192 low, uint192 high, uint192) {
-            // Save prices
-            savedLowPrice = low;
-            savedHighPrice = high;
-            lastSave = uint48(block.timestamp);
+            // this can't happen in this contract as-is, but inheritors might make this mistake
+            // (0, 0) is a valid price
+            if (high < FIX_MAX) {
+                // Save prices
+                savedLowPrice = low;
+                savedHighPrice = high;
+                lastSave = uint48(block.timestamp);
+            }
         } catch (bytes memory errData) {
             // see: docs/solidity-style.md#Catching-Empty-Data
             if (errData.length == 0) revert(); // solhint-disable-line reason-string
