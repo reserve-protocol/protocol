@@ -319,7 +319,7 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     const uniconvexCollateral3ContractFactory = await ethers.getContractFactory(
                         "UniconvexFiatCollateral",
                         {
-                            libraries: { OracleLib: oracleLib.address },
+                           //libraries: { OracleLib: oracleLib.address },
                         }
                     )
 
@@ -379,6 +379,8 @@ describeFork(`UniconvexPlugin - Integration - Mainnet Forking P${IMPLEMENTATION}
                     .balanceOf(addr1.address)
 
                 expect(await uniconvexCollateral.bal(addr1.address)).to.equal(convexLpTokenLiquidityBefore)
+
+                await waitForTx(await uniconvexCollateral.refresh());
 
                 await waitForTx(await booster.connect(addr1).withdrawAll(matchedPools[0].index))
 

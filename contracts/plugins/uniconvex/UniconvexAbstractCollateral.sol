@@ -53,7 +53,9 @@ abstract contract UniconvexAbstractCollateral is Collateral {
         IBooster.PoolInfo memory poolInfo = convexBooster.poolInfo(poolId);
         baseRewardPool = IBaseRewardPool(poolInfo.crvRewards);
         curveToken = poolInfo.lptoken;
-        curvePool = ICurvePool(curveRegistry.get_pool_from_lp_token(poolInfo.lptoken));
+        console.log("curveToken", curveToken);
+        console.log("chainlinkFeeds.length", chainlinkFeeds.length);
+        curvePool = ICurvePool(curveRegistry.get_pool_from_lp_token(curveToken));
         prevReferencePrice = refPerTok();
         require(address(baseRewardPool) != address(0), "missing baseRewardPool");
         require(address(curvePool) != address(0), "missing curvePool");
@@ -83,17 +85,6 @@ abstract contract UniconvexAbstractCollateral is Collateral {
         return curvePool.balances(i);
     }
 
-    function _underlyingAssetPriceScaled(uint256 i) private view returns (uint256 underlyingAssetPriceScaled) {
-        uint192 oraclePrice = chainlinkFeeds[i].price(oracleTimeout);
-        console.log("oraclePrice", oraclePrice);
-        uint256 decimals = IERC20Metadata(curveToken).decimals();
-        console.log("decimals", decimals);
-        underlyingAssetPriceScaled =
-            (10 ** decimals * (oraclePrice * this.balances(i))) /
-            10 ** IERC20Metadata(this.coins(i)).decimals();
-        console.log("underlyingAssetPriceScaled_", underlyingAssetPriceScaled);
-    }
-
     //TODO check power of fixed point (result)
     // we calc price of liquidity as sum price of underlying assets pro-rata divided by liquidity
     // the same amounts of assets would be obtained by burn of our liquidity
@@ -102,7 +93,15 @@ abstract contract UniconvexAbstractCollateral is Collateral {
     function _calculatePrice() internal view returns (uint192) {
         uint256 priceScaled;
         for (uint256 i = 0; i < chainlinkFeeds.length; i++) {
-            priceScaled += _underlyingAssetPriceScaled(i);
+            console.log("i", i);
+            uint192 oraclePrice = chainlinkFeeds[i].price(oracleTimeout);
+            console.log("oraclePrice", oraclePrice);
+            uint256 decimals = IERC20Metadata(curveToken).decimals();
+            console.log("decimals", decimals);
+            uint256 underlyingAssetPriceScaled = (10 ** decimals * (oraclePrice * this.balances(i))) /
+                10 ** IERC20Metadata(this.coins(i)).decimals();
+            console.log("underlyingAssetPriceScaled_", underlyingAssetPriceScaled);
+            priceScaled += underlyingAssetPriceScaled;
         }
         console.log("totalSupply", IERC20(curveToken).totalSupply());
         return uint192(priceScaled / IERC20(curveToken).totalSupply());
