@@ -395,6 +395,54 @@ describe('Assets contracts #fast', () => {
       expect(await rsrAsset.lastSave()).to.equal(currBlockTimestamp)
     })
 
+    it('Should not save prices if try/price returns unpriced', async () => {
+      const UnpricedAssetFactory = await ethers.getContractFactory('UnpricedAssetMock')
+      const unpricedRSRAsset: Asset = <Asset>(
+        await UnpricedAssetFactory.deploy(
+          PRICE_TIMEOUT,
+          await rsrAsset.chainlinkFeed(),
+          ORACLE_ERROR,
+          rsr.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT
+        )
+      )
+
+      // Save prices
+      await unpricedRSRAsset.refresh()
+
+      // Check initial prices - use RSR as example
+      let currBlockTimestamp: number = await getLatestBlockTimestamp()
+      await expectPrice(unpricedRSRAsset.address, fp('1'), ORACLE_ERROR, true)
+      let [lowPrice, highPrice] = await unpricedRSRAsset.price()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedRSRAsset.lastSave()).to.be.equal(currBlockTimestamp)
+
+      // Refresh saved prices
+      await unpricedRSRAsset.refresh()
+
+      // Check values remain but timestamp was updated
+      await expectPrice(unpricedRSRAsset.address, fp('1'), ORACLE_ERROR, true)
+      ;[lowPrice, highPrice] = await unpricedRSRAsset.price()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      currBlockTimestamp = await getLatestBlockTimestamp()
+      expect(await unpricedRSRAsset.lastSave()).to.equal(currBlockTimestamp)
+
+      // Set as unpriced so it returns 0,FIX MAX in try/price
+      await unpricedRSRAsset.setUnpriced(true)
+
+      // Check that now is unpriced
+      await expectUnpriced(unpricedRSRAsset.address)
+
+      // Refreshing would not save the new rates
+      await unpricedRSRAsset.refresh()
+      expect(await unpricedRSRAsset.savedLowPrice()).to.equal(lowPrice)
+      expect(await unpricedRSRAsset.savedHighPrice()).to.equal(highPrice)
+      expect(await unpricedRSRAsset.lastSave()).to.equal(currBlockTimestamp)
+    })
+
     it('Should not revert on refresh if unpriced', async () => {
       // Check initial prices - use RSR as example
       const currBlockTimestamp: number = await getLatestBlockTimestamp()
