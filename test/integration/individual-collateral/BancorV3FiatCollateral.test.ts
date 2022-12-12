@@ -134,9 +134,6 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     ;({ rsr, rsrAsset, deployer, facade, facadeTest, facadeWrite, oracleLib, govParams } =
       await loadFixture(defaultFixture))
 
-    dai = <ERC20Mock>(
-      await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.DAI || '')
-    )
 
     bnDAI = <ERC20Mock>(
       await ethers.getContractAt('ERC20Mock', networkConfig[chainId].tokens.bnDAI || '')

@@ -13,6 +13,13 @@ For Fiat collateral plugin:
 `target`: USD  
 `UoA`: USD
 
+For Non-Fiat collateral plugin:
+
+`tok`: bnETH  
+`ref`: ETH  
+`target`: ETH  
+`UoA`: USD
+
 ## How does one configure and deploy an instance of the plugin?
 
 The collateral plugin `BancorV3FiatCollateral` is the plugin that will be deployed for any Fiat `bnToken` pool.
