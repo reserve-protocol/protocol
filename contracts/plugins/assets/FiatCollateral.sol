@@ -175,8 +175,12 @@ contract FiatCollateral is ICollateral, Asset {
     // === Helpers for child classes ===
 
     function markStatus(CollateralStatus status_) internal {
+        // untestable:
+        //      All calls to markStatus happen exlusively if the collateral is not already defaulted
         if (_whenDefault <= block.timestamp) return; // prevent DISABLED -> SOUND/IFFY
 
+        // untestable:
+        //      The final `else` branch will never be triggered as all possible states are checked
         if (status_ == CollateralStatus.SOUND) {
             _whenDefault = NEVER;
         } else if (status_ == CollateralStatus.IFFY) {
