@@ -49,7 +49,7 @@ contract RTokenP1 is ComponentP1, ERC20PermitUpgradeable, IRToken {
     // Always, issuanceRate <= MAX_ISSUANCE_RATE = FIX_ONE
     uint192 public issuanceRate;
 
-    // the follwing governance parameters exist inside the Battery struct:
+    // the following governance parameters exist inside the Battery struct:
     //      battery.redemptionRateFloor
     //      battery.scalingRedemptionRate
 
