@@ -74,6 +74,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   let basket: Collateral[]
   let initialBasketNonce: BigNumber
   let rTokenAsset: RTokenAsset
+  let aaveToken: ERC20Mock
 
   // Config values
   let config: IConfig
@@ -181,6 +182,7 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
 
     // Deploy fixture
     ;({
+      aaveToken,
       assetRegistry,
       backingManager,
       basket,
@@ -2084,6 +2086,21 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
   })
 
   describe('Reward Claiming #fast', () => {
+    const issueAmt = bn('10000000e18')
+
+    beforeEach(async () => {
+      await token0.connect(owner).mint(addr1.address, issueAmt)
+      await token1.connect(owner).mint(addr1.address, issueAmt)
+      await token2.connect(owner).mint(addr1.address, issueAmt)
+      await token3.connect(owner).mint(addr1.address, issueAmt)
+
+      // Provide approvals for future issuances
+      await token0.connect(addr1).approve(rToken.address, issueAmt)
+      await token1.connect(addr1).approve(rToken.address, issueAmt)
+      await token2.connect(addr1).approve(rToken.address, issueAmt)
+      await token3.connect(addr1).approve(rToken.address, issueAmt)
+    })
+
     it('should not claim rewards when paused', async () => {
       await main.connect(owner).pause()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
@@ -2094,6 +2111,14 @@ describe(`RTokenP${IMPLEMENTATION} contract`, () => {
       await main.connect(owner).freezeShort()
       await expect(rToken.claimRewards()).to.be.revertedWith('paused or frozen')
       await expect(rToken.claimRewardsSingle(token0.address)).to.be.revertedWith('paused or frozen')
+    })
+
+    it('should claim a single reward', async () => {
+      const rewardAmt = bn('100e18')
+      await token2.setRewards(rToken.address, rewardAmt)
+      await rToken.claimRewardsSingle(token2.address)
+      const balAfter = await aaveToken.balanceOf(rToken.address)
+      expect(balAfter).to.equal(rewardAmt)
     })
   })
 

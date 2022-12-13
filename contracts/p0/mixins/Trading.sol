@@ -26,6 +26,10 @@ abstract contract TradingP0 is RewardableP0, ITrading {
 
     uint192 public minTradeVolume; // {UoA}
 
+    // untestable:
+    //      `else` branch of `onlyInitializing` (ie. revert) is currently untestable.
+    //      This function is only called inside other `init` functions, each of which is wrapped
+    //      in an `initializer` modifier, which would fail first.
     // solhint-disable-next-line func-name-mixedcase
     function __Trading_init(uint192 maxTradeSlippage_, uint192 minTradeVolume_)
         internal

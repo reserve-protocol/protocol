@@ -197,7 +197,7 @@ library RecollateralizationLibP1 {
             ? fixMin(assetsLow.minus(shortfallSlippage), basketTargetHigh)
             : 0;
 
-        // {BU} = {UoA} / {BU/UoA}
+        // {BU} = {UoA} / {UoA/BU}
         range.top = basketTargetHigh.div(basketPrice, CEIL);
         range.bottom = basketTargetLow.div(basketPrice, CEIL);
     }

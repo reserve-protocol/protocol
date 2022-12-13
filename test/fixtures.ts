@@ -201,6 +201,26 @@ async function collateralFixture(
     )
     return [erc20, coll]
   }
+  const make0DecimalCollateral = async (symbol: string): Promise<[ZeroDecimalMock, Collateral]> => {
+    const erc20: ZeroDecimalMock = <ZeroDecimalMock>await USDC.deploy(symbol + ' Token', symbol)
+    const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>(
+      await MockV3AggregatorFactory.deploy(0, bn('1'))
+    )
+
+    const coll = <FiatCollateral>(
+      await FiatCollateralFactory.deploy(
+        fp('1'),
+        chainlinkFeed.address,
+        erc20.address,
+        config.rTokenMaxTradeVolume,
+        ORACLE_TIMEOUT,
+        ethers.utils.formatBytes32String('USD'),
+        defaultThreshold,
+        delayUntilDefault
+      )
+    )
+    return [erc20, coll]
+  }
   const makeCTokenCollateral = async (
     symbol: string,
     referenceERC20: ERC20Mock,
@@ -278,6 +298,7 @@ async function collateralFixture(
     await busd[1].chainlinkFeed(),
     aaveToken
   )
+  const zcoin = await make0DecimalCollateral('ZCOIN') // zero decimals
   const erc20s = [
     dai[0],
     usdc[0],
@@ -290,6 +311,7 @@ async function collateralFixture(
     ausdc[0],
     ausdt[0],
     abusd[0],
+    zcoin[0],
   ]
   const collateral = [
     dai[1],
@@ -303,6 +325,7 @@ async function collateralFixture(
     ausdc[1],
     ausdt[1],
     abusd[1],
+    zcoin[1],
   ]
 
   // Create the initial basket
