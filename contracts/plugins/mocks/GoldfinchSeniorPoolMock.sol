@@ -7,6 +7,7 @@ import "./ERC20Mock.sol";
 
 contract GolfinchSeniorPoolMock is ERC20Mock {
     using FixLib for uint192;
+    address public config = 0xaA425F8BfE82CD18f634e2Fe91E5DdEeFD98fDA1;
     uint256 public sharePrice;
 
     constructor(string memory name, string memory symbol) ERC20Mock(name, symbol) {

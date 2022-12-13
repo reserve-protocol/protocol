@@ -17,7 +17,6 @@ import { CollateralStatus, MAX_UINT256, ZERO_ADDRESS } from '../../../common/con
 import { expectEvents, expectInIndirectReceipt } from '../../../common/events'
 import { bn, fp, toBNDecimals } from '../../../common/numbers'
 import { whileImpersonating } from '../../utils/impersonation'
-import { setOraclePrice } from '../../utils/oracles'
 import { advanceBlocks, advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
@@ -30,9 +29,7 @@ import {
   FacadeWrite,
   IAssetRegistry,
   IBasketHandler,
-  InvalidMockV3Aggregator,
   OracleLib,
-  MockV3Aggregator,
   RTokenAsset,
   TestIBackingManager,
   TestIDeployer,
@@ -296,7 +293,6 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(await basketHandler.status()).to.equal(CollateralStatus.SOUND)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.equal(0)
       const [isFallback, price] = await basketHandler.price(true)
-      console.log({ price })
       expect(isFallback).to.equal(false)
       expect(price).to.be.closeTo(fp('1.0208'), fp('0.015'))
 
@@ -369,14 +365,10 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
 
       // Provide approvals for issuances
       await gsp.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 18).mul(100))
-      console.log('user gsp before: ', await gsp.balanceOf(addr1.address))
 
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
-      console.log('user rToken Balance: ', await rToken.balanceOf(addr1.address))
-
-      console.log('user gsp after: ', await gsp.balanceOf(addr1.address))
       // Check RTokens issued to user
       expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
 
@@ -396,25 +388,20 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(gspPrice1).to.be.closeTo(fp('1.062'), fp('0.001'))
       expect(gspRefPerTok1).to.be.closeTo(fp('1.0408'), fp('0.001'))
 
-      console.log("goldfinch borrower's balance: ", await usdc.balanceOf(goldfinchTranchedPool))
-      // Repay portion of loan so that sharePrice increases
+      // Advance time and blocks so interest payment is due
+      await advanceTime(3000000)
+      await advanceBlocks(3000)
 
-      await whileImpersonating(usdcHolder, async (usdcSigner) => {
-        await usdc.connect(usdcSigner).transfer(goldfinchTranchedPool, toBNDecimals(initialBal, 6))
+      await whileImpersonating(goldfinchPoolAdmin, async (assessSigner) => {
+        const tranchedPool = new ethers.Contract(goldfinchTranchedPool, [
+          'function assess() external',
+        ])
+        await tranchedPool.connect(assessSigner).assess()
       })
 
       await whileImpersonating(goldfinchPoolAdmin, async (poolAdminSigner) => {
         await goldfinch.connect(poolAdminSigner).redeem(179)
       })
-
-      console.log(
-        "goldfinch borrower's balance after: ",
-        await usdc.balanceOf(goldfinchTranchedPool)
-      )
-
-      // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(10000)
-      await advanceBlocks(10000)
 
       // Refresh cToken manually (required)
       await gspCollateral.refresh()
@@ -429,7 +416,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       expect(gspRefPerTok2).to.be.gt(gspRefPerTok1)
 
       // Still close to the original values
-      expect(gspPrice2).to.be.closeTo(fp('1.062'), fp('0.001'))
+      expect(gspPrice2).to.be.closeTo(fp('1.063'), fp('0.001'))
       expect(gspRefPerTok2).to.be.closeTo(fp('1.0408'), fp('0.001'))
 
       // Check total asset value increased
@@ -437,32 +424,6 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
         rToken.address
       )
       expect(totalAssetValue2).to.be.gt(totalAssetValue1)
-
-      // Advance time and blocks slightly, causing refPerTok() to increase
-      await advanceTime(100000000)
-      await advanceBlocks(100000000)
-
-      // Refresh cToken manually (required)
-      await gspCollateral.refresh()
-      expect(await gspCollateral.status()).to.equal(CollateralStatus.SOUND)
-
-      // Check rates and prices - Have changed significantly
-      const gspPrice3: BigNumber = await gspCollateral.strictPrice() // ~0.03294
-      const gspRefPerTok3: BigNumber = await gspCollateral.refPerTok() // ~0.03294
-
-      // Check rates and price increase
-      expect(gspPrice3).to.be.gt(gspPrice2)
-      expect(gspRefPerTok3).to.be.gt(gspRefPerTok2)
-
-      // Need to adjust ranges
-      expect(gspPrice3).to.be.closeTo(fp('0.032'), fp('0.001'))
-      expect(gspRefPerTok3).to.be.closeTo(fp('0.032'), fp('0.001'))
-
-      // Check total asset value increased
-      const totalAssetValue3: BigNumber = await facadeTest.callStatic.totalAssetValue(
-        rToken.address
-      )
-      expect(totalAssetValue3).to.be.gt(totalAssetValue2)
 
       // Redeem Rtokens with the updated rates
       await expect(rToken.connect(addr1).redeem(issueAmount)).to.emit(rToken, 'Redemption')
@@ -475,14 +436,14 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       const newBalanceAddr1Gsp: BigNumber = await gsp.balanceOf(addr1.address)
 
       // Check received tokens represent ~10K in value at current prices
-      expect(newBalanceAddr1Gsp.sub(balanceAddr1Gsp)).to.be.closeTo(bn('303570e8'), bn('8e7')) // ~0.03294 * 303571 ~= 10K (100% of basket)
+      expect(newBalanceAddr1Gsp.sub(balanceAddr1Gsp)).to.be.closeTo(bn('9600e18'), bn('100e18')) // 1.063 * 9.6k ~= $10208 (100% of basket)
 
       // Check remainders in Backing Manager
-      expect(await gsp.balanceOf(backingManager.address)).to.be.closeTo(bn(150663e8), bn('5e7')) // ~= 4962.8 usd in value
+      expect(await gsp.balanceOf(backingManager.address)).to.be.closeTo(bn('5.5e18'), bn('1e17')) // ~= $6 usd in value
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('4962.8'), // ~= 4962.8 usd (from above)
+        fp('6'), // ~= 6 usd (from above)
         fp('0.5')
       )
     })
@@ -501,13 +462,15 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
   // soft default = SOUND -> IFFY -> DISABLED due to sustained misbehavior
   // hard default = SOUND -> DISABLED due to an invariant violation
   // This may require to deploy some mocks to be able to force some of these situations
-  describe.skip('Collateral Status', () => {
+  describe('Collateral Status', () => {
     // No test for soft default b/c we rely on same Chainlink logic as ATokens and CTokens, both already thoroughly tested
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
       // Note: In this case requires to use a CToken mock to be able to change the rate
-      const GolfinchMockFactory: ContractFactory = await ethers.getContractFactory('CTokenMock')
+      const GolfinchMockFactory: ContractFactory = await ethers.getContractFactory(
+        'GolfinchSeniorPoolMock'
+      )
       const symbol = await gsp.symbol()
       const goldfinchMock: GolfinchSeniorPoolMock = <GolfinchSeniorPoolMock>(
         await GolfinchMockFactory.deploy(symbol + ' Token', symbol)
@@ -515,6 +478,7 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       // Set initial exchange rate to the new gsp mock
       await goldfinchMock.setSharePrice(fp('1.062'))
 
+      console.log('waiting to deploy')
       // Redeploy plugin using the new gsp mock
       const newGspCollateral: GoldfinchSeniorPoolCollateral = <GoldfinchSeniorPoolCollateral>await (
         await ethers.getContractFactory('GoldfinchSeniorPoolCollateral', {
@@ -523,15 +487,17 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       ).deploy(
         fp('1'),
         await gspCollateral.chainlinkFeed(),
-        goldfinchMock.address,
+        await gspCollateral.erc20(),
         await gspCollateral.maxTradeVolume(),
         await gspCollateral.oracleTimeout(),
         await gspCollateral.targetName(),
         await gspCollateral.defaultThreshold(),
         await gspCollateral.delayUntilDefault(),
-        goldfinch.address,
+        goldfinchMock.address,
         200
       )
+
+      console.log('done deploy')
 
       // Check initial state
       expect(await newGspCollateral.status()).to.equal(CollateralStatus.SOUND)
@@ -542,15 +508,18 @@ describeFork(`GoldfinchSeniorPoolCollateral - Mainnet Forking P${IMPLEMENTATION}
       await goldfinchMock.setSharePrice(fp('1.04607'))
 
       // Force updates - no default yet
-      await expect(newGspCollateral.refresh()).to.not.emit(newGspCollateral, 'DefaultStatusChanged')
+      await expect(newGspCollateral.refresh()).to.not.emit(
+        newGspCollateral,
+        'CollateralStatusChanged'
+      )
 
-      // Decrease rate for Goldfinch Senior Pool token by 2.5%
+      // Decrease rate for Goldfinch Senior Pool token by 4%
       // now expecting a default
-      await goldfinchMock.setSharePrice(fp('1.02'))
+      await goldfinchMock.setSharePrice(fp('1.01'))
 
       // Force updates
       await expect(newGspCollateral.refresh())
-        .to.emit(newGspCollateral, 'DefaultStatusChanged')
+        .to.emit(newGspCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
 
       expect(await newGspCollateral.status()).to.equal(CollateralStatus.DISABLED)

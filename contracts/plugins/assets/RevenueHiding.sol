@@ -75,7 +75,7 @@ abstract contract RevenueHiding is Collateral {
         // check if updated status
         CollateralStatus newStatus = status();
         if (oldStatus != newStatus) {
-            emit DefaultStatusChanged(oldStatus, newStatus);
+            emit CollateralStatusChanged(oldStatus, newStatus);
         }
     }
 
