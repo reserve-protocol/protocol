@@ -62,13 +62,18 @@ abstract contract UniswapV3Collateral is Collateral {
         (address token0, address token1, uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(
             address(erc20)
         ).claimRewards(msg.sender);
-        emit RewardsClaimed(IERC20(token0), amount0);
-        emit RewardsClaimed(IERC20(token1), amount1);
+        if(amount0 > 0) {
+            emit RewardsClaimed(IERC20(token0), amount0);
+        }
+        if(amount1 > 0) {
+            emit RewardsClaimed(IERC20(token1), amount1);
+        }
     }
 
     /// @return {UoA/tok} Total price in UoA of all assets obtainable by burning all liquidity in 1 whole token
     function strictPrice() external view override returns (uint192) {
         (uint256 amount0, uint256 amount1) = IUniswapV3Wrapper(address(erc20)).principal();
+        //TODO use imaginary price for 0 liquidity, not fallback price , don't commit this TODO
         (uint192 price0, uint192 price1) = _priceFeeds();
         return
             _calculatePrice(
@@ -82,22 +87,6 @@ abstract contract UniswapV3Collateral is Collateral {
             );
     }
 
-    /**
-        @notice {tok} = UV3 LP token
-        @notice {ref} Synthetic reference UV3SQRT<A0><A1>, like UV3SQRTDAIUSDC
-        @notice Calculated as (sqrt(x * y) / liquidity), which is
-        @notice formula 2.2 from the whitepaper with constants omitted
-        @notice (𝑥 + 𝐿/√𝑝𝑏)(𝑦 + 𝐿√𝑝𝑎) = 𝐿^2
-        @notice This contract is meant to be inherited by collateral implementations for fiat and non-fiat positions.
-    */
-    function refPerTok() public view override returns (uint192) {
-        IUniswapV3Wrapper wrapper = IUniswapV3Wrapper(address(erc20));
-        (uint256 amount0, uint256 amount1) = wrapper.principal();
-        uint192 fixA0 = shiftl_toFix(amount0, -int8(underlyingERC20Decimals0));
-        uint192 fixA1 = shiftl_toFix(amount1, -int8(underlyingERC20Decimals1));
-        uint256 sqrtA0A1 = Math.sqrt(uint256(fixA0) * uint256(fixA1));
-        return divuu(sqrtA0A1, wrapper.totalSupply());
-    }
 
     function _priceFeeds() internal view returns (uint192 price0, uint192 price1) {
         price0 = chainlinkFeed.price(oracleTimeout);

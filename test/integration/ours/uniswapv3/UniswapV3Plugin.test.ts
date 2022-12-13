@@ -323,17 +323,19 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await UniswapV3UsdCollateral.pricePerTarget()).to.equal(fp("1"))
             const positions = await uniswapV3WrapperMock.positions()
             expect(await UniswapV3UsdCollateral.strictPrice()).closeTo(
-                fp("200").div(positions.liquidity),
-                10
+                fp("200").mul(bn("1e18")).div(positions.liquidity),
+                bn("1e19")
             )
-            expect(await UniswapV3UsdCollateral.strictPrice()).to.equal(
-                await UniswapV3UsdCollateral._fallbackPrice()
+            expect(await UniswapV3UsdCollateral.strictPrice()).to.be.closeTo(
+                await UniswapV3UsdCollateral._fallbackPrice(), bn("1e17")
             )
-            //TODO
-            //expect(await UniswapV3UsdCollateral.getClaimCalldata()).to.eql([ZERO_ADDRESS, '0x'])
-            // expect(await UniswapV3UsdCollateral.bal(addr1.address)).to.equal(
-            //   await adjustedAmout(uniswapV3Wrapper, 100)
-            // )
+
+            await expect(
+              await UniswapV3UsdCollateral
+                    .connect(addr1)
+                    .claimRewards()
+                )
+              .not.to.emit(UniswapV3UsdCollateral, "RewardsClaimed")
         })
 
         it("Token holders obtain fees pro-rata of their balances", async () => {
@@ -864,4 +866,4 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
 //TODO check that fees earned remain intact after decreaseLiquidity calls
 //TODO @etsvigun cleanup helpers
-//https://github.com/reserve-protocol/protocol/blob/master/test/integration/individual-collateral/CTokenFiatCollateral.test.ts
+

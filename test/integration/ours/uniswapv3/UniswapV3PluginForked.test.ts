@@ -429,10 +429,10 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             )
             const refPerTok3 = await UniswapV3UsdCollateral.refPerTok()
             console.log("refPerTok3", refPerTok3)
-            expect(refPerTok3).to.be.gt(refPerTok0)
+            expect(refPerTok3).to.equal(refPerTok0)
         })
 
-        it("refPerTok grows on swaps", async () => {
+        it("refPerTok remains unchanged on swaps", async () => {
             // Initial refPerTok
             const refPerTok0 = await UniswapV3UsdCollateral.refPerTok()
             console.log("initialRefPerTok", refPerTok0.toString())
@@ -461,7 +461,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const refPerTok1 = await UniswapV3UsdCollateral.refPerTok()
             console.log("refPerTok1", refPerTok1.toString())
-            expect(refPerTok1).to.be.gt(refPerTok0)
+            expect(refPerTok1).to.equal(refPerTok0)
             await logBalances("Balances after swap:", [addr2], [asset0, asset1])
 
             const swapAmount1 = ofToken(asset1)(10 ** 7)
@@ -482,7 +482,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
 
             const refPerTok2 = await UniswapV3UsdCollateral.refPerTok()
-            expect(refPerTok2).to.be.gt(refPerTok1)
+            expect(refPerTok2).to.equal(refPerTok1)
 
             // Decrease liquidity by ~50k,50k
             const decLiquidity = (await UniswapV3Wrapper.balanceOf(owner.address)).div(2)
@@ -501,7 +501,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
 
             const refPerTok3 = await UniswapV3UsdCollateral.refPerTok()
-            expect(refPerTok3).to.be.closeTo(refPerTok2, fp("0.000000000001"))
+            expect(refPerTok3).to.equal(refPerTok2)
 
             // Swap ~1M asset0 for asset1 with addr1
             const swapAmount2 = ofToken(asset0)(10 ** 5)
@@ -523,7 +523,7 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
             expect(await UniswapV3UsdCollateral.status()).to.equal(CollateralStatus.SOUND)
 
             const refPerTok4 = await UniswapV3UsdCollateral.refPerTok()
-            expect(refPerTok4).to.be.gt(refPerTok3)
+            expect(refPerTok4).to.equal(refPerTok3)
         })
     })
 
