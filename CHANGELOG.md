@@ -58,3 +58,4 @@ Commit [d757d3a5a6097ae42c71fc03a7c787ec001d2efc](https://github.com/reserve-pro
 - Introduce config struct to encapsulate Collateral constructor params more neatly
 - In general it should be easier to write Collateral plugins. Implementors should _only_ ever have to override 4 functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, and `claimRewards()`.
 - Add `.div(1 - maxTradeSlippage)` to calculation of `shortfallSlippage` in RecollateralizationLib.sol:L188.
+- Bugfix: Do not handout RSR rewards when no one is staked
