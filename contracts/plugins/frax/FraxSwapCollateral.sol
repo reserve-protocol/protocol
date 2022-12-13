@@ -170,12 +170,12 @@ contract FraxSwapCollateral is Collateral {
 
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
-        (uint256 _reserve0, uint256 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
+        (uint192 _reserve0, uint192 _reserve1,) = IFraxswapPair(address(erc20)).getReserves();
 
-        uint192 priceTotal = token0chainlinkFeed.price(oracleTimeout).mulu(_reserve0) + 
-            token1chainlinkFeed.price(oracleTimeout).mulu(_reserve1);
+        uint192 priceTotal = token0chainlinkFeed.price(oracleTimeout).mul(_reserve0) + 
+            token1chainlinkFeed.price(oracleTimeout).mul(_reserve1);
 
-        return priceTotal.divu( IFraxswapPair(address(erc20)).totalSupply() );
+        return priceTotal.div( uint192(IFraxswapPair(address(erc20)).totalSupply()) );
 
     }
 
