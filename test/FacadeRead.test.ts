@@ -8,6 +8,7 @@ import {
   ERC20Mock,
   FacadeRead,
   FacadeTest,
+  MockV3Aggregator,
   StaticATokenMock,
   StRSRP1,
   TestIBasketHandler,
@@ -183,6 +184,29 @@ describe('FacadeRead contract', () => {
       expect(breakdown[1]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[2]).to.be.closeTo(fp('0.25'), 10)
       expect(breakdown[3]).to.be.closeTo(fp('0.25'), 10)
+      expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
+      expect(targets[3]).to.equal(ethers.utils.formatBytes32String('USD'))
+    })
+
+    it('Should return basketBreakdown correctly for tokens with (0,FIXED_MAX) price', async () => {
+      const chainlinkFeed: MockV3Aggregator = <MockV3Aggregator>await ethers.getContractAt('MockV3Aggregator', await tokenAsset.chainlinkFeed())
+      // set price of dai to 0
+      await chainlinkFeed.updateAnswer(0)
+      await main.connect(owner).pause()
+      const [erc20s, breakdown, targets] = await facade.callStatic.basketBreakdown(rToken.address)
+      expect(erc20s.length).to.equal(4)
+      expect(breakdown.length).to.equal(4)
+      expect(targets.length).to.equal(4)
+      expect(erc20s[0]).to.equal(token.address)
+      expect(erc20s[1]).to.equal(usdc.address)
+      expect(erc20s[2]).to.equal(aToken.address)
+      expect(erc20s[3]).to.equal(cToken.address)
+      expect(breakdown[0]).to.equal(fp('0')) // dai
+      expect(breakdown[1]).to.equal(fp('1')) // usdc
+      expect(breakdown[2]).to.equal(fp('0')) // adai
+      expect(breakdown[3]).to.equal(fp('0')) // cdai
       expect(targets[0]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[1]).to.equal(ethers.utils.formatBytes32String('USD'))
       expect(targets[2]).to.equal(ethers.utils.formatBytes32String('USD'))
