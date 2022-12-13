@@ -15,14 +15,30 @@ Contract source code: [UniconvexFiatCollateral](./UniconvexFiatCollateral.sol)
 `{target} = {UoA}` `USD`  
 `{UoA}` `USD`
 
+#### Implementation details and behavior
+
 `{tok}` Collateral token, strictly speaking, is Convex LP token - the one users get for staking Curve LP tokens in Convex pools. Since all invariant-related math stays the same as in Curve, we don't mention Convex in `{ref}` naming.
 
-`{ref}` Synthetic reference unit expressing StableSwap
-invariant (v1), which is
+`{ref}` Synthetic reference unit best expressed as 
 
+$$\dfrac{D}{L}$$ 
+
+where 
+D = total amount of coins when the pool in in balanced state and all the coins have an equal price
+L = total liquidity
+
+The constant D is the same as in StableSwap invariant (v1) 
  $$An^n \sum{x_{i}} + D = ADn^n + \dfrac{D^{n+1}}{n^n\prod{x_{i}}}$$ $$(ё)$$
 
-TODO behavior - grows on trade fees, unchanged on fee-less trades
+which can be seen as a mixture of Uniswap's constant-product invariant and constant-price invariant. Curve holds this equation true on every operation. 
+* D stays unchanged on fee-less swaps and grows when pool receives fees without fees,
+* L stays unchanged on swaps
+* both D and L change on liquidity added / removed in such a way that D / L stays the same
+
+The 3 bullet points above combined mean that `{ref}` keeps its value on every kind operation apart from swaps with fees, in which case `{ref}` grows. 
+
+
+`{target}` = `{UoA}`
 
 UniconvexFiatCollateral for tokens pegged to usd or eurocoins like stable pools DAI-USDC-USDT
 * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} == {UoA}
