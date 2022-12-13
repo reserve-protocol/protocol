@@ -48,10 +48,11 @@ interface IRewardable {
  * whether it is used as RToken backing or not. Any token that can report a price in the UoA
  * is eligible to be an asset.
  */
-interface IAsset {
-  /// Refresh last price
+interface IAsset is IRewardable {
+  /// Refresh saved price
   /// The Reserve protocol calls this at least once per transaction, before relying on
   /// the Asset's other functions.
+  /// @dev Called immediately after deployment, before use
   function refresh() external;
 
   /// Should not revert
@@ -60,9 +61,10 @@ interface IAsset {
   function price() external view returns (uint192 low, uint192 high);
 
   /// Should not revert
-  /// Should be nonzero when the asset might be worth selling
-  /// @return {UoA/tok} A lot price to use for trade sizing
-  function lotPrice() external view returns (uint192);
+  /// lotLow should be nonzero when the asset might be worth selling
+  /// @return lotLow {UoA/tok} The lower end of the lot price estimate
+  /// @return lotHigh {UoA/tok} The upper end of the lot price estimate
+  function lotPrice() external view returns (uint192 lotLow, uint192 lotHigh);
 
   /// @return {tok} The balance of the ERC20 in whole tokens
   function bal(address account) external view returns (uint192);
@@ -94,6 +96,14 @@ enum CollateralStatus {
  * @notice A subtype of Asset that consists of the tokens eligible to back the RToken.
  */
 interface ICollateral is IAsset {
+  /// Emitted whenever the collateral status is changed
+  /// @param newStatus The old CollateralStatus
+  /// @param newStatus The updated CollateralStatus
+  event CollateralStatusChanged(
+    CollateralStatus indexed oldStatus,
+    CollateralStatus indexed newStatus
+  );
+
   /// @dev refresh()
   /// Refresh exchange rates and update default status.
   /// VERY IMPORTANT: In any valid implemntation, status() MUST become DISABLED in refresh() if
@@ -305,6 +315,8 @@ The same wrapper approach is easily used to tokenize positions in protocols that
 
 Because it’s called at the beginning of many transactions, `refresh()` should never revert. If `refresh()` encounters a critical error, it should change the Collateral contract’s state so that `status()` becomes `DISABLED`.
 
+To prevent `refresh()` from reverting due to overflow or other numeric errors, the base collateral plugin [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) has a `tryPrice()` function that encapsulates both the oracle lookup as well as any subsequent math required. This function is always executed via a try-catch in `price()`/`lotPrice()`/`refresh()`. Extenders of this contract should not have to override any of these three functions, just `tryPrice()`.
+
 ### The `IFFY` status should be temporary.
 
 If a contract's `status()` has been `IFFY` on every call to `refresh()` for some (configured, finite) amount of time, then the status() should become `DISABLED`.
@@ -315,11 +327,15 @@ Unless there's a good reason for a specific collateral to use a different mechan
 
 If `price()` returns 0 for the lower-bound price estimate `low`, the collateral should pass-through the [slow default](#types-of-default) process where it is first marked `IFFY` and eventually transitioned to `DISABLED` if the behavior is sustained. `status()` should NOT return `SOUND`.
 
+If a collateral implementor extends [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol), the logic inherited in the `refresh()` function already satisfies this property.
+
 ### Collateral must default if `refPerTok()` falls.
 
-Notice that `refresh()` is the only non-view method on the ICollateral interface, so it's the only place that can deal with a state change like this. However, `refresh()` is carefully called by any flow through the RToken protocol that requires good prices or sound collateral. So, we need just the following quite specific property:
+Notice that `refresh()` is the only non-view method on the ICollateral interface, so it's the only place that can deal with a state change like this. `refresh()` is carefully called by any flow through the RToken protocol that requires good prices or sound collateral. So, we need just the following quite specific property:
 
 If `refresh()` is called twice, and `refPerTok()` just after the second call is lower than `refPerTok()` just after the first call, then `status()` must change to `CollateralStatus.DISABLED` immediately. This is true for any collateral plugin. For some collateral plugins it will be obvious that `refPerTok()` cannot decrease, in which case no checks are required.
+
+If a collateral implementor extends [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol), the logic inherited in the `refresh()` function already satisfies this property.
 
 ### Defaulted Collateral must stay defaulted.
 
@@ -330,7 +346,7 @@ If `status()` ever returns `CollateralStatus.DISABLED`, then it must always retu
 Protocol contracts that hold an asset for any significant amount of time are all able to call `claimRewards()` via delegatecall. The plugin contract should include whatever logic is necessary to claim rewards from all relevant defi protocols. These rewards are often emissions from other protocols, but may also be something like trading fees in the case of UNIV3 collateral. To take advantage of this:
 
 - `claimRewards()` should expected to be executed via delegatecall. It must claim all rewards that may be earned by holding the asset ERC20.
-- The `RewardsClaimed` event should be emitted for each claim.
+- The `RewardsClaimed` event should be emitted for each token type claimed.
 
 ### Smaller Constraints
 
@@ -343,6 +359,13 @@ The values returned by the following view methods should never change:
 - `erc20Deciamls()`
 
 ## Function-by-function walkthrough
+
+Collateral implementors who extend from [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can restrict their attention to overriding the following four functions:
+
+- `tryPrice()` (not on the ICollateral interface; used by `price()`/`lotPrice()`/`refresh()`)
+- `refPerTok()`
+- `targetPerRef()`
+- `claimRewards()`
 
 ### refresh()
 
@@ -422,7 +445,9 @@ Should be gas-efficient.
 
 Should never revert.
 
-Should be nonzero while the asset is worth selling.
+Lower estimate must be <= upper estimate.
+
+The low estimate should be nonzero while the asset is worth selling.
 
 Should be gas-efficient.
 
@@ -459,6 +484,6 @@ If implementing a demurrage-based collateral plugin, make sure your targetName f
 
 ## Practical Advice from Previous Work
 
-In our own collateral plugin development, we found it useful to implement Collateral plugins by extended a common, abstract contract. Consider subclassing [AbstractCollateral.sol](../contracts/plugins/assets/FiatCollateral.sol) and its parent class [Asset.sol](../contracts/plugins/assets/Asset.sol) for your own Collateral plugin.
+In most cases [Fiat Collateral](../contracts/plugins/asset/FiatCollateral.sol) can be extended, pretty easily, to support a new collateral type. This allows the collateral developer to limit their attention to the overriding of four functions: `tryPrice()`, `refPerTok()`, `targetPerRef()`, `claimRewards()`.
 
 If you're quite stuck, you might also find it useful to read through our other Collateral plugins as models, found in our repository in `/contracts/plugins/assets`.
