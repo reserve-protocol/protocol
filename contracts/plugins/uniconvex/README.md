@@ -1,12 +1,29 @@
-Implements
+# Convex Curve Pool Plugins
 
-https://gitcoin.co/issue/29515
-Collateral Plugin - Convex - Volatile Curve Pools 
+### Resources used
 
-https://gitcoin.co/issue/29516
-Collateral Plugin - Convex - Stable Curve Pools
+[Curve V1 whitepaper](https://curve.readthedocs.io/_/downloads/en/latest/pdf/)  
+[Curve V2 whitepaper](https://classic.curve.fi/files/crypto-pools-paper.pdf) 
+[Curve online docs](https://resources.curve.fi/base-features/understanding-curve) 
 
-What are the collateral token, reference unit, and target unit for this plugins?
+## Convex Curve Fiat Collateral
+
+Contract source code: [UniconvexFiatCollateral](./UniconvexFiatCollateral.sol)
+
+`{tok}` `Convex LP token`  
+`{ref}` Synthetic reference `CURVED<A0>...<AN>` where N is the number of assets in a Curve pool, like `CURVEDDAIUSDCUSDT` for DAI/USDC/USDT  
+`{target} = {UoA}` `USD`  
+`{UoA}` `USD`
+
+`{tok}` Collateral token, strictly speaking, is Convex LP token - the one users get for staking Curve LP tokens in Convex pools. Since all invariant-related math stays the same as in Curve, we don't mention Convex in `{ref}` naming.
+
+`{ref}` Synthetic reference unit expressing StableSwap
+invariant (v1), which is
+
+ $$An^n \sum{x_{i}} + D = ADn^n + \dfrac{D^{n+1}}{n^n\prod{x_{i}}}$$ $$(ё)$$
+
+TODO behavior - grows on trade fees, unchanged on fee-less trades
+
 UniconvexFiatCollateral for tokens pegged to usd or eurocoins like stable pools DAI-USDC-USDT
 * Expected: {tok} == {ref}, {ref} is pegged to {target} or defaults, {target} == {UoA}
 
@@ -42,7 +59,7 @@ References:
 
 https://classic.curve.fi/files/CurveDAO.pdf
 https://classic.curve.fi/files/crypto-pools-paper.pdf   v2
-https://classic.curve.fi/files/stableswap-paper.pdf     v1
+https://classic.curve.fi/files/stableswap-paper.pdf     (v1)
 https://curve.readthedocs.io/exchange-cross-asset-swaps.html
 
 https://www.curve.fi/contracts
@@ -71,3 +88,11 @@ https://github.com/yearn/yearn-lens/tree/master/contracts/Oracle/Calculations
 //TODO REPORT_GAS FOR REFRESH
 //TODO use shutdown in REFRESH
 //TODO shutdown in refresh
+
+### Related Gitcoin bounties
+[Collateral Plugin - Convex - Volatile Curve Pools
+](https://gitcoin.co/issue/29515)   
+[Collateral Plugin - Convex - Stable Curve Pools](https://gitcoin.co/issue/29516)
+
+############## notes
+// also allowed to implement price as min price for some circumferences https://dev.gearbox.fi/docs/documentation/oracle/curve-pricefeed/
