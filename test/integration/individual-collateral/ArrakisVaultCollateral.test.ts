@@ -1,7 +1,8 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers'
 import { expect } from 'chai'
 import { BigNumber, ContractFactory, Wallet } from 'ethers'
-import hre, { ethers, waffle } from 'hardhat'
+import {BigNumber as BigNum}   from 'bignumber.js'
+import hre, { ethers, network, waffle } from 'hardhat'
 import { IMPLEMENTATION } from '../../fixtures'
 import { defaultFixture, ORACLE_TIMEOUT } from './fixtures'
 import { getChainId } from '../../../common/blockchain-utils'
@@ -38,17 +39,21 @@ import {
   TestIMain,
   TestIRToken,
   ISwapRouter,
+  IUniswapV3Pool,
 } from '../../../typechain'
 import { useEnv } from '#/utils/env'
 import forkBlockNumber from '../fork-block-numbers'
+import Big from 'big.js'
 
 const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet
 const holderUSDCWETH = '0xCB16F82E5949975f9Cf229C91c3A6D43e3B32a9E'
-// absolute 🐋
-const wethWhale = '0xF04a5cC80B1E94C69B48f5ee68a08CD2F09A7c3E'
+// absolute 🐋s
+const wethWhale = '0x06920c9fc643de77b99cb7670a944ad31eaaa260'
+const usdcWhale = '0x55fe002aeff02f77364de339a1292923a15844b8'
 const swapRouter = '0xE592427A0AEce92De3Edee1F18E0157C05861564'
+let gelatoManagerAddr: string
 
 const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 
@@ -56,6 +61,46 @@ const NO_PRICE_DATA_FEED = '0x51597f405303C4377E36123cBc172b13269EA163'
 const describeFork = useEnv('FORK') ? describe : describe.skip
 
 const MAINNET_RPC_URL = useEnv(['MAINNET_RPC_URL', 'ALCHEMY_MAINNET_RPC_URL'])
+
+// Fee amounts enum - uniswap V3
+const FEE_SIZE = 3
+export enum FeeAmount {
+  LOW = 500,
+  MEDIUM = 3000,
+  HIGH = 10000,
+}
+
+// path encoding function for uniswap v3 swaps
+export function encodePath(path: string[], fees: FeeAmount[]): string {
+  if (path.length != fees.length + 1) {
+    throw new Error('path/fee lengths do not match')
+  }
+
+  let encoded = '0x'
+  for (let i = 0; i < fees.length; i++) {
+    // 20 byte encoding of the address
+    encoded += path[i].slice(2)
+    // 3 byte encoding of the fee
+    encoded += fees[i].toString(16).padStart(2 * FEE_SIZE, '0')
+  }
+  // encode the final token
+  encoded += path[path.length - 1].slice(2)
+
+  return encoded.toLowerCase()
+}
+
+// returns the sqrt price as a 64x96
+function encodePriceSqrt(reserve1: string, reserve0: string) {
+  return new BigNum(reserve1)
+    .div(reserve0)
+    .sqrt()
+    .multipliedBy(new BigNum(2).pow(96))
+    .integerValue(3)
+    .toString();
+}
+
+
+
 
 describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, function () {
   let owner: SignerWithAddress
@@ -162,6 +207,21 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await ethers.getContractAt('ArrakisVaultMock', networkConfig[chainId].tokens.arrakisUSDCWETH || '')
     )
 
+    gelatoManagerAddr = ZERO_ADDRESS
+
+    await whileImpersonating(gelatoManagerAddr, async (gelatoSigner) => {
+
+      await arrakisUsdcWeth.connect(gelatoSigner)
+      .executiveRebalance(
+       197880,
+       211740,
+       0,
+       0,
+       false
+      )
+
+    })
+
     // Deploy arrakisUsdcWeth collateral plugin
     ArrakisVaultCollateralFactory = await ethers.getContractFactory('ArrakisVaultCollateral', {
       libraries: { OracleLib: oracleLib.address },
@@ -173,6 +233,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         1,
         networkConfig[chainId].chainlinkFeeds.USDC as string, // usdc chainlink feed
         networkConfig[chainId].chainlinkFeeds.ETH as string, // weth (eth) chainlink feed 
+        6,
+        18,
         arrakisUsdcWeth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -259,15 +321,13 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await arrakisVaultCollateral.erc20()).to.equal(arrakisUsdcWeth.address)
       expect(await arrakisUsdcWeth.decimals()).to.equal(18)
       expect(await arrakisVaultCollateral.targetName()).to.equal(ethers.utils.formatBytes32String('ASSQRTUSDCWETH'))
-      expect(await arrakisVaultCollateral.refPerTok()).to.be.closeTo(fp('0.01114'), fp('0.00001'))
+      expect(await arrakisVaultCollateral.refPerTok()).to.be.closeTo(fp('0.01114619'), fp('0.00000001'))
       expect(await arrakisVaultCollateral.targetPerRef()).to.equal(fp('1'))
       expect(await arrakisVaultCollateral.pricePerTarget()).to.be.closeTo(fp('1'), fp('0.01'))
       expect(await arrakisVaultCollateral.prevReferencePrice()).to.equal(await arrakisVaultCollateral.refPerTok())
-      expect(await arrakisVaultCollateral.strictPrice()).to.be.closeTo(fp('5301000'), fp('1000')) // close to $4.27
+      expect(await arrakisVaultCollateral.strictPrice()).to.be.closeTo(fp('5330061.95'), fp('0.01')) // close to $4.27
 
-      // TODO: Check claim data 
-      // await expect(arrakisVaultCollateral.claimRewards())
-      //   .to.emit(undefined);
+      expect(await arrakisVaultCollateral.claimRewards()).to.not.emit(arrakisVaultCollateral, 'RewardsClaimed')
       expect(await arrakisVaultCollateral.maxTradeVolume()).to.equal(config.rTokenMaxTradeVolume)
 
       // Should setup contracts
@@ -308,7 +368,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const [isFallback, price] = await basketHandler.price(true)
       expect(isFallback).to.equal(false)
       //TODO: shouldn't this be the same as strictPrice()?
-      expect(price).to.be.closeTo(fp('475618000'), fp('1000'))
+      expect(price).to.be.closeTo(fp('478195000'), fp('1000'))
+      // expect(price).to.be.closeTo(fp('69'), fp('1000'))
 
 
       // Check RToken price
@@ -316,10 +377,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // await arrakisUsdcWeth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
       await arrakisUsdcWeth.connect(addr1).approve(rToken.address, ethers.constants.MaxUint256)
       const bal = await arrakisUsdcWeth.balanceOf(addr1.address)
-      console.log('balance:')
-      console.log(bal.toString())
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('475618000'), fp('1000'))
+      expect(await rTokenAsset.strictPrice()).to.be.closeTo(fp('478195000'), fp('1000'))
     })
 
     // Validate constructor arguments
@@ -331,8 +390,10 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         ArrakisVaultCollateralFactory.deploy(
           fp('1'),
           2,
-          networkConfig[chainId].chainlinkFeeds.ETH as string,
           networkConfig[chainId].chainlinkFeeds.USDC as string,
+          networkConfig[chainId].chainlinkFeeds.ETH as string,
+          6,
+          18,
           arrakisUsdcWeth.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -347,8 +408,10 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         ArrakisVaultCollateralFactory.deploy(
           fp('1'),
           4,
-          networkConfig[chainId].chainlinkFeeds.ETH as string,
           networkConfig[chainId].chainlinkFeeds.USDC as string,
+          networkConfig[chainId].chainlinkFeeds.ETH as string,
+          6,
+          18,
           arrakisUsdcWeth.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
@@ -385,52 +448,90 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       const aUsdcWethPrice1: BigNumber = await arrakisVaultCollateral.strictPrice() // ~ $4.274
       const aUsdcWethRefPerTok1: BigNumber = await arrakisVaultCollateral.refPerTok() // ~ 1.00939
 
-      expect(aUsdcWethPrice1).to.be.closeTo(fp('5301000'), fp('1000'))
-      expect(aUsdcWethRefPerTok1).to.be.closeTo(fp('0.01114'), fp('0.00001'))
+      expect(aUsdcWethPrice1).to.be.closeTo(fp('5330061.954'), fp('0.001'))
+      expect(aUsdcWethRefPerTok1).to.be.closeTo(fp('0.01114619'), fp('0.00000001'))
 
       // Check total asset value
       const totalAssetValue1: BigNumber = await facadeTest.callStatic.totalAssetValue(
         rToken.address
       )
-      expect(totalAssetValue1).to.be.closeTo(fp('4756'), fp('1')) // approx $42.3 in value
+      expect(totalAssetValue1).to.be.closeTo(fp('4781'), fp('1')) // approx $42.3 in value
 
       //perform swap - increasing refPerTok()
       const router = <ISwapRouter>(
         await ethers.getContractAt("ISwapRouter", swapRouter)
       )
 
+      let wethBalBefore;
+      const positionId = await arrakisUsdcWeth.getPositionID()
+      const uniPool = await ethers.getContractAt("IUniswapV3Pool", await arrakisUsdcWeth.pool())
+      const lBefore = await uniPool.liquidity() 
+      const posBefore = await uniPool.positions(positionId)
+      const vaultLiquidityBefore = await posBefore._liquidity
+
+      await whileImpersonating(usdcWhale, async (usdcWhaleSigner) => {
+        await usdc.connect(usdcWhaleSigner).transfer(addr1.address, bn('10000000e6')) // big stacks omegalol
+      })
+
+      const gelato = await arrakisUsdcWeth.GELATO()
+      // gelato bots have to update the params, cannot be done through refresh() :c
+
+
+      // console.log('-----------------------')
+      // console.log('prices after swaps')
       await whileImpersonating(wethWhale, async (wethWhaleSigner) => {
         await weth.connect(addr1).approve(router.address, ethers.constants.MaxUint256)
         await usdc.connect(addr1).approve(router.address, ethers.constants.MaxUint256)
-        await weth.connect(wethWhaleSigner).transfer(addr1.address, bn('10e18')) // big stacks omegalol
-        console.log('transferred')
+        await weth.connect(wethWhaleSigner).transfer(addr1.address, bn('10000e18')) // big stacks omegalol
+        // console.log('transferred')
+        wethBalBefore = await weth.balanceOf(addr1.address);
         // swap weth <-> usdc back and forth 10 times (lol) -> the fees paid should increase refPerTok()
         let addr1WethBal
-        for (let i = 0; i < 3; i++) {
+        for (let i = 0; i < 20; i++) {
           addr1WethBal = await weth.balanceOf(addr1.address)
 
-          const inputParams = 
-          {
-            path: [weth.address, usdc.address],
-            recipient: addr1.address,
-            deadline: 9999999999, // long deadline lol
-            amountInMaximum: 1,
-            amountOutMinimum: 100,
-          }
+          let blockNum = (await ethers.provider.getBlockNumber())
+          let timestamp = (await ethers.provider.getBlock(blockNum)).timestamp
+          let deadline = timestamp + 60
 
-          await router.connect(addr1).exactInput(
-            inputParams
-          )
+          // TODO: weird price changes from swaps
+          // doing this actually decreases pricePerTok (wtf??)
+          await router.connect(addr1).exactOutputSingle({
+            tokenIn: usdc.address,
+            tokenOut: weth.address,
+            fee: FeeAmount.MEDIUM,
+            recipient: addr1.address,
+            deadline: deadline,
+            amountOut: fp('1'),
+            amountInMaximum: bn('1700e6'),
+            sqrtPriceLimitX96: 0
+          })
+
+          // but this is fine? -> actually increases like it's meant to
+          await router.connect(addr1).exactOutputSingle({
+            tokenIn: weth.address,
+            tokenOut: usdc.address,
+            fee: FeeAmount.MEDIUM,
+            recipient: addr1.address,
+            deadline: deadline,
+            amountOut: bn('1000e6'),
+            amountInMaximum: fp('10'),
+            sqrtPriceLimitX96: 0
+          })
 
 
         }
 
       })
 
-      await advanceTime(100)
-      await advanceBlocks(100)
+      // console.log('-----------------------')
+      
+      // const wethBalAfter = await weth.balanceOf(addr1.address)
+      // const lAfter = await uniPool.liquidity() 
+      // const posAfter = await uniPool.positions(positionId)
+      // const vaultLiquidityAfter = await posBefore._liquidity
 
-      // Refresh cToken manually (required)
+      // Refresh arrakisVault manually (required)
       await arrakisVaultCollateral.refresh()
       expect(await arrakisVaultCollateral.status()).to.equal(CollateralStatus.SOUND)
 
@@ -442,8 +543,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(aUsdcWethPrice2).to.be.gt(aUsdcWethPrice1)
       expect(aUsdcWethRefPerTok2).to.be.gt(aUsdcWethRefPerTok1)
 
-      expect(aUsdcWethPrice2).to.be.closeTo(fp('4.321'), fp('0.001'))
-      expect(aUsdcWethRefPerTok2).to.be.closeTo(fp('1.0205'), fp('0.00001'))
+      expect(aUsdcWethPrice2).to.be.closeTo(fp('5330061.984'), fp('0.01'))
+      expect(aUsdcWethRefPerTok2).to.be.closeTo(fp('0.01114639'), fp('0.00000001'))
 
       // Check total asset value increased
       const totalAssetValue2: BigNumber = await facadeTest.callStatic.totalAssetValue(
@@ -458,80 +559,28 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await rToken.balanceOf(addr1.address)).to.equal(0)
       expect(await rToken.totalSupply()).to.equal(0)
 
-      // Check balances - Fewer cTokens should have been sent to the user
+      // Check balances - Fewer arrakisVaults should have been sent to the user
       const newBalanceAddr1aUsdcWeth: BigNumber = await arrakisUsdcWeth.balanceOf(addr1.address)
 
-      // Check received tokens represent ~$42.7 in value at current prices
-      expect(newBalanceAddr1aUsdcWeth.sub(balanceAddr1aUsdcWeth)).to.be.closeTo(bn('9.8e18'), bn('0.1e18'))
+      expect(newBalanceAddr1aUsdcWeth.sub(balanceAddr1aUsdcWeth)).to.be.closeTo(bn('89.7151e13'), bn('0.0001e13'))
 
       // Check remainders in Backing Manager
-      expect(await arrakisUsdcWeth.balanceOf(backingManager.address)).to.be.closeTo(bn('0.1e18'), bn('0.01e18'))
+      expect(await arrakisUsdcWeth.balanceOf(backingManager.address)).to.be.closeTo(bn('0.0016e13'), bn('0.0001e13'))
 
       //  Check total asset value (remainder)
       expect(await facadeTest.callStatic.totalAssetValue(rToken.address)).to.be.closeTo(
-        fp('0.46'), // ~= 0.86 usd (from above)
-        fp('0.01')
+        fp('0.085'), 
+        fp('0.001')
       )
     })
   })
 
-  // TODO: check for rewards
-  // Note: Even if the collateral does not provide reward tokens, this test should be performed to check that
-  // claiming calls throughout the protocol are handled correctly and do not revert.
-  // describe('Rewards', () => {
-  //   it('Should be able to claim rewards (if applicable)', async () => {
-  //     const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
-  //     const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
-
-  //     // Try to claim rewards at this point - Nothing for Backing Manager
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     await expectEvents(backingManager.claimRewards(), [
-  //       {
-  //         contract: backingManager,
-  //         name: 'RewardsClaimed',
-  //         args: [compToken.address, bn(0)],
-  //         emitted: true,
-  //       },
-  //     ])
-
-  //     // No rewards so far
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     // Provide approvals for issuances
-  //     await arrakisUsdcWeth.connect(addr1).approve(rToken.address, toBNDecimals(issueAmount, 8).mul(100))
-
-  //     // Issue rTokens
-  //     await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
-
-  //     // Check RTokens issued to user
-  //     expect(await rToken.balanceOf(addr1.address)).to.equal(issueAmount)
-
-  //     // Now we can claim rewards - check initial balance still 0
-  //     expect(await compToken.balanceOf(backingManager.address)).to.equal(0)
-
-  //     // Advance Time
-  //     await advanceTime(8000)
-
-  //     // Claim rewards
-  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-  //     // Check rewards both in COMP and stkAAVE
-  //     const rewardsCOMP1: BigNumber = await compToken.balanceOf(backingManager.address)
-
-  //     expect(rewardsCOMP1).to.be.gt(0)
-
-  //     // Keep moving time
-  //     await advanceTime(3600)
-
-  //     // Get additional rewards
-  //     await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
-
-  //     const rewardsCOMP2: BigNumber = await compToken.balanceOf(backingManager.address)
-
-  //     expect(rewardsCOMP2.sub(rewardsCOMP1)).to.be.gt(0)
-  //   })
-  // })
+  describe('Rewards', () => {
+    it('Should be able to claim rewards (if applicable)', async () => {
+      // since there are no rewards to claim, we not check to see that it doesn't emit anything
+      await expectEvents(backingManager.claimRewards(), [])
+    })
+  })
 
   describe('Price Handling', () => {
     it('Should handle invalid/stale Price', async () => {
@@ -550,8 +599,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await arrakisVaultCollateral.refresh()
       expect(await arrakisVaultCollateral.status()).to.equal(CollateralStatus.IFFY)
 
-      // CTokens Collateral with no price
-      const nonpriceCtokenCollateral: ArrakisVaultCollateral = <ArrakisVaultCollateral>await (
+      // ArrakisVaults Collateral with no price
+      const nonpriceArrakisvaultCollateral: ArrakisVaultCollateral = <ArrakisVaultCollateral>await (
         await ethers.getContractFactory('ArrakisVaultCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -560,6 +609,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         1,
         NO_PRICE_DATA_FEED, // TODO: figure out how this should be configured
         NO_PRICE_DATA_FEED,
+        6, 
+        18,
         arrakisUsdcWeth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -568,15 +619,15 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         delayUntilDefault,
       )
 
-      // CTokens - Collateral with no price info should revert
-      await expect(nonpriceCtokenCollateral.strictPrice()).to.be.reverted
+      // ArrakisVaults - Collateral with no price info should revert
+      await expect(nonpriceArrakisvaultCollateral.strictPrice()).to.be.reverted
 
       // Refresh should also revert - status is not modified
-      await expect(nonpriceCtokenCollateral.refresh()).to.be.reverted
-      expect(await nonpriceCtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
+      await expect(nonpriceArrakisvaultCollateral.refresh()).to.be.reverted
+      expect(await nonpriceArrakisvaultCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceCtokenCollateral: ArrakisVaultCollateral = <ArrakisVaultCollateral>await (
+      const invalidpriceArrakisvaultCollateral: ArrakisVaultCollateral = <ArrakisVaultCollateral>await (
         await ethers.getContractFactory('ArrakisVaultCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
@@ -585,6 +636,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         1,
         mockChainlinkFeed.address, // TODO: figure out how this should be configured
         mockChainlinkFeed.address,
+        6,
+        18,
         arrakisUsdcWeth.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
@@ -593,16 +646,16 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         delayUntilDefault,
       )
 
-      await setOraclePrice(invalidpriceCtokenCollateral.address, bn(0))
+      await setOraclePrice(invalidpriceArrakisvaultCollateral.address, bn(0))
 
       // Reverts with zero price
-      await expect(invalidpriceCtokenCollateral.strictPrice()).to.be.revertedWith(
+      await expect(invalidpriceArrakisvaultCollateral.strictPrice()).to.be.revertedWith(
         'PriceOutsideRange()'
       )
 
       // Refresh should mark status IFFY
-      await invalidpriceCtokenCollateral.refresh()
-      expect(await invalidpriceCtokenCollateral.status()).to.equal(CollateralStatus.IFFY)
+      await invalidpriceArrakisvaultCollateral.refresh()
+      expect(await invalidpriceArrakisvaultCollateral.status()).to.equal(CollateralStatus.IFFY)
     })
   })
 
@@ -623,6 +676,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         1, // token0 is non-fiat, while token1 is
         mockChainlinkFeed.address,
         mockChainlinkFeed.address,
+        6,
+        18,
         await arrakisVaultCollateral.erc20(),
         await arrakisVaultCollateral.maxTradeVolume(),
         await arrakisVaultCollateral.oracleTimeout(),
@@ -654,7 +709,7 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newArrakisVaultCollateral.status()).to.equal(CollateralStatus.DISABLED)
 
       // Nothing changes if attempt to refresh after default
-      // CToken
+      // ArrakisVault
       const prevWhenDefault: BigNumber = await newArrakisVaultCollateral.whenDefault()
       await expect(newArrakisVaultCollateral.refresh()).to.not.emit(
         newArrakisVaultCollateral,
@@ -666,11 +721,11 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
 
     // Test for hard default
     it('Updates status in case of hard default', async () => {
-      // Note: In this case requires to use a CToken mock to be able to change the rate
-      const FraxSwapPairMockFactory: ContractFactory = await ethers.getContractFactory('FraxSwapPairMock')
+      // Note: In this case requires to use a ArrakisVault mock to be able to change the rate
+      const ArrakisVaultMockFactory: ContractFactory = await ethers.getContractFactory('ArrakisVaultMock')
       const symbol = await arrakisUsdcWeth.symbol()
-      const aUsdcWethMock: FraxSwapPairMock = <FraxSwapPairMock>(
-        await FraxSwapPairMockFactory.deploy(
+      const aUsdcWethMock: ArrakisVaultMock = <ArrakisVaultMock>(
+        await ArrakisVaultMockFactory.deploy(
           symbol + ' Token', 
           symbol, 
           networkConfig[chainId].tokens.WETH as string,
@@ -691,6 +746,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         1,
         await arrakisVaultCollateral.token0chainlinkFeed(),
         await arrakisVaultCollateral.token1chainlinkFeed(),
+        6,
+        18,
         aUsdcWethMock.address,
         await arrakisVaultCollateral.maxTradeVolume(),
         await arrakisVaultCollateral.oracleTimeout(),
@@ -709,7 +766,7 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       // pool without changing the supply of shares lol.
       await aUsdcWethMock.manipulateReserves(fp('1000'), fp('42700')) // each token supplies are down by 90%, oof!
 
-      // Force updates - Should update whenDefault and status for Atokens/CTokens
+      // Force updates - Should update whenDefault and status for Atokens/ArrakisVaults
       await expect(newArrakisVaultCollateral.refresh())
         .to.emit(newArrakisVaultCollateral, 'CollateralStatusChanged')
         .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
@@ -733,6 +790,8 @@ describeFork(`ArrakisVaultCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
           2,
           invalidChainlinkFeed.address,
           invalidChainlinkFeed.address,
+          6,
+          18,
           await arrakisVaultCollateral.erc20(),
           await arrakisVaultCollateral.maxTradeVolume(),
           await arrakisVaultCollateral.oracleTimeout(),

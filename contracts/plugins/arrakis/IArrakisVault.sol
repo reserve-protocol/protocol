@@ -7,5 +7,6 @@ interface IArrakisVault {
       uint256 amount1Current
     );
     function totalSupply() external view returns (uint256);
+    function pool() external view returns (address);
 
 }

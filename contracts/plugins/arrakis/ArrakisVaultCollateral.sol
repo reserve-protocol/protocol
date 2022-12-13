@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "contracts/plugins/assets/AbstractCollateral.sol";
 import "contracts/libraries/Fixed.sol";
 import "./IArrakisVault.sol";
+import "./IUniswapV3Pool.sol";
 
 /**
  * @title ArrakisVaultCollateral
@@ -26,11 +27,14 @@ contract ArrakisVaultCollateral is Collateral {
     // 00...010 -> token1 is pegged to UoA
     // 00...011 -> both of them are pegged to UoA;
     uint256 public immutable tokenisFiat;
+    address public immutable uniswapPool; // address of underlying token's uniswap pool
 
     uint192 public prevReferencePrice; // previous rate, {collateral/reference}
 
     AggregatorV3Interface public immutable token0chainlinkFeed;
     AggregatorV3Interface public immutable token1chainlinkFeed;
+    int8 public immutable token0Decimals;
+    int8 public immutable token1Decimals;
 
     /// @param tokenisFiat_ bitmap of which tokens are pegged to UoA 
     /// @param token0chainlinkFeed_ Feed units: {UoA/token0}
@@ -45,6 +49,8 @@ contract ArrakisVaultCollateral is Collateral {
         uint256 tokenisFiat_,
         AggregatorV3Interface token0chainlinkFeed_,
         AggregatorV3Interface token1chainlinkFeed_,
+        int8 token0Decimals_, 
+        int8 token1Decimals_,
         IERC20Metadata erc20_,
         uint192 maxTradeVolume_,
         uint48 oracleTimeout_,
@@ -71,6 +77,14 @@ contract ArrakisVaultCollateral is Collateral {
             address(token1chainlinkFeed_) != address(0),
             "missing token1 chainlink feed"
         );
+        require(
+            token0Decimals_ != 0,
+            "token0Decimals cannot be 0"
+        );
+        require(
+            token1Decimals_ != 0,
+            "token0Decimals cannot be 0"
+        );
         require(tokenisFiat_ <= 3 && tokenisFiat_ > 0, "invalid tokenisFiat bitmap");
 
         defaultThreshold = defaultThreshold_;
@@ -80,9 +94,12 @@ contract ArrakisVaultCollateral is Collateral {
         // chainlink feeds
         token0chainlinkFeed = token0chainlinkFeed_;
         token1chainlinkFeed = token1chainlinkFeed_;
+        token0Decimals = token0Decimals_;
+        token1Decimals = token1Decimals_;
 
         // is fiat
         tokenisFiat = tokenisFiat_; 
+        uniswapPool = IArrakisVault(address(erc20_)).pool();
     }
 
     // used to check which tokens are fiat 
@@ -171,11 +188,20 @@ contract ArrakisVaultCollateral is Collateral {
     /// @return {UoA/tok} Our best guess at the market price of 1 whole token in UoA
     function strictPrice() public view virtual override returns (uint192) {
         (uint256 _reserve0, uint256 _reserve1) = IArrakisVault(address(erc20)).getUnderlyingBalances();
+        uint192 r0 = shiftl_toFix(_reserve0, -token0Decimals);
+        uint192 r1 = shiftl_toFix(_reserve1, -token1Decimals);
 
-        uint192 priceTotal = token0chainlinkFeed.price(oracleTimeout).mulu(_reserve0) + 
-            token1chainlinkFeed.price(oracleTimeout).mulu(_reserve1);
+        uint192 priceTotal = uint192(mulDiv256(
+            token0chainlinkFeed.price(oracleTimeout),
+            r0,
+            FIX_ONE
+        ) + mulDiv256(
+            token1chainlinkFeed.price(oracleTimeout),
+            r1,
+            FIX_ONE
+        ));
 
-        return priceTotal.divu( IArrakisVault(address(erc20)).totalSupply() );
+        return priceTotal.div(uint192(IArrakisVault(address(erc20)).totalSupply()) );
 
     }
 
