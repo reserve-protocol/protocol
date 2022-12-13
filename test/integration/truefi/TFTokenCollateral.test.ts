@@ -45,8 +45,8 @@ const createFixtureLoader = waffle.createFixtureLoader
 
 // Holder address in Mainnet - we're pretending to be this person who has a LOT of tfUSDC
 // const holderTFUSDC = '0x663fdedb7fa953ddb4fbf778d2c77da497b7644a'
-// const holderTFUSDC = '0x58f5f0684c381fcfc203d77b2bba468ebb29b098'
-const holderTFUSDC = '0xec6c3fd795d6e6f202825ddb56e01b3c128b0b10'
+const holderTFUSDC = '0x58f5f0684c381fcfc203d77b2bba468ebb29b098'
+// const holderTFUSDC = '0xec6c3fd795d6e6f202825ddb56e01b3c128b0b10'
 
 
 
@@ -485,7 +485,8 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
   describe('Rewards', () => {
     it('Should be able to claim rewards (if applicable)', async () => {
       // since there are no rewards to claim, we not check to see that it doesn't emit anything ?????????????
-      const MIN_ISSUANCE_PER_BLOCK = bn('1000') //????
+      // const MIN_ISSUANCE_PER_BLOCK = bn('1000') //????
+      const MIN_ISSUANCE_PER_BLOCK = bn('10e6') //????
       const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
 
       // Try to claim rewards at this point - Nothing for Backing Manager
@@ -516,7 +517,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(await truToken.balanceOf(backingManager.address)).to.equal(0)
 
       // Advance Time
-      await advanceTime(8000)
+      await advanceTime(80000)
 
       // Claim rewards
       await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
@@ -527,7 +528,7 @@ describeFork(`TFTokenCollateral - Mainnet Forking P${IMPLEMENTATION}`, function 
       expect(rewardsTRU1).to.be.gte(0) // as there may be accounts which didnt stake their tfUSDC, for them to reap TRU rewards, we choose greater than OR equal to Zero.
 
       // Keep moving time
-      await advanceTime(3600)
+      await advanceTime(360000)
 
       // Get additional rewards
       await expect(backingManager.claimRewards()).to.emit(backingManager, 'RewardsClaimed')
