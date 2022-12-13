@@ -214,18 +214,17 @@ async function collateralFixture(
       await MockV3AggregatorFactory.deploy(0, bn('1'))
     )
 
-    const coll = <FiatCollateral>(
-      await FiatCollateralFactory.deploy(
-        fp('1'),
-        chainlinkFeed.address,
-        erc20.address,
-        config.rTokenMaxTradeVolume,
-        ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
-        defaultThreshold,
-        delayUntilDefault
-      )
-    )
+    const coll = <FiatCollateral>await FiatCollateralFactory.deploy({
+      priceTimeout: PRICE_TIMEOUT,
+      chainlinkFeed: chainlinkFeed.address,
+      oracleError: ORACLE_ERROR,
+      erc20: erc20.address,
+      maxTradeVolume: config.rTokenMaxTradeVolume,
+      oracleTimeout: ORACLE_TIMEOUT,
+      targetName: ethers.utils.formatBytes32String('USD'),
+      defaultThreshold: defaultThreshold,
+      delayUntilDefault: delayUntilDefault,
+    })
     return [erc20, coll]
   }
   const makeCTokenCollateral = async (
