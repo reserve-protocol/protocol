@@ -37,6 +37,15 @@ bancorProxy: an Address of Bancor Network Info V3 contract: `0x8E303D296851B320e
 rewardsProxy: an Address of StandardRewards contract: `0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372`
 autoProcessRewardsProxy: an Address of AutoCompoundingRewards contract:`0x036f8B31D78ca354Ada40dbd117e54F78B6f6CDc`
 
+### Requirements for `bnETH` pool
+fallbackPrice: `1000000000000000000`
+chainlinkFeed: a Chainlink price feed for ETH: `0xAed0c38402a5d19df6E4c03F4E2DceD6e29c1ee9`
+erc20collateral: Address of `bnETH` toke: `0x06CD589760Da4616a0606da1367855808196C352`
+targetName: `ETH`
+bancorProxy: an Address of Bancor Network Info V3 contract: `0x8E303D296851B320e6a697bAcB979d13c9D6E760`
+rewardsProxy: an Address of StandardRewards contract: `0xb0B958398ABB0b5DB4ce4d7598Fb868f5A00f372`
+autoProcessRewardsProxy: an Address of AutoCompoundingRewards contract:`0x036f8B31D78ca354Ada40dbd117e54F78B6f6CDc`
+
 ## Why should the value (reference units per collateral token) decrease only in exceptional circumstances?
 
 The reference units per collateral token is a function of the ratio between the `bnTokens` and the staked amount + fees. RefperTok() value is being constantly increased by trades, each trade collects fees that are beind added to the value. 

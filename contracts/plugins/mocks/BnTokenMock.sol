@@ -7,7 +7,6 @@ import "./ERC20Mock.sol";
 
 contract BnTokenMock is ERC20Mock {
     uint256 private underlying;
-
     constructor(
         string memory name,
         string memory symbol
@@ -15,11 +14,11 @@ contract BnTokenMock is ERC20Mock {
         underlying =0;
     }
 
-    function setUnderlying(uint256 amount) external {
-        underlying = amount;
+    function setUnderlying(uint256 _amount) external {
+        underlying = _amount;
     }
 
-    function poolTokenToUnderlying() external view returns (uint256){
+     function poolTokenToUnderlying(address pool, uint256 poolTokenAmount) external view returns (uint256){
         return underlying;
     }
 }

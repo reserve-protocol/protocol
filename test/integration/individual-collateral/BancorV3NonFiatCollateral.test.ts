@@ -186,7 +186,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         bnETH.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('ETH'),
         defaultThreshold,
         delayUntilDefault,
         bancorProxy.address,
@@ -274,7 +274,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await BancorV3Collateral.erc20Decimals()).to.equal(await bnETH.decimals())
       expect(await BancorV3Collateral.erc20()).to.equal(bnETH.address)
       expect(await BancorV3Collateral.targetName()).to.equal(
-        ethers.utils.formatBytes32String('USD')
+        ethers.utils.formatBytes32String('ETH')
       )
       expect(await BancorV3Collateral.targetPerRef()).to.equal(fp('1'))
       expect(await BancorV3Collateral.pricePerTarget()).to.equal(fp('1121.37265236'))
@@ -347,7 +347,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           bnETH.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('ETH'),
           bn(0),
           delayUntilDefault,
           bancorProxy.address,
@@ -364,7 +364,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
           bnETH.address,
           config.rTokenMaxTradeVolume,
           ORACLE_TIMEOUT,
-          ethers.utils.formatBytes32String('USD'),
+          ethers.utils.formatBytes32String('ETH'),
           defaultThreshold,
           delayUntilDefault,
           bancorProxy.address,
@@ -580,7 +580,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         bnETH.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('ETH'),
         defaultThreshold,
         delayUntilDefault,
         bancorProxy.address,
@@ -602,7 +602,7 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         bnETH.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('ETH'),
         defaultThreshold,
         delayUntilDefault,
         bancorProxy.address,
@@ -642,10 +642,10 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         bnETH.address,
         config.rTokenMaxTradeVolume,
         ORACLE_TIMEOUT,
-        ethers.utils.formatBytes32String('USD'),
+        ethers.utils.formatBytes32String('ETH'),
         defaultThreshold,
         delayUntilDefault,
-        bancorProxy.address,
+        bnETHMock.address,
         rewardsProxy.address,
         autoProcessRewardsProxy.address
       )
@@ -659,7 +659,6 @@ describeFork(`BancorV3NonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       // Decrease rate for nToken, will disable collateral immediately
       await bnETHMock.setUnderlying(bn('1e7'))
-      console.log(await bnETHMock.poolTokenToUnderlying())
 
       // Force updates - Should update whenDefault and status for collateral
       console.log(await newNEthCollateral.status())

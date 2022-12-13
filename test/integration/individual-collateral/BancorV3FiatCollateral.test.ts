@@ -631,6 +631,54 @@ describeFork(`BancorV3FiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
   })
 
   describe('Collateral Status', () => {
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a CToken mock to be able to change the rate
+      const NTokenMockFactory = await ethers.getContractFactory('BnTokenMock')
+      const bnToken: BnTokenMock = await NTokenMockFactory.deploy('dai', 'DAI')
+
+      await bnToken.connect(owner).mint(addr1.address, fp('1e8'))
+
+      // Set initial exchange rate to the new bnToken Mock
+      await bnToken.setUnderlying(fp('1e7'))
+
+      // Redeploy plugin using the new cDai mock
+      const newNUsdcCollateral = <BancorV3FiatCollateral>(
+        await BancorV3CollateralFactory.deploy(
+          fp('1'),
+          mockChainlinkFeed.address,
+          bnDAI.address,
+          config.rTokenMaxTradeVolume,
+          ORACLE_TIMEOUT,
+          ethers.utils.formatBytes32String('USD'),
+          defaultThreshold,
+          delayUntilDefault,
+          bnToken.address,
+          rewardsProxy.address,
+          autoProcessRewardsProxy.address
+        )
+      )
+
+      // Initialize internal state of max redPerTok
+      await newNUsdcCollateral.refresh()
+
+      // Check initial state
+      expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newNUsdcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for bnToken, will disable collateral immediately
+      await bnToken.setUnderlying(fp('5e7'))
+
+      // Force updates - Should update whenDefault and status for collateral
+      await expect(newNUsdcCollateral.refresh())
+        .to.emit(newNUsdcCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newNUsdcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newNUsdcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
