@@ -20,7 +20,6 @@ import { setOraclePrice } from '../../utils/oracles'
 import { advanceTime, getLatestBlockTimestamp } from '../../utils/time'
 import {
   Asset,
-  DMYTokenFiatCollateral,
   RHYTokenFiatCollateral,
   YTokenMock,
   ERC20Mock,
@@ -507,15 +506,15 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await yvDaiCollateral.status()).to.equal(CollateralStatus.IFFY)
 
       // YTokens Collateral with no price
-      const nonpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const nonpriceYtokenCollateral: RHYTokenFiatCollateral = <RHYTokenFiatCollateral>await (
+        await ethers.getContractFactory('RHYTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         yvDai.address,
         config.rTokenMaxTradeVolume,
         fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
+        ethers.utils.formatBytes32String('RH10000yvDAI'),
         delayUntilDefault,
         '100',
         NO_PRICE_DATA_FEED,
@@ -531,15 +530,15 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await nonpriceYtokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
       // Reverts with a feed with zero price
-      const invalidpriceYtokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const invalidpriceYtokenCollateral: RHYTokenFiatCollateral = <RHYTokenFiatCollateral>await (
+        await ethers.getContractFactory('RHYTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
         yvDai.address,
         config.rTokenMaxTradeVolume,
         fp('1'),
-        ethers.utils.formatBytes32String('DM10000yvDAI'),
+        ethers.utils.formatBytes32String('USD'),
         delayUntilDefault,
         '100',
         mockChainlinkFeed.address,
@@ -568,8 +567,8 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
     // Test for soft default
     it('Updates status in case of soft default', async () => {
       // Redeploy plugin using a Chainlink mock feed where we can change the price
-      const newYVDaiCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>await (
-        await ethers.getContractFactory('DMYTokenFiatCollateral', {
+      const newYVDaiCollateral: RHYTokenFiatCollateral = <RHYTokenFiatCollateral>await (
+        await ethers.getContractFactory('RHYTokenFiatCollateral', {
           libraries: { OracleLib: oracleLib.address },
         })
       ).deploy(
@@ -617,6 +616,60 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       expect(await newYVDaiCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a YToken mock to be able to change the rate
+      const symbol = await yvDai.symbol()
+      const yvDaiMock: YTokenMock = <YTokenMock>(
+        await YTokenMockFactory.deploy(symbol + ' Token', symbol, dai.address)
+      )
+      // Set initial exchange rate to the new yDai Mock
+      await yvDaiMock.setExchangeRate(fp('0.9'))
+
+      // Redeploy plugin using the new yDai mock
+      const newYvDaiCollateral: RHYTokenFiatCollateral = <RHYTokenFiatCollateral>(
+        await YTokenCollateralFactory.deploy(
+          yvDaiMock.address,
+          await yvDaiCollateral.maxTradeVolume(),
+          fp('1'),
+          await yvDaiCollateral.targetName(),
+          await yvDaiCollateral.delayUntilDefault(),
+          '100',
+          await yvDaiCollateral.chainlinkFeed(),
+          await yvDaiCollateral.oracleTimeout(),
+          await yvDaiCollateral.defaultThreshold()
+        )
+      )
+
+      // Check initial state
+      expect(await newYvDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Increase rate for yvDAI, no issues
+      await yvDaiMock.setExchangeRate(fp('1'))
+      await newYvDaiCollateral.refresh()
+      expect(await newYvDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvDAI within threshold, no issues
+      await yvDaiMock.setExchangeRate(fp('0.995'))
+      await newYvDaiCollateral.refresh()
+      expect(await newYvDaiCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvDaiCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvDAI outside threshold, should default immediately
+      await yvDaiMock.setExchangeRate(fp('0.98'))
+
+      // Force updates - Should update whenDefault and status for YTokens
+      await expect(newYvDaiCollateral.refresh())
+        .to.emit(newYvDaiCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newYvDaiCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newYvDaiCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {
       const InvalidMockV3AggregatorFactory = await ethers.getContractFactory(
         'InvalidMockV3Aggregator'
@@ -625,7 +678,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
         await InvalidMockV3AggregatorFactory.deploy(8, bn('1e8'))
       )
 
-      const invalidYTokenCollateral: DMYTokenFiatCollateral = <DMYTokenFiatCollateral>(
+      const invalidYTokenCollateral: RHYTokenFiatCollateral = <RHYTokenFiatCollateral>(
         await YTokenCollateralFactory.deploy(
           await yvDaiCollateral.erc20(),
           await yvDaiCollateral.maxTradeVolume(),
@@ -644,7 +697,7 @@ describeFork(`RHYTokenFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, func
       await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
       expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)
 
-      // Runnning out of gas (same error)
+      // Running out of gas (same error)
       await invalidChainlinkFeed.setSimplyRevert(false)
       await expect(invalidYTokenCollateral.refresh()).to.be.revertedWith('')
       expect(await invalidYTokenCollateral.status()).to.equal(CollateralStatus.SOUND)

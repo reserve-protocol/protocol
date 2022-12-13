@@ -357,7 +357,6 @@ describeFork(`RHYTokenNonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
         .connect(addr1)
         .approve(rToken.address, toBNDecimals(issueAmount, await wbtc.decimals()).mul(100))
 
-      console.log(await yvWbtc.balanceOf(addr1.address))
       // Issue rTokens
       await expect(rToken.connect(addr1).issue(issueAmount)).to.emit(rToken, 'Issuance')
 
@@ -366,7 +365,6 @@ describeFork(`RHYTokenNonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
 
       // Store Balances after issuance
       const balanceAddr1yvWbtc: BigNumber = await yvWbtc.balanceOf(addr1.address)
-      console.log(balanceAddr1yvWbtc)
 
       // Check rates and prices
       const yvWbtcPrice1: BigNumber = await yvWbtcCollateral.strictPrice()
@@ -657,6 +655,61 @@ describeFork(`RHYTokenNonFiatCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       )
       expect(await newYVWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
       expect(await newYVWbtcCollateral.whenDefault()).to.equal(prevWhenDefault)
+    })
+
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a YToken mock to be able to change the rate
+      const symbol = await yvWbtc.symbol()
+      const yvWbtcMock: YTokenMock = <YTokenMock>(
+        await YTokenMockFactory.deploy(symbol + ' Token', symbol, wbtc.address)
+      )
+      // Set initial exchange rate to the new yvWBTC Mock
+      await yvWbtcMock.setExchangeRate(fp('0.9'))
+
+      // Redeploy plugin using the new yvWBTC mock
+      const newYvWbtcCollateral: RHYTokenNonFiatCollateral = <RHYTokenNonFiatCollateral>(
+        await YTokenCollateralFactory.deploy(
+          yvWbtcMock.address,
+          await yvWbtcCollateral.maxTradeVolume(),
+          fp('1'),
+          await yvWbtcCollateral.targetName(),
+          await yvWbtcCollateral.delayUntilDefault(),
+          '100',
+          await yvWbtcCollateral.chainlinkFeed(),
+          await yvWbtcCollateral.underlyingTargetToRefFeed(),
+          await yvWbtcCollateral.oracleTimeout(),
+          await yvWbtcCollateral.defaultThreshold()
+        )
+      )
+
+      // Check initial state
+      expect(await newYvWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Increase rate for yvWBTC, no issues
+      await yvWbtcMock.setExchangeRate(fp('1'))
+      await newYvWbtcCollateral.refresh()
+      expect(await newYvWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvWBTC within threshold, no issues
+      await yvWbtcMock.setExchangeRate(fp('0.995'))
+      await newYvWbtcCollateral.refresh()
+      expect(await newYvWbtcCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvWbtcCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvWBTC outside threshold, should default immediately
+      await yvWbtcMock.setExchangeRate(fp('0.98'))
+
+      // Force updates - Should update whenDefault and status for YTokens
+      await expect(newYvWbtcCollateral.refresh())
+        .to.emit(newYvWbtcCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newYvWbtcCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newYvWbtcCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
     })
 
     it('Reverts if oracle reverts or runs out of gas, maintains status', async () => {

@@ -600,6 +600,58 @@ describeFork(`RHYTokenGenericCollateral - Mainnet Forking P${IMPLEMENTATION}`, f
       expect(await newYVLinkCollateral.whenDefault()).to.equal(prevWhenDefault)
     })
 
+    // Test for hard default
+    it('Updates status in case of hard default', async () => {
+      // Note: In this case requires to use a YToken mock to be able to change the rate
+      const symbol = await yvLink.symbol()
+      const yvLinkMock: YTokenMock = <YTokenMock>(
+        await YTokenMockFactory.deploy(symbol + ' Token', symbol, link.address)
+      )
+      // Set initial exchange rate to the new yvLink Mock
+      await yvLinkMock.setExchangeRate(fp('0.9'))
+
+      // Redeploy plugin using the new yvLink mock
+      const newYvLinkCollateral: RHYTokenGenericCollateral = <RHYTokenGenericCollateral>(
+        await YTokenCollateralFactory.deploy(
+          yvLinkMock.address,
+          await yvLinkCollateral.maxTradeVolume(),
+          fp('1'),
+          await yvLinkCollateral.targetName(),
+          await yvLinkCollateral.delayUntilDefault(),
+          '100',
+          await yvLinkCollateral.priceProvider()
+        )
+      )
+
+      // Check initial state
+      expect(await newYvLinkCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvLinkCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Increase rate for yvLINK, no issues
+      await yvLinkMock.setExchangeRate(fp('1'))
+      await newYvLinkCollateral.refresh()
+      expect(await newYvLinkCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvLinkCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvLINK within threshold, no issues
+      await yvLinkMock.setExchangeRate(fp('0.995'))
+      await newYvLinkCollateral.refresh()
+      expect(await newYvLinkCollateral.status()).to.equal(CollateralStatus.SOUND)
+      expect(await newYvLinkCollateral.whenDefault()).to.equal(MAX_UINT256)
+
+      // Decrease rate for yvLINK outside threshold, should default immediately
+      await yvLinkMock.setExchangeRate(fp('0.98'))
+
+      // Force updates - Should update whenDefault and status for YTokens
+      await expect(newYvLinkCollateral.refresh())
+        .to.emit(newYvLinkCollateral, 'DefaultStatusChanged')
+        .withArgs(CollateralStatus.SOUND, CollateralStatus.DISABLED)
+
+      expect(await newYvLinkCollateral.status()).to.equal(CollateralStatus.DISABLED)
+      const expectedDefaultTimestamp: BigNumber = bn(await getLatestBlockTimestamp())
+      expect(await newYvLinkCollateral.whenDefault()).to.equal(expectedDefaultTimestamp)
+    })
+
     it('Reverts if price provider reverts or runs out of gas, maintains status', async () => {
       const InvalidPriceProviderMockFactory = await ethers.getContractFactory(
         'InvalidPriceProviderMock'
