@@ -4,7 +4,7 @@ import hre, { ethers, waffle } from "hardhat"
 import { defaultFixture, IMPLEMENTATION } from "../../../fixtures"
 import { getChainId } from "../../../../common/blockchain-utils"
 import { IConfig, IGovParams, networkConfig } from "../../../../common/configuration"
-import { bn, fp, pow10 } from "../../../../common/numbers"
+import { bn, fp, pow10, toBNDecimals } from "../../../../common/numbers";
 import {
     Asset,
     ERC20Mock,
@@ -54,6 +54,8 @@ import {
 import { anyUint, anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs"
 import { ORACLE_TIMEOUT } from "../../fixtures"
 import { getContractAt } from "@nomiclabs/hardhat-ethers/internal/helpers"
+import { expectEvents } from "#/common/events";
+import { advanceTime } from "#/test/utils/time";
 
 const createFixtureLoader = waffle.createFixtureLoader
 
@@ -522,6 +524,95 @@ describeFork(`UniswapV3Plugin - Integration - Mainnet Forking P${IMPLEMENTATION}
 
             const refPerTok4 = await UniswapV3UsdCollateral.refPerTok()
             expect(refPerTok4).to.be.gt(refPerTok3)
+        })
+    })
+
+
+    describe('Rewards', () => {
+        beforeEach(async () => {
+            setTokens(usdt, usdc)
+            const mintParams0: TMintParams = await defaultMintParams(
+              asset0,
+              asset1,
+              ofToken(asset0)(10 ** 5),
+              ofToken(asset1)(10 ** 5)
+            )
+            UniswapV3Wrapper = await deployUniswapV3Wrapper(
+              asset0,
+              asset1,
+              owner,
+              mintParams0,
+              owner
+            )
+            UniswapV3Pool = await ethers.getContractAt(
+              "IUniswapV3Pool",
+              await UniswapV3Wrapper.pool()
+            )
+            await waitForTx(
+              await asset0
+                .connect(addr1)
+                .approve(UniswapV3Wrapper.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+              await asset1
+                .connect(addr1)
+                .approve(UniswapV3Wrapper.address, await asset1.totalSupply())
+            )
+            await waitForTx(
+              await asset0
+                .connect(addr2)
+                .approve(NonfungiblePositionManager.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+              await asset1
+                .connect(addr2)
+                .approve(NonfungiblePositionManager.address, await asset1.totalSupply())
+            )
+            await waitForTx(
+              await asset0
+                .connect(addr1)
+                .approve(UniswapV3Router.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+              await asset1
+                .connect(addr1)
+                .approve(UniswapV3Router.address, await asset1.totalSupply())
+            )
+            await waitForTx(
+              await asset0
+                .connect(addr2)
+                .approve(UniswapV3Router.address, await asset0.totalSupply())
+            )
+            await waitForTx(
+              await asset1
+                .connect(addr2)
+                .approve(UniswapV3Router.address, await asset1.totalSupply())
+            )
+            const fallbackPrice = fp("1")
+            UniswapV3UsdCollateral = await UniswapV3UsdCollateralContractFactory.deploy(
+              fallbackPrice,
+              fallbackPrice,
+              mockChainlinkFeed0.address,
+              mockChainlinkFeed1.address,
+              UniswapV3Wrapper.address,
+              config.rTokenMaxTradeVolume,
+              ORACLE_TIMEOUT,
+              ethers.utils.formatBytes32String(TARGET_NAME),
+              DEFAULT_THRESHOLD,
+              100,
+              DELAY_UNTIL_DEFAULT
+            )
+        })
+
+
+        it('Should be able to claim rewards', async () => {
+            // const MIN_ISSUANCE_PER_BLOCK = bn('10000e18')
+            // const issueAmount: BigNumber = MIN_ISSUANCE_PER_BLOCK
+
+            // Try to claim rewards at this point - Nothing for Backing Manager
+            //TODO add Deployment section and backing manager addr
+            // expect(await UniswapV3Wrapper.balanceOf(backingManager.address)).to.equal(0)
+
         })
     })
 })
